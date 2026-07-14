@@ -5,10 +5,14 @@
     "moduleResolution": "Node",
     "target": "ES2022",
     "outDir": "../dist-electron",
-    "rootDir": "../../../",
+    "rootDir": ".",
     "jsx": "react-jsx",
     "types": ["node"],
+    "composite": true,
     "skipLibCheck": true
   },
-  "include": ["./**/*.ts"]
+  "include": ["./**/*.ts"],
+  "references": [
+    { "path": "../../../packages/shared" }
+  ]
 }
