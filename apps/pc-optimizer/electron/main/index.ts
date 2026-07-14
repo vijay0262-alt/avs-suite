@@ -81,7 +81,7 @@ async function createMainWindow(): Promise<void> {
       height: 40,
     },
     webPreferences: {
-      preload: path.join(__dirname, '../preload/preload.cjs'),
+      preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -109,9 +109,23 @@ async function createMainWindow(): Promise<void> {
 app.whenReady().then(async () => {
   log.info(`AVS PC Optimizer starting (env=${env.env})`);
 
-  const rpc = await spawnPythonBackend(log);
-  registerIpcHandlers(rpc, log);
-  initAutoUpdater(log, env);
+  try {
+    const rpc = await spawnPythonBackend(log);
+    registerIpcHandlers(rpc, log);
+    initAutoUpdater(log, env);
+  } catch (error) {
+    log.warn('Python backend initialization failed, continuing without backend', error);
+    // Create a mock RPC client that returns errors for all calls
+    const mockRpc = {
+      call<T>(method: string, params?: unknown): Promise<T> {
+        return Promise.reject(new Error('Backend not available'));
+      },
+      shutdown(): Promise<void> {
+        return Promise.resolve();
+      },
+    };
+    registerIpcHandlers(mockRpc, log);
+  }
 
   await createMainWindow();
 
