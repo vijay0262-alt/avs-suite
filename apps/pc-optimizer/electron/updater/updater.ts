@@ -7,7 +7,7 @@
  */
 import { autoUpdater } from 'electron-updater';
 import { BrowserWindow, ipcMain } from 'electron';
-import type { EnvironmentConfig } from '../../../../packages/shared/src/env';
+import type { EnvironmentConfig } from '@avs/shared/env';
 
 interface Logger {
   info(m: string, meta?: unknown): void;
