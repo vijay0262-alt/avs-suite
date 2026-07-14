@@ -5,9 +5,9 @@
     "moduleResolution": "Node",
     "target": "ES2022",
     "outDir": "../dist-electron",
-    "rootDir": ".",
     "jsx": "react-jsx",
-    "types": ["node"]
+    "types": ["node"],
+    "skipLibCheck": true
   },
   "include": ["./**/*.ts"]
 }
