@@ -117,7 +117,7 @@ app.whenReady().then(async () => {
     log.warn('Python backend initialization failed, continuing without backend', error);
     // Create a mock RPC client that returns errors for all calls
     const mockRpc = {
-      call<T>(method: string, params?: unknown): Promise<T> {
+      call<T>(_method: string, _params?: unknown): Promise<T> {
         return Promise.reject(new Error('Backend not available'));
       },
       shutdown(): Promise<void> {
