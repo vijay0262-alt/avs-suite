@@ -35,41 +35,49 @@ export const FEATURES = {
     key: 'junk-cleaner-basic',
     description: 'Scan and remove standard junk files.',
     editions: ['free', 'pro', 'enterprise', 'trial'] as const,
+    hardGated: undefined,
   },
   JUNK_CLEANER_DEEP: {
     key: 'junk-cleaner-deep',
     description: 'Deep browser + application cache sweep with rules engine.',
     editions: ['pro', 'enterprise', 'trial'] as const,
+    hardGated: undefined,
   },
   STARTUP_MANAGER: {
     key: 'startup-manager',
     description: 'Enable / disable Windows startup entries and services.',
     editions: ['free', 'pro', 'enterprise', 'trial'] as const,
+    hardGated: undefined,
   },
   PRIVACY_CLEANER: {
     key: 'privacy-cleaner',
     description: 'Clear traces from browsers and Windows components.',
     editions: ['free', 'pro', 'enterprise', 'trial'] as const,
+    hardGated: undefined,
   },
   DUPLICATE_FINDER: {
     key: 'duplicate-finder',
     description: 'Locate duplicate files by hash and content.',
     editions: ['pro', 'enterprise', 'trial'] as const,
+    hardGated: undefined,
   },
   DISK_ANALYZER: {
     key: 'disk-analyzer',
     description: 'Visualise disk usage by folder and file type.',
     editions: ['free', 'pro', 'enterprise', 'trial'] as const,
+    hardGated: undefined,
   },
   PERFORMANCE_BOOST: {
     key: 'performance-boost',
     description: 'One-click tuning presets for gaming, work, and battery.',
     editions: ['pro', 'enterprise', 'trial'] as const,
+    hardGated: undefined,
   },
   SCHEDULED_MAINTENANCE: {
     key: 'scheduled-maintenance',
     description: 'Run scans automatically on a schedule.',
     editions: ['pro', 'enterprise', 'trial'] as const,
+    hardGated: undefined,
   },
   MULTI_DEVICE_MANAGEMENT: {
     key: 'multi-device-management',
@@ -81,8 +89,9 @@ export const FEATURES = {
     key: 'priority-support',
     description: 'Priority customer support & remote assistance.',
     editions: ['pro', 'enterprise'] as const,
+    hardGated: undefined,
   },
-} as const satisfies Record<string, FeatureFlag>;
+} satisfies Record<string, FeatureFlag>;
 
 export type FeatureKey = keyof typeof FEATURES;
 

@@ -3,6 +3,9 @@ import { FixedSizeList as List } from 'react-window';
 import { formatBytes } from '@avs/shared/utils';
 import type { ScanItem } from '../junkCleaner.types';
 
+// Type assertion to fix react-window JSX typing issues with newer React versions
+const ListComponent = List as any;
+
 const ROW_HEIGHT = 34;
 const HEADER_HEIGHT = 36;
 const MAX_HEIGHT = 480;
@@ -77,14 +80,14 @@ export function DetailsTable({ items, loading, error, cleanerName, onClose }: De
           No files to show.
         </div>
       ) : (
-        <List
+        <ListComponent
           height={listHeight}
           itemCount={rows.length}
           itemSize={ROW_HEIGHT}
           width="100%"
           overscanCount={20}
         >
-          {({ index, style }) => {
+          {({ index, style }: { index: number; style: React.CSSProperties }) => {
             const row = rows[index];
             if (!row) return null;
             return (
@@ -113,7 +116,7 @@ export function DetailsTable({ items, loading, error, cleanerName, onClose }: De
               </div>
             );
           }}
-        </List>
+        </ListComponent>
       )}
     </div>
   );

@@ -64,7 +64,9 @@ function makeService(overrides: Partial<JunkCleanerService> = {}): JunkCleanerSe
 }
 
 describe('JunkCleanerViewModel — scan flow', () => {
-  beforeEach(() => vi.useFakeTimers());
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
 
   it('bootstraps with all cleaners pre-selected', async () => {
     const vm = new JunkCleanerViewModel(makeService());
@@ -93,7 +95,9 @@ describe('JunkCleanerViewModel — scan flow', () => {
 });
 
 describe('JunkCleanerViewModel — cleaning flow', () => {
-  beforeEach(() => vi.useFakeTimers());
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
 
   async function withCompletedScan() {
     const svc = makeService();
@@ -114,8 +118,8 @@ describe('JunkCleanerViewModel — cleaning flow', () => {
 
   it('refuses to preview when no scanned category has files', async () => {
     const svc = makeService({
-      getStatus: vi.fn(async () => ({
-        present: true, taskId: 't1', status: 'completed', progress: 100,
+      getStatus: vi.fn(async (): Promise<ScanStatusSnapshot> => ({
+        present: true, taskId: 't1', status: 'completed' as const, progress: 100,
         totalFiles: 0, totalBytes: 0, cleaners: [], errorCount: 0,
       })),
     });
