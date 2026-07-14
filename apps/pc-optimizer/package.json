@@ -3,8 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "description": "AVS PC Optimizer — Windows performance, cleanup, and privacy utility.",
+  "author": {
+    "name": "Advanced Vision Software LLC",
+    "email": "info@avs.example.com"
+  },
+  "publisherName": "Advanced Vision Software LLC",
   "main": "dist-electron/main/index.js",
-  "author": "AVS Software",
   "license": "UNLICENSED",
   "scripts": {
     "dev": "vite",
@@ -52,6 +56,7 @@
   "build": {
     "appId": "com.avs.pcoptimizer",
     "productName": "AVS PC Optimizer",
+    "copyright": "Copyright © 2024 Advanced Vision Software LLC. All rights reserved.",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -62,14 +67,20 @@
       "package.json"
     ],
     "extraMetadata": {
-      "main": "dist-electron/main/index.js"
+      "main": "dist-electron/main/index.js",
+      "author": {
+        "name": "Advanced Vision Software LLC",
+        "email": "info@avs.example.com"
+      },
+      "publisherName": "Advanced Vision Software LLC"
     },
     "win": {
       "target": [
         "nsis",
         "portable"
       ],
-      "artifactName": "${productName}-Setup-${version}.${ext}"
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "publisherName": "Advanced Vision Software LLC"
     },
     "nsis": {
       "oneClick": false,
