@@ -12,6 +12,7 @@ import logging
 import os
 import sqlite3
 import threading
+import time
 from pathlib import Path
 
 log = logging.getLogger("avs.cleaner.history")
@@ -74,7 +75,18 @@ class HistoryStore:
         # write from the pool; we serialise through ``_lock`` ourselves.
         self._conn = sqlite3.connect(str(db_path), check_same_thread=False, isolation_level=None)
         self._conn.row_factory = sqlite3.Row
-        self._conn.execute("PRAGMA journal_mode=WAL")
+        
+        # Retry WAL mode setting with timeout for parallel test execution
+        for attempt in range(5):
+            try:
+                self._conn.execute("PRAGMA journal_mode=WAL")
+                break
+            except sqlite3.OperationalError as e:
+                if "database is locked" in str(e) and attempt < 4:
+                    time.sleep(0.1 * (attempt + 1))
+                else:
+                    raise
+        
         self._conn.execute("PRAGMA synchronous=NORMAL")
         self._lock = threading.Lock()
         with self._lock:
