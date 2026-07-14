@@ -1,0 +1,75 @@
+/**
+ * Runtime CSS variables mirroring the design tokens in @avs/shared/tokens.
+ * Import once at app entry (see `apps/pc-optimizer/src/styles/index.css`).
+ *
+ * Every colour class in Tailwind (`bg-brand-primary`, `text-surface`, ...)
+ * ultimately reads from these variables so runtime theme switches (light
+ * ⇄ dark, high-contrast) work without a re-render.
+ */
+
+:root {
+  color-scheme: light;
+
+  --avs-brand-primary: #0078D4;
+  --avs-brand-secondary: #005A9E;
+  --avs-brand-accent: #2B88D8;
+
+  --avs-success: #107C10;
+  --avs-warning: #FFB900;
+  --avs-danger: #D13438;
+  --avs-info: #0078D4;
+
+  --avs-bg: #F5F7FA;
+  --avs-surface: #FFFFFF;
+  --avs-surface-muted: #EEF2F6;
+  --avs-border: #D6DDE5;
+  --avs-text-primary: #0F172A;
+  --avs-text-secondary: #475569;
+  --avs-text-muted: #64748B;
+
+  --avs-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --avs-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --avs-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
+  --avs-focus-ring: 0 0 0 3px rgba(0, 120, 212, 0.35);
+
+  --avs-radius-sm: 4px;
+  --avs-radius-md: 8px;
+  --avs-radius-lg: 12px;
+  --avs-radius-xl: 16px;
+
+  --avs-duration-fast: 150ms;
+  --avs-duration-normal: 220ms;
+  --avs-easing: cubic-bezier(0.2, 0, 0, 1);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --avs-bg: #0F172A;
+  --avs-surface: #111C36;
+  --avs-surface-muted: #17223F;
+  --avs-border: #22304F;
+  --avs-text-primary: #F1F5F9;
+  --avs-text-secondary: #CBD5E1;
+  --avs-text-muted: #94A3B8;
+
+  --avs-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --avs-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --avs-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+/* High-contrast mode — Windows narrator / a11y support. */
+@media (forced-colors: active) {
+  :root {
+    --avs-border: CanvasText;
+    --avs-focus-ring: 0 0 0 2px Highlight;
+  }
+}
+
+/* Respect user's reduced-motion preference. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --avs-duration-fast: 0ms;
+    --avs-duration-normal: 0ms;
+  }
+}

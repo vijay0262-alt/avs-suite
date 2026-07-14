@@ -1,0 +1,40 @@
+@import '@avs/ui/styles/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--avs-bg);
+  color: var(--avs-text-primary);
+  font-family: 'Segoe UI Variable', 'Segoe UI', Inter, system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Accessible focus ring on any interactive element that opts in via
+   `outline-none focus-visible:shadow-[var(--avs-focus-ring)]`. */
+:focus-visible {
+  outline: none;
+}
+
+/* Custom scrollbars — match theme without breaking accessibility. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--avs-border);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--avs-text-muted);
+}

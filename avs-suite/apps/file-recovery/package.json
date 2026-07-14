@@ -1,0 +1,7 @@
+{
+  "name": "@avs/file-recovery",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AVS File Recovery — placeholder app scaffold.",
+  "main": "index.js"
+}

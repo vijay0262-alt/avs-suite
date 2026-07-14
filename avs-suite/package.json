@@ -1,0 +1,45 @@
+{
+  "name": "avs-suite",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AVS Suite — monorepo hosting AVS PC Optimizer, Security, Driver Updater, File Recovery, and VPN products.",
+  "author": "AVS Software",
+  "license": "UNLICENSED",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "dev:pc-optimizer": "yarn workspace @avs/pc-optimizer dev",
+    "build:pc-optimizer": "yarn workspace @avs/pc-optimizer build",
+    "package:pc-optimizer": "yarn workspace @avs/pc-optimizer package",
+    "lint": "eslint \"{apps,packages}/**/*.{ts,tsx}\" --max-warnings=0",
+    "format": "prettier --write \"{apps,packages}/**/*.{ts,tsx,js,jsx,json,md,css}\"",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "backend:install": "python -m pip install -r backend/requirements.txt",
+    "backend:test": "cd backend && pytest",
+    "clean": "rimraf \"{apps,packages}/**/{dist,build,.turbo,node_modules/.cache}\""
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.34.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.2.5",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.4.0",
+    "vitest": "^1.4.0",
+    "@playwright/test": "^1.42.0"
+  },
+  "engines": {
+    "node": ">=18.18.0",
+    "yarn": ">=1.22.0"
+  },
+  "packageManager": "yarn@1.22.22"
+}

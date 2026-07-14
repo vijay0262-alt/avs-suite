@@ -1,0 +1,7 @@
+{
+  "name": "@avs/vpn",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AVS VPN — placeholder app scaffold.",
+  "main": "index.js"
+}

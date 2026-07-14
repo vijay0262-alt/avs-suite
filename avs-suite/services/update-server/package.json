@@ -1,0 +1,6 @@
+{
+  "name": "@avs/update-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Static publisher for AVS update artefacts (electron-updater generic feed)."
+}

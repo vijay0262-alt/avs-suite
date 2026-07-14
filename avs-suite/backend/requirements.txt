@@ -1,0 +1,9 @@
+# AVS PC Optimizer — Python backend runtime dependencies.
+# Pin only to compatible minors; the CI builds a lock file.
+
+psutil>=5.9.8,<6.0
+pywin32>=306; platform_system=="Windows"
+WMI>=1.5.1; platform_system=="Windows"
+
+# Packaging (only used when producing the PyInstaller bundle for release).
+pyinstaller>=6.5,<7.0

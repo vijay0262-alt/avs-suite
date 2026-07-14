@@ -1,0 +1,20 @@
+[project]
+name = "avs-backend"
+version = "0.1.0"
+description = "AVS PC Optimizer — Python backend (JSON-RPC over stdio)"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]

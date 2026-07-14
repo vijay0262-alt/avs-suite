@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": false,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "useDefineForClassFields": true,
+    "baseUrl": ".",
+    "paths": {
+      "@avs/ui": ["packages/ui/src"],
+      "@avs/ui/*": ["packages/ui/src/*"],
+      "@avs/core": ["packages/core/src"],
+      "@avs/core/*": ["packages/core/src/*"],
+      "@avs/shared": ["packages/shared/src"],
+      "@avs/shared/*": ["packages/shared/src/*"],
+      "@avs/licensing": ["packages/licensing/src"],
+      "@avs/updater": ["packages/updater/src"],
+      "@avs/analytics": ["packages/analytics/src"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "build", "**/node_modules", "**/dist", "**/build"]
+}

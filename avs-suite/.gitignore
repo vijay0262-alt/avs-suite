@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+.yarn/
+.pnp.*
+
+# Build outputs
+dist/
+build/
+out/
+release/
+*.tsbuildinfo
+
+# Electron
+apps/**/release/
+apps/**/dist-electron/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Logs (runtime)
+logs/*.log
+logs/**/*.log
+!logs/.gitkeep
+
+# Database (runtime)
+database/*.sqlite
+database/*.db
+!database/.gitkeep
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Test artefacts
+coverage/
+.playwright/
+test-results/
+playwright-report/
+
+# Installer artefacts
+installer/output/
