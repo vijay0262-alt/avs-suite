@@ -4,6 +4,7 @@ import { formatBytes } from '@avs/shared/utils';
 import type { ScanItem } from '../junkCleaner.types';
 
 // Type assertion to fix react-window JSX typing issues with newer React versions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ListComponent = List as any;
 
 const ROW_HEIGHT = 34;
