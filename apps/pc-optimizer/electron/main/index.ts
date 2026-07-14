@@ -6,7 +6,7 @@
  * Everything Windows-specific is delegated to the Python child; this
  * module is intentionally OS-agnostic.
  */
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, dialog, shell } from 'electron';
 import path from 'node:path';
 import { installCrashHandler } from '../crash/crashReporter';
 import { createLogger } from '../logger/logger';
@@ -64,6 +64,82 @@ const log = createLogger('main', env.logLevel);
 installCrashHandler(log);
 
 let mainWindow: BrowserWindow | null = null;
+let splashWindow: BrowserWindow | null = null;
+
+function createSplashWindow(): BrowserWindow {
+  const splash = new BrowserWindow({
+    width: 400,
+    height: 300,
+    show: false,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    center: true,
+    alwaysOnTop: true,
+    backgroundColor: '#0F172A',
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+
+  // Load a simple splash screen HTML
+  splash.loadURL(`data:text/html;charset=utf-8,
+    <html>
+      <head>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+          }
+          .container {
+            text-align: center;
+          }
+          .logo {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+          }
+          .loading {
+            font-size: 14px;
+            opacity: 0.8;
+          }
+          .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+          }
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="logo">AVS PC Optimizer</div>
+          <div class="spinner"></div>
+          <div class="loading">Loading...</div>
+        </div>
+      </body>
+    </html>
+  `);
+
+  splash.once('ready-to-show', () => splash.show());
+  return splash;
+}
 
 async function createMainWindow(): Promise<void> {
   mainWindow = new BrowserWindow({
@@ -102,19 +178,42 @@ async function createMainWindow(): Promise<void> {
     await mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
 
-  mainWindow.once('ready-to-show', () => mainWindow?.show());
+  mainWindow.once('ready-to-show', () => {
+    if (splashWindow) {
+      splashWindow.close();
+      splashWindow = null;
+    }
+    mainWindow?.show();
+  });
   mainWindow.on('closed', () => (mainWindow = null));
+}
+
+function showBackendError(error: Error): void {
+  dialog.showErrorBox(
+    'Backend Initialization Failed',
+    `The Python backend failed to start:\n\n${error.message}\n\nThe application will continue with limited functionality.`
+  );
 }
 
 app.whenReady().then(async () => {
   log.info(`AVS PC Optimizer starting (env=${env.env})`);
 
+  // Show splash screen first
+  splashWindow = createSplashWindow();
+
+  // Create main window (hidden initially)
+  await createMainWindow();
+
+  // Try to start backend after window is ready
   try {
     const rpc = await spawnPythonBackend(log);
     registerIpcHandlers(rpc, log);
     initAutoUpdater(log, env);
+    log.info('Python backend initialized successfully');
   } catch (error) {
-    log.warn('Python backend initialization failed, continuing without backend', error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    log.error('Python backend initialization failed', err);
+    showBackendError(err);
     // Create a mock RPC client that returns errors for all calls
     const mockRpc = {
       call<T>(_method: string, _params?: unknown): Promise<T> {
@@ -126,8 +225,6 @@ app.whenReady().then(async () => {
     };
     registerIpcHandlers(mockRpc, log);
   }
-
-  await createMainWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) void createMainWindow();
