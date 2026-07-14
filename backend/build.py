@@ -54,7 +54,7 @@ def main() -> None:
         print(f"ERROR: Expected executable not found at {exe_path}")
         sys.exit(1)
 
-    print(f"✓ Backend built successfully: {exe_path}")
+    print(f"SUCCESS: Backend built successfully: {exe_path}")
 
 
 if __name__ == "__main__":
