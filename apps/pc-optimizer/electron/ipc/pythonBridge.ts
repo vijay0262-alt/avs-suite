@@ -9,7 +9,36 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import path from 'node:path';
 import { app } from 'electron';
-import type { JsonRpcRequest, JsonRpcResponse } from '../../../../packages/shared/src/rpc';
+
+// Local RPC types (copied from shared package to avoid ES module import)
+export const JSON_RPC_VERSION = '2.0' as const;
+
+export interface JsonRpcRequest<TParams = unknown> {
+  jsonrpc: typeof JSON_RPC_VERSION;
+  id: string | number;
+  method: string;
+  params?: TParams;
+}
+
+export interface JsonRpcSuccess<TResult = unknown> {
+  jsonrpc: typeof JSON_RPC_VERSION;
+  id: string | number;
+  result: TResult;
+}
+
+export interface JsonRpcErrorPayload {
+  code: number;
+  message: string;
+  data?: unknown;
+}
+
+export interface JsonRpcError {
+  jsonrpc: typeof JSON_RPC_VERSION;
+  id: string | number | null;
+  error: JsonRpcErrorPayload;
+}
+
+export type JsonRpcResponse<T = unknown> = JsonRpcSuccess<T> | JsonRpcError;
 
 export interface RpcClient {
   call<T>(method: string, params?: unknown): Promise<T>;

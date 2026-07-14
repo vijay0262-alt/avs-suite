@@ -7,7 +7,18 @@
  */
 import { autoUpdater } from 'electron-updater';
 import { BrowserWindow, ipcMain } from 'electron';
-import type { EnvironmentConfig } from '@avs/shared/env';
+
+// Local environment configuration (copied from shared package to avoid ES module import)
+type AppEnvironment = 'development' | 'staging' | 'production';
+
+interface EnvironmentConfig {
+  env: AppEnvironment;
+  updateFeedUrl: string;
+  licenseApiUrl: string;
+  analyticsUrl: string | null;
+  logLevel: 'silly' | 'debug' | 'info' | 'warn' | 'error';
+  openDevTools: boolean;
+}
 
 interface Logger {
   info(m: string, meta?: unknown): void;

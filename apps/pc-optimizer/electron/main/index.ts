@@ -13,7 +13,50 @@ import { createLogger } from '../logger/logger';
 import { spawnPythonBackend } from '../ipc/pythonBridge';
 import { registerIpcHandlers } from '../ipc/handlers';
 import { initAutoUpdater } from '../updater/updater';
-import { resolveEnvironment } from '@avs/shared/env';
+
+// Local environment configuration (copied from shared package to avoid ES module import)
+type AppEnvironment = 'development' | 'staging' | 'production';
+
+interface EnvironmentConfig {
+  env: AppEnvironment;
+  updateFeedUrl: string;
+  licenseApiUrl: string;
+  analyticsUrl: string | null;
+  logLevel: 'silly' | 'debug' | 'info' | 'warn' | 'error';
+  openDevTools: boolean;
+}
+
+const CONFIGS: Record<AppEnvironment, EnvironmentConfig> = {
+  development: {
+    env: 'development',
+    updateFeedUrl: 'https://updates.dev.avs.example.com',
+    licenseApiUrl: 'https://license.dev.avs.example.com',
+    analyticsUrl: null,
+    logLevel: 'debug',
+    openDevTools: true,
+  },
+  staging: {
+    env: 'staging',
+    updateFeedUrl: 'https://updates.staging.avs.example.com',
+    licenseApiUrl: 'https://license.staging.avs.example.com',
+    analyticsUrl: 'https://telemetry.staging.avs.example.com',
+    logLevel: 'info',
+    openDevTools: false,
+  },
+  production: {
+    env: 'production',
+    updateFeedUrl: 'https://updates.avs.example.com',
+    licenseApiUrl: 'https://license.avs.example.com',
+    analyticsUrl: 'https://telemetry.avs.example.com',
+    logLevel: 'warn',
+    openDevTools: false,
+  },
+};
+
+function resolveEnvironment(raw: string | undefined): EnvironmentConfig {
+  const key = (raw ?? 'development').toLowerCase() as AppEnvironment;
+  return CONFIGS[key] ?? CONFIGS.development;
+}
 
 const env = resolveEnvironment(process.env.AVS_ENV);
 const log = createLogger('main', env.logLevel);
