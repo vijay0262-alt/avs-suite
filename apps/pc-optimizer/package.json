@@ -9,10 +9,10 @@
   "scripts": {
     "dev": "vite",
     "dev:electron": "cross-env AVS_ENV=development electron .",
-    "build": "tsc -p tsconfig.json --noEmit && vite build && tsc -p electron/tsconfig.json",
+    "build": "tsc -p tsconfig.json --noEmit && vite build && tsc -b electron/tsconfig.json",
     "package": "yarn build && electron-builder --win --x64",
     "package:dir": "yarn build && electron-builder --dir",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p electron/tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -b electron/tsconfig.json --noEmit",
     "lint": "eslint \"{src,electron}/**/*.{ts,tsx}\" --max-warnings=0"
   },
   "dependencies": {
