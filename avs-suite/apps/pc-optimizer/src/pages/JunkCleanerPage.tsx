@@ -1,12 +1,7 @@
-import { ComingSoon } from '../components/ComingSoon';
-
-/** Junk Cleaner — module scaffold. Real scanner ships in a future step. */
-export default function JunkCleanerPage() {
-  return (
-    <ComingSoon
-      title="Junk Cleaner"
-      description="Scan and remove temporary files, caches, and other safely-deletable junk."
-      testId="page-junk-cleaner"
-    />
-  );
-}
+/**
+ * Route entry — thin re-export of the feature page.
+ *
+ * The router lazy-loads this file; the actual implementation lives in
+ * ``../features/junk-cleaner/JunkCleanerPage.tsx``.
+ */
+export { default } from '../features/junk-cleaner/JunkCleanerPage';

@@ -1,14 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "src",
     "outDir": "dist",
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "noEmit": true
   },
-  "include": ["src/**/*", "src/**/*.tsx"],
-  "references": [
-    { "path": "../../packages/shared" },
-    { "path": "../../packages/core" },
-    { "path": "../../packages/ui" }
-  ]
+  "include": ["src/**/*", "src/**/*.tsx"]
 }

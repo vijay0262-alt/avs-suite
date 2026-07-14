@@ -4,7 +4,6 @@ from __future__ import annotations
 
 
 def test_registry_has_expected_methods() -> None:
-    # Import the server module so all feature packages register.
     from avs_backend.api import registry
     from avs_backend.api import rpc_server  # noqa: F401
 
@@ -16,8 +15,11 @@ def test_registry_has_expected_methods() -> None:
         "metrics.cpu",
         "metrics.memory",
         "metrics.disk",
-        "cleaner.scan",
-        "cleaner.clean",
+        "cleaner.list",
+        "cleaner.scan.start",
+        "cleaner.scan.status",
+        "cleaner.scan.cancel",
+        "cleaner.scan.results",
         "startup.list",
         "startup.toggle",
         "privacy.scan",

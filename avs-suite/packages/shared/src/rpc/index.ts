@@ -50,9 +50,12 @@ export const RPC_METHODS = {
   METRICS_MEMORY: 'metrics.memory',
   METRICS_DISK: 'metrics.disk',
 
-  // Feature modules (contracts; implementations deferred)
-  CLEANER_SCAN: 'cleaner.scan',
-  CLEANER_CLEAN: 'cleaner.clean',
+  // Feature modules — Junk Cleaner scan lifecycle
+  CLEANER_LIST: 'cleaner.list',
+  CLEANER_SCAN_START: 'cleaner.scan.start',
+  CLEANER_SCAN_STATUS: 'cleaner.scan.status',
+  CLEANER_SCAN_CANCEL: 'cleaner.scan.cancel',
+  CLEANER_SCAN_RESULTS: 'cleaner.scan.results',
   STARTUP_LIST: 'startup.list',
   STARTUP_TOGGLE: 'startup.toggle',
   PRIVACY_SCAN: 'privacy.scan',
