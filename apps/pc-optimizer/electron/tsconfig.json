@@ -1,18 +1,16 @@
 {
-  "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "module": "CommonJS",
-    "moduleResolution": "Node",
     "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "lib": ["ES2022"],
     "outDir": "../dist-electron",
     "rootDir": ".",
-    "jsx": "react-jsx",
-    "types": ["node"],
-    "composite": true,
-    "skipLibCheck": true
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": ["node"]
   },
-  "include": ["./**/*.ts"],
-  "references": [
-    { "path": "../../../packages/shared" }
-  ]
+  "include": ["./**/*.ts"]
 }

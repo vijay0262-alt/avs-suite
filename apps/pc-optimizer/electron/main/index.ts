@@ -8,12 +8,12 @@
  */
 import { app, BrowserWindow, shell } from 'electron';
 import path from 'node:path';
-import { installCrashHandler } from './crash/crashReporter';
-import { createLogger } from './logger/logger';
-import { spawnPythonBackend } from './ipc/pythonBridge';
-import { registerIpcHandlers } from './ipc/handlers';
-import { initAutoUpdater } from './updater/updater';
-import { resolveEnvironment } from '../../../packages/shared/src/env';
+import { installCrashHandler } from '../crash/crashReporter';
+import { createLogger } from '../logger/logger';
+import { spawnPythonBackend } from '../ipc/pythonBridge';
+import { registerIpcHandlers } from '../ipc/handlers';
+import { initAutoUpdater } from '../updater/updater';
+import { resolveEnvironment } from '@avs/shared/env';
 
 const env = resolveEnvironment(process.env.AVS_ENV);
 const log = createLogger('main', env.logLevel);
