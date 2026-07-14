@@ -6,6 +6,7 @@ import {
   StopIcon,
   ArrowPathIcon,
   ExclamationTriangleIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { PageHeader } from '../../components/PageHeader';
 import { JunkCleanerViewModel } from './JunkCleanerViewModel';
@@ -13,23 +14,38 @@ import { junkCleanerService } from './junkCleaner.service';
 import { CategoryRow } from './components/CategoryRow';
 import { ScanProgress } from './components/ScanProgress';
 import { DetailsTable } from './components/DetailsTable';
+import { PreviewDialog } from './components/PreviewDialog';
+import { ConfirmDialog } from './components/ConfirmDialog';
+import { CleaningProgress } from './components/CleaningProgress';
+import { CleaningSummary } from './components/CleaningSummary';
+import { CleaningLog } from './components/CleaningLog';
 
 /**
  * JunkCleanerPage — top-level view for the module.
  *
  * The View is intentionally thin: it renders state read from the
- * ViewModel and forwards user gestures. All logic (start / cancel /
- * poll / paging) lives in the ViewModel.
+ * ViewModel and forwards user gestures. All logic (scan / clean /
+ * poll / paging / history) lives in the ViewModel.
  */
 export default function JunkCleanerPage() {
   const vm = useMemo(() => new JunkCleanerViewModel(junkCleanerService), []);
   const state = useViewModel(vm);
   const [scanIssuedOnce, setScanIssuedOnce] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     void vm.bootstrap();
     return () => vm.dispose();
   }, [vm]);
+
+  useEffect(() => {
+    if (historyOpen) void vm.loadHistory(true);
+  }, [historyOpen, vm]);
+
+  // Reload history when filters change (already open).
+  useEffect(() => {
+    if (historyOpen) void vm.loadHistory(true);
+  }, [historyOpen, state.historyQuery, state.historyCategory, state.historyResultFilter, vm]);
 
   const running = state.snapshot.status === 'running';
   const hasResults =
@@ -43,11 +59,18 @@ export default function JunkCleanerPage() {
     ? state.catalog.find((c) => c.id === state.detailsCleanerId)
     : null;
 
+  // Enable "Clean" once a scan finished with at least one file found.
+  const canClean =
+    hasResults &&
+    (state.snapshot.totalFiles ?? 0) > 0 &&
+    state.cleaningStep === 'closed' &&
+    !state.cleaningSnapshot.present;
+
   return (
     <div data-testid="page-junk-cleaner">
       <PageHeader
         title="Junk Cleaner"
-        description="Find temporary files, caches, and other safely-removable clutter. Nothing is deleted — this build only scans."
+        description="Scan, preview, and safely remove temporary files, caches, and other clutter."
         actions={
           <div className="flex items-center gap-2">
             {!running ? (
@@ -73,6 +96,23 @@ export default function JunkCleanerPage() {
                     Rescan
                   </Button>
                 )}
+                {canClean && (
+                  <Button
+                    variant="danger"
+                    onClick={() => void vm.openPreview()}
+                    leftIcon={<SparklesIcon className="h-4 w-4" />}
+                    data-testid="junk-clean-btn"
+                  >
+                    Clean…
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  onClick={() => setHistoryOpen((v) => !v)}
+                  data-testid="junk-history-toggle"
+                >
+                  {historyOpen ? 'Hide history' : 'View history'}
+                </Button>
               </>
             ) : (
               <Button
@@ -112,15 +152,15 @@ export default function JunkCleanerPage() {
         </Card>
       )}
 
-      {state.lastScanError && (
+      {(state.lastScanError || state.lastCleaningError) && (
         <Card className="mb-4">
           <div
             role="alert"
             className="flex items-start gap-3 py-1 text-sm text-semantic-danger"
-            data-testid="junk-scan-error"
+            data-testid="junk-error-banner"
           >
             <ExclamationTriangleIcon className="h-5 w-5 shrink-0" />
-            <span>{state.lastScanError}</span>
+            <span>{state.lastScanError ?? state.lastCleaningError}</span>
           </div>
         </Card>
       )}
@@ -179,8 +219,50 @@ export default function JunkCleanerPage() {
               onClose={() => vm.closeDetails()}
             />
           )}
+
+          {historyOpen && (
+            <CleaningLog
+              entries={state.historyEntries}
+              total={state.historyTotal}
+              loading={state.historyLoading}
+              error={state.historyError}
+              query={state.historyQuery}
+              categoryFilter={state.historyCategory}
+              resultFilter={state.historyResultFilter}
+              onQueryChange={(q) => vm.setHistoryQuery(q)}
+              onCategoryChange={(c) => vm.setHistoryCategory(c)}
+              onResultChange={(r) => vm.setHistoryResultFilter(r)}
+              onReload={() => void vm.loadHistory(true)}
+            />
+          )}
         </>
       )}
+
+      {/* Cleaning flow — modals live here */}
+      <PreviewDialog
+        open={state.cleaningStep === 'preview'}
+        loading={state.cleaningPreviewLoading}
+        error={state.cleaningPreviewError}
+        preview={state.cleaningPreview}
+        onCancel={() => vm.cancelCleaningFlow()}
+        onProceed={() => vm.advanceToConfirm()}
+      />
+      <ConfirmDialog
+        open={state.cleaningStep === 'confirm'}
+        preview={state.cleaningPreview}
+        onBack={() => vm.cancelCleaningFlow()}
+        onConfirm={() => void vm.confirmAndExecute()}
+      />
+      <CleaningProgress
+        open={state.cleaningStep === 'running'}
+        snapshot={state.cleaningSnapshot}
+        onCancel={() => void vm.cancelCleaning()}
+      />
+      <CleaningSummary
+        open={state.cleaningStep === 'summary'}
+        snapshot={state.cleaningSnapshot}
+        onClose={() => vm.closeCleaningSummary()}
+      />
     </div>
   );
 }

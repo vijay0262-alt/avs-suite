@@ -6,8 +6,9 @@
  *   - Start / cancel / restart scans via the injected service.
  *   - Poll ``cleaner.scan.status`` while a scan is running (~4 Hz).
  *   - Lazy-load result pages when the user opens the details table.
- *   - Track per-cleaner "selected" checkboxes (for the future cleaning
- *     phase; scan-only for now).
+ *   - Track per-cleaner "selected" checkboxes.
+ *   - Preview / execute / cancel a safe-clean pass (~3 Hz polling).
+ *   - Load the searchable cleaning history log.
  *
  * The class is deliberately React-free. React binding lives in
  * ``JunkCleanerPage.tsx`` via ``useViewModel`` from ``@avs/core``.
@@ -16,10 +17,15 @@ import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import type {
   CleanerInfo,
   CleanerSummary,
+  CleaningLogEntry,
+  CleaningPreview,
+  CleaningStatusSnapshot,
   ScanItem,
   ScanStatusSnapshot,
 } from './junkCleaner.types';
 import type { JunkCleanerService } from './junkCleaner.service';
+
+export type ConfirmStep = 'closed' | 'preview' | 'confirm' | 'running' | 'summary';
 
 export interface JunkCleanerState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
@@ -33,13 +39,33 @@ export interface JunkCleanerState {
   detailsLoading: boolean;
   detailsError: string | null;
   lastScanError: string | null;
+
+  // Cleaning flow
+  cleaningStep: ConfirmStep;
+  cleaningPreview: CleaningPreview | null;
+  cleaningPreviewLoading: boolean;
+  cleaningPreviewError: string | null;
+  activeCleaningTaskId: string | null;
+  cleaningSnapshot: CleaningStatusSnapshot;
+  lastCleaningError: string | null;
+
+  // History log
+  historyEntries: CleaningLogEntry[];
+  historyTotal: number;
+  historyLoading: boolean;
+  historyError: string | null;
+  historyQuery: string;
+  historyCategory: string | null;
+  historyResultFilter: string | null;
 }
 
-const POLL_INTERVAL_MS = 250;
+const SCAN_POLL_INTERVAL_MS = 250;
+const CLEAN_POLL_INTERVAL_MS = 300;
 const DETAILS_PAGE_SIZE = 500;
 
 export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
-  private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private scanPollTimer: ReturnType<typeof setInterval> | null = null;
+  private cleanPollTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(private readonly service: JunkCleanerService) {
     super({
@@ -54,6 +80,22 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
       detailsLoading: false,
       detailsError: null,
       lastScanError: null,
+
+      cleaningStep: 'closed',
+      cleaningPreview: null,
+      cleaningPreviewLoading: false,
+      cleaningPreviewError: null,
+      activeCleaningTaskId: null,
+      cleaningSnapshot: { present: false },
+      lastCleaningError: null,
+
+      historyEntries: [],
+      historyTotal: 0,
+      historyLoading: false,
+      historyError: null,
+      historyQuery: '',
+      historyCategory: null,
+      historyResultFilter: null,
     });
   }
 
@@ -68,7 +110,6 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
       this.setState({
         bootstrap: 'ready',
         catalog,
-        // Pre-select every cleaner by default (parity with commercial tools).
         selected: new Set(catalog.map((c) => c.id)),
       });
     } catch (err) {
@@ -80,13 +121,14 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
   }
 
   override dispose(): void {
-    this.stopPolling();
+    this.stopScanPolling();
+    this.stopCleanPolling();
     super.dispose();
   }
 
-  // ------------------------------------------------------------------
-  // Actions
-  // ------------------------------------------------------------------
+  // ==================================================================
+  // Selection / scan flow
+  // ==================================================================
   toggleSelection(cleanerId: string): void {
     const next = new Set(this.state.selected);
     if (next.has(cleanerId)) next.delete(cleanerId);
@@ -101,7 +143,7 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
   }
 
   async startScan(): Promise<void> {
-    if (this.isRunning()) return;
+    if (this.isScanRunning()) return;
     const only = Array.from(this.state.selected);
     if (only.length === 0) {
       this.setState({ lastScanError: 'Select at least one category to scan.' });
@@ -116,7 +158,7 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
     try {
       const { taskId } = await this.service.startScan(only);
       this.setState({ activeTaskId: taskId });
-      this.startPolling();
+      this.startScanPolling();
     } catch (err) {
       this.setState({ lastScanError: err instanceof Error ? err.message : String(err) });
     }
@@ -148,13 +190,11 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
     try {
       const collected: ScanItem[] = [];
       let offset = 0;
-      // Chunk-load so opening details on a huge cleaner doesn't lock.
       for (;;) {
         const page = await this.service.getResults(taskId, cleanerId, offset, DETAILS_PAGE_SIZE);
         collected.push(...page.items);
         if (page.items.length < DETAILS_PAGE_SIZE) break;
         offset += page.items.length;
-        // Yield to the event loop so state updates paint incrementally.
         this.setState({ detailsItems: [...collected] });
         await new Promise((r) => setTimeout(r, 0));
       }
@@ -171,46 +211,206 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
     this.setState({ detailsCleanerId: null, detailsItems: [], detailsError: null });
   }
 
-  // ------------------------------------------------------------------
+  // ==================================================================
+  // Safe cleaning flow — preview → confirm → execute → summary
+  // ==================================================================
+  async openPreview(): Promise<void> {
+    const taskId = this.state.activeTaskId;
+    if (!taskId) return;
+    // Only preview categories the user has ticked *and* that had results.
+    const eligible = Array.from(this.state.selected).filter((id) => {
+      const s = this.currentCleanerSummary(id);
+      return (s?.totalFiles ?? 0) > 0;
+    });
+    if (eligible.length === 0) {
+      this.setState({ lastCleaningError: 'No categories with files to clean.' });
+      return;
+    }
+    this.setState({
+      cleaningStep: 'preview',
+      cleaningPreview: null,
+      cleaningPreviewLoading: true,
+      cleaningPreviewError: null,
+      lastCleaningError: null,
+    });
+    try {
+      const preview = await this.service.previewClean(taskId, eligible);
+      this.setState({ cleaningPreview: preview, cleaningPreviewLoading: false });
+    } catch (err) {
+      this.setState({
+        cleaningPreviewLoading: false,
+        cleaningPreviewError: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  advanceToConfirm(): void {
+    if (!this.state.cleaningPreview) return;
+    if (this.state.cleaningPreview.totalFiles === 0) return;
+    this.setState({ cleaningStep: 'confirm' });
+  }
+
+  cancelCleaningFlow(): void {
+    this.setState({
+      cleaningStep: 'closed',
+      cleaningPreview: null,
+      cleaningPreviewError: null,
+    });
+  }
+
+  async confirmAndExecute(): Promise<void> {
+    const taskId = this.state.activeTaskId;
+    const preview = this.state.cleaningPreview;
+    if (!taskId || !preview) return;
+    const only = preview.cleaners.filter((c) => c.totalFiles > 0).map((c) => c.id);
+    if (only.length === 0) return;
+
+    this.setState({ cleaningStep: 'running', lastCleaningError: null });
+    try {
+      const { cleaningTaskId } = await this.service.executeClean(taskId, only);
+      this.setState({
+        activeCleaningTaskId: cleaningTaskId,
+        cleaningSnapshot: { present: false },
+      });
+      this.startCleanPolling();
+    } catch (err) {
+      this.setState({
+        cleaningStep: 'preview',
+        lastCleaningError: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  async cancelCleaning(): Promise<void> {
+    const cleaningId = this.state.activeCleaningTaskId;
+    if (!cleaningId) return;
+    try {
+      await this.service.cancelClean(cleaningId);
+    } catch (err) {
+      this.setState({ lastCleaningError: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  closeCleaningSummary(): void {
+    this.setState({
+      cleaningStep: 'closed',
+      cleaningSnapshot: { present: false },
+      cleaningPreview: null,
+      activeCleaningTaskId: null,
+    });
+  }
+
+  // ==================================================================
+  // Cleaning log / history
+  // ==================================================================
+  async loadHistory(reset = false): Promise<void> {
+    if (reset) {
+      this.setState({ historyEntries: [], historyTotal: 0 });
+    }
+    this.setState({ historyLoading: true, historyError: null });
+    try {
+      const page = await this.service.getLogs({
+        query: this.state.historyQuery || undefined,
+        category: this.state.historyCategory ?? undefined,
+        result: this.state.historyResultFilter ?? undefined,
+        offset: 0,
+        limit: 200,
+      });
+      this.setState({
+        historyEntries: page.entries,
+        historyTotal: page.total,
+        historyLoading: false,
+      });
+    } catch (err) {
+      this.setState({
+        historyLoading: false,
+        historyError: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  setHistoryQuery(q: string): void {
+    this.setState({ historyQuery: q });
+  }
+  setHistoryCategory(c: string | null): void {
+    this.setState({ historyCategory: c });
+  }
+  setHistoryResultFilter(r: string | null): void {
+    this.setState({ historyResultFilter: r });
+  }
+
+  // ==================================================================
   // Helpers
-  // ------------------------------------------------------------------
-  isRunning(): boolean {
+  // ==================================================================
+  isScanRunning(): boolean {
     return this.state.snapshot.status === 'running';
+  }
+
+  isCleaningRunning(): boolean {
+    return this.state.cleaningSnapshot.status === 'running';
   }
 
   currentCleanerSummary(cleanerId: string): CleanerSummary | undefined {
     return this.state.snapshot.cleaners?.find((c) => c.id === cleanerId);
   }
 
-  // ------------------------------------------------------------------
-  // Polling
-  // ------------------------------------------------------------------
-  private startPolling(): void {
-    this.stopPolling();
-    // Fire immediately so the UI reflects the just-started scan.
-    void this.pollOnce();
-    this.pollTimer = setInterval(() => void this.pollOnce(), POLL_INTERVAL_MS);
+  // ==================================================================
+  // Polling — one timer per lifecycle
+  // ==================================================================
+  private startScanPolling(): void {
+    this.stopScanPolling();
+    void this.pollScanOnce();
+    this.scanPollTimer = setInterval(() => void this.pollScanOnce(), SCAN_POLL_INTERVAL_MS);
   }
 
-  private stopPolling(): void {
-    if (this.pollTimer) {
-      clearInterval(this.pollTimer);
-      this.pollTimer = null;
+  private stopScanPolling(): void {
+    if (this.scanPollTimer) {
+      clearInterval(this.scanPollTimer);
+      this.scanPollTimer = null;
     }
   }
 
-  private async pollOnce(): Promise<void> {
+  private async pollScanOnce(): Promise<void> {
     const taskId = this.state.activeTaskId;
-    if (!taskId) return this.stopPolling();
+    if (!taskId) return this.stopScanPolling();
     try {
       const snap = await this.service.getStatus(taskId);
       this.setState({ snapshot: snap });
-      if (snap.status && snap.status !== 'running') {
-        this.stopPolling();
-      }
+      if (snap.status && snap.status !== 'running') this.stopScanPolling();
     } catch (err) {
       this.setState({ lastScanError: err instanceof Error ? err.message : String(err) });
-      this.stopPolling();
+      this.stopScanPolling();
+    }
+  }
+
+  private startCleanPolling(): void {
+    this.stopCleanPolling();
+    void this.pollCleanOnce();
+    this.cleanPollTimer = setInterval(() => void this.pollCleanOnce(), CLEAN_POLL_INTERVAL_MS);
+  }
+
+  private stopCleanPolling(): void {
+    if (this.cleanPollTimer) {
+      clearInterval(this.cleanPollTimer);
+      this.cleanPollTimer = null;
+    }
+  }
+
+  private async pollCleanOnce(): Promise<void> {
+    const taskId = this.state.activeCleaningTaskId;
+    if (!taskId) return this.stopCleanPolling();
+    try {
+      const snap = await this.service.getCleaningStatus(taskId);
+      this.setState({ cleaningSnapshot: snap });
+      if (snap.status && snap.status !== 'running') {
+        this.stopCleanPolling();
+        this.setState({ cleaningStep: 'summary' });
+        // Auto-refresh history so the new run shows in the log immediately.
+        void this.loadHistory(true);
+      }
+    } catch (err) {
+      this.setState({ lastCleaningError: err instanceof Error ? err.message : String(err) });
+      this.stopCleanPolling();
     }
   }
 }

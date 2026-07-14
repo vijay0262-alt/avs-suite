@@ -56,6 +56,12 @@ export const RPC_METHODS = {
   CLEANER_SCAN_STATUS: 'cleaner.scan.status',
   CLEANER_SCAN_CANCEL: 'cleaner.scan.cancel',
   CLEANER_SCAN_RESULTS: 'cleaner.scan.results',
+  // Junk Cleaner — safe-clean lifecycle
+  CLEANER_CLEAN_PREVIEW: 'cleaner.clean.preview',
+  CLEANER_CLEAN_EXECUTE: 'cleaner.clean.execute',
+  CLEANER_CLEAN_STATUS: 'cleaner.clean.status',
+  CLEANER_CLEAN_CANCEL: 'cleaner.clean.cancel',
+  CLEANER_CLEAN_LOGS: 'cleaner.clean.logs',
   STARTUP_LIST: 'startup.list',
   STARTUP_TOGGLE: 'startup.toggle',
   PRIVACY_SCAN: 'privacy.scan',

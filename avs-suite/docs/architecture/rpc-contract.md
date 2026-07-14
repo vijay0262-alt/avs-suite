@@ -22,6 +22,37 @@ single line of JSON terminated by `\n`.
 { "jsonrpc": "2.0", "id": 42, "error": { "code": -32601, "message": "Unknown method" } }
 ```
 
+## Method surface
+
+**System / metrics**
+
+| Method | Result |
+|---|---|
+| `system.ping` | `{ pong: true }` |
+| `system.info` | OS, arch, python version |
+| `system.healthScore` | `{ score, capturedAt }` |
+| `metrics.cpu` / `metrics.memory` / `metrics.disk` | live usage |
+
+**Junk Cleaner — scan**
+
+| Method | Result |
+|---|---|
+| `cleaner.list` | Metadata catalog |
+| `cleaner.scan.start` | `{ taskId }` |
+| `cleaner.scan.status` | Snapshot (per-cleaner + aggregate) |
+| `cleaner.scan.cancel` | `{ cancelled }` |
+| `cleaner.scan.results` | Paged file rows |
+
+**Junk Cleaner — safe clean**
+
+| Method | Result |
+|---|---|
+| `cleaner.clean.preview` | Per-cleaner counts + warnings |
+| `cleaner.clean.execute` | `{ cleaningTaskId }` |
+| `cleaner.clean.status`  | Cleaning snapshot with current file |
+| `cleaner.clean.cancel`  | `{ cancelled }` |
+| `cleaner.clean.logs`    | Paged history entries |
+
 ## Error codes
 
 Standard JSON-RPC codes (`-32700`..`-32603`) plus AVS extensions

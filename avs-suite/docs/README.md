@@ -3,6 +3,7 @@
 * [Architecture overview](./architecture/overview.md)
 * [Module architecture](./architecture/module-architecture.md)
 * [JSON-RPC contract](./architecture/rpc-contract.md)
+* [Cleaning Manager (safe clean)](./architecture/cleaning-manager.md)
 * [Editions & feature flags](./architecture/editions.md)
 * [Theming & design tokens](./architecture/theming.md)
 * [Accessibility guidelines](./standards/accessibility.md)

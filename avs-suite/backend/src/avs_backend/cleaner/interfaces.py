@@ -25,6 +25,16 @@ class ScanStatus(str, Enum):
     FAILED = "failed"
 
 
+class CleaningActionResult(str, Enum):
+    """Terminal outcome of a cleaning operation for one cleaner or task."""
+
+    SUCCESS = "success"          # every candidate removed
+    PARTIAL = "partial"          # some files removed, some skipped/failed
+    NOTHING_TO_DO = "nothing"    # empty candidate list
+    CANCELLED = "cancelled"
+    FAILED = "failed"
+
+
 class CleanerCategory(str, Enum):
     """Broad classification used by the UI for grouping and iconography."""
 
@@ -101,8 +111,80 @@ class CleanerResult:
 ProgressCallback = Callable[[int], None]
 
 
+@dataclass(slots=True)
+class ValidationIssue:
+    """A single reason a candidate path was rejected during validation.
+
+    Rejected paths are dropped from the deletion list; issues are still
+    reported to the UI so users understand what will (and won't) happen.
+    """
+
+    path: str
+    reason: str          # short machine key: 'symlink', 'forbidden', 'missing', 'out-of-scope'
+    detail: str = ""     # human message
+
+
+@dataclass(slots=True)
+class CleaningPreview:
+    """Per-cleaner preview returned by :meth:`ICleaner.validate`.
+
+    ``candidates`` is the concrete list of paths that WILL be attempted
+    at execute time (post-validation). ``warnings`` communicates issues
+    the user should see (e.g., "12 files sit inside a symlinked folder
+    and will be skipped").
+    """
+
+    cleaner_id: str
+    name: str
+    category: "CleanerCategory"
+    candidate_paths: list[str] = field(default_factory=list)
+    total_files: int = 0
+    total_bytes: int = 0
+    warnings: list[ValidationIssue] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class CleanedFile:
+    """One successfully-deleted file record. Kept for the summary
+    payload and history log (path-only; no content).
+    """
+
+    path: str
+    size: int
+
+
+@dataclass(slots=True)
+class CleaningResult:
+    """Result envelope returned by :meth:`ICleaner.clean`."""
+
+    cleaner_id: str
+    name: str
+    category: "CleanerCategory"
+    result: CleaningActionResult = CleaningActionResult.NOTHING_TO_DO
+    files_removed: int = 0
+    bytes_recovered: int = 0
+    files_skipped: int = 0
+    files_failed: int = 0
+    errors: list[str] = field(default_factory=list)
+    elapsed_ms: int = 0
+
+    def to_summary(self) -> dict[str, object]:
+        return {
+            "id": self.cleaner_id,
+            "name": self.name,
+            "category": self.category.value,
+            "result": self.result.value,
+            "filesRemoved": self.files_removed,
+            "bytesRecovered": self.bytes_recovered,
+            "filesSkipped": self.files_skipped,
+            "filesFailed": self.files_failed,
+            "errors": list(self.errors),
+            "elapsedMs": self.elapsed_ms,
+        }
+
+
 class ICleaner(ABC):
-    """Common interface for every junk-scanning module.
+    """Common interface for every junk-scanning + cleaning module.
 
     Contract:
 
@@ -113,6 +195,14 @@ class ICleaner(ABC):
       periodically (typically per directory) so users can abort.
     * ``scan`` must not raise. All exceptions must be captured into the
       returned :class:`CleanerResult.errors` list.
+    * ``validate(paths)`` performs pre-flight safety checks against the
+      given candidate paths and returns a :class:`CleaningPreview`
+      with the sub-set that is safe to remove.
+    * ``clean(paths, cancel_event, on_progress, on_file)`` executes the
+      deletions. It must NEVER raise: every ``OSError`` is captured
+      into :class:`CleaningResult.errors` and traversal continues.
+    * ``rollback_supported()`` — future-proofing flag (all built-in
+      cleaners return ``False`` today).
     """
 
     id: str
@@ -123,3 +213,21 @@ class ICleaner(ABC):
     @abstractmethod
     def scan(self, cancel: Event, on_progress: ProgressCallback) -> CleanerResult:
         """Execute the scan and return the populated result."""
+
+    @abstractmethod
+    def validate(self, candidate_paths: list[str]) -> CleaningPreview:
+        """Pre-flight — filter unsafe / stale candidates and preview."""
+
+    @abstractmethod
+    def clean(
+        self,
+        candidate_paths: list[str],
+        cancel: Event,
+        on_progress: ProgressCallback,
+        on_file: "Callable[[str], None] | None" = None,
+    ) -> CleaningResult:
+        """Delete the given files. Never raises."""
+
+    @abstractmethod
+    def rollback_supported(self) -> bool:
+        """Whether an undo of a completed ``clean`` is possible."""

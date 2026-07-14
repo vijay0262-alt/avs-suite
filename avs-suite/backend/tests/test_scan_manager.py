@@ -130,7 +130,7 @@ def test_rpc_handlers_end_to_end(tmp_path: Path, monkeypatch) -> None:
     from avs_backend import cleaner as cleaner_mod
 
     fake_mgr = ScanManager([_Cleaner("fake", root)])
-    monkeypatch.setattr(cleaner_mod, "_manager", fake_mgr)
+    monkeypatch.setattr(cleaner_mod, "_scan_manager", fake_mgr)
 
     try:
         assert cleaner_mod.cleaner_list(None) == [
