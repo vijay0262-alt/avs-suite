@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "AVS PC Optimizer — Windows performance, cleanup, and privacy utility.",
-  "main": "dist-electron/main/index.cjs",
+  "main": "dist-electron/main/index.js",
   "author": "AVS Software",
   "license": "UNLICENSED",
   "scripts": {
@@ -60,15 +60,6 @@
       "dist/**/*",
       "dist-electron/**/*",
       "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": "../../backend/dist/backend-py",
-        "to": "backend",
-        "filter": [
-          "**/*"
-        ]
-      }
     ],
     "win": {
       "target": [
