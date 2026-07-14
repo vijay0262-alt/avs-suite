@@ -7,8 +7,10 @@ Builds a standalone executable for the JSON-RPC server.
 import sys
 from pathlib import Path
 
-# Add src to path for imports
-src_path = Path(__file__).parent / "src"
+# Get the backend directory from current working directory
+backend_dir = Path.cwd()
+src_path = backend_dir / "src"
+
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
