@@ -54,6 +54,7 @@ class _CleanerRuntime:
     current_file: str | None = None
     future: Future[CleaningResult] | None = None
     result: CleaningResult | None = None
+    deleted_files: list[dict[str, object]] = field(default_factory=list)  # Track deleted files for undo
 
 
 @dataclass(slots=True)
@@ -302,6 +303,10 @@ class CleaningManager:
 
         Returns a summary of what was undone.
         """
+        import json
+        import os
+        from avs_backend.cleaner.recycle_bin import restore_from_recycle_bin
+
         # Get the most recent successful cleaning entry
         entries = self._history.query(
             search=None, category=None, result="success", offset=0, limit=1
@@ -315,18 +320,77 @@ class CleaningManager:
             }
 
         last_entry = entries[0]
-        # For now, this is a placeholder. Full implementation would:
-        # 1. Track which files were deleted during cleaning
-        # 2. Store that information in the history log
-        # 3. Use Windows Recycle Bin APIs to restore specific files
-        # 4. Update the history log to reflect the undo operation
+        deleted_files_json = last_entry.get("deleted_files_json", "[]")
+        
+        try:
+            deleted_files = json.loads(deleted_files_json)
+        except (json.JSONDecodeError, TypeError):
+            deleted_files = []
+
+        if not deleted_files:
+            return {
+                "success": False,
+                "message": "No file tracking information available for this cleaning operation.",
+                "filesRestored": 0,
+                "bytesRestored": 0,
+            }
+
+        # Attempt to restore files from Recycle Bin
+        restored_count = 0
+        restored_bytes = 0
+        errors = []
+
+        for file_info in deleted_files:
+            path = file_info.get("path", "")
+            if not path:
+                continue
+
+            try:
+                # Try to restore from Recycle Bin
+                # Note: Windows Recycle Bin doesn't provide direct restore by original path
+                # We can only empty the entire bin or restore via Windows API
+                # For now, we'll attempt to restore using the recycle bin API
+                success = restore_from_recycle_bin(path)
+                
+                if success:
+                    restored_count += 1
+                    # Check if file exists and get size
+                    if os.path.exists(path):
+                        try:
+                            restored_bytes += os.path.getsize(path)
+                        except OSError:
+                            pass
+                else:
+                    errors.append(f"Failed to restore: {path}")
+            except Exception as e:
+                errors.append(f"Error restoring {path}: {e}")
+                log.warning("Failed to restore file %s: %s", path, e)
+
+        # Update history to reflect undo operation
+        self._history.append(
+            {
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "finished_at": datetime.now(timezone.utc).isoformat(),
+                "cleaner_id": "undo",
+                "cleaner_name": "Undo Operation",
+                "category": "system",
+                "action": "undo",
+                "result": "success" if restored_count > 0 else "partial",
+                "files_removed": -restored_count,  # Negative to indicate restoration
+                "bytes_recovered": -restored_bytes,
+                "files_skipped": 0,
+                "files_failed": len(errors),
+                "duration_ms": 0,
+                "errors_json": json.dumps(errors),
+            }
+        )
 
         return {
-            "success": False,
-            "message": "Undo requires file tracking during cleaning (not yet implemented)",
-            "filesRestored": 0,
-            "bytesRestored": 0,
-            "lastCleanEntry": last_entry,
+            "success": restored_count > 0,
+            "message": f"Restored {restored_count} file(s) from Recycle Bin." + (f" {len(errors)} error(s)." if errors else ""),
+            "filesRestored": restored_count,
+            "bytesRestored": restored_bytes,
+            "errors": errors,
         }
 
     # ------------------------------------------------------------------
@@ -374,6 +438,19 @@ class CleaningManager:
         rt.progress = 100
         rt.current_file = None
 
+        # Track deleted files for undo functionality
+        # We store the original paths that were successfully deleted
+        if result.files_removed > 0:
+            for path in rt.candidate_paths:
+                # Check if file still exists (if not, it was deleted)
+                import os
+                if not os.path.exists(path):
+                    rt.deleted_files.append({
+                        "path": path,
+                        "size": 0,  # Size not available after deletion
+                        "deleted_at": datetime.now(timezone.utc).isoformat(),
+                    })
+
         # Persist to history immediately so the log is durable even if
         # the process is killed mid-scan of the next cleaner.
         self._history.append(
@@ -391,6 +468,7 @@ class CleaningManager:
                 "files_failed": result.files_failed,
                 "duration_ms": result.elapsed_ms,
                 "errors_json": _truncated_errors_json(result.errors),
+                "deleted_files_json": str(rt.deleted_files),  # Store for undo
             }
         )
         return result

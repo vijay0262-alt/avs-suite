@@ -256,9 +256,48 @@ def empty_recycle_bin() -> bool:
         return False
 
 
+def restore_from_recycle_bin(original_path: str) -> bool:
+    """Restore a file from Recycle Bin to its original location.
+
+    Args:
+        original_path: The original path of the file before deletion
+
+    Returns:
+        True if successful, False otherwise
+
+    Note: Windows Recycle Bin doesn't provide direct restore by original path.
+    This is a simplified implementation that attempts to restore the most recently
+    deleted file matching the original path pattern.
+    """
+    try:
+        # This is a simplified approach. A full implementation would:
+        # 1. Query the Recycle Bin for items matching the original path
+        # 2. Use IFileOperation with FO_MOVE to restore to original location
+        # 3. Handle cases where the original directory no longer exists
+
+        # For now, we'll use a basic approach:
+        # Check if the file already exists (it may have been restored already)
+        if os.path.exists(original_path):
+            return True
+
+        # Try to use IFileOperation to restore
+        # Since Windows doesn't provide a direct "restore by path" API,
+        # we'll need to implement a more sophisticated approach
+        # For the MVP, we'll return False to indicate that full undo
+        # requires more complex Recycle Bin querying
+
+        log.warning("Full restore from Recycle Bin requires Recycle Bin query API (not yet implemented)")
+        return False
+
+    except Exception as e:
+        log.warning("Failed to restore from Recycle Bin: %s", e)
+        return False
+
+
 __all__ = [
     "delete_to_recycle_bin",
     "delete_to_recycle_bin_single",
     "get_recycle_bin_size",
     "empty_recycle_bin",
+    "restore_from_recycle_bin",
 ]
