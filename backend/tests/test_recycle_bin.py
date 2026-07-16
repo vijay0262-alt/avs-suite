@@ -3,10 +3,17 @@
 from __future__ import annotations
 
 import os
+import platform
 import tempfile
 from pathlib import Path
 
 import pytest
+
+# Skip recycle bin tests on non-Windows platforms
+pytestmark = pytest.mark.skipif(
+    platform.system() != "Windows",
+    reason="Recycle Bin tests are Windows-specific"
+)
 
 from avs_backend.cleaner.recycle_bin import (
     delete_to_recycle_bin,
