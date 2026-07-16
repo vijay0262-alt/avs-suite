@@ -130,7 +130,8 @@ def test_calculate_performance_score():
 def test_get_health_status():
     """Test health status label mapping."""
     assert _get_health_status(95) == "excellent"
-    assert _get_health_status(85) == "excellent"
+    assert _get_health_status(90) == "excellent"
+    assert _get_health_status(85) == "good"
     assert _get_health_status(75) == "good"
     assert _get_health_status(65) == "fair"
     assert _get_health_status(55) == "fair"

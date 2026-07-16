@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import platform
 import time
 from ctypes import wintypes
 from pathlib import Path
@@ -16,18 +17,25 @@ from typing import Callable
 
 log = __import__("logging").getLogger("avs.cleaner.recycle-bin")
 
+# Platform detection
+IS_WINDOWS = platform.system() == "Windows"
+
 # =====================================================================
 # IFileOperation interface (Windows Vista+)
 # =====================================================================
 
 
-class IFileOperation(ctypes.c_void_p):
-    """IFileOperation COM interface for Vista+."""
+if IS_WINDOWS:
+    class IFileOperation(ctypes.c_void_p):
+        """IFileOperation COM interface for Vista+."""
 
-
-# GUIDs
-IID_IFileOperation = ctypes.GUID("{947ABA5F-0A5C-4C14-B4E7-6F7CBDD94B4C}")
-CLSID_FileOperation = ctypes.GUID("{3AD05575-8857-4850-9277-11B85BDB8E09}")
+    # GUIDs
+    IID_IFileOperation = ctypes.GUID("{947ABA5F-0A5C-4C14-B4E7-6F7CBDD94B4C}")
+    CLSID_FileOperation = ctypes.GUID("{3AD05575-8857-4850-9277-11B85BDB8E09}")
+else:
+    # On non-Windows platforms, provide stub implementations
+    IID_IFileOperation = None
+    CLSID_FileOperation = None
 
 # Flags
 FOF_ALLOWUNDO = 0x0040

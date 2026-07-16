@@ -1,4 +1,4 @@
-import { Button, Card, Badge } from '@avs/ui';
+import { Button, Card } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
 import { SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { Modal } from './Modal';

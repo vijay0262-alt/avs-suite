@@ -8,7 +8,6 @@ import { HealthScoreCard } from './components/HealthScoreCard';
 import { LiveChart } from './components/LiveChart';
 import { QuickActions } from './components/QuickActions';
 import { OneClickOptimize } from './components/OneClickOptimize';
-import type { CPUMetrics, MemoryMetrics } from './dashboard.types';
 
 const MAX_CHART_POINTS = 30;
 

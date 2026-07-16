@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Card } from '@avs/ui';
 
 export interface LiveChartProps {
