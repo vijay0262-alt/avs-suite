@@ -61,7 +61,9 @@ FO_DELETE = 0x0003
 
 
 def _init_com() -> bool:
-    """Initialize COM for the current thread."""
+    """Initialize COM for the current thread (Windows only)."""
+    if not IS_WINDOWS:
+        return False
     try:
         ole32 = ctypes.windll.ole32
         ole32.CoInitializeEx(None, 0)  # COINIT_MULTITHREADED
@@ -76,6 +78,9 @@ def _delete_via_file_operation(paths: list[str]) -> tuple[int, int]:
 
     Returns (success_count, failure_count).
     """
+    if not IS_WINDOWS:
+        return 0, len(paths)
+    
     if not _init_com():
         return 0, len(paths)
 
@@ -154,6 +159,9 @@ def _delete_via_shfileoperation(paths: list[str]) -> tuple[int, int]:
 
     Returns (success_count, failure_count).
     """
+    if not IS_WINDOWS:
+        return 0, len(paths)
+    
     if not paths:
         return 0, 0
 
@@ -267,11 +275,13 @@ def get_recycle_bin_size() -> int:
 
 
 def empty_recycle_bin() -> bool:
-    """Empty the Recycle Bin.
+    """Empty the Recycle Bin (Windows only).
 
     Returns:
         True if successful, False otherwise
     """
+    if not IS_WINDOWS:
+        return False
     try:
         # SHEmptyRecycleBin function
         result = ctypes.windll.shell32.SHEmptyRecycleBinW(None, None, 0)
