@@ -36,12 +36,13 @@ export function HealthScoreCard({ healthScore, loading }: HealthScoreCardProps) 
       : 'text-semantic-danger';
 
   return (
-    <Card title="Health Score">
+    <Card title="Health Score" role="region" aria-labelledby="health-score-title">
+      <h2 id="health-score-title" className="sr-only">System Health Score</h2>
       <div className="space-y-6">
         {/* Overall Score */}
         <div className="flex items-center gap-6">
-          <div className="relative h-32 w-32">
-            <svg className="h-full w-full transform -rotate-90" viewBox="0 0 100 100">
+          <div className="relative h-32 w-32" role="img" aria-label={`Health score: ${healthScore.overallScore} out of 100, status: ${config.label}`}>
+            <svg className="h-full w-full transform -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
               <circle
                 cx="50"
                 cy="50"
@@ -87,7 +88,7 @@ export function HealthScoreCard({ healthScore, loading }: HealthScoreCardProps) 
           <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">
             Category Scores
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3" role="list" aria-label="Category health scores">
             <CategoryBar
               label="CPU"
               score={healthScore.categoryScores.cpu}
@@ -122,10 +123,10 @@ export function HealthScoreCard({ healthScore, loading }: HealthScoreCardProps) 
             <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">
               Suggestions
             </div>
-            <ul className="space-y-2 text-sm text-text-secondary">
+            <ul className="space-y-2 text-sm text-text-secondary" role="list" aria-label="System improvement suggestions">
               {healthScore.suggestions.map((suggestion, index) => (
                 <li key={index} className="flex items-start gap-2">
-                  <span className="text-semantic-primary">•</span>
+                  <span className="text-semantic-primary" aria-hidden="true">•</span>
                   <span>{suggestion}</span>
                 </li>
               ))}

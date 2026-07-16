@@ -146,10 +146,11 @@ export function LiveChart({ title, data, maxDataPoints, color, unit, height = 12
   const currentValue: number = data.length > 0 ? (data[data.length - 1] ?? 0) : 0;
 
   return (
-    <Card title={title} className="h-full">
+    <Card title={title} className="h-full" role="region" aria-labelledby={`chart-title-${title.replace(/\s+/g, '-').toLowerCase()}`}>
+      <h2 id={`chart-title-${title.replace(/\s+/g, '-').toLowerCase()}`} className="sr-only">{title} chart</h2>
       <div className="space-y-4">
         <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-bold text-text-primary tabular-nums">
+          <span className="text-3xl font-bold text-text-primary tabular-nums" aria-live="polite" aria-atomic="true">
             {currentValue.toFixed(1)}
           </span>
           <span className="text-sm text-text-muted">{unit}</span>
@@ -159,6 +160,8 @@ export function LiveChart({ title, data, maxDataPoints, color, unit, height = 12
             ref={canvasRef}
             className="w-full h-full"
             style={{ display: 'block' }}
+            role="img"
+            aria-label={`${title} chart showing current value ${currentValue.toFixed(1)} ${unit}`}
           />
         </div>
       </div>

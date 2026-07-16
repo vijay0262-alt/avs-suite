@@ -1,5 +1,5 @@
 import { Card } from '@avs/ui';
-import { CpuChipIcon, ServerIcon, ShieldCheckIcon, DocumentTextIcon, ChartBarIcon, DuplicateIcon } from '@heroicons/react/24/outline';
+import { CpuChipIcon, ServerIcon, ShieldCheckIcon, DocumentTextIcon, ChartBarIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 
 export interface QuickActionsProps {
@@ -50,7 +50,7 @@ export function QuickActions({ onNavigate }: QuickActionsProps) {
       id: 'duplicate-finder',
       name: 'Duplicate Finder',
       description: 'Find and remove duplicate files',
-      icon: DuplicateIcon,
+      icon: DocumentDuplicateIcon,
       color: 'text-semantic-info',
       bgColor: 'bg-semantic-info/10',
       path: '/duplicate-finder',
@@ -73,16 +73,18 @@ export function QuickActions({ onNavigate }: QuickActionsProps) {
 
   return (
     <Card title="Quick Actions">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3" role="list" aria-label="Quick actions">
         {actions.map((action) => (
           <button
             key={action.id}
             onClick={() => handleActionClick(action.path)}
-            className="flex flex-col items-start gap-2 p-4 rounded-lg border border-border hover:border-border-hover hover:bg-surface-hover transition-colors text-left"
+            className="flex flex-col items-start gap-2 p-4 rounded-lg border border-border hover:border-border-hover hover:bg-surface-hover transition-colors text-left focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 focus:ring-offset-surface"
             data-testid={`quick-action-${action.id}`}
+            role="listitem"
+            aria-label={`${action.name}: ${action.description}`}
           >
             <div className={`p-2 rounded-md ${action.bgColor}`}>
-              <action.icon className={`h-5 w-5 ${action.color}`} aria-hidden />
+              <action.icon className={`h-5 w-5 ${action.color}`} aria-hidden="true" />
             </div>
             <div>
               <div className="text-sm font-medium text-text-primary">{action.name}</div>

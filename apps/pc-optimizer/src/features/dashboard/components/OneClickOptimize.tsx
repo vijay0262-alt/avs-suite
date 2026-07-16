@@ -42,6 +42,7 @@ export function OneClickOptimize({
             leftIcon={<SparklesIcon className="h-4 w-4" />}
             size="lg"
             data-testid="optimize-preview-btn"
+            aria-label="Start system optimization"
           >
             Optimize Now
           </Button>
@@ -60,10 +61,10 @@ export function OneClickOptimize({
         testId="optimize-preview-modal"
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={onCancel}>
+            <Button variant="secondary" onClick={onCancel} aria-label="Cancel optimization">
               Cancel
             </Button>
-            <Button onClick={onConfirm} leftIcon={<SparklesIcon className="h-4 w-4" />}>
+            <Button onClick={onConfirm} leftIcon={<SparklesIcon className="h-4 w-4" />} aria-label="Confirm and start optimization">
               Optimize Now
             </Button>
           </div>
