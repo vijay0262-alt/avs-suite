@@ -2,29 +2,25 @@
 
 from __future__ import annotations
 
+import platform
+
+import pytest
+
 
 def test_registry_has_expected_methods() -> None:
     from avs_backend.api import registry
     from avs_backend.api import rpc_server  # noqa: F401
 
     methods = set(registry.all_methods())
-    assert {
+    
+    # Base methods that should always be present
+    base_methods = {
         "system.ping",
         "system.info",
         "system.healthScore",
         "metrics.cpu",
         "metrics.memory",
         "metrics.disk",
-        "cleaner.list",
-        "cleaner.scan.start",
-        "cleaner.scan.status",
-        "cleaner.scan.cancel",
-        "cleaner.scan.results",
-        "cleaner.clean.preview",
-        "cleaner.clean.execute",
-        "cleaner.clean.status",
-        "cleaner.clean.cancel",
-        "cleaner.clean.logs",
         "startup.list",
         "startup.toggle",
         "privacy.scan",
@@ -32,7 +28,24 @@ def test_registry_has_expected_methods() -> None:
         "duplicate.scan",
         "disk.analyze",
         "performance.apply",
-    }.issubset(methods)
+    }
+    
+    # Cleaner methods are only available on Windows
+    if platform.system() == "Windows":
+        base_methods.update({
+            "cleaner.list",
+            "cleaner.scan.start",
+            "cleaner.scan.status",
+            "cleaner.scan.cancel",
+            "cleaner.scan.results",
+            "cleaner.clean.preview",
+            "cleaner.clean.execute",
+            "cleaner.clean.status",
+            "cleaner.clean.cancel",
+            "cleaner.clean.logs",
+        })
+    
+    assert base_methods.issubset(methods)
 
 
 def test_system_ping_returns_pong() -> None:
