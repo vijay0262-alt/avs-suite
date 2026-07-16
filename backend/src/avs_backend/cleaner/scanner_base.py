@@ -273,9 +273,8 @@ class BaseCleaner(ICleaner):
     # Cleaning contract — validation + deletion
     # ==================================================================
     def rollback_supported(self) -> bool:
-        """Undo is not implemented in this build. Override in a subclass
-        that stages deletions through a rollback log."""
-        return False
+        """Undo is supported via Recycle Bin restoration."""
+        return True
 
     def validate(self, candidate_paths: list[str]) -> CleaningPreview:
         """Pre-flight — filter unsafe or stale candidates.
