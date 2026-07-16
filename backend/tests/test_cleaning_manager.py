@@ -2,18 +2,9 @@
 
 from __future__ import annotations
 
-import platform
 import time
 from pathlib import Path
 from typing import Iterable
-
-import pytest
-
-# Skip cleaner tests on non-Windows platforms
-pytestmark = pytest.mark.skipif(
-    platform.system() != "Windows",
-    reason="Cleaner tests are Windows-specific"
-)
 
 from avs_backend.cleaner.cleaning_manager import CleaningManager
 from avs_backend.cleaner.history_store import HistoryStore

@@ -7,19 +7,12 @@ tmp_path and point a stripped-down cleaner at it.
 from __future__ import annotations
 
 import os
-import platform
 import time
 from pathlib import Path
 from threading import Event
 from typing import Iterable
 
 import pytest
-
-# Skip cleaner tests on non-Windows platforms
-pytestmark = pytest.mark.skipif(
-    platform.system() != "Windows",
-    reason="Cleaner tests are Windows-specific"
-)
 
 from avs_backend.cleaner.interfaces import CleanerCategory, ScanStatus
 from avs_backend.cleaner.safe_paths import is_forbidden
