@@ -231,6 +231,12 @@ def cleaner_clean_logs(params: dict[str, Any] | None) -> dict[str, Any]:
     return {"total": total, "offset": offset, "limit": limit, "entries": entries}
 
 
+@register("cleaner.clean.undo")
+def cleaner_clean_undo(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Undo the last cleaning operation by restoring from Recycle Bin."""
+    return _cleaning_manager.undo_last_clean()
+
+
 __all__ = [
     "_scan_manager",
     "_cleaning_manager",

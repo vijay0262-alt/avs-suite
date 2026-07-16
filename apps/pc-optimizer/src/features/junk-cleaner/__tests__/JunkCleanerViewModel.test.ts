@@ -59,6 +59,7 @@ function makeService(overrides: Partial<JunkCleanerService> = {}): JunkCleanerSe
     getCleaningStatus: vi.fn(async () => completedCleaning()),
     cancelClean: vi.fn(async () => ({ cancelled: true })),
     getLogs: vi.fn(async () => ({ total: 2, offset: 0, limit: 200, entries: [] })),
+    undoClean: vi.fn(async () => ({ success: false, message: 'Not implemented', filesRestored: 0, bytesRestored: 0 })),
     ...overrides,
   };
 }

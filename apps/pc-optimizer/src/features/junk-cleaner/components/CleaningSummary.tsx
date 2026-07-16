@@ -1,6 +1,6 @@
 import { Button, Badge } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
-import { CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import { Modal } from './Modal';
 import type { CleaningStatusSnapshot } from '../junkCleaner.types';
 
@@ -8,6 +8,7 @@ export interface CleaningSummaryProps {
   open: boolean;
   snapshot: CleaningStatusSnapshot;
   onClose: () => void;
+  onUndo?: () => void;
 }
 
 const RESULT_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral' | 'brand'> = {
@@ -23,7 +24,7 @@ const RESULT_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral' |
  * Post-clean summary — shown once the CleaningManager marks the task
  * as completed / cancelled / failed. Per-category rollup + aggregate.
  */
-export function CleaningSummary({ open, snapshot, onClose }: CleaningSummaryProps) {
+export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSummaryProps) {
   const overall = snapshot.status ?? 'completed';
   const Icon =
     overall === 'completed'
@@ -38,6 +39,8 @@ export function CleaningSummary({ open, snapshot, onClose }: CleaningSummaryProp
         ? 'text-semantic-danger'
         : 'text-[color-mix(in_srgb,var(--avs-warning)_85%,black)]';
 
+  const canUndo = overall === 'completed' && onUndo !== undefined;
+
   return (
     <Modal
       open={open}
@@ -46,9 +49,21 @@ export function CleaningSummary({ open, snapshot, onClose }: CleaningSummaryProp
       size="lg"
       testId="cleaning-summary-dialog"
       actions={
-        <Button onClick={onClose} data-testid="cleaning-summary-close">
-          Done
-        </Button>
+        <div className="flex items-center gap-2">
+          {canUndo && (
+            <Button
+              variant="secondary"
+              onClick={() => onUndo()}
+              leftIcon={<ArrowUturnLeftIcon className="h-4 w-4" />}
+              data-testid="cleaning-summary-undo"
+            >
+              Undo
+            </Button>
+          )}
+          <Button onClick={onClose} data-testid="cleaning-summary-close">
+            Done
+          </Button>
+        </div>
       }
     >
       <div className="space-y-5">

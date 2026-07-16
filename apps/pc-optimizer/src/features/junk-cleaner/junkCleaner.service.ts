@@ -37,6 +37,7 @@ export interface JunkCleanerService {
     offset?: number;
     limit?: number;
   }): Promise<CleaningLogPage>;
+  undoClean(): Promise<{ success: boolean; message: string; filesRestored: number; bytesRestored: number }>;
 }
 
 export const junkCleanerService: JunkCleanerService = {
@@ -60,4 +61,5 @@ export const junkCleanerService: JunkCleanerService = {
   cancelClean: (cleaningTaskId) =>
     client().call(RPC_METHODS.CLEANER_CLEAN_CANCEL, { cleaningTaskId }),
   getLogs: (params) => client().call(RPC_METHODS.CLEANER_CLEAN_LOGS, params),
+  undoClean: () => client().call(RPC_METHODS.CLEANER_CLEAN_UNDO),
 };

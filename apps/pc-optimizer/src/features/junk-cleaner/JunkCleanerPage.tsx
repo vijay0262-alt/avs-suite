@@ -262,6 +262,7 @@ export default function JunkCleanerPage() {
         open={state.cleaningStep === 'summary'}
         snapshot={state.cleaningSnapshot}
         onClose={() => vm.closeCleaningSummary()}
+        onUndo={() => void vm.undoLastClean()}
       />
     </div>
   );

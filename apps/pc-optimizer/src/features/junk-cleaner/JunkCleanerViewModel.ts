@@ -329,6 +329,20 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
     }
   }
 
+  async undoLastClean(): Promise<void> {
+    try {
+      const result = await this.service.undoClean();
+      if (result.success) {
+        // Refresh history to show the undo operation
+        await this.loadHistory(true);
+      } else {
+        this.setState({ lastCleaningError: result.message });
+      }
+    } catch (err) {
+      this.setState({ lastCleaningError: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
   setHistoryQuery(q: string): void {
     this.setState({ historyQuery: q });
   }

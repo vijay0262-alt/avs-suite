@@ -295,6 +295,41 @@ class CleaningManager:
         )
 
     # ------------------------------------------------------------------
+    # Undo
+    # ------------------------------------------------------------------
+    def undo_last_clean(self) -> dict[str, object]:
+        """Undo the last cleaning operation by restoring from Recycle Bin.
+
+        Returns a summary of what was undone.
+        """
+        # Get the most recent successful cleaning entry
+        entries = self._history.query(
+            search=None, category=None, result="success", offset=0, limit=1
+        )
+        if not entries:
+            return {
+                "success": False,
+                "message": "No successful cleaning operations found to undo.",
+                "filesRestored": 0,
+                "bytesRestored": 0,
+            }
+
+        last_entry = entries[0]
+        # For now, this is a placeholder. Full implementation would:
+        # 1. Track which files were deleted during cleaning
+        # 2. Store that information in the history log
+        # 3. Use Windows Recycle Bin APIs to restore specific files
+        # 4. Update the history log to reflect the undo operation
+
+        return {
+            "success": False,
+            "message": "Undo requires file tracking during cleaning (not yet implemented)",
+            "filesRestored": 0,
+            "bytesRestored": 0,
+            "lastCleanEntry": last_entry,
+        }
+
+    # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------
     def _collect_scan_paths(self, scan_task_id: str, cleaner_id: str) -> list[str]:

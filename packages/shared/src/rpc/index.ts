@@ -62,6 +62,7 @@ export const RPC_METHODS = {
   CLEANER_CLEAN_STATUS: 'cleaner.clean.status',
   CLEANER_CLEAN_CANCEL: 'cleaner.clean.cancel',
   CLEANER_CLEAN_LOGS: 'cleaner.clean.logs',
+  CLEANER_CLEAN_UNDO: 'cleaner.clean.undo',
   STARTUP_LIST: 'startup.list',
   STARTUP_TOGGLE: 'startup.toggle',
   PRIVACY_SCAN: 'privacy.scan',

@@ -48,6 +48,7 @@ from .interfaces import (
     ScanStatus,
     ValidationIssue,
 )
+from .recycle_bin import delete_to_recycle_bin_single
 from .safe_paths import expand, is_forbidden, is_symlink_like
 
 log = logging.getLogger("avs.cleaner")
@@ -516,10 +517,11 @@ class BaseCleaner(ICleaner):
         last_error: Exception | None = None
         for attempt in range(_DELETE_RETRY_ATTEMPTS):
             try:
-                os.remove(raw)
-                result.files_removed += 1
-                result.bytes_recovered += size
-                return "removed"
+                # Use Recycle Bin for safe deletion
+                if delete_to_recycle_bin_single(raw, on_file):
+                    result.files_removed += 1
+                    result.bytes_recovered += size
+                    return "removed"
             except FileNotFoundError:
                 # Vanished between stat and unlink — race with another
                 # process. Treat as a skip, not a failure.
