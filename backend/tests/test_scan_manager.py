@@ -11,9 +11,18 @@ by injecting a bespoke cleaner list. This validates:
 
 from __future__ import annotations
 
+import platform
 import time
 from pathlib import Path
 from typing import Iterable
+
+import pytest
+
+# Skip cleaner tests on non-Windows platforms
+pytestmark = pytest.mark.skipif(
+    platform.system() != "Windows",
+    reason="Cleaner tests are Windows-specific"
+)
 
 from avs_backend.cleaner.interfaces import CleanerCategory, ScanStatus
 from avs_backend.cleaner.scan_manager import ScanManager
