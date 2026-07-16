@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import logging
 import os
+import platform
 import time
 from collections import deque
 from pathlib import Path
@@ -48,8 +49,15 @@ from .interfaces import (
     ScanStatus,
     ValidationIssue,
 )
-from .recycle_bin import delete_to_recycle_bin_single
 from .safe_paths import expand, is_forbidden, is_symlink_like
+
+# Only import recycle_bin functions on Windows
+if platform.system() == "Windows":
+    from .recycle_bin import delete_to_recycle_bin_single
+else:
+    # Stub for non-Windows platforms
+    def delete_to_recycle_bin_single(path: str, on_progress=None) -> bool:
+        return False
 
 log = logging.getLogger("avs.cleaner")
 
