@@ -50,6 +50,12 @@ export const RPC_METHODS = {
   METRICS_MEMORY: 'metrics.memory',
   METRICS_DISK: 'metrics.disk',
 
+  // Dashboard
+  DASHBOARD_METRICS: 'dashboard.metrics',
+  DASHBOARD_HEALTH: 'dashboard.health',
+  DASHBOARD_OPTIMIZE_PREVIEW: 'dashboard.optimize.preview',
+  DASHBOARD_OPTIMIZE_EXECUTE: 'dashboard.optimize.execute',
+
   // Feature modules — Junk Cleaner scan lifecycle
   CLEANER_LIST: 'cleaner.list',
   CLEANER_SCAN_START: 'cleaner.scan.start',
