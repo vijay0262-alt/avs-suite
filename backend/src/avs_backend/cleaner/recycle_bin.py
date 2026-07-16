@@ -11,7 +11,6 @@ import ctypes
 import os
 import platform
 import time
-from ctypes import wintypes
 from pathlib import Path
 from typing import Callable
 
@@ -19,6 +18,19 @@ log = __import__("logging").getLogger("avs.cleaner.recycle-bin")
 
 # Platform detection
 IS_WINDOWS = platform.system() == "Windows"
+
+# Windows-specific imports
+if IS_WINDOWS:
+    from ctypes import wintypes
+else:
+    # Stub for non-Windows platforms
+    class wintypes:
+        HWND = None
+        UINT = None
+        LPCWSTR = None
+        BOOL = None
+        LPVOID = None
+        FILEOP_FLAGS = None
 
 # =====================================================================
 # IFileOperation interface (Windows Vista+)
@@ -116,17 +128,22 @@ def _delete_via_file_operation(paths: list[str]) -> tuple[int, int]:
 # =====================================================================
 
 
-class SHFILEOPSTRUCTW(ctypes.Structure):
-    _fields_ = [
-        ("hwnd", wintypes.HWND),
-        ("wFunc", wintypes.UINT),
-        ("pFrom", wintypes.LPCWSTR),
-        ("pTo", wintypes.LPCWSTR),
-        ("fFlags", wintypes.FILEOP_FLAGS),
-        ("fAnyOperationsAborted", wintypes.BOOL),
-        ("hNameMappings", wintypes.LPVOID),
-        ("lpszProgressTitle", wintypes.LPCWSTR),
-    ]
+if IS_WINDOWS:
+    class SHFILEOPSTRUCTW(ctypes.Structure):
+        _fields_ = [
+            ("hwnd", wintypes.HWND),
+            ("wFunc", wintypes.UINT),
+            ("pFrom", wintypes.LPCWSTR),
+            ("pTo", wintypes.LPCWSTR),
+            ("fFlags", wintypes.FILEOP_FLAGS),
+            ("fAnyOperationsAborted", wintypes.BOOL),
+            ("hNameMappings", wintypes.LPVOID),
+            ("lpszProgressTitle", wintypes.LPCWSTR),
+        ]
+else:
+    # Stub for non-Windows platforms
+    class SHFILEOPSTRUCTW:
+        pass
 
 
 FO_DELETE = 0x0003

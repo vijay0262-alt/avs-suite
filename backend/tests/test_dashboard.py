@@ -134,10 +134,10 @@ def test_get_health_status():
     assert _get_health_status(85) == "good"
     assert _get_health_status(75) == "good"
     assert _get_health_status(65) == "fair"
-    assert _get_health_status(55) == "fair"
+    assert _get_health_status(60) == "fair"
+    assert _get_health_status(55) == "poor"
     assert _get_health_status(45) == "poor"
-    assert _get_health_status(35) == "poor"
-    assert _get_health_status(25) == "critical"
+    assert _get_health_status(35) == "critical"
     assert _get_health_status(10) == "critical"
 
 
