@@ -6,7 +6,6 @@ with minimal CPU overhead (<1%).
 
 from __future__ import annotations
 
-import ctypes
 import logging
 import os
 import platform
@@ -21,6 +20,9 @@ from avs_backend.api.registry import register
 
 log = logging.getLogger("avs.dashboard")
 
+# Dashboard is Windows-specific
+IS_WINDOWS = platform.system() == "Windows"
+
 # =====================================================================
 # RPC Methods
 # =====================================================================
@@ -29,6 +31,8 @@ log = logging.getLogger("avs.dashboard")
 @register("dashboard.metrics")
 def dashboard_metrics(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Collect all real-time system metrics with minimal overhead."""
+    if not IS_WINDOWS:
+        return _get_stub_metrics()
     return {
         "cpu": _get_cpu_metrics(),
         "memory": _get_memory_metrics(),
@@ -43,6 +47,8 @@ def dashboard_metrics(_params: dict[str, Any] | None) -> dict[str, Any]:
 @register("dashboard.health")
 def dashboard_health(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Calculate comprehensive health score with category breakdown."""
+    if not IS_WINDOWS:
+        return _get_stub_health()
     metrics = dashboard_metrics(None)
     
     cpu_score = _calculate_cpu_score(metrics["cpu"])
@@ -94,6 +100,8 @@ def dashboard_health(_params: dict[str, Any] | None) -> dict[str, Any]:
 @register("dashboard.optimize.preview")
 def dashboard_optimize_preview(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Preview what One Click Optimize will clean."""
+    if not IS_WINDOWS:
+        return _get_stub_optimize_preview()
     temp_size = _get_temp_files_size()
     recycle_bin_size = _get_recycle_bin_size()
     browser_cache_size = _estimate_browser_cache_size()
@@ -143,6 +151,8 @@ def dashboard_optimize_preview(_params: dict[str, Any] | None) -> dict[str, Any]
 @register("dashboard.optimize.execute")
 def dashboard_optimize_execute(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Execute One Click Optimize."""
+    if not IS_WINDOWS:
+        return _get_stub_optimize_execute()
     start_time = time.monotonic()
     
     results = {
@@ -910,6 +920,61 @@ def _trim_memory() -> None:
                     continue
         except Exception:
             pass
+
+
+# =====================================================================
+# Stub Functions for Non-Windows Platforms
+# =====================================================================
+
+
+def _get_stub_metrics() -> dict[str, Any]:
+    """Return stub metrics for non-Windows platforms."""
+    return {
+        "cpu": {"usage": 0, "frequency": 0, "temperature": None, "logicalProcessors": 0, "currentProcesses": 0, "currentThreads": 0},
+        "memory": {"total": 0, "used": 0, "available": 0, "pressure": 0, "cached": 0, "commitUsage": 0},
+        "storage": [],
+        "windows": {"version": "Unknown", "build": "Unknown", "uptime": 0, "secureBoot": False, "tpm": False, "admin": False, "powerMode": "Unknown", "batteryHealth": None},
+        "security": {"defender": False, "firewall": False, "updates": False, "realtimeProtection": False, "smartScreen": False},
+        "performance": {"startupTime": 0, "startupApps": 0, "backgroundProcesses": 0, "temporaryFilesSize": 0, "recycleBinSize": 0, "browserCacheSize": 0, "potentialRecoverableSpace": 0},
+        "capturedAt": _now_iso(),
+    }
+
+
+def _get_stub_health() -> dict[str, Any]:
+    """Return stub health for non-Windows platforms."""
+    return {
+        "overallScore": 0,
+        "categoryScores": {"cpu": 0, "memory": 0, "storage": 0, "security": 0, "performance": 0},
+        "status": "critical",
+        "suggestions": ["Dashboard is Windows-specific"],
+        "capturedAt": _now_iso(),
+    }
+
+
+def _get_stub_optimize_preview() -> dict[str, Any]:
+    """Return stub optimize preview for non-Windows platforms."""
+    return {
+        "totalRecoverable": 0,
+        "actions": [],
+        "estimatedTime": 0,
+    }
+
+
+def _get_stub_optimize_execute() -> dict[str, Any]:
+    """Return stub optimize execute for non-Windows platforms."""
+    return {
+        "temporaryFiles": {"cleaned": False, "size": 0, "error": "Not supported on this platform"},
+        "recycleBin": {"cleaned": False, "size": 0, "error": "Not supported on this platform"},
+        "browserCache": {"cleaned": False, "size": 0, "error": "Not supported on this platform"},
+        "thumbnailCache": {"cleaned": False, "size": 0, "error": "Not supported on this platform"},
+        "flushDNS": {"cleaned": False, "error": "Not supported on this platform"},
+        "refreshExplorer": {"cleaned": False, "error": "Not supported on this platform"},
+        "memoryTrim": {"cleaned": False, "error": "Not supported on this platform"},
+        "totalRecovered": 0,
+        "timeTaken": 0,
+        "success": False,
+        "error": "Not supported on this platform",
+    }
 
 
 __all__ = [
