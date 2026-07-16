@@ -52,10 +52,10 @@ from .interfaces import (
 from .safe_paths import expand, is_forbidden, is_symlink_like
 
 # Only import recycle_bin functions on Windows
-if platform.system() == "Windows":
+try:
     from .recycle_bin import delete_to_recycle_bin_single
-else:
-    # Stub for non-Windows platforms
+except (ImportError, AttributeError):
+    # Stub for non-Windows platforms or if recycle_bin has issues
     def delete_to_recycle_bin_single(path: str, on_progress=None) -> bool:
         return False
 

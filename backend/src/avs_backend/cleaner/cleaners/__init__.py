@@ -5,30 +5,15 @@ and only declares its identity + target roots. All traversal, filtering,
 and error handling live in the base class.
 """
 
-import platform
-
-# Only import cleaner classes on Windows
-if platform.system() == "Windows":
-    from .browser_cache import BrowserCacheCleaner
-    from .crash_dump import CrashDumpCleaner
-    from .log_file import LogFileCleaner
-    from .prefetch import PrefetchCleaner
-    from .recycle_bin import RecycleBinCleaner
-    from .thumbnail_cache import ThumbnailCacheCleaner
-    from .user_temp import UserTempCleaner
-    from .windows_temp import WindowsTempCleaner
-    from .windows_update_cache import WindowsUpdateCacheCleaner
-else:
-    # Stub classes for non-Windows platforms
-    BrowserCacheCleaner = None
-    CrashDumpCleaner = None
-    LogFileCleaner = None
-    PrefetchCleaner = None
-    RecycleBinCleaner = None
-    ThumbnailCacheCleaner = None
-    UserTempCleaner = None
-    WindowsTempCleaner = None
-    WindowsUpdateCacheCleaner = None
+from .browser_cache import BrowserCacheCleaner
+from .crash_dump import CrashDumpCleaner
+from .log_file import LogFileCleaner
+from .prefetch import PrefetchCleaner
+from .recycle_bin import RecycleBinCleaner
+from .thumbnail_cache import ThumbnailCacheCleaner
+from .user_temp import UserTempCleaner
+from .windows_temp import WindowsTempCleaner
+from .windows_update_cache import WindowsUpdateCacheCleaner
 
 
 def all_cleaners() -> list:
@@ -36,13 +21,7 @@ def all_cleaners() -> list:
 
     Order matters: the UI displays them in this order and it drives
     the deterministic execution order of the ScanManager.
-    
-    On non-Windows platforms, return an empty list since cleaners
-    are Windows-specific.
     """
-    if platform.system() != "Windows":
-        return []
-    
     return [
         WindowsTempCleaner(),
         UserTempCleaner(),
