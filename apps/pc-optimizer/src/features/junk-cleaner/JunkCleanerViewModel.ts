@@ -226,6 +226,7 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
       this.setState({ lastCleaningError: 'No categories with files to clean.' });
       return;
     }
+    console.log('[JunkCleanerViewModel] openPreview called', { taskId, eligible });
     this.setState({
       cleaningStep: 'preview',
       cleaningPreview: null,
@@ -234,9 +235,12 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
       lastCleaningError: null,
     });
     try {
+      console.log('[JunkCleanerViewModel] Calling service.previewClean');
       const preview = await this.service.previewClean(taskId, eligible);
+      console.log('[JunkCleanerViewModel] previewClean returned', preview);
       this.setState({ cleaningPreview: preview, cleaningPreviewLoading: false });
     } catch (err) {
+      console.error('[JunkCleanerViewModel] previewClean failed', err);
       this.setState({
         cleaningPreviewLoading: false,
         cleaningPreviewError: err instanceof Error ? err.message : String(err),
@@ -245,12 +249,14 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
   }
 
   advanceToConfirm(): void {
+    console.log('[JunkCleanerViewModel] advanceToConfirm called');
     if (!this.state.cleaningPreview) return;
     if (this.state.cleaningPreview.totalFiles === 0) return;
     this.setState({ cleaningStep: 'confirm' });
   }
 
   cancelCleaningFlow(): void {
+    console.log('[JunkCleanerViewModel] cancelCleaningFlow called');
     this.setState({
       cleaningStep: 'closed',
       cleaningPreview: null,
@@ -265,15 +271,19 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
     const only = preview.cleaners.filter((c) => c.totalFiles > 0).map((c) => c.id);
     if (only.length === 0) return;
 
+    console.log('[JunkCleanerViewModel] confirmAndExecute called', { taskId, only });
     this.setState({ cleaningStep: 'running', lastCleaningError: null });
     try {
+      console.log('[JunkCleanerViewModel] Calling service.executeClean');
       const { cleaningTaskId } = await this.service.executeClean(taskId, only);
+      console.log('[JunkCleanerViewModel] executeClean returned', { cleaningTaskId });
       this.setState({
         activeCleaningTaskId: cleaningTaskId,
         cleaningSnapshot: { present: false },
       });
       this.startCleanPolling();
     } catch (err) {
+      console.error('[JunkCleanerViewModel] executeClean failed', err);
       this.setState({
         cleaningStep: 'preview',
         lastCleaningError: err instanceof Error ? err.message : String(err),
