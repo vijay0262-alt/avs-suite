@@ -122,11 +122,19 @@ class CleaningManager:
         The scan result set is the source of truth for candidate paths;
         the renderer cannot inject paths.
         """
+        log.info("[CleaningManager] preview called for scan_task_id=%s, only=%s", scan_task_id, only)
+        start = time.monotonic()
+        
         previews: list[CleaningPreview] = []
         for cleaner_id, cleaner in self._cleaners.items():
             if only is not None and cleaner_id not in only:
+                log.debug("[CleaningManager] Skipping cleaner %s (not in only list)", cleaner_id)
                 continue
+            
+            log.debug("[CleaningManager] Collecting scan paths for cleaner %s", cleaner_id)
             paths = self._collect_scan_paths(scan_task_id, cleaner_id)
+            log.debug("[CleaningManager] Collected %d paths for cleaner %s", len(paths), cleaner_id)
+            
             if not paths:
                 # Still emit an empty preview so the UI can show "0 files".
                 previews.append(
@@ -135,7 +143,15 @@ class CleaningManager:
                     )
                 )
                 continue
-            previews.append(cleaner.validate(paths))
+            
+            log.debug("[CleaningManager] Validating %d paths for cleaner %s", len(paths), cleaner_id)
+            preview = cleaner.validate(paths)
+            log.debug("[CleaningManager] Validation complete for cleaner %s: %d files, %d warnings", 
+                      cleaner_id, preview.total_files, len(preview.warnings))
+            previews.append(preview)
+        
+        log.info("[CleaningManager] preview completed in %.2fs, %d cleaners processed", 
+                 time.monotonic() - start, len(previews))
         return previews
 
     # ------------------------------------------------------------------
@@ -402,17 +418,33 @@ class CleaningManager:
         Uses the same paged API the UI does; the loop keeps memory
         bounded even for very large scans.
         """
+        log.debug("[CleaningManager] _collect_scan_paths called for scan_task_id=%s, cleaner_id=%s", 
+                  scan_task_id, cleaner_id)
+        start = time.monotonic()
+        
         paths: list[str] = []
         offset = 0
         page_size = 5000
+        page_count = 0
+        
         while True:
+            log.debug("[CleaningManager] Fetching page %d for cleaner %s", page_count, cleaner_id)
             page = self._scan_manager.items_page(scan_task_id, cleaner_id, offset, page_size)
             if not page:
+                log.debug("[CleaningManager] No more pages for cleaner %s", cleaner_id)
                 break
+            
             paths.extend(str(item["path"]) for item in page)
+            log.debug("[CleaningManager] Page %d: got %d items, total paths=%d", 
+                      page_count, len(page), len(paths))
+            
             if len(page) < page_size:
                 break
             offset += len(page)
+            page_count += 1
+        
+        log.info("[CleaningManager] _collect_scan_paths completed in %.2fs for cleaner %s: %d paths", 
+                 time.monotonic() - start, cleaner_id, len(paths))
         return paths
 
     def _run_cleaner(self, task: _Task, rt: _CleanerRuntime) -> CleaningResult:

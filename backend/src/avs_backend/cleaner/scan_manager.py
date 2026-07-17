@@ -220,13 +220,35 @@ class ScanManager:
         self, task_id: str, cleaner_id: str, offset: int, limit: int
     ) -> list[dict[str, object]]:
         """Serialised slice of a single cleaner's results (for the details table)."""
+        log.debug("[ScanManager] items_page called for task_id=%s, cleaner_id=%s, offset=%d, limit=%d", 
+                  task_id, cleaner_id, offset, limit)
+        start = time.monotonic()
+        
         with self._lock:
             task = self._task
-            if task is None or task.task_id != task_id:
+            if task is None:
+                log.debug("[ScanManager] items_page: no active task")
                 return []
+            if task.task_id != task_id:
+                log.debug("[ScanManager] items_page: task_id mismatch (active=%s, requested=%s)", 
+                          task.task_id, task_id)
+                return []
+            
+            log.debug("[ScanManager] items_page: searching %d runtimes for cleaner_id=%s", 
+                      len(task.runtimes), cleaner_id)
+            
             for rt in task.runtimes:
-                if rt.cleaner.id == cleaner_id and rt.result is not None:
-                    return rt.result.to_items_page(offset, limit)
+                if rt.cleaner.id == cleaner_id:
+                    if rt.result is None:
+                        log.debug("[ScanManager] items_page: cleaner %s has no result yet", cleaner_id)
+                        return []
+                    log.debug("[ScanManager] items_page: found cleaner %s, getting page", cleaner_id)
+                    page = rt.result.to_items_page(offset, limit)
+                    log.debug("[ScanManager] items_page: returning %d items in %.2fs", 
+                              len(page), time.monotonic() - start)
+                    return page
+            
+            log.debug("[ScanManager] items_page: cleaner_id=%s not found in runtimes", cleaner_id)
             return []
 
     # ------------------------------------------------------------------

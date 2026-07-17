@@ -23,6 +23,8 @@ scan / cleaning / history singletons and serialise the responses.
 
 from __future__ import annotations
 
+import logging
+import time
 from typing import Any
 
 from avs_backend.api.registry import register
@@ -33,6 +35,8 @@ from .cleaning_manager import CleaningManager
 from .history_store import HistoryStore, default_history_path
 from .interfaces import ScanStatus
 from .scan_manager import ScanManager
+
+log = logging.getLogger("avs.cleaner.rpc")
 
 # ---------------------------------------------------------------------
 # Singletons — the manager pair owns thread pools and shared state.
@@ -71,18 +75,27 @@ def _optional_str_list(params: dict[str, Any] | None, key: str) -> list[str] | N
 
 @register("cleaner.list")
 def cleaner_list(_params: dict[str, Any] | None) -> list[dict[str, str]]:
-    return _scan_manager.list_cleaners()
+    log.info("[RPC] cleaner.list called")
+    start = time.monotonic()
+    result = _scan_manager.list_cleaners()
+    log.info("[RPC] cleaner.list completed in %.2fs", time.monotonic() - start)
+    return result
 
 
 @register("cleaner.scan.start")
 def cleaner_scan_start(params: dict[str, Any] | None) -> dict[str, str]:
+    log.info("[RPC] cleaner.scan.start called with params: %s", params)
+    start = time.monotonic()
     only = _optional_str_list(params, "only")
-    return {"taskId": _scan_manager.start(only=only)}
+    task_id = _scan_manager.start(only=only)
+    log.info("[RPC] cleaner.scan.start completed in %.2fs, taskId=%s", time.monotonic() - start, task_id)
+    return {"taskId": task_id}
 
 
 @register("cleaner.scan.status")
 def cleaner_scan_status(params: dict[str, Any] | None) -> dict[str, Any]:
     task_id = params.get("taskId") if params else None
+    log.debug("[RPC] cleaner.scan.status called for taskId=%s", task_id)
     snap = _scan_manager.snapshot(task_id if isinstance(task_id, str) else None)
     if snap is None:
         return {"present": False}
@@ -105,7 +118,11 @@ def cleaner_scan_status(params: dict[str, Any] | None) -> dict[str, Any]:
 
 @register("cleaner.scan.cancel")
 def cleaner_scan_cancel(params: dict[str, Any] | None) -> dict[str, bool]:
-    return {"cancelled": _scan_manager.cancel(_need_str(params, "taskId"))}
+    task_id = _need_str(params, "taskId")
+    log.info("[RPC] cleaner.scan.cancel called for taskId=%s", task_id)
+    result = {"cancelled": _scan_manager.cancel(task_id)}
+    log.info("[RPC] cleaner.scan.cancel completed: %s", result)
+    return result
 
 
 @register("cleaner.scan.results")
@@ -120,6 +137,7 @@ def cleaner_scan_results(params: dict[str, Any] | None) -> dict[str, Any]:
         limit = 1
     if limit > 5000:
         limit = 5000
+    log.debug("[RPC] cleaner.scan.results called for taskId=%s, cleanerId=%s, offset=%d, limit=%d", task_id, cleaner_id, offset, limit)
     return {
         "offset": offset,
         "limit": limit,
@@ -137,13 +155,16 @@ def cleaner_clean_preview(params: dict[str, Any] | None) -> dict[str, Any]:
     """Validate scan results and return per-cleaner previews."""
     scan_task_id = _need_str(params, "taskId")
     only = _optional_str_list(params, "only")
+    log.info("[RPC] cleaner.clean.preview called for taskId=%s, only=%s", scan_task_id, only)
+    start = time.monotonic()
+    
     previews = _cleaning_manager.preview(scan_task_id, only)
 
     total_files = sum(p.total_files for p in previews)
     total_bytes = sum(p.total_bytes for p in previews)
     warning_count = sum(len(p.warnings) for p in previews)
 
-    return {
+    result = {
         "totalFiles": total_files,
         "totalBytes": total_bytes,
         "warningCount": warning_count,
@@ -163,22 +184,31 @@ def cleaner_clean_preview(params: dict[str, Any] | None) -> dict[str, Any]:
             for p in previews
         ],
     }
+    log.info("[RPC] cleaner.clean.preview completed in %.2fs, totalFiles=%d, totalBytes=%d", 
+             time.monotonic() - start, total_files, total_bytes)
+    return result
 
 
 @register("cleaner.clean.execute")
 def cleaner_clean_execute(params: dict[str, Any] | None) -> dict[str, str]:
     scan_task_id = _need_str(params, "taskId")
     only = _optional_str_list(params, "only")
+    log.info("[RPC] cleaner.clean.execute called for taskId=%s, only=%s", scan_task_id, only)
+    start = time.monotonic()
     try:
         cleaning_task_id = _cleaning_manager.execute(scan_task_id, only)
     except ValueError as e:
+        log.error("[RPC] cleaner.clean.execute failed with ValueError: %s", e)
         raise RpcError(INVALID_PARAMS, str(e)) from e
+    log.info("[RPC] cleaner.clean.execute completed in %.2fs, cleaningTaskId=%s", 
+             time.monotonic() - start, cleaning_task_id)
     return {"cleaningTaskId": cleaning_task_id}
 
 
 @register("cleaner.clean.status")
 def cleaner_clean_status(params: dict[str, Any] | None) -> dict[str, Any]:
     task_id = params.get("cleaningTaskId") if params else None
+    log.debug("[RPC] cleaner.clean.status called for cleaningTaskId=%s", task_id)
     snap = _cleaning_manager.snapshot(task_id if isinstance(task_id, str) else None)
     if snap is None:
         return {"present": False}
@@ -205,7 +235,11 @@ def cleaner_clean_status(params: dict[str, Any] | None) -> dict[str, Any]:
 @register("cleaner.clean.cancel")
 def cleaner_clean_cancel(params: dict[str, Any] | None) -> dict[str, bool]:
     """Cancel a running cleaning task (co-operative)."""
-    return {"cancelled": _cleaning_manager.cancel(_need_str(params, "cleaningTaskId"))}
+    cleaning_task_id = _need_str(params, "cleaningTaskId")
+    log.info("[RPC] cleaner.clean.cancel called for cleaningTaskId=%s", cleaning_task_id)
+    result = {"cancelled": _cleaning_manager.cancel(cleaning_task_id)}
+    log.info("[RPC] cleaner.clean.cancel completed: %s", result)
+    return result
 
 
 @register("cleaner.clean.logs")
@@ -224,6 +258,9 @@ def cleaner_clean_logs(params: dict[str, Any] | None) -> dict[str, Any]:
     if limit > 500:
         limit = 500
 
+    log.debug("[RPC] cleaner.clean.logs called with query=%s, category=%s, result=%s, offset=%d, limit=%d",
+              query, category, result, offset, limit)
+    
     entries = _cleaning_manager.history(
         query=query, category=category, result=result, offset=offset, limit=limit
     )
@@ -234,7 +271,11 @@ def cleaner_clean_logs(params: dict[str, Any] | None) -> dict[str, Any]:
 @register("cleaner.clean.undo")
 def cleaner_clean_undo(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Undo the last cleaning operation by restoring from Recycle Bin."""
-    return _cleaning_manager.undo_last_clean()
+    log.info("[RPC] cleaner.clean.undo called")
+    start = time.monotonic()
+    result = _cleaning_manager.undo_last_clean()
+    log.info("[RPC] cleaner.clean.undo completed in %.2fs, success=%s", time.monotonic() - start, result.get("success"))
+    return result
 
 
 __all__ = [
