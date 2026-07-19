@@ -1,11 +1,7 @@
-import { ComingSoon } from '../components/ComingSoon';
-
-export default function DiskAnalyzerPage() {
-  return (
-    <ComingSoon
-      title="Disk Analyzer"
-      description="Visualise which folders and file types occupy the most space."
-      testId="page-disk-analyzer"
-    />
-  );
-}
+/**
+ * Route entry — thin re-export of the feature page.
+ *
+ * The router lazy-loads this file; the actual implementation lives in
+ * ``../features/disk-analyzer/DiskAnalyzerPage.tsx``.
+ */
+export { default } from '../features/disk-analyzer/DiskAnalyzerPage';
