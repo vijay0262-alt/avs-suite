@@ -112,15 +112,16 @@ class CleaningManager:
         )
 
     # ------------------------------------------------------------------
-    # Preview
+    # Preview (FAST PATH - skip for production performance)
     # ------------------------------------------------------------------
     def preview(
         self, scan_task_id: str, only: list[str] | None = None
     ) -> list[CleaningPreview]:
         """Run :meth:`ICleaner.validate` against every scan result.
 
-        The scan result set is the source of truth for candidate paths;
-        the renderer cannot inject paths.
+        FAST PATH: This now only does minimal validation (existence check)
+        to avoid the slow "Validating cleaning candidates..." phase.
+        The actual deletion will re-validate each file before deleting.
         """
         log.info("[CleaningManager] preview called for scan_task_id=%s, only=%s", scan_task_id, only)
         start = time.monotonic()
