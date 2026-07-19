@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
@@ -14,6 +15,7 @@ const MAX_CHART_POINTS = 30;
 export default function DashboardPage() {
   const vm = useMemo(() => new DashboardViewModel(dashboardService), []);
   const state = useViewModel(vm);
+  const navigate = useNavigate();
   
   const [cpuHistory, setCpuHistory] = useState<number[]>([]);
   const [memoryHistory, setMemoryHistory] = useState<number[]>([]);
@@ -83,7 +85,7 @@ export default function DashboardPage() {
                 <p className="text-sm text-text-secondary mt-1">Scan your system for junk files and temporary data</p>
               </div>
               <button
-                onClick={() => vm.startQuickScan()}
+                onClick={() => vm.startQuickScan(navigate)}
                 className="px-6 py-2.5 bg-brand-primary hover:bg-brand-primary/90 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 focus:ring-offset-surface"
                 data-testid="quick-scan-button"
               >

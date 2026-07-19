@@ -16,6 +16,7 @@ import type {
   OptimizeExecuteResponse,
 } from './dashboard.types';
 import type { DashboardService } from './dashboard.service';
+import type { NavigateFunction } from 'react-router-dom';
 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
 
@@ -216,11 +217,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     this.setState({ quickActionsOpen: !this.state.quickActionsOpen });
   }
 
-  async startQuickScan(): Promise<void> {
+  async startQuickScan(navigate: NavigateFunction): Promise<void> {
     console.log('[DashboardViewModel] startQuickScan called');
     // Navigate to junk cleaner with auto-scan flag
     // This will be handled by the router and Junk Cleaner page
-    window.location.href = '/junk-cleaner?autoScan=true';
+    navigate('/junk-cleaner?autoScan=true');
   }
 
   // ------------------------------------------------------------------
