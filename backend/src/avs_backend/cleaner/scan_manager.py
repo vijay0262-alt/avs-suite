@@ -264,6 +264,39 @@ class ScanManager:
                 eta_ms=eta_ms,
             )
 
+    def get_all_items(self, task_id: str, cleaner_id: str) -> list[str]:
+        """Get all file paths for a cleaner directly from in-memory scan results.
+        
+        This is used by CleaningManager to avoid re-fetching results via items_page().
+        Returns a list of file paths for the specified cleaner.
+        """
+        log.debug("[ScanManager] get_all_items called for task_id=%s, cleaner_id=%s", 
+                  task_id, cleaner_id)
+        
+        with self._lock:
+            task = self._task
+            if task is None:
+                log.debug("[ScanManager] get_all_items: no active task")
+                return []
+            if task.task_id != task_id:
+                log.debug("[ScanManager] get_all_items: task_id mismatch (active=%s, requested=%s)", 
+                          task.task_id, task_id)
+                return []
+            
+            for rt in task.runtimes:
+                if rt.cleaner.id == cleaner_id:
+                    if rt.result is None:
+                        log.debug("[ScanManager] get_all_items: cleaner %s has no result yet", cleaner_id)
+                        return []
+                    # Extract paths directly from in-memory items list
+                    paths = [item.path for item in rt.result.items]
+                    log.debug("[ScanManager] get_all_items: returning %d paths from memory for cleaner %s", 
+                              len(paths), cleaner_id)
+                    return paths
+            
+            log.debug("[ScanManager] get_all_items: cleaner_id=%s not found in runtimes", cleaner_id)
+            return []
+
     def items_page(
         self, task_id: str, cleaner_id: str, offset: int, limit: int
     ) -> list[dict[str, object]]:

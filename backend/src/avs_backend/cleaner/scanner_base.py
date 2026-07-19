@@ -299,7 +299,8 @@ class BaseCleaner(ICleaner):
         2. The path must not resolve inside any
            :data:`safe_paths.FORBIDDEN_ROOTS`.
         3. The path must exist as a regular file.
-        4. Directories are refused — cleaners only touch files.
+        4. The path must be writable (not read-only).
+        5. Directories are refused — cleaners only touch files.
 
         The preview is used for the confirmation dialog AND is the exact
         candidate list forwarded to :meth:`clean`.
@@ -321,7 +322,7 @@ class BaseCleaner(ICleaner):
                 continue
             allowed_roots.append(rp)
 
-        # Fast path validation - only check existence and scope
+        # Fast path validation - only check existence, scope, and writability
         for raw in candidate_paths:
             try:
                 path = Path(raw)
@@ -348,6 +349,17 @@ class BaseCleaner(ICleaner):
                     continue
             except (FileNotFoundError, OSError):
                 # File doesn't exist or inaccessible - skip
+                continue
+
+            # 4. Writable check (fast access check)
+            try:
+                # Try to access file to check if it's writable
+                # This is much faster than trying to open for writing
+                if not os.access(raw, os.W_OK):
+                    # Read-only file - skip
+                    continue
+            except OSError:
+                # Cannot check access - skip
                 continue
 
             # File passed all checks - add to preview

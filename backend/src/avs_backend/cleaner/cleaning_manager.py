@@ -475,33 +475,15 @@ class CleaningManager:
     def _collect_scan_paths(self, scan_task_id: str, cleaner_id: str) -> list[str]:
         """Extract every file path found by the given scan for one cleaner.
 
-        Uses the same paged API the UI does; the loop keeps memory
-        bounded even for very large scans.
+        Uses the in-memory scan results directly to avoid re-fetching via items_page().
+        This eliminates the disk/DB I/O bottleneck during validation.
         """
         log.debug("[CleaningManager] _collect_scan_paths called for scan_task_id=%s, cleaner_id=%s", 
                   scan_task_id, cleaner_id)
         start = time.monotonic()
         
-        paths: list[str] = []
-        offset = 0
-        page_size = 5000
-        page_count = 0
-        
-        while True:
-            log.debug("[CleaningManager] Fetching page %d for cleaner %s", page_count, cleaner_id)
-            page = self._scan_manager.items_page(scan_task_id, cleaner_id, offset, page_size)
-            if not page:
-                log.debug("[CleaningManager] No more pages for cleaner %s", cleaner_id)
-                break
-            
-            paths.extend(str(item["path"]) for item in page)
-            log.debug("[CleaningManager] Page %d: got %d items, total paths=%d", 
-                      page_count, len(page), len(paths))
-            
-            if len(page) < page_size:
-                break
-            offset += len(page)
-            page_count += 1
+        # Use the new get_all_items method that reads directly from in-memory results
+        paths = self._scan_manager.get_all_items(scan_task_id, cleaner_id)
         
         log.info("[CleaningManager] _collect_scan_paths completed in %.2fs for cleaner %s: %d paths", 
                  time.monotonic() - start, cleaner_id, len(paths))
