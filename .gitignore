@@ -1,137 +1,48 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# IDE and editors
-.idea/
-.vscode/
-
-# Dependencies
+# ==========================
+# Node
+# ==========================
 node_modules/
-/node_modules
-/.pnp
-.pnp.js
-.yarn/install-state.gz
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
 
-# Testing
-/coverage
-
-# Next.js
-/.next/
-/out/
-next-env.d.ts
-*.tsbuildinfo
-
-# Production builds
-/build
+# ==========================
+# Build Outputs
+# ==========================
 dist/
-dist
+dist-electron/
+release/
+out/
+coverage/
 
-# Environment files (comprehensive coverage)
-
-*token.json*
-*credentials.json*
-
-# Logs and debug files
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-dump.rdb
-
-# System files
-.DS_Store
-*.pem
-
-# Python
-__pycache__/
-*pyc*
-venv/
-.venv/
-
-# Development tools
-chainlit.md
-.chainlit
-.ipynb_checkpoints/
-.ac
-
-# Deployment
-.vercel
-
-# Data and databases
-agenthub/agents/youtube/db
-
-# Archive files and large assets
-**/*.zip
-**/*.tar.gz
-**/*.tar
-**/*.tgz
-*.pack
-*.deb
-*.dylib
-
-# Build caches
-.cache/
-
-memory/test_credentials.md
-
-# Mobile development
-android-sdk/avs-suite/node_modules/electron/dist/electron
-avs-suite/node_modules/electron/dist/electron
-.env
-.env.*
-*.env
-credentials.json
-*.key
-.credentials
-
-# ============================================
-# Electron / AVS PC Optimizer Build Outputs
-# ============================================
-
-# Electron Builder
-apps/pc-optimizer/release/
+# Electron
 apps/pc-optimizer/dist/
-apps/pc-optimizer/out/
-apps/pc-optimizer/win-unpacked/
-
-# Electron generated files
-*.blockmap
-builder-debug.yml
-latest.yml
-
-# Python build outputs
-backend/dist/
-backend/build/
-
-# PyInstaller
-.pyinstaller/
-*.spec
-
-# Build logs
-logs/
-
-# Release artifacts
-*.msi
-*.appx
-
-
-# Electron build output
 apps/pc-optimizer/dist-electron/
 apps/pc-optimizer/release/
-apps/pc-optimizer/dist/
 apps/pc-optimizer/out/
 
-# PyInstaller
+# Python
 backend/build/
 backend/dist/
+__pycache__/
+.pytest_cache/
 
-# PyInstaller temp
+# PyInstaller
 *.toc
 *.pkg
 *.pyz
 warn-*.txt
 xref-*.html
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
