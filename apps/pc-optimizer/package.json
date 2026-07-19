@@ -106,11 +106,7 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "installerHeader": "build/header.bmp",
-      "installerSidebar": "build/sidebar.bmp"
+      "createStartMenuShortcut": true
     },
     "publish": [
       {
