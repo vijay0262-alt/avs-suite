@@ -14,6 +14,7 @@ const PerformancePage = lazy(() => import('../pages/PerformancePage'));
 const SystemInformationPage = lazy(() => import('../pages/SystemInformationPage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 const AboutPage = lazy(() => import('../pages/AboutPage'));
+const DiagnosticsPage = lazy(() => import('../features/diagnostics/DiagnosticsPage'));
 
 const wrap = (Element: React.ComponentType) => (
   <ErrorBoundary>
@@ -40,6 +41,7 @@ export const router = createHashRouter([
       { path: 'system-information', element: wrap(SystemInformationPage) },
       { path: 'settings', element: wrap(SettingsPage) },
       { path: 'about', element: wrap(AboutPage) },
+      { path: 'diagnostics', element: wrap(DiagnosticsPage) },
     ],
   },
 ]);
