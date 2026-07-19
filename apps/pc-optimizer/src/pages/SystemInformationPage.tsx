@@ -1,11 +1,7 @@
-import { ComingSoon } from '../components/ComingSoon';
-
-export default function SystemInformationPage() {
-  return (
-    <ComingSoon
-      title="System Information"
-      description="A comprehensive report of CPU, RAM, disks, GPU, network, and OS build."
-      testId="page-system-information"
-    />
-  );
-}
+/**
+ * Route entry — thin re-export of the feature page.
+ *
+ * The router lazy-loads this file; the actual implementation lives in
+ * ``../features/system-info/SystemInfoPage.tsx``.
+ */
+export { default } from '../features/system-info/SystemInfoPage';
