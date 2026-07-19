@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button, Card } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import {
@@ -32,11 +33,22 @@ export default function JunkCleanerPage() {
   const state = useViewModel(vm);
   const [scanIssuedOnce, setScanIssuedOnce] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const autoScan = searchParams.get('autoScan') === 'true';
 
   useEffect(() => {
     void vm.bootstrap();
     return () => vm.dispose();
   }, [vm]);
+
+  // Auto-start scan if autoScan flag is set
+  useEffect(() => {
+    if (autoScan && !scanIssuedOnce && state.bootstrap === 'ready') {
+      console.log('[JunkCleanerPage] Auto-starting scan');
+      void vm.startScan();
+      setScanIssuedOnce(true);
+    }
+  }, [autoScan, scanIssuedOnce, state.bootstrap, vm]);
 
   useEffect(() => {
     if (historyOpen) void vm.loadHistory(true);

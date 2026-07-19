@@ -216,6 +216,13 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     this.setState({ quickActionsOpen: !this.state.quickActionsOpen });
   }
 
+  async startQuickScan(): Promise<void> {
+    console.log('[DashboardViewModel] startQuickScan called');
+    // Navigate to junk cleaner with auto-scan flag
+    // This will be handled by the router and Junk Cleaner page
+    window.location.href = '/junk-cleaner?autoScan=true';
+  }
+
   // ------------------------------------------------------------------
   // Polling
   // ------------------------------------------------------------------

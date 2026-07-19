@@ -66,9 +66,13 @@ export function QuickActions({ onNavigate }: QuickActionsProps) {
     },
   ];
 
-  const handleActionClick = (path: string) => {
+  const handleActionClick = (path: string, autoStart = false) => {
     onNavigate(path);
-    navigate(path);
+    if (autoStart) {
+      navigate(`${path}?autoScan=true`);
+    } else {
+      navigate(path);
+    }
   };
 
   return (

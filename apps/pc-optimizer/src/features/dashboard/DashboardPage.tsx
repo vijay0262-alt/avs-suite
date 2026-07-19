@@ -75,6 +75,23 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* Quick Scan Button */}
+          <Card>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-text-primary">Quick Scan</h3>
+                <p className="text-sm text-text-secondary mt-1">Scan your system for junk files and temporary data</p>
+              </div>
+              <button
+                onClick={() => vm.startQuickScan()}
+                className="px-6 py-2.5 bg-brand-primary hover:bg-brand-primary/90 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 focus:ring-offset-surface"
+                data-testid="quick-scan-button"
+              >
+                Start Quick Scan
+              </button>
+            </div>
+          </Card>
+
           {/* Live Charts */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <LiveChart
