@@ -10,7 +10,7 @@ def test_registry_has_expected_methods() -> None:
     from avs_backend.api import rpc_server  # noqa: F401
 
     methods = set(registry.all_methods())
-    
+
     # Base methods that should always be present
     base_methods = {
         "system.ping",
@@ -20,14 +20,19 @@ def test_registry_has_expected_methods() -> None:
         "metrics.memory",
         "metrics.disk",
         "startup.list",
-        "startup.toggle",
+        "startup.disable",
+        "startup.enable",
+        "startup.backups",
+        "startup.restore",
         "privacy.scan",
         "privacy.clean",
         "duplicate.scan",
         "disk.analyze",
-        "performance.apply",
+        "performance.memory.getInfo",
+        "performance.memory.optimize",
+        "performance.monitor.getMetrics",
     }
-    
+
     # Cleaner and dashboard methods are only available on Windows
     if platform.system() == "Windows":
         base_methods.update({
@@ -46,7 +51,7 @@ def test_registry_has_expected_methods() -> None:
             "dashboard.optimize.preview",
             "dashboard.optimize.execute",
         })
-    
+
     assert base_methods.issubset(methods)
 
 
