@@ -423,7 +423,14 @@ class BaseCleaner(ICleaner):
                 except Exception:
                     pass
 
-            outcome = self._delete_one_fast(raw, allowed_roots, on_file, result)
+            try:
+                outcome = self._delete_one_fast(raw, allowed_roots, on_file, result)
+            except Exception as e:
+                # Catch any unexpected errors to prevent hang
+                log.warning("Unexpected error deleting %s: %s", raw, e)
+                result.errors.append(f"unexpected-error: {raw}: {e}")
+                outcome = "failed"
+            
             if outcome == "removed":
                 # counters already updated inside _delete_one_fast
                 pass
