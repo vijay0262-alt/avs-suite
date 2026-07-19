@@ -287,8 +287,9 @@ class BaseCleaner(ICleaner):
     def validate(self, candidate_paths: list[str]) -> CleaningPreview:
         """Pre-flight — filter unsafe or stale candidates (FAST PATH).
 
-        This is optimized for speed - it only checks file existence and basic safety.
-        It does NOT walk directories or perform expensive checks.
+        This is optimized for maximum speed - only essential safety checks.
+        Like Disk Cleanup utilities, it trusts user permissions and skips
+        expensive validation checks.
 
         Rules applied here (all cheap; no deletions):
 
@@ -298,9 +299,8 @@ class BaseCleaner(ICleaner):
            input from a stale scan or a bug in the manager.
         2. The path must not resolve inside any
            :data:`safe_paths.FORBIDDEN_ROOTS`.
-        3. The path must exist as a regular file.
-        4. The path must be writable (not read-only).
-        5. Directories are refused — cleaners only touch files.
+        3. The path must exist as a regular file (minimal check).
+        4. Directories are refused — cleaners only touch files.
 
         The preview is used for the confirmation dialog AND is the exact
         candidate list forwarded to :meth:`clean`.
@@ -322,7 +322,7 @@ class BaseCleaner(ICleaner):
                 continue
             allowed_roots.append(rp)
 
-        # Fast path validation - only check existence, scope, and writability
+        # Ultra-fast validation - only scope, forbidden, and basic existence
         for raw in candidate_paths:
             try:
                 path = Path(raw)
@@ -343,23 +343,12 @@ class BaseCleaner(ICleaner):
                 # Forbidden - skip silently
                 continue
 
-            # 3. Exists as regular file (single stat call)
+            # 3. Exists as regular file (minimal check - no writability check)
             try:
                 if not path.is_file():
                     continue
             except (FileNotFoundError, OSError):
                 # File doesn't exist or inaccessible - skip
-                continue
-
-            # 4. Writable check (fast access check)
-            try:
-                # Try to access file to check if it's writable
-                # This is much faster than trying to open for writing
-                if not os.access(raw, os.W_OK):
-                    # Read-only file - skip
-                    continue
-            except OSError:
-                # Cannot check access - skip
                 continue
 
             # File passed all checks - add to preview
