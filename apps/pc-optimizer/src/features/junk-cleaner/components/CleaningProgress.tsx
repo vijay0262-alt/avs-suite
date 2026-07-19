@@ -18,6 +18,12 @@ function fmtDuration(ms: number | null | undefined): string {
   return `${m}m ${s % 60}s`;
 }
 
+function fmtSpeed(bytesPerSec: number): string {
+  if (bytesPerSec < 1024) return `${bytesPerSec.toFixed(1)} B/s`;
+  if (bytesPerSec < 1024 * 1024) return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
+  return `${(bytesPerSec / (1024 * 1024)).toFixed(1)} MB/s`;
+}
+
 /**
  * Live progress dialog shown during a running cleaning task. Modal by
  * design — the user should not switch pages mid-clean.
@@ -29,6 +35,17 @@ export function CleaningProgress({ open, snapshot, onCancel }: CleaningProgressP
     (snapshot.totalFilesSkipped ?? 0) +
     (snapshot.totalFilesFailed ?? 0);
   const remaining = Math.max(0, totalTargets - totalRemoved);
+  const progress = snapshot.progress ?? 0;
+  
+  // Calculate speed (bytes per second)
+  const durationMs = snapshot.durationMs ?? 0;
+  const bytesRecovered = snapshot.totalBytesRecovered ?? 0;
+  const speed = durationMs > 0 ? (bytesRecovered / (durationMs / 1000)) : 0;
+  
+  // Current operation text
+  const currentOperation = snapshot.currentCleaner 
+    ? `Cleaning ${snapshot.currentCleaner}...`
+    : 'Starting...';
 
   return (
     <Modal
@@ -49,16 +66,19 @@ export function CleaningProgress({ open, snapshot, onCancel }: CleaningProgressP
       }
     >
       <div className="space-y-5">
+        {/* Progress bar with percentage */}
         <div>
           <div className="mb-2 flex items-baseline justify-between">
             <span className="text-sm font-medium text-text-primary">
-              {snapshot.currentCleaner ?? 'Starting…'}
+              {currentOperation}
             </span>
             <span className="text-xs tabular-nums text-text-muted">
-              {snapshot.progress ?? 0}%
+              {progress}%
             </span>
           </div>
-          <ProgressBar value={snapshot.progress ?? 0} tone="brand" />
+          <ProgressBar value={progress} tone="brand" />
+          
+          {/* Current file */}
           <p
             className="mt-2 truncate font-mono text-xs text-text-muted"
             title={snapshot.currentFile ?? undefined}
@@ -68,13 +88,25 @@ export function CleaningProgress({ open, snapshot, onCancel }: CleaningProgressP
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        {/* Metrics grid */}
+        <div className="grid grid-cols-3 gap-4 text-sm">
           <Metric label="Files removed" value={(snapshot.totalFilesRemoved ?? 0).toLocaleString()} testId="cp-removed" />
-          <Metric label="Recovered" value={formatBytes(snapshot.totalBytesRecovered ?? 0)} testId="cp-recovered" />
+          <Metric label="Total files" value={totalTargets.toLocaleString()} testId="cp-total" />
           <Metric label="Remaining" value={remaining.toLocaleString()} testId="cp-remaining" />
-          <Metric label="Estimated time" value={fmtDuration(snapshot.etaMs)} testId="cp-eta" />
+          <Metric label="Recovered" value={formatBytes(bytesRecovered)} testId="cp-recovered" />
+          <Metric label="Speed" value={fmtSpeed(speed)} testId="cp-speed" />
+          <Metric label="Elapsed" value={fmtDuration(durationMs)} testId="cp-elapsed" />
         </div>
 
+        {/* ETA */}
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-text-muted">Estimated time remaining</span>
+          <span className="font-semibold tabular-nums text-text-primary" data-testid="cp-eta">
+            {fmtDuration(snapshot.etaMs)}
+          </span>
+        </div>
+
+        {/* Skipped/Failed warning */}
         {(snapshot.totalFilesSkipped ?? 0) > 0 || (snapshot.totalFilesFailed ?? 0) > 0 ? (
           <div className="rounded-md border border-border bg-surface-muted p-3 text-xs text-text-secondary">
             Skipped: {(snapshot.totalFilesSkipped ?? 0).toLocaleString()} ·
