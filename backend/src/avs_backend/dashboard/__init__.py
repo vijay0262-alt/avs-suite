@@ -409,19 +409,22 @@ def _get_performance_metrics() -> dict[str, Any]:
     try:
         # Startup apps count
         startup_apps = _get_startup_apps_count()
-        
+
         # Background processes
         background_procs = _get_background_processes_count()
-        
+
         # Temporary files size
         temp_size = _get_temp_files_size()
-        
+
         # Recycle bin size
         recycle_size = _get_recycle_bin_size()
-        
+
         # Browser cache estimate
         browser_cache = _estimate_browser_cache_size()
-        
+
+        # Memory pressure from Memory Optimizer
+        memory_pressure = _get_memory_pressure()
+
         return {
             "startupApps": startup_apps,
             "backgroundProcesses": background_procs,
@@ -429,6 +432,7 @@ def _get_performance_metrics() -> dict[str, Any]:
             "recycleBinSize": recycle_size,
             "browserCacheSize": browser_cache,
             "potentialRecoverable": temp_size + recycle_size + browser_cache,
+            "memoryPressure": memory_pressure,
         }
     except Exception as e:
         log.warning("Failed to get performance metrics: %s", e)
@@ -439,6 +443,7 @@ def _get_performance_metrics() -> dict[str, Any]:
             "recycleBinSize": 0,
             "browserCacheSize": 0,
             "potentialRecoverable": 0,
+            "memoryPressure": 0.0,
         }
 
 
@@ -527,23 +532,31 @@ def _calculate_security_score(security_metrics: dict[str, Any]) -> float:
 def _calculate_performance_score(perf_metrics: dict[str, Any]) -> float:
     """Calculate performance health score (0-100)."""
     score = 100
-    
+
     startup_apps = perf_metrics.get("startupApps", 0)
-    if startup_apps > 10:
-        score -= 20
+    if startup_apps > 15:
+        score -= 25
+    elif startup_apps > 10:
+        score -= 15
     elif startup_apps > 5:
-        score -= 10
-    
+        score -= 5
+
     temp_size = perf_metrics.get("temporaryFilesSize", 0)
     if temp_size > 5 * 1024 * 1024 * 1024:  # > 5GB
         score -= 15
     elif temp_size > 1 * 1024 * 1024 * 1024:  # > 1GB
         score -= 5
-    
+
     recycle_size = perf_metrics.get("recycleBinSize", 0)
     if recycle_size > 1 * 1024 * 1024 * 1024:  # > 1GB
         score -= 10
-    
+
+    memory_pressure = perf_metrics.get("memoryPressure", 0)
+    if memory_pressure > 0.9:
+        score -= 20
+    elif memory_pressure > 0.8:
+        score -= 10
+
     return max(0, score)
 
 
@@ -564,37 +577,147 @@ def _get_health_status(score: float) -> str:
 def _generate_suggestions(metrics: dict[str, Any], scores: dict[str, float]) -> list[str]:
     """Generate actionable suggestions based on metrics and scores."""
     suggestions = []
-    
+
     if scores["cpu"] < 70:
         suggestions.append("High CPU usage detected. Check for resource-intensive applications.")
-    
+
     if scores["memory"] < 70:
-        suggestions.append("High memory usage. Consider closing unused applications or adding more RAM.")
-    
+        suggestions.append("High memory usage. Consider running Memory Optimizer to free up RAM.")
+
+    if metrics["performance"].get("memoryPressure", 0) > 0.8:
+        suggestions.append("High memory pressure detected. Memory optimization recommended.")
+
     if scores["storage"] < 70:
         suggestions.append("Low disk space. Run Junk Cleaner to free up space.")
-    
+
     if scores["security"] < 80:
         suggestions.append("Security issues detected. Ensure Windows Defender and Firewall are enabled.")
-    
+
     if scores["performance"] < 70:
         suggestions.append("Performance can be improved. Disable unnecessary startup apps and clean temporary files.")
-    
+
+    if metrics["performance"]["startupApps"] > 10:
+        suggestions.append(f"{metrics['performance']['startupApps']} startup apps slowing boot. Use Startup Manager to disable unnecessary apps.")
+
+    if metrics["performance"]["startupApps"] > 5:
+        suggestions.append(f"{metrics['performance']['startupApps']} startup apps detected. Review in Startup Manager.")
+
     if metrics["performance"]["temporaryFilesSize"] > 500 * 1024 * 1024:
         suggestions.append("Large temporary files detected. Run One Click Optimize to clean them.")
-    
+
     if metrics["performance"]["recycleBinSize"] > 100 * 1024 * 1024:
         suggestions.append("Recycle Bin contains large files. Empty it to free up space.")
-    
+
+    if metrics["performance"]["browserCacheSize"] > 500 * 1024 * 1024:
+        suggestions.append("Large browser cache detected. Clean browser caches to free up space.")
+
     if not suggestions:
         suggestions.append("Your system is in good health. Keep up the good work!")
-    
+
     return suggestions[:5]  # Limit to 5 suggestions
 
 
 # =====================================================================
 # Helper Functions
 # =====================================================================
+
+
+def _get_memory_pressure() -> float:
+    """Get memory pressure from Memory Optimizer."""
+    try:
+        from avs_backend.performance.memory_optimizer import get_memory_info
+        mem_info = get_memory_info()
+        return mem_info.memory_pressure
+    except Exception:
+        # Fallback to psutil if Memory Optimizer fails
+        try:
+            vm = psutil.virtual_memory()
+            return vm.percent / 100.0
+        except Exception:
+            return 0.0
+
+
+def _get_startup_apps_count() -> int:
+    """Get count of startup applications."""
+    try:
+        from avs_backend.startup.startup_manager import scan_startup_entries
+        entries = scan_startup_entries()
+        return len(entries)
+    except Exception:
+        # Fallback to simple registry scan
+        return 0
+
+
+def _get_background_processes_count() -> int:
+    """Get count of background processes."""
+    try:
+        return len([p for p in psutil.process_iter() if p.info.get('name')])
+    except Exception:
+        return 0
+
+
+def _get_temp_files_size() -> int:
+    """Get total size of temporary files."""
+    try:
+        temp_dir = os.environ.get("TEMP", "")
+        if not temp_dir or not os.path.exists(temp_dir):
+            return 0
+
+        total_size = 0
+        for root, _, files in os.walk(temp_dir):
+            for file in files:
+                try:
+                    file_path = os.path.join(root, file)
+                    total_size += os.path.getsize(file_path)
+                except (OSError, PermissionError):
+                    continue
+        return total_size
+    except Exception:
+        return 0
+
+
+def _get_recycle_bin_size() -> int:
+    """Get total size of Recycle Bin."""
+    try:
+        recycle_bin = os.path.join(os.environ.get("SystemDrive", "C:"), "$Recycle.Bin")
+        if not os.path.exists(recycle_bin):
+            return 0
+
+        total_size = 0
+        for root, _, files in os.walk(recycle_bin):
+            for file in files:
+                try:
+                    file_path = os.path.join(root, file)
+                    total_size += os.path.getsize(file_path)
+                except (OSError, PermissionError):
+                    continue
+        return total_size
+    except Exception:
+        return 0
+
+
+def _estimate_browser_cache_size() -> int:
+    """Estimate browser cache size."""
+    try:
+        total_size = 0
+        browser_cache_dirs = [
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "User Data", "Default", "Cache"),
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Edge", "User Data", "Default", "Cache"),
+            os.path.join(os.environ.get("APPDATA", ""), "Mozilla", "Firefox", "Profiles"),
+        ]
+
+        for cache_dir in browser_cache_dirs:
+            if os.path.exists(cache_dir):
+                for root, _, files in os.walk(cache_dir):
+                    for file in files:
+                        try:
+                            file_path = os.path.join(root, file)
+                            total_size += os.path.getsize(file_path)
+                        except (OSError, PermissionError):
+                            continue
+        return total_size
+    except Exception:
+        return 0
 
 
 def _now_iso() -> str:
