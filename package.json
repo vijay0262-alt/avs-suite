@@ -11,6 +11,7 @@
     "services/*"
   ],
   "scripts": {
+    "doctor": "node scripts/doctor.js",
     "dev:pc-optimizer": "yarn workspace @avs/pc-optimizer dev",
     "build:pc-optimizer": "yarn workspace @avs/pc-optimizer build",
     "package:pc-optimizer": "yarn workspace @avs/pc-optimizer package",
