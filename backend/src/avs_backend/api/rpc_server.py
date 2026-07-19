@@ -31,6 +31,11 @@ from avs_backend import performance as _perf  # noqa: F401
 from avs_backend import privacy as _priv  # noqa: F401
 from avs_backend import startup as _startup  # noqa: F401
 from avs_backend import system_information as _sysinfo  # noqa: F401
+from avs_backend import history as _history  # noqa: F401
+from avs_backend import notifications as _notifications  # noqa: F401
+from avs_backend import reporting as _reporting  # noqa: F401
+from avs_backend import settings as _settings  # noqa: F401
+from avs_backend import undo as _undo  # noqa: F401
 
 log = configure_logging()
 
