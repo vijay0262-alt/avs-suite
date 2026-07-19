@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button, Card } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
@@ -35,20 +35,30 @@ export default function JunkCleanerPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const autoScan = searchParams.get('autoScan') === 'true';
+  const autoScanIntentRef = useRef(false);
 
   useEffect(() => {
     void vm.bootstrap();
     return () => vm.dispose();
   }, [vm]);
 
-  // Auto-start scan if autoScan flag is set
+  // Track auto-scan intent from URL params
   useEffect(() => {
-    if (autoScan && !scanIssuedOnce && state.bootstrap === 'ready') {
+    if (autoScan) {
+      autoScanIntentRef.current = true;
+      console.log('[JunkCleanerPage] Auto-scan intent detected');
+    }
+  }, [autoScan]);
+
+  // Auto-start scan when bootstrap is ready and auto-scan was requested
+  useEffect(() => {
+    if (autoScanIntentRef.current && !scanIssuedOnce && state.bootstrap === 'ready') {
       console.log('[JunkCleanerPage] Auto-starting scan');
       void vm.startScan();
       setScanIssuedOnce(true);
+      autoScanIntentRef.current = false; // Clear intent after starting
     }
-  }, [autoScan, scanIssuedOnce, state.bootstrap, vm]);
+  }, [scanIssuedOnce, state.bootstrap, vm]);
 
   useEffect(() => {
     if (historyOpen) void vm.loadHistory(true);
