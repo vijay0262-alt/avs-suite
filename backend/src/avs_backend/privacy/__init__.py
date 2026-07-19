@@ -13,6 +13,8 @@ from avs_backend.privacy.privacy_cleaner import (
     CleanResult,
     scan_privacy_items,
     clean_privacy_items,
+    detect_browsers,
+    RiskLevel,
 )
 
 logger = logging.getLogger(__name__)
@@ -39,6 +41,8 @@ def privacy_scan(params: dict[str, Any] | None) -> dict[str, Any]:
                     "size": item.size,
                     "description": item.description,
                     "safeToDelete": item.safe_to_delete,
+                    "riskLevel": item.risk_level.value,
+                    "canRestore": item.can_restore,
                 }
                 for item in result.items
             ],
@@ -46,6 +50,8 @@ def privacy_scan(params: dict[str, Any] | None) -> dict[str, Any]:
             "categoriesFound": [cat.value for cat in result.categories_found],
             "browsersDetected": [browser.value for browser in result.browsers_detected],
             "itemCount": len(result.items),
+            "categoryBreakdown": {cat.value: size for cat, size in result.category_breakdown.items()},
+            "riskLevel": result.risk_level.value,
         }
     except Exception as e:
         logger.error(f"Privacy scan failed: {e}")
@@ -70,6 +76,8 @@ def privacy_clean(params: dict[str, Any] | None) -> dict[str, Any]:
                     size=item["size"],
                     description=item["description"],
                     safe_to_delete=item.get("safeToDelete", True),
+                    risk_level=RiskLevel(item.get("riskLevel", "low")),
+                    can_restore=item.get("canRestore", False),
                 )
                 for item in params["items"]
             ]
@@ -83,7 +91,25 @@ def privacy_clean(params: dict[str, Any] | None) -> dict[str, Any]:
             "categoriesCleaned": [cat.value for cat in result.categories_cleaned],
             "errors": result.errors,
             "durationMs": result.duration_ms,
+            "currentCategory": result.current_category,
+            "itemsRemaining": result.items_remaining,
+            "estimatedTimeRemainingMs": result.estimated_time_remaining_ms,
+            "backupCreated": result.backup_created,
+            "backupPath": result.backup_path,
         }
     except Exception as e:
         logger.error(f"Privacy clean failed: {e}")
+        raise
+
+
+@register("privacy.detectBrowsers")
+def privacy_detect_browsers(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Detect installed browsers."""
+    try:
+        browsers = detect_browsers()
+        return {
+            "browsers": [browser.value for browser in browsers],
+        }
+    except Exception as e:
+        logger.error(f"Failed to detect browsers: {e}")
         raise
