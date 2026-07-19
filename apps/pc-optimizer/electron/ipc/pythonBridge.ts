@@ -51,22 +51,24 @@ interface Logger {
   error(message: string, meta?: unknown): void;
 }
 
-function resolveBackendCommand(): { command: string; args: string[] } {
+function resolveBackendCommand(): { command: string; args: string[]; cwd?: string } {
   if (app.isPackaged) {
     const exe = process.platform === 'win32' ? 'avs-backend.exe' : 'avs-backend';
     return { command: path.join(process.resourcesPath, 'backend', exe), args: [] };
   }
   const script = path.resolve(__dirname, '../../../../backend/src/avs_backend/api/rpc_server.py');
-  return { command: process.env.AVS_PYTHON ?? 'python', args: ['-u', script] };
+  const cwd = path.resolve(__dirname, '../../../..');
+  return { command: process.env.AVS_PYTHON ?? 'python', args: ['-u', script], cwd };
 }
 
 export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
-  const { command, args } = resolveBackendCommand();
+  const { command, args, cwd } = resolveBackendCommand();
   logger.info(`Spawning Python backend: ${command} ${args.join(' ')}`);
 
   const child: ChildProcessWithoutNullStreams = spawn(command, args, {
     stdio: ['pipe', 'pipe', 'pipe'],
     env: { ...process.env, PYTHONUNBUFFERED: '1' },
+    cwd,
   });
 
   const pending = new Map<string | number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
