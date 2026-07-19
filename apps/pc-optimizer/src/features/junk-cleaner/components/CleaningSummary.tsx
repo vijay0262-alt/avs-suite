@@ -64,7 +64,6 @@ export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSum
   const totalFiles = filesRemoved + filesSkipped + filesFailed;
   
   const speed = durationMs > 0 ? (bytesRecovered / (durationMs / 1000)) : 0;
-  const avgSpeed = durationMs > 0 && filesRemoved > 0 ? (filesRemoved / (durationMs / 1000)) : 0;
 
   return (
     <Modal
