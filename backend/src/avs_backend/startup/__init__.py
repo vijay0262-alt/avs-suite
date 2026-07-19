@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from avs_backend.api.registry import register
-from avs_backend.logs import get_logger
 from avs_backend.startup.startup_manager import (
     scan_startup_entries,
     disable_startup_entry,
@@ -14,7 +14,7 @@ from avs_backend.startup.startup_manager import (
     StartupEntry,
 )
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @register("startup.list")

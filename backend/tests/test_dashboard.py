@@ -106,23 +106,37 @@ def test_calculate_performance_score():
         "startupApps": 3,
         "temporaryFilesSize": 100 * 1024 * 1024,  # 100MB
         "recycleBinSize": 50 * 1024 * 1024,  # 50MB
+        "memoryPressure": 0.5,
     }
     assert _calculate_performance_score(perf) == 100
-    
-    # Many startup apps
+
+    # Many startup apps (>10 but <=15)
     perf["startupApps"] = 12
-    assert _calculate_performance_score(perf) == 80
-    
+    assert _calculate_performance_score(perf) == 85
+
+    # Many startup apps (>15)
+    perf["startupApps"] = 16
+    assert _calculate_performance_score(perf) == 75
+
     # Large temp files
     perf["startupApps"] = 3
     perf["temporaryFilesSize"] = 6 * 1024 * 1024 * 1024  # 6GB
     assert _calculate_performance_score(perf) == 85
-    
+
     # Large recycle bin
     perf["temporaryFilesSize"] = 100 * 1024 * 1024
     perf["recycleBinSize"] = 2 * 1024 * 1024 * 1024  # 2GB
     assert _calculate_performance_score(perf) == 90
-    
+
+    # High memory pressure
+    perf["recycleBinSize"] = 50 * 1024 * 1024
+    perf["memoryPressure"] = 0.85
+    assert _calculate_performance_score(perf) == 90
+
+    # Very high memory pressure
+    perf["memoryPressure"] = 0.95
+    assert _calculate_performance_score(perf) == 80
+
     # Empty metrics = 100
     assert _calculate_performance_score({}) == 100
 

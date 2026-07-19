@@ -14,14 +14,13 @@ Refreshes every 2 seconds with minimal CPU overhead.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 import psutil
 
-from avs_backend.logs import get_logger
-
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)

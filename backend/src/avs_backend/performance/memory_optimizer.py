@@ -16,6 +16,7 @@ Does NOT:
 from __future__ import annotations
 
 import ctypes
+import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -24,9 +25,7 @@ from typing import Callable
 
 import psutil
 
-from avs_backend.logs import get_logger
-
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class OptimizationStatus(str, Enum):

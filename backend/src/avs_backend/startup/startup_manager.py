@@ -14,6 +14,7 @@ Features:
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 import winreg
 from dataclasses import dataclass, field
@@ -24,9 +25,7 @@ from typing import Any
 
 import psutil
 
-from avs_backend.logs import get_logger
-
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class StartupSource(str, Enum):

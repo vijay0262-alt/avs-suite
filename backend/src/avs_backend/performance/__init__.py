@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from avs_backend.api.registry import register
-from avs_backend.logs import get_logger
 from avs_backend.performance.memory_optimizer import (
     get_memory_info,
     optimize_memory,
@@ -16,7 +16,7 @@ from avs_backend.performance.live_monitor import (
     metrics_to_dict,
 )
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @register("performance.memory.getInfo")
