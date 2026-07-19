@@ -14,12 +14,6 @@ interface Logger {
 }
 
 export function registerIpcHandlers(rpc: RpcClient, logger: Logger): void {
-  // Remove existing handlers before registering new ones to prevent duplicate registration
-  ipcMain.removeHandler('avs:app:getVersion');
-  ipcMain.removeHandler('avs:app:getPlatform');
-  ipcMain.removeHandler('avs:app:openExternal');
-  ipcMain.removeHandler('avs:rpc:call');
-
   ipcMain.handle('avs:app:getVersion', () => app.getVersion());
   ipcMain.handle('avs:app:getPlatform', () => process.platform);
 

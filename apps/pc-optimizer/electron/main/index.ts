@@ -10,7 +10,7 @@ import { app, BrowserWindow, dialog, shell } from 'electron';
 import path from 'node:path';
 import { installCrashHandler } from '../crash/crashReporter';
 import { createLogger } from '../logger/logger';
-import { spawnPythonBackend, type RpcClient } from '../ipc/pythonBridge';
+import { spawnPythonBackend } from '../ipc/pythonBridge';
 import { registerIpcHandlers } from '../ipc/handlers';
 import { initAutoUpdater } from '../updater/updater';
 
@@ -201,19 +201,6 @@ function showBackendError(error: Error): void {
 app.whenReady().then(async () => {
   log.info(`AVS PC Optimizer starting (env=${env.env})`);
 
-  // Register IPC handlers early (before backend is ready)
-  // This prevents "No handler registered" errors from renderer
-  // Create a temporary mock RPC client that will be replaced after backend initialization
-  const tempRpc: RpcClient = {
-    call<T>(_method: string, _params?: unknown): Promise<T> {
-      return Promise.reject(new Error('Backend not ready yet'));
-    },
-    shutdown(): Promise<void> {
-      return Promise.resolve();
-    },
-  };
-  registerIpcHandlers(tempRpc, log);
-
   // Show splash screen first
   splashWindow = createSplashWindow();
 
@@ -223,7 +210,7 @@ app.whenReady().then(async () => {
   // Try to start backend after window is ready
   try {
     const rpc = await spawnPythonBackend(log);
-    // Re-register handlers with real RPC client
+    // Register handlers with real RPC client (only once)
     registerIpcHandlers(rpc, log);
     initAutoUpdater(log, env);
     log.info('Python backend initialized successfully');
