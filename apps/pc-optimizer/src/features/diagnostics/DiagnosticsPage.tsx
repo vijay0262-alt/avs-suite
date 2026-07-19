@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Card } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { DiagnosticsViewModel } from './DiagnosticsViewModel';

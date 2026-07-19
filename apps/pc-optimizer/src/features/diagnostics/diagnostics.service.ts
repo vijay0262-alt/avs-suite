@@ -42,10 +42,41 @@ export interface LogEntry {
   message: string;
 }
 
+// RPC response types
+interface PingResponse {
+  uptime?: string;
+}
+
+interface ScanStatusResponse {
+  status: string;
+  progress?: number;
+  current_cleaner?: string;
+  files_per_sec?: number;
+}
+
+interface CleaningStatusResponse {
+  status: string;
+  progress?: number;
+  current_file?: string;
+  mb_per_sec?: number;
+}
+
+interface LogsResponse {
+  logs?: LogEntry[];
+}
+
+interface ScanStartResponse {
+  taskId: string;
+}
+
+interface ExecuteResponse {
+  taskId: string;
+}
+
 export class DiagnosticsService {
   async getSystemInfo(): Promise<SystemInfo> {
     // Get Electron version from process
-    const electronVersion = (window as any).electron?.getVersion?.() || 'Unknown';
+    const electronVersion = (window as { electron?: { getVersion?: () => string } }).electron?.getVersion?.() || 'Unknown';
     const platform = navigator.platform;
     const nodeVersion = process?.versions?.node || 'Unknown';
     const chromeVersion = process?.versions?.chrome || 'Unknown';
@@ -61,7 +92,7 @@ export class DiagnosticsService {
   async getBackendStatus(): Promise<BackendStatus> {
     try {
       const start = Date.now();
-      const result = await client().call('system.ping') as any;
+      const result = await client().call('system.ping') as PingResponse;
       const latency = Date.now() - start;
       
       return {
@@ -82,7 +113,7 @@ export class DiagnosticsService {
 
   async getScanState(): Promise<ScanState> {
     try {
-      const result = await client().call('cleaner.scan.status') as any;
+      const result = await client().call('cleaner.scan.status') as ScanStatusResponse;
       return {
         running: result.status === 'running',
         progress: result.progress || null,
@@ -101,7 +132,7 @@ export class DiagnosticsService {
 
   async getCleaningState(): Promise<CleaningState> {
     try {
-      const result = await client().call('cleaner.clean.status') as any;
+      const result = await client().call('cleaner.clean.status') as CleaningStatusResponse;
       return {
         running: result.status === 'running',
         progress: result.progress || null,
@@ -120,7 +151,7 @@ export class DiagnosticsService {
 
   async getRecentLogs(): Promise<LogEntry[]> {
     try {
-      const result = await client().call('system.logs', { limit: 100 }) as any;
+      const result = await client().call('system.logs', { limit: 100 }) as LogsResponse;
       return result.logs || [];
     } catch (error) {
       return [];
@@ -131,15 +162,15 @@ export class DiagnosticsService {
     return await client().call('system.ping');
   }
 
-  async startScan(): Promise<{ taskId: string }> {
+  async startScan(): Promise<ScanStartResponse> {
     return await client().call('cleaner.scan.start');
   }
 
-  async preview(): Promise<any[]> {
+  async preview(): Promise<unknown[]> {
     return await client().call('cleaner.clean.preview');
   }
 
-  async execute(): Promise<{ taskId: string }> {
+  async execute(): Promise<ExecuteResponse> {
     return await client().call('cleaner.clean.execute');
   }
 }
