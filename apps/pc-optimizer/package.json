@@ -16,6 +16,9 @@
     "build": "tsc -p tsconfig.json --noEmit && vite build && cd electron && tsc",
     "build:backend": "cd ../../backend && python build.py",
     "package": "yarn build && yarn build:backend && electron-builder --win --x64",
+    "package:installer": "yarn build && yarn build:backend && electron-builder --win --x64 --config.nsis.oneClick=false",
+    "package:portable": "yarn build && yarn build:backend && electron-builder --win portable --x64",
+    "package:all": "yarn build && yarn build:backend && electron-builder --win --x64",
     "package:dir": "yarn build && yarn build:backend && electron-builder --dir",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p electron/tsconfig.json --noEmit",
     "lint": "eslint \"{src,electron}/**/*.{ts,tsx}\" --max-warnings=0"
@@ -86,8 +89,14 @@
     },
     "win": {
       "target": [
-        "nsis",
-        "portable"
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
       ],
       "artifactName": "${productName}-Setup-${version}.${ext}",
       "publisherName": "Advanced Vision Software LLC"
@@ -97,7 +106,11 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeader": "build/header.bmp",
+      "installerSidebar": "build/sidebar.bmp"
     },
     "publish": [
       {
