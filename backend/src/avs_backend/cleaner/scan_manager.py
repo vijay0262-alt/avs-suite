@@ -27,6 +27,7 @@ import time
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
+from typing import Any
 
 from .interfaces import CleanerResult, ICleaner, ScanStatus
 
@@ -156,6 +157,53 @@ class ScanManager:
             if self._task and self._task.status == ScanStatus.RUNNING:
                 self._task.cancel_event.set()
         self._pool.shutdown(wait=False, cancel_futures=True)
+
+    # ------------------------------------------------------------------
+    # Performance Metrics
+    # ------------------------------------------------------------------
+    def log_performance_metrics(self, task_id: str) -> dict[str, Any]:
+        """Log and return performance metrics for a completed scan."""
+        with self._lock:
+            task = self._task
+            if task is None or task.task_id != task_id:
+                return {}
+            
+            if task.status not in (ScanStatus.COMPLETED, ScanStatus.CANCELLED, ScanStatus.FAILED):
+                return {}
+            
+            duration_ms = int(((task.finished_at or time.monotonic()) - task.started_at) * 1000)
+            total_files = sum((rt.result.total_files if rt.result else 0) for rt in task.runtimes)
+            total_bytes = sum((rt.result.total_bytes if rt.result else 0) for rt in task.runtimes)
+            error_count = sum(len(rt.result.errors) if rt.result else 0 for rt in task.runtimes)
+            
+            # Calculate scan speed (files per second)
+            duration_sec = duration_ms / 1000
+            files_per_sec = total_files / duration_sec if duration_sec > 0 else 0
+            bytes_per_sec = total_bytes / duration_sec if duration_sec > 0 else 0
+            
+            metrics = {
+                "scan_duration_ms": duration_ms,
+                "scan_duration_sec": duration_sec,
+                "total_files_scanned": total_files,
+                "total_bytes_scanned": total_bytes,
+                "scan_speed_files_per_sec": files_per_sec,
+                "scan_speed_bytes_per_sec": bytes_per_sec,
+                "error_count": error_count,
+                "cleaners_count": len(task.runtimes),
+                "status": task.status.value,
+            }
+            
+            log.info(
+                "[PERFORMANCE] Scan %s completed: duration=%.2fs, files=%d, bytes=%d, speed=%.1f files/s, errors=%d",
+                task_id,
+                duration_sec,
+                total_files,
+                total_bytes,
+                files_per_sec,
+                error_count,
+            )
+            
+            return metrics
 
     # ------------------------------------------------------------------
     # Snapshots / results

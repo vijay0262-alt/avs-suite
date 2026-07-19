@@ -31,6 +31,7 @@ import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from typing import Any
 
 from .history_store import HistoryStore
 from .interfaces import (
@@ -215,6 +216,56 @@ class CleaningManager:
             if self._task and self._task.status == ScanStatus.RUNNING:
                 self._task.cancel_event.set()
         self._pool.shutdown(wait=False, cancel_futures=True)
+
+    # ------------------------------------------------------------------
+    # Performance Metrics
+    # ------------------------------------------------------------------
+    def log_performance_metrics(self, task_id: str) -> dict[str, Any]:
+        """Log and return performance metrics for a completed cleaning task."""
+        with self._lock:
+            task = self._task
+            if task is None or task.task_id != task_id:
+                return {}
+            
+            if task.status not in (ScanStatus.COMPLETED, ScanStatus.CANCELLED, ScanStatus.FAILED):
+                return {}
+            
+            duration_ms = int(((task.finished_at or time.monotonic()) - task.started_at) * 1000)
+            total_removed = sum((rt.result.files_removed if rt.result else 0) for rt in task.runtimes)
+            total_bytes = sum((rt.result.bytes_recovered if rt.result else 0) for rt in task.runtimes)
+            total_skipped = sum((rt.result.files_skipped if rt.result else 0) for rt in task.runtimes)
+            total_failed = sum((rt.result.files_failed if rt.result else 0) for rt in task.runtimes)
+            
+            # Calculate cleaning speed (files per second)
+            duration_sec = duration_ms / 1000
+            files_per_sec = total_removed / duration_sec if duration_sec > 0 else 0
+            bytes_per_sec = total_bytes / duration_sec if duration_sec > 0 else 0
+            
+            metrics = {
+                "cleaning_duration_ms": duration_ms,
+                "cleaning_duration_sec": duration_sec,
+                "total_files_removed": total_removed,
+                "total_bytes_recovered": total_bytes,
+                "total_files_skipped": total_skipped,
+                "total_files_failed": total_failed,
+                "cleaning_speed_files_per_sec": files_per_sec,
+                "cleaning_speed_bytes_per_sec": bytes_per_sec,
+                "cleaners_count": len(task.runtimes),
+                "status": task.status.value,
+            }
+            
+            log.info(
+                "[PERFORMANCE] Cleaning %s completed: duration=%.2fs, removed=%d, bytes=%d, speed=%.1f files/s, skipped=%d, failed=%d",
+                task_id,
+                duration_sec,
+                total_removed,
+                total_bytes,
+                files_per_sec,
+                total_skipped,
+                total_failed,
+            )
+            
+            return metrics
 
     # ------------------------------------------------------------------
     # Introspection
