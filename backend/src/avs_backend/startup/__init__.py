@@ -59,8 +59,8 @@ def startup_disable(params: dict[str, Any] | None) -> dict[str, Any]:
             enabled=entry_data["enabled"],
         )
 
-        success = disable_startup_entry(entry)
-        return {"success": success}
+        result = disable_startup_entry(entry)
+        return result
     except Exception as e:
         logger.error(f"Failed to disable startup entry: {e}")
         raise

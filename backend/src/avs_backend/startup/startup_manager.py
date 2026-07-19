@@ -329,11 +329,83 @@ def _scan_startup_folder() -> list[StartupEntry]:
 
 def _scan_task_scheduler() -> list[StartupEntry]:
     """Scan Task Scheduler for startup tasks."""
+    if not IS_WINDOWS:
+        return []
+
     entries = []
 
-    # This would require pywin32 for Task Scheduler API
-    # For now, return empty list as placeholder
-    logger.info("Task Scheduler scanning requires pywin32 - skipping")
+    try:
+        import subprocess
+
+        # Use schtasks.exe to query startup tasks
+        result = subprocess.run(
+            ["schtasks", "/query", "/fo", "CSV", "/v"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            logger.warning(f"Task Scheduler query failed: {result.stderr}")
+            return []
+
+        # Parse CSV output
+        lines = result.stdout.split("\n")
+        if len(lines) < 2:
+            return []
+
+        # Skip header line
+        for line in lines[1:]:
+            if not line.strip():
+                continue
+
+            try:
+                parts = [p.strip('"') for p in line.split('","')]
+                if len(parts) < 8:
+                    continue
+
+                task_name = parts[1]
+                author = parts[7] if len(parts) > 7 else "Unknown"
+                status = parts[3] if len(parts) > 3 else "Unknown"
+                trigger = parts[6] if len(parts) > 6 else "Unknown"
+                command = parts[8] if len(parts) > 8 else ""
+
+                # Only include startup-related tasks
+                # Check if trigger contains "AtLogon" or "AtStartup"
+                if "AtLogon" not in trigger and "AtStartup" not in trigger:
+                    continue
+
+                # Check if enabled
+                enabled = status == "Ready"
+
+                # Extract publisher from author or command
+                publisher = author if author and author != "Unknown" else _extract_publisher_from_path(command)
+
+                # Estimate impact
+                impact = _estimate_startup_impact(command)
+
+                entry = StartupEntry(
+                    name=task_name,
+                    publisher=publisher,
+                    status=StartupStatus.ENABLED if enabled else StartupStatus.DISABLED,
+                    impact=impact,
+                    source=StartupSource.TASK_SCHEDULER,
+                    location="Task Scheduler",
+                    command=command,
+                    enabled=enabled,
+                )
+                entries.append(entry)
+
+            except Exception as e:
+                logger.debug(f"Failed to parse task scheduler line: {e}")
+                continue
+
+        logger.info(f"Found {len(entries)} startup tasks in Task Scheduler")
+
+    except subprocess.TimeoutExpired:
+        logger.error("Task Scheduler query timed out")
+    except Exception as e:
+        logger.error(f"Failed to scan Task Scheduler: {e}")
 
     return entries
 
@@ -404,24 +476,106 @@ def scan_startup_entries() -> list[StartupEntry]:
     return all_entries
 
 
-def disable_startup_entry(entry: StartupEntry) -> bool:
-    """Disable a startup entry."""
-    logger.info(f"Disabling startup entry: {entry.name}")
+# Critical system entries that should never be disabled
+CRITICAL_SYSTEM_ENTRIES = {
+    "windows defender",
+    "smartscreen",
+    "security health",
+    "system",
+    "svchost",
+    "lsass",
+    "csrss",
+    "wininit",
+    "services",
+    "winlogon",
+    "explorer",
+    "dwm",
+}
+
+# Microsoft-signed entries that should warn before disabling
+MICROSOFT_SIGNED_PATTERNS = {
+    "microsoft",
+    "windows",
+    "system32",
+    "program files\\windows",
+}
+
+
+def _is_critical_system_entry(entry: StartupEntry) -> bool:
+    """Check if entry is a critical system component."""
+    name_lower = entry.name.lower()
+    command_lower = entry.command.lower()
+
+    for critical in CRITICAL_SYSTEM_ENTRIES:
+        if critical in name_lower or critical in command_lower:
+            return True
+
+    return False
+
+
+def _is_microsoft_signed(entry: StartupEntry) -> bool:
+    """Check if entry appears to be Microsoft-signed."""
+    command_lower = entry.command.lower()
+    publisher_lower = entry.publisher.lower()
+
+    for pattern in MICROSOFT_SIGNED_PATTERNS:
+        if pattern in command_lower or pattern in publisher_lower:
+            return True
+
+    return False
+
+
+def disable_startup_entry(entry: StartupEntry) -> dict[str, Any]:
+    """Disable a startup entry with safety checks."""
+    logger.info(f"Attempting to disable startup entry: {entry.name}")
+
+    # Safety check: Critical system entries
+    if _is_critical_system_entry(entry):
+        error_msg = f"Cannot disable critical system entry: {entry.name}"
+        logger.error(error_msg)
+        return {
+            "success": False,
+            "error": error_msg,
+            "reason": "critical_system_entry"
+        }
+
+    # Safety check: Microsoft-signed entries (warn but allow)
+    is_microsoft = _is_microsoft_signed(entry)
+    if is_microsoft:
+        logger.warning(f"Disabling Microsoft-signed entry: {entry.name}")
 
     # Create backup before disabling
     backup_id = _create_backup(entry)
 
     try:
+        success = False
         if entry.source in (StartupSource.REGISTRY_RUN, StartupSource.REGISTRY_RUN_ONCE):
-            return _disable_registry_entry(entry)
+            success = _disable_registry_entry(entry)
         elif entry.source == StartupSource.STARTUP_FOLDER:
-            return _disable_startup_folder_entry(entry)
+            success = _disable_startup_folder_entry(entry)
         elif entry.source == StartupSource.TASK_SCHEDULER:
-            return _disable_task_scheduler_entry(entry)
-        return False
+            success = _disable_task_scheduler_entry(entry)
+
+        if success:
+            logger.info(f"Successfully disabled startup entry: {entry.name}")
+            return {
+                "success": True,
+                "backupId": backup_id,
+                "isMicrosoftSigned": is_microsoft,
+            }
+        else:
+            return {
+                "success": False,
+                "error": f"Failed to disable entry: {entry.name}",
+                "backupId": backup_id,
+            }
     except Exception as e:
         logger.error(f"Failed to disable startup entry {entry.name}: {e}")
-        return False
+        return {
+            "success": False,
+            "error": str(e),
+            "backupId": backup_id,
+        }
 
 
 def _disable_registry_entry(entry: StartupEntry) -> bool:
@@ -479,9 +633,33 @@ def _disable_startup_folder_entry(entry: StartupEntry) -> bool:
 
 def _disable_task_scheduler_entry(entry: StartupEntry) -> bool:
     """Disable task scheduler entry."""
-    # Requires pywin32
-    logger.warning(f"Task scheduler disable requires pywin32: {entry.name}")
-    return False
+    if not IS_WINDOWS:
+        return False
+
+    try:
+        import subprocess
+
+        # Use schtasks.exe to disable the task
+        result = subprocess.run(
+            ["schtasks", "/change", "/tn", entry.name, "/disable"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode == 0:
+            logger.info(f"Disabled task scheduler entry: {entry.name}")
+            return True
+        else:
+            logger.error(f"Failed to disable task {entry.name}: {result.stderr}")
+            return False
+
+    except subprocess.TimeoutExpired:
+        logger.error(f"Task scheduler disable timed out for: {entry.name}")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to disable task scheduler entry: {e}")
+        return False
 
 
 def enable_startup_entry(entry: StartupEntry) -> bool:
@@ -552,9 +730,33 @@ def _enable_startup_folder_entry(entry: StartupEntry) -> bool:
 
 def _enable_task_scheduler_entry(entry: StartupEntry) -> bool:
     """Enable task scheduler entry."""
-    # Requires pywin32
-    logger.warning(f"Task scheduler enable requires pywin32: {entry.name}")
-    return False
+    if not IS_WINDOWS:
+        return False
+
+    try:
+        import subprocess
+
+        # Use schtasks.exe to enable the task
+        result = subprocess.run(
+            ["schtasks", "/change", "/tn", entry.name, "/enable"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode == 0:
+            logger.info(f"Enabled task scheduler entry: {entry.name}")
+            return True
+        else:
+            logger.error(f"Failed to enable task {entry.name}: {result.stderr}")
+            return False
+
+    except subprocess.TimeoutExpired:
+        logger.error(f"Task scheduler enable timed out for: {entry.name}")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to enable task scheduler entry: {e}")
+        return False
 
 
 def get_backups() -> list[dict[str, Any]]:
