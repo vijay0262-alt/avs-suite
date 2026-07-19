@@ -54,7 +54,10 @@ interface Logger {
 function resolveBackendCommand(): { command: string; args: string[]; cwd?: string } {
   if (app.isPackaged) {
     const exe = process.platform === 'win32' ? 'avs-backend.exe' : 'avs-backend';
-    return { command: path.join(process.resourcesPath, 'backend', exe), args: [] };
+    const command = path.join(process.resourcesPath, 'backend', exe);
+    // Set cwd to the backend directory to ensure the executable can find its dependencies
+    const cwd = path.join(process.resourcesPath, 'backend');
+    return { command, args: [], cwd };
   }
   const script = path.resolve(__dirname, '../../../../backend/src/avs_backend/api/rpc_server.py');
   const cwd = path.resolve(__dirname, '../../../..');
