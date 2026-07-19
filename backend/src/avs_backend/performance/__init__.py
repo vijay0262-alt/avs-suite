@@ -17,6 +17,13 @@ from avs_backend.performance.memory_optimizer import (
 from avs_backend.performance.live_monitor import (
     get_system_metrics,
     metrics_to_dict,
+    update_graph_history,
+    get_graph_history,
+    clear_graph_history,
+    get_top_processes,
+    generate_alerts,
+    Alert,
+    ProcessInfo,
 )
 
 logger = logging.getLogger(__name__)
@@ -127,7 +134,79 @@ def performance_monitor_get_metrics(_params: dict[str, Any] | None) -> dict[str,
     """Get real-time system performance metrics."""
     try:
         metrics = get_system_metrics()
+        # Update graph history with current metrics
+        update_graph_history(metrics)
         return metrics_to_dict(metrics)
     except Exception as e:
         logger.error(f"Failed to get performance metrics: {e}")
+        raise
+
+
+@register("performance.monitor.getGraphHistory")
+def performance_monitor_get_graph_history(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get graph history for live charts."""
+    try:
+        return get_graph_history()
+    except Exception as e:
+        logger.error(f"Failed to get graph history: {e}")
+        raise
+
+
+@register("performance.monitor.clearGraphHistory")
+def performance_monitor_clear_graph_history(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Clear graph history."""
+    try:
+        clear_graph_history()
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Failed to clear graph history: {e}")
+        raise
+
+
+@register("performance.monitor.getTopProcesses")
+def performance_monitor_get_top_processes(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get top processes by CPU or memory usage."""
+    try:
+        sort_by = params.get("sortBy", "cpu") if params else "cpu"
+        limit = params.get("limit", 10) if params else 10
+        search = params.get("search", "") if params else ""
+        
+        processes = get_top_processes(sort_by=sort_by, limit=limit, search=search)
+        return {
+            "processes": [
+                {
+                    "pid": p.pid,
+                    "name": p.name,
+                    "cpuPercent": p.cpu_percent,
+                    "memoryBytes": p.memory_bytes,
+                    "status": p.status,
+                }
+                for p in processes
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Failed to get top processes: {e}")
+        raise
+
+
+@register("performance.monitor.getAlerts")
+def performance_monitor_get_alerts(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get current performance alerts."""
+    try:
+        metrics = get_system_metrics()
+        alerts = generate_alerts(metrics)
+        return {
+            "alerts": [
+                {
+                    "type": a.alert_type,
+                    "severity": a.severity,
+                    "message": a.message,
+                    "value": a.value,
+                    "threshold": a.threshold,
+                }
+                for a in alerts
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Failed to get alerts: {e}")
         raise
