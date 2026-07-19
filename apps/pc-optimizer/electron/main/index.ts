@@ -61,6 +61,9 @@ function resolveEnvironment(raw: string | undefined): EnvironmentConfig {
 const env = resolveEnvironment(process.env.AVS_ENV);
 const log = createLogger('main', env.logLevel);
 
+// Override to write to main.log instead of avs-main.log
+log.transports.file.resolvePathFn = () => path.join(app.getPath('userData'), 'logs', 'main.log');
+
 installCrashHandler(log);
 
 let mainWindow: BrowserWindow | null = null;
