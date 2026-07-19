@@ -15,8 +15,8 @@ Features:
 from __future__ import annotations
 
 import logging
+import platform
 import sqlite3
-import winreg
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -26,6 +26,11 @@ from typing import Any
 import psutil
 
 logger = logging.getLogger(__name__)
+
+# Windows-specific imports - only load on Windows
+IS_WINDOWS = platform.system() == "Windows"
+if IS_WINDOWS:
+    import winreg
 
 
 class StartupSource(str, Enum):
@@ -173,6 +178,9 @@ def _restore_backup(backup_id: str) -> bool:
 
 def _restore_registry_entry(location: str, entry_name: str, command: str, enabled: bool) -> None:
     """Restore registry entry."""
+    if not IS_WINDOWS:
+        return
+
     # Parse location to get registry key path
     # Format: HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run
     parts = location.split("\\")
@@ -227,6 +235,9 @@ def _restore_task_scheduler_entry(entry_name: str, command: str, enabled: bool) 
 
 def _scan_registry_run() -> list[StartupEntry]:
     """Scan registry Run keys for startup entries."""
+    if not IS_WINDOWS:
+        return []
+
     entries = []
 
     # Registry keys to scan
@@ -272,6 +283,9 @@ def _scan_registry_run() -> list[StartupEntry]:
 
 def _get_root_key_name(root_key: int) -> str:
     """Get string representation of registry root key."""
+    if not IS_WINDOWS:
+        return "UNKNOWN"
+
     if root_key == winreg.HKEY_LOCAL_MACHINE:
         return "HKEY_LOCAL_MACHINE"
     elif root_key == winreg.HKEY_CURRENT_USER:
@@ -412,6 +426,9 @@ def disable_startup_entry(entry: StartupEntry) -> bool:
 
 def _disable_registry_entry(entry: StartupEntry) -> bool:
     """Disable registry startup entry."""
+    if not IS_WINDOWS:
+        return False
+
     parts = entry.location.split("\\")
     if len(parts) < 2:
         return False
@@ -486,6 +503,9 @@ def enable_startup_entry(entry: StartupEntry) -> bool:
 
 def _enable_registry_entry(entry: StartupEntry) -> bool:
     """Enable registry startup entry."""
+    if not IS_WINDOWS:
+        return False
+
     parts = entry.location.split("\\")
     if len(parts) < 2:
         return False

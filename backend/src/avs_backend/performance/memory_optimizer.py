@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import ctypes
 import logging
+import platform
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -26,6 +27,19 @@ from typing import Callable
 import psutil
 
 logger = logging.getLogger(__name__)
+
+# Windows API constants and types - only load on Windows
+IS_WINDOWS = platform.system() == "Windows"
+if IS_WINDOWS:
+    PROCESS_SET_QUOTA = 0x100
+    PROCESS_QUERY_INFORMATION = 0x400
+    PROCESS_VM_READ = 0x10
+    try:
+        kernel32 = ctypes.windll.kernel32
+    except AttributeError:
+        kernel32 = None
+else:
+    kernel32 = None
 
 
 class OptimizationStatus(str, Enum):
@@ -63,14 +77,6 @@ class OptimizationResult:
     after_memory: MemoryInfo | None = None
 
 
-# Windows API constants and types
-PROCESS_SET_QUOTA = 0x100
-PROCESS_QUERY_INFORMATION = 0x400
-PROCESS_VM_READ = 0x10
-
-kernel32 = ctypes.windll.kernel32
-
-
 def get_memory_info() -> MemoryInfo:
     """Get current memory usage statistics."""
     try:
@@ -100,6 +106,9 @@ def trim_process_working_sets(processes: list[psutil.Process]) -> int:
     Returns:
         Number of processes successfully optimized
     """
+    if not IS_WINDOWS or not kernel32:
+        return 0
+
     optimized = 0
     for proc in processes:
         try:
@@ -155,6 +164,9 @@ def refresh_explorer_memory() -> bool:
     Returns:
         True if successful, False otherwise
     """
+    if not IS_WINDOWS or not kernel32:
+        return False
+
     try:
         # Find explorer.exe processes
         explorer_procs = [p for p in psutil.process_iter(['name']) if p.info['name'] == 'explorer.exe']
@@ -192,6 +204,9 @@ def release_cached_memory() -> int:
     Returns:
         Estimated bytes released
     """
+    if not IS_WINDOWS or not kernel32:
+        return 0
+
     try:
         # Get memory before
         mem_before = psutil.virtual_memory()
