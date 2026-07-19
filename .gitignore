@@ -87,3 +87,51 @@ avs-suite/node_modules/electron/dist/electron
 credentials.json
 *.key
 .credentials
+
+# ============================================
+# Electron / AVS PC Optimizer Build Outputs
+# ============================================
+
+# Electron Builder
+apps/pc-optimizer/release/
+apps/pc-optimizer/dist/
+apps/pc-optimizer/out/
+apps/pc-optimizer/win-unpacked/
+
+# Electron generated files
+*.blockmap
+builder-debug.yml
+latest.yml
+
+# Python build outputs
+backend/dist/
+backend/build/
+
+# PyInstaller
+.pyinstaller/
+*.spec
+
+# Build logs
+logs/
+
+# Release artifacts
+*.msi
+*.appx
+
+
+# Electron build output
+apps/pc-optimizer/dist-electron/
+apps/pc-optimizer/release/
+apps/pc-optimizer/dist/
+apps/pc-optimizer/out/
+
+# PyInstaller
+backend/build/
+backend/dist/
+
+# PyInstaller temp
+*.toc
+*.pkg
+*.pyz
+warn-*.txt
+xref-*.html

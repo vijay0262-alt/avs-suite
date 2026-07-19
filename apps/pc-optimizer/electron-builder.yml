@@ -1,0 +1,36 @@
+appId: com.avs.pcoptimizer
+productName: AVS PC Optimizer
+copyright: Copyright © 2024 Advanced Vision Software LLC. All rights reserved.
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+extraResources:
+  - from: ../../backend/dist/backend-py
+    to: backend
+    filter:
+      - "**/*"
+extraMetadata:
+  main: dist-electron/main/index.js
+  author:
+    name: Advanced Vision Software LLC
+    email: info@avs.example.com
+  publisherName: Advanced Vision Software LLC
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  artifactName: ${productName}-Setup-${version}.${ext}
+  publisherName: Advanced Vision Software LLC
+  sign: null
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
