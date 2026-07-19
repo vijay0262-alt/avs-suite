@@ -201,6 +201,10 @@ function showBackendError(error: Error): void {
 app.whenReady().then(async () => {
   log.info(`AVS PC Optimizer starting (env=${env.env})`);
 
+  // Register IPC handlers early (before backend is ready)
+  // This prevents "No handler registered" errors from renderer
+  registerIpcHandlers(null as any, log);
+
   // Show splash screen first
   splashWindow = createSplashWindow();
 
@@ -210,6 +214,7 @@ app.whenReady().then(async () => {
   // Try to start backend after window is ready
   try {
     const rpc = await spawnPythonBackend(log);
+    // Re-register handlers with real RPC client
     registerIpcHandlers(rpc, log);
     initAutoUpdater(log, env);
     log.info('Python backend initialized successfully');
