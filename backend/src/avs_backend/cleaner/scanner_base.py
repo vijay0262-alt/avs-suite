@@ -441,15 +441,27 @@ class BaseCleaner(ICleaner):
                 # Catch any unexpected errors to prevent hang
                 log.warning("Unexpected error deleting %s: %s", raw, e)
                 result.errors.append(f"unexpected-error: {raw}: {e}")
-                outcome = "failed"
+                outcome = "failed:unknown"
             
             if outcome == "removed":
                 # counters already updated inside _delete_one_fast
                 pass
-            elif outcome == "skipped":
+            elif outcome.startswith("skipped:"):
                 result.files_skipped += 1
-            else:
+                # Track skip reason
+                reason = outcome.split(":", 1)[1] if ":" in outcome else "unknown"
+                result.skip_reasons[reason] = result.skip_reasons.get(reason, 0) + 1
+            elif outcome.startswith("failed:"):
                 result.files_failed += 1
+                # Track failure reason
+                reason = outcome.split(":", 1)[1] if ":" in outcome else "unknown"
+                result.failure_reasons[reason] = result.failure_reasons.get(reason, 0) + 1
+            else:
+                # Legacy format (shouldn't happen)
+                if outcome == "skipped":
+                    result.files_skipped += 1
+                else:
+                    result.files_failed += 1
 
         # Final status roll-up
         if cancelled:
@@ -477,29 +489,40 @@ class BaseCleaner(ICleaner):
     ) -> str:
         """Delete a single file with minimal re-validation (FAST PATH).
 
-        Returns ``'removed' | 'skipped' | 'failed'``. Never raises.
+        Returns ``'removed' | 'skipped:<reason>' | 'failed:<reason>'``. Never raises.
         Optimized for speed - minimal checks, no retries, immediate deletion.
+        
+        Skip reasons:
+        - invalid-path: Path cannot be resolved
+        - out-of-scope: Path outside allowed roots
+        - forbidden: Path in forbidden system roots
+        - missing: File no longer exists
+        - not-a-file: Path is a directory
+        - permission-denied: Cannot delete due to permissions
+        - locked: File is locked by another process
         """
         try:
             path = Path(raw)
             resolved = str(path.resolve(strict=False))
         except (OSError, RuntimeError, ValueError):
-            return "skipped"
+            return "skipped:invalid-path"
 
         # Fast safety re-check — belt & braces on top of ``validate()``.
         if allowed_roots and not any(
             resolved == root or resolved.startswith(root + os.sep) for root in allowed_roots
         ):
-            return "skipped"
+            return "skipped:out-of-scope"
         if is_forbidden(resolved):
-            return "skipped"
+            return "skipped:forbidden"
         
         # Check if file exists and is writable (single stat call)
         try:
             if not path.is_file():
-                return "skipped"
-        except (FileNotFoundError, OSError):
-            return "skipped"
+                return "skipped:not-a-file"
+        except FileNotFoundError:
+            return "skipped:missing"
+        except OSError:
+            return "skipped:permission-denied"
 
         # Delete immediately without retry for speed
         try:
@@ -510,9 +533,16 @@ class BaseCleaner(ICleaner):
             except OSError:
                 pass
             return "removed"
-        except (PermissionError, OSError) as e:
+        except PermissionError as e:
+            result.errors.append(f"permission-denied: {raw}: {e}")
+            return "failed:permission-denied"
+        except OSError as e:
+            # Check if it's a locked file (common on Windows)
+            if "used by another process" in str(e).lower() or "being used" in str(e).lower():
+                result.errors.append(f"locked: {raw}: {e}")
+                return "failed:locked"
             result.errors.append(f"delete-failed: {raw}: {e}")
-            return "failed"
+            return "failed:unknown"
 
     def _delete_one(
         self,

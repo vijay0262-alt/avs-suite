@@ -167,6 +167,8 @@ class CleaningResult:
     files_failed: int = 0
     errors: list[str] = field(default_factory=list)
     elapsed_ms: int = 0
+    skip_reasons: dict[str, int] = field(default_factory=dict)  # Track why files were skipped
+    failure_reasons: dict[str, int] = field(default_factory=dict)  # Track why files failed
 
     def to_summary(self) -> dict[str, object]:
         return {
@@ -180,6 +182,8 @@ class CleaningResult:
             "filesFailed": self.files_failed,
             "errors": list(self.errors),
             "elapsedMs": self.elapsed_ms,
+            "skipReasons": dict(self.skip_reasons),
+            "failureReasons": dict(self.failure_reasons),
         }
 
 
