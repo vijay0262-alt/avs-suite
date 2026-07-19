@@ -128,14 +128,18 @@ class CleaningManager:
         start = time.monotonic()
         
         previews: list[CleaningPreview] = []
+        total_candidates = 0
+        total_validated = 0
+        
         for cleaner_id, cleaner in self._cleaners.items():
             if only is not None and cleaner_id not in only:
                 log.debug("[CleaningManager] Skipping cleaner %s (not in only list)", cleaner_id)
                 continue
             
             log.debug("[CleaningManager] Collecting scan paths for cleaner %s", cleaner_id)
-            paths = self._collect_scan_paths(scan_task_id, cleaner_id)
+            paths = self._scan_manager.get_all_items(scan_task_id, cleaner_id)
             log.debug("[CleaningManager] Collected %d paths for cleaner %s", len(paths), cleaner_id)
+            total_candidates += len(paths)
             
             if not paths:
                 # Still emit an empty preview so the UI can show "0 files".
@@ -147,13 +151,23 @@ class CleaningManager:
                 continue
             
             log.debug("[CleaningManager] Validating %d paths for cleaner %s", len(paths), cleaner_id)
+            validate_start = time.monotonic()
             preview = cleaner.validate(paths)
-            log.debug("[CleaningManager] Validation complete for cleaner %s: %d files, %d warnings", 
-                      cleaner_id, preview.total_files, len(preview.warnings))
+            validate_duration = time.monotonic() - validate_start
+            total_validated += preview.total_files
+            
+            log.debug("[CleaningManager] Validation complete for cleaner %s: %d files, %d warnings in %.2fs", 
+                      cleaner_id, preview.total_files, len(preview.warnings), validate_duration)
             previews.append(preview)
         
-        log.info("[CleaningManager] preview completed in %.2fs, %d cleaners processed", 
-                 time.monotonic() - start, len(previews))
+        validation_duration = time.monotonic() - start
+        log.info(
+            "[PERFORMANCE] Validation completed: duration=%.2fs, candidates=%d, validated=%d, cleaners=%d",
+            validation_duration,
+            total_candidates,
+            total_validated,
+            len(previews),
+        )
         return previews
 
     # ------------------------------------------------------------------
@@ -170,11 +184,13 @@ class CleaningManager:
                 log.info("Superseding running cleaning task %s", self._task.task_id)
 
             runtimes: list[_CleanerRuntime] = []
+            total_candidates = 0
             for cleaner_id, cleaner in self._cleaners.items():
                 if only is not None and cleaner_id not in only:
                     continue
-                candidates = self._collect_scan_paths(scan_task_id, cleaner_id)
+                candidates = self._scan_manager.get_all_items(scan_task_id, cleaner_id)
                 log.debug("[CleaningManager] Collected %d candidates for cleaner %s", len(candidates), cleaner_id)
+                total_candidates += len(candidates)
                 
                 # Skip validation here - preview already validated these files
                 # Just use the candidates directly for cleaning to avoid double validation delay
@@ -184,6 +200,9 @@ class CleaningManager:
                             cleaner=cleaner, candidate_paths=list(candidates)
                         )
                     )
+            
+            log.info("[CleaningManager] Total candidates for cleaning: %d across %d cleaners", 
+                     total_candidates, len(runtimes))
             
             if not runtimes:
                 raise ValueError("Nothing to clean — no candidates found")
@@ -204,7 +223,7 @@ class CleaningManager:
             "Cleaning task %s started for %d cleaner(s), %d file(s) total in %.2fs",
             task.task_id,
             len(task.runtimes),
-            sum(len(rt.candidate_paths) for rt in task.runtimes),
+            total_candidates,
             time.monotonic() - start,
         )
         return task.task_id
