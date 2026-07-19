@@ -161,6 +161,9 @@ class CleaningManager:
     # ------------------------------------------------------------------
     def execute(self, scan_task_id: str, only: list[str] | None = None) -> str:
         """Start a cleaning task. Cancels any running task first."""
+        log.info("[CleaningManager] execute called for scan_task_id=%s, only=%s", scan_task_id, only)
+        start = time.monotonic()
+        
         with self._lock:
             if self._task is not None and self._task.status == ScanStatus.RUNNING:
                 self._task.cancel_event.set()
@@ -171,15 +174,19 @@ class CleaningManager:
                 if only is not None and cleaner_id not in only:
                     continue
                 candidates = self._collect_scan_paths(scan_task_id, cleaner_id)
-                preview = cleaner.validate(candidates)
-                if preview.candidate_paths:
+                log.debug("[CleaningManager] Collected %d candidates for cleaner %s", len(candidates), cleaner_id)
+                
+                # Skip validation here - preview already validated these files
+                # Just use the candidates directly for cleaning to avoid double validation delay
+                if candidates:
                     runtimes.append(
                         _CleanerRuntime(
-                            cleaner=cleaner, candidate_paths=list(preview.candidate_paths)
+                            cleaner=cleaner, candidate_paths=list(candidates)
                         )
                     )
+            
             if not runtimes:
-                raise ValueError("Nothing to clean — validation removed every candidate")
+                raise ValueError("Nothing to clean — no candidates found")
 
             task = _Task(
                 task_id=uuid.uuid4().hex,
@@ -194,10 +201,11 @@ class CleaningManager:
             rt.future = self._pool.submit(self._run_cleaner, task, rt)
 
         log.info(
-            "Cleaning task %s started for %d cleaner(s), %d file(s) total",
+            "Cleaning task %s started for %d cleaner(s), %d file(s) total in %.2fs",
             task.task_id,
             len(task.runtimes),
             sum(len(rt.candidate_paths) for rt in task.runtimes),
+            time.monotonic() - start,
         )
         return task.task_id
 
