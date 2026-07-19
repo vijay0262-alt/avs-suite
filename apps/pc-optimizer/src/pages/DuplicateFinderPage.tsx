@@ -1,11 +1,7 @@
-import { ComingSoon } from '../components/ComingSoon';
-
-export default function DuplicateFinderPage() {
-  return (
-    <ComingSoon
-      title="Duplicate Finder"
-      description="Locate duplicate files by content hash to reclaim disk space."
-      testId="page-duplicate-finder"
-    />
-  );
-}
+/**
+ * Route entry — thin re-export of the feature page.
+ *
+ * The router lazy-loads this file; the actual implementation lives in
+ * ``../features/duplicate-finder/DuplicateFinderPage.tsx``.
+ */
+export { default } from '../features/duplicate-finder/DuplicateFinderPage';
