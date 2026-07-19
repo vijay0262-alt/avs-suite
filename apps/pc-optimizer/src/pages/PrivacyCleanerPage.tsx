@@ -1,11 +1,7 @@
-import { ComingSoon } from '../components/ComingSoon';
-
-export default function PrivacyCleanerPage() {
-  return (
-    <ComingSoon
-      title="Privacy Cleaner"
-      description="Clear browser traces and Windows components that record activity."
-      testId="page-privacy-cleaner"
-    />
-  );
-}
+/**
+ * Route entry — thin re-export of the feature page.
+ *
+ * The router lazy-loads this file; the actual implementation lives in
+ * ``../features/privacy/PrivacyPage.tsx``.
+ */
+export { default } from '../features/privacy/PrivacyPage';
