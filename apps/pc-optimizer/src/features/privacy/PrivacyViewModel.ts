@@ -3,7 +3,7 @@
  */
 
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
-import type { PrivacyItem, PrivacyScanResult, PrivacyCleanResult } from './privacy.types';
+import type { PrivacyScanResult, PrivacyCleanResult } from './privacy.types';
 import type { IPrivacyService } from './privacy.service';
 import { privacyService } from './privacy.service';
 

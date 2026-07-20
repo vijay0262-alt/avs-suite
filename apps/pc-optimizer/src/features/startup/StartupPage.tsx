@@ -9,6 +9,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { StartupViewModel } from './StartupViewModel';
 import { startupService } from './startup.service';
 import { StartupEntryCard } from './components/StartupEntryCard';
+import type { StartupEntry } from './startup.types';
 
 export default function StartupPage() {
   const vm = useMemo(() => new StartupViewModel(startupService), []);
@@ -19,7 +20,7 @@ export default function StartupPage() {
     return () => vm.dispose();
   }, [vm]);
 
-  const handleDisable = async (entry: any) => {
+  const handleDisable = async (entry: StartupEntry) => {
     try {
       const result = await vm.disableEntry(entry);
       if (!result.success) {
@@ -30,7 +31,7 @@ export default function StartupPage() {
     }
   };
 
-  const handleEnable = async (entry: any) => {
+  const handleEnable = async (entry: StartupEntry) => {
     try {
       const result = await vm.enableEntry(entry);
       if (!result.success) {
@@ -46,7 +47,6 @@ export default function StartupPage() {
   };
 
   const enabledCount = state.entries.filter(e => e.enabled).length;
-  const disabledCount = state.entries.filter(e => !e.enabled).length;
   const highImpactCount = state.entries.filter(e => e.impact === 'high' && e.enabled).length;
 
   return (
