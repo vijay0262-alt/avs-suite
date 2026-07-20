@@ -3,7 +3,7 @@
  */
 
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
-import type { DiskAnalysisResult } from './disk-analyzer.types';
+import type { DiskAnalysisResult, DriveInfo } from './disk-analyzer.types';
 import type { IDiskAnalyzerService } from './disk-analyzer.service';
 import { diskAnalyzerService } from './disk-analyzer.service';
 
@@ -14,6 +14,8 @@ export interface DiskAnalyzerState {
   analyzing: boolean;
   directory: string;
   maxDepth: number;
+  drives: DriveInfo[];
+  selectedDrive: string | null;
 }
 
 export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
@@ -25,15 +27,29 @@ export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
       analyzing: false,
       directory: '',
       maxDepth: 2,
+      drives: [],
+      selectedDrive: null,
     });
   }
 
   async bootstrap() {
     this.setState({ bootstrap: 'loading', bootstrapError: null });
     try {
+      await this.loadDrives();
       this.setState({ bootstrap: 'ready' });
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to initialize';
+      this.setState({ bootstrap: 'error', bootstrapError: error });
+      throw err;
+    }
+  }
+
+  async loadDrives() {
+    try {
+      const drives = await this.service.listDrives();
+      this.setState({ drives });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : 'Failed to load drives';
       this.setState({ bootstrap: 'error', bootstrapError: error });
       throw err;
     }
@@ -54,6 +70,10 @@ export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
       this.setState({ bootstrap: 'error', bootstrapError: error, analyzing: false });
       throw err;
     }
+  }
+
+  selectDrive(drive: string) {
+    this.setState({ selectedDrive: drive, directory: drive });
   }
 
   formatBytes(bytes: number): string {

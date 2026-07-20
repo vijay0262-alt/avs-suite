@@ -17,7 +17,7 @@ export interface PerformanceState {
   loading: boolean;
 }
 
-const REFRESH_INTERVAL_MS = 2000;
+const REFRESH_INTERVAL_MS = 3000; // Increased from 2000ms to reduce CPU usage
 
 export class PerformanceViewModel extends ViewModel<PerformanceState> {
   private refreshTimer: ReturnType<typeof setInterval> | null = null;

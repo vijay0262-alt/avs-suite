@@ -21,7 +21,7 @@ export default function DiskAnalyzerPage() {
   }, [vm]);
 
   const handleAnalyze = () => {
-    const directory = customDirectory || undefined;
+    const directory = state.selectedDrive || customDirectory || undefined;
     void vm.analyze(directory, maxDepth);
   };
 
@@ -51,47 +51,89 @@ export default function DiskAnalyzerPage() {
 
       {state.bootstrap === 'ready' && (
         <>
-          <Card title="Analysis Configuration" className="mb-4">
+          <Card title="Select Drive to Analyze" className="mb-4">
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-text-secondary mb-2">
-                  Directory to Analyze (leave empty for default user directory)
-                </label>
-                <input
-                  type="text"
-                  placeholder="C:\\Users\\YourName\\Documents"
-                  value={customDirectory}
-                  onChange={(e) => setCustomDirectory(e.target.value)}
-                  className="w-full px-3 py-2 bg-bg-secondary border border-border rounded text-sm text-text-primary"
-                />
-                <p className="text-xs text-text-muted mt-1">
-                  Default: User profile directory
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm text-text-secondary mb-2">
-                  Scan Depth: {maxDepth}
-                </label>
-                <input
-                  type="range"
-                  min="1"
-                  max="5"
-                  value={maxDepth}
-                  onChange={(e) => setMaxDepth(parseInt(e.target.value))}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-xs text-text-muted">
-                  <span>Shallow (1)</span>
-                  <span>Deep (5)</span>
+              {state.drives.length === 0 ? (
+                <p className="text-text-secondary">No drives found</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {state.drives.map((drive) => (
+                    <div
+                      key={drive.device}
+                      className={`p-4 border rounded cursor-pointer transition-colors ${
+                        state.selectedDrive === drive.mountpoint
+                          ? 'border-brand-primary bg-bg-secondary'
+                          : 'border-border hover:border-brand-primary'
+                      }`}
+                      onClick={() => vm.selectDrive(drive.mountpoint)}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-lg font-semibold text-text-primary">{drive.device}</span>
+                        <span className="text-sm text-text-muted">{drive.fstype}</span>
+                      </div>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-text-secondary">Total:</span>
+                          <span className="text-text-primary">{vm.formatBytes(drive.total)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-text-secondary">Used:</span>
+                          <span className="text-text-primary">{vm.formatBytes(drive.used)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-text-secondary">Free:</span>
+                          <span className="text-text-primary">{vm.formatBytes(drive.free)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-text-secondary">Usage:</span>
+                          <span className={`font-semibold ${drive.percent > 80 ? 'text-red-500' : drive.percent > 60 ? 'text-yellow-500' : 'text-green-500'}`}>
+                            {drive.percent.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
+              )}
+              
+              <div className="pt-4 border-t border-border">
+                <div>
+                  <label className="block text-sm text-text-secondary mb-2">
+                    Or enter custom directory
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="C:\\Users\\YourName\\Documents"
+                    value={customDirectory}
+                    onChange={(e) => setCustomDirectory(e.target.value)}
+                    className="w-full px-3 py-2 bg-bg-secondary border border-border rounded text-sm text-text-primary"
+                  />
+                </div>
+                <div className="mt-4">
+                  <label className="block text-sm text-text-secondary mb-2">
+                    Scan Depth: {maxDepth}
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    value={maxDepth}
+                    onChange={(e) => setMaxDepth(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-text-muted">
+                    <span>Shallow (1)</span>
+                    <span>Deep (5)</span>
+                  </div>
+                </div>
+                <Button 
+                  onClick={handleAnalyze} 
+                  disabled={state.analyzing || (!state.selectedDrive && !customDirectory)}
+                  className="w-full mt-4"
+                >
+                  {state.analyzing ? 'Analyzing...' : 'Analyze Disk'}
+                </Button>
               </div>
-              <Button 
-                onClick={handleAnalyze} 
-                disabled={state.analyzing}
-                className="w-full"
-              >
-                {state.analyzing ? 'Analyzing...' : 'Analyze Disk'}
-              </Button>
             </div>
           </Card>
 

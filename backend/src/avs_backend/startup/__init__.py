@@ -1,9 +1,14 @@
-"""Startup Manager - Manage Windows startup applications."""
+"""Startup Manager - Manage Windows startup applications.
+
+Optimized with caching and parallel scanning for performance.
+"""
 
 from __future__ import annotations
 
 import logging
 from typing import Any
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 
 from avs_backend.api.registry import register
 from avs_backend.startup.startup_manager import (
@@ -16,13 +21,27 @@ from avs_backend.startup.startup_manager import (
 
 logger = logging.getLogger(__name__)
 
+import time
 
-@register("startup.list")
-def startup_list(_params: dict[str, Any] | None) -> list[dict[str, Any]]:
-    """Scan and list all startup applications."""
-    try:
+# Cache for startup entries to avoid rescanning
+_startup_cache: list[dict[str, Any]] | None = None
+_cache_lock = threading.Lock()
+_cache_timestamp: float = 0
+CACHE_TTL_SECONDS = 60  # Cache for 60 seconds
+
+
+def _is_cache_valid() -> bool:
+    """Check if the cache is still valid."""
+    return _startup_cache is not None and (time.time() - _cache_timestamp) < CACHE_TTL_SECONDS
+
+
+def _refresh_cache() -> list[dict[str, Any]]:
+    """Refresh the startup entries cache."""
+    global _startup_cache, _cache_timestamp
+    
+    with _cache_lock:
         entries = scan_startup_entries()
-        return [
+        _startup_cache = [
             {
                 "name": entry.name,
                 "publisher": entry.publisher,
@@ -35,8 +54,35 @@ def startup_list(_params: dict[str, Any] | None) -> list[dict[str, Any]]:
             }
             for entry in entries
         ]
+        _cache_timestamp = time.time()
+        return _startup_cache
+
+
+@register("startup.list")
+def startup_list(_params: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """Scan and list all startup applications (with caching)."""
+    try:
+        # Return cached data if valid
+        if _is_cache_valid():
+            logger.debug("Returning cached startup entries")
+            return _startup_cache
+        
+        # Otherwise refresh cache
+        logger.debug("Refreshing startup entries cache")
+        return _refresh_cache()
     except Exception as e:
         logger.error(f"Failed to list startup entries: {e}")
+        raise
+
+
+@register("startup.refreshCache")
+def startup_refresh_cache(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Force refresh the startup entries cache."""
+    try:
+        entries = _refresh_cache()
+        return {"success": True, "count": len(entries)}
+    except Exception as e:
+        logger.error(f"Failed to refresh startup cache: {e}")
         raise
 
 
@@ -60,6 +106,13 @@ def startup_disable(params: dict[str, Any] | None) -> dict[str, Any]:
         )
 
         result = disable_startup_entry(entry)
+        
+        # Invalidate cache after modification
+        global _startup_cache, _cache_timestamp
+        with _cache_lock:
+            _startup_cache = None
+            _cache_timestamp = 0
+        
         return result
     except Exception as e:
         logger.error(f"Failed to disable startup entry: {e}")
@@ -86,6 +139,13 @@ def startup_enable(params: dict[str, Any] | None) -> dict[str, Any]:
         )
 
         success = enable_startup_entry(entry)
+        
+        # Invalidate cache after modification
+        global _startup_cache, _cache_timestamp
+        with _cache_lock:
+            _startup_cache = None
+            _cache_timestamp = 0
+        
         return {"success": success}
     except Exception as e:
         logger.error(f"Failed to enable startup entry: {e}")

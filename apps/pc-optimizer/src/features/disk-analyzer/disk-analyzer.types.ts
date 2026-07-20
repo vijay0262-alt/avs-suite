@@ -2,6 +2,16 @@
  * Disk Analyzer types
  */
 
+export interface DriveInfo {
+  device: string;
+  mountpoint: string;
+  fstype: string;
+  total: number;
+  used: number;
+  free: number;
+  percent: number;
+}
+
 export interface DiskItem {
   name: string;
   path: string;
@@ -36,4 +46,6 @@ export interface DiskAnalyzerState {
   analyzing: boolean;
   directory: string;
   maxDepth: number;
+  drives: DriveInfo[];
+  selectedDrive: string | null;
 }
