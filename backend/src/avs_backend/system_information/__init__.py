@@ -7,7 +7,10 @@ Optimized with static/dynamic data separation for performance.
 from __future__ import annotations
 
 import logging
+import os
 import platform
+import re
+from pathlib import Path
 from typing import Any
 from functools import lru_cache
 
@@ -118,6 +121,44 @@ def system_ping(_params: dict[str, Any] | None) -> dict[str, bool]:
     """Health probe. Returns immediately; used by the Electron main
     process during startup to confirm the child is alive."""
     return {"pong": True}
+
+
+@register("system.logs")
+def system_logs(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Return the most recent lines from the backend log file.
+
+    Used by the developer diagnostics page. Reads ``AVS_LOG_DIR/main.log``
+    (or ``logs/main.log``) and parses the configured structured format.
+    """
+    limit = int((params or {}).get("limit", 100) or 100)
+    if limit <= 1 or limit > 1000:
+        limit = 100
+
+    log_path = Path(os.environ.get("AVS_LOG_DIR", "logs")) / "main.log"
+    entries: list[dict[str, str]] = []
+    if not log_path.exists():
+        return {"logs": entries}
+
+    try:
+        with log_path.open("r", encoding="utf-8") as fh:
+            lines = fh.readlines()
+        for raw in lines[-limit:]:
+            line = raw.rstrip("\n")
+            match = re.match(r"^\[([^\]]+)\]\s+\[([A-Z]+)\]\s+(.*)$", line)
+            if match:
+                entries.append(
+                    {
+                        "timestamp": match.group(1),
+                        "level": match.group(2).lower(),
+                        "message": match.group(3),
+                    }
+                )
+            else:
+                entries.append({"timestamp": "", "level": "info", "message": line})
+    except OSError as e:
+        logger.warning("Could not read backend log file %s: %s", log_path, e)
+
+    return {"logs": entries}
 
 
 @register("system.info")
