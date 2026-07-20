@@ -180,3 +180,60 @@ export const HEALTH_STATUS_CONFIG: Record<
   poor: { color: 'text-semantic-danger', label: 'Poor', icon: 'x-circle' },
   critical: { color: 'text-semantic-danger', label: 'Critical', icon: 'alert-triangle' },
 };
+
+// Health Scan workflow
+export type HealthScanStep =
+  | 'idle'
+  | 'scanning'
+  | 'report'
+  | 'preview'
+  | 'selection'
+  | 'optimizing'
+  | 'complete';
+
+export interface HealthScanModuleResult {
+  moduleId: string;
+  moduleName: string;
+  status: 'pending' | 'scanning' | 'complete' | 'error' | 'skipped';
+  score: number;
+  issuesFound: number;
+  recoverableSpace: number;
+  severity: 'low' | 'medium' | 'high';
+  estimatedImprovement: string;
+  error?: string;
+}
+
+export interface HealthScanReport {
+  overallScore: number;
+  issuesFound: number;
+  recoverableSpace: number;
+  modules: HealthScanModuleResult[];
+  startedAt: number;
+  finishedAt: number;
+}
+
+export interface OptimizationSelectionItem {
+  moduleId: string;
+  moduleName: string;
+  selected: boolean;
+  recoverableSpace: number;
+}
+
+export interface OptimizationExecutionProgress {
+  currentModule: string | null;
+  progress: number;
+  itemsProcessed: number;
+  spaceRecovered: number;
+  elapsedMs: number;
+}
+
+export interface HealthScanHistoryEntry {
+  id: string;
+  date: string;
+  healthBefore: number;
+  healthAfter: number;
+  recoveredSpace: number;
+  modulesUsed: string[];
+  durationMs: number;
+  result: 'success' | 'partial' | 'cancelled';
+}

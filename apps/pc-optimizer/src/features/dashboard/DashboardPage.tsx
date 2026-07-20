@@ -11,7 +11,7 @@ import { HealthBreakdown } from './components/HealthBreakdown';
 import { HealthSummary } from './components/HealthSummary';
 import { LiveStatus } from './components/LiveStatus';
 import { QuickActions } from './components/QuickActions';
-import { OneClickOptimize } from './components/OneClickOptimize';
+import { HealthScanModal } from './components/HealthScanModal';
 
 export default function DashboardPage() {
   const vm = useMemo(() => new DashboardViewModel(dashboardService), []);
@@ -23,8 +23,8 @@ export default function DashboardPage() {
     return () => vm.dispose();
   }, [vm]);
 
-  const isScanning = state.optimizeStep !== 'idle' || state.optimizePreviewLoading;
-  const isOptimizing = state.optimizeStep === 'optimizing';
+  const isScanning = state.healthScanStep !== 'idle';
+  const isOptimizing = state.healthScanStep === 'optimizing';
 
   return (
     <div data-testid="page-dashboard">
@@ -64,7 +64,7 @@ export default function DashboardPage() {
 
           <div className="flex justify-center">
             <Button
-              onClick={() => vm.openOptimizePreview()}
+              onClick={() => vm.startHealthScan()}
               disabled={isScanning}
               size="lg"
               className="w-full md:w-auto min-w-[16rem]"
@@ -94,18 +94,22 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {state.optimizeStep !== 'idle' && (
-        <OneClickOptimize
-          preview={state.optimizePreview}
-          previewLoading={state.optimizePreviewLoading}
-          previewError={state.optimizePreviewError}
-          result={state.optimizeResult}
-          optimizeError={state.optimizeError}
-          onPreview={() => vm.openOptimizePreview()}
-          onConfirm={() => vm.advanceToOptimizeConfirm()}
-          onCancel={() => vm.cancelOptimizeFlow()}
-          onClose={() => vm.closeOptimizeResult()}
-          step={state.optimizeStep}
+      {state.healthScanStep !== 'idle' && (
+        <HealthScanModal
+          step={state.healthScanStep}
+          modules={state.healthScanModules}
+          report={state.healthScanReport}
+          selection={state.healthScanSelection}
+          execution={state.healthScanExecution}
+          result={state.healthScanResult}
+          error={state.healthScanError}
+          onCancel={() => vm.cancelHealthScan()}
+          onClose={() => vm.closeHealthScan()}
+          onReview={() => vm.advanceToSelection()}
+          onToggleSelection={(id) => vm.toggleHealthSelection(id)}
+          onExecute={() => vm.executeHealthScanOptimizations()}
+          onCancelExecute={() => vm.cancelHealthScanOptimizations()}
+          onBackToReport={() => vm.returnToHealthReport()}
         />
       )}
     </div>
