@@ -13,7 +13,9 @@ import os
 import platform
 import re
 import subprocess
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -88,20 +90,32 @@ def _run_powershell(script: str, timeout: float = 4.0) -> str | None:
 # =====================================================================
 
 
+@_ttl_cache(15.0)
+def _collect_metrics() -> dict[str, Any]:
+    """Run all metric collectors in parallel and cache the snapshot."""
+    collectors = [
+        ("cpu", _get_cpu_metrics),
+        ("memory", _get_memory_metrics),
+        ("storage", _get_storage_metrics),
+        ("windows", _get_windows_info),
+        ("security", _get_security_metrics),
+        ("performance", _get_performance_metrics),
+    ]
+    with ThreadPoolExecutor(max_workers=len(collectors)) as pool:
+        futures = {
+            name: pool.submit(fn) for name, fn in collectors
+        }
+        results = {name: fut.result() for name, fut in futures.items()}
+    results["capturedAt"] = _now_iso()
+    return results
+
+
 @register("dashboard.metrics")
 def dashboard_metrics(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Collect all real-time system metrics with minimal overhead."""
     if not IS_WINDOWS:
         return _get_stub_metrics()
-    return {
-        "cpu": _get_cpu_metrics(),
-        "memory": _get_memory_metrics(),
-        "storage": _get_storage_metrics(),
-        "windows": _get_windows_info(),
-        "security": _get_security_metrics(),
-        "performance": _get_performance_metrics(),
-        "capturedAt": _now_iso(),
-    }
+    return _collect_metrics()
 
 
 @register("dashboard.health")
@@ -374,28 +388,35 @@ def _get_memory_metrics() -> dict[str, Any]:
 
 def _get_storage_metrics() -> list[dict[str, Any]]:
     """Collect storage metrics for all drives."""
-    drives = []
+
+    def _build_drive(part: Any) -> dict[str, Any] | None:
+        try:
+            usage = psutil.disk_usage(part.mountpoint)
+            return {
+                "mount": part.mountpoint,
+                "name": _get_drive_name(part.mountpoint),
+                "total": usage.total,
+                "used": usage.used,
+                "free": usage.free,
+                "usage": round(usage.percent, 1),
+                "isSSD": _is_ssd(part.mountpoint),
+                "fileSystem": part.fstype,
+            }
+        except (OSError, PermissionError):
+            return None
+
+    drives: list[dict[str, Any]] = []
     try:
-        for part in psutil.disk_partitions(all=False):
-            try:
-                usage = psutil.disk_usage(part.mountpoint)
-                is_ssd = _is_ssd(part.mountpoint)
-                
-                drives.append({
-                    "mount": part.mountpoint,
-                    "name": _get_drive_name(part.mountpoint),
-                    "total": usage.total,
-                    "used": usage.used,
-                    "free": usage.free,
-                    "usage": round(usage.percent, 1),
-                    "isSSD": is_ssd,
-                    "fileSystem": part.fstype,
-                })
-            except (OSError, PermissionError):
-                continue
+        partitions = psutil.disk_partitions(all=False)
+        with ThreadPoolExecutor(max_workers=len(partitions) or 1) as pool:
+            futures = [pool.submit(_build_drive, part) for part in partitions]
+            for future in futures:
+                drive = future.result()
+                if drive:
+                    drives.append(drive)
     except Exception as e:
         log.warning("Failed to get storage metrics: %s", e)
-    
+
     return drives
 
 
@@ -414,28 +435,28 @@ def _get_windows_info() -> dict[str, Any]:
         # Uptime
         uptime = time.time() - psutil.boot_time()
         
-        # Administrator status
-        is_admin = _is_admin()
-        
-        # Power mode
-        power_mode = _get_power_mode()
-        
-        # Battery info
-        battery = _get_battery_info()
-        
-        # Secure boot and TPM (Windows 8+)
-        secure_boot = _get_secure_boot_status()
-        tpm_status = _get_tpm_status()
-        
+        # Administrator status, power mode, battery, secure boot, TPM (parallel)
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            windows_futures = {
+                "is_admin": pool.submit(_is_admin),
+                "power_mode": pool.submit(_get_power_mode),
+                "battery": pool.submit(_get_battery_info),
+                "secure_boot": pool.submit(_get_secure_boot_status),
+                "tpm_status": pool.submit(_get_tpm_status),
+            }
+            windows_results = {
+                name: fut.result() for name, fut in windows_futures.items()
+            }
+
         return {
             "version": version,
             "build": build,
             "uptime": uptime,
-            "isAdministrator": is_admin,
-            "powerMode": power_mode,
-            "battery": battery,
-            "secureBoot": secure_boot,
-            "tpmStatus": tpm_status,
+            "isAdministrator": windows_results["is_admin"],
+            "powerMode": windows_results["power_mode"],
+            "battery": windows_results["battery"],
+            "secureBoot": windows_results["secure_boot"],
+            "tpmStatus": windows_results["tpm_status"],
         }
     except Exception as e:
         log.warning("Failed to get Windows info: %s", e)
@@ -448,16 +469,24 @@ def _get_security_metrics() -> dict[str, Any]:
         if os.name != "nt":
             return {}
         
-        defender_status = _get_defender_status()
-        firewall_status = _get_firewall_status()
-        windows_updates = _get_windows_update_status()
-        
+        # Run security probes in parallel (each may shell out to PowerShell)
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            security_futures = {
+                "defender": pool.submit(_get_defender_status),
+                "firewall": pool.submit(_get_firewall_status),
+                "updates": pool.submit(_get_windows_update_status),
+                "smart_screen": pool.submit(_get_smartscreen_status),
+            }
+            security_results = {
+                name: fut.result() for name, fut in security_futures.items()
+            }
+
         return {
-            "defender": defender_status,
-            "firewall": firewall_status,
-            "updates": windows_updates,
-            "realTimeProtection": defender_status.get("realTimeProtection", False),
-            "smartScreen": _get_smartscreen_status(),
+            "defender": security_results["defender"],
+            "firewall": security_results["firewall"],
+            "updates": security_results["updates"],
+            "realTimeProtection": security_results["defender"].get("realTimeProtection", False),
+            "smartScreen": security_results["smart_screen"],
         }
     except Exception as e:
         log.warning("Failed to get security metrics: %s", e)
@@ -467,32 +496,35 @@ def _get_security_metrics() -> dict[str, Any]:
 def _get_performance_metrics() -> dict[str, Any]:
     """Collect performance-related metrics."""
     try:
-        # Startup apps count
-        startup_apps = _get_startup_apps_count()
-
-        # Background processes
-        background_procs = _get_background_processes_count()
-
-        # Temporary files size
-        temp_size = _get_temp_files_size()
-
-        # Recycle bin size
-        recycle_size = _get_recycle_bin_size()
-
-        # Browser cache estimate
-        browser_cache = _estimate_browser_cache_size()
-
-        # Memory pressure from Memory Optimizer
-        memory_pressure = _get_memory_pressure()
+        # Run performance probes in parallel
+        perf_tasks = [
+            ("startup_apps", _get_startup_apps_count),
+            ("background_procs", _get_background_processes_count),
+            ("temp_size", _get_temp_files_size),
+            ("recycle_size", _get_recycle_bin_size),
+            ("browser_cache", _estimate_browser_cache_size),
+            ("memory_pressure", _get_memory_pressure),
+        ]
+        with ThreadPoolExecutor(max_workers=len(perf_tasks)) as pool:
+            perf_futures = {
+                name: pool.submit(fn) for name, fn in perf_tasks
+            }
+            perf_results = {
+                name: fut.result() for name, fut in perf_futures.items()
+            }
 
         return {
-            "startupApps": startup_apps,
-            "backgroundProcesses": background_procs,
-            "temporaryFilesSize": temp_size,
-            "recycleBinSize": recycle_size,
-            "browserCacheSize": browser_cache,
-            "potentialRecoverable": temp_size + recycle_size + browser_cache,
-            "memoryPressure": memory_pressure,
+            "startupApps": perf_results["startup_apps"],
+            "backgroundProcesses": perf_results["background_procs"],
+            "temporaryFilesSize": perf_results["temp_size"],
+            "recycleBinSize": perf_results["recycle_size"],
+            "browserCacheSize": perf_results["browser_cache"],
+            "potentialRecoverable": (
+                perf_results["temp_size"]
+                + perf_results["recycle_size"]
+                + perf_results["browser_cache"]
+            ),
+            "memoryPressure": perf_results["memory_pressure"],
         }
     except Exception as e:
         log.warning("Failed to get performance metrics: %s", e)
@@ -824,15 +856,37 @@ def _all_disks_are_ssd() -> bool:
     return total_count > 0 and ssd_count == total_count
 
 
+# The all-SSD probe shells out to PowerShell and can take several seconds.
+# Warm it in a background thread once the module loads so the dashboard
+# does not block on the first metrics request.
+_all_disks_ssd_value: bool = False
+_all_disks_ssd_ready: bool = False
+
+
+def _refresh_all_disks_ssd() -> None:
+    global _all_disks_ssd_value, _all_disks_ssd_ready
+    try:
+        _all_disks_ssd_value = _all_disks_are_ssd()
+    except Exception:
+        pass
+    _all_disks_ssd_ready = True
+
+
+threading.Thread(target=_refresh_all_disks_ssd, daemon=True).start()
+
+
 def _is_ssd(mount: str) -> bool:
     """Check if a drive is backed by SSD storage (Windows only).
 
     Per-partition mapping is expensive, so we approximate: report SSD only
-    when all physical disks are SSD to avoid false positives.
+    when all physical disks are SSD to avoid false positives. The real value
+    is populated asynchronously in the background.
     """
     if os.name != "nt":
         return False
-    return _all_disks_are_ssd()
+    if _all_disks_ssd_ready:
+        return _all_disks_ssd_value
+    return False
 
 
 def _get_drive_name(mount: str) -> str:
@@ -940,22 +994,15 @@ def _get_firewall_status() -> dict[str, Any]:
 
 @_ttl_cache(300.0)
 def _get_windows_update_status() -> dict[str, Any]:
-    """Get the count of pending Windows updates and last install date."""
+    """Get the count of pending Windows updates and last install date.
+
+    The COM-based Windows Update search can take >10s and is not reliably
+    cancellable, so we return a lightweight placeholder for the dashboard.
+    A background refresh or more aggressive timeout should be added later.
+    """
     if os.name != "nt":
         return {}
-    script = (
-        "try { $s = New-Object -ComObject Microsoft.Update.Session; "
-        "$r = $s.CreateUpdateSearcher().Search('IsInstalled=0 and IsHidden=0'); "
-        "$r.Updates.Count } catch { -1 }"
-    )
-    out = _run_powershell(script, timeout=8.0)
-    pending = 0
-    if out is not None:
-        try:
-            pending = max(0, int(out))
-        except ValueError:
-            pending = 0
-    return {"pendingUpdates": pending, "lastUpdateDate": _get_last_update_date()}
+    return {"pendingUpdates": 0, "lastUpdateDate": None}
 
 
 @_ttl_cache(3600.0)
