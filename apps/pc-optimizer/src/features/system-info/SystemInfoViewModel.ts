@@ -25,14 +25,13 @@ export class SystemInfoViewModel extends ViewModel<SystemInfoState> {
   }
 
   async bootstrap() {
-    this.setState({ bootstrap: 'loading', bootstrapError: null });
+    // Render the shell instantly; load comprehensive data in the background.
+    this.setState({ bootstrap: 'ready', bootstrapError: null, loading: true });
     try {
       await this.loadSystemInfo();
-      this.setState({ bootstrap: 'ready' });
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to load system information';
-      this.setState({ bootstrap: 'error', bootstrapError: error });
-      throw err;
+      this.setState({ bootstrap: 'error', bootstrapError: error, loading: false });
     }
   }
 

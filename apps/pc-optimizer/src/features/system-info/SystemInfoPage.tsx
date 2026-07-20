@@ -46,9 +46,19 @@ export default function SystemInfoPage() {
         </Card>
       )}
 
-      {state.bootstrap === 'ready' && state.systemInfo && (
+      {state.bootstrap === 'ready' && (
         <>
-          <div className="flex items-center justify-between mb-4">
+          {state.loading && !state.systemInfo && (
+            <Card>
+              <div className="text-center py-8">
+                <p className="text-text-secondary">Loading system information...</p>
+              </div>
+            </Card>
+          )}
+
+          {state.systemInfo && (
+            <>
+              <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-text-primary">System Overview</h2>
             <Button variant="secondary" onClick={handleRefresh} disabled={state.loading}>
               {state.loading ? 'Refreshing...' : 'Refresh'}
@@ -58,7 +68,7 @@ export default function SystemInfoPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             <Card title="CPU">
               <div className="space-y-2">
-                < div className="flex justify-between">
+                <div className="flex justify-between">
                   <span className="text-sm text-text-secondary">Processor</span>
                   <span className="text-sm text-text-primary">{state.systemInfo.cpu.name}</span>
                 </div>
@@ -192,6 +202,8 @@ export default function SystemInfoPage() {
               {new Date(state.systemInfo.capturedAt).toLocaleString()}
             </p>
           </Card>
+        </>
+      )}
         </>
       )}
     </div>

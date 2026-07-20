@@ -31,15 +31,14 @@ export class StartupViewModel extends ViewModel<StartupState> {
   }
 
   async bootstrap() {
-    this.setState({ bootstrap: 'loading', bootstrapError: null });
+    // Render the shell immediately; load data in the background.
+    this.setState({ bootstrap: 'ready', bootstrapError: null, loading: true });
     try {
       await this.loadEntries();
       await this.loadBackups();
-      this.setState({ bootstrap: 'ready' });
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to load startup entries';
-      this.setState({ bootstrap: 'error', bootstrapError: error });
-      throw err;
+      this.setState({ bootstrap: 'error', bootstrapError: error, loading: false });
     }
   }
 

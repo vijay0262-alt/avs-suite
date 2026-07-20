@@ -100,7 +100,9 @@ export default function StartupPage() {
           {state.entries.length === 0 ? (
             <Card>
               <div className="text-center py-8">
-                <p className="text-text-secondary">No startup entries found</p>
+                <p className="text-text-secondary">
+                  {state.loading ? 'Loading startup entries...' : 'No startup entries found'}
+                </p>
               </div>
             </Card>
           ) : (

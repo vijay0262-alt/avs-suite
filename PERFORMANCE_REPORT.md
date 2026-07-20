@@ -234,6 +234,26 @@ The Privacy Cleaner page blocked rendering in `bootstrap()` while `privacy.detec
 - `apps/pc-optimizer/src/features/privacy/PrivacyViewModel.ts`
 - `apps/pc-optimizer/src/features/privacy/PrivacyPage.tsx`
 
-## 11. Conclusion
+## 11. Startup Manager & System Information Background Loading
 
-All Phase 2C high-priority and medium-priority performance tasks have been implemented and build successfully. The dashboard.live split isolates fast live metrics from heavier health analysis, and the Privacy Cleaner now renders its shell instantly while browser detection loads in the background. Antivirus false-positive root causes have been identified and documented with actionable next steps. Remaining items include collecting real runtime metrics with the `PerformanceMonitor` utilities and continuing incremental health-score caching in Phase 3.
+### Background
+`StartupManager` and `SystemInformation` pages set `bootstrap` to `loading` until `listEntries`/backups and `getComprehensiveInfo` resolved, leaving the user on a blank card while data loaded.
+
+### Implementation
+- `StartupViewModel.bootstrap()` now sets the page to `ready` immediately and fetches startup entries and backups in the background. `StartupPage` shows `Loading startup entries...` while the list is empty and `loading` is true.
+- `SystemInfoViewModel.bootstrap()` now sets the page to `ready` immediately and fetches comprehensive system info in the background. `SystemInfoPage` shows a loading card when `loading` is true and no `systemInfo` is present.
+- Kept the existing `bootstrap === 'error'` fallback for both pages.
+
+### Files Modified
+- `apps/pc-optimizer/src/features/startup/StartupViewModel.ts`
+- `apps/pc-optimizer/src/features/startup/StartupPage.tsx`
+- `apps/pc-optimizer/src/features/system-info/SystemInfoViewModel.ts`
+- `apps/pc-optimizer/src/features/system-info/SystemInfoPage.tsx`
+
+### Verification
+- `yarn lint` passes.
+- `npm run build` in `apps/pc-optimizer` passes.
+
+## 12. Conclusion
+
+All Phase 2C high-priority and medium-priority performance tasks have been implemented and build successfully. The dashboard.live split isolates fast live metrics from heavier health analysis, the Privacy Cleaner renders its shell instantly while browser detection loads in the background, and Startup Manager and System Information now render immediately while their data loads asynchronously. Antivirus false-positive root causes have been identified and documented with actionable next steps. Remaining items include collecting real runtime metrics with the `PerformanceMonitor` utilities and continuing incremental health-score caching in Phase 3.
