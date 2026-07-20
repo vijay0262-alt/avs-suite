@@ -1,9 +1,10 @@
 import { createHashRouter, Navigate } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { AppLayout } from '../layouts/AppLayout';
 import { LoadingFallback } from '../components/LoadingFallback';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
+// Lazy load all pages
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
 const JunkCleanerPage = lazy(() => import('../pages/JunkCleanerPage'));
 const StartupManagerPage = lazy(() => import('../pages/StartupManagerPage'));
@@ -16,6 +17,26 @@ const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 const AboutPage = lazy(() => import('../pages/AboutPage'));
 const DiagnosticsPage = lazy(() => import('../features/diagnostics/DiagnosticsPage'));
 
+// Module preloader - preloads frequently used modules in background
+const ModulePreloader = () => {
+  useEffect(() => {
+    // Preload frequently used modules after initial render
+    const timeout = setTimeout(() => {
+      // Preload Dashboard (already loaded, but ensures it stays in memory)
+      void import('../pages/DashboardPage');
+      
+      // Preload other frequently accessed modules
+      void import('../pages/JunkCleanerPage');
+      void import('../pages/StartupManagerPage');
+      void import('../pages/PerformancePage');
+    }, 1000); // Start preloading after 1 second
+
+    return () => clearTimeout(timeout);
+  }, []);
+
+  return null;
+};
+
 const wrap = (Element: React.ComponentType) => (
   <ErrorBoundary>
     <Suspense fallback={<LoadingFallback />}>
@@ -27,7 +48,12 @@ const wrap = (Element: React.ComponentType) => (
 export const router = createHashRouter([
   {
     path: '/',
-    element: <AppLayout />,
+    element: (
+      <>
+        <ModulePreloader />
+        <AppLayout />
+      </>
+    ),
     errorElement: <ErrorBoundary standalone />,
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },

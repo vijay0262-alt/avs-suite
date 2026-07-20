@@ -1,6 +1,7 @@
 """System information and live-metric handlers.
 
 Provides comprehensive system information including CPU, memory, disk, GPU, network, and OS details.
+Optimized with static/dynamic data separation for performance.
 """
 
 from __future__ import annotations
@@ -8,6 +9,7 @@ from __future__ import annotations
 import logging
 import platform
 from typing import Any
+from functools import lru_cache
 
 import psutil
 
@@ -16,6 +18,99 @@ from avs_backend.api.registry import register
 logger = logging.getLogger(__name__)
 
 IS_WINDOWS = platform.system() == "Windows"
+
+# Cache for static hardware information (refreshed only on explicit request)
+_static_info_cache: dict[str, Any] | None = None
+
+
+def _get_static_info() -> dict[str, Any]:
+    """Get static hardware information that doesn't change frequently."""
+    global _static_info_cache
+    
+    if _static_info_cache is not None:
+        return _static_info_cache
+    
+    # CPU Information (static)
+    cpu_info = {
+        "name": platform.processor(),
+        "architecture": platform.machine(),
+        "cores": psutil.cpu_count(logical=False),
+        "logicalCores": psutil.cpu_count(logical=True),
+        "maxFrequency": psutil.cpu_freq().max if psutil.cpu_freq() else 0,
+    }
+    
+    # OS Information (static)
+    os_info = {
+        "system": platform.system(),
+        "release": platform.release(),
+        "version": platform.version(),
+        "machine": platform.machine(),
+        "processor": platform.processor(),
+        "hostname": platform.node(),
+        "bootTime": psutil.boot_time(),
+    }
+    
+    _static_info_cache = {
+        "cpu": cpu_info,
+        "os": os_info,
+    }
+    
+    return _static_info_cache
+
+
+def _get_dynamic_info() -> dict[str, Any]:
+    """Get dynamic information that changes frequently."""
+    # CPU Usage (dynamic)
+    cpu_usage = psutil.cpu_percent(interval=0.05)
+    cpu_freq = psutil.cpu_freq()
+    
+    # Memory Information (dynamic)
+    mem = psutil.virtual_memory()
+    memory_info = {
+        "total": mem.total,
+        "available": mem.available,
+        "used": mem.used,
+        "free": mem.free,
+        "percent": mem.percent,
+        "currentFrequency": cpu_freq.current if cpu_freq else 0,
+    }
+    
+    # Disk Information (dynamic - can be cached per drive)
+    disk_info = []
+    for part in psutil.disk_partitions(all=False):
+        try:
+            usage = psutil.disk_usage(part.mountpoint)
+            disk_info.append({
+                "device": part.device,
+                "mountpoint": part.mountpoint,
+                "fstype": part.fstype,
+                "total": usage.total,
+                "used": usage.used,
+                "free": usage.free,
+                "percent": usage.percent,
+            })
+        except OSError:
+            continue
+    
+    # Network Information (dynamic)
+    network_info = {
+        "interfaces": list(psutil.net_if_addrs().keys()),
+        "io": psutil.net_io_counters()._asdict() if psutil.net_io_counters() else {},
+    }
+    
+    # Process Information (dynamic)
+    process_info = {
+        "total": len(psutil.pids()),
+        "running": len([p for p in psutil.process_iter(['status']) if p.info['status'] == 'running']),
+    }
+    
+    return {
+        "cpuUsage": cpu_usage,
+        "memory": memory_info,
+        "disk": disk_info,
+        "network": network_info,
+        "processes": process_info,
+    }
 
 
 @register("system.ping")
@@ -54,80 +149,48 @@ def system_health_score(_params: dict[str, Any] | None) -> dict[str, Any]:
 
 @register("system.comprehensive")
 def system_comprehensive(_params: dict[str, Any] | None) -> dict[str, Any]:
-    """Comprehensive system information."""
+    """Comprehensive system information (optimized with caching)."""
     try:
-        # CPU Information
-        cpu_info = {
-            "name": platform.processor(),
-            "architecture": platform.machine(),
-            "cores": psutil.cpu_count(logical=False),
-            "logicalCores": psutil.cpu_count(logical=True),
-            "maxFrequency": psutil.cpu_freq().max if psutil.cpu_freq() else 0,
-            "currentFrequency": psutil.cpu_freq().current if psutil.cpu_freq() else 0,
-        }
-
-        # Memory Information
-        mem = psutil.virtual_memory()
-        memory_info = {
-            "total": mem.total,
-            "available": mem.available,
-            "used": mem.used,
-            "free": mem.free,
-            "percent": mem.percent,
-        }
-
-        # Disk Information
-        disk_info = []
-        for part in psutil.disk_partitions(all=False):
-            try:
-                usage = psutil.disk_usage(part.mountpoint)
-                disk_info.append({
-                    "device": part.device,
-                    "mountpoint": part.mountpoint,
-                    "fstype": part.fstype,
-                    "total": usage.total,
-                    "used": usage.used,
-                    "free": usage.free,
-                    "percent": usage.percent,
-                })
-            except OSError:
-                continue
-
-        # Network Information
-        network_info = {
-            "interfaces": list(psutil.net_if_addrs().keys()),
-            "io": psutil.net_io_counters()._asdict() if psutil.net_io_counters() else {},
-        }
-
-        # OS Information
-        os_info = {
-            "system": platform.system(),
-            "release": platform.release(),
-            "version": platform.version(),
-            "machine": platform.machine(),
-            "processor": platform.processor(),
-            "hostname": platform.node(),
-            "bootTime": psutil.boot_time(),
-        }
-
-        # Process Information
-        process_info = {
-            "total": len(psutil.pids()),
-            "running": len([p for p in psutil.process_iter(['status']) if p.info['status'] == 'running']),
-        }
-
+        static_info = _get_static_info()
+        dynamic_info = _get_dynamic_info()
+        
         return {
-            "cpu": cpu_info,
-            "memory": memory_info,
-            "disk": disk_info,
-            "network": network_info,
-            "os": os_info,
-            "processes": process_info,
+            **static_info,
+            **dynamic_info,
             "capturedAt": _now_iso(),
         }
     except Exception as e:
         logger.error(f"Failed to get comprehensive system info: {e}")
         raise
+
+
+@register("system.static")
+def system_static(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get only static hardware information (cached)."""
+    try:
+        return _get_static_info()
+    except Exception as e:
+        logger.error(f"Failed to get static system info: {e}")
+        raise
+
+
+@register("system.dynamic")
+def system_dynamic(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get only dynamic information (real-time metrics)."""
+    try:
+        return _get_dynamic_info()
+    except Exception as e:
+        logger.error(f"Failed to get dynamic system info: {e}")
+        raise
+
+
+@register("system.refreshCache")
+def system_refresh_cache(_params: dict[str, Any] | None) -> dict[str, bool]:
+    """Refresh the static information cache."""
+    global _static_info_cache
+    _static_info_cache = None
+    _get_static_info()  # Force refresh
+    return {"success": True}
 
 
 @register("metrics.cpu")
