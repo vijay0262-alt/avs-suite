@@ -26,6 +26,7 @@ from avs_backend.common.logging_setup import configure_logging
 from avs_backend import cleaner as _cleaner  # noqa: F401
 from avs_backend import dashboard as _dashboard  # noqa: F401
 from avs_backend import disk_analyzer as _disk  # noqa: F401
+from avs_backend import drive_wiper as _wiper  # noqa: F401
 from avs_backend import duplicate_finder as _dup  # noqa: F401
 from avs_backend import performance as _perf  # noqa: F401
 from avs_backend import privacy as _priv  # noqa: F401

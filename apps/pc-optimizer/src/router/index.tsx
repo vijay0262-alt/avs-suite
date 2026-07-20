@@ -14,6 +14,7 @@ const DuplicateFinderPage = lazy(() => import('../pages/DuplicateFinderPage'));
 const DiskAnalyzerPage = lazy(() => import('../pages/DiskAnalyzerPage'));
 const UninstallerPage = lazy(() => import('../pages/UninstallerPage'));
 const UpdaterPage = lazy(() => import('../pages/UpdaterPage'));
+const WiperPage = lazy(() => import('../pages/WiperPage'));
 const PerformancePage = lazy(() => import('../pages/PerformancePage'));
 const SystemInformationPage = lazy(() => import('../pages/SystemInformationPage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
@@ -69,6 +70,7 @@ export const router = createHashRouter([
       { path: 'disk-analyzer', element: wrap(DiskAnalyzerPage) },
       { path: 'uninstaller', element: wrap(UninstallerPage) },
       { path: 'software-updater', element: wrap(UpdaterPage) },
+      { path: 'drive-wiper', element: wrap(WiperPage) },
       { path: 'performance', element: wrap(PerformancePage) },
       { path: 'system-information', element: wrap(SystemInformationPage) },
       { path: 'settings', element: wrap(SettingsPage) },

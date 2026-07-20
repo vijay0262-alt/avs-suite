@@ -26,6 +26,7 @@ a = Analysis(
         "avs_backend.api",
         "avs_backend.cleaner",
         "avs_backend.disk_analyzer",
+        "avs_backend.drive_wiper",
         "avs_backend.duplicate_finder",
         "avs_backend.performance",
         "avs_backend.privacy",
