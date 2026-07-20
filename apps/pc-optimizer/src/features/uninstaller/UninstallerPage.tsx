@@ -133,7 +133,7 @@ export default function UninstallerPage() {
           <div className="w-full max-w-md rounded-lg bg-surface p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-text-primary mb-2">Uninstall {confirm.name}?</h3>
             <p className="text-sm text-text-secondary mb-6">
-              This will launch the program's uninstaller. Follow its prompts to complete removal.
+              This will launch the program&apos;s uninstaller. Follow its prompts to complete removal.
             </p>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setConfirm(null)}>

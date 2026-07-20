@@ -3,7 +3,7 @@
  */
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import type { IWiperService } from './wiper.service';
-import type { DriveInfo, ShredResult, WipeFreeSpaceResponse, WiperState } from './wiper.types';
+import type { WiperState } from './wiper.types';
 
 export class WiperViewModel extends ViewModel<WiperState> {
   constructor(private readonly service: IWiperService) {

@@ -1,5 +1,5 @@
 import { createHashRouter, Navigate } from 'react-router-dom';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { AppLayout } from '../layouts/AppLayout';
 import { LoadingFallback } from '../components/LoadingFallback';
 import { ErrorBoundary } from '../components/ErrorBoundary';

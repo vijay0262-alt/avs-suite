@@ -74,7 +74,7 @@ export default function WiperPage() {
                 className="hidden"
                 onChange={(e) => {
                   const files = Array.from(e.target.files ?? []).map(
-                    (f) => (f as any).path ?? f.webkitRelativePath ?? f.name
+                    (f) => (f as unknown as { path?: string }).path ?? f.webkitRelativePath ?? f.name
                   );
                   if (files.length) addPaths(files);
                 }}
