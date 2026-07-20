@@ -299,7 +299,16 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
 
   async cancelCleaning(): Promise<void> {
     const cleaningId = this.state.activeCleaningTaskId;
-    if (!cleaningId) return;
+    if (!cleaningId) {
+      // executeClean is still in flight and we have no task id yet.
+      // Let the user dismiss the progress dialog so they are not trapped.
+      this.stopCleanPolling();
+      this.setState({
+        cleaningStep: 'closed',
+        lastCleaningError: 'Cleaning was cancelled before it started.',
+      });
+      return;
+    }
     try {
       await this.service.cancelClean(cleaningId);
     } catch (err) {
@@ -432,14 +441,29 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
     try {
       const snap = await this.service.getCleaningStatus(taskId);
       this.setState({ cleaningSnapshot: snap });
-      if (snap.status && snap.status !== 'running') {
+
+      // If the task disappeared or the response is unusable, bail out so the
+      // progress dialog does not trap the user indefinitely.
+      if (!snap.present || !snap.status) {
+        this.stopCleanPolling();
+        this.setState({
+          cleaningStep: 'closed',
+          lastCleaningError: 'Cleaning status is no longer available.',
+        });
+        return;
+      }
+
+      if (snap.status !== 'running') {
         this.stopCleanPolling();
         this.setState({ cleaningStep: 'summary' });
         // Auto-refresh history so the new run shows in the log immediately.
         void this.loadHistory(true);
       }
     } catch (err) {
-      this.setState({ lastCleaningError: err instanceof Error ? err.message : String(err) });
+      this.setState({
+        cleaningStep: 'closed',
+        lastCleaningError: err instanceof Error ? err.message : String(err),
+      });
       this.stopCleanPolling();
     }
   }
