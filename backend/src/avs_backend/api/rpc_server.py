@@ -32,6 +32,7 @@ from avs_backend import privacy as _priv  # noqa: F401
 from avs_backend import registry_cleaner as _registry  # noqa: F401
 from avs_backend import startup as _startup  # noqa: F401
 from avs_backend import system_information as _sysinfo  # noqa: F401
+from avs_backend import uninstaller as _uninstaller  # noqa: F401
 from avs_backend import history as _history  # noqa: F401
 from avs_backend import notifications as _notifications  # noqa: F401
 from avs_backend import reporting as _reporting  # noqa: F401
