@@ -30,6 +30,7 @@ a = Analysis(
         "avs_backend.performance",
         "avs_backend.privacy",
         "avs_backend.registry_cleaner",
+        "avs_backend.software_updater",
         "avs_backend.startup",
         "avs_backend.system_information",
         "avs_backend.uninstaller",

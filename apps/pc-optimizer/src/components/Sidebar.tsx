@@ -14,6 +14,7 @@ import {
   InformationCircleIcon,
   WrenchScrewdriverIcon,
   ArchiveBoxXMarkIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import type { ComponentType } from 'react';
@@ -34,6 +35,7 @@ const NAV: readonly NavEntry[] = [
   { id: 'duplicate-finder', to: '/duplicate-finder', labelKey: 'nav.duplicateFinder', Icon: DocumentDuplicateIcon },
   { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon },
   { id: 'uninstaller', to: '/uninstaller', labelKey: 'nav.uninstaller', Icon: ArchiveBoxXMarkIcon },
+  { id: 'software-updater', to: '/software-updater', labelKey: 'nav.softwareUpdater', Icon: ArrowPathIcon },
   { id: 'performance', to: '/performance', labelKey: 'nav.performance', Icon: BoltIcon },
   { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
   { id: 'settings', to: '/settings', labelKey: 'nav.settings', Icon: Cog6ToothIcon },
