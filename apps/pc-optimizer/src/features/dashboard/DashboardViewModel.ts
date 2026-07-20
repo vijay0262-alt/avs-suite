@@ -17,6 +17,7 @@ import type {
 } from './dashboard.types';
 import type { DashboardService } from './dashboard.service';
 import type { NavigateFunction } from 'react-router-dom';
+import { calculateHealthScore } from './dashboard.utils';
 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
 
@@ -115,6 +116,8 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         metrics,
         metricsLoading: false,
         lastMetricsUpdate: Date.now(),
+        // Incremental health score: derive from metrics without a second RPC.
+        healthScore: calculateHealthScore(metrics),
       });
     } catch (err) {
       this.setState({
@@ -190,9 +193,8 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         optimizeResult: result,
         optimizeStep: 'complete',
       });
-      // Refresh metrics after optimization
+      // Refresh metrics after optimization; health score recomputed incrementally.
       await this.loadMetrics();
-      await this.loadHealthScore();
     } catch (err) {
       this.setState({
         optimizeStep: 'preview',
@@ -249,6 +251,8 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       this.setState({
         metrics,
         lastMetricsUpdate: Date.now(),
+        // Incremental health score: recompute every poll cycle without extra RPC.
+        healthScore: calculateHealthScore(metrics),
       });
     } catch (err) {
       // Silently fail on polling errors to avoid UI disruption
