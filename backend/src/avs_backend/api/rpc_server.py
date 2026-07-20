@@ -29,6 +29,7 @@ from avs_backend import disk_analyzer as _disk  # noqa: F401
 from avs_backend import duplicate_finder as _dup  # noqa: F401
 from avs_backend import performance as _perf  # noqa: F401
 from avs_backend import privacy as _priv  # noqa: F401
+from avs_backend import registry_cleaner as _registry  # noqa: F401
 from avs_backend import startup as _startup  # noqa: F401
 from avs_backend import system_information as _sysinfo  # noqa: F401
 from avs_backend import history as _history  # noqa: F401

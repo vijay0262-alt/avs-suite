@@ -12,6 +12,7 @@ import {
   CpuChipIcon,
   Cog6ToothIcon,
   InformationCircleIcon,
+  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import type { ComponentType } from 'react';
@@ -26,6 +27,7 @@ interface NavEntry {
 const NAV: readonly NavEntry[] = [
   { id: 'dashboard', to: '/dashboard', labelKey: 'nav.dashboard', Icon: Squares2X2Icon },
   { id: 'junk-cleaner', to: '/junk-cleaner', labelKey: 'nav.junkCleaner', Icon: TrashIcon },
+  { id: 'registry-cleaner', to: '/registry-cleaner', labelKey: 'nav.registryCleaner', Icon: WrenchScrewdriverIcon },
   { id: 'startup-manager', to: '/startup-manager', labelKey: 'nav.startupManager', Icon: RocketLaunchIcon },
   { id: 'privacy-cleaner', to: '/privacy-cleaner', labelKey: 'nav.privacyCleaner', Icon: LockClosedIcon },
   { id: 'duplicate-finder', to: '/duplicate-finder', labelKey: 'nav.duplicateFinder', Icon: DocumentDuplicateIcon },

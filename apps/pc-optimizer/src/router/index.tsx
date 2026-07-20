@@ -7,6 +7,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 // Lazy load all pages
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
 const JunkCleanerPage = lazy(() => import('../pages/JunkCleanerPage'));
+const RegistryCleanerPage = lazy(() => import('../pages/RegistryCleanerPage'));
 const StartupManagerPage = lazy(() => import('../pages/StartupManagerPage'));
 const PrivacyCleanerPage = lazy(() => import('../pages/PrivacyCleanerPage'));
 const DuplicateFinderPage = lazy(() => import('../pages/DuplicateFinderPage'));
@@ -59,6 +60,7 @@ export const router = createHashRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: wrap(DashboardPage) },
       { path: 'junk-cleaner', element: wrap(JunkCleanerPage) },
+      { path: 'registry-cleaner', element: wrap(RegistryCleanerPage) },
       { path: 'startup-manager', element: wrap(StartupManagerPage) },
       { path: 'privacy-cleaner', element: wrap(PrivacyCleanerPage) },
       { path: 'duplicate-finder', element: wrap(DuplicateFinderPage) },
