@@ -6,13 +6,16 @@ with minimal CPU overhead (<1%).
 
 from __future__ import annotations
 
+import ctypes
+import functools
 import logging
 import os
 import platform
+import re
 import subprocess
 import time
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable
 
 import psutil
 
@@ -22,6 +25,63 @@ log = logging.getLogger("avs.dashboard")
 
 # Dashboard is Windows-specific
 IS_WINDOWS = platform.system() == "Windows"
+
+# Flag to spawn subprocesses without flashing a console window on Windows.
+_NO_WINDOW = 0x08000000 if IS_WINDOWS else 0
+
+
+def _ttl_cache(ttl_seconds: float) -> Callable[[Callable[[], Any]], Callable[[], Any]]:
+    """Cache the result of a zero-argument function for ``ttl_seconds``.
+
+    Security and hardware queries are expensive (they shell out to
+    PowerShell) but change rarely, so we avoid running them on every
+    metrics poll.
+    """
+
+    def decorator(fn: Callable[[], Any]) -> Callable[[], Any]:
+        state: dict[str, Any] = {"value": None, "ts": 0.0, "set": False}
+
+        @functools.wraps(fn)
+        def wrapper() -> Any:
+            now = time.monotonic()
+            if state["set"] and (now - state["ts"]) < ttl_seconds:
+                return state["value"]
+            value = fn()
+            state.update(value=value, ts=now, set=True)
+            return value
+
+        wrapper.cache_clear = lambda: state.update(value=None, ts=0.0, set=False)  # type: ignore[attr-defined]
+        return wrapper
+
+    return decorator
+
+
+def _run_powershell(script: str, timeout: float = 4.0) -> str | None:
+    """Run a PowerShell command; return trimmed stdout, or None on failure."""
+    if not IS_WINDOWS:
+        return None
+    try:
+        proc = subprocess.run(
+            [
+                "powershell",
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                script,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            creationflags=_NO_WINDOW,
+        )
+        if proc.returncode != 0:
+            return None
+        return proc.stdout.strip()
+    except Exception as e:  # noqa: BLE001 — best-effort probe
+        log.debug("PowerShell query failed: %s", e)
+        return None
 
 # =====================================================================
 # RPC Methods
@@ -746,15 +806,33 @@ def _get_cpu_temperature() -> float | None:
     return None
 
 
+@_ttl_cache(3600.0)
+def _all_disks_are_ssd() -> bool:
+    """Return True when every physical disk reports MediaType == SSD.
+
+    Cached for the process lifetime (hardware does not change at runtime).
+    """
+    total = _run_powershell("(Get-PhysicalDisk | Measure-Object).Count")
+    ssd = _run_powershell(
+        "(Get-PhysicalDisk | Where-Object { $_.MediaType -eq 'SSD' } | Measure-Object).Count"
+    )
+    try:
+        total_count = int(total) if total else 0
+        ssd_count = int(ssd) if ssd else 0
+    except ValueError:
+        return False
+    return total_count > 0 and ssd_count == total_count
+
+
 def _is_ssd(mount: str) -> bool:
-    """Check if drive is SSD (Windows only)."""
+    """Check if a drive is backed by SSD storage (Windows only).
+
+    Per-partition mapping is expensive, so we approximate: report SSD only
+    when all physical disks are SSD to avoid false positives.
+    """
     if os.name != "nt":
         return False
-    try:
-        # This is a simplified check - proper implementation requires WMI
-        return False
-    except Exception:
-        return False
+    return _all_disks_are_ssd()
 
 
 def _get_drive_name(mount: str) -> str:
@@ -775,15 +853,23 @@ def _is_admin() -> bool:
         return False
 
 
+@_ttl_cache(30.0)
 def _get_power_mode() -> str:
-    """Get current power mode."""
+    """Get the active Windows power plan name."""
     if os.name != "nt":
         return "unknown"
-    try:
-        # Check power plan GUID (simplified)
-        return "balanced"  # Placeholder
-    except Exception:
+    out = _run_powershell("powercfg /getactivescheme")
+    if not out:
         return "unknown"
+    low = out.lower()
+    if "high performance" in low:
+        return "high performance"
+    if "power saver" in low:
+        return "power saver"
+    if "balanced" in low:
+        return "balanced"
+    match = re.search(r"\(([^)]+)\)", out)
+    return match.group(1).lower() if match else "custom"
 
 
 def _get_battery_info() -> dict[str, Any] | None:
@@ -800,70 +886,103 @@ def _get_battery_info() -> dict[str, Any] | None:
     return None
 
 
+@_ttl_cache(3600.0)
 def _get_secure_boot_status() -> bool:
-    """Check Secure Boot status (Windows 8+)."""
+    """Check Secure Boot status (Windows 8+). Cached for the process life."""
     if os.name != "nt":
         return False
-    try:
-        # Requires WMI or registry access - placeholder
-        return False
-    except Exception:
-        return False
+    out = _run_powershell("try { Confirm-SecureBootUEFI } catch { 'False' }")
+    return bool(out) and out.strip().lower() == "true"
 
 
+@_ttl_cache(3600.0)
 def _get_tpm_status() -> bool:
-    """Check TPM status."""
+    """Check whether a TPM is present. Cached for the process life."""
     if os.name != "nt":
         return False
-    try:
-        # Requires WMI - placeholder
-        return False
-    except Exception:
-        return False
+    out = _run_powershell("try { (Get-Tpm).TpmPresent } catch { 'False' }")
+    return bool(out) and out.strip().lower() == "true"
 
 
+@_ttl_cache(60.0)
 def _get_defender_status() -> dict[str, Any]:
-    """Get Windows Defender status."""
+    """Get Windows Defender status via Get-MpComputerStatus."""
     if os.name != "nt":
         return {}
-    try:
-        # Requires WMI or PowerShell - placeholder
-        return {"enabled": True, "realTimeProtection": True}
-    except Exception:
+    out = _run_powershell(
+        "$s = Get-MpComputerStatus; "
+        "Write-Output \"$($s.AntivirusEnabled),$($s.RealTimeProtectionEnabled)\""
+    )
+    if not out:
         return {"enabled": False, "realTimeProtection": False}
+    parts = out.split(",")
+    enabled = parts[0].strip().lower() == "true"
+    rtp = len(parts) > 1 and parts[1].strip().lower() == "true"
+    return {"enabled": enabled, "realTimeProtection": rtp}
 
 
+@_ttl_cache(60.0)
 def _get_firewall_status() -> dict[str, Any]:
-    """Get Windows Firewall status."""
+    """Get Windows Firewall status (enabled if any profile is on)."""
     if os.name != "nt":
         return {}
+    out = _run_powershell(
+        "(Get-NetFirewallProfile | Where-Object { $_.Enabled -eq 'True' } | "
+        "Measure-Object).Count"
+    )
+    if out is None:
+        return {"enabled": False}
     try:
-        # Requires WMI or netsh - placeholder
-        return {"enabled": True}
-    except Exception:
+        return {"enabled": int(out) > 0}
+    except ValueError:
         return {"enabled": False}
 
 
+@_ttl_cache(300.0)
 def _get_windows_update_status() -> dict[str, Any]:
-    """Get Windows Update status."""
+    """Get the count of pending Windows updates and last install date."""
     if os.name != "nt":
         return {}
-    try:
-        # Requires WMI - placeholder
-        return {"pendingUpdates": 0, "lastUpdateDate": None}
-    except Exception:
-        return {"pendingUpdates": 0, "lastUpdateDate": None}
+    script = (
+        "try { $s = New-Object -ComObject Microsoft.Update.Session; "
+        "$r = $s.CreateUpdateSearcher().Search('IsInstalled=0 and IsHidden=0'); "
+        "$r.Updates.Count } catch { -1 }"
+    )
+    out = _run_powershell(script, timeout=8.0)
+    pending = 0
+    if out is not None:
+        try:
+            pending = max(0, int(out))
+        except ValueError:
+            pending = 0
+    return {"pendingUpdates": pending, "lastUpdateDate": _get_last_update_date()}
 
 
+@_ttl_cache(3600.0)
+def _get_last_update_date() -> str | None:
+    """Get the install date of the most recent hotfix."""
+    if os.name != "nt":
+        return None
+    out = _run_powershell(
+        "$h = Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 1; "
+        "if ($h -and $h.InstalledOn) { $h.InstalledOn.ToString('o') }"
+    )
+    return out or None
+
+
+@_ttl_cache(300.0)
 def _get_smartscreen_status() -> bool:
-    """Get Windows SmartScreen status."""
+    """Get Windows SmartScreen status from the registry."""
     if os.name != "nt":
         return False
-    try:
-        # Requires registry check - placeholder
-        return True
-    except Exception:
+    out = _run_powershell(
+        "(Get-ItemProperty -Path "
+        "'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer' "
+        "-Name SmartScreenEnabled -ErrorAction SilentlyContinue).SmartScreenEnabled"
+    )
+    if not out:
         return False
+    return out.strip().lower() in ("requireadmin", "prompt", "warn", "on")
 
 
 def _get_thumbnail_cache_size() -> int:
