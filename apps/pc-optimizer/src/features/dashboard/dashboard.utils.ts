@@ -4,7 +4,14 @@
  * Computes a HealthScore directly from DashboardMetrics so the UI can update
  * in real time without an additional RPC round-trip every poll cycle.
  */
-import type { DashboardMetrics, HealthScore, HealthStatus } from './dashboard.types';
+import type {
+  DashboardMetrics,
+  HealthScore,
+  HealthStatus,
+  HealthSummaryItem,
+  HealthCategoryDetail,
+  CategoryScores,
+} from './dashboard.types';
 
 function clamp(value: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, value));
@@ -68,7 +75,170 @@ function buildSuggestions(metrics: DashboardMetrics): string[] {
  * This avoids a second RPC call every metrics poll and keeps the dashboard
  * score in sync with the live data already on the client.
  */
-export function calculateHealthScore(metrics: DashboardMetrics): HealthScore {
+function toGB(bytes: number): number {
+  return bytes / (1024 * 1024 * 1024);
+}
+
+function buildSummary(metrics: DashboardMetrics, privacyRisks: number | null): HealthSummaryItem[] {
+  const summary: HealthSummaryItem[] = [];
+
+  if (metrics.performance.potentialRecoverable > 1024 * 1024 * 1024) {
+    summary.push({
+      text: `${toGB(metrics.performance.potentialRecoverable).toFixed(1)} GB temporary files`,
+      severity: 'warning',
+    });
+  }
+
+  if (metrics.performance.startupApps > 5) {
+    summary.push({
+      text: `${metrics.performance.startupApps} unnecessary startup applications`,
+      severity: 'warning',
+    });
+  }
+
+  if (metrics.memory.usage > 80) {
+    summary.push({
+      text: 'RAM usage is high',
+      severity: 'danger',
+    });
+  } else if (metrics.memory.usage > 60) {
+    summary.push({
+      text: 'RAM usage is elevated',
+      severity: 'warning',
+    });
+  }
+
+  metrics.storage.forEach((drive) => {
+    if (drive.usage > 90) {
+      summary.push({
+        text: `Drive ${drive.name} is ${drive.usage.toFixed(0)}% full`,
+        severity: 'danger',
+      });
+    } else if (drive.usage > 75) {
+      summary.push({
+        text: `Drive ${drive.name} is ${drive.usage.toFixed(0)}% full`,
+        severity: 'warning',
+      });
+    }
+  });
+
+  if (metrics.performance.browserCacheSize > 100 * 1024 * 1024) {
+    summary.push({
+      text: 'Browser cache can be cleaned',
+      severity: 'info',
+    });
+  }
+
+  if (metrics.security.updates.pendingUpdates > 0) {
+    summary.push({
+      text: 'Windows has pending updates',
+      severity: 'warning',
+    });
+  }
+
+  if (privacyRisks && privacyRisks > 0) {
+    summary.push({
+      text: `${privacyRisks} privacy risks found`,
+      severity: 'warning',
+    });
+  }
+
+  if (summary.length === 0) {
+    summary.push({
+      text: 'Your PC is in great shape',
+      severity: 'success',
+    });
+  }
+
+  return summary;
+}
+
+function determineCategorySeverity(score: number): 'success' | 'warning' | 'danger' {
+  if (score >= 80) return 'success';
+  if (score >= 60) return 'warning';
+  return 'danger';
+}
+
+function buildCategoryDetails(
+  metrics: DashboardMetrics,
+  privacyRisks: number | null,
+  scores: CategoryScores
+): HealthCategoryDetail[] {
+  const privacy = privacyRisks ?? 0;
+  const privacyScore = clamp(100 - privacy * 10);
+
+  const securityDetail = (() => {
+    if (!metrics.security.defender.enabled) return 'Windows Defender disabled';
+    if (!metrics.security.defender.realTimeProtection) return 'Real-time protection off';
+    if (!metrics.security.firewall.enabled) return 'Firewall disabled';
+    if (metrics.security.updates.pendingUpdates > 0) return `${metrics.security.updates.pendingUpdates} pending updates`;
+    return 'All protections active';
+  })();
+
+  const firstDrive = metrics.storage[0];
+  const storageDetail = firstDrive
+    ? `${toGB(metrics.performance.potentialRecoverable).toFixed(1)} GB junk files`
+    : 'No storage data';
+
+  return [
+    {
+      id: 'storage',
+      name: 'Storage',
+      score: Math.round(scores.storage),
+      detail: storageDetail,
+      actionLabel: 'View Details',
+      path: '/junk-cleaner',
+      severity: determineCategorySeverity(scores.storage),
+    },
+    {
+      id: 'memory',
+      name: 'Memory',
+      score: Math.round(scores.memory),
+      detail: `${metrics.memory.usage.toFixed(0)}% Used`,
+      actionLabel: 'Optimize',
+      path: '/performance',
+      severity: determineCategorySeverity(scores.memory),
+    },
+    {
+      id: 'startup',
+      name: 'Startup',
+      score: Math.round(scores.performance),
+      detail: `${metrics.performance.startupApps} Startup Apps`,
+      actionLabel: 'Review',
+      path: '/startup',
+      severity: determineCategorySeverity(scores.performance),
+    },
+    {
+      id: 'privacy',
+      name: 'Privacy',
+      score: Math.round(privacyScore),
+      detail: `${privacy} Privacy Risks`,
+      actionLabel: 'Clean',
+      path: '/privacy',
+      severity: determineCategorySeverity(privacyScore),
+    },
+    {
+      id: 'security',
+      name: 'Security',
+      score: Math.round(scores.security),
+      detail: securityDetail,
+      actionLabel: 'Review',
+      path: '/security',
+      severity: determineCategorySeverity(scores.security),
+    },
+    {
+      id: 'performance',
+      name: 'Performance',
+      score: Math.round(scores.performance),
+      detail: `CPU ${metrics.cpu.usage.toFixed(0)}% / RAM ${metrics.memory.usage.toFixed(0)}%`,
+      actionLabel: 'View',
+      path: '/performance',
+      severity: determineCategorySeverity(scores.performance),
+    },
+  ];
+}
+
+export function calculateHealthScore(metrics: DashboardMetrics, privacyRisks: number | null = null): HealthScore {
   const cpuScore = scoreFromUsage(metrics.cpu.usage);
 
   const memoryScore = scoreFromUsage(metrics.memory.usage);
@@ -114,6 +284,19 @@ export function calculateHealthScore(metrics: DashboardMetrics): HealthScore {
       performanceScore * weights.performance
   );
 
+  const summary = buildSummary(metrics, privacyRisks);
+  const categoryDetails = buildCategoryDetails(metrics, privacyRisks, {
+    cpu: Math.round(cpuScore),
+    memory: Math.round(memoryScore),
+    storage: Math.round(storageScore),
+    security: Math.round(securityScore),
+    performance: Math.round(performanceScore),
+  });
+
+  const issuesFound = summary.filter((s) => s.severity === 'warning' || s.severity === 'danger').length;
+  const bootImprovementSeconds = Math.min(60, metrics.performance.startupApps * 1.5);
+  const memoryRecovery = metrics.memory.cached || 0;
+
   return {
     overallScore: Math.round(overallScore),
     categoryScores: {
@@ -126,5 +309,11 @@ export function calculateHealthScore(metrics: DashboardMetrics): HealthScore {
     status: determineStatus(overallScore),
     suggestions: buildSuggestions(metrics),
     capturedAt: metrics.capturedAt,
+    issuesFound,
+    recoverableSpace: metrics.performance.potentialRecoverable,
+    memoryRecovery,
+    bootImprovementSeconds,
+    summary,
+    categoryDetails,
   };
 }

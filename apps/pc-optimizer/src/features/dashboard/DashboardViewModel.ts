@@ -16,6 +16,8 @@ import type {
   OptimizeExecuteResponse,
 } from './dashboard.types';
 import type { DashboardService } from './dashboard.service';
+import { privacyService as defaultPrivacyService } from '../privacy/privacy.service';
+import type { IPrivacyService } from '../privacy/privacy.service';
 import type { NavigateFunction } from 'react-router-dom';
 import { calculateHealthScore } from './dashboard.utils';
 
@@ -24,18 +26,23 @@ export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'comp
 export interface DashboardState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
   bootstrapError: string | null;
-  
+
   // Real-time metrics
   metrics: DashboardMetrics | null;
   metricsLoading: boolean;
   metricsError: string | null;
   lastMetricsUpdate: number | null;
-  
+
   // Health score
   healthScore: HealthScore | null;
   healthScoreLoading: boolean;
   healthScoreError: string | null;
-  
+
+  // Privacy risk count (loaded from privacy service)
+  privacyRisks: number | null;
+  privacyRisksLoading: boolean;
+  privacyRisksError: string | null;
+
   // Optimization flow
   optimizeStep: OptimizeStep;
   optimizePreview: OptimizePreview | null;
@@ -43,7 +50,7 @@ export interface DashboardState {
   optimizePreviewError: string | null;
   optimizeResult: OptimizeExecuteResponse | null;
   optimizeError: string | null;
-  
+
   // Quick actions
   quickActionsOpen: boolean;
 }
@@ -53,27 +60,34 @@ const METRICS_POLL_INTERVAL_MS = 2000;
 export class DashboardViewModel extends ViewModel<DashboardState> {
   private metricsPollTimer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(private readonly service: DashboardService) {
+  constructor(
+    private readonly service: DashboardService,
+    private readonly privacyService: IPrivacyService = defaultPrivacyService
+  ) {
     super({
       bootstrap: 'idle',
       bootstrapError: null,
-      
+
       metrics: null,
       metricsLoading: false,
       metricsError: null,
       lastMetricsUpdate: null,
-      
+
       healthScore: null,
       healthScoreLoading: false,
       healthScoreError: null,
-      
+
+      privacyRisks: null,
+      privacyRisksLoading: false,
+      privacyRisksError: null,
+
       optimizeStep: 'idle',
       optimizePreview: null,
       optimizePreviewLoading: false,
       optimizePreviewError: null,
       optimizeResult: null,
       optimizeError: null,
-      
+
       quickActionsOpen: false,
     });
   }
@@ -82,22 +96,25 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   // Lifecycle
   // ------------------------------------------------------------------
   async bootstrap(): Promise<void> {
-    if (this.state.bootstrap === 'loading' || this.state.bootstrap === 'ready') return;
-    this.setState({ bootstrap: 'loading', bootstrapError: null });
-    
+    if (this.state.bootstrap === 'ready') return;
+    // Render the dashboard shell immediately; load data in the background.
+    this.setState({
+      bootstrap: 'ready',
+      bootstrapError: null,
+      metricsLoading: true,
+      privacyRisksLoading: true,
+      healthScoreLoading: true,
+    });
+    void this.bootstrapData();
+  }
+
+  private async bootstrapData(): Promise<void> {
     try {
-      // Initial metrics load
-      await this.loadMetrics();
-      await this.loadHealthScore();
-      
-      this.setState({ bootstrap: 'ready' });
-      this.startMetricsPolling();
+      await Promise.all([this.loadMetrics(), this.loadPrivacyRisks()]);
     } catch (err) {
-      this.setState({
-        bootstrap: 'error',
-        bootstrapError: err instanceof Error ? err.message : String(err),
-      });
+      console.error('Dashboard bootstrap failed:', err);
     }
+    this.startMetricsPolling();
   }
 
   override dispose(): void {
@@ -116,9 +133,8 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         metrics,
         metricsLoading: false,
         lastMetricsUpdate: Date.now(),
-        // Incremental health score: derive from metrics without a second RPC.
-        healthScore: calculateHealthScore(metrics),
       });
+      this.recalculateHealth(metrics, this.state.privacyRisks);
     } catch (err) {
       this.setState({
         metricsLoading: false,
@@ -127,20 +143,27 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     }
   }
 
-  async loadHealthScore(): Promise<void> {
-    this.setState({ healthScoreLoading: true, healthScoreError: null });
+  async loadPrivacyRisks(): Promise<void> {
+    this.setState({ privacyRisksLoading: true, privacyRisksError: null });
     try {
-      const healthScore = await this.service.getHealthScore();
-      this.setState({
-        healthScore,
-        healthScoreLoading: false,
-      });
+      const result = await this.privacyService.detectBrowsers();
+      const risks = result.browsers.length;
+      this.setState({ privacyRisks: risks, privacyRisksLoading: false });
+      this.recalculateHealth(this.state.metrics, risks);
     } catch (err) {
       this.setState({
-        healthScoreLoading: false,
-        healthScoreError: err instanceof Error ? err.message : String(err),
+        privacyRisksLoading: false,
+        privacyRisksError: err instanceof Error ? err.message : String(err),
       });
     }
+  }
+
+  private recalculateHealth(metrics = this.state.metrics, privacyRisks = this.state.privacyRisks): void {
+    if (!metrics) return;
+    this.setState({
+      healthScore: calculateHealthScore(metrics, privacyRisks),
+      healthScoreLoading: false,
+    });
   }
 
   // ------------------------------------------------------------------
@@ -171,7 +194,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
 
   advanceToOptimizeConfirm(): void {
     if (!this.state.optimizePreview) return;
-    this.setState({ optimizeStep: 'confirm' });
+    void this.executeOptimize();
   }
 
   cancelOptimizeFlow(): void {
@@ -245,15 +268,14 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   private async pollMetricsOnce(): Promise<void> {
     // Don't poll if optimization is running to avoid conflicts
     if (this.state.optimizeStep === 'optimizing') return;
-    
+
     try {
       const metrics = await this.service.getMetrics();
       this.setState({
         metrics,
         lastMetricsUpdate: Date.now(),
-        // Incremental health score: recompute every poll cycle without extra RPC.
-        healthScore: calculateHealthScore(metrics),
       });
+      this.recalculateHealth(metrics, this.state.privacyRisks);
     } catch (err) {
       // Silently fail on polling errors to avoid UI disruption
       console.warn('Metrics poll failed:', err);

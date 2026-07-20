@@ -73,6 +73,13 @@ export interface PerformanceMetrics {
   potentialRecoverable: number;
 }
 
+export interface NetworkMetrics {
+  uploadSpeed: number;
+  downloadSpeed: number;
+  totalBytesSent: number;
+  totalBytesReceived: number;
+}
+
 export interface DashboardMetrics {
   cpu: CPUMetrics;
   memory: MemoryMetrics;
@@ -80,6 +87,7 @@ export interface DashboardMetrics {
   windows: WindowsInfo;
   security: SecurityMetrics;
   performance: PerformanceMetrics;
+  network?: NetworkMetrics;
   capturedAt: string;
 }
 
@@ -91,12 +99,34 @@ export interface CategoryScores {
   performance: number;
 }
 
+export interface HealthSummaryItem {
+  text: string;
+  severity: 'info' | 'success' | 'warning' | 'danger';
+}
+
+export interface HealthCategoryDetail {
+  id: string;
+  name: string;
+  score: number;
+  detail: string;
+  actionLabel: string;
+  path: string;
+  severity: 'success' | 'warning' | 'danger';
+}
+
 export interface HealthScore {
   overallScore: number;
   categoryScores: CategoryScores;
   status: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
   suggestions: string[];
   capturedAt: string;
+  // Dashboard 2.0 commercial health center additions
+  issuesFound: number;
+  recoverableSpace: number;
+  memoryRecovery: number;
+  bootImprovementSeconds: number;
+  summary: HealthSummaryItem[];
+  categoryDetails: HealthCategoryDetail[];
 }
 
 export interface OptimizeAction {

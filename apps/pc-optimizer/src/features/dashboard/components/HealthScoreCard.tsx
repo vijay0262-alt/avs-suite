@@ -1,4 +1,5 @@
 import { Card } from '@avs/ui';
+import { formatBytes } from '@avs/shared/utils';
 import { HEALTH_STATUS_CONFIG } from '../dashboard.types';
 import type { HealthScore } from '../dashboard.types';
 
@@ -8,32 +9,29 @@ export interface HealthScoreCardProps {
 }
 
 export function HealthScoreCard({ healthScore, loading }: HealthScoreCardProps) {
-  if (loading) {
+  if (loading || !healthScore) {
     return (
       <Card title="Health Score">
         <div className="flex items-center justify-center py-12">
-          <div className="text-sm text-text-muted">Loading health score...</div>
-        </div>
-      </Card>
-    );
-  }
-
-  if (!healthScore) {
-    return (
-      <Card title="Health Score">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-sm text-text-muted">Unable to load health score</div>
+          <div className="text-sm text-text-muted">Calculating health score...</div>
         </div>
       </Card>
     );
   }
 
   const config = HEALTH_STATUS_CONFIG[healthScore.status];
-  const scoreColor = healthScore.overallScore >= 80 
-    ? 'text-semantic-success' 
-    : healthScore.overallScore >= 60 
-      ? 'text-semantic-warning' 
-      : 'text-semantic-danger';
+  const scoreColor =
+    healthScore.overallScore >= 80
+      ? 'text-semantic-success'
+      : healthScore.overallScore >= 60
+        ? 'text-semantic-warning'
+        : 'text-semantic-danger';
+  const strokeColor =
+    healthScore.overallScore >= 80
+      ? 'stroke-semantic-success'
+      : healthScore.overallScore >= 60
+        ? 'stroke-semantic-warning'
+        : 'stroke-semantic-danger';
 
   return (
     <Card title="Health Score" role="region" aria-labelledby="health-score-title">
@@ -41,118 +39,76 @@ export function HealthScoreCard({ healthScore, loading }: HealthScoreCardProps) 
       <div className="space-y-6">
         {/* Overall Score */}
         <div className="flex items-center gap-6">
-          <div className="relative h-32 w-32" role="img" aria-label={`Health score: ${healthScore.overallScore} out of 100, status: ${config.label}`}>
-            <svg className="h-full w-full transform -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
+          <div
+            className="relative h-32 w-32 shrink-0"
+            role="img"
+            aria-label={`Health score: ${healthScore.overallScore} out of 100, status: ${config.label}`}
+          >
+            <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
               <circle
                 cx="50"
                 cy="50"
                 r="45"
                 fill="none"
-                stroke="currentColor"
+                className="stroke-surface-muted"
                 strokeWidth="8"
-                className="text-surface-muted"
               />
               <circle
                 cx="50"
                 cy="50"
                 r="45"
                 fill="none"
-                stroke="currentColor"
+                className={strokeColor}
                 strokeWidth="8"
                 strokeLinecap="round"
                 strokeDasharray={`${healthScore.overallScore * 2.83} 283`}
-                className={scoreColor}
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
-                <div className={`text-3xl font-bold ${scoreColor}`}>
-                  {healthScore.overallScore}
-                </div>
+                <div className={`text-3xl font-bold ${scoreColor}`}>{healthScore.overallScore}</div>
                 <div className="text-xs text-text-muted">/ 100</div>
               </div>
             </div>
           </div>
+
           <div className="flex-1">
-            <div className={`text-xl font-semibold ${config.color}`}>
-              {config.label}
+            <div className={`text-2xl font-semibold ${config.color}`}>{config.label}</div>
+            <div className="mt-1 inline-flex items-center rounded-full bg-surface-muted px-3 py-1 text-sm font-medium text-text-secondary">
+              {healthScore.issuesFound > 0 ? `${healthScore.issuesFound} Issues Found` : 'No Issues Found'}
             </div>
             <div className="mt-2 text-sm text-text-secondary">
-              Your system is in {config.label.toLowerCase()} condition.
+              {healthScore.status === 'excellent' || healthScore.status === 'good'
+                ? 'Your PC is in great shape.'
+                : 'Your PC can be improved with a quick cleanup.'}
             </div>
           </div>
         </div>
 
-        {/* Category Scores */}
-        <div>
-          <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">
-            Category Scores
-          </div>
-          <div className="space-y-3" role="list" aria-label="Category health scores">
-            <CategoryBar
-              label="CPU"
-              score={healthScore.categoryScores.cpu}
-              color={healthScore.categoryScores.cpu >= 80 ? 'success' : healthScore.categoryScores.cpu >= 60 ? 'warning' : 'danger'}
-            />
-            <CategoryBar
-              label="Memory"
-              score={healthScore.categoryScores.memory}
-              color={healthScore.categoryScores.memory >= 80 ? 'success' : healthScore.categoryScores.memory >= 60 ? 'warning' : 'danger'}
-            />
-            <CategoryBar
-              label="Storage"
-              score={healthScore.categoryScores.storage}
-              color={healthScore.categoryScores.storage >= 80 ? 'success' : healthScore.categoryScores.storage >= 60 ? 'warning' : 'danger'}
-            />
-            <CategoryBar
-              label="Security"
-              score={healthScore.categoryScores.security}
-              color={healthScore.categoryScores.security >= 80 ? 'success' : healthScore.categoryScores.security >= 60 ? 'warning' : 'danger'}
-            />
-            <CategoryBar
-              label="Performance"
-              score={healthScore.categoryScores.performance}
-              color={healthScore.categoryScores.performance >= 80 ? 'success' : healthScore.categoryScores.performance >= 60 ? 'warning' : 'danger'}
-            />
-          </div>
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3">
+          <Stat label="Recoverable" value={formatBytes(healthScore.recoverableSpace)} />
+          <Stat label="Memory" value={formatBytes(healthScore.memoryRecovery)} />
+          <Stat
+            label="Boot"
+            value={
+              healthScore.bootImprovementSeconds > 0
+                ? `${Math.round(healthScore.bootImprovementSeconds)}s faster`
+                : 'Optimized'
+            }
+          />
         </div>
-
-        {/* Suggestions */}
-        {healthScore.suggestions.length > 0 && (
-          <div>
-            <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">
-              Suggestions
-            </div>
-            <ul className="space-y-2 text-sm text-text-secondary" role="list" aria-label="System improvement suggestions">
-              {healthScore.suggestions.map((suggestion, index) => (
-                <li key={index} className="flex items-start gap-2">
-                  <span className="text-semantic-primary" aria-hidden="true">•</span>
-                  <span>{suggestion}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     </Card>
   );
 }
 
-function CategoryBar({ label, score, color }: { label: string; score: number; color: 'success' | 'warning' | 'danger' }) {
-  const colorClass = color === 'success' ? 'bg-semantic-success' : color === 'warning' ? 'bg-semantic-warning' : 'bg-semantic-danger';
-  
+function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="w-20 text-sm text-text-secondary">{label}</div>
-      <div className="flex-1 h-2 bg-surface-muted rounded-full overflow-hidden">
-        <div
-          className={`h-full ${colorClass} transition-all duration-500 ease-out`}
-          style={{ width: `${score}%` }}
-        />
-      </div>
-      <div className="w-12 text-right text-sm font-medium text-text-primary tabular-nums">
-        {Math.round(score)}
-      </div>
+    <div className="rounded-lg bg-surface-muted p-3 text-center">
+      <div className="text-lg font-bold text-text-primary tabular-nums">{value}</div>
+      <div className="text-xs text-text-muted">{label}</div>
     </div>
   );
 }
+
