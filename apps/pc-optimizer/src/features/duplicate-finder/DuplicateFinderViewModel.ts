@@ -3,7 +3,7 @@
  */
 
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
-import type { DuplicateScanResult, DuplicateDeleteResult, DuplicateFile } from './duplicate-finder.types';
+import type { DuplicateScanResult, DuplicateDeleteResult, DuplicateFile, DriveInfo } from './duplicate-finder.types';
 import type { IDuplicateFinderService } from './duplicate-finder.service';
 import { duplicateFinderService } from './duplicate-finder.service';
 
@@ -15,6 +15,9 @@ export interface DuplicateFinderState {
   deleting: boolean;
   selectedFiles: Set<string>;
   directories: string[];
+  drives: DriveInfo[];
+  selectedDrive: string | null;
+  customDirectories: string;
   deleteResult: DuplicateDeleteResult | null;
 }
 
@@ -28,6 +31,9 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
       deleting: false,
       selectedFiles: new Set(),
       directories: [],
+      drives: [],
+      selectedDrive: null,
+      customDirectories: '',
       deleteResult: null,
     });
   }
@@ -35,9 +41,21 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
   async bootstrap() {
     this.setState({ bootstrap: 'loading', bootstrapError: null });
     try {
+      await this.loadDrives();
       this.setState({ bootstrap: 'ready' });
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to initialize';
+      this.setState({ bootstrap: 'error', bootstrapError: error });
+      throw err;
+    }
+  }
+
+  async loadDrives() {
+    try {
+      const drives = await this.service.listDrives();
+      this.setState({ drives });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : 'Failed to load drives';
       this.setState({ bootstrap: 'error', bootstrapError: error });
       throw err;
     }
@@ -68,7 +86,8 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
       
       // Re-scan after deletion
       if (result.deletedCount > 0) {
-        await this.scan(this.state.directories);
+        const directories = this.state.selectedDrive ? [this.state.selectedDrive] : undefined;
+        await this.scan(directories);
       }
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to delete files';
@@ -130,6 +149,14 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
     }
     
     this.setState({ selectedFiles: newSelected });
+  }
+
+  selectDrive(drive: string) {
+    this.setState({ selectedDrive: drive, customDirectories: '' });
+  }
+
+  setCustomDirectories(value: string) {
+    this.setState({ customDirectories: value, selectedDrive: null });
   }
 
   getFilesToDelete(): DuplicateFile[] {

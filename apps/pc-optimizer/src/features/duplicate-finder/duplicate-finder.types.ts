@@ -2,6 +2,16 @@
  * Duplicate Finder types
  */
 
+export interface DriveInfo {
+  device: string;
+  mountpoint: string;
+  fstype: string;
+  total: number;
+  used: number;
+  free: number;
+  percent: number;
+}
+
 export interface DuplicateFile {
   path: string;
   size: number;
@@ -39,5 +49,8 @@ export interface DuplicateFinderState {
   deleting: boolean;
   selectedFiles: Set<string>;
   directories: string[];
+  drives: DriveInfo[];
+  selectedDrive: string | null;
+  customDirectories: string;
   deleteResult: DuplicateDeleteResult | null;
 }

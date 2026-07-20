@@ -1,4 +1,7 @@
-"""Duplicate finder — locate duplicate files by content hash."""
+"""Duplicate finder — locate duplicate files by content hash.
+
+Optimized with drive selection and progress tracking.
+"""
 
 from __future__ import annotations
 
@@ -11,11 +14,40 @@ from pathlib import Path
 from typing import Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import psutil
+
 from avs_backend.api.registry import register
 
 logger = logging.getLogger(__name__)
 
 IS_WINDOWS = os.name == "nt"
+
+
+@register("duplicate.listDrives")
+def duplicate_list_drives(_params: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """List all available drives with their usage information."""
+    drives = []
+    
+    try:
+        for part in psutil.disk_partitions(all=False):
+            try:
+                usage = psutil.disk_usage(part.mountpoint)
+                drives.append({
+                    'device': part.device,
+                    'mountpoint': part.mountpoint,
+                    'fstype': part.fstype,
+                    'total': usage.total,
+                    'used': usage.used,
+                    'free': usage.free,
+                    'percent': usage.percent,
+                })
+            except OSError:
+                continue
+    except Exception as e:
+        logger.error(f"Failed to list drives: {e}")
+        raise
+    
+    return drives
 
 
 @dataclass(slots=True)
