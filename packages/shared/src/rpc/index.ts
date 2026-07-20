@@ -69,13 +69,44 @@ export const RPC_METHODS = {
   CLEANER_CLEAN_CANCEL: 'cleaner.clean.cancel',
   CLEANER_CLEAN_LOGS: 'cleaner.clean.logs',
   CLEANER_CLEAN_UNDO: 'cleaner.clean.undo',
+  // Startup Manager
   STARTUP_LIST: 'startup.list',
-  STARTUP_TOGGLE: 'startup.toggle',
+  STARTUP_DISABLE: 'startup.disable',
+  STARTUP_ENABLE: 'startup.enable',
+  STARTUP_BACKUPS: 'startup.backups',
+  STARTUP_RESTORE: 'startup.restore',
+  STARTUP_REFRESH_CACHE: 'startup.refreshCache',
+
+  // Privacy Cleaner
   PRIVACY_SCAN: 'privacy.scan',
   PRIVACY_CLEAN: 'privacy.clean',
+  PRIVACY_DETECT_BROWSERS: 'privacy.detectBrowsers',
+
+  // Duplicate Finder
   DUPLICATE_SCAN: 'duplicate.scan',
+  DUPLICATE_DELETE: 'duplicate.delete',
+  DUPLICATE_LIST_DRIVES: 'duplicate.listDrives',
+
+  // Disk Analyzer
   DISK_ANALYZE: 'disk.analyze',
-  PERFORMANCE_APPLY: 'performance.apply',
+  DISK_LIST_DRIVES: 'disk.listDrives',
+
+  // Performance Monitor + Memory Optimizer
+  PERFORMANCE_MONITOR_METRICS: 'performance.monitor.getMetrics',
+  PERFORMANCE_MONITOR_GRAPH_HISTORY: 'performance.monitor.getGraphHistory',
+  PERFORMANCE_MONITOR_CLEAR_GRAPH: 'performance.monitor.clearGraphHistory',
+  PERFORMANCE_MONITOR_TOP_PROCESSES: 'performance.monitor.getTopProcesses',
+  PERFORMANCE_MONITOR_ALERTS: 'performance.monitor.getAlerts',
+  PERFORMANCE_MEMORY_INFO: 'performance.memory.getInfo',
+  PERFORMANCE_MEMORY_OPTIMIZE: 'performance.memory.optimize',
+  PERFORMANCE_MEMORY_PROCESSES: 'performance.memory.getProcesses',
+  PERFORMANCE_MEMORY_CHECK_PERMISSIONS: 'performance.memory.checkPermissions',
+
+  // System Information
+  SYSTEM_COMPREHENSIVE: 'system.comprehensive',
+  SYSTEM_STATIC: 'system.static',
+  SYSTEM_DYNAMIC: 'system.dynamic',
+  SYSTEM_REFRESH_CACHE: 'system.refreshCache',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];
