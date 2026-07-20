@@ -1,9 +1,9 @@
 """Drive Wiper / Secure File Shredder RPC handlers."""
-from avs_backend.api.registry import method
+from avs_backend.api.registry import register
 from .wiper_engine import list_drives, shred_items, wipe_free_space
 
 
-@method("wiper.drives")
+@register("wiper.drives")
 def wiper_drives(request: dict):
     return {
         "drives": [
@@ -19,7 +19,7 @@ def wiper_drives(request: dict):
     }
 
 
-@method("wiper.shred")
+@register("wiper.shred")
 def wiper_shred(request: dict):
     paths = request.get("paths", [])
     passes = request.get("passes", 3)
@@ -36,7 +36,7 @@ def wiper_shred(request: dict):
     }
 
 
-@method("wiper.wipeFreeSpace")
+@register("wiper.wipeFreeSpace")
 def wiper_wipe_free_space(request: dict):
     drive = request.get("drive", "")
     passes = request.get("passes", 1)
