@@ -18,6 +18,9 @@ export interface IPrivacyService {
 }
 
 class PrivacyService implements IPrivacyService {
+  private browserCache: { browsers: string[]; timestamp: number } | null = null;
+  private readonly BROWSER_CACHE_TTL_MS = 60_000;
+
   async scan(categories?: string[]): Promise<PrivacyScanResult> {
     const params = categories ? { categories } : undefined;
     return await client().call('privacy.scan', params);
@@ -28,7 +31,13 @@ class PrivacyService implements IPrivacyService {
   }
 
   async detectBrowsers(): Promise<{ browsers: string[] }> {
-    return await client().call('privacy.detectBrowsers');
+    const now = Date.now();
+    if (this.browserCache && now - this.browserCache.timestamp < this.BROWSER_CACHE_TTL_MS) {
+      return { browsers: this.browserCache.browsers };
+    }
+    const result = (await client().call('privacy.detectBrowsers')) as { browsers: string[] };
+    this.browserCache = { browsers: result.browsers, timestamp: now };
+    return result;
   }
 }
 

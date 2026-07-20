@@ -15,6 +15,8 @@ export interface PrivacyState {
   cleaning: boolean;
   selectedCategories: Set<string>;
   browsersDetected: string[];
+  browsersLoading: boolean;
+  browsersError: string | null;
   cleanResult: PrivacyCleanResult | null;
 }
 
@@ -57,22 +59,30 @@ export class PrivacyViewModel extends ViewModel<PrivacyState> {
       cleaning: false,
       selectedCategories: new Set(ALL_CATEGORIES),
       browsersDetected: [],
+      browsersLoading: false,
+      browsersError: null,
       cleanResult: null,
     });
   }
 
   async bootstrap() {
-    this.setState({ bootstrap: 'loading', bootstrapError: null });
+    // Render the shell instantly; detect browsers in the background.
+    this.setState({
+      bootstrap: 'ready',
+      bootstrapError: null,
+      browsersLoading: true,
+      browsersError: null,
+    });
+    void this.loadBrowsers();
+  }
+
+  private async loadBrowsers(): Promise<void> {
     try {
       const browsers = await this.service.detectBrowsers();
-      this.setState({ 
-        browsersDetected: browsers.browsers,
-        bootstrap: 'ready' 
-      });
+      this.setState({ browsersDetected: browsers.browsers, browsersLoading: false });
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to detect browsers';
-      this.setState({ bootstrap: 'error', bootstrapError: error });
-      throw err;
+      this.setState({ browsersLoading: false, browsersError: error });
     }
   }
 

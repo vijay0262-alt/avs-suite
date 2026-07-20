@@ -109,7 +109,9 @@ export default function PrivacyPage() {
       {state.bootstrap === 'ready' && (
         <>
           <Card title="Detected Browsers" className="mb-4">
-            {state.browsersDetected.length === 0 ? (
+            {state.browsersLoading ? (
+              <p className="text-text-secondary">Detecting browsers...</p>
+            ) : state.browsersDetected.length === 0 ? (
               <p className="text-text-secondary">No browsers detected</p>
             ) : (
               <div className="flex gap-2">

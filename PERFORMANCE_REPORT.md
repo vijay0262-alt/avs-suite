@@ -219,6 +219,21 @@ The dashboard was polling `dashboard.metrics` every 2 seconds to render the live
 ### Runtime Benchmark Note
 A full in-process runtime timing run was not collected in this session because the shared RPC server startup was canceled. The design target for `dashboard.live` is <100 ms per poll, and the endpoint is a lock-protected dict copy with no on-request collection.
 
-## 10. Conclusion
+## 10. Privacy Cleaner Background Loading
 
-All Phase 2C high-priority and medium-priority performance tasks have been implemented and build successfully. The dashboard.live split now isolates fast live metrics from the heavier health analysis, further reducing UI blocking. Antivirus false-positive root causes have been identified and documented with actionable next steps. Remaining items include collecting real runtime metrics with the `PerformanceMonitor` utilities and continuing incremental health-score caching in Phase 3.
+### Background
+The Privacy Cleaner page blocked rendering in `bootstrap()` while `privacy.detectBrowsers` ran. Browser detection can be slow on systems with many profiles, so the page appeared frozen until it completed.
+
+### Implementation
+- `PrivacyViewModel.bootstrap()` now sets the page to `ready` immediately and loads browser detection in the background.
+- Added `browsersLoading` and `browsersError` to `PrivacyState` so the UI can show a loading indicator without blocking the category selection card.
+- `privacy.service.ts` now caches `detectBrowsers` results for 60 seconds, making dashboard privacy-risk loading and repeated Privacy page visits near-instant.
+
+### Files Modified
+- `apps/pc-optimizer/src/features/privacy/privacy.service.ts`
+- `apps/pc-optimizer/src/features/privacy/PrivacyViewModel.ts`
+- `apps/pc-optimizer/src/features/privacy/PrivacyPage.tsx`
+
+## 11. Conclusion
+
+All Phase 2C high-priority and medium-priority performance tasks have been implemented and build successfully. The dashboard.live split isolates fast live metrics from heavier health analysis, and the Privacy Cleaner now renders its shell instantly while browser detection loads in the background. Antivirus false-positive root causes have been identified and documented with actionable next steps. Remaining items include collecting real runtime metrics with the `PerformanceMonitor` utilities and continuing incremental health-score caching in Phase 3.
