@@ -106,14 +106,14 @@ _network_download_history: deque[float] = deque(maxlen=30)
 def get_cpu_metrics() -> CpuMetrics:
     """Get current CPU metrics."""
     try:
-        cpu_percent = psutil.cpu_percent(interval=0.1)
         cores = psutil.cpu_count(logical=True)
         freq = psutil.cpu_freq()
         freq_mhz = freq.current if freq else 0.0
         process_count = len(psutil.pids())
-        
-        # Per-core usage
+
+        # Per-core usage; derive overall usage from it to avoid a second sleep
         per_core_usage = psutil.cpu_percent(interval=0.1, percpu=True)
+        cpu_percent = sum(per_core_usage) / len(per_core_usage) if per_core_usage else 0.0
         
         # Temperature (if available)
         temperature_celsius = 0.0
@@ -312,14 +312,17 @@ def get_system_metrics() -> SystemMetrics:
         disk = get_disk_metrics()
         network = get_network_metrics()
 
-        # Get threads and handles
+        # Get threads only; handles are expensive on Windows and are shown as 0
         threads = 0
         handles = 0
         try:
-            threads = sum(p.num_threads() for p in psutil.process_iter(['num_threads']) if p.info['num_threads'])
-            handles = sum(p.num_handles() for p in psutil.process_iter(['num_handles']) if p.info.get('num_handles'))
+            for p in psutil.process_iter(['num_threads']):
+                try:
+                    threads += p.info['num_threads'] or 0
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
         except Exception as e:
-            logger.debug(f"Could not get threads/handles: {e}")
+            logger.debug(f"Could not get threads: {e}")
 
         # Get system uptime
         uptime_seconds = 0.0
@@ -364,44 +367,42 @@ def metrics_to_dict(metrics: SystemMetrics) -> dict[str, Any]:
     """Convert SystemMetrics to dictionary for JSON serialization."""
     return {
         "cpu": {
-            "usagePercent": metrics.cpu.usage_percent,
+            "usage": metrics.cpu.usage_percent,
             "perCoreUsage": metrics.cpu.per_core_usage,
-            "cores": metrics.cpu.cores,
-            "frequencyMhz": metrics.cpu.frequency_mhz,
-            "processCount": metrics.cpu.process_count,
+            "clockSpeed": metrics.cpu.frequency_mhz,
             "temperatureCelsius": metrics.cpu.temperature_celsius,
             "processorName": metrics.cpu.processor_name,
         },
         "memory": {
-            "totalBytes": metrics.memory.total_bytes,
-            "usedBytes": metrics.memory.used_bytes,
-            "freeBytes": metrics.memory.free_bytes,
-            "availableBytes": metrics.memory.available_bytes,
-            "usagePercent": metrics.memory.usage_percent,
-            "cachedBytes": metrics.memory.cached_bytes,
-            "committedBytes": metrics.memory.committed_bytes,
+            "total": metrics.memory.total_bytes,
+            "used": metrics.memory.used_bytes,
+            "free": metrics.memory.free_bytes,
+            "cached": metrics.memory.cached_bytes,
+            "committed": metrics.memory.committed_bytes,
+            "usage": metrics.memory.usage_percent,
         },
         "disk": {
-            "totalBytes": metrics.disk.total_bytes,
-            "usedBytes": metrics.disk.used_bytes,
-            "freeBytes": metrics.disk.free_bytes,
-            "usagePercent": metrics.disk.usage_percent,
-            "readBytesPerSec": metrics.disk.read_bytes_per_sec,
-            "writeBytesPerSec": metrics.disk.write_bytes_per_sec,
-            "activeTimePercent": metrics.disk.active_time_percent,
+            "readSpeed": metrics.disk.read_bytes_per_sec,
+            "writeSpeed": metrics.disk.write_bytes_per_sec,
+            "activeTime": metrics.disk.active_time_percent,
+            "freeSpace": metrics.disk.free_bytes,
+            "usedSpace": metrics.disk.used_bytes,
             "healthStatus": metrics.disk.health_status,
         },
         "network": {
-            "bytesSent": metrics.network.bytes_sent,
-            "bytesRecv": metrics.network.bytes_recv,
-            "bytesSentPerSec": metrics.network.bytes_sent_per_sec,
-            "bytesRecvPerSec": metrics.network.bytes_recv_per_sec,
+            "uploadSpeed": metrics.network.bytes_sent_per_sec,
+            "downloadSpeed": metrics.network.bytes_recv_per_sec,
+            "totalBytesSent": metrics.network.bytes_sent,
+            "totalBytesReceived": metrics.network.bytes_recv,
         },
-        "threads": metrics.threads,
-        "handles": metrics.handles,
-        "uptimeSeconds": metrics.uptime_seconds,
-        "loggedInUser": metrics.logged_in_user,
-        "windowsVersion": metrics.windows_version,
+        "system": {
+            "uptime": metrics.uptime_seconds,
+            "runningProcesses": metrics.cpu.process_count,
+            "threads": metrics.threads,
+            "handles": metrics.handles,
+            "loggedInUser": metrics.logged_in_user,
+            "windowsVersion": metrics.windows_version,
+        },
     }
 
 
@@ -460,25 +461,38 @@ class ProcessInfo:
 
 def get_top_processes(sort_by: str = "cpu", limit: int = 10, search: str = "") -> list[ProcessInfo]:
     """Get top processes by CPU or memory usage.
-    
+
     Args:
         sort_by: Sort by "cpu" or "memory"
         limit: Maximum number of processes to return
         search: Filter by process name (case-insensitive)
-    
+
     Returns:
         List of ProcessInfo objects
     """
-    processes = []
-    
     try:
-        for proc in psutil.process_iter(['pid', 'name', 'status']):
+        procs = list(psutil.process_iter(['pid', 'name', 'status']))
+
+        # Establish a non-blocking CPU baseline for all processes
+        for proc in procs:
             try:
-                cpu_percent = proc.cpu_percent(interval=0.1)
-                mem_info = proc.memory_info()
-                memory_bytes = mem_info.rss if hasattr(mem_info, 'rss') else 0
-                
-                # Determine status
+                proc.cpu_percent(interval=None)
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+            except Exception as e:
+                logger.debug(f"Error establishing CPU baseline: {e}")
+
+        # Short, single sleep shared by all processes instead of per-process 0.1s sleeps
+        time.sleep(0.1)
+
+        # Lightweight first pass: collect pid/name/status/cpu without memory_info
+        candidates = []
+        for proc in procs:
+            try:
+                name = proc.info['name']
+                if search and search.lower() not in name.lower():
+                    continue
+
                 status = proc.info['status']
                 if status == psutil.STATUS_RUNNING:
                     status_str = "running"
@@ -486,34 +500,59 @@ def get_top_processes(sort_by: str = "cpu", limit: int = 10, search: str = "") -
                     status_str = "sleeping"
                 else:
                     status_str = "stopped"
-                
-                # Search filter
-                if search and search.lower() not in proc.info['name'].lower():
-                    continue
-                
-                process_info = ProcessInfo(
-                    pid=proc.info['pid'],
-                    name=proc.info['name'],
-                    cpu_percent=cpu_percent,
-                    memory_bytes=memory_bytes,
-                    status=status_str,
-                )
-                processes.append(process_info)
+
+                cpu_percent = proc.cpu_percent(interval=None)
+                candidates.append((proc, name, cpu_percent, status_str))
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
             except Exception as e:
-                logger.debug(f"Error processing process: {e}")
+                logger.debug(f"Error collecting CPU for process: {e}")
                 continue
-        
+
         # Sort processes
-        if sort_by == "cpu":
-            processes.sort(key=lambda p: p.cpu_percent, reverse=True)
-        elif sort_by == "memory":
-            processes.sort(key=lambda p: p.memory_bytes, reverse=True)
-        
-        # Limit results
+        if sort_by == "memory":
+            candidates.sort(key=lambda c: c[2], reverse=True)
+            top = candidates[:limit]
+            # For memory sort, still need RSS for each candidate; only fetch for the top-N selected above
+            with_mem = []
+            for proc, name, cpu, status_str in top:
+                try:
+                    mem_info = proc.memory_info()
+                    memory_bytes = mem_info.rss if hasattr(mem_info, 'rss') else 0
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    memory_bytes = 0
+                except Exception as e:
+                    logger.debug(f"Error getting memory for process: {e}")
+                    memory_bytes = 0
+                with_mem.append((proc, name, cpu, status_str, memory_bytes))
+            with_mem.sort(key=lambda c: c[4], reverse=True)
+            processes = [
+                ProcessInfo(pid=p.info['pid'], name=n, cpu_percent=c, memory_bytes=m, status=s)
+                for p, n, c, s, m in with_mem
+            ]
+        else:
+            # Default CPU sort: pick top by CPU, then fetch memory only for those
+            candidates.sort(key=lambda c: c[2], reverse=True)
+            top = candidates[:limit]
+            processes = []
+            for proc, name, cpu_percent, status_str in top:
+                try:
+                    mem_info = proc.memory_info()
+                    memory_bytes = mem_info.rss if hasattr(mem_info, 'rss') else 0
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    memory_bytes = 0
+                except Exception as e:
+                    logger.debug(f"Error getting memory for process: {e}")
+                    memory_bytes = 0
+                processes.append(ProcessInfo(
+                    pid=proc.info['pid'],
+                    name=name,
+                    cpu_percent=cpu_percent,
+                    memory_bytes=memory_bytes,
+                    status=status_str,
+                ))
+
         return processes[:limit]
-    
     except Exception as e:
         logger.error(f"Failed to get top processes: {e}")
         return []

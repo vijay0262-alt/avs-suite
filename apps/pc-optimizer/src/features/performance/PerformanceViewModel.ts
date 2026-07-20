@@ -37,14 +37,15 @@ export class PerformanceViewModel extends ViewModel<PerformanceState> {
   async bootstrap() {
     this.setState({ bootstrap: 'loading', bootstrapError: null });
     try {
-      await this.loadMetrics();
-      await this.loadGraphHistory();
-      await this.loadTopProcesses();
-      await this.loadAlerts();
+      // Load the primary metric snapshot and graph history first so the UI
+      // can render without waiting for the heavier process/alerts calls.
+      await Promise.all([this.loadMetrics(), this.loadGraphHistory()]);
       this.setState({ bootstrap: 'ready' });
-      
-      // Start auto-refresh
       this.startAutoRefresh();
+
+      // Top processes and alerts can finish in the background
+      void this.loadTopProcesses();
+      void this.loadAlerts();
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to load performance metrics';
       this.setState({ bootstrap: 'error', bootstrapError: error });

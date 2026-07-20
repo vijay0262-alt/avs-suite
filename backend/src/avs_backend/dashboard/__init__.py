@@ -729,15 +729,30 @@ def _get_memory_pressure() -> float:
             return 0.0
 
 
-def _get_startup_apps_count() -> int:
-    """Get count of startup applications."""
+# Startup-app scanning is slow (~4s). Warm the value in the background once the
+# module is imported and serve the last-known value synchronously.
+_startup_apps_value: int = 0
+_startup_apps_ready: bool = False
+
+
+def _refresh_startup_apps() -> None:
+    global _startup_apps_value, _startup_apps_ready
     try:
         from avs_backend.startup.startup_manager import scan_startup_entries
-        entries = scan_startup_entries()
-        return len(entries)
+        _startup_apps_value = len(scan_startup_entries())
     except Exception:
-        # Fallback to simple registry scan
-        return 0
+        pass
+    _startup_apps_ready = True
+
+
+threading.Thread(target=_refresh_startup_apps, daemon=True).start()
+
+
+def _get_startup_apps_count() -> int:
+    """Get count of startup applications."""
+    if _startup_apps_ready:
+        return _startup_apps_value
+    return 0
 
 
 def _get_background_processes_count() -> int:
@@ -965,7 +980,8 @@ def _get_defender_status() -> dict[str, Any]:
         return {}
     out = _run_powershell(
         "$s = Get-MpComputerStatus; "
-        "Write-Output \"$($s.AntivirusEnabled),$($s.RealTimeProtectionEnabled)\""
+        "Write-Output \"$($s.AntivirusEnabled),$($s.RealTimeProtectionEnabled)\"",
+        timeout=1.5,
     )
     if not out:
         return {"enabled": False, "realTimeProtection": False}
@@ -982,7 +998,8 @@ def _get_firewall_status() -> dict[str, Any]:
         return {}
     out = _run_powershell(
         "(Get-NetFirewallProfile | Where-Object { $_.Enabled -eq 'True' } | "
-        "Measure-Object).Count"
+        "Measure-Object).Count",
+        timeout=1.5,
     )
     if out is None:
         return {"enabled": False}
@@ -1025,7 +1042,8 @@ def _get_smartscreen_status() -> bool:
     out = _run_powershell(
         "(Get-ItemProperty -Path "
         "'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer' "
-        "-Name SmartScreenEnabled -ErrorAction SilentlyContinue).SmartScreenEnabled"
+        "-Name SmartScreenEnabled -ErrorAction SilentlyContinue).SmartScreenEnabled",
+        timeout=1.5,
     )
     if not out:
         return False
