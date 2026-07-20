@@ -38,6 +38,7 @@ export interface JunkCleanerService {
   // Scan
   list(): Promise<CleanerInfo[]>;
   startScan(only?: string[]): Promise<{ taskId: string }>;
+  refreshCache(): Promise<{ refreshed: boolean }>;
   getStatus(taskId?: string): Promise<ScanStatusSnapshot>;
   cancel(taskId: string): Promise<{ cancelled: boolean }>;
   getResults(taskId: string, cleanerId: string, offset: number, limit: number): Promise<ScanResultsPage>;
@@ -61,6 +62,8 @@ export const junkCleanerService: JunkCleanerService = {
   list: () => withLogging('list', () => client().call(RPC_METHODS.CLEANER_LIST)),
   startScan: (only) => withLogging('startScan', () => 
     client().call(RPC_METHODS.CLEANER_SCAN_START, only ? { only } : undefined)),
+  refreshCache: () => withLogging('refreshCache', () =>
+    client().call('cleaner.scan.refreshCache')),
   getStatus: (taskId) => withLogging('getStatus', () => 
     client().call(RPC_METHODS.CLEANER_SCAN_STATUS, taskId ? { taskId } : undefined)),
   cancel: (taskId) => withLogging('cancel', () => 

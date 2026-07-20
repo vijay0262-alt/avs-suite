@@ -73,21 +73,38 @@ class _Task:
 
 
 class ScanManager:
-    """Thread-safe orchestrator. Instantiated once per backend process."""
+    """Thread-safe orchestrator. Instantiated once per backend process.
+    
+    Optimized with result caching to avoid rescanning unchanged junk between
+    successive UI interactions. Cache is invalidated when cleaning is performed
+    or when an explicit refresh is requested.
+    """
 
     # Cap parallelism. Most cleaners are single-root, small trees, so
     # 4 workers is a good balance between throughput and I/O contention
     # (a spinning disk with more workers will thrash).
     DEFAULT_MAX_WORKERS = 4
+    DEFAULT_CACHE_TTL_SECONDS = 300  # 5 minutes
 
-    def __init__(self, cleaners: list[ICleaner], max_workers: int | None = None) -> None:
+    def __init__(
+        self,
+        cleaners: list[ICleaner],
+        max_workers: int | None = None,
+        cache_ttl_seconds: int | None = None,
+    ) -> None:
         self._cleaners = list(cleaners)
         self._max_workers = max_workers or self.DEFAULT_MAX_WORKERS
+        self._cache_ttl_seconds = cache_ttl_seconds or self.DEFAULT_CACHE_TTL_SECONDS
         self._lock = threading.RLock()
         self._task: _Task | None = None
         self._pool = ThreadPoolExecutor(
             max_workers=self._max_workers, thread_name_prefix="avs-cleaner"
         )
+
+        # Cache state
+        self._cached_task: _Task | None = None
+        self._cached_at: float = 0.0
+        self._cache_key: tuple[str, ...] = ()
 
     # ------------------------------------------------------------------
     # Introspection
@@ -104,6 +121,72 @@ class ScanManager:
         ]
 
     # ------------------------------------------------------------------
+    # Cache management
+    # ------------------------------------------------------------------
+    def _is_cache_valid(self, only: list[str] | None) -> bool:
+        """Check if a cached scan can be reused for the requested set."""
+        if self._cached_task is None or not self._cache_key:
+            return False
+        if self._cached_task.status != ScanStatus.COMPLETED:
+            return False
+        age = time.monotonic() - self._cached_at
+        if age >= self._cache_ttl_seconds:
+            return False
+        requested_key = self._cache_key_for(only)
+        return self._cache_key == requested_key
+
+    def _cache_key_for(self, only: list[str] | None) -> tuple[str, ...]:
+        """Build a stable cache key from the cleaner selection."""
+        if only is None:
+            return tuple(c.id for c in self._cleaners)
+        return tuple(sorted(only))
+
+    def _restore_from_cache(self, only: list[str] | None) -> str:
+        """Return a cached task ID, reusing scan results."""
+        with self._lock:
+            if self._cached_task is None:
+                raise RuntimeError("No cached task available")
+
+            # Build a new task that wraps the cached results so consumers
+            # can still query via the normal snapshot/results endpoints.
+            selected = self._cached_task.runtimes
+            if only is not None:
+                selected = [rt for rt in selected if rt.cleaner.id in only]
+
+            task = _Task(
+                task_id=uuid.uuid4().hex,
+                started_at=time.monotonic(),
+                finished_at=time.monotonic(),
+                status=ScanStatus.COMPLETED,
+            )
+            # Clone runtimes so the cache remains independent.
+            task.runtimes = [
+                _CleanerRuntime(
+                    cleaner=rt.cleaner,
+                    progress=rt.progress,
+                    future=None,
+                    result=rt.result,
+                )
+                for rt in selected
+            ]
+            self._task = task
+            log.info(
+                "Scan %s served from cache (age=%.1fs, cleaners=%s)",
+                task.task_id,
+                time.monotonic() - self._cached_at,
+                ",".join(rt.cleaner.id for rt in task.runtimes),
+            )
+            return task.task_id
+
+    def invalidate_cache(self) -> None:
+        """Invalidate the scan cache (called after cleaning or manual refresh)."""
+        with self._lock:
+            log.info("Scan cache invalidated")
+            self._cached_task = None
+            self._cached_at = 0.0
+            self._cache_key = ()
+
+    # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
     def start(self, only: list[str] | None = None) -> str:
@@ -111,11 +194,18 @@ class ScanManager:
 
         ``only`` — optional list of cleaner IDs to include; ``None``
         runs every registered cleaner.
+
+        Returns a cached result immediately if a recent successful scan
+        for the same cleaners exists.
         """
         with self._lock:
             if self._task is not None and self._task.status == ScanStatus.RUNNING:
                 self._task.cancel_event.set()
                 log.info("Superseding running scan %s", self._task.task_id)
+
+            # If we have a valid cache, return it immediately.
+            if self._is_cache_valid(only):
+                return self._restore_from_cache(only)
 
             selected = self._cleaners if only is None else [c for c in self._cleaners if c.id in only]
             if not selected:
@@ -360,6 +450,25 @@ class ScanManager:
         rt.progress = 100
         return result
 
+    def _maybe_cache_completed_scan(self, task: _Task) -> None:
+        """Cache a completed scan so subsequent starts can reuse it."""
+        if task.status != ScanStatus.COMPLETED:
+            return
+        with self._lock:
+            # Only cache when all cleaners ran (no partial `only` filter).
+            expected_ids = {c.id for c in self._cleaners}
+            actual_ids = {rt.cleaner.id for rt in task.runtimes}
+            if actual_ids != expected_ids:
+                return
+            self._cached_task = task
+            self._cached_at = time.monotonic()
+            self._cache_key = self._cache_key_for(None)
+            log.info(
+                "Scan cache updated with %d cleaner result(s) (ttl=%ds)",
+                len(task.runtimes),
+                self._cache_ttl_seconds,
+            )
+
     def _roll_up(self, task: _Task) -> None:
         if task.status != ScanStatus.RUNNING:
             return
@@ -373,6 +482,7 @@ class ScanManager:
             task.status = ScanStatus.FAILED
         else:
             task.status = ScanStatus.COMPLETED
+            self._maybe_cache_completed_scan(task)
 
     def _estimate_eta(self, task: _Task, avg_progress: int, elapsed_ms: int) -> int | None:
         if task.status != ScanStatus.RUNNING:

@@ -125,6 +125,14 @@ def cleaner_scan_cancel(params: dict[str, Any] | None) -> dict[str, bool]:
     return result
 
 
+@register("cleaner.scan.refreshCache")
+def cleaner_scan_refresh_cache(_params: dict[str, Any] | None) -> dict[str, bool]:
+    """Invalidate the scan cache so the next scan performs a fresh pass."""
+    log.info("[RPC] cleaner.scan.refreshCache called")
+    _scan_manager.invalidate_cache()
+    return {"refreshed": True}
+
+
 @register("cleaner.scan.results")
 def cleaner_scan_results(params: dict[str, Any] | None) -> dict[str, Any]:
     task_id = _need_str(params, "taskId")

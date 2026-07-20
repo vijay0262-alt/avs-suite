@@ -175,6 +175,12 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
   }
 
   async rescan(): Promise<void> {
+    try {
+      await this.service.refreshCache();
+    } catch (err) {
+      console.error('[JunkCleanerViewModel] refreshCache failed', err);
+      // Continue with scan even if cache invalidation fails server-side.
+    }
     await this.startScan();
   }
 

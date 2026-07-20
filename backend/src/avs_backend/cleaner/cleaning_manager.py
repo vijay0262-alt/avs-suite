@@ -216,6 +216,10 @@ class CleaningManager:
             )
             self._task = task
 
+        # Any successful cleaning will change the files on disk, so the
+        # scan cache is no longer valid.
+        self._scan_manager.invalidate_cache()
+
         for rt in task.runtimes:
             rt.future = self._pool.submit(self._run_cleaner, task, rt)
 

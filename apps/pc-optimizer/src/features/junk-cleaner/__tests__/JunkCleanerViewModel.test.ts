@@ -51,6 +51,7 @@ function makeService(overrides: Partial<JunkCleanerService> = {}): JunkCleanerSe
   return {
     list: vi.fn(async () => catalog),
     startScan: vi.fn(async () => ({ taskId: 't1' })),
+    refreshCache: vi.fn(async () => ({ refreshed: true })),
     getStatus: vi.fn(async () => completeSnap()),
     cancel: vi.fn(async () => ({ cancelled: true })),
     getResults: vi.fn(async () => ({ offset: 0, limit: 500, items: [] })),
