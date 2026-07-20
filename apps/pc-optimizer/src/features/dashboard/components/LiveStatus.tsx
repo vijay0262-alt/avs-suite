@@ -8,10 +8,10 @@ import {
   ArrowDownIcon,
   SunIcon,
 } from '@heroicons/react/24/outline';
-import type { DashboardMetrics } from '../dashboard.types';
+import type { LiveMetrics } from '../dashboard.types';
 
 export interface LiveStatusProps {
-  metrics: DashboardMetrics | null;
+  metrics: LiveMetrics | null;
 }
 
 export function LiveStatus({ metrics }: LiveStatusProps) {

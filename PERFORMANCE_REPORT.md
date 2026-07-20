@@ -3,7 +3,7 @@
 **Project**: AVS PC Optimizer  
 **Date**: 2026-07-20  
 **Scope**: Performance optimization, UX improvements, and production hardening  
-**Status**: Phase 2C implementation complete
+**Status**: Phase 2C implementation + dashboard.live optimization complete
 
 ---
 
@@ -37,6 +37,7 @@ Because Phase 2C emphasized implementation over live profiling on a single share
 | Startup Analyzer scan | ~3000 ms | < 1000 ms | ✅ On track | 60 s TTL cache; first scan still full, subsequent are instant |
 | Performance Monitor CPU | ~5% | < 2% | ✅ On track | Refresh interval increased to 3 s |
 | Junk Cleaner rescan | Full rescan | Near-instant | ✅ Achieved | 5-minute scan cache for full scans |
+| Dashboard live widget update | 500–1500 ms | < 100 ms | ✅ Implemented | `dashboard.live` cached snapshot; analysis via `dashboard.metrics` once |
 | Disk Analyzer UX | Scans whole PC | User selects drive | ✅ Achieved | Drive selection with size/usage displayed |
 | Duplicate Finder UX | Scans whole PC | User selects drive | ✅ Achieved | Drive selection with size/usage displayed |
 | Backend startup | Unknown | TBD | ⏸️ Not measured | Out of scope for this round |
@@ -190,6 +191,34 @@ Full details: `ANTIVIRUS_INVESTIGATION.md`.
 
 ---
 
-## 9. Conclusion
+## 9. Dashboard Live Metrics Split
 
-All Phase 2C high-priority and medium-priority performance tasks have been implemented and build successfully. The application now uses preloading, skeleton states, caching, and async loading to deliver a snappier user experience. Antivirus false-positive root causes have been identified and documented with actionable next steps. The remaining low-priority item is incremental health score calculation, which can be addressed in Phase 3 alongside real-world benchmarking.
+### Background
+The dashboard was polling `dashboard.metrics` every 2 seconds to render the live system status widgets. That endpoint collects CPU, memory, storage, Windows details, security, and performance data and can take 500–1500 ms per call, blocking the live widgets.
+
+### Implementation
+- Added `dashboard.live` RPC in `backend/src/avs_backend/dashboard/__init__.py` that returns a cached snapshot maintained by a background daemon thread refreshing every 1 s.
+- `dashboard.live` only returns CPU, memory, storage, network, and timestamp fields. It does not re-collect Windows/security/performance analysis data.
+- `DashboardViewModel` now polls `dashboard.live` every 2 s for the widgets and calls `dashboard.metrics` only once for the heavier health-score analysis.
+- Added `DASHBOARD_LIVE` to the shared RPC contract in `packages/shared/src/rpc/index.ts`.
+
+### Files Modified
+- `backend/src/avs_backend/dashboard/__init__.py`
+- `packages/shared/src/rpc/index.ts`
+- `apps/pc-optimizer/src/features/dashboard/dashboard.service.ts`
+- `apps/pc-optimizer/src/features/dashboard/DashboardViewModel.ts`
+- `apps/pc-optimizer/src/features/dashboard/DashboardPage.tsx`
+- `apps/pc-optimizer/src/features/dashboard/components/LiveStatus.tsx`
+- `apps/pc-optimizer/src/features/dashboard/dashboard.types.ts`
+
+### Verification
+- `python -m compileall src/avs_backend` passes.
+- `yarn lint` passes.
+- `npm run build` in `apps/pc-optimizer` passes.
+
+### Runtime Benchmark Note
+A full in-process runtime timing run was not collected in this session because the shared RPC server startup was canceled. The design target for `dashboard.live` is <100 ms per poll, and the endpoint is a lock-protected dict copy with no on-request collection.
+
+## 10. Conclusion
+
+All Phase 2C high-priority and medium-priority performance tasks have been implemented and build successfully. The dashboard.live split now isolates fast live metrics from the heavier health analysis, further reducing UI blocking. Antivirus false-positive root causes have been identified and documented with actionable next steps. Remaining items include collecting real runtime metrics with the `PerformanceMonitor` utilities and continuing incremental health-score caching in Phase 3.

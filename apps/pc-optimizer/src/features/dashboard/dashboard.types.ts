@@ -80,15 +80,18 @@ export interface NetworkMetrics {
   totalBytesReceived: number;
 }
 
-export interface DashboardMetrics {
+export interface LiveMetrics {
   cpu: CPUMetrics;
   memory: MemoryMetrics;
   storage: StorageDrive[];
+  network?: NetworkMetrics;
+  capturedAt: string;
+}
+
+export interface DashboardMetrics extends LiveMetrics {
   windows: WindowsInfo;
   security: SecurityMetrics;
   performance: PerformanceMetrics;
-  network?: NetworkMetrics;
-  capturedAt: string;
 }
 
 export interface CategoryScores {

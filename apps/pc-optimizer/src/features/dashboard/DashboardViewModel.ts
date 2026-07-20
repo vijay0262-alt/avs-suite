@@ -11,6 +11,7 @@
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import type {
   DashboardMetrics,
+  LiveMetrics,
   HealthScore,
   OptimizePreview,
   OptimizeExecuteResponse,
@@ -27,11 +28,17 @@ export interface DashboardState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
   bootstrapError: string | null;
 
-  // Real-time metrics
+  // Real-time metrics (analysis snapshot)
   metrics: DashboardMetrics | null;
   metricsLoading: boolean;
   metricsError: string | null;
   lastMetricsUpdate: number | null;
+
+  // Live metrics (fast dashboard.live feed)
+  liveMetrics: LiveMetrics | null;
+  liveMetricsLoading: boolean;
+  liveMetricsError: string | null;
+  lastLiveMetricsUpdate: number | null;
 
   // Health score
   healthScore: HealthScore | null;
@@ -55,10 +62,10 @@ export interface DashboardState {
   quickActionsOpen: boolean;
 }
 
-const METRICS_POLL_INTERVAL_MS = 2000;
+const LIVE_METRICS_POLL_INTERVAL_MS = 2000;
 
 export class DashboardViewModel extends ViewModel<DashboardState> {
-  private metricsPollTimer: ReturnType<typeof setInterval> | null = null;
+  private liveMetricsPollTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly service: DashboardService,
@@ -72,6 +79,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       metricsLoading: false,
       metricsError: null,
       lastMetricsUpdate: null,
+
+      liveMetrics: null,
+      liveMetricsLoading: false,
+      liveMetricsError: null,
+      lastLiveMetricsUpdate: null,
 
       healthScore: null,
       healthScoreLoading: false,
@@ -102,6 +114,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       bootstrap: 'ready',
       bootstrapError: null,
       metricsLoading: true,
+      liveMetricsLoading: true,
       privacyRisksLoading: true,
       healthScoreLoading: true,
     });
@@ -109,16 +122,17 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   }
 
   private async bootstrapData(): Promise<void> {
+    // Live feed starts immediately; heavy analysis runs in background.
+    this.startLiveMetricsPolling();
     try {
       await Promise.all([this.loadMetrics(), this.loadPrivacyRisks()]);
     } catch (err) {
       console.error('Dashboard bootstrap failed:', err);
     }
-    this.startMetricsPolling();
   }
 
   override dispose(): void {
-    this.stopMetricsPolling();
+    this.stopLiveMetricsPolling();
     super.dispose();
   }
 
@@ -139,6 +153,23 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       this.setState({
         metricsLoading: false,
         metricsError: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  async loadLiveMetrics(): Promise<void> {
+    this.setState({ liveMetricsLoading: true, liveMetricsError: null });
+    try {
+      const liveMetrics = await this.service.getLiveMetrics();
+      this.setState({
+        liveMetrics,
+        liveMetricsLoading: false,
+        lastLiveMetricsUpdate: Date.now(),
+      });
+    } catch (err) {
+      this.setState({
+        liveMetricsLoading: false,
+        liveMetricsError: err instanceof Error ? err.message : String(err),
       });
     }
   }
@@ -252,33 +283,19 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   // ------------------------------------------------------------------
   // Polling
   // ------------------------------------------------------------------
-  private startMetricsPolling(): void {
-    this.stopMetricsPolling();
-    void this.pollMetricsOnce();
-    this.metricsPollTimer = setInterval(() => void this.pollMetricsOnce(), METRICS_POLL_INTERVAL_MS);
+  private startLiveMetricsPolling(): void {
+    this.stopLiveMetricsPolling();
+    void this.loadLiveMetrics();
+    this.liveMetricsPollTimer = setInterval(
+      () => void this.loadLiveMetrics(),
+      LIVE_METRICS_POLL_INTERVAL_MS
+    );
   }
 
-  private stopMetricsPolling(): void {
-    if (this.metricsPollTimer) {
-      clearInterval(this.metricsPollTimer);
-      this.metricsPollTimer = null;
-    }
-  }
-
-  private async pollMetricsOnce(): Promise<void> {
-    // Don't poll if optimization is running to avoid conflicts
-    if (this.state.optimizeStep === 'optimizing') return;
-
-    try {
-      const metrics = await this.service.getMetrics();
-      this.setState({
-        metrics,
-        lastMetricsUpdate: Date.now(),
-      });
-      this.recalculateHealth(metrics, this.state.privacyRisks);
-    } catch (err) {
-      // Silently fail on polling errors to avoid UI disruption
-      console.warn('Metrics poll failed:', err);
+  private stopLiveMetricsPolling(): void {
+    if (this.liveMetricsPollTimer) {
+      clearInterval(this.liveMetricsPollTimer);
+      this.liveMetricsPollTimer = null;
     }
   }
 }

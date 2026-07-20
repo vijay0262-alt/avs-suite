@@ -110,6 +110,147 @@ def _collect_metrics() -> dict[str, Any]:
     return results
 
 
+# =====================================================================
+# Live metrics background refresh
+# =====================================================================
+
+_LIVE_REFRESH_INTERVAL = 1.0  # seconds
+_live_metrics: dict[str, Any] = {}
+_live_metrics_lock = threading.Lock()
+_live_metrics_running = True
+_prev_live_net_io = None
+
+
+def _get_live_cpu_metrics() -> dict[str, Any]:
+    """Get lightweight CPU metrics for the live feed."""
+    usage = psutil.cpu_percent(interval=0.1)
+    cores = psutil.cpu_count(logical=True) or 0
+    physical = psutil.cpu_count(logical=False) or 0
+    freq = psutil.cpu_freq()
+    temperature: float | None = None
+    try:
+        if hasattr(psutil, 'sensors_temperatures'):
+            temps = psutil.sensors_temperatures()
+            if temps:
+                for name, entries in temps.items():
+                    if 'cpu' in name.lower() or 'core' in name.lower():
+                        if entries:
+                            temperature = entries[0].current
+                            break
+    except Exception:
+        pass
+    return {
+        "usage": usage,
+        "frequency": int(round((freq.current if freq else 0.0))),
+        "logicalProcessors": cores,
+        "physicalProcessors": physical,
+        "processes": 0,
+        "threads": 0,
+        "temperature": temperature,
+    }
+
+
+def _get_live_memory_metrics() -> dict[str, Any]:
+    """Get lightweight memory metrics for the live feed."""
+    mem = psutil.virtual_memory()
+    swap = psutil.swap_memory() if hasattr(psutil, 'swap_memory') else None
+    return {
+        "total": mem.total,
+        "used": mem.used,
+        "available": mem.available,
+        "usage": mem.percent,
+        "cached": getattr(mem, 'cached', 0),
+        "swapTotal": swap.total if swap else 0,
+        "swapUsed": swap.used if swap else 0,
+        "swapUsage": round(swap.percent, 1) if swap else 0.0,
+    }
+
+
+def _get_live_storage_metrics() -> list[dict[str, Any]]:
+    """Get lightweight storage metrics for the live feed."""
+    drives: list[dict[str, Any]] = []
+    try:
+        for part in psutil.disk_partitions(all=False):
+            try:
+                usage = psutil.disk_usage(part.mountpoint)
+                drives.append({
+                    "mount": part.mountpoint,
+                    "name": _get_drive_name(part.mountpoint),
+                    "total": usage.total,
+                    "used": usage.used,
+                    "free": usage.free,
+                    "usage": round(usage.percent, 1),
+                    "isSSD": _is_ssd(part.mountpoint),
+                    "fileSystem": part.fstype,
+                })
+            except (OSError, PermissionError):
+                continue
+    except Exception as e:
+        log.warning("Failed to get live storage metrics: %s", e)
+    return drives
+
+
+def _get_live_network_metrics() -> dict[str, Any]:
+    """Get lightweight network metrics for the live feed."""
+    global _prev_live_net_io
+    counters = psutil.net_io_counters()
+    if not counters:
+        return {"uploadSpeed": 0.0, "downloadSpeed": 0.0, "totalBytesSent": 0, "totalBytesReceived": 0}
+
+    upload = 0.0
+    download = 0.0
+    if _prev_live_net_io:
+        upload = max(0.0, (counters.bytes_sent - _prev_live_net_io.bytes_sent) / _LIVE_REFRESH_INTERVAL)
+        download = max(0.0, (counters.bytes_recv - _prev_live_net_io.bytes_recv) / _LIVE_REFRESH_INTERVAL)
+
+    _prev_live_net_io = counters
+    return {
+        "uploadSpeed": upload,
+        "downloadSpeed": download,
+        "totalBytesSent": counters.bytes_sent,
+        "totalBytesReceived": counters.bytes_recv,
+    }
+
+
+def _refresh_live_metrics() -> None:
+    """Refresh the cached live metrics snapshot."""
+    global _live_metrics
+    try:
+        snapshot = {
+            "cpu": _get_live_cpu_metrics(),
+            "memory": _get_live_memory_metrics(),
+            "storage": _get_live_storage_metrics(),
+            "network": _get_live_network_metrics(),
+            "capturedAt": _now_iso(),
+        }
+        with _live_metrics_lock:
+            _live_metrics = snapshot
+    except Exception as e:
+        log.debug("Live metrics refresh failed: %s", e)
+
+
+def _live_metrics_loop() -> None:
+    """Background daemon that keeps _live_metrics fresh."""
+    while _live_metrics_running:
+        start = time.monotonic()
+        _refresh_live_metrics()
+        elapsed = time.monotonic() - start
+        time.sleep(max(0.0, _LIVE_REFRESH_INTERVAL - elapsed))
+
+
+threading.Thread(target=_live_metrics_loop, daemon=True, name="dashboard-live-metrics").start()
+
+
+@register("dashboard.live")
+def dashboard_live(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Return the latest cached live snapshot (<100ms)."""
+    with _live_metrics_lock:
+        snapshot = _live_metrics.copy()
+    if not IS_WINDOWS:
+        return _get_stub_metrics()
+    return snapshot if snapshot else _get_stub_metrics()
+
+
 @register("dashboard.metrics")
 def dashboard_metrics(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Collect all real-time system metrics with minimal overhead."""

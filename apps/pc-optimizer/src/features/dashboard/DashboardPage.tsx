@@ -89,7 +89,7 @@ export default function DashboardPage() {
             <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">
               Live System Status
             </div>
-            <LiveStatus metrics={state.metrics} />
+            <LiveStatus metrics={state.liveMetrics} />
           </div>
         </div>
       )}
