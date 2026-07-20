@@ -85,8 +85,12 @@ def _dispatch(request: dict[str, Any]) -> None:
 
 def main() -> None:
     log.info("avs-backend ready; %d method(s) registered", len(registry.all_methods()))
-    for line in sys.stdin:
-        line = line.strip()
+    # Read from binary stdin buffer; this bypasses Python's default
+    # block-buffered text I/O for pipes, which would wait for 8KB before
+    # yielding lines and cause the Electron bridge to hang.
+    stdin = sys.stdin.buffer
+    for raw in stdin:
+        line = raw.decode("utf-8").strip()
         if not line:
             continue
         try:

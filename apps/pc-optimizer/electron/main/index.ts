@@ -201,16 +201,14 @@ function showBackendError(error: Error): void {
 app.whenReady().then(async () => {
   log.info(`AVS PC Optimizer starting (env=${env.env})`);
 
-  // Show splash screen first
+  // Show splash screen while the backend boots
   splashWindow = createSplashWindow();
 
-  // Create main window (hidden initially)
-  await createMainWindow();
-
-  // Try to start backend after window is ready
+  // Start the Python backend *before* loading the renderer so IPC handlers
+  // are already registered when the React app makes its first RPC calls.
+  let rpc: Awaited<ReturnType<typeof spawnPythonBackend>> | null = null;
   try {
-    const rpc = await spawnPythonBackend(log);
-    // Register handlers with real RPC client (only once)
+    rpc = await spawnPythonBackend(log);
     registerIpcHandlers(rpc, log);
     initAutoUpdater(log, env);
     log.info('Python backend initialized successfully');
@@ -218,7 +216,6 @@ app.whenReady().then(async () => {
     const err = error instanceof Error ? error : new Error(String(error));
     log.error('Python backend initialization failed', err);
     showBackendError(err);
-    // Create a mock RPC client that returns errors for all calls
     const mockRpc = {
       call<T>(_method: string, _params?: unknown): Promise<T> {
         return Promise.reject(new Error('Backend not available'));
@@ -229,6 +226,9 @@ app.whenReady().then(async () => {
     };
     registerIpcHandlers(mockRpc, log);
   }
+
+  // Load the main window only after handlers are registered
+  await createMainWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) void createMainWindow();
