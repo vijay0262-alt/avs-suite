@@ -90,6 +90,7 @@ export const router = createHashRouter([
       { path: 'settings', element: wrap(SettingsPage) },
       { path: 'about', element: wrap(AboutPage) },
       { path: 'diagnostics', element: wrap(DiagnosticsPage) },
+      { path: '*', element: <Navigate to="/dashboard" replace /> },
     ],
   },
 ]);

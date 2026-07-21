@@ -51,7 +51,7 @@ interface Logger {
   error(message: string, meta?: unknown): void;
 }
 
-function resolveBackendCommand(): { command: string; args: string[]; cwd?: string } {
+function resolveBackendCommand(): { command: string; args: string[]; cwd?: string; pythonPath?: string } {
   if (app.isPackaged) {
     const exe = process.platform === 'win32' ? 'avs-backend.exe' : 'avs-backend';
     const command = path.join(process.resourcesPath, 'backend', exe);
@@ -59,18 +59,19 @@ function resolveBackendCommand(): { command: string; args: string[]; cwd?: strin
     const cwd = path.join(process.resourcesPath, 'backend');
     return { command, args: [], cwd };
   }
-  const script = path.resolve(__dirname, '../../../../backend/src/avs_backend/api/rpc_server.py');
+  const backendSrc = path.resolve(__dirname, '../../../../backend/src');
+  const script = path.join(backendSrc, 'avs_backend', 'api', 'rpc_server.py');
   const cwd = path.resolve(__dirname, '../../../..');
-  return { command: process.env.AVS_PYTHON ?? 'python', args: ['-u', script], cwd };
+  return { command: process.env.AVS_PYTHON ?? 'python', args: ['-u', script], cwd, pythonPath: backendSrc };
 }
 
 export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
-  const { command, args, cwd } = resolveBackendCommand();
+  const { command, args, cwd, pythonPath } = resolveBackendCommand();
   logger.info(`Spawning Python backend: ${command} ${args.join(' ')}`);
 
   const child: ChildProcessWithoutNullStreams = spawn(command, args, {
     stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env, PYTHONUNBUFFERED: '1' },
+    env: { ...process.env, PYTHONUNBUFFERED: '1', ...(pythonPath ? { PYTHONPATH: pythonPath } : {}) },
     cwd,
   });
 
