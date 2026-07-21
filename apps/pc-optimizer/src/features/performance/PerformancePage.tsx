@@ -8,6 +8,7 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { PerformanceViewModel } from './PerformanceViewModel';
 import { performanceService } from './performance.service';
+import { BoltIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 export default function PerformancePage() {
   const vm = useMemo(() => new PerformanceViewModel(performanceService), []);
@@ -31,6 +32,10 @@ export default function PerformancePage() {
 
   const handleClearHistory = () => {
     void vm.clearGraphHistory();
+  };
+
+  const handleOptimize = () => {
+    void vm.optimizeMemory();
   };
 
   const getSeverityColor = (severity: string) => {
@@ -70,9 +75,19 @@ export default function PerformancePage() {
         <>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-text-primary">System Metrics</h2>
-            <Button variant="secondary" onClick={handleRefresh} disabled={state.loading}>
-              {state.loading ? 'Refreshing...' : 'Refresh'}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleOptimize}
+                disabled={state.optimizing}
+                leftIcon={<BoltIcon className={`h-4 w-4 ${state.optimizing ? 'animate-spin' : ''}`} />}
+                data-testid="perf-optimize-btn"
+              >
+                {state.optimizing ? 'Optimizing...' : 'Optimize'}
+              </Button>
+              <Button variant="secondary" onClick={handleRefresh} disabled={state.loading}>
+                {state.loading ? 'Refreshing...' : 'Refresh'}
+              </Button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -250,11 +265,81 @@ export default function PerformancePage() {
             )}
           </Card>
 
-          <div className="mt-4">
+          <div className="mt-4 flex items-center gap-3">
             <Button variant="secondary" onClick={handleClearHistory}>
               Clear Graph History
             </Button>
           </div>
+
+          {state.optimizeError && (
+            <Card className="mt-4">
+              <div className="flex items-start gap-3 py-1 text-sm text-semantic-danger">
+                <ExclamationTriangleIcon className="h-5 w-5 shrink-0" />
+                <span>{state.optimizeError}</span>
+              </div>
+            </Card>
+          )}
+
+          {state.optimizeResult && (
+            <Card title="Optimization Result" className="mt-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-semantic-success">
+                  <CheckCircleIcon className="h-5 w-5" />
+                  <span className="font-medium">Optimization completed successfully</span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-xs text-text-muted">Memory Freed</p>
+                    <p className="text-sm font-semibold text-text-primary mt-1">
+                      {vm.formatBytes(state.optimizeResult.memoryFreed)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-text-muted">Processes Optimized</p>
+                    <p className="text-sm font-semibold text-text-primary mt-1">
+                      {state.optimizeResult.processesOptimized}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-text-muted">Time Taken</p>
+                    <p className="text-sm font-semibold text-text-primary mt-1">
+                      {(state.optimizeResult.optimizationTimeMs / 1000).toFixed(2)}s
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-text-muted">Health Improvement</p>
+                    <p className="text-sm font-semibold text-text-primary mt-1">
+                      +{state.optimizeResult.healthImprovement.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+                {state.optimizeResult.beforeMemory && state.optimizeResult.afterMemory && (
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
+                    <div>
+                      <p className="text-xs text-text-muted">Memory Before</p>
+                      <p className="text-sm text-text-primary mt-1">
+                        {vm.formatBytes(state.optimizeResult.beforeMemory.usedRam)} ({state.optimizeResult.beforeMemory.memoryLoadPercent.toFixed(1)}%)
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-text-muted">Memory After</p>
+                      <p className="text-sm text-text-primary mt-1">
+                        {vm.formatBytes(state.optimizeResult.afterMemory.usedRam)} ({state.optimizeResult.afterMemory.memoryLoadPercent.toFixed(1)}%)
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {state.optimizeResult.errors.length > 0 && (
+                  <div className="text-xs text-semantic-warning">
+                    {state.optimizeResult.errors.length} warning(s) during optimization
+                  </div>
+                )}
+                <Button variant="ghost" onClick={() => vm.clearOptimizeResult()}>
+                  Dismiss
+                </Button>
+              </div>
+            </Card>
+          )}
         </>
       )}
     </div>

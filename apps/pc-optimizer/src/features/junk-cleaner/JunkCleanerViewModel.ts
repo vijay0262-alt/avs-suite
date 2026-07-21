@@ -458,6 +458,15 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
         this.setState({ cleaningStep: 'summary' });
         // Auto-refresh history so the new run shows in the log immediately.
         void this.loadHistory(true);
+        // Invalidate the dashboard metrics cache so the Dashboard reflects
+        // the freed space / reduced recycle bin size immediately.
+        try {
+          if (typeof window !== 'undefined' && window.avs) {
+            void window.avs.rpc.call('dashboard.refreshCache');
+          }
+        } catch {
+          // Best-effort — don't fail the cleaning flow.
+        }
       }
     } catch (err) {
       this.setState({

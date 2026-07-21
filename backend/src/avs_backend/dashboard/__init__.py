@@ -1303,18 +1303,20 @@ def _refresh_explorer() -> None:
 
 
 def _trim_memory() -> None:
-    """Trim working sets (Windows only)."""
+    """Trim working sets of inactive processes (Windows only)."""
     if os.name == "nt":
         try:
-            # Use EmptyWorkingSet for each process
-            for proc in psutil.process_iter():
-                try:
-                    proc.memory_info()  # Access to ensure process is accessible
-                    # This would require Windows API calls - placeholder
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    continue
-        except Exception:
-            pass
+            from avs_backend.performance.memory_optimizer import optimize_memory
+            from threading import Event
+
+            cancel = Event()
+            result = optimize_memory(cancel, None)
+            if result.status.value == "completed":
+                log.info("Memory trim freed %.1f MB", result.memory_freed / 1024 / 1024)
+            else:
+                log.warning("Memory trim did not complete: %s", result.status.value)
+        except Exception as e:
+            log.warning("Memory trim failed: %s", e)
 
 
 # =====================================================================

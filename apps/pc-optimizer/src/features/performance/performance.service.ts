@@ -17,6 +17,18 @@ export interface IPerformanceService {
   clearGraphHistory(): Promise<{ success: boolean }>;
   getTopProcesses(sortBy?: string, limit?: number, search?: string): Promise<{ processes: ProcessInfo[] }>;
   getAlerts(): Promise<{ alerts: Alert[] }>;
+  optimizeMemory(): Promise<MemoryOptimizeResult>;
+}
+
+export interface MemoryOptimizeResult {
+  status: string;
+  memoryFreed: number;
+  optimizationTimeMs: number;
+  processesOptimized: number;
+  errors: string[];
+  healthImprovement: number;
+  beforeMemory: { usedRam: number; memoryLoadPercent: number } | null;
+  afterMemory: { usedRam: number; memoryLoadPercent: number } | null;
 }
 
 class PerformanceService implements IPerformanceService {
@@ -38,6 +50,10 @@ class PerformanceService implements IPerformanceService {
 
   async getAlerts(): Promise<{ alerts: Alert[] }> {
     return await client().call('performance.monitor.getAlerts');
+  }
+
+  async optimizeMemory(): Promise<MemoryOptimizeResult> {
+    return await client().call('performance.memory.optimize');
   }
 }
 

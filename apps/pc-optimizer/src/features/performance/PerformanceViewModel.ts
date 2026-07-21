@@ -4,7 +4,7 @@
 
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import type { PerformanceMetrics, GraphHistory, ProcessInfo, Alert } from './performance.types';
-import type { IPerformanceService } from './performance.service';
+import type { IPerformanceService, MemoryOptimizeResult } from './performance.service';
 import { performanceService } from './performance.service';
 
 export interface PerformanceState {
@@ -15,6 +15,9 @@ export interface PerformanceState {
   topProcesses: ProcessInfo[];
   alerts: Alert[];
   loading: boolean;
+  optimizing: boolean;
+  optimizeResult: MemoryOptimizeResult | null;
+  optimizeError: string | null;
 }
 
 const REFRESH_INTERVAL_MS = 3000; // Increased from 2000ms to reduce CPU usage
@@ -31,6 +34,9 @@ export class PerformanceViewModel extends ViewModel<PerformanceState> {
       topProcesses: [],
       alerts: [],
       loading: false,
+      optimizing: false,
+      optimizeResult: null,
+      optimizeError: null,
     });
   }
 
@@ -99,6 +105,32 @@ export class PerformanceViewModel extends ViewModel<PerformanceState> {
     } catch (err) {
       console.error('Failed to clear graph history:', err);
     }
+  }
+
+  async optimizeMemory() {
+    this.setState({ optimizing: true, optimizeError: null, optimizeResult: null });
+    try {
+      const result = await this.service.optimizeMemory();
+      this.setState({ optimizing: false, optimizeResult: result });
+      await this.loadMetrics();
+      void this.loadTopProcesses();
+      // Invalidate the dashboard metrics cache so the Dashboard reflects
+      // the reduced memory usage immediately.
+      try {
+        if (typeof window !== 'undefined' && window.avs) {
+          void window.avs.rpc.call('dashboard.refreshCache');
+        }
+      } catch {
+        // Best-effort.
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : 'Optimization failed';
+      this.setState({ optimizing: false, optimizeError: error });
+    }
+  }
+
+  clearOptimizeResult() {
+    this.setState({ optimizeResult: null, optimizeError: null });
   }
 
   private startAutoRefresh() {
