@@ -15,6 +15,7 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
   const progress = snapshot.progress ?? 0;
   const totalBytes = snapshot.totalBytes ?? 0;
   const totalFiles = snapshot.totalFiles ?? 0;
+  const totalItems = snapshot.totalItems ?? totalFiles;
   const errorCount = snapshot.errorCount ?? 0;
 
   return (
@@ -25,16 +26,7 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
     >
       <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
         <div>
-          <div className="text-xs uppercase tracking-wide text-text-muted">Total Junk</div>
-          <div
-            className="mt-1 text-2xl font-semibold text-text-primary tabular-nums"
-            data-testid="junk-total-bytes"
-          >
-            {formatBytes(totalBytes)}
-          </div>
-        </div>
-        <div>
-          <div className="text-xs uppercase tracking-wide text-text-muted">Total Files</div>
+          <div className="text-xs uppercase tracking-wide text-text-muted">Files Scanned</div>
           <div
             className="mt-1 text-2xl font-semibold text-text-primary tabular-nums"
             data-testid="junk-total-files"
@@ -43,7 +35,40 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
           </div>
         </div>
         <div>
-          <div className="text-xs uppercase tracking-wide text-text-muted">Current Scanner</div>
+          <div className="text-xs uppercase tracking-wide text-text-muted">Items Found</div>
+          <div
+            className="mt-1 text-2xl font-semibold text-text-primary tabular-nums"
+            data-testid="junk-total-items"
+          >
+            {totalItems.toLocaleString()}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs uppercase tracking-wide text-text-muted">Junk Identified</div>
+          <div
+            className="mt-1 text-2xl font-semibold text-text-primary tabular-nums"
+            data-testid="junk-total-bytes"
+          >
+            {formatBytes(totalBytes)}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs uppercase tracking-wide text-text-muted">Elapsed Time</div>
+          <div
+            className="mt-1 text-lg font-medium text-text-primary tabular-nums"
+            data-testid="junk-elapsed"
+          >
+            {formatDuration(snapshot.durationMs ?? 0)}
+          </div>
+          <div className="text-xs text-text-muted tabular-nums mt-1">
+            {running ? `Remaining: ${formatDuration(snapshot.etaMs)}` : `Duration: ${formatDuration(snapshot.durationMs ?? 0)}`}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
+        <div className="min-w-0">
+          <div className="text-xs uppercase tracking-wide text-text-muted">Current Operation</div>
           <div
             className="mt-1 truncate text-lg font-medium text-text-primary"
             data-testid="junk-current-cleaner"
@@ -52,17 +77,18 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
             {snapshot.currentCleaner ?? (running ? 'Starting…' : '—')}
           </div>
         </div>
-        <div>
-          <div className="text-xs uppercase tracking-wide text-text-muted">
-            {running ? 'Estimated Remaining' : 'Duration'}
+        {snapshot.currentPath && (
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-wide text-text-muted">Current Path</div>
+            <div
+              className="mt-1 truncate text-sm font-medium text-text-primary"
+              data-testid="junk-current-path"
+              title={snapshot.currentPath}
+            >
+              {snapshot.currentPath}
+            </div>
           </div>
-          <div
-            className="mt-1 text-lg font-medium text-text-primary tabular-nums"
-            data-testid="junk-eta"
-          >
-            {running ? formatDuration(snapshot.etaMs) : formatDuration(snapshot.durationMs ?? 0)}
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="mt-4">

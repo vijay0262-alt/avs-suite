@@ -2,7 +2,7 @@
  * StartupPage - Main Startup Manager page
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, Button } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
@@ -11,9 +11,15 @@ import { startupService } from './startup.service';
 import { StartupEntryCard } from './components/StartupEntryCard';
 import type { StartupEntry } from './startup.types';
 
+type SortBy = 'name' | 'impact' | 'publisher' | 'status';
+
 export default function StartupPage() {
   const vm = useMemo(() => new StartupViewModel(startupService), []);
   const state = useViewModel(vm);
+  const [query, setQuery] = useState('');
+  const [impactFilter, setImpactFilter] = useState<'all' | 'high' | 'medium' | 'low' | 'unknown'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'enabled' | 'disabled'>('all');
+  const [sortBy, setSortBy] = useState<SortBy>('name');
 
   useEffect(() => {
     void vm.bootstrap();
@@ -46,8 +52,42 @@ export default function StartupPage() {
     void vm.loadEntries();
   };
 
-  const enabledCount = state.entries.filter(e => e.enabled).length;
-  const highImpactCount = state.entries.filter(e => e.impact === 'high' && e.enabled).length;
+  const enabledCount = state.entries.filter((e) => e.enabled).length;
+  const highImpactCount = state.entries.filter((e) => e.impact === 'high' && e.enabled).length;
+
+  const impactWeight = (impact: string) => ({ high: 3, medium: 2, low: 1, unknown: 0 }[impact] ?? 0);
+
+  const filteredEntries = useMemo(() => {
+    let list = state.entries.filter((e) => {
+      const matchesQuery =
+        `${e.name} ${e.publisher} ${e.command}`.toLowerCase().includes(query.toLowerCase()) ||
+        !query;
+      const matchesImpact = impactFilter === 'all' || e.impact === impactFilter;
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'enabled' && e.enabled) ||
+        (statusFilter === 'disabled' && !e.enabled);
+      return matchesQuery && matchesImpact && matchesStatus;
+    });
+
+    list = [...list].sort((a, b) => {
+      const dir = 1;
+      switch (sortBy) {
+        case 'name':
+          return dir * a.name.localeCompare(b.name);
+        case 'publisher':
+          return dir * (a.publisher || '').localeCompare(b.publisher || '');
+        case 'impact':
+          return dir * (impactWeight(b.impact) - impactWeight(a.impact));
+        case 'status':
+          return dir * (Number(b.enabled) - Number(a.enabled));
+        default:
+          return 0;
+      }
+    });
+
+    return list;
+  }, [state.entries, query, impactFilter, statusFilter, sortBy]);
 
   return (
     <div data-testid="page-startup-manager">
@@ -81,33 +121,75 @@ export default function StartupPage() {
               <p className="text-sm text-text-secondary">Startup items</p>
             </Card>
             <Card title="Enabled">
-              <p className="text-3xl font-bold text-green-500">{enabledCount}</p>
+              <p className="text-3xl font-bold text-semantic-success">{enabledCount}</p>
               <p className="text-sm text-text-secondary">Currently active</p>
             </Card>
             <Card title="High Impact">
-              <p className="text-3xl font-bold text-red-500">{highImpactCount}</p>
+              <p className="text-3xl font-bold text-semantic-danger">{highImpactCount}</p>
               <p className="text-sm text-text-secondary">Slowing startup</p>
             </Card>
           </div>
 
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-text-primary">Startup Entries</h2>
-            <Button variant="secondary" onClick={handleRefresh} disabled={state.loading}>
-              {state.loading ? 'Refreshing...' : 'Refresh'}
-            </Button>
-          </div>
+          <Card className="mb-4">
+            <div className="flex flex-col md:flex-row md:items-center gap-3">
+              <input
+                type="text"
+                aria-label="Search startup entries"
+                placeholder="Search name, publisher, or command"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="flex-1 rounded-md bg-bg-secondary border border-border px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              />
+              <select
+                aria-label="Filter by status"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'enabled' | 'disabled')}
+                className="rounded-md bg-bg-secondary border border-border px-3 py-1.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              >
+                <option value="all">All statuses</option>
+                <option value="enabled">Enabled</option>
+                <option value="disabled">Disabled</option>
+              </select>
+              <select
+                aria-label="Filter by impact"
+                value={impactFilter}
+                onChange={(e) => setImpactFilter(e.target.value as typeof impactFilter)}
+                className="rounded-md bg-bg-secondary border border-border px-3 py-1.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              >
+                <option value="all">All impacts</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+                <option value="unknown">Unknown</option>
+              </select>
+              <select
+                aria-label="Sort startup entries"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortBy)}
+                className="rounded-md bg-bg-secondary border border-border px-3 py-1.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              >
+                <option value="name">Sort by name</option>
+                <option value="impact">Sort by impact</option>
+                <option value="publisher">Sort by publisher</option>
+                <option value="status">Sort by status</option>
+              </select>
+              <Button variant="secondary" size="sm" onClick={handleRefresh} disabled={state.loading}>
+                {state.loading ? 'Refreshing...' : 'Refresh'}
+              </Button>
+            </div>
+          </Card>
 
-          {state.entries.length === 0 ? (
+          {filteredEntries.length === 0 ? (
             <Card>
               <div className="text-center py-8">
                 <p className="text-text-secondary">
-                  {state.loading ? 'Loading startup entries...' : 'No startup entries found'}
+                  {state.loading ? 'Loading startup entries...' : 'No startup entries match the filters'}
                 </p>
               </div>
             </Card>
           ) : (
-            <div className="space-y-3">
-              {state.entries.map((entry, index) => (
+            <div className="space-y-3" role="list">
+              {filteredEntries.map((entry, index) => (
                 <StartupEntryCard
                   key={`${entry.name}-${index}`}
                   entry={entry}

@@ -41,6 +41,14 @@ export interface DuplicateDeleteResult {
   errors: string[];
 }
 
+export interface DuplicateEstimateResult {
+  directories: string[];
+  estimatedFiles: number;
+  estimatedBytes: number;
+}
+
+export type DuplicateScope = 'entire' | 'pictures' | 'videos' | 'music' | 'documents' | 'downloads' | 'desktop' | 'custom';
+
 export interface DuplicateFinderState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
   bootstrapError: string | null;
@@ -53,4 +61,7 @@ export interface DuplicateFinderState {
   selectedDrive: string | null;
   customDirectories: string;
   deleteResult: DuplicateDeleteResult | null;
+  scope: DuplicateScope;
+  estimate: DuplicateEstimateResult | null;
+  estimateLoading: boolean;
 }

@@ -3,20 +3,9 @@
  */
 
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
-import type { DiskAnalysisResult, DriveInfo } from './disk-analyzer.types';
+import type { DiskAnalyzerState } from './disk-analyzer.types';
 import type { IDiskAnalyzerService } from './disk-analyzer.service';
 import { diskAnalyzerService } from './disk-analyzer.service';
-
-export interface DiskAnalyzerState {
-  bootstrap: 'idle' | 'loading' | 'ready' | 'error';
-  bootstrapError: string | null;
-  analysisResult: DiskAnalysisResult | null;
-  analyzing: boolean;
-  directory: string;
-  maxDepth: number;
-  drives: DriveInfo[];
-  selectedDrive: string | null;
-}
 
 export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
   constructor(private service: IDiskAnalyzerService = diskAnalyzerService) {
@@ -28,7 +17,8 @@ export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
       directory: '',
       maxDepth: 2,
       drives: [],
-      selectedDrive: null,
+      selectedDrives: [],
+      customDirectory: '',
     });
   }
 
@@ -55,7 +45,8 @@ export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
     }
   }
 
-  async analyze(directory?: string, maxDepth?: number) {
+  async analyze(maxDepth?: number) {
+    const directory = this.state.customDirectory || this.state.selectedDrives[0] || undefined;
     this.setState({ analyzing: true, analysisResult: null });
     try {
       const result = await this.service.analyze(directory, maxDepth);
@@ -72,8 +63,18 @@ export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
     }
   }
 
-  selectDrive(drive: string) {
-    this.setState({ selectedDrive: drive, directory: drive });
+  toggleDrive(mountpoint: string) {
+    const selected = new Set(this.state.selectedDrives);
+    if (selected.has(mountpoint)) {
+      selected.delete(mountpoint);
+    } else {
+      selected.add(mountpoint);
+    }
+    this.setState({ selectedDrives: Array.from(selected) });
+  }
+
+  setCustomDirectory(directory: string) {
+    this.setState({ customDirectory: directory });
   }
 
   formatBytes(bytes: number): string {

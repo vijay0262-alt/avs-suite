@@ -45,8 +45,10 @@ export interface ScanStatusSnapshot {
   finishedAt?: number | null;
   progress?: number;
   currentCleaner?: string | null;
+  currentPath?: string | null;
   cleaners?: CleanerSummary[];
   totalFiles?: number;
+  totalItems?: number;
   totalBytes?: number;
   errorCount?: number;
   durationMs?: number;

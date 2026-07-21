@@ -5,6 +5,10 @@
 export interface DriveInfo {
   device: string;
   mountpoint: string;
+  /** Volume label, when available from the OS */
+  label?: string;
+  /** Whether this is the Windows system drive */
+  isSystemDrive?: boolean;
   fstype: string;
   total: number;
   used: number;
@@ -47,5 +51,8 @@ export interface DiskAnalyzerState {
   directory: string;
   maxDepth: number;
   drives: DriveInfo[];
-  selectedDrive: string | null;
+  /** Multiple selected drive mount points */
+  selectedDrives: string[];
+  /** Custom directory or folder path */
+  customDirectory: string;
 }

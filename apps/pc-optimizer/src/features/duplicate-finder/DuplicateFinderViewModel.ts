@@ -3,23 +3,9 @@
  */
 
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
-import type { DuplicateScanResult, DuplicateDeleteResult, DuplicateFile, DriveInfo } from './duplicate-finder.types';
+import type { DuplicateFile, DuplicateScope, DuplicateFinderState } from './duplicate-finder.types';
 import type { IDuplicateFinderService } from './duplicate-finder.service';
 import { duplicateFinderService } from './duplicate-finder.service';
-
-export interface DuplicateFinderState {
-  bootstrap: 'idle' | 'loading' | 'ready' | 'error';
-  bootstrapError: string | null;
-  scanResult: DuplicateScanResult | null;
-  scanning: boolean;
-  deleting: boolean;
-  selectedFiles: Set<string>;
-  directories: string[];
-  drives: DriveInfo[];
-  selectedDrive: string | null;
-  customDirectories: string;
-  deleteResult: DuplicateDeleteResult | null;
-}
 
 export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
   constructor(private service: IDuplicateFinderService = duplicateFinderService) {
@@ -35,6 +21,9 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
       selectedDrive: null,
       customDirectories: '',
       deleteResult: null,
+      scope: 'entire',
+      estimate: null,
+      estimateLoading: false,
     });
   }
 
@@ -61,7 +50,22 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
     }
   }
 
-  async scan(directories?: string[], excludeDirs?: string[], minFileSize?: number) {
+  getScanDirectories(): string[] | undefined {
+    if (this.state.scope === 'custom') {
+      const dirs = this.state.customDirectories
+        .split(',')
+        .map((d) => d.trim())
+        .filter((d) => d);
+      return dirs.length ? dirs : undefined;
+    }
+    if (this.state.scope === 'entire' && this.state.selectedDrive) {
+      return [this.state.selectedDrive];
+    }
+    return undefined;
+  }
+
+  async scan(excludeDirs?: string[], minFileSize?: number) {
+    const directories = this.getScanDirectories();
     this.setState({ scanning: true, scanResult: null, selectedFiles: new Set(), deleteResult: null });
     try {
       const result = await this.service.scan(directories, excludeDirs, minFileSize);
@@ -86,8 +90,7 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
       
       // Re-scan after deletion
       if (result.deletedCount > 0) {
-        const directories = this.state.selectedDrive ? [this.state.selectedDrive] : undefined;
-        await this.scan(directories);
+        await this.scan();
       }
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to delete files';
@@ -152,11 +155,31 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
   }
 
   selectDrive(drive: string) {
-    this.setState({ selectedDrive: drive, customDirectories: '' });
+    this.setState({ selectedDrive: drive, customDirectories: '', scope: 'entire' });
+    void this.estimate();
   }
 
   setCustomDirectories(value: string) {
-    this.setState({ customDirectories: value, selectedDrive: null });
+    this.setState({ customDirectories: value, selectedDrive: null, scope: 'custom' });
+    void this.estimate();
+  }
+
+  setScope(scope: DuplicateScope) {
+    this.setState({ scope });
+    void this.estimate();
+  }
+
+  async estimate() {
+    const directories = this.getScanDirectories();
+    this.setState({ estimateLoading: true, estimate: null });
+    try {
+      const estimate = await this.service.estimate(this.state.scope, directories);
+      this.setState({ estimate, estimateLoading: false });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : 'Failed to estimate files';
+      this.setState({ estimateLoading: false, estimate: null });
+      console.error('Estimate failed:', error);
+    }
   }
 
   getFilesToDelete(): DuplicateFile[] {

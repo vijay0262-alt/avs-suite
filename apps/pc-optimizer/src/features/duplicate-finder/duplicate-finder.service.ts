@@ -2,7 +2,7 @@
  * Duplicate Finder service
  */
 
-import type { DuplicateScanResult, DuplicateDeleteResult, DuplicateFile, DriveInfo } from './duplicate-finder.types';
+import type { DuplicateScanResult, DuplicateDeleteResult, DuplicateEstimateResult, DuplicateFile, DriveInfo, DuplicateScope } from './duplicate-finder.types';
 
 function client() {
   if (typeof window === 'undefined' || !window.avs) {
@@ -15,6 +15,7 @@ export interface IDuplicateFinderService {
   listDrives(): Promise<DriveInfo[]>;
   scan(directories?: string[], excludeDirs?: string[], minFileSize?: number): Promise<DuplicateScanResult>;
   delete(files: DuplicateFile[]): Promise<DuplicateDeleteResult>;
+  estimate(scope: DuplicateScope, directories?: string[]): Promise<DuplicateEstimateResult>;
 }
 
 class DuplicateFinderService implements IDuplicateFinderService {
@@ -33,6 +34,10 @@ class DuplicateFinderService implements IDuplicateFinderService {
 
   async delete(files: DuplicateFile[]): Promise<DuplicateDeleteResult> {
     return await client().call('duplicate.delete', { files });
+  }
+
+  async estimate(scope: DuplicateScope, directories?: string[]): Promise<DuplicateEstimateResult> {
+    return await client().call('duplicate.estimate', { scope, directories });
   }
 }
 

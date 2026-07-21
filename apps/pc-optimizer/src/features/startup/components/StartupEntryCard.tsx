@@ -3,6 +3,7 @@
  */
 
 import { Button } from '@avs/ui';
+import { ShieldCheckIcon, ClockIcon } from '@heroicons/react/24/outline';
 import type { StartupEntry } from '../startup.types';
 
 interface StartupEntryCardProps {
@@ -31,6 +32,12 @@ export function StartupEntryCard({ entry, onDisable, onEnable, loading }: Startu
     }
   };
 
+  const formatBootImpact = (ms?: number) => {
+    if (ms === undefined || ms === null) return 'Unknown';
+    if (ms < 1000) return `${ms} ms`;
+    return `${(ms / 1000).toFixed(1)} s`;
+  };
+
   return (
     <div className="border border-border rounded-lg p-4 hover:bg-bg-secondary transition-colors">
       <div className="flex items-start justify-between gap-4">
@@ -41,8 +48,21 @@ export function StartupEntryCard({ entry, onDisable, onEnable, loading }: Startu
               {entry.impact.toUpperCase()}
             </span>
           </div>
-          <p className="text-sm text-text-secondary mb-1">{entry.publisher}</p>
-          <p className="text-xs text-text-muted mb-2">{getSourceLabel(entry.source)} • {entry.location}</p>
+          <p className="text-sm text-text-secondary mb-2">{entry.publisher || 'Unknown publisher'}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-text-muted mb-2">
+            <span>{getSourceLabel(entry.source)} • {entry.location}</span>
+            <span className="flex items-center gap-1">
+              <ShieldCheckIcon className="h-3.5 w-3.5" />
+              {entry.signatureStatus ?? 'Signature unknown'}
+            </span>
+            <span>Boot impact: {formatBootImpact(entry.bootImpactMs)}</span>
+            {entry.lastLaunch && (
+              <span className="flex items-center gap-1">
+                <ClockIcon className="h-3.5 w-3.5" />
+                Last launch: {entry.lastLaunch}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-text-muted truncate font-mono">{entry.command}</p>
         </div>
         <div className="flex flex-col gap-2">

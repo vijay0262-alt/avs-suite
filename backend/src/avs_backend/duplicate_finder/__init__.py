@@ -223,6 +223,99 @@ def duplicate_scan(params: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+_USER_SCOPE_FOLDERS = {
+    'pictures': 'Pictures',
+    'videos': 'Videos',
+    'music': 'Music',
+    'documents': 'Documents',
+    'downloads': 'Downloads',
+    'desktop': 'Desktop',
+}
+
+
+def _resolve_estimate_directories(params: dict[str, Any] | None) -> list[str]:
+    """Resolve directories from a scope or explicit list."""
+    params = params or {}
+    scope = params.get('scope', 'custom')
+    explicit = params.get('directories') or []
+
+    if scope == 'custom':
+        return [str(d) for d in explicit if d]
+
+    if scope in _USER_SCOPE_FOLDERS:
+        if IS_WINDOWS:
+            profile = os.environ.get('USERPROFILE', '')
+        else:
+            profile = os.path.expanduser('~')
+        if profile:
+            return [os.path.join(profile, _USER_SCOPE_FOLDERS[scope])]
+        return []
+
+    if scope == 'entire':
+        if explicit:
+            return [str(d) for d in explicit if d]
+        # Fallback to user profile defaults
+        if IS_WINDOWS:
+            profile = os.environ.get('USERPROFILE', '')
+            if profile:
+                return [
+                    os.path.join(profile, 'Documents'),
+                    os.path.join(profile, 'Downloads'),
+                    os.path.join(profile, 'Pictures'),
+                    os.path.join(profile, 'Desktop'),
+                ]
+        return [os.path.expanduser('~')]
+
+    return [str(d) for d in explicit if d]
+
+
+def _estimate_directory(directory: str) -> tuple[int, int]:
+    """Count files and total bytes in a directory tree without hashing."""
+    total_files = 0
+    total_bytes = 0
+    exclude_dirs = ['$RECYCLE.BIN', 'System Volume Information', 'Windows', 'Program Files', 'Program Files (x86)']
+
+    try:
+        for root, dirs, files in os.walk(directory):
+            dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith('.')]
+            for file in files:
+                try:
+                    file_path = os.path.join(root, file)
+                    if not os.path.isfile(file_path):
+                        continue
+                    file_size = os.path.getsize(file_path)
+                    if file_size > 100 * 1024 * 1024:
+                        continue
+                    total_files += 1
+                    total_bytes += file_size
+                except (OSError, PermissionError):
+                    continue
+    except (OSError, PermissionError) as e:
+        logger.warning(f"Could not estimate directory {directory}: {e}")
+
+    return total_files, total_bytes
+
+
+@register("duplicate.estimate")
+def duplicate_estimate(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Estimate the number of files and bytes that would be scanned."""
+    directories = _resolve_estimate_directories(params)
+    estimated_files = 0
+    estimated_bytes = 0
+
+    for directory in directories:
+        if os.path.isdir(directory):
+            files, bytes_count = _estimate_directory(directory)
+            estimated_files += files
+            estimated_bytes += bytes_count
+
+    return {
+        'directories': directories,
+        'estimatedFiles': estimated_files,
+        'estimatedBytes': estimated_bytes,
+    }
+
+
 @register("duplicate.delete")
 def duplicate_delete(params: dict[str, Any] | None) -> dict[str, Any]:
     """Delete selected duplicate files."""

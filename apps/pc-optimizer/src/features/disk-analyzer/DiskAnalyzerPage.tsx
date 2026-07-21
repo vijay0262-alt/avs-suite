@@ -12,7 +12,6 @@ import { diskAnalyzerService } from './disk-analyzer.service';
 export default function DiskAnalyzerPage() {
   const vm = useMemo(() => new DiskAnalyzerViewModel(diskAnalyzerService), []);
   const state = useViewModel(vm);
-  const [customDirectory, setCustomDirectory] = useState('');
   const [maxDepth, setMaxDepth] = useState(2);
 
   useEffect(() => {
@@ -21,8 +20,7 @@ export default function DiskAnalyzerPage() {
   }, [vm]);
 
   const handleAnalyze = () => {
-    const directory = state.selectedDrive || customDirectory || undefined;
-    void vm.analyze(directory, maxDepth);
+    void vm.analyze(maxDepth);
   };
 
   return (
@@ -51,62 +49,95 @@ export default function DiskAnalyzerPage() {
 
       {state.bootstrap === 'ready' && (
         <>
-          <Card title="Select Drive to Analyze" className="mb-4">
+          <Card title="Select Drives or Folder to Analyze" className="mb-4">
             <div className="space-y-4">
               {state.drives.length === 0 ? (
-                <p className="text-text-secondary">No drives found</p>
+                state.bootstrap === 'loading' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="p-4 border border-border rounded space-y-2">
+                        <div className="h-5 bg-bg-secondary rounded w-1/3" />
+                        <div className="h-3 bg-bg-secondary rounded w-1/4" />
+                        <div className="h-3 bg-bg-secondary rounded w-3/4" />
+                        <div className="h-3 bg-bg-secondary rounded w-2/3" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-text-secondary">No drives found</p>
+                )
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {state.drives.map((drive) => (
-                    <div
-                      key={drive.device}
-                      className={`p-4 border rounded cursor-pointer transition-colors ${
-                        state.selectedDrive === drive.mountpoint
-                          ? 'border-brand-primary bg-bg-secondary'
-                          : 'border-border hover:border-brand-primary'
-                      }`}
-                      onClick={() => vm.selectDrive(drive.mountpoint)}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-lg font-semibold text-text-primary">{drive.device}</span>
-                        <span className="text-sm text-text-muted">{drive.fstype}</span>
-                      </div>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-text-secondary">Total:</span>
-                          <span className="text-text-primary">{vm.formatBytes(drive.total)}</span>
+                  {state.drives.map((drive) => {
+                    const selected = state.selectedDrives.includes(drive.mountpoint);
+                    const isSystem = drive.isSystemDrive ?? drive.mountpoint.toLowerCase().startsWith('c:');
+                    return (
+                      <label
+                        key={drive.device}
+                        className={`relative p-4 border rounded cursor-pointer transition-colors ${
+                          selected
+                            ? 'border-brand-primary bg-bg-secondary'
+                            : 'border-border hover:border-brand-primary'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="absolute top-3 right-3 h-4 w-4 accent-brand-primary"
+                          checked={selected}
+                          onChange={() => vm.toggleDrive(drive.mountpoint)}
+                        />
+                        <div className="flex items-center justify-between mb-2 pr-6">
+                          <div>
+                            <span className="text-lg font-semibold text-text-primary block">{drive.device}</span>
+                            {drive.label && <span className="text-xs text-text-muted">{drive.label}</span>}
+                          </div>
+                          <span className="text-sm text-text-muted">{drive.fstype}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-text-secondary">Used:</span>
-                          <span className="text-text-primary">{vm.formatBytes(drive.used)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-text-secondary">Free:</span>
-                          <span className="text-text-primary">{vm.formatBytes(drive.free)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-text-secondary">Usage:</span>
-                          <span className={`font-semibold ${drive.percent > 80 ? 'text-red-500' : drive.percent > 60 ? 'text-yellow-500' : 'text-green-500'}`}>
-                            {drive.percent.toFixed(1)}%
+                        {isSystem && (
+                          <span className="inline-block mb-2 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-brand-primary/20 text-brand-primary">
+                            System Drive
                           </span>
+                        )}
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-text-secondary">Capacity:</span>
+                            <span className="text-text-primary">{vm.formatBytes(drive.total)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-text-secondary">Used:</span>
+                            <span className="text-text-primary">{vm.formatBytes(drive.used)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-text-secondary">Free:</span>
+                            <span className="text-text-primary">{vm.formatBytes(drive.free)}</span>
+                          </div>
+                          <div className="w-full h-2 bg-bg-secondary rounded overflow-hidden mt-2">
+                            <div
+                              className={`h-full ${drive.percent > 80 ? 'bg-semantic-danger' : drive.percent > 60 ? 'bg-semantic-warning' : 'bg-semantic-success'}`}
+                              style={{ width: `${drive.percent}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-text-muted">{drive.percent.toFixed(1)}% used</span>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  ))}
+                      </label>
+                    );
+                  })}
                 </div>
               )}
-              
+
               <div className="pt-4 border-t border-border">
                 <div>
                   <label className="block text-sm text-text-secondary mb-2">
-                    Or enter custom directory
+                    Or enter a specific folder
                   </label>
                   <input
                     type="text"
                     placeholder="C:\\Users\\YourName\\Documents"
-                    value={customDirectory}
-                    onChange={(e) => setCustomDirectory(e.target.value)}
-                    className="w-full px-3 py-2 bg-bg-secondary border border-border rounded text-sm text-text-primary"
+                    value={state.customDirectory}
+                    onChange={(e) => vm.setCustomDirectory(e.target.value)}
+                    className="w-full px-3 py-2 bg-bg-secondary border border-border rounded text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                   />
                 </div>
                 <div className="mt-4">
@@ -126,9 +157,9 @@ export default function DiskAnalyzerPage() {
                     <span>Deep (5)</span>
                   </div>
                 </div>
-                <Button 
-                  onClick={handleAnalyze} 
-                  disabled={state.analyzing || (!state.selectedDrive && !customDirectory)}
+                <Button
+                  onClick={handleAnalyze}
+                  disabled={state.analyzing || (state.selectedDrives.length === 0 && !state.customDirectory)}
                   className="w-full mt-4"
                 >
                   {state.analyzing ? 'Analyzing...' : 'Analyze Disk'}

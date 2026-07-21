@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
+import { GlobalSearch } from './GlobalSearch';
 import {
   Squares2X2Icon,
   TrashIcon,
@@ -54,6 +55,9 @@ export function Sidebar() {
       className="w-60 shrink-0 border-r border-border bg-surface px-3 py-4 overflow-y-auto"
       data-testid="app-sidebar"
     >
+      <div className="mb-4">
+        <GlobalSearch />
+      </div>
       <nav aria-label="Primary navigation" className="flex flex-col gap-1">
         {NAV.map(({ id, to, labelKey, Icon }) => (
           <NavLink

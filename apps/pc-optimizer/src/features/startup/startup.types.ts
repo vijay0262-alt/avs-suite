@@ -11,6 +11,12 @@ export interface StartupEntry {
   location: string;
   command: string;
   enabled: boolean;
+  /** Digital signature status, e.g. 'Signed', 'Unsigned', 'Unknown' */
+  signatureStatus?: string;
+  /** Estimated boot impact in milliseconds */
+  bootImpactMs?: number;
+  /** Last launch timestamp or humanized string */
+  lastLaunch?: string;
 }
 
 export interface StartupListResponse {
