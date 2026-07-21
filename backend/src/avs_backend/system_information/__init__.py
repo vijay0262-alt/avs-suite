@@ -10,6 +10,7 @@ import logging
 import os
 import platform
 import re
+import threading
 from pathlib import Path
 from typing import Any
 from functools import lru_cache
@@ -24,6 +25,7 @@ IS_WINDOWS = platform.system() == "Windows"
 
 # Cache for static hardware information (refreshed only on explicit request)
 _static_info_cache: dict[str, Any] | None = None
+_static_info_lock = threading.Lock()
 
 
 def _get_static_info() -> dict[str, Any]:
@@ -33,32 +35,36 @@ def _get_static_info() -> dict[str, Any]:
     if _static_info_cache is not None:
         return _static_info_cache
     
-    # CPU Information (static)
-    cpu_info = {
-        "name": platform.processor(),
-        "architecture": platform.machine(),
-        "cores": psutil.cpu_count(logical=False),
-        "logicalCores": psutil.cpu_count(logical=True),
-        "maxFrequency": psutil.cpu_freq().max if psutil.cpu_freq() else 0,
-    }
-    
-    # OS Information (static)
-    os_info = {
-        "system": platform.system(),
-        "release": platform.release(),
-        "version": platform.version(),
-        "machine": platform.machine(),
-        "processor": platform.processor(),
-        "hostname": platform.node(),
-        "bootTime": psutil.boot_time(),
-    }
-    
-    _static_info_cache = {
-        "cpu": cpu_info,
-        "os": os_info,
-    }
-    
-    return _static_info_cache
+    with _static_info_lock:
+        if _static_info_cache is not None:
+            return _static_info_cache
+
+        # CPU Information (static)
+        cpu_info = {
+            "name": platform.processor(),
+            "architecture": platform.machine(),
+            "cores": psutil.cpu_count(logical=False),
+            "logicalCores": psutil.cpu_count(logical=True),
+            "maxFrequency": psutil.cpu_freq().max if psutil.cpu_freq() else 0,
+        }
+
+        # OS Information (static)
+        os_info = {
+            "system": platform.system(),
+            "release": platform.release(),
+            "version": platform.version(),
+            "machine": platform.machine(),
+            "processor": platform.processor(),
+            "hostname": platform.node(),
+            "bootTime": psutil.boot_time(),
+        }
+
+        _static_info_cache = {
+            "cpu": cpu_info,
+            "os": os_info,
+        }
+
+        return _static_info_cache
 
 
 def _get_dynamic_info() -> dict[str, Any]:
@@ -232,7 +238,8 @@ def system_dynamic(_params: dict[str, Any] | None) -> dict[str, Any]:
 def system_refresh_cache(_params: dict[str, Any] | None) -> dict[str, bool]:
     """Refresh the static information cache."""
     global _static_info_cache
-    _static_info_cache = None
+    with _static_info_lock:
+        _static_info_cache = None
     _get_static_info()  # Force refresh
     return {"success": True}
 

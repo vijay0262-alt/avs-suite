@@ -13,7 +13,7 @@ function client() {
 
 export interface IDuplicateFinderService {
   listDrives(): Promise<DriveInfo[]>;
-  scan(directories?: string[], excludeDirs?: string[], minFileSize?: number): Promise<DuplicateScanResult>;
+  scan(scope: DuplicateScope, directories?: string[], excludeDirs?: string[], minFileSize?: number): Promise<DuplicateScanResult>;
   delete(files: DuplicateFile[]): Promise<DuplicateDeleteResult>;
   estimate(scope: DuplicateScope, directories?: string[]): Promise<DuplicateEstimateResult>;
 }
@@ -23,8 +23,9 @@ class DuplicateFinderService implements IDuplicateFinderService {
     return await client().call('duplicate.listDrives');
   }
 
-  async scan(directories?: string[], excludeDirs?: string[], minFileSize?: number): Promise<DuplicateScanResult> {
+  async scan(scope: DuplicateScope, directories?: string[], excludeDirs?: string[], minFileSize?: number): Promise<DuplicateScanResult> {
     const params = {
+      scope,
       directories,
       excludeDirs,
       minFileSize,

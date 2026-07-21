@@ -549,24 +549,27 @@ def disable_startup_entry(entry: StartupEntry) -> dict[str, Any]:
 
     try:
         success = False
+        message = "Unknown error"
         if entry.source in (StartupSource.REGISTRY_RUN, StartupSource.REGISTRY_RUN_ONCE):
-            success = _disable_registry_entry(entry)
+            success, message = _disable_registry_entry(entry)
         elif entry.source == StartupSource.STARTUP_FOLDER:
-            success = _disable_startup_folder_entry(entry)
+            success, message = _disable_startup_folder_entry(entry)
         elif entry.source == StartupSource.TASK_SCHEDULER:
-            success = _disable_task_scheduler_entry(entry)
+            success, message = _disable_task_scheduler_entry(entry)
 
         if success:
             logger.info(f"Successfully disabled startup entry: {entry.name}")
             return {
                 "success": True,
+                "message": message,
                 "backupId": backup_id,
                 "isMicrosoftSigned": is_microsoft,
             }
         else:
             return {
                 "success": False,
-                "error": f"Failed to disable entry: {entry.name}",
+                "error": message,
+                "message": message,
                 "backupId": backup_id,
             }
     except Exception as e:
@@ -574,18 +577,23 @@ def disable_startup_entry(entry: StartupEntry) -> dict[str, Any]:
         return {
             "success": False,
             "error": str(e),
+            "message": str(e),
             "backupId": backup_id,
         }
 
 
-def _disable_registry_entry(entry: StartupEntry) -> bool:
-    """Disable registry startup entry."""
+def _disable_registry_entry(entry: StartupEntry) -> tuple[bool, str]:
+    """Disable registry startup entry.
+
+    Returns:
+        (success, message) tuple where message explains the outcome.
+    """
     if not IS_WINDOWS:
-        return False
+        return False, "Not supported on this platform"
 
     parts = entry.location.split("\\")
     if len(parts) < 2:
-        return False
+        return False, "Invalid registry location format"
 
     root_key_str = parts[0]
     sub_key = "\\".join(parts[1:])
@@ -596,50 +604,74 @@ def _disable_registry_entry(entry: StartupEntry) -> bool:
     }
 
     if root_key_str not in root_key_map:
-        return False
+        return False, f"Unsupported registry root: {root_key_str}"
 
     root_key = root_key_map[root_key_str]
 
     try:
         key = winreg.OpenKey(root_key, sub_key, 0, winreg.KEY_SET_VALUE)
+    except FileNotFoundError:
+        return False, "Registry key not found — entry may have already been removed"
+    except PermissionError:
+        return False, "Administrator permission required to modify this registry key"
+    except OSError as e:
+        if e.winerror == 5:
+            return False, "Administrator permission required to modify this registry key"
+        return False, f"Registry access failed: {e}"
+
+    try:
         winreg.DeleteValue(key, entry.name)
         winreg.CloseKey(key)
         logger.info(f"Disabled registry entry: {entry.name}")
-        return True
+        return True, "Disabled Successfully"
     except FileNotFoundError:
-        logger.warning(f"Registry entry not found: {entry.name}")
-        return False
-    except Exception as e:
-        logger.error(f"Failed to disable registry entry: {e}")
-        return False
+        winreg.CloseKey(key)
+        return False, "Already Disabled"
+    except PermissionError:
+        winreg.CloseKey(key)
+        return False, "Administrator permission required to modify this registry entry"
+    except OSError as e:
+        winreg.CloseKey(key)
+        if e.winerror == 5:
+            return False, "Administrator permission required to modify this registry entry"
+        return False, f"Registry access denied: {e}"
 
 
-def _disable_startup_folder_entry(entry: StartupEntry) -> bool:
-    """Disable startup folder entry."""
+def _disable_startup_folder_entry(entry: StartupEntry) -> tuple[bool, str]:
+    """Disable startup folder entry.
+
+    Returns:
+        (success, message) tuple.
+    """
     shortcut_path = Path(entry.location)
     try:
-        if shortcut_path.exists():
-            # Move to disabled folder instead of deleting
-            disabled_folder = shortcut_path.parent / "Disabled"
-            disabled_folder.mkdir(exist_ok=True)
-            shortcut_path.rename(disabled_folder / shortcut_path.name)
-            logger.info(f"Disabled startup folder entry: {entry.name}")
-            return True
-        return False
+        if not shortcut_path.exists():
+            return False, "Already Disabled"
+        # Move to disabled folder instead of deleting
+        disabled_folder = shortcut_path.parent / "Disabled"
+        disabled_folder.mkdir(exist_ok=True)
+        shortcut_path.rename(disabled_folder / shortcut_path.name)
+        logger.info(f"Disabled startup folder entry: {entry.name}")
+        return True, "Disabled Successfully"
+    except PermissionError:
+        return False, "Permission denied — cannot move startup folder shortcut"
     except Exception as e:
         logger.error(f"Failed to disable startup folder entry: {e}")
-        return False
+        return False, f"Failed to disable: {e}"
 
 
-def _disable_task_scheduler_entry(entry: StartupEntry) -> bool:
-    """Disable task scheduler entry."""
+def _disable_task_scheduler_entry(entry: StartupEntry) -> tuple[bool, str]:
+    """Disable task scheduler entry.
+
+    Returns:
+        (success, message) tuple.
+    """
     if not IS_WINDOWS:
-        return False
+        return False, "Not supported on this platform"
 
     try:
         import subprocess
 
-        # Use schtasks.exe to disable the task
         result = subprocess.run(
             ["schtasks", "/change", "/tn", entry.name, "/disable"],
             capture_output=True,
@@ -649,17 +681,22 @@ def _disable_task_scheduler_entry(entry: StartupEntry) -> bool:
 
         if result.returncode == 0:
             logger.info(f"Disabled task scheduler entry: {entry.name}")
-            return True
+            return True, "Disabled Successfully"
         else:
-            logger.error(f"Failed to disable task {entry.name}: {result.stderr}")
-            return False
+            stderr = result.stderr.strip()
+            if "cannot find" in stderr.lower() or "does not exist" in stderr.lower():
+                return False, "Task not found — may have already been removed"
+            if "access is denied" in stderr.lower():
+                return False, "Administrator permission required to modify this scheduled task"
+            logger.error(f"Failed to disable task {entry.name}: {stderr}")
+            return False, f"Task Scheduler error: {stderr}"
 
     except subprocess.TimeoutExpired:
         logger.error(f"Task scheduler disable timed out for: {entry.name}")
-        return False
+        return False, "Task Scheduler operation timed out"
     except Exception as e:
         logger.error(f"Failed to disable task scheduler entry: {e}")
-        return False
+        return False, f"Failed to disable: {e}"
 
 
 def enable_startup_entry(entry: StartupEntry) -> bool:

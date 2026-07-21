@@ -32,7 +32,8 @@ CACHE_TTL_SECONDS = 60  # Cache for 60 seconds
 
 def _is_cache_valid() -> bool:
     """Check if the cache is still valid."""
-    return _startup_cache is not None and (time.time() - _cache_timestamp) < CACHE_TTL_SECONDS
+    with _cache_lock:
+        return _startup_cache is not None and (time.time() - _cache_timestamp) < CACHE_TTL_SECONDS
 
 
 def _refresh_cache() -> list[dict[str, Any]]:
@@ -62,12 +63,12 @@ def _refresh_cache() -> list[dict[str, Any]]:
 def startup_list(_params: dict[str, Any] | None) -> list[dict[str, Any]]:
     """Scan and list all startup applications (with caching)."""
     try:
-        # Return cached data if valid
         if _is_cache_valid():
-            logger.debug("Returning cached startup entries")
-            return _startup_cache
+            with _cache_lock:
+                if _startup_cache is not None:
+                    logger.debug("Returning cached startup entries")
+                    return _startup_cache
         
-        # Otherwise refresh cache
         logger.debug("Refreshing startup entries cache")
         return _refresh_cache()
     except Exception as e:

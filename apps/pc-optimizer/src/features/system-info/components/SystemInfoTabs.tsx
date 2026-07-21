@@ -33,7 +33,7 @@ export function SystemInfoTabs({ info, vm }: SystemInfoTabsProps) {
       `  Architecture: ${info.cpu.architecture}`,
       `  Cores: ${info.cpu.cores} physical / ${info.cpu.logicalCores} logical`,
       `  Max frequency: ${vm.formatFrequency(info.cpu.maxFrequency)}`,
-      `  Current frequency: ${vm.formatFrequency(info.cpu.currentFrequency)}`,
+      `  Current frequency: ${vm.formatFrequency(info.memory.currentFrequency)}`,
       '',
       'Memory',
       `  Total: ${vm.formatBytes(info.memory.total)}`,
@@ -112,7 +112,7 @@ export function SystemInfoTabs({ info, vm }: SystemInfoTabsProps) {
           { label: 'Physical cores', value: String(info.cpu.cores) },
           { label: 'Logical cores', value: String(info.cpu.logicalCores) },
           { label: 'Max frequency', value: vm.formatFrequency(info.cpu.maxFrequency) },
-          { label: 'Current frequency', value: vm.formatFrequency(info.cpu.currentFrequency) },
+          { label: 'Current frequency', value: vm.formatFrequency(info.memory.currentFrequency) },
         ]);
       case 'memory':
         return renderPairs([

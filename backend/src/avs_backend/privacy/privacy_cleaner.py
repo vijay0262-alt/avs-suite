@@ -73,6 +73,24 @@ class PrivacyCategory(str, Enum):
     FIREFOX_SESSION = "firefox_session"
     FIREFOX_TEMP = "firefox_temp"
     FIREFOX_SITE_STORAGE = "firefox_site_storage"
+    BRAVE_HISTORY = "brave_history"
+    BRAVE_DOWNLOADS = "brave_downloads"
+    BRAVE_CACHE = "brave_cache"
+    BRAVE_SESSION = "brave_session"
+    BRAVE_TEMP = "brave_temp"
+    BRAVE_SITE_STORAGE = "brave_site_storage"
+    OPERA_HISTORY = "opera_history"
+    OPERA_DOWNLOADS = "opera_downloads"
+    OPERA_CACHE = "opera_cache"
+    OPERA_SESSION = "opera_session"
+    OPERA_TEMP = "opera_temp"
+    OPERA_SITE_STORAGE = "opera_site_storage"
+    VIVALDI_HISTORY = "vivaldi_history"
+    VIVALDI_DOWNLOADS = "vivaldi_downloads"
+    VIVALDI_CACHE = "vivaldi_cache"
+    VIVALDI_SESSION = "vivaldi_session"
+    VIVALDI_TEMP = "vivaldi_temp"
+    VIVALDI_SITE_STORAGE = "vivaldi_site_storage"
 
 
 class BrowserType(str, Enum):
@@ -81,6 +99,9 @@ class BrowserType(str, Enum):
     CHROME = "chrome"
     EDGE = "edge"
     FIREFOX = "firefox"
+    BRAVE = "brave"
+    OPERA = "opera"
+    VIVALDI = "vivaldi"
 
 
 class RiskLevel(str, Enum):
@@ -155,6 +176,22 @@ def detect_browsers() -> set[BrowserType]:
         BrowserType.FIREFOX: [
             os.path.join(os.environ.get("PROGRAMFILES", ""), "Mozilla Firefox", "firefox.exe"),
             os.path.join(os.environ.get("PROGRAMFILES(X86)", ""), "Mozilla Firefox", "firefox.exe"),
+        ],
+        BrowserType.BRAVE: [
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+            os.path.join(os.environ.get("PROGRAMFILES", ""), "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+            os.path.join(os.environ.get("PROGRAMFILES(X86)", ""), "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+        ],
+        BrowserType.OPERA: [
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "Opera", "launcher.exe"),
+            os.path.join(os.environ.get("APPDATA", ""), "Opera Software", "Opera Stable", "launcher.exe"),
+            os.path.join(os.environ.get("PROGRAMFILES", ""), "Opera", "launcher.exe"),
+            os.path.join(os.environ.get("PROGRAMFILES(X86)", ""), "Opera", "launcher.exe"),
+        ],
+        BrowserType.VIVALDI: [
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Vivaldi", "Application", "vivaldi.exe"),
+            os.path.join(os.environ.get("PROGRAMFILES", ""), "Vivaldi", "Application", "vivaldi.exe"),
+            os.path.join(os.environ.get("PROGRAMFILES(X86)", ""), "Vivaldi", "Application", "vivaldi.exe"),
         ],
     }
 
@@ -409,6 +446,24 @@ def scan_browser_cache(browser_type: BrowserType) -> list[PrivacyItem]:
             os.path.join(user_data, "Default", "Cache"),
             os.path.join(user_data, "Default", "Code Cache"),
         ]
+    elif browser_type == BrowserType.BRAVE:
+        user_data = os.path.join(os.environ.get("LOCALAPPDATA", ""), "BraveSoftware", "Brave-Browser", "User Data")
+        cache_dirs = [
+            os.path.join(user_data, "Default", "Cache"),
+            os.path.join(user_data, "Default", "Code Cache"),
+        ]
+    elif browser_type == BrowserType.OPERA:
+        user_data = os.path.join(os.environ.get("APPDATA", ""), "Opera Software", "Opera Stable")
+        cache_dirs = [
+            os.path.join(user_data, "Cache"),
+            os.path.join(user_data, "Code Cache"),
+        ]
+    elif browser_type == BrowserType.VIVALDI:
+        user_data = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Vivaldi", "User Data")
+        cache_dirs = [
+            os.path.join(user_data, "Default", "Cache"),
+            os.path.join(user_data, "Default", "Code Cache"),
+        ]
     elif browser_type == BrowserType.FIREFOX:
         app_data = os.path.join(os.environ.get("APPDATA", ""), "Mozilla", "Firefox", "Profiles")
         if os.path.exists(app_data):
@@ -429,6 +484,9 @@ def scan_browser_cache(browser_type: BrowserType) -> list[PrivacyItem]:
                             BrowserType.CHROME: PrivacyCategory.CHROME_CACHE,
                             BrowserType.EDGE: PrivacyCategory.EDGE_CACHE,
                             BrowserType.FIREFOX: PrivacyCategory.FIREFOX_CACHE,
+                            BrowserType.BRAVE: PrivacyCategory.BRAVE_CACHE,
+                            BrowserType.OPERA: PrivacyCategory.OPERA_CACHE,
+                            BrowserType.VIVALDI: PrivacyCategory.VIVALDI_CACHE,
                         }[browser_type]
 
                         items.append(PrivacyItem(
@@ -461,6 +519,15 @@ def scan_browser_history(browser_type: BrowserType) -> list[PrivacyItem]:
     elif browser_type == BrowserType.EDGE:
         user_data = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Edge", "User Data")
         history_files = [os.path.join(user_data, "Default", "History")]
+    elif browser_type == BrowserType.BRAVE:
+        user_data = os.path.join(os.environ.get("LOCALAPPDATA", ""), "BraveSoftware", "Brave-Browser", "User Data")
+        history_files = [os.path.join(user_data, "Default", "History")]
+    elif browser_type == BrowserType.OPERA:
+        user_data = os.path.join(os.environ.get("APPDATA", ""), "Opera Software", "Opera Stable")
+        history_files = [os.path.join(user_data, "History")]
+    elif browser_type == BrowserType.VIVALDI:
+        user_data = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Vivaldi", "User Data")
+        history_files = [os.path.join(user_data, "Default", "History")]
     elif browser_type == BrowserType.FIREFOX:
         app_data = os.path.join(os.environ.get("APPDATA", ""), "Mozilla", "Firefox", "Profiles")
         if os.path.exists(app_data):
@@ -477,6 +544,9 @@ def scan_browser_history(browser_type: BrowserType) -> list[PrivacyItem]:
                 BrowserType.CHROME: PrivacyCategory.CHROME_HISTORY,
                 BrowserType.EDGE: PrivacyCategory.EDGE_HISTORY,
                 BrowserType.FIREFOX: PrivacyCategory.FIREFOX_HISTORY,
+                BrowserType.BRAVE: PrivacyCategory.BRAVE_HISTORY,
+                BrowserType.OPERA: PrivacyCategory.OPERA_HISTORY,
+                BrowserType.VIVALDI: PrivacyCategory.VIVALDI_HISTORY,
             }[browser_type]
 
             items.append(PrivacyItem(
@@ -507,6 +577,15 @@ def scan_browser_downloads(browser_type: BrowserType) -> list[PrivacyItem]:
     elif browser_type == BrowserType.EDGE:
         user_data = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Edge", "User Data")
         download_dirs = [os.path.join(user_data, "Default", "History")]
+    elif browser_type == BrowserType.BRAVE:
+        user_data = os.path.join(os.environ.get("LOCALAPPDATA", ""), "BraveSoftware", "Brave-Browser", "User Data")
+        download_dirs = [os.path.join(user_data, "Default", "History")]
+    elif browser_type == BrowserType.OPERA:
+        user_data = os.path.join(os.environ.get("APPDATA", ""), "Opera Software", "Opera Stable")
+        download_dirs = [os.path.join(user_data, "History")]
+    elif browser_type == BrowserType.VIVALDI:
+        user_data = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Vivaldi", "User Data")
+        download_dirs = [os.path.join(user_data, "Default", "History")]
     elif browser_type == BrowserType.FIREFOX:
         app_data = os.path.join(os.environ.get("APPDATA", ""), "Mozilla", "Firefox", "Profiles")
         if os.path.exists(app_data):
@@ -523,6 +602,9 @@ def scan_browser_downloads(browser_type: BrowserType) -> list[PrivacyItem]:
                 BrowserType.CHROME: PrivacyCategory.CHROME_DOWNLOADS,
                 BrowserType.EDGE: PrivacyCategory.EDGE_DOWNLOADS,
                 BrowserType.FIREFOX: PrivacyCategory.FIREFOX_DOWNLOADS,
+                BrowserType.BRAVE: PrivacyCategory.BRAVE_DOWNLOADS,
+                BrowserType.OPERA: PrivacyCategory.OPERA_DOWNLOADS,
+                BrowserType.VIVALDI: PrivacyCategory.VIVALDI_DOWNLOADS,
             }[browser_type]
 
             items.append(PrivacyItem(
@@ -559,6 +641,24 @@ def scan_browser_session(browser_type: BrowserType) -> list[PrivacyItem]:
             os.path.join(user_data, "Default", "Session Storage"),
             os.path.join(user_data, "Default", "Local Storage"),
         ]
+    elif browser_type == BrowserType.BRAVE:
+        user_data = os.path.join(os.environ.get("LOCALAPPDATA", ""), "BraveSoftware", "Brave-Browser", "User Data")
+        session_dirs = [
+            os.path.join(user_data, "Default", "Session Storage"),
+            os.path.join(user_data, "Default", "Local Storage"),
+        ]
+    elif browser_type == BrowserType.OPERA:
+        user_data = os.path.join(os.environ.get("APPDATA", ""), "Opera Software", "Opera Stable")
+        session_dirs = [
+            os.path.join(user_data, "Session Storage"),
+            os.path.join(user_data, "Local Storage"),
+        ]
+    elif browser_type == BrowserType.VIVALDI:
+        user_data = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Vivaldi", "User Data")
+        session_dirs = [
+            os.path.join(user_data, "Default", "Session Storage"),
+            os.path.join(user_data, "Default", "Local Storage"),
+        ]
     elif browser_type == BrowserType.FIREFOX:
         app_data = os.path.join(os.environ.get("APPDATA", ""), "Mozilla", "Firefox", "Profiles")
         if os.path.exists(app_data):
@@ -580,6 +680,9 @@ def scan_browser_session(browser_type: BrowserType) -> list[PrivacyItem]:
                             BrowserType.CHROME: PrivacyCategory.CHROME_SESSION,
                             BrowserType.EDGE: PrivacyCategory.EDGE_SESSION,
                             BrowserType.FIREFOX: PrivacyCategory.FIREFOX_SESSION,
+                            BrowserType.BRAVE: PrivacyCategory.BRAVE_SESSION,
+                            BrowserType.OPERA: PrivacyCategory.OPERA_SESSION,
+                            BrowserType.VIVALDI: PrivacyCategory.VIVALDI_SESSION,
                         }[browser_type]
 
                         items.append(PrivacyItem(
@@ -618,6 +721,24 @@ def scan_browser_temp(browser_type: BrowserType) -> list[PrivacyItem]:
             os.path.join(user_data, "Default", "GPUCache"),
             os.path.join(user_data, "Default", "ShaderCache"),
         ]
+    elif browser_type == BrowserType.BRAVE:
+        user_data = os.path.join(os.environ.get("LOCALAPPDATA", ""), "BraveSoftware", "Brave-Browser", "User Data")
+        temp_dirs = [
+            os.path.join(user_data, "Default", "GPUCache"),
+            os.path.join(user_data, "Default", "ShaderCache"),
+        ]
+    elif browser_type == BrowserType.OPERA:
+        user_data = os.path.join(os.environ.get("APPDATA", ""), "Opera Software", "Opera Stable")
+        temp_dirs = [
+            os.path.join(user_data, "GPUCache"),
+            os.path.join(user_data, "ShaderCache"),
+        ]
+    elif browser_type == BrowserType.VIVALDI:
+        user_data = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Vivaldi", "User Data")
+        temp_dirs = [
+            os.path.join(user_data, "Default", "GPUCache"),
+            os.path.join(user_data, "Default", "ShaderCache"),
+        ]
     elif browser_type == BrowserType.FIREFOX:
         app_data = os.path.join(os.environ.get("APPDATA", ""), "Mozilla", "Firefox", "Profiles")
         if os.path.exists(app_data):
@@ -638,6 +759,9 @@ def scan_browser_temp(browser_type: BrowserType) -> list[PrivacyItem]:
                             BrowserType.CHROME: PrivacyCategory.CHROME_TEMP,
                             BrowserType.EDGE: PrivacyCategory.EDGE_TEMP,
                             BrowserType.FIREFOX: PrivacyCategory.FIREFOX_TEMP,
+                            BrowserType.BRAVE: PrivacyCategory.BRAVE_TEMP,
+                            BrowserType.OPERA: PrivacyCategory.OPERA_TEMP,
+                            BrowserType.VIVALDI: PrivacyCategory.VIVALDI_TEMP,
                         }[browser_type]
 
                         items.append(PrivacyItem(
@@ -676,6 +800,24 @@ def scan_browser_site_storage(browser_type: BrowserType) -> list[PrivacyItem]:
             os.path.join(user_data, "Default", "IndexedDB"),
             os.path.join(user_data, "Default", "WebSQL"),
         ]
+    elif browser_type == BrowserType.BRAVE:
+        user_data = os.path.join(os.environ.get("LOCALAPPDATA", ""), "BraveSoftware", "Brave-Browser", "User Data")
+        storage_dirs = [
+            os.path.join(user_data, "Default", "IndexedDB"),
+            os.path.join(user_data, "Default", "WebSQL"),
+        ]
+    elif browser_type == BrowserType.OPERA:
+        user_data = os.path.join(os.environ.get("APPDATA", ""), "Opera Software", "Opera Stable")
+        storage_dirs = [
+            os.path.join(user_data, "IndexedDB"),
+            os.path.join(user_data, "WebSQL"),
+        ]
+    elif browser_type == BrowserType.VIVALDI:
+        user_data = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Vivaldi", "User Data")
+        storage_dirs = [
+            os.path.join(user_data, "Default", "IndexedDB"),
+            os.path.join(user_data, "Default", "WebSQL"),
+        ]
     elif browser_type == BrowserType.FIREFOX:
         app_data = os.path.join(os.environ.get("APPDATA", ""), "Mozilla", "Firefox", "Profiles")
         if os.path.exists(app_data):
@@ -696,6 +838,9 @@ def scan_browser_site_storage(browser_type: BrowserType) -> list[PrivacyItem]:
                             BrowserType.CHROME: PrivacyCategory.CHROME_SITE_STORAGE,
                             BrowserType.EDGE: PrivacyCategory.EDGE_SITE_STORAGE,
                             BrowserType.FIREFOX: PrivacyCategory.FIREFOX_SITE_STORAGE,
+                            BrowserType.BRAVE: PrivacyCategory.BRAVE_SITE_STORAGE,
+                            BrowserType.OPERA: PrivacyCategory.OPERA_SITE_STORAGE,
+                            BrowserType.VIVALDI: PrivacyCategory.VIVALDI_SITE_STORAGE,
                         }[browser_type]
 
                         items.append(PrivacyItem(
@@ -879,6 +1024,24 @@ def scan_privacy_items(
         (BrowserType.FIREFOX, PrivacyCategory.FIREFOX_SESSION, scan_browser_session),
         (BrowserType.FIREFOX, PrivacyCategory.FIREFOX_TEMP, scan_browser_temp),
         (BrowserType.FIREFOX, PrivacyCategory.FIREFOX_SITE_STORAGE, scan_browser_site_storage),
+        (BrowserType.BRAVE, PrivacyCategory.BRAVE_HISTORY, scan_browser_history),
+        (BrowserType.BRAVE, PrivacyCategory.BRAVE_DOWNLOADS, scan_browser_downloads),
+        (BrowserType.BRAVE, PrivacyCategory.BRAVE_CACHE, scan_browser_cache),
+        (BrowserType.BRAVE, PrivacyCategory.BRAVE_SESSION, scan_browser_session),
+        (BrowserType.BRAVE, PrivacyCategory.BRAVE_TEMP, scan_browser_temp),
+        (BrowserType.BRAVE, PrivacyCategory.BRAVE_SITE_STORAGE, scan_browser_site_storage),
+        (BrowserType.OPERA, PrivacyCategory.OPERA_HISTORY, scan_browser_history),
+        (BrowserType.OPERA, PrivacyCategory.OPERA_DOWNLOADS, scan_browser_downloads),
+        (BrowserType.OPERA, PrivacyCategory.OPERA_CACHE, scan_browser_cache),
+        (BrowserType.OPERA, PrivacyCategory.OPERA_SESSION, scan_browser_session),
+        (BrowserType.OPERA, PrivacyCategory.OPERA_TEMP, scan_browser_temp),
+        (BrowserType.OPERA, PrivacyCategory.OPERA_SITE_STORAGE, scan_browser_site_storage),
+        (BrowserType.VIVALDI, PrivacyCategory.VIVALDI_HISTORY, scan_browser_history),
+        (BrowserType.VIVALDI, PrivacyCategory.VIVALDI_DOWNLOADS, scan_browser_downloads),
+        (BrowserType.VIVALDI, PrivacyCategory.VIVALDI_CACHE, scan_browser_cache),
+        (BrowserType.VIVALDI, PrivacyCategory.VIVALDI_SESSION, scan_browser_session),
+        (BrowserType.VIVALDI, PrivacyCategory.VIVALDI_TEMP, scan_browser_temp),
+        (BrowserType.VIVALDI, PrivacyCategory.VIVALDI_SITE_STORAGE, scan_browser_site_storage),
     ]
 
     for browser_type, category, scan_func in browser_categories:

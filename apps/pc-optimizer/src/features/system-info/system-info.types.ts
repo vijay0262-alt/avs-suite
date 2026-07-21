@@ -58,13 +58,26 @@ export interface ProcessInfo {
   running: number;
 }
 
-export interface ComprehensiveSystemInfo {
-  cpu: CpuInfo;
-  memory: MemoryInfo;
+export interface StaticSystemInfo {
+  cpu: {
+    name: string;
+    architecture: string;
+    cores: number;
+    logicalCores: number;
+    maxFrequency: number;
+  };
+  os: OsInfo;
+}
+
+export interface DynamicSystemInfo {
+  cpuUsage: number;
+  memory: MemoryInfo & { currentFrequency: number };
   disk: DiskInfo[];
   network: NetworkInfo;
-  os: OsInfo;
   processes: ProcessInfo;
+}
+
+export interface ComprehensiveSystemInfo extends StaticSystemInfo, DynamicSystemInfo {
   capturedAt: string;
 }
 

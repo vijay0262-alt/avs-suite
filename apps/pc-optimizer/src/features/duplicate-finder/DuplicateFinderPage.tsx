@@ -174,7 +174,6 @@ export default function DuplicateFinderPage() {
                 onClick={handleScan}
                 disabled={
                   state.scanning ||
-                  state.estimateLoading ||
                   ((state.scope === 'entire' && !state.selectedDrive) ||
                     (state.scope === 'custom' && !state.customDirectories))
                 }

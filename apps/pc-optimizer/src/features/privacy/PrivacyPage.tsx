@@ -65,12 +65,33 @@ export default function PrivacyPage() {
     firefox_session: 'Firefox Session',
     firefox_temp: 'Firefox Temporary Files',
     firefox_site_storage: 'Firefox Site Storage',
+    brave_history: 'Brave History',
+    brave_downloads: 'Brave Downloads',
+    brave_cache: 'Brave Cache',
+    brave_session: 'Brave Session',
+    brave_temp: 'Brave Temporary Files',
+    brave_site_storage: 'Brave Site Storage',
+    opera_history: 'Opera History',
+    opera_downloads: 'Opera Downloads',
+    opera_cache: 'Opera Cache',
+    opera_session: 'Opera Session',
+    opera_temp: 'Opera Temporary Files',
+    opera_site_storage: 'Opera Site Storage',
+    vivaldi_history: 'Vivaldi History',
+    vivaldi_downloads: 'Vivaldi Downloads',
+    vivaldi_cache: 'Vivaldi Cache',
+    vivaldi_session: 'Vivaldi Session',
+    vivaldi_temp: 'Vivaldi Temporary Files',
+    vivaldi_site_storage: 'Vivaldi Site Storage',
   };
 
   const BROWSER_CATEGORIES = [
     'chrome_history', 'chrome_downloads', 'chrome_cache', 'chrome_session', 'chrome_temp', 'chrome_site_storage',
     'edge_history', 'edge_downloads', 'edge_cache', 'edge_session', 'edge_temp', 'edge_site_storage',
     'firefox_history', 'firefox_downloads', 'firefox_cache', 'firefox_session', 'firefox_temp', 'firefox_site_storage',
+    'brave_history', 'brave_downloads', 'brave_cache', 'brave_session', 'brave_temp', 'brave_site_storage',
+    'opera_history', 'opera_downloads', 'opera_cache', 'opera_session', 'opera_temp', 'opera_site_storage',
+    'vivaldi_history', 'vivaldi_downloads', 'vivaldi_cache', 'vivaldi_session', 'vivaldi_temp', 'vivaldi_site_storage',
   ];
 
   const getRiskColor = (level: string) => {
@@ -114,12 +135,35 @@ export default function PrivacyPage() {
             ) : state.browsersDetected.length === 0 ? (
               <p className="text-text-secondary">No browsers detected</p>
             ) : (
-              <div className="flex gap-2">
-                {state.browsersDetected.map(browser => (
-                  <span key={browser} className="px-3 py-1 bg-bg-secondary rounded-full text-sm text-text-primary">
-                    {browser.charAt(0).toUpperCase() + browser.slice(1)}
-                  </span>
-                ))}
+              <div className="flex flex-wrap gap-3">
+                {state.browsersDetected.map(browser => {
+                  const browserCats = BROWSER_CATEGORIES.filter(c => c.startsWith(browser));
+                  const allSelected = browserCats.every(c => state.selectedCategories.has(c));
+                  const handleBrowserToggle = () => {
+                    if (allSelected) {
+                      browserCats.forEach(c => {
+                        if (state.selectedCategories.has(c)) vm.toggleCategory(c);
+                      });
+                    } else {
+                      browserCats.forEach(c => {
+                        if (!state.selectedCategories.has(c)) vm.toggleCategory(c);
+                      });
+                    }
+                  };
+                  return (
+                    <label key={browser} className="flex items-center gap-2 px-3 py-1.5 bg-bg-secondary rounded-lg cursor-pointer hover:bg-surface-muted">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={handleBrowserToggle}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm text-text-primary font-medium">
+                        {browser.charAt(0).toUpperCase() + browser.slice(1)}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
             )}
           </Card>

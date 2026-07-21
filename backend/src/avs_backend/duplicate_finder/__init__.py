@@ -136,9 +136,15 @@ def duplicate_scan(params: dict[str, Any] | None) -> dict[str, Any]:
     start_time = datetime.now()
     
     # Get scan parameters
-    directories = []
-    if params and 'directories' in params:
-        directories = params['directories']
+    params = params or {}
+    scope = params.get('scope', 'custom')
+    explicit_dirs = params.get('directories') or []
+    
+    # Resolve directories from scope
+    if scope and scope != 'custom':
+        directories = _resolve_estimate_directories(params)
+    elif explicit_dirs:
+        directories = [str(d) for d in explicit_dirs if d]
     else:
         # Default to common user directories
         if IS_WINDOWS:
@@ -153,8 +159,8 @@ def duplicate_scan(params: dict[str, Any] | None) -> dict[str, Any]:
         else:
             directories = [os.path.expanduser('~')]
     
-    exclude_dirs = params.get('excludeDirs') if params else None
-    min_file_size = params.get('minFileSize', 1024) if params else 1024  # Default 1KB
+    exclude_dirs = params.get('excludeDirs')
+    min_file_size = params.get('minFileSize', 1024)  # Default 1KB
     
     logger.info(f"Starting duplicate scan in {len(directories)} directories")
     

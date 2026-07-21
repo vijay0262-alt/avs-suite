@@ -38,20 +38,26 @@ def _ttl_cache(ttl_seconds: float) -> Callable[[Callable[[], Any]], Callable[[],
 
     Security and hardware queries are expensive (they shell out to
     PowerShell) but change rarely, so we avoid running them on every
-    metrics poll.
+    metrics poll. Thread-safe via an internal lock.
     """
 
     def decorator(fn: Callable[[], Any]) -> Callable[[], Any]:
         state: dict[str, Any] = {"value": None, "ts": 0.0, "set": False}
+        lock = threading.Lock()
 
         @functools.wraps(fn)
         def wrapper() -> Any:
             now = time.monotonic()
             if state["set"] and (now - state["ts"]) < ttl_seconds:
                 return state["value"]
-            value = fn()
-            state.update(value=value, ts=now, set=True)
-            return value
+            with lock:
+                # Double-check after acquiring lock to avoid duplicate work
+                now = time.monotonic()
+                if state["set"] and (now - state["ts"]) < ttl_seconds:
+                    return state["value"]
+                value = fn()
+                state.update(value=value, ts=now, set=True)
+                return value
 
         wrapper.cache_clear = lambda: state.update(value=None, ts=0.0, set=False)  # type: ignore[attr-defined]
         return wrapper

@@ -14,7 +14,11 @@ export interface SystemInfoState {
   loading: boolean;
 }
 
+const DYNAMIC_POLL_MS = 2000;
+
 export class SystemInfoViewModel extends ViewModel<SystemInfoState> {
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+
   constructor(private service: ISystemInfoService = systemInfoService) {
     super({
       bootstrap: 'idle',
@@ -25,13 +29,56 @@ export class SystemInfoViewModel extends ViewModel<SystemInfoState> {
   }
 
   async bootstrap() {
-    // Render the shell instantly; load comprehensive data in the background.
     this.setState({ bootstrap: 'ready', bootstrapError: null, loading: true });
     try {
-      await this.loadSystemInfo();
+      const staticInfo = await this.service.getStaticInfo();
+      this.setState({
+        systemInfo: {
+          ...staticInfo,
+          cpuUsage: 0,
+          memory: { total: 0, available: 0, used: 0, free: 0, percent: 0, currentFrequency: 0 },
+          disk: [],
+          network: { interfaces: [], io: { bytes_sent: 0, bytes_recv: 0, packets_sent: 0, packets_recv: 0, errin: 0, errout: 0, dropin: 0, dropout: 0 } },
+          processes: { total: 0, running: 0 },
+          capturedAt: new Date().toISOString(),
+        },
+        loading: false,
+      });
+      await this.refreshDynamic();
+      this.startPolling();
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to load system information';
       this.setState({ bootstrap: 'error', bootstrapError: error, loading: false });
+    }
+  }
+
+  private startPolling() {
+    this.stopPolling();
+    this.pollTimer = setInterval(() => { void this.refreshDynamic(); }, DYNAMIC_POLL_MS);
+  }
+
+  private stopPolling() {
+    if (this.pollTimer !== null) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+  }
+
+  private async refreshDynamic() {
+    try {
+      const dynamic = await this.service.getDynamicInfo();
+      const current = this.state.systemInfo;
+      if (current) {
+        this.setState({
+          systemInfo: {
+            ...current,
+            ...dynamic,
+            capturedAt: new Date().toISOString(),
+          },
+        });
+      }
+    } catch {
+      // Silent — polling errors don't disrupt the UI
     }
   }
 
@@ -45,6 +92,11 @@ export class SystemInfoViewModel extends ViewModel<SystemInfoState> {
       this.setState({ bootstrap: 'error', bootstrapError: error, loading: false });
       throw err;
     }
+  }
+
+  override dispose() {
+    this.stopPolling();
+    super.dispose();
   }
 
   formatBytes(bytes: number): string {

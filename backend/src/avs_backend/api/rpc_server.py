@@ -4,12 +4,21 @@ responses to stdout.
 Handlers are registered via the ``register`` decorator in each feature
 module. This entry point imports all modules eagerly so their
 registrations execute before the read loop starts.
+
+Concurrency model:
+    The main thread reads requests from stdin in a tight loop and submits
+    each to a ``ThreadPoolExecutor``.  This ensures that a slow handler
+    (e.g. duplicate scan, system information) never blocks other modules
+    from receiving responses.  stdout writes are serialized via a lock
+    to prevent interleaved JSON lines.
 """
 
 from __future__ import annotations
 
 import json
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from avs_backend.api import registry
@@ -45,11 +54,20 @@ log = configure_logging()
 
 JSON_RPC = "2.0"
 
+# Serialize stdout writes so concurrent worker threads don't interleave JSON lines.
+_write_lock = threading.Lock()
+
+# Thread pool for concurrent request dispatch.  8 workers is enough for
+# parallel module loads (dashboard, performance, system info, etc.)
+# while keeping thread overhead minimal.
+_dispatch_pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="rpc")
+
 
 def _write(payload: dict[str, Any]) -> None:
     line = json.dumps(payload, separators=(",", ":"))
-    sys.stdout.write(line + "\n")
-    sys.stdout.flush()
+    with _write_lock:
+        sys.stdout.write(line + "\n")
+        sys.stdout.flush()
 
 
 def _error(request_id: Any, code: int, message: str, data: Any = None) -> None:
@@ -60,6 +78,10 @@ def _error(request_id: Any, code: int, message: str, data: Any = None) -> None:
 
 
 def _dispatch(request: dict[str, Any]) -> None:
+    """Dispatch a single request to its handler and write the response.
+
+    This runs in a worker thread so the main stdin loop stays responsive.
+    """
     if request.get("jsonrpc") != JSON_RPC or "method" not in request or "id" not in request:
         _error(request.get("id"), INVALID_REQUEST, "Invalid JSON-RPC request")
         return
@@ -98,7 +120,8 @@ def main() -> None:
         except json.JSONDecodeError as e:
             _error(None, PARSE_ERROR, f"Malformed JSON: {e}")
             continue
-        _dispatch(request)
+        # Submit to thread pool so slow handlers don't block the read loop.
+        _dispatch_pool.submit(_dispatch, request)
 
 
 if __name__ == "__main__":  # pragma: no cover

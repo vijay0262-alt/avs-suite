@@ -68,7 +68,7 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
     const directories = this.getScanDirectories();
     this.setState({ scanning: true, scanResult: null, selectedFiles: new Set(), deleteResult: null });
     try {
-      const result = await this.service.scan(directories, excludeDirs, minFileSize);
+      const result = await this.service.scan(this.state.scope, directories, excludeDirs, minFileSize);
       this.setState({ scanResult: result, directories: result.scannedDirectories, scanning: false });
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to scan for duplicates';
@@ -156,17 +156,14 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
 
   selectDrive(drive: string) {
     this.setState({ selectedDrive: drive, customDirectories: '', scope: 'entire' });
-    void this.estimate();
   }
 
   setCustomDirectories(value: string) {
     this.setState({ customDirectories: value, selectedDrive: null, scope: 'custom' });
-    void this.estimate();
   }
 
   setScope(scope: DuplicateScope) {
     this.setState({ scope });
-    void this.estimate();
   }
 
   async estimate() {
