@@ -54,6 +54,7 @@ export const RPC_METHODS = {
   DASHBOARD_METRICS: 'dashboard.metrics',
   DASHBOARD_LIVE: 'dashboard.live',
   DASHBOARD_HEALTH: 'dashboard.health',
+  DASHBOARD_REFRESH_CACHE: 'dashboard.refreshCache',
   DASHBOARD_OPTIMIZE_PREVIEW: 'dashboard.optimize.preview',
   DASHBOARD_OPTIMIZE_EXECUTE: 'dashboard.optimize.execute',
 

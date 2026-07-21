@@ -259,6 +259,20 @@ def dashboard_metrics(_params: dict[str, Any] | None) -> dict[str, Any]:
     return _collect_metrics()
 
 
+@register("dashboard.refreshCache")
+def dashboard_refresh_cache(_params: dict[str, Any] | None) -> dict[str, bool]:
+    """Invalidate the cached metrics snapshot so the next ``dashboard.metrics``
+    call performs a fresh collection instead of returning a stale value.
+
+    This must be called by the frontend after any optimization/cleaning
+    action (Junk Cleaner, Startup Manager, Privacy Cleaner, Registry
+    Cleaner, One-Click Optimize) so the Dashboard reflects real, current
+    system state rather than the pre-optimization snapshot.
+    """
+    _collect_metrics.cache_clear()  # type: ignore[attr-defined]
+    return {"refreshed": True}
+
+
 @register("dashboard.health")
 def dashboard_health(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Calculate comprehensive health score with category breakdown."""
@@ -449,7 +463,13 @@ def dashboard_optimize_execute(_params: dict[str, Any] | None) -> dict[str, Any]
     )
     
     elapsed_ms = int((time.monotonic() - start_time) * 1000)
-    
+
+    # These actions change temp files / recycle bin / browser cache — all
+    # inputs to _collect_metrics(). Invalidate the cached snapshot so the
+    # very next dashboard.metrics call reflects what we just did, instead
+    # of returning the pre-optimization snapshot for up to 15 more seconds.
+    _collect_metrics.cache_clear()  # type: ignore[attr-defined]
+
     return {
         "success": True,
         "totalRecovered": total_recovered,

@@ -735,7 +735,20 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           completedAt: new Date().toISOString(),
         } as OptimizeExecuteResponse,
       });
-      void this.loadMetrics();
+
+      // The backend caches dashboard.metrics for 15s. Real actions just
+      // ran (junk cleaned, startup entries disabled, privacy items removed,
+      // registry issues fixed), so explicitly invalidate that cache before
+      // reloading — otherwise the Dashboard would keep showing the
+      // pre-optimization snapshot for up to 15 more seconds. Both reloads
+      // are awaited (not fire-and-forget) so the UI is guaranteed to reflect
+      // verified, current data by the time this function resolves.
+      try {
+        await this.service.refreshCache();
+      } catch (err) {
+        console.error('Failed to invalidate dashboard cache:', err);
+      }
+      await Promise.all([this.loadMetrics(), this.loadPrivacyRisks()]);
     } catch (err) {
       this.setState({
         healthScanStep: 'complete',
@@ -941,7 +954,15 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         optimizeResult: result,
         optimizeStep: 'complete',
       });
-      // Refresh metrics after optimization; health score recomputed incrementally.
+      // dashboard.optimize.execute already clears the backend metrics cache
+      // as part of its own execution, but invalidate again defensively in
+      // case that changes, then await a full metrics reload so the health
+      // score recomputed below reflects real post-optimization state.
+      try {
+        await this.service.refreshCache();
+      } catch (err) {
+        console.error('Failed to invalidate dashboard cache:', err);
+      }
       await this.loadMetrics();
     } catch (err) {
       this.setState({

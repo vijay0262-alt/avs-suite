@@ -74,6 +74,16 @@ function buildSuggestions(metrics: DashboardMetrics): string[] {
  *
  * This avoids a second RPC call every metrics poll and keeps the dashboard
  * score in sync with the live data already on the client.
+ *
+ * CANONICAL SOURCE: this is the only Health Score calculation that feeds
+ * the main Dashboard (HealthScoreCard, HealthBreakdown, HealthSummary). The
+ * backend `dashboard.health` RPC (`dashboard_health()` /
+ * `dashboardService.getHealthScore()`) is a separate, unused calculation
+ * with different weights — do not wire it into the Dashboard without first
+ * retiring this one, or the two will disagree. The Health Scan modal's
+ * per-run "overall score" (see `DashboardViewModel.finishHealthScan`) is
+ * also a distinct, session-scoped score and is intentionally not the same
+ * number as this one.
  */
 function toGB(bytes: number): number {
   return bytes / (1024 * 1024 * 1024);
