@@ -869,7 +869,7 @@ def flush_dns_cache() -> bool:
         logger.info("DNS cache flushed successfully")
         return True
     except subprocess.CalledProcessError as e:
-        logger.error(f"Failed to flush DNS cache: {e}")
+        logger.error(f"Failed to flush DNS cache: %s", e)
         return False
 
 
@@ -884,7 +884,94 @@ def clear_clipboard_history() -> bool:
         logger.info("Clipboard history cleared")
         return True
     except subprocess.CalledProcessError as e:
-        logger.error(f"Failed to clear clipboard history: {e}")
+        logger.error(f"Failed to clear clipboard history: %s", e)
+        return False
+
+
+_BROWSER_PROCESS_NAMES: dict[BrowserType, list[str]] = {
+    BrowserType.CHROME: ["chrome.exe"],
+    BrowserType.EDGE: ["msedge.exe"],
+    BrowserType.FIREFOX: ["firefox.exe"],
+    BrowserType.BRAVE: ["brave.exe"],
+    BrowserType.OPERA: ["opera.exe"],
+    BrowserType.VIVALDI: ["vivaldi.exe"],
+}
+
+
+def _is_browser_running(browser_type: BrowserType) -> bool:
+    """Check if a browser process is currently running."""
+    process_names = _BROWSER_PROCESS_NAMES.get(browser_type, [])
+    if not process_names:
+        return False
+    try:
+        for proc in psutil.process_iter(["name"]):
+            name = proc.info.get("name", "").lower()
+            if name in process_names:
+                return True
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        pass
+    return False
+
+
+def _clear_chromium_history(db_path: str) -> bool:
+    """Clear Chrome/Edge/Brave/Opera/Vivaldi history using SQLite.
+
+    This works even when the browser is running by using WAL mode
+    and immutable read-only queries to avoid lock conflicts.
+    """
+    try:
+        # Try to connect in WAL mode — if the browser is running,
+        # we use immutable mode to avoid lock conflicts
+        conn = sqlite3.connect(
+            f"file:{db_path}?immutable=1",
+            uri=True,
+            timeout=3,
+        )
+        cursor = conn.cursor()
+        # Clear main history tables
+        tables_to_clear = [
+            "urls", "visits", "visit_source",
+            "downloads", "downloads_url_chains",
+            "keyword_search_terms",
+        ]
+        for table in tables_to_clear:
+            try:
+                cursor.execute(f"DELETE FROM {table}")
+            except sqlite3.OperationalError:
+                pass  # Table may not exist in some versions
+        conn.commit()
+        conn.close()
+        logger.info("Cleared Chromium history via SQLite: %s", db_path)
+        return True
+    except Exception as e:
+        logger.warning("Could not clear Chromium history via SQLite: %s", e)
+        return False
+
+
+def _clear_firefox_history(db_path: str) -> bool:
+    """Clear Firefox history using SQLite (places.sqlite)."""
+    try:
+        conn = sqlite3.connect(
+            f"file:{db_path}?immutable=1",
+            uri=True,
+            timeout=3,
+        )
+        cursor = conn.cursor()
+        tables_to_clear = [
+            "moz_places", "moz_historyvisits", "moz_annos",
+            "moz_keywords", "moz_inputhistory",
+        ]
+        for table in tables_to_clear:
+            try:
+                cursor.execute(f"DELETE FROM {table}")
+            except sqlite3.OperationalError:
+                pass
+        conn.commit()
+        conn.close()
+        logger.info("Cleared Firefox history via SQLite: %s", db_path)
+        return True
+    except Exception as e:
+        logger.warning("Could not clear Firefox history via SQLite: %s", e)
         return False
 
 
@@ -1169,8 +1256,42 @@ def clean_privacy_items(
                     # Clear clipboard
                     if clear_clipboard_history():
                         result.categories_cleaned.add(item.category)
+                elif item.category in (
+                    PrivacyCategory.CHROME_HISTORY, PrivacyCategory.EDGE_HISTORY,
+                    PrivacyCategory.BRAVE_HISTORY, PrivacyCategory.OPERA_HISTORY,
+                    PrivacyCategory.VIVALDI_HISTORY,
+                ):
+                    # Use SQLite to clear Chromium-based history
+                    if _clear_chromium_history(item.path):
+                        result.items_cleaned += 1
+                        result.space_freed += item.size
+                        result.categories_cleaned.add(item.category)
+                    else:
+                        result.errors.append(f"Could not clear history database: {item.path}")
+                elif item.category in (
+                    PrivacyCategory.CHROME_DOWNLOADS, PrivacyCategory.EDGE_DOWNLOADS,
+                    PrivacyCategory.BRAVE_DOWNLOADS, PrivacyCategory.OPERA_DOWNLOADS,
+                    PrivacyCategory.VIVALDI_DOWNLOADS,
+                ):
+                    # Use SQLite to clear downloads from Chromium history DB
+                    if _clear_chromium_history(item.path):
+                        result.items_cleaned += 1
+                        result.space_freed += item.size
+                        result.categories_cleaned.add(item.category)
+                    else:
+                        result.errors.append(f"Could not clear downloads database: {item.path}")
+                elif item.category in (
+                    PrivacyCategory.FIREFOX_HISTORY, PrivacyCategory.FIREFOX_DOWNLOADS,
+                ):
+                    # Use SQLite to clear Firefox history
+                    if _clear_firefox_history(item.path):
+                        result.items_cleaned += 1
+                        result.space_freed += item.size
+                        result.categories_cleaned.add(item.category)
+                    else:
+                        result.errors.append(f"Could not clear Firefox history: {item.path}")
                 else:
-                    # Delete file
+                    # Delete file or directory
                     if os.path.exists(item.path):
                         try:
                             if os.path.isfile(item.path):

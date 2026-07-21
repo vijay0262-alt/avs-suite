@@ -20,6 +20,33 @@ logger = logging.getLogger(__name__)
 
 IS_WINDOWS = os.name == "nt"
 
+# File category mappings for user-friendly grouping
+_FILE_CATEGORIES: dict[str, list[str]] = {
+    "Pictures": [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".tiff", ".ico", ".heic", ".heif"],
+    "Videos": [".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v", ".mpg", ".mpeg", ".3gp"],
+    "Documents": [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".rtf", ".odt", ".ods", ".odp", ".csv", ".md"],
+    "Audio": [".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma", ".m4a", ".opus", ".aiff"],
+    "Archives": [".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz", ".iso", ".cab"],
+    "Applications": [".exe", ".msi", ".bat", ".cmd", ".ps1", ".sh", ".app"],
+    "Code": [".js", ".ts", ".py", ".java", ".cpp", ".c", ".cs", ".go", ".rs", ".rb", ".php", ".html", ".css", ".json", ".xml", ".yaml", ".yml"],
+    "Databases": [".db", ".sqlite", ".mdb", ".accdb", ".dbf"],
+    "System": [".dll", ".sys", ".drv", ".inf", ".log", ".tmp", ".temp"],
+}
+
+# Reverse lookup: extension -> category
+_EXT_TO_CATEGORY: dict[str, str] = {}
+for cat, exts in _FILE_CATEGORIES.items():
+    for ext in exts:
+        _EXT_TO_CATEGORY[ext] = cat
+
+
+def _get_file_category(ext: str) -> str:
+    """Get the user-friendly category name for a file extension."""
+    ext = ext.lower()
+    if ext in _EXT_TO_CATEGORY:
+        return _EXT_TO_CATEGORY[ext]
+    return "Other"
+
 
 @register("disk.listDrives")
 def disk_list_drives(_params: dict[str, Any] | None) -> list[dict[str, Any]]:
@@ -154,6 +181,54 @@ def _analyze_directory(directory: str, maxDepth: int = 3, currentDepth: int = 0)
     )
 
 
+def _collect_categorized_files(directory: str, max_depth: int = 5) -> dict[str, list[dict[str, Any]]]:
+    """Walk a directory and group files by user-friendly categories.
+    
+    Returns a dict mapping category name -> list of file dicts with
+    name, path, size, extension, and modified date.
+    """
+    categories: dict[str, list[dict[str, Any]]] = {}
+    
+    try:
+        for root, dirs, files in os.walk(directory):
+            # Check depth
+            rel_depth = root[len(directory):].count(os.sep)
+            if rel_depth > max_depth:
+                dirs.clear()
+                continue
+            
+            for filename in files:
+                file_path = os.path.join(root, filename)
+                try:
+                    file_size = os.path.getsize(file_path)
+                    ext = os.path.splitext(filename)[1].lower()
+                    category = _get_file_category(ext)
+                    modified = datetime.fromtimestamp(
+                        os.path.getmtime(file_path)
+                    ).isoformat()
+                    
+                    if category not in categories:
+                        categories[category] = []
+                    
+                    categories[category].append({
+                        'name': filename,
+                        'path': file_path,
+                        'size': file_size,
+                        'extension': ext or 'none',
+                        'modified': modified,
+                    })
+                except (OSError, PermissionError):
+                    continue
+    except (OSError, PermissionError) as e:
+        logger.warning(f"Could not collect files from {directory}: {e}")
+    
+    # Sort each category by size descending
+    for cat in categories:
+        categories[cat].sort(key=lambda f: f['size'], reverse=True)
+    
+    return categories
+
+
 @register("disk.analyze")
 def disk_analyze(params: dict[str, Any] | None) -> dict[str, Any]:
     """Analyze disk usage for a directory."""
@@ -194,6 +269,19 @@ def disk_analyze(params: dict[str, Any] | None) -> dict[str, Any]:
     
     logger.info(f"Disk analysis completed in {elapsed:.2f}s: {total_files} files, {total_directories} directories, {total_size / 1024 / 1024:.1f} MB")
     
+    # Also collect categorized files for user review
+    categorized_files = _collect_categorized_files(directory, max_depth=maxDepth)
+    
+    # Build category summary with counts and total sizes
+    category_summary: list[dict[str, Any]] = []
+    for cat_name, files in sorted(categorized_files.items(), key=lambda x: sum(f['size'] for f in x[1]), reverse=True):
+        cat_size = sum(f['size'] for f in files)
+        category_summary.append({
+            'category': cat_name,
+            'fileCount': len(files),
+            'totalSize': cat_size,
+        })
+    
     return {
         'rootPath': result.rootPath,
         'totalSize': result.totalSize,
@@ -226,4 +314,70 @@ def disk_analyze(params: dict[str, Any] | None) -> dict[str, Any]:
                 for sub in analysis.subdirectories
             ],
         },
+        'categorizedFiles': categorized_files,
+        'categorySummary': category_summary,
+    }
+
+
+@register("disk.deleteFiles")
+def disk_delete_files(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Delete a list of files selected by the user.
+    
+    Expected params:
+        files: list of file path strings to delete
+    """
+    if not params or 'files' not in params:
+        raise ValueError("Missing 'files' parameter")
+    
+    files_to_delete = params['files']
+    if not isinstance(files_to_delete, list):
+        raise ValueError("'files' must be a list of file paths")
+    
+    deleted = 0
+    failed = 0
+    bytes_freed = 0
+    errors: list[dict[str, str]] = []
+    
+    for file_path in files_to_delete:
+        try:
+            if not os.path.exists(file_path):
+                errors.append({'path': file_path, 'error': 'File not found'})
+                failed += 1
+                continue
+            
+            if os.path.isfile(file_path):
+                file_size = os.path.getsize(file_path)
+                os.remove(file_path)
+                deleted += 1
+                bytes_freed += file_size
+            elif os.path.isdir(file_path):
+                import shutil
+                # Calculate directory size before deletion
+                dir_size = 0
+                for root, _, files in os.walk(file_path):
+                    for f in files:
+                        try:
+                            dir_size += os.path.getsize(os.path.join(root, f))
+                        except (OSError, PermissionError):
+                            continue
+                shutil.rmtree(file_path)
+                deleted += 1
+                bytes_freed += dir_size
+            else:
+                errors.append({'path': file_path, 'error': 'Not a file or directory'})
+                failed += 1
+        except PermissionError as e:
+            errors.append({'path': file_path, 'error': f'Permission denied: {e}'})
+            failed += 1
+        except OSError as e:
+            errors.append({'path': file_path, 'error': str(e)})
+            failed += 1
+    
+    logger.info(f"Deleted {deleted} files ({bytes_freed / 1024 / 1024:.1f} MB freed), {failed} failed")
+    
+    return {
+        'deleted': deleted,
+        'failed': failed,
+        'bytesFreed': bytes_freed,
+        'errors': errors,
     }

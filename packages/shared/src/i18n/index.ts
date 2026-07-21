@@ -43,7 +43,6 @@ export const en = {
     diskAnalyzer: 'Disk Analyzer',
     uninstaller: 'Uninstaller',
     softwareUpdater: 'Software Updater',
-    driveWiper: 'Drive Wiper',
     performance: 'Performance',
     systemInformation: 'System Information',
     settings: 'Settings',

@@ -19,7 +19,6 @@ const ENTRIES: SearchEntry[] = [
   { id: 'disk-analyzer', to: '/disk-analyzer', label: 'Disk Analyzer', keywords: 'disk analyzer storage space' },
   { id: 'uninstaller', to: '/uninstaller', label: 'Uninstaller', keywords: 'uninstaller remove programs' },
   { id: 'software-updater', to: '/software-updater', label: 'Software Updater', keywords: 'software updater updates' },
-  { id: 'drive-wiper', to: '/drive-wiper', label: 'Drive Wiper', keywords: 'drive wiper wipe secure' },
   { id: 'performance', to: '/performance', label: 'Performance', keywords: 'performance speed boost optimize' },
   { id: 'system-information', to: '/system-information', label: 'System Information', keywords: 'system information info cpu memory ram network os graphics' },
   { id: 'settings', to: '/settings', label: 'Settings', keywords: 'settings preferences options' },

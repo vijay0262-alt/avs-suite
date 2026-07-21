@@ -37,7 +37,6 @@ const NAV: readonly NavEntry[] = [
   { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon },
   { id: 'uninstaller', to: '/uninstaller', labelKey: 'nav.uninstaller', Icon: ArchiveBoxXMarkIcon },
   { id: 'software-updater', to: '/software-updater', labelKey: 'nav.softwareUpdater', Icon: ArrowPathIcon },
-  { id: 'drive-wiper', to: '/drive-wiper', labelKey: 'nav.driveWiper', Icon: TrashIcon },
   { id: 'performance', to: '/performance', labelKey: 'nav.performance', Icon: BoltIcon },
   { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
   { id: 'settings', to: '/settings', labelKey: 'nav.settings', Icon: Cog6ToothIcon },

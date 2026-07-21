@@ -19,6 +19,10 @@ export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
       drives: [],
       selectedDrives: [],
       customDirectory: '',
+      selectedFiles: new Set<string>(),
+      expandedCategory: null,
+      deleting: false,
+      deleteResult: null,
     });
   }
 
@@ -47,7 +51,7 @@ export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
 
   async analyze(maxDepth?: number) {
     const directory = this.state.customDirectory || this.state.selectedDrives[0] || undefined;
-    this.setState({ analyzing: true, analysisResult: null });
+    this.setState({ analyzing: true, analysisResult: null, selectedFiles: new Set(), deleteResult: null });
     try {
       const result = await this.service.analyze(directory, maxDepth);
       this.setState({ 
@@ -63,6 +67,23 @@ export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
     }
   }
 
+  async deleteSelectedFiles() {
+    const files = Array.from(this.state.selectedFiles);
+    if (files.length === 0) return;
+    this.setState({ deleting: true, deleteResult: null });
+    try {
+      const result = await this.service.deleteFiles(files);
+      this.setState({ deleting: false, deleteResult: result });
+      // Clear selection after deletion
+      this.setState({ selectedFiles: new Set() });
+      // Re-analyze to refresh the file list
+      await this.analyze(this.state.maxDepth);
+    } catch (err) {
+      const error = err instanceof Error ? err.message : 'Failed to delete files';
+      this.setState({ deleting: false, bootstrapError: error });
+    }
+  }
+
   toggleDrive(mountpoint: string) {
     const selected = new Set(this.state.selectedDrives);
     if (selected.has(mountpoint)) {
@@ -75,6 +96,54 @@ export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
 
   setCustomDirectory(directory: string) {
     this.setState({ customDirectory: directory });
+  }
+
+  toggleFileSelection(filePath: string) {
+    const selected = new Set(this.state.selectedFiles);
+    if (selected.has(filePath)) {
+      selected.delete(filePath);
+    } else {
+      selected.add(filePath);
+    }
+    this.setState({ selectedFiles: selected });
+  }
+
+  toggleCategory(category: string) {
+    this.setState({
+      expandedCategory: this.state.expandedCategory === category ? null : category,
+    });
+  }
+
+  selectAllInCategory(category: string, select: boolean) {
+    const selected = new Set(this.state.selectedFiles);
+    const files = this.state.analysisResult?.categorizedFiles[category] || [];
+    if (select) {
+      for (const f of files) {
+        selected.add(f.path);
+      }
+    } else {
+      for (const f of files) {
+        selected.delete(f.path);
+      }
+    }
+    this.setState({ selectedFiles: selected });
+  }
+
+  clearSelection() {
+    this.setState({ selectedFiles: new Set(), deleteResult: null });
+  }
+
+  getSelectedFilesSize(): number {
+    if (!this.state.analysisResult) return 0;
+    let total = 0;
+    for (const [, files] of Object.entries(this.state.analysisResult.categorizedFiles)) {
+      for (const f of files) {
+        if (this.state.selectedFiles.has(f.path)) {
+          total += f.size;
+        }
+      }
+    }
+    return total;
   }
 
   formatBytes(bytes: number): string {

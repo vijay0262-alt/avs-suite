@@ -14,7 +14,6 @@ export type NavItemId =
   | 'disk-analyzer'
   | 'uninstaller'
   | 'software-updater'
-  | 'drive-wiper'
   | 'performance'
   | 'system-information'
   | 'settings'

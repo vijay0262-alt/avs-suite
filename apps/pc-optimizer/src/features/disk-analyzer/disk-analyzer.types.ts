@@ -41,6 +41,29 @@ export interface DiskAnalysisResult {
   directoryCount: number;
   scanDurationMs: number;
   analysis: DirectoryAnalysis;
+  categorizedFiles: Record<string, CategorizedFile[]>;
+  categorySummary: CategorySummary[];
+}
+
+export interface CategorizedFile {
+  name: string;
+  path: string;
+  size: number;
+  extension: string;
+  modified: string;
+}
+
+export interface CategorySummary {
+  category: string;
+  fileCount: number;
+  totalSize: number;
+}
+
+export interface DeleteFilesResult {
+  deleted: number;
+  failed: number;
+  bytesFreed: number;
+  errors: { path: string; error: string }[];
 }
 
 export interface DiskAnalyzerState {
@@ -51,8 +74,10 @@ export interface DiskAnalyzerState {
   directory: string;
   maxDepth: number;
   drives: DriveInfo[];
-  /** Multiple selected drive mount points */
   selectedDrives: string[];
-  /** Custom directory or folder path */
   customDirectory: string;
+  selectedFiles: Set<string>;
+  expandedCategory: string | null;
+  deleting: boolean;
+  deleteResult: DeleteFilesResult | null;
 }
