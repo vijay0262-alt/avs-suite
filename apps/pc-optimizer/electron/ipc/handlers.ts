@@ -5,6 +5,7 @@
  * or an Electron primitive, and returns a plain-JSON result.
  */
 import { app, ipcMain, shell } from 'electron';
+import { exec } from 'child_process';
 import type { RpcClient } from './pythonBridge';
 
 interface Logger {
@@ -39,7 +40,6 @@ export function registerIpcHandlers(rpc: RpcClient, logger: Logger): void {
     // We use shell.openPath with the exe and rely on the OS UAC prompt.
     const exePath = app.getPath('exe');
     try {
-      const { exec } = require('child_process');
       // Use PowerShell Start-Process -Verb RunAs to trigger UAC elevation
       exec(
         `powershell -NoProfile -Command "Start-Process -FilePath '${exePath.replace(/'/g, "''")}' -Verb RunAs"`,
