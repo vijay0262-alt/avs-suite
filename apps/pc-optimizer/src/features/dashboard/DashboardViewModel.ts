@@ -21,6 +21,7 @@ import type {
   OptimizationSelectionItem,
   OptimizationExecutionProgress,
   HealthScanHistoryEntry,
+  OptimizationDetails,
 } from './dashboard.types';
 import type { DashboardService } from './dashboard.service';
 import { privacyService as defaultPrivacyService } from '../privacy/privacy.service';
@@ -234,15 +235,28 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   // Health Scan
   // ------------------------------------------------------------------
   startHealthScan(): void {
+    const defaultDetails: OptimizationDetails = {
+      summary: 'Scanning...',
+      impact: 'low',
+      safeToRemove: true,
+      groups: [],
+      notChanged: [
+        'Personal files will not be deleted',
+        'Documents, photos, and videos remain untouched',
+        'Installed software will not be removed',
+      ],
+      why: 'This check helps identify optimization opportunities.',
+    };
+
     const modules: HealthScanModuleResult[] = [
-      { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Frees temporary files and browser caches' },
-      { moduleId: 'startup', moduleName: 'Startup Manager', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Reduces boot time by disabling high-impact startup items' },
-      { moduleId: 'privacy', moduleName: 'Privacy Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Removes browsing traces and activity history' },
-      { moduleId: 'performance', moduleName: 'Performance', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Reclaims memory and trims background processes' },
-      { moduleId: 'disk', moduleName: 'Disk Analyzer', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Identifies large files and disk space hogs' },
-      { moduleId: 'registry', moduleName: 'Registry Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Cleans invalid registry entries' },
-      { moduleId: 'security', moduleName: 'Security Check', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Highlights disabled security features and pending updates' },
-      { moduleId: 'system', moduleName: 'System Information', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Validates hardware and OS health' },
+      { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Frees temporary files and browser caches', details: defaultDetails },
+      { moduleId: 'startup', moduleName: 'Startup Manager', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Reduces boot time by disabling high-impact startup items', details: defaultDetails },
+      { moduleId: 'privacy', moduleName: 'Privacy Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Removes browsing traces and activity history', details: defaultDetails },
+      { moduleId: 'performance', moduleName: 'Performance', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Reclaims memory and trims background processes', details: defaultDetails },
+      { moduleId: 'disk', moduleName: 'Disk Analyzer', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Identifies large files and disk space hogs', details: defaultDetails },
+      { moduleId: 'registry', moduleName: 'Registry Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Cleans invalid registry entries', details: defaultDetails },
+      { moduleId: 'security', moduleName: 'Security Check', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Highlights disabled security features and pending updates', details: defaultDetails },
+      { moduleId: 'system', moduleName: 'System Information', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Validates hardware and OS health', details: defaultDetails },
     ];
 
     this.setState({
@@ -322,97 +336,239 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       }
     };
 
+    const notChanged = {
+      files: ['Personal files will not be deleted', 'Documents, photos, and videos remain untouched', 'Installed software will not be removed'],
+      privacy: ['Passwords will not be removed', 'Browser bookmarks will not be removed', 'Saved logins will not be removed'],
+      system: ['Windows system files will not be changed', 'Installed applications will not be removed'],
+    };
+
     const tasks: Promise<void>[] = [
       scanIfNotCancelled('junk', async () => {
         const cleaners = await junkCleanerService.list();
         const task = await junkCleanerService.startScan(cleaners.map((c) => c.id));
-        // Poll scan status briefly; if not complete, estimate from preview.
         await new Promise((resolve) => setTimeout(resolve, 800));
         const status = await junkCleanerService.getStatus(task.taskId);
         const totalSize = status.totalBytes || 0;
         const issues = status.totalFiles || 0;
+        const groups = (status.cleaners || cleaners).map((c) => ({
+          title: (c as { name?: string }).name || String(c),
+          totalSize: (c as { totalBytes?: number }).totalBytes,
+          safeToRemove: true,
+          why: 'Temporary files and caches are safe to remove and free disk space.',
+          items: [] as { name: string; size?: number }[],
+        }));
         return {
           score: Math.max(0, 100 - Math.min(issues / 100, 100)),
           issuesFound: issues,
           recoverableSpace: totalSize,
           severity: totalSize > 1_000_000_000 ? 'high' : totalSize > 100_000_000 ? 'medium' : 'low',
           estimatedImprovement: `Can free ${Math.round(totalSize / 1_000_000)} MB of junk`,
+          details: {
+            summary: `${issues} temporary files and caches found (${Math.round(totalSize / 1_000_000)} MB)`,
+            impact: (totalSize > 1_000_000_000 ? 'high' : totalSize > 100_000_000 ? 'medium' : 'low') as OptimizationDetails['impact'],
+            safeToRemove: true,
+            estimatedRecovery: totalSize,
+            groups,
+            notChanged: notChanged.files,
+            why: 'Temporary files accumulate over time and consume storage space. Removing them frees disk space but does not affect personal documents.',
+          },
         };
       }),
       scanIfNotCancelled('startup', async () => {
         const entries = await startupService.listEntries();
-        const highImpact = entries.filter((e) => e.impact === 'high' && e.enabled).length;
+        const high = entries.filter((e) => e.impact === 'high' && e.enabled);
+        const bootImprovement = high.length * 2;
         return {
-          score: Math.max(0, 100 - highImpact * 5),
-          issuesFound: highImpact,
+          score: Math.max(0, 100 - high.length * 5),
+          issuesFound: high.length,
           recoverableSpace: 0,
-          severity: highImpact > 5 ? 'high' : highImpact > 0 ? 'medium' : 'low',
-          estimatedImprovement: `${highImpact} high-impact startup items`,
+          severity: high.length > 5 ? 'high' : high.length > 0 ? 'medium' : 'low',
+          estimatedImprovement: `${high.length} high-impact startup items`,
+          details: {
+            summary: `${high.length} high-impact startup applications are enabled`,
+            impact: (high.length > 5 ? 'high' : high.length > 0 ? 'medium' : 'low') as OptimizationDetails['impact'],
+            safeToRemove: true,
+            bootImprovementSeconds: bootImprovement,
+            groups: [
+              {
+                title: 'Applications to disable',
+                safeToRemove: true,
+                why: 'Disabling unnecessary startup items reduces Windows boot delay.',
+                items: high.slice(0, 10).map((e) => ({ name: e.name })),
+              },
+            ],
+            notChanged: ['Startup entries are backed up and can be re-enabled', 'System startup files are not deleted'],
+            why: 'Too many startup applications increase Windows boot time. Disabling unnecessary items reduces startup delay.',
+          },
         };
       }),
       scanIfNotCancelled('privacy', async () => {
         const result = await this.privacyService.scan();
+        const groups = result.categoriesFound.map((cat) => ({
+          title: cat,
+          safeToRemove: true,
+          why: 'Removes browsing traces and application activity history.',
+          items: result.items
+            .filter((i) => i.category === cat)
+            .slice(0, 5)
+            .map((i) => ({ name: i.description || i.path, size: i.size })),
+        }));
         return {
           score: Math.max(0, 100 - result.itemCount * 2),
           issuesFound: result.itemCount,
           recoverableSpace: result.totalSize,
           severity: result.totalSize > 500_000_000 ? 'high' : result.totalSize > 50_000_000 ? 'medium' : 'low',
           estimatedImprovement: `${result.itemCount} privacy items`,
+          details: {
+            summary: `${result.itemCount} privacy traces found across ${result.categoriesFound.length} categories`,
+            impact: (result.totalSize > 500_000_000 ? 'high' : result.totalSize > 50_000_000 ? 'medium' : 'low') as OptimizationDetails['impact'],
+            safeToRemove: true,
+            estimatedRecovery: result.totalSize,
+            tracesRemoved: result.itemCount,
+            groups,
+            notChanged: notChanged.privacy,
+            why: 'Browser cache, cookies, recent files, and DNS cache can reveal browsing history and activity. Cleaning them improves privacy without deleting personal data.',
+          },
         };
       }),
       scanIfNotCancelled('performance', async () => {
         const metrics = await performanceService.getMetrics();
-        const alerts = (await performanceService.getAlerts()).alerts.length;
+        const alertList = (await performanceService.getAlerts()).alerts;
+        const ramRecovery = metrics.memory?.used ? Math.max(0, metrics.memory.used - metrics.memory.total * 0.5) : 0;
         return {
-          score: Math.max(0, 100 - alerts * 10 - (metrics.cpu?.usage || 0) / 2),
-          issuesFound: alerts,
-          recoverableSpace: metrics.memory?.used ? Math.max(0, metrics.memory.used - metrics.memory.total * 0.5) : 0,
-          severity: alerts > 2 ? 'high' : alerts > 0 ? 'medium' : 'low',
-          estimatedImprovement: `${alerts} performance alerts`,
+          score: Math.max(0, 100 - alertList.length * 10 - (metrics.cpu?.usage || 0) / 2),
+          issuesFound: alertList.length,
+          recoverableSpace: ramRecovery,
+          severity: alertList.length > 2 ? 'high' : alertList.length > 0 ? 'medium' : 'low',
+          estimatedImprovement: `${alertList.length} performance alerts`,
+          details: {
+            summary: `${alertList.length} performance alerts and ${metrics.memory?.usage || 0}% memory usage detected`,
+            impact: (alertList.length > 2 ? 'high' : alertList.length > 0 ? 'medium' : 'low') as OptimizationDetails['impact'],
+            safeToRemove: true,
+            ramRecovery,
+            groups: alertList.slice(0, 5).map((a) => ({
+              title: a.type,
+              safeToRemove: true,
+              why: a.message,
+              items: [{ name: a.message }],
+            })),
+            notChanged: notChanged.system,
+            why: 'High memory usage and background alerts can slow the system. Reclaiming memory and resolving alerts improves responsiveness.',
+          },
         };
       }),
       scanIfNotCancelled('disk', async () => {
         const drives = await diskAnalyzerService.listDrives();
-        const fullDrives = drives.filter((d) => d.percent > 80).length;
+        const full = drives.filter((d) => d.percent > 80);
         return {
-          score: Math.max(0, 100 - fullDrives * 25 - drives.reduce((s, d) => s + d.percent, 0) / drives.length / 2),
-          issuesFound: fullDrives,
+          score: Math.max(0, 100 - full.length * 25 - drives.reduce((s, d) => s + d.percent, 0) / drives.length / 2),
+          issuesFound: full.length,
           recoverableSpace: drives.reduce((s, d) => s + (d.used || 0), 0),
-          severity: fullDrives > 0 ? 'high' : 'low',
-          estimatedImprovement: `${fullDrives} over capacity drives`,
+          severity: full.length > 0 ? 'high' : 'low',
+          estimatedImprovement: `${full.length} over capacity drives`,
+          details: {
+            summary: `${drives.length} drives scanned; ${full.length} over 80% capacity`,
+            impact: (full.length > 0 ? 'high' : 'low') as OptimizationDetails['impact'],
+            safeToRemove: true,
+            groups: drives.map((d) => ({
+              title: `${d.mountpoint || d.device} (${d.percent}% used)`,
+              safeToRemove: true,
+              why: 'Identifies large files and disk space usage for review.',
+              items: [{ name: `Free: ${Math.round(d.free / 1_000_000)} MB` }],
+            })),
+            notChanged: notChanged.files,
+            why: 'Low disk space slows the system and prevents updates. Identifying large files helps recover space without deleting personal data.',
+          },
         };
       }),
       scanIfNotCancelled('registry', async () => {
         const result = await registryService.scan();
+        const byCategory: Record<string, typeof result.issues> = {};
+        result.issues.forEach((i) => {
+          const list = (byCategory[i.category] ??= []);
+          list.push(i);
+        });
+        const groups = Object.entries(byCategory).map(([cat, issues]) => ({
+          title: cat,
+          safeToRemove: true,
+          why: 'Invalid or obsolete registry entries can slow Windows startup and operation.',
+          items: issues.slice(0, 5).map((i) => ({ name: i.description })),
+        }));
         return {
           score: Math.max(0, 100 - result.issues.length),
           issuesFound: result.issues.length,
           recoverableSpace: 0,
           severity: result.issues.length > 50 ? 'high' : result.issues.length > 10 ? 'medium' : 'low',
           estimatedImprovement: `${result.issues.length} registry issues`,
+          details: {
+            summary: `${result.issues.length} invalid or obsolete registry entries found`,
+            impact: (result.issues.length > 50 ? 'high' : result.issues.length > 10 ? 'medium' : 'low') as OptimizationDetails['impact'],
+            safeToRemove: true,
+            groups,
+            notChanged: ['Registry backups are created before changes', 'Installed software registrations are not removed'],
+            why: 'Invalid registry entries can cause slowdowns. Cleaning them safely removes obsolete references while keeping backups.',
+          },
         };
       }),
       scanIfNotCancelled('security', async () => {
         const metrics = await this.service.getMetrics();
         const pending = metrics.security.updates.pendingUpdates || 0;
-        const disabled = (!metrics.security.defender.enabled ? 1 : 0) + (!metrics.security.firewall.enabled ? 1 : 0);
+        const defender = metrics.security.defender.enabled ? 0 : 1;
+        const firewall = metrics.security.firewall.enabled ? 0 : 1;
         return {
-          score: Math.max(0, 100 - (pending + disabled * 20)),
-          issuesFound: pending + disabled,
+          score: Math.max(0, 100 - (pending + (defender + firewall) * 20)),
+          issuesFound: pending + defender + firewall,
           recoverableSpace: 0,
-          severity: disabled > 0 ? 'high' : pending > 0 ? 'medium' : 'low',
-          estimatedImprovement: `${pending} pending updates, ${disabled} disabled protections`,
+          severity: defender + firewall > 0 ? 'high' : pending > 0 ? 'medium' : 'low',
+          estimatedImprovement: `${pending} pending updates, ${defender + firewall} disabled protections`,
+          details: {
+            summary: `${pending} pending Windows updates, ${defender + firewall} disabled protections`,
+            impact: (defender + firewall > 0 ? 'high' : pending > 0 ? 'medium' : 'low') as OptimizationDetails['impact'],
+            safeToRemove: true,
+            groups: [
+              {
+                title: 'Security recommendations',
+                safeToRemove: true,
+                why: 'Security features keep the system protected from malware and network threats.',
+                items: [
+                  ...(pending > 0 ? [{ name: `${pending} pending Windows updates` }] : []),
+                  ...(defender > 0 ? [{ name: 'Windows Defender real-time protection disabled' }] : []),
+                  ...(firewall > 0 ? [{ name: 'Windows Firewall disabled' }] : []),
+                ],
+              },
+            ],
+            notChanged: notChanged.system,
+            why: 'Pending updates and disabled security features leave the system vulnerable. Applying updates and enabling protections improves safety.',
+          },
         };
       }),
       scanIfNotCancelled('system', async () => {
         const info = await systemInfoService.getComprehensiveInfo();
         const uptimeDays = info.os?.bootTime ? (Date.now() / 1000 - info.os.bootTime) / 86400 : 0;
+        const restart = uptimeDays > 30;
         return {
-          score: uptimeDays > 30 ? 80 : 95,
-          issuesFound: uptimeDays > 30 ? 1 : 0,
+          score: restart ? 80 : 95,
+          issuesFound: restart ? 1 : 0,
           recoverableSpace: 0,
-          severity: uptimeDays > 30 ? 'medium' : 'low',
-          estimatedImprovement: uptimeDays > 30 ? 'System restart recommended' : 'System healthy',
+          severity: restart ? 'medium' : 'low',
+          estimatedImprovement: restart ? 'System restart recommended' : 'System healthy',
+          details: {
+            summary: restart ? `System uptime is ${Math.round(uptimeDays)} days` : 'System information is healthy',
+            impact: (restart ? 'medium' : 'low') as OptimizationDetails['impact'],
+            safeToRemove: true,
+            groups: [
+              {
+                title: 'System status',
+                safeToRemove: true,
+                why: 'A restart refreshes system state and releases memory leaks.',
+                items: [{ name: `Windows ${info.os?.release || 'unknown'}` }, { name: `${info.cpu?.name || ''}` }],
+              },
+            ],
+            notChanged: notChanged.system,
+            why: restart
+              ? 'A long uptime can lead to memory leaks and slower performance. A restart refreshes the system.'
+              : 'System hardware and OS are within healthy parameters.',
+          },
         };
       }),
     ];

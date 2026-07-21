@@ -191,6 +191,34 @@ export type HealthScanStep =
   | 'optimizing'
   | 'complete';
 
+export interface OptimizationDetailItem {
+  name: string;
+  size?: number;
+  age?: string;
+  safeToRemove?: boolean;
+}
+
+export interface OptimizationDetailGroup {
+  title: string;
+  items: OptimizationDetailItem[];
+  totalSize?: number;
+  safeToRemove: boolean;
+  why: string;
+}
+
+export interface OptimizationDetails {
+  summary: string;
+  impact: 'low' | 'medium' | 'high';
+  safeToRemove: boolean;
+  estimatedRecovery?: number;
+  bootImprovementSeconds?: number;
+  ramRecovery?: number;
+  tracesRemoved?: number;
+  groups: OptimizationDetailGroup[];
+  notChanged: string[];
+  why: string;
+}
+
 export interface HealthScanModuleResult {
   moduleId: string;
   moduleName: string;
@@ -200,6 +228,7 @@ export interface HealthScanModuleResult {
   recoverableSpace: number;
   severity: 'low' | 'medium' | 'high';
   estimatedImprovement: string;
+  details: OptimizationDetails;
   error?: string;
 }
 

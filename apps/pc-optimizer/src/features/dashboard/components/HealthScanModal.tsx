@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { Button, Card } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
 import {
@@ -13,6 +15,10 @@ import {
   CpuChipIcon,
   CircleStackIcon,
   ServerIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  InformationCircleIcon,
+  LockClosedIcon,
 } from '@heroicons/react/24/outline';
 import { Modal } from './Modal';
 import type {
@@ -53,6 +59,35 @@ function formatDuration(ms: number): string {
   const remaining = seconds % 60;
   if (minutes > 0) return `${minutes}m ${remaining}s`;
   return `${remaining}s`;
+}
+
+function Expandable({ title, children }: { title: ReactNode; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border border-border rounded-md overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between p-3 text-left bg-surface-muted hover:bg-surface"
+      >
+        <span className="text-sm font-medium text-text-primary">{title}</span>
+        {open ? <ChevronUpIcon className="h-4 w-4 text-text-muted" /> : <ChevronDownIcon className="h-4 w-4 text-text-muted" />}
+      </button>
+      {open && <div className="p-3 border-t border-border">{children}</div>}
+    </div>
+  );
+}
+
+function ImpactBadge({ impact }: { impact: 'low' | 'medium' | 'high' }) {
+  const colors = {
+    high: 'bg-semantic-danger/10 text-semantic-danger',
+    medium: 'bg-semantic-warning/10 text-semantic-warning',
+    low: 'bg-semantic-success/10 text-semantic-success',
+  };
+  return (
+    <span className={`px-2 py-0.5 rounded text-xs font-medium ${colors[impact]}`}>
+      {impact.charAt(0).toUpperCase() + impact.slice(1)} Impact
+    </span>
+  );
 }
 
 function ModuleIcon({ id }: { id: string }) {
@@ -212,15 +247,19 @@ export function HealthScanModal({
 
   if (step === 'selection' && report) {
     const selected = selection.filter((i) => i.selected);
+    const selectedModules = selected.map((i) => report.modules.find((m) => m.moduleId === i.moduleId)).filter(Boolean);
     const totalRecoverable = selected.reduce((s, i) => s + i.recoverableSpace, 0);
     const before = report.overallScore;
     const boost = Math.min(50, Math.round(selected.length * 6));
     const after = Math.min(100, before + boost);
+    const bootImprovement = selectedModules.reduce((s, m) => s + (m?.details?.bootImprovementSeconds || 0), 0);
+    const ramRecovery = selectedModules.reduce((s, m) => s + (m?.details?.ramRecovery || 0), 0);
+    const tracesRemoved = selectedModules.reduce((s, m) => s + (m?.details?.tracesRemoved || 0), 0);
 
     return (
       <Modal
         open
-        title="Optimization Selection"
+        title="Optimization Summary"
         onClose={onClose}
         size="lg"
         actions={
@@ -229,53 +268,165 @@ export function HealthScanModal({
               Back
             </Button>
             <Button onClick={onExecute} leftIcon={<SparklesIcon className="h-4 w-4" />}>
-              Run Optimization
+              Optimize Now
             </Button>
           </div>
         }
       >
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
-              <div className="text-3xl font-bold text-text-primary tabular-nums">{before}</div>
-              <div className="text-sm text-text-secondary">Current Health</div>
+              <div className="text-2xl font-bold text-text-primary tabular-nums">{before}</div>
+              <div className="text-xs text-text-secondary">Current Health</div>
             </Card>
             <Card>
-              <div className="text-3xl font-bold text-semantic-success tabular-nums">{after}</div>
-              <div className="text-sm text-text-secondary">Predicted Health</div>
+              <div className="text-2xl font-bold text-semantic-success tabular-nums">{after}</div>
+              <div className="text-xs text-text-secondary">Predicted Health</div>
             </Card>
             <Card>
-              <div className="text-3xl font-bold text-semantic-success tabular-nums">
-                {formatBytes(totalRecoverable)}
+              <div className="text-2xl font-bold text-semantic-success tabular-nums">{formatBytes(totalRecoverable)}</div>
+              <div className="text-xs text-text-secondary">Storage Recovery</div>
+            </Card>
+            <Card>
+              <div className="text-2xl font-bold text-semantic-success tabular-nums">{bootImprovement}s</div>
+              <div className="text-xs text-text-secondary">Boot Improvement</div>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <Card>
+              <div className="text-2xl font-bold text-semantic-success tabular-nums">{formatBytes(ramRecovery)}</div>
+              <div className="text-xs text-text-secondary">RAM Available After</div>
+            </Card>
+            <Card>
+              <div className="text-2xl font-bold text-semantic-success tabular-nums">{tracesRemoved}</div>
+              <div className="text-xs text-text-secondary">Traces Removed</div>
+            </Card>
+            <Card>
+              <div className="text-2xl font-bold text-text-primary tabular-nums">{selected.length}</div>
+              <div className="text-xs text-text-secondary">Categories</div>
+            </Card>
+          </div>
+
+          <div className="p-4 rounded-md bg-semantic-success/10">
+            <div className="flex items-start gap-3">
+              <LockClosedIcon className="h-5 w-5 text-semantic-success shrink-0 mt-0.5" aria-hidden />
+              <div>
+                <div className="text-sm font-medium text-text-primary">What will NOT be changed</div>
+                <ul className="mt-2 space-y-1 text-sm text-text-secondary">
+                  <li>Personal files, documents, photos, and videos will not be deleted.</li>
+                  <li>Passwords, bookmarks, and saved logins will not be removed.</li>
+                  <li>Installed software and Windows system files will not be modified.</li>
+                </ul>
               </div>
-              <div className="text-sm text-text-secondary">Space Recovery</div>
-            </Card>
+            </div>
           </div>
 
           <div>
             <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">
-              Select categories to optimize
+              Select categories and review details
             </div>
-            <div className="space-y-2">
-              {selection.map((item) => (
-                <label
-                  key={item.moduleId}
-                  className="flex items-center justify-between p-3 rounded-md bg-surface-muted cursor-pointer hover:bg-surface"
-                >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={item.selected}
-                      onChange={() => onToggleSelection(item.moduleId)}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm font-medium text-text-primary">{item.moduleName}</span>
-                  </div>
-                  <span className="text-sm text-semantic-success tabular-nums">
-                    {formatBytes(item.recoverableSpace)}
-                  </span>
-                </label>
-              ))}
+            <div className="space-y-3">
+              {selection.map((item) => {
+                const module = report.modules.find((m) => m.moduleId === item.moduleId);
+                const details = module?.details;
+                return (
+                  <Expandable
+                    key={item.moduleId}
+                    title={
+                      <div className="flex items-center gap-3 w-full pr-2">
+                        <input
+                          type="checkbox"
+                          checked={item.selected}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleSelection(item.moduleId);
+                          }}
+                          onChange={() => {}}
+                          className="w-4 h-4"
+                        />
+                        <span className="flex-1">{item.moduleName}</span>
+                        <ImpactBadge impact={details?.impact || 'low'} />
+                        <span className="text-semantic-success tabular-nums">{formatBytes(item.recoverableSpace)}</span>
+                      </div>
+                    }
+                  >
+                    {details ? (
+                      <div className="space-y-4">
+                        <div className="text-sm text-text-secondary">
+                          <span className="font-medium text-text-primary">Summary:</span> {details.summary}
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="text-text-secondary">Safe to remove:</span>
+                            <span className={details.safeToRemove ? 'text-semantic-success' : 'text-semantic-danger'}>
+                              {details.safeToRemove ? 'Yes' : 'No'}
+                            </span>
+                          </div>
+                          {details.estimatedRecovery ? (
+                            <div className="text-semantic-success tabular-nums">
+                              Est. recovery: {formatBytes(details.estimatedRecovery)}
+                            </div>
+                          ) : null}
+                          {details.bootImprovementSeconds ? (
+                            <div className="text-semantic-success tabular-nums">
+                              Boot improvement: {details.bootImprovementSeconds}s
+                            </div>
+                          ) : null}
+                          {details.ramRecovery ? (
+                            <div className="text-semantic-success tabular-nums">
+                              RAM recovery: {formatBytes(details.ramRecovery)}
+                            </div>
+                          ) : null}
+                          {details.tracesRemoved ? (
+                            <div className="text-semantic-success tabular-nums">
+                              Traces removed: {details.tracesRemoved}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="flex gap-2 text-sm text-text-secondary">
+                          <InformationCircleIcon className="h-5 w-5 shrink-0" aria-hidden />
+                          <span>{details.why}</span>
+                        </div>
+                        <div className="text-sm">
+                          <div className="font-medium text-text-primary mb-1">What will NOT be changed</div>
+                          <ul className="list-disc pl-5 space-y-1 text-text-secondary">
+                            {details.notChanged.map((n, idx) => (
+                              <li key={idx}>{n}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        {details.groups.length > 0 && (
+                          <div className="space-y-2">
+                            <div className="text-sm font-medium text-text-primary">Details</div>
+                            {details.groups.map((g, idx) => (
+                              <div key={idx} className="p-3 rounded-md bg-surface-muted">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-sm font-medium text-text-primary">{g.title}</span>
+                                  {g.totalSize ? <span className="text-xs text-semantic-success tabular-nums">{formatBytes(g.totalSize)}</span> : null}
+                                </div>
+                                <div className="text-xs text-text-secondary mb-2">{g.why}</div>
+                                {g.items.length > 0 && (
+                                  <ul className="space-y-1 text-xs text-text-secondary">
+                                    {g.items.map((i, iidx) => (
+                                      <li key={iidx} className="flex items-center justify-between">
+                                        <span>{i.name}</span>
+                                        {i.size ? <span className="tabular-nums">{formatBytes(i.size)}</span> : null}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-text-secondary">No details available.</div>
+                    )}
+                  </Expandable>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -336,6 +487,8 @@ export function HealthScanModal({
     const after = Math.min(100, before + boost);
     const recovered = result?.totalRecovered ?? execution?.spaceRecovered ?? 0;
     const elapsed = result?.elapsedMs ?? execution?.elapsedMs ?? 0;
+    const changes = result ? buildResultChanges(result) : [];
+    const undoMap = buildUndoMap(selected);
 
     return (
       <Modal
@@ -389,6 +542,41 @@ export function HealthScanModal({
             </Card>
           </div>
 
+          {changes.length > 0 && (
+            <div>
+              <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">Exactly what changed</div>
+              <div className="space-y-2">
+                {changes.map((c) => (
+                  <div key={c.key} className="flex items-center justify-between p-3 rounded-md bg-surface-muted">
+                    <div className="flex items-center gap-3">
+                      {c.cleaned ? (
+                        <CheckCircleIcon className="h-5 w-5 text-semantic-success" aria-hidden />
+                      ) : (
+                        <XCircleIcon className="h-5 w-5 text-semantic-warning" aria-hidden />
+                      )}
+                      <span className="text-sm text-text-primary">{c.label}</span>
+                    </div>
+                    <span className="text-sm font-medium text-text-primary tabular-nums">{formatBytes(c.size)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="p-4 rounded-md bg-surface-muted">
+            <div className="mb-2 text-sm font-medium text-text-primary">Undo availability</div>
+            <div className="space-y-2">
+              {undoMap.map((u) => (
+                <div key={u.moduleId} className="flex items-center justify-between text-sm">
+                  <span className="text-text-secondary">{u.moduleName}</span>
+                  <span className={u.available ? 'text-semantic-success' : 'text-text-muted'}>
+                    {u.available ? 'Yes' : 'No'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {error && (
             <div className="flex items-start gap-3 py-3 px-4 rounded-md bg-semantic-danger/10 text-sm text-semantic-danger">
               <ExclamationTriangleIcon className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
@@ -401,6 +589,42 @@ export function HealthScanModal({
   }
 
   return null;
+}
+
+function buildResultChanges(result: OptimizeExecuteResponse): { key: string; label: string; cleaned: boolean; size: number }[] {
+  const labels: Record<string, string> = {
+    temporaryFiles: 'Temporary files removed',
+    recycleBin: 'Recycle bin emptied',
+    browserCache: 'Browser cache cleared',
+    thumbnailCache: 'Thumbnail cache cleared',
+    flushDNS: 'DNS cache flushed',
+    refreshExplorer: 'Explorer cache refreshed',
+    memoryTrim: 'Memory optimized',
+  };
+  return Object.entries(result.results).map(([key, value]) => ({
+    key,
+    label: labels[key] || key,
+    cleaned: value.cleaned && !value.error,
+    size: value.size,
+  }));
+}
+
+function buildUndoMap(selected: OptimizationSelectionItem[]): { moduleId: string; moduleName: string; available: boolean }[] {
+  const canUndo: Record<string, boolean> = {
+    junk: true,
+    startup: true,
+    registry: true,
+    privacy: false,
+    performance: false,
+    disk: false,
+    security: false,
+    system: false,
+  };
+  return selected.map((item) => ({
+    moduleId: item.moduleId,
+    moduleName: item.moduleName,
+    available: canUndo[item.moduleId] ?? false,
+  }));
 }
 
 function StatusBadge({ status }: { status: HealthScanModuleResult['status'] }) {
