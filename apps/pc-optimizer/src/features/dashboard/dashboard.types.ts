@@ -155,6 +155,8 @@ export interface OptimizeResults {
   recycleBin: OptimizeResult;
   browserCache: OptimizeResult;
   thumbnailCache: OptimizeResult;
+  prefetchFiles: OptimizeResult;
+  windowsUpdateCache: OptimizeResult;
   flushDNS: OptimizeResult;
   refreshExplorer: OptimizeResult;
   memoryTrim: OptimizeResult;

@@ -177,14 +177,17 @@ def system_info(_params: dict[str, Any] | None) -> dict[str, Any]:
 
 @register("system.healthScore")
 def system_health_score(_params: dict[str, Any] | None) -> dict[str, Any]:
-    """Composite 0-100 health score.
-
-    A production-grade weighting will be introduced with the metrics
-    pipeline. For now we return a placeholder derived only from CPU
-    load, so the dashboard renders a plausible number end-to-end.
-    """
+    """Composite 0-100 health score based on CPU, memory, and disk usage."""
     cpu = psutil.cpu_percent(interval=0.05)
-    score = max(0.0, 100.0 - cpu)
+    mem = psutil.virtual_memory()
+    disk = psutil.disk_usage("C:\\" if os.name == "nt" else "/")
+
+    cpu_score = max(0.0, 100.0 - cpu)
+    mem_score = max(0.0, 100.0 - mem.percent)
+    disk_score = max(0.0, 100.0 - disk.percent)
+
+    # Weighted: CPU 35%, memory 35%, disk 30%
+    score = cpu_score * 0.35 + mem_score * 0.35 + disk_score * 0.30
     return {"score": round(score, 1), "capturedAt": _now_iso()}
 
 

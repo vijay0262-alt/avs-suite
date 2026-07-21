@@ -13,6 +13,7 @@ import os
 import platform
 import re
 import subprocess
+import tempfile
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -335,8 +336,10 @@ def dashboard_optimize_preview(_params: dict[str, Any] | None) -> dict[str, Any]
     recycle_bin_size = _get_recycle_bin_size()
     browser_cache_size = _estimate_browser_cache_size()
     thumbnail_cache_size = _get_thumbnail_cache_size()
+    prefetch_size = _get_prefetch_size()
+    update_cache_size = _get_windows_update_cache_size()
     
-    total_recoverable = temp_size + recycle_bin_size + browser_cache_size + thumbnail_cache_size
+    total_recoverable = temp_size + recycle_bin_size + browser_cache_size + thumbnail_cache_size + prefetch_size + update_cache_size
     
     actions = []
     if temp_size > 0:
@@ -361,7 +364,19 @@ def dashboard_optimize_preview(_params: dict[str, Any] | None) -> dict[str, Any]
         actions.append({
             "name": "Thumbnail Cache",
             "size": thumbnail_cache_size,
-            "description": "Windows thumbnail cache"
+            "description": "Windows thumbnail and icon cache"
+        })
+    if prefetch_size > 0:
+        actions.append({
+            "name": "Prefetch Files",
+            "size": prefetch_size,
+            "description": "Windows application prefetch files (auto-regenerated)"
+        })
+    if update_cache_size > 0:
+        actions.append({
+            "name": "Windows Update Cache",
+            "size": update_cache_size,
+            "description": "Downloaded Windows Update packages retained after install"
         })
     
     # Always include these non-size actions
@@ -389,6 +404,8 @@ def dashboard_optimize_execute(_params: dict[str, Any] | None) -> dict[str, Any]
         "recycleBin": {"cleaned": False, "size": 0, "error": None},
         "browserCache": {"cleaned": False, "size": 0, "error": None},
         "thumbnailCache": {"cleaned": False, "size": 0, "error": None},
+        "prefetchFiles": {"cleaned": False, "size": 0, "error": None},
+        "windowsUpdateCache": {"cleaned": False, "size": 0, "error": None},
         "flushDNS": {"cleaned": False, "error": None},
         "refreshExplorer": {"cleaned": False, "error": None},
         "memoryTrim": {"cleaned": False, "error": None},
@@ -431,6 +448,24 @@ def dashboard_optimize_execute(_params: dict[str, Any] | None) -> dict[str, Any]
     except Exception as e:
         results["thumbnailCache"]["error"] = str(e)
         log.warning("Failed to clean thumbnail cache: %s", e)
+    
+    # Prefetch files
+    try:
+        prefetch_size = _get_prefetch_size()
+        _clean_prefetch()
+        results["prefetchFiles"] = {"cleaned": True, "size": prefetch_size, "error": None}
+    except Exception as e:
+        results["prefetchFiles"]["error"] = str(e)
+        log.warning("Failed to clean prefetch files: %s", e)
+    
+    # Windows Update cache
+    try:
+        update_size = _get_windows_update_cache_size()
+        _clean_windows_update_cache()
+        results["windowsUpdateCache"] = {"cleaned": True, "size": update_size, "error": None}
+    except Exception as e:
+        results["windowsUpdateCache"]["error"] = str(e)
+        log.warning("Failed to clean Windows Update cache: %s", e)
     
     # Flush DNS
     try:
@@ -925,13 +960,15 @@ def _get_background_processes_count() -> int:
 
 
 def _get_temp_files_size() -> int:
-    """Get total size of temporary files."""
-    try:
-        temp_dir = os.environ.get("TEMP", "")
+    """Get total size of temporary files (user temp + Windows temp)."""
+    total_size = 0
+    temp_dirs = [
+        os.environ.get("TEMP", ""),
+        os.path.expandvars(r"%SystemRoot%\Temp"),
+    ]
+    for temp_dir in temp_dirs:
         if not temp_dir or not os.path.exists(temp_dir):
-            return 0
-
-        total_size = 0
+            continue
         for root, _, files in os.walk(temp_dir):
             for file in files:
                 try:
@@ -939,9 +976,7 @@ def _get_temp_files_size() -> int:
                     total_size += os.path.getsize(file_path)
                 except (OSError, PermissionError):
                     continue
-        return total_size
-    except Exception:
-        return 0
+    return total_size
 
 
 def _get_recycle_bin_size() -> int:
@@ -965,12 +1000,18 @@ def _get_recycle_bin_size() -> int:
 
 
 def _estimate_browser_cache_size() -> int:
-    """Estimate browser cache size."""
+    """Estimate browser cache size for all supported browsers."""
     try:
         total_size = 0
         browser_cache_dirs = [
             os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "User Data", "Default", "Cache"),
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "User Data", "Default", "Code Cache"),
             os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Edge", "User Data", "Default", "Cache"),
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Edge", "User Data", "Default", "Code Cache"),
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "BraveSoftware", "Brave-Browser", "User Data", "Default", "Cache"),
+            os.path.join(os.environ.get("APPDATA", ""), "Opera Software", "Opera Stable", "Cache"),
+            os.path.join(os.environ.get("APPDATA", ""), "Opera Software", "Opera GX Stable", "Cache"),
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Vivaldi", "User Data", "Default", "Cache"),
             os.path.join(os.environ.get("APPDATA", ""), "Mozilla", "Firefox", "Profiles"),
         ]
 
@@ -1174,13 +1215,33 @@ def _get_firewall_status() -> dict[str, Any]:
 def _get_windows_update_status() -> dict[str, Any]:
     """Get the count of pending Windows updates and last install date.
 
-    The COM-based Windows Update search can take >10s and is not reliably
-    cancellable, so we return a lightweight placeholder for the dashboard.
-    A background refresh or more aggressive timeout should be added later.
+    Uses PowerShell to query the Windows Update COM API. Cached for 5 minutes
+    since the COM call can be slow.
     """
     if os.name != "nt":
         return {}
-    return {"pendingUpdates": 0, "lastUpdateDate": None}
+    try:
+        # Use PowerShell to query pending updates via COM API
+        ps_script = (
+            "$ErrorActionPreference = 'SilentlyContinue';"
+            "$session = New-Object -ComObject Microsoft.Update.Session;"
+            "$searcher = $session.CreateUpdateSearcher();"
+            "$result = $searcher.Search('IsInstalled=0 and Type=\\'Software\\'');"
+            "Write-Output $result.Updates.Count;"
+            "$history = $searcher.QueryHistory(0, 1);"
+            "if ($history.Count -gt 0) { Write-Output $history.Item(0).Date }"
+        )
+        out = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
+            capture_output=True, text=True, timeout=30,
+        )
+        lines = [l.strip() for l in out.stdout.strip().split("\n") if l.strip()]
+        pending = int(lines[0]) if lines and lines[0].isdigit() else 0
+        last_date = lines[1] if len(lines) > 1 else None
+        return {"pendingUpdates": pending, "lastUpdateDate": last_date}
+    except Exception as e:
+        log.warning("Failed to get Windows Update status: %s", e)
+        return {"pendingUpdates": 0, "lastUpdateDate": None}
 
 
 @_ttl_cache(3600.0)
@@ -1212,13 +1273,14 @@ def _get_smartscreen_status() -> bool:
 
 
 def _get_thumbnail_cache_size() -> int:
-    """Get Windows thumbnail cache size."""
+    """Get Windows thumbnail and icon cache size."""
     try:
         thumb_dir = os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\Windows\Explorer")
         if os.path.exists(thumb_dir):
             total = 0
             for file in os.listdir(thumb_dir):
-                if file.startswith("thumbcache"):
+                lower = file.lower()
+                if lower.startswith(("thumbcache_", "iconcache_")):
                     try:
                         total += os.path.getsize(os.path.join(thumb_dir, file))
                     except (OSError, PermissionError):
@@ -1242,43 +1304,68 @@ def _estimate_optimization_time(size_bytes: int) -> int:
 
 
 def _clean_temp_files() -> None:
-    """Clean temporary files."""
-    import tempfile
+    """Clean temporary files from both user temp and Windows temp."""
     import shutil
-    
-    temp_dir = tempfile.gettempdir()
-    for item in os.listdir(temp_dir):
-        try:
-            item_path = os.path.join(temp_dir, item)
-            if os.path.isfile(item_path):
-                os.unlink(item_path)
-            elif os.path.isdir(item_path):
-                shutil.rmtree(item_path)
-        except (OSError, PermissionError):
+
+    temp_dirs = [
+        tempfile.gettempdir(),
+        os.path.expandvars(r"%SystemRoot%\Temp"),
+    ]
+    for temp_dir in temp_dirs:
+        if not os.path.exists(temp_dir):
             continue
+        for item in os.listdir(temp_dir):
+            try:
+                item_path = os.path.join(temp_dir, item)
+                if os.path.isfile(item_path):
+                    os.unlink(item_path)
+                elif os.path.isdir(item_path):
+                    shutil.rmtree(item_path)
+            except (OSError, PermissionError):
+                continue
 
 
 def _clean_browser_cache() -> None:
-    """Clean browser cache."""
-    browsers = [
+    """Clean browser cache for all supported browsers."""
+    import shutil
+
+    cache_dirs = [
         os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data\Default\Cache"),
+        os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data\Default\Code Cache"),
         os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\Edge\User Data\Default\Cache"),
+        os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\Edge\User Data\Default\Code Cache"),
+        os.path.expandvars(r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\User Data\Default\Cache"),
+        os.path.expandvars(r"%APPDATA%\Opera Software\Opera Stable\Cache"),
+        os.path.expandvars(r"%APPDATA%\Opera Software\Opera GX Stable\Cache"),
+        os.path.expandvars(r"%LOCALAPPDATA%\Vivaldi\User Data\Default\Cache"),
     ]
-    for cache_dir in browsers:
+    # Add Firefox profile caches
+    firefox_profiles = os.path.expandvars(r"%APPDATA%\Mozilla\Firefox\Profiles")
+    if os.path.exists(firefox_profiles):
+        try:
+            for entry in os.scandir(firefox_profiles):
+                if entry.is_dir(follow_symlinks=False):
+                    cache2 = os.path.join(entry.path, "cache2")
+                    if os.path.exists(cache2):
+                        cache_dirs.append(cache2)
+        except OSError:
+            pass
+
+    for cache_dir in cache_dirs:
         if os.path.exists(cache_dir):
             try:
-                import shutil
                 shutil.rmtree(cache_dir)
             except (OSError, PermissionError):
                 continue
 
 
 def _clean_thumbnail_cache() -> None:
-    """Clean Windows thumbnail cache."""
+    """Clean Windows thumbnail and icon cache."""
     thumb_dir = os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\Windows\Explorer")
     if os.path.exists(thumb_dir):
         for file in os.listdir(thumb_dir):
-            if file.startswith("thumbcache"):
+            lower = file.lower()
+            if lower.startswith(("thumbcache_", "iconcache_")):
                 try:
                     os.unlink(os.path.join(thumb_dir, file))
                 except (OSError, PermissionError):
@@ -1300,6 +1387,73 @@ def _refresh_explorer() -> None:
             subprocess.run(["start", "explorer.exe"], shell=True)
         except Exception:
             pass
+
+
+def _get_prefetch_size() -> int:
+    """Get total size of Prefetch folder."""
+    try:
+        prefetch_dir = os.path.expandvars(r"%SystemRoot%\Prefetch")
+        if not os.path.exists(prefetch_dir):
+            return 0
+        total_size = 0
+        for root, _, files in os.walk(prefetch_dir):
+            for file in files:
+                try:
+                    total_size += os.path.getsize(os.path.join(root, file))
+                except (OSError, PermissionError):
+                    continue
+        return total_size
+    except Exception:
+        return 0
+
+
+def _clean_prefetch() -> None:
+    """Clean Windows Prefetch files."""
+    prefetch_dir = os.path.expandvars(r"%SystemRoot%\Prefetch")
+    if not os.path.exists(prefetch_dir):
+        return
+    for file in os.listdir(prefetch_dir):
+        if file.lower().endswith(".pf"):
+            try:
+                os.unlink(os.path.join(prefetch_dir, file))
+            except (OSError, PermissionError):
+                continue
+
+
+def _get_windows_update_cache_size() -> int:
+    """Get total size of Windows Update download cache."""
+    try:
+        update_dir = os.path.expandvars(r"%SystemRoot%\SoftwareDistribution\Download")
+        if not os.path.exists(update_dir):
+            return 0
+        total_size = 0
+        for root, _, files in os.walk(update_dir):
+            for file in files:
+                try:
+                    total_size += os.path.getsize(os.path.join(root, file))
+                except (OSError, PermissionError):
+                    continue
+        return total_size
+    except Exception:
+        return 0
+
+
+def _clean_windows_update_cache() -> None:
+    """Clean Windows Update download cache."""
+    import shutil
+
+    update_dir = os.path.expandvars(r"%SystemRoot%\SoftwareDistribution\Download")
+    if not os.path.exists(update_dir):
+        return
+    for item in os.listdir(update_dir):
+        try:
+            item_path = os.path.join(update_dir, item)
+            if os.path.isfile(item_path):
+                os.unlink(item_path)
+            elif os.path.isdir(item_path):
+                shutil.rmtree(item_path)
+        except (OSError, PermissionError):
+            continue
 
 
 def _trim_memory() -> None:

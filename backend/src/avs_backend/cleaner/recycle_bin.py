@@ -263,13 +263,43 @@ def delete_to_recycle_bin_single(
 def get_recycle_bin_size() -> int:
     """Get total size of Recycle Bin in bytes.
 
+    Uses the Windows Shell API SHQueryRecycleBinW to get accurate size
+    across all drives. Falls back to walking $Recycle.Bin folders if
+    the API call fails.
+
     Returns:
         Total size in bytes, or 0 if unavailable
     """
-    try:
-        # This requires SHQUERYRBINFO which is complex to implement
-        # For now, return 0 as a placeholder
+    if not IS_WINDOWS:
         return 0
+    try:
+        # Try SHQueryRecycleBinW API first
+        class SHQUERYRBINFO(ctypes.Structure):
+            _fields_ = [
+                ("cbSize", ctypes.c_uint32),
+                ("i64Size", ctypes.c_int64),
+                ("i64NumItems", ctypes.c_int64),
+            ]
+
+        info = SHQUERYRBINFO()
+        info.cbSize = ctypes.sizeof(SHQUERYRBINFO)
+        result = ctypes.windll.shell32.SHQueryRecycleBinW(None, ctypes.byref(info))
+        if result == 0:
+            return int(info.i64Size)
+
+        # Fallback: walk $Recycle.Bin folders
+        import os
+        total_size = 0
+        system_drive = os.environ.get("SystemDrive", "C:")
+        recycle_bin = os.path.join(system_drive, "$Recycle.Bin")
+        if os.path.exists(recycle_bin):
+            for root, _, files in os.walk(recycle_bin):
+                for file in files:
+                    try:
+                        total_size += os.path.getsize(os.path.join(root, file))
+                    except (OSError, PermissionError):
+                        continue
+        return total_size
     except Exception:
         return 0
 
@@ -277,14 +307,18 @@ def get_recycle_bin_size() -> int:
 def empty_recycle_bin() -> bool:
     """Empty the Recycle Bin (Windows only).
 
+    Uses SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI | SHERB_NOSOUND
+    to silently empty the bin without user prompts.
+
     Returns:
         True if successful, False otherwise
     """
     if not IS_WINDOWS:
         return False
     try:
-        # SHEmptyRecycleBin function
-        result = ctypes.windll.shell32.SHEmptyRecycleBinW(None, None, 0)
+        # SHERB_NOCONFIRMATION = 0x0001, SHERB_NOPROGRESSUI = 0x0002, SHERB_NOSOUND = 0x0004
+        flags = 0x0001 | 0x0002 | 0x0004
+        result = ctypes.windll.shell32.SHEmptyRecycleBinW(None, None, flags)
         return result == 0
     except Exception as e:
         log.warning("Failed to empty Recycle Bin: %s", e)

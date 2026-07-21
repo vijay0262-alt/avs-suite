@@ -848,9 +848,22 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           return { success: false, errors: [msg], reason: msg };
         }
       }
-      case 'performance':
-        log('optimize', 'performance.optimize', undefined, undefined, false, 'Performance optimization is not implemented in backend');
-        return { success: false, errors: ['Performance optimization is not implemented in backend'], reason: 'Not implemented' };
+      case 'performance': {
+        try {
+          const result = await performanceService.optimizeMemory();
+          log('optimize', 'performance.memory.optimize', undefined, result.memoryFreed, result.status === 'completed');
+          return {
+            success: result.status === 'completed',
+            bytesRecovered: result.memoryFreed,
+            issuesFixed: result.processesOptimized,
+            errors: result.errors || [],
+          };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          log('optimize', 'performance.memory.optimize', undefined, undefined, false, msg);
+          return { success: false, errors: [msg], reason: msg };
+        }
+      }
       case 'disk':
         log('analyze', 'disk.listDrives', undefined, undefined, true, 'Disk Analyzer does not modify files');
         return { success: true, errors: [], reason: 'No changes made' };
