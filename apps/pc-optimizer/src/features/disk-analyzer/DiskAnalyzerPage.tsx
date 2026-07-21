@@ -52,20 +52,7 @@ export default function DiskAnalyzerPage() {
           <Card title="Select Drives or Folder to Analyze" className="mb-4">
             <div className="space-y-4">
               {state.drives.length === 0 ? (
-                state.bootstrap === 'loading' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
-                    {[...Array(3)].map((_, i) => (
-                      <div key={i} className="p-4 border border-border rounded space-y-2">
-                        <div className="h-5 bg-bg-secondary rounded w-1/3" />
-                        <div className="h-3 bg-bg-secondary rounded w-1/4" />
-                        <div className="h-3 bg-bg-secondary rounded w-3/4" />
-                        <div className="h-3 bg-bg-secondary rounded w-2/3" />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-text-secondary">No drives found</p>
-                )
+                <p className="text-text-secondary">No drives found</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {state.drives.map((drive) => {
