@@ -145,7 +145,7 @@ export function HealthScanModal({
             <Button variant="secondary" onClick={onClose}>
               Close
             </Button>
-            {report.modules.some((m) => m.status === 'complete' && (m.recoverableSpace > 0 || m.issuesFound > 0) && m.details.safeToRemove) && (
+            {report.modules.some((m) => m.status === 'complete' && m.canAutoFix && (m.recoverableSpace > 0 || m.issuesFound > 0)) && (
               <Button onClick={onOptimize} leftIcon={<SparklesIcon className="h-4 w-4" />}>
                 Optimize Now
               </Button>
@@ -398,6 +398,35 @@ export function HealthScanModal({
             </div>
           </div>
 
+          {/* Issues that still need user action */}
+          {(() => {
+            const needsAction = report.modules.filter(
+              (m) => m.status === 'complete' && !m.canAutoFix && m.issuesFound > 0
+            );
+            if (needsAction.length === 0) return null;
+            return (
+              <div>
+                <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">
+                  Still needs your attention
+                </div>
+                <div className="space-y-2">
+                  {needsAction.map((m) => (
+                    <div key={m.moduleId} className="p-3 rounded-md bg-semantic-warning/10 border border-semantic-warning/20">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-text-primary">{m.moduleName}</span>
+                        <span className="text-xs font-medium text-semantic-warning">Manual action</span>
+                      </div>
+                      <div className="text-xs text-text-secondary">{m.measuredDetail}</div>
+                      <div className="text-xs text-text-secondary mt-1">
+                        {m.details.groups.flatMap((g) => g.items.map((i) => i.name)).slice(0, 3).join(', ')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {error && (
             <div className="flex items-start gap-3 py-3 px-4 rounded-md bg-semantic-danger/10 text-sm text-semantic-danger">
               <ExclamationTriangleIcon className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
@@ -450,6 +479,21 @@ function ModuleReportCard({ module }: { module: HealthScanModuleResult }) {
         <div>Recoverable: {formatBytes(module.recoverableSpace)}</div>
         <div className="col-span-3">{module.measuredDetail}</div>
       </div>
+      {module.issuesFound > 0 && (
+        <div className="mt-2">
+          {module.canAutoFix ? (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-semantic-success">
+              <SparklesIcon className="h-3.5 w-3.5" aria-hidden />
+              Will be auto-fixed
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-semantic-warning">
+              <ExclamationTriangleIcon className="h-3.5 w-3.5" aria-hidden />
+              Requires manual action
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

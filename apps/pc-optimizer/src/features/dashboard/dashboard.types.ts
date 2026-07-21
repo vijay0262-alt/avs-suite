@@ -255,6 +255,8 @@ export interface HealthScanModuleResult {
   measuredDetail: string;
   details: OptimizationDetails;
   error?: string;
+  /** Whether the issues in this module can be auto-fixed by the app. */
+  canAutoFix: boolean;
   /** Raw backend scan data needed to execute the optimization for this module. */
   rawContext?: Record<string, unknown>;
   /** Actual results measured during/after optimization for this module. */

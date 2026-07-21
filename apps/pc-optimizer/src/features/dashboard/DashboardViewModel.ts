@@ -268,14 +268,14 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     };
 
     const modules: HealthScanModuleResult[] = [
-      { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning temporary files and browser caches', details: defaultDetails },
-      { moduleId: 'startup', moduleName: 'Startup Manager', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking startup applications', details: defaultDetails },
-      { moduleId: 'privacy', moduleName: 'Privacy Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning browsing traces and activity history', details: defaultDetails },
-      { moduleId: 'performance', moduleName: 'Performance', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking memory and CPU usage', details: defaultDetails },
-      { moduleId: 'disk', moduleName: 'Disk Analyzer', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Analyzing disk space usage', details: defaultDetails },
-      { moduleId: 'registry', moduleName: 'Registry Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning for invalid registry entries', details: defaultDetails },
-      { moduleId: 'security', moduleName: 'Security Check', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking security features and updates', details: defaultDetails },
-      { moduleId: 'system', moduleName: 'System Information', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Validating hardware and OS health', details: defaultDetails },
+      { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning temporary files and browser caches', details: defaultDetails, canAutoFix: true },
+      { moduleId: 'startup', moduleName: 'Startup Manager', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking startup applications', details: defaultDetails, canAutoFix: true },
+      { moduleId: 'privacy', moduleName: 'Privacy Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning browsing traces and activity history', details: defaultDetails, canAutoFix: true },
+      { moduleId: 'performance', moduleName: 'Performance', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking memory and CPU usage', details: defaultDetails, canAutoFix: true },
+      { moduleId: 'disk', moduleName: 'Disk Analyzer', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Analyzing disk space usage', details: defaultDetails, canAutoFix: false },
+      { moduleId: 'registry', moduleName: 'Registry Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning for invalid registry entries', details: defaultDetails, canAutoFix: true },
+      { moduleId: 'security', moduleName: 'Security Check', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking security features and updates', details: defaultDetails, canAutoFix: false },
+      { moduleId: 'system', moduleName: 'System Information', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Validating hardware and OS health', details: defaultDetails, canAutoFix: false },
     ];
 
     this.setState({
@@ -647,7 +647,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     if (!beforeReport) return;
 
     const fixableModules = beforeReport.modules.filter(
-      (m) => m.status === 'complete' && (m.recoverableSpace > 0 || m.issuesFound > 0) && m.details.safeToRemove
+      (m) => m.status === 'complete' && m.canAutoFix && (m.recoverableSpace > 0 || m.issuesFound > 0)
     );
     if (fixableModules.length === 0) return;
 
@@ -689,8 +689,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       });
 
       await this.runHealthScan('verify');
+      const modulesWithActual = this.state.healthScanModules.map((m) => (actualMap.has(m.moduleId) ? { ...m, actual: actualMap.get(m.moduleId) } : m));
       this.setState({
-        healthScanModules: this.state.healthScanModules.map((m) => (actualMap.has(m.moduleId) ? { ...m, actual: actualMap.get(m.moduleId) } : m)),
+        healthScanModules: modulesWithActual,
         healthScanResult: {
           success: [...actualMap.values()].every((a) => a.success),
           totalRecovered: [...actualMap.values()].reduce((s, a) => s + (a.bytesRecovered || 0), 0),
@@ -699,6 +700,30 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           completedAt: new Date().toISOString(),
         } as OptimizeExecuteResponse,
       });
+      // Also update healthScanReport so the complete step can show actual results
+      const currentReport = this.state.healthScanReport;
+      if (currentReport) {
+        // Update modules with actual results and fix modulesUsed in history
+        const updatedModules = currentReport.modules.map((m) => {
+          const updated = modulesWithActual.find((u) => u.moduleId === m.moduleId);
+          return updated ? { ...m, actual: updated.actual } : m;
+        });
+        this.setState({
+          healthScanReport: {
+            ...currentReport,
+            modules: updatedModules,
+          },
+        });
+        // Fix the history entry to correctly list modules that were actually used
+        const modulesUsed = [...actualMap.keys()];
+        if (this.state.healthScanHistory.length > 0) {
+          this.setState({
+            healthScanHistory: this.state.healthScanHistory.map((h, i) =>
+              i === 0 ? { ...h, modulesUsed } : h
+            ),
+          });
+        }
+      }
 
       // The backend caches dashboard.metrics for 15s. Real actions just
       // ran (junk cleaned, startup entries disabled, privacy items removed,
@@ -829,14 +854,14 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         }
       }
       case 'disk':
-        log('analyze', 'disk.listDrives', undefined, undefined, true, 'Disk Analyzer does not modify files');
-        return { success: true, errors: [], reason: 'No changes made' };
+        log('analyze', 'disk.listDrives', undefined, undefined, true, 'Disk Analyzer does not modify files — use Disk Analyzer page to review large files');
+        return { success: true, errors: [], reason: 'No changes made — use Disk Analyzer to review' };
       case 'security':
-        log('apply', 'security.apply', undefined, undefined, false, 'Security fixes cannot be applied automatically');
-        return { success: false, errors: ['Security fixes cannot be applied automatically'], reason: 'Not implemented' };
+        log('apply', 'security.apply', undefined, undefined, false, 'Security settings require manual action via Windows Security');
+        return { success: false, errors: ['Security settings require manual action. Use the Security page to open Windows Security.'], reason: 'Requires manual action' };
       case 'system':
-        log('info', 'system.getComprehensiveInfo', undefined, undefined, true, 'System Information does not modify state');
-        return { success: true, errors: [], reason: 'No changes made' };
+        log('info', 'system.getComprehensiveInfo', undefined, undefined, true, 'System Information does not modify state — restart recommended if uptime is high');
+        return { success: true, errors: [], reason: 'No changes made — restart if uptime is high' };
       default:
         return { success: false, errors: [`Unknown module ${module.moduleId}`] };
     }
