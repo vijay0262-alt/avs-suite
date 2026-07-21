@@ -52,9 +52,11 @@ export interface SecurityMetrics {
   defender: {
     enabled: boolean;
     realTimeProtection: boolean;
+    thirdPartyAV?: string | null;
   };
   firewall: {
     enabled: boolean;
+    thirdPartyAV?: string | null;
   };
   updates: {
     pendingUpdates: number;

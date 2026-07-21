@@ -7,6 +7,7 @@
  * module is intentionally OS-agnostic.
  */
 import { app, BrowserWindow, dialog, shell } from 'electron';
+import { exec, execSync } from 'child_process';
 import path from 'node:path';
 import { installCrashHandler } from '../crash/crashReporter';
 import { createLogger } from '../logger/logger';
@@ -198,8 +199,51 @@ function showBackendError(error: Error): void {
   );
 }
 
+function checkAndRelaunchAsAdmin(): boolean {
+  if (process.platform !== 'win32') return false;
+  if (process.env.AVS_NO_ELEVATE) return false;
+
+  try {
+    // Check if already running as admin using PowerShell
+    const output = execSync(
+      'powershell -NoProfile -Command "([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)"',
+      { encoding: 'utf8', timeout: 5000 }
+    ).trim();
+
+    if (output.toLowerCase() === 'true') {
+      return false; // Already admin, no need to relaunch
+    }
+
+    // Not admin — relaunch with elevation
+    const exePath = app.getPath('exe');
+    const escapedPath = exePath.replace(/'/g, "''");
+    exec(
+      `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`,
+      (err) => {
+        if (err) {
+          log.error('Failed to relaunch as admin', err);
+        } else {
+          log.info('Admin relaunch triggered, exiting current instance');
+          app.quit();
+        }
+      }
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 app.whenReady().then(async () => {
   log.info(`AVS PC Optimizer starting (env=${env.env})`);
+
+  // Auto-elevate to administrator on Windows for full functionality
+  // (registry access, working set trimming, startup management, etc.)
+  if (checkAndRelaunchAsAdmin()) {
+    // Wait briefly for the elevated instance to start, then quit
+    setTimeout(() => app.quit(), 1000);
+    return;
+  }
 
   // Show splash screen while the backend boots
   splashWindow = createSplashWindow();

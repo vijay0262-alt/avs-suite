@@ -111,7 +111,7 @@ def _collect_metrics() -> dict[str, Any]:
     results: dict[str, Any] = {}
     with ThreadPoolExecutor(max_workers=len(collectors)) as pool:
         futures = {pool.submit(fn): name for name, fn in collectors}
-        for fut in as_completed(futures, timeout=10.0):
+        for fut in as_completed(futures, timeout=8.0):
             name = futures[fut]
             try:
                 results[name] = fut.result()
@@ -829,14 +829,20 @@ def _calculate_security_score(security_metrics: dict[str, Any]) -> float:
     score = 100
     
     defender = security_metrics.get("defender", {})
-    if not defender.get("enabled", False):
-        score -= 30
-    if not defender.get("realTimeProtection", False):
-        score -= 20
-    
     firewall = security_metrics.get("firewall", {})
-    if not firewall.get("enabled", False):
-        score -= 20
+    third_party_av = defender.get("thirdPartyAV") or firewall.get("thirdPartyAV")
+    
+    if not third_party_av:
+        if not defender.get("enabled", False):
+            score -= 30
+        if not defender.get("realTimeProtection", False):
+            score -= 20
+        if not firewall.get("enabled", False):
+            score -= 20
+    else:
+        # Third-party AV is active — Defender/Firewall being off is expected
+        # Only penalize for pending updates and smart screen
+        pass
     
     updates = security_metrics.get("updates", {})
     if updates.get("pendingUpdates", 0) > 0:
@@ -982,7 +988,7 @@ def _get_startup_apps_count() -> int:
 def _get_background_processes_count() -> int:
     """Get count of background processes."""
     try:
-        return len([p for p in psutil.process_iter() if p.info.get('name')])
+        return len(psutil.pids())
     except Exception:
         return 0
 
@@ -1065,7 +1071,16 @@ def _now_iso() -> str:
 def _get_thread_count() -> int:
     """Get total thread count."""
     try:
-        return sum(len(p.threads()) for p in psutil.process_iter(['threads']))
+        # Use process_iter with 'threads' info to avoid per-process calls
+        count = 0
+        for p in psutil.process_iter(['threads']):
+            try:
+                threads = p.info.get('threads')
+                if threads:
+                    count += len(threads)
+            except (psutil.AccessDenied, psutil.NoSuchProcess):
+                continue
+        return count
     except Exception:
         return 0
 
@@ -1204,26 +1219,80 @@ def _get_tpm_status() -> bool:
 
 
 @_ttl_cache(60.0)
+def _get_third_party_antivirus() -> str | None:
+    """Detect third-party antivirus software via Windows Security Center.
+
+    Returns the product name if a third-party AV is active, or None if
+    only Windows Defender is present.
+
+    Uses Get-CimInstance to query the SecurityCenter2 namespace which
+    lists registered security products. If a non-Microsoft product is
+    found with active protection, we return its name.
+    """
+    if os.name != "nt":
+        return None
+    try:
+        ps_script = (
+            "$ErrorActionPreference = 'SilentlyContinue';"
+            "$products = Get-CimInstance -Namespace 'root/SecurityCenter2' -ClassName AntivirusProduct;"
+            "if ($products) {"
+            "  foreach ($p in $products) {"
+            "    if ($p.displayName -notmatch 'Windows Defender|Microsoft Defender') {"
+            "      Write-Output $p.displayName;"
+            "      break;"
+            "    }"
+            "  }"
+            "}"
+        )
+        out = _run_powershell(ps_script, timeout=3.0)
+        if out and out.strip():
+            return out.strip()
+        return None
+    except Exception:
+        return None
+
+
+@_ttl_cache(60.0)
 def _get_defender_status() -> dict[str, Any]:
-    """Get Windows Defender status via Get-MpComputerStatus."""
+    """Get Windows Defender status via Get-MpComputerStatus.
+
+    If a third-party antivirus is active, Defender is expected to be
+    disabled and should not be flagged as an issue.
+    """
     if os.name != "nt":
         return {}
+
+    # Check if a third-party AV is active first
+    third_party = _get_third_party_antivirus()
+    if third_party:
+        # Third-party AV is protecting the system — Defender being off is normal
+        return {
+            "enabled": True,
+            "realTimeProtection": True,
+            "thirdPartyAV": third_party,
+        }
+
     out = _run_powershell(
         "$s = Get-MpComputerStatus; "
         "Write-Output \"$($s.AntivirusEnabled),$($s.RealTimeProtectionEnabled)\"",
         timeout=1.5,
     )
     if not out:
-        return {"enabled": False, "realTimeProtection": False}
+        return {"enabled": False, "realTimeProtection": False, "thirdPartyAV": None}
     parts = out.split(",")
     enabled = parts[0].strip().lower() == "true"
     rtp = len(parts) > 1 and parts[1].strip().lower() == "true"
-    return {"enabled": enabled, "realTimeProtection": rtp}
+    return {"enabled": enabled, "realTimeProtection": rtp, "thirdPartyAV": None}
 
 
 @_ttl_cache(60.0)
 def _get_firewall_status() -> dict[str, Any]:
-    """Get Windows Firewall status (enabled if any profile is on)."""
+    """Get Windows Firewall status (enabled if any profile is on).
+
+    If a third-party antivirus/security suite is active, it may manage
+    the firewall instead of Windows Firewall, so we don't flag it as
+    disabled in that case.
+    """
     if os.name != "nt":
         return {}
     out = _run_powershell(
@@ -1232,9 +1301,19 @@ def _get_firewall_status() -> dict[str, Any]:
         timeout=1.5,
     )
     if out is None:
+        # If we can't determine, check if 3rd-party AV is active
+        third_party = _get_third_party_antivirus()
+        if third_party:
+            return {"enabled": True, "thirdPartyAV": third_party}
         return {"enabled": False}
     try:
-        return {"enabled": int(out) > 0}
+        enabled = int(out) > 0
+        if not enabled:
+            # Windows Firewall is off — check if 3rd-party AV is managing it
+            third_party = _get_third_party_antivirus()
+            if third_party:
+                return {"enabled": True, "thirdPartyAV": third_party}
+        return {"enabled": enabled}
     except ValueError:
         return {"enabled": False}
 
@@ -1261,7 +1340,7 @@ def _get_windows_update_status() -> dict[str, Any]:
         )
         out = subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True, text=True, timeout=8,
         )
         lines = [l.strip() for l in out.stdout.strip().split("\n") if l.strip()]
         pending = int(lines[0]) if lines and lines[0].isdigit() else 0

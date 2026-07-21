@@ -113,10 +113,13 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
     call<T>(method: string, params?: unknown): Promise<T> {
       return new Promise<T>((resolve, reject) => {
         const id = nextId++;
+        // Give optimize/clean operations more time since they do real work
+        const isLongOperation = method.includes('optimize') || method.includes('clean') || method.includes('execute');
+        const timeoutMs = isLongOperation ? 60000 : 30000;
         const timeout = setTimeout(() => {
           pending.delete(id);
-          reject(new Error(`RPC timeout: ${method} (30s)`));
-        }, 30000);
+          reject(new Error(`RPC timeout: ${method} (${timeoutMs / 1000}s)`));
+        }, timeoutMs);
         pending.set(id, {
           resolve: (v: unknown) => { clearTimeout(timeout); resolve(v as T); },
           reject: (e: Error) => { clearTimeout(timeout); reject(e); },

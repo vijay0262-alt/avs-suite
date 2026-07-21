@@ -122,36 +122,43 @@ export default function SecurityPage() {
 
   const securityItems: SecurityItemProps[] = useMemo(() => {
     if (!security) return [];
+    const thirdPartyAV = security.defender.thirdPartyAV || security.firewall.thirdPartyAV;
     return [
       {
-        label: 'Windows Defender',
-        description: security.defender.enabled
-          ? 'Antivirus protection is enabled and monitoring your system.'
-          : 'Antivirus protection is disabled. Enable Windows Defender for protection.',
-        status: security.defender.enabled ? 'active' : 'inactive',
+        label: thirdPartyAV ? `${thirdPartyAV} (Antivirus)` : 'Windows Defender',
+        description: thirdPartyAV
+          ? `${thirdPartyAV} is protecting your system. Windows Defender is not needed.`
+          : security.defender.enabled
+            ? 'Antivirus protection is enabled and monitoring your system.'
+            : 'Antivirus protection is disabled. Enable Windows Defender for protection.',
+        status: (thirdPartyAV || security.defender.enabled) ? 'active' : 'inactive',
         icon: ShieldCheckIcon,
-        actionLabel: security.defender.enabled ? undefined : 'Open Windows Security',
-        onAction: security.defender.enabled ? undefined : openWindowsSecurity,
+        actionLabel: (thirdPartyAV || security.defender.enabled) ? undefined : 'Open Windows Security',
+        onAction: (thirdPartyAV || security.defender.enabled) ? undefined : openWindowsSecurity,
       },
       {
         label: 'Real-time Protection',
-        description: security.realTimeProtection
-          ? 'Real-time scanning is active, blocking threats as they appear.'
-          : 'Real-time scanning is off. Your system may be vulnerable to new threats.',
-        status: security.realTimeProtection ? 'active' : 'inactive',
+        description: thirdPartyAV
+          ? `${thirdPartyAV} provides real-time protection for your system.`
+          : security.realTimeProtection
+            ? 'Real-time scanning is active, blocking threats as they appear.'
+            : 'Real-time scanning is off. Your system may be vulnerable to new threats.',
+        status: (thirdPartyAV || security.realTimeProtection) ? 'active' : 'inactive',
         icon: EyeIcon,
-        actionLabel: security.realTimeProtection ? undefined : 'Open Windows Security',
-        onAction: security.realTimeProtection ? undefined : openWindowsSecurity,
+        actionLabel: (thirdPartyAV || security.realTimeProtection) ? undefined : 'Open Windows Security',
+        onAction: (thirdPartyAV || security.realTimeProtection) ? undefined : openWindowsSecurity,
       },
       {
         label: 'Firewall',
-        description: security.firewall.enabled
-          ? 'Windows Firewall is active and filtering network traffic.'
-          : 'Windows Firewall is disabled. Your PC is exposed to network attacks.',
-        status: security.firewall.enabled ? 'active' : 'inactive',
+        description: thirdPartyAV
+          ? `${thirdPartyAV} is managing your firewall protection.`
+          : security.firewall.enabled
+            ? 'Windows Firewall is active and filtering network traffic.'
+            : 'Windows Firewall is disabled. Your PC is exposed to network attacks.',
+        status: (thirdPartyAV || security.firewall.enabled) ? 'active' : 'inactive',
         icon: FireIcon,
-        actionLabel: security.firewall.enabled ? undefined : 'Open Windows Security',
-        onAction: security.firewall.enabled ? undefined : openWindowsSecurity,
+        actionLabel: (thirdPartyAV || security.firewall.enabled) ? undefined : 'Open Windows Security',
+        onAction: (thirdPartyAV || security.firewall.enabled) ? undefined : openWindowsSecurity,
       },
       {
         label: 'Windows Updates',

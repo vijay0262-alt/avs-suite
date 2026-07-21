@@ -424,7 +424,7 @@ def optimize_memory(
     """
     result = OptimizationResult(status=OptimizationStatus.RUNNING)
     start_time = time.time()
-    _TIMEOUT_S = 30.0
+    _TIMEOUT_S = 20.0
 
     try:
         # Get initial memory state
@@ -445,10 +445,17 @@ def optimize_memory(
             on_progress(30)
 
         try:
-            all_processes = list(psutil.process_iter(['pid', 'name']))
-            optimized = trim_process_working_sets(all_processes)
+            # Only trim top 50 processes by memory to avoid spending too long
+            all_processes = list(psutil.process_iter(['pid', 'name', 'memory_info']))
+            # Sort by memory usage descending, take top 50
+            all_processes.sort(
+                key=lambda p: p.info.get('memory_info', None) and p.info['memory_info'].rss or 0,
+                reverse=True
+            )
+            top_processes = all_processes[:50]
+            optimized = trim_process_working_sets(top_processes)
             result.processes_optimized = optimized
-            logger.info(f"Optimized {optimized} processes")
+            logger.info(f"Optimized {optimized} processes (of {len(all_processes)} total, trimmed top 50)")
         except Exception as e:
             logger.error(f"Failed to trim working sets: {e}")
             result.errors.append(f"Failed to trim working sets: {str(e)}")

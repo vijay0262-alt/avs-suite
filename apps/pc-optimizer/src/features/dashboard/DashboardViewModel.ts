@@ -578,16 +578,21 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       scanIfNotCancelled('security', async () => {
         const metrics = await this.service.getMetrics();
         const pending = metrics.security.updates.pendingUpdates || 0;
-        const defender = metrics.security.defender.enabled ? 0 : 1;
-        const firewall = metrics.security.firewall.enabled ? 0 : 1;
+        const thirdPartyAV = metrics.security.defender.thirdPartyAV || metrics.security.firewall.thirdPartyAV;
+        const defender = (!thirdPartyAV && !metrics.security.defender.enabled) ? 1 : 0;
+        const firewall = (!thirdPartyAV && !metrics.security.firewall.enabled) ? 1 : 0;
         return {
           score: Math.max(0, 100 - (pending + (defender + firewall) * 20)),
           issuesFound: pending + defender + firewall,
           recoverableSpace: 0,
           severity: defender + firewall > 0 ? 'high' : pending > 0 ? 'medium' : 'low',
-          measuredDetail: `${pending} pending updates, ${defender + firewall} disabled protections`,
+          measuredDetail: thirdPartyAV
+            ? `${thirdPartyAV} active, ${pending} pending updates`
+            : `${pending} pending updates, ${defender + firewall} disabled protections`,
           details: {
-            summary: `${pending} pending Windows updates, ${defender + firewall} disabled protections`,
+            summary: thirdPartyAV
+              ? `${thirdPartyAV} is protecting your system. ${pending} pending Windows updates.`
+              : `${pending} pending Windows updates, ${defender + firewall} disabled protections`,
             impact: (defender + firewall > 0 ? 'high' : pending > 0 ? 'medium' : 'low') as OptimizationDetails['impact'],
             safeToRemove: true,
             groups: [
@@ -596,6 +601,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
                 safeToRemove: true,
                 why: 'Security features keep the system protected from malware and network threats.',
                 items: [
+                  ...(thirdPartyAV ? [{ name: `${thirdPartyAV} antivirus active` }] : []),
                   ...(pending > 0 ? [{ name: `${pending} pending Windows updates` }] : []),
                   ...(defender > 0 ? [{ name: 'Windows Defender real-time protection disabled' }] : []),
                   ...(firewall > 0 ? [{ name: 'Windows Firewall disabled' }] : []),
@@ -603,7 +609,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
               },
             ],
             notChanged: notChanged.system,
-            why: 'Pending updates and disabled security features leave the system vulnerable. Applying updates and enabling protections improves safety.',
+            why: thirdPartyAV
+              ? 'Third-party antivirus is protecting your system. Keep it updated for best protection.'
+              : 'Pending updates and disabled security features leave the system vulnerable. Applying updates and enabling protections improves safety.',
           },
         };
       }),

@@ -246,44 +246,48 @@ function buildPerformanceIssues(metrics: DashboardMetrics): HealthIssue[] {
 function buildSecurityIssues(metrics: DashboardMetrics): HealthIssue[] {
   const issues: HealthIssue[] = [];
 
-  if (!metrics.security.defender.enabled) {
-    issues.push({
-      id: 'security-defender',
-      category: 'security',
-      title: 'Windows Defender disabled',
-      detail: 'Real-time antivirus protection is not active',
-      severity: 'high',
-      measurableValue: 1,
-      measurableUnit: 'count',
-      actionPath: '/security',
-      canAutoFix: false,
-    });
-  } else if (!metrics.security.defender.realTimeProtection) {
-    issues.push({
-      id: 'security-rtp',
-      category: 'security',
-      title: 'Real-time protection off',
-      detail: 'Windows Defender real-time protection is disabled',
-      severity: 'high',
-      measurableValue: 1,
-      measurableUnit: 'count',
-      actionPath: '/security',
-      canAutoFix: false,
-    });
-  }
+  const thirdPartyAV = metrics.security.defender.thirdPartyAV || metrics.security.firewall.thirdPartyAV;
 
-  if (!metrics.security.firewall.enabled) {
-    issues.push({
-      id: 'security-firewall',
-      category: 'security',
-      title: 'Windows Firewall disabled',
-      detail: 'Network firewall is not active',
-      severity: 'high',
-      measurableValue: 1,
-      measurableUnit: 'count',
-      actionPath: '/security',
-      canAutoFix: false,
-    });
+  if (!thirdPartyAV) {
+    if (!metrics.security.defender.enabled) {
+      issues.push({
+        id: 'security-defender',
+        category: 'security',
+        title: 'Windows Defender disabled',
+        detail: 'Real-time antivirus protection is not active',
+        severity: 'high',
+        measurableValue: 1,
+        measurableUnit: 'count',
+        actionPath: '/security',
+        canAutoFix: false,
+      });
+    } else if (!metrics.security.defender.realTimeProtection) {
+      issues.push({
+        id: 'security-rtp',
+        category: 'security',
+        title: 'Real-time protection off',
+        detail: 'Windows Defender real-time protection is disabled',
+        severity: 'high',
+        measurableValue: 1,
+        measurableUnit: 'count',
+        actionPath: '/security',
+        canAutoFix: false,
+      });
+    }
+
+    if (!metrics.security.firewall.enabled) {
+      issues.push({
+        id: 'security-firewall',
+        category: 'security',
+        title: 'Windows Firewall disabled',
+        detail: 'Network firewall is not active',
+        severity: 'high',
+        measurableValue: 1,
+        measurableUnit: 'count',
+        actionPath: '/security',
+        canAutoFix: false,
+      });
+    }
   }
 
   if (metrics.security.updates.pendingUpdates > 0) {
@@ -358,6 +362,8 @@ function buildCategoryDetails(
   const privacy = privacyRisks ?? 0;
 
   const securityDetail = (() => {
+    const thirdPartyAV = metrics.security.defender.thirdPartyAV || metrics.security.firewall.thirdPartyAV;
+    if (thirdPartyAV) return `${thirdPartyAV} protecting system`;
     if (!metrics.security.defender.enabled) return 'Windows Defender disabled';
     if (!metrics.security.defender.realTimeProtection) return 'Real-time protection off';
     if (!metrics.security.firewall.enabled) return 'Firewall disabled';
@@ -471,9 +477,12 @@ export function calculateHealthScore(metrics: DashboardMetrics, privacyRisks: nu
 
   // Security score: binary penalties for disabled protections
   let securityScore = 100;
-  if (!metrics.security.defender.enabled) securityScore -= 30;
-  if (!metrics.security.defender.realTimeProtection) securityScore -= 20;
-  if (!metrics.security.firewall.enabled) securityScore -= 25;
+  const thirdPartyAV = metrics.security.defender.thirdPartyAV || metrics.security.firewall.thirdPartyAV;
+  if (!thirdPartyAV) {
+    if (!metrics.security.defender.enabled) securityScore -= 30;
+    if (!metrics.security.defender.realTimeProtection) securityScore -= 20;
+    if (!metrics.security.firewall.enabled) securityScore -= 25;
+  }
   if (!metrics.security.smartScreen) securityScore -= 10;
   if (metrics.security.updates.pendingUpdates > 0) securityScore -= 15;
   securityScore = clamp(securityScore);
