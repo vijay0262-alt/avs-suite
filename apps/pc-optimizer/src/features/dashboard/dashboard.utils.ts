@@ -1,15 +1,19 @@
 /**
- * Dashboard utilities — incremental health score calculation.
+ * Dashboard utilities — HealthSnapshot calculation from real measured values.
  *
- * Computes a HealthScore directly from DashboardMetrics so the UI can update
- * in real time without an additional RPC round-trip every poll cycle.
+ * Computes a HealthSnapshot directly from DashboardMetrics so the UI can
+ * update in real time without an additional RPC round-trip every poll cycle.
+ *
+ * Every score is derived from actual measured system values.
+ * No predictions. No estimates. No hardcoded scores.
  */
 import type {
   DashboardMetrics,
-  HealthScore,
+  HealthSnapshot,
   HealthStatus,
   HealthSummaryItem,
   HealthCategoryDetail,
+  HealthIssue,
   CategoryScores,
 } from './dashboard.types';
 
@@ -18,7 +22,6 @@ function clamp(value: number, min = 0, max = 100): number {
 }
 
 function scoreFromUsage(usagePercent: number): number {
-  // Lower usage is better; invert and curve slightly.
   return clamp(100 - usagePercent * 1.1);
 }
 
@@ -35,139 +38,317 @@ function determineStatus(overallScore: number): HealthStatus {
   return 'critical';
 }
 
-function buildSuggestions(metrics: DashboardMetrics): string[] {
-  const suggestions: string[] = [];
-
-  if (metrics.cpu.usage > 80) {
-    suggestions.push('High CPU usage detected — close unused applications or review startup programs.');
-  }
-  if (metrics.memory.usage > 85) {
-    suggestions.push('Memory usage is high — close background apps or disable unnecessary startup items.');
-  }
-  if (metrics.storage.some((d) => d.usage > 90)) {
-    suggestions.push('A drive is over 90% full — run Disk Analyzer to free up space.');
-  }
-  if (metrics.storage.some((d) => d.usage > 80)) {
-    suggestions.push('Storage is getting low — consider cleaning junk files.');
-  }
-  if (!metrics.security.defender.enabled || !metrics.security.defender.realTimeProtection) {
-    suggestions.push('Real-time protection is disabled — re-enable Windows Defender or your antivirus.');
-  }
-  if (!metrics.security.firewall.enabled) {
-    suggestions.push('Windows Firewall is disabled — enable it for better security.');
-  }
-  if (metrics.security.updates.pendingUpdates > 0) {
-    suggestions.push('Windows updates are pending — install them to improve security.');
-  }
-  if (metrics.performance.potentialRecoverable > 1024 * 1024 * 1024) {
-    suggestions.push('Over 1 GB of recoverable space found — run Junk Cleaner to reclaim it.');
-  }
-  if (metrics.performance.startupApps > 10) {
-    suggestions.push('Many startup applications detected — review Startup Analyzer to speed up boot.');
-  }
-
-  return suggestions;
-}
-
-/**
- * Calculate an incremental HealthScore from the latest DashboardMetrics.
- *
- * This avoids a second RPC call every metrics poll and keeps the dashboard
- * score in sync with the live data already on the client.
- *
- * CANONICAL SOURCE: this is the only Health Score calculation that feeds
- * the main Dashboard (HealthScoreCard, HealthBreakdown, HealthSummary). The
- * backend `dashboard.health` RPC (`dashboard_health()` /
- * `dashboardService.getHealthScore()`) is a separate, unused calculation
- * with different weights — do not wire it into the Dashboard without first
- * retiring this one, or the two will disagree. The Health Scan modal's
- * per-run "overall score" (see `DashboardViewModel.finishHealthScan`) is
- * also a distinct, session-scoped score and is intentionally not the same
- * number as this one.
- */
-function toGB(bytes: number): number {
-  return bytes / (1024 * 1024 * 1024);
-}
-
-function buildSummary(metrics: DashboardMetrics, privacyRisks: number | null): HealthSummaryItem[] {
-  const summary: HealthSummaryItem[] = [];
-
-  if (metrics.performance.potentialRecoverable > 1024 * 1024 * 1024) {
-    summary.push({
-      text: `${toGB(metrics.performance.potentialRecoverable).toFixed(1)} GB temporary files`,
-      severity: 'warning',
-    });
-  }
-
-  if (metrics.performance.startupApps > 5) {
-    summary.push({
-      text: `${metrics.performance.startupApps} unnecessary startup applications`,
-      severity: 'warning',
-    });
-  }
-
-  if (metrics.memory.usage > 80) {
-    summary.push({
-      text: 'RAM usage is high',
-      severity: 'danger',
-    });
-  } else if (metrics.memory.usage > 60) {
-    summary.push({
-      text: 'RAM usage is elevated',
-      severity: 'warning',
-    });
-  }
-
-  metrics.storage.forEach((drive) => {
-    if (drive.usage > 90) {
-      summary.push({
-        text: `Drive ${drive.name} is ${drive.usage.toFixed(0)}% full`,
-        severity: 'danger',
-      });
-    } else if (drive.usage > 75) {
-      summary.push({
-        text: `Drive ${drive.name} is ${drive.usage.toFixed(0)}% full`,
-        severity: 'warning',
-      });
-    }
-  });
-
-  if (metrics.performance.browserCacheSize > 100 * 1024 * 1024) {
-    summary.push({
-      text: 'Browser cache can be cleaned',
-      severity: 'info',
-    });
-  }
-
-  if (metrics.security.updates.pendingUpdates > 0) {
-    summary.push({
-      text: 'Windows has pending updates',
-      severity: 'warning',
-    });
-  }
-
-  if (privacyRisks && privacyRisks > 0) {
-    summary.push({
-      text: `${privacyRisks} privacy risks found`,
-      severity: 'warning',
-    });
-  }
-
-  if (summary.length === 0) {
-    summary.push({
-      text: 'Your PC is in great shape',
-      severity: 'success',
-    });
-  }
-
-  return summary;
-}
-
 function determineCategorySeverity(score: number): 'success' | 'warning' | 'danger' {
   if (score >= 80) return 'success';
   if (score >= 60) return 'warning';
   return 'danger';
 }
+
+function toGB(bytes: number): number {
+  return bytes / (1024 * 1024 * 1024);
+}
+
+function toMB(bytes: number): number {
+  return bytes / (1024 * 1024);
+}
+
+// ── Issue builders ──────────────────────────────────────────────────
+
+function buildStorageIssues(metrics: DashboardMetrics): HealthIssue[] {
+  const issues: HealthIssue[] = [];
+
+  if (metrics.performance.temporaryFilesSize > 50 * 1024 * 1024) {
+    issues.push({
+      id: 'storage-temp-files',
+      category: 'storage',
+      title: 'Temporary Files',
+      detail: `${toMB(metrics.performance.temporaryFilesSize).toFixed(0)} MB of temporary files`,
+      severity: metrics.performance.temporaryFilesSize > 1024 * 1024 * 1024 ? 'high' : 'medium',
+      measurableValue: metrics.performance.temporaryFilesSize,
+      measurableUnit: 'bytes',
+      actionPath: '/junk-cleaner',
+      canAutoFix: true,
+    });
+  }
+
+  if (metrics.performance.recycleBinSize > 50 * 1024 * 1024) {
+    issues.push({
+      id: 'storage-recycle-bin',
+      category: 'storage',
+      title: 'Recycle Bin',
+      detail: `${toMB(metrics.performance.recycleBinSize).toFixed(0)} MB in Recycle Bin`,
+      severity: 'medium',
+      measurableValue: metrics.performance.recycleBinSize,
+      measurableUnit: 'bytes',
+      actionPath: '/junk-cleaner',
+      canAutoFix: true,
+    });
+  }
+
+  if (metrics.performance.browserCacheSize > 100 * 1024 * 1024) {
+    issues.push({
+      id: 'storage-browser-cache',
+      category: 'storage',
+      title: 'Browser Cache',
+      detail: `${toMB(metrics.performance.browserCacheSize).toFixed(0)} MB of browser cache`,
+      severity: 'low',
+      measurableValue: metrics.performance.browserCacheSize,
+      measurableUnit: 'bytes',
+      actionPath: '/privacy-cleaner',
+      canAutoFix: true,
+    });
+  }
+
+  metrics.storage.forEach((drive) => {
+    if (drive.usage > 90) {
+      issues.push({
+        id: `storage-drive-${drive.mount}`,
+        category: 'storage',
+        title: `Drive ${drive.name || drive.mount} nearly full`,
+        detail: `${drive.usage.toFixed(0)}% used, ${toGB(drive.free).toFixed(1)} GB free`,
+        severity: 'high',
+        measurableValue: drive.usage,
+        measurableUnit: 'percent',
+        actionPath: '/disk-analyzer',
+        canAutoFix: false,
+      });
+    } else if (drive.usage > 80) {
+      issues.push({
+        id: `storage-drive-${drive.mount}`,
+        category: 'storage',
+        title: `Drive ${drive.name || drive.mount} getting full`,
+        detail: `${drive.usage.toFixed(0)}% used, ${toGB(drive.free).toFixed(1)} GB free`,
+        severity: 'medium',
+        measurableValue: drive.usage,
+        measurableUnit: 'percent',
+        actionPath: '/disk-analyzer',
+        canAutoFix: false,
+      });
+    }
+  });
+
+  return issues;
+}
+
+function buildStartupIssues(metrics: DashboardMetrics): HealthIssue[] {
+  const issues: HealthIssue[] = [];
+
+  if (metrics.performance.startupApps > 0) {
+    issues.push({
+      id: 'startup-enabled-apps',
+      category: 'startup',
+      title: `${metrics.performance.startupApps} startup apps enabled`,
+      detail: `${metrics.performance.startupApps} applications launch at startup`,
+      severity: metrics.performance.startupApps > 10 ? 'high' : metrics.performance.startupApps > 5 ? 'medium' : 'low',
+      measurableValue: metrics.performance.startupApps,
+      measurableUnit: 'count',
+      actionPath: '/startup-manager',
+      canAutoFix: true,
+    });
+  }
+
+  return issues;
+}
+
+function buildPrivacyIssues(metrics: DashboardMetrics, privacyRisks: number | null): HealthIssue[] {
+  const issues: HealthIssue[] = [];
+  const privacy = privacyRisks ?? 0;
+
+  if (privacy > 0) {
+    issues.push({
+      id: 'privacy-browsers',
+      category: 'privacy',
+      title: `${privacy} browser(s) with privacy traces`,
+      detail: `${privacy} browser(s) detected with cache, cookies, or history`,
+      severity: privacy > 3 ? 'medium' : 'low',
+      measurableValue: privacy,
+      measurableUnit: 'count',
+      actionPath: '/privacy-cleaner',
+      canAutoFix: true,
+    });
+  }
+
+  if (metrics.performance.browserCacheSize > 100 * 1024 * 1024) {
+    issues.push({
+      id: 'privacy-cache',
+      category: 'privacy',
+      title: 'Browser cache can be cleared',
+      detail: `${toMB(metrics.performance.browserCacheSize).toFixed(0)} MB of browser cache data`,
+      severity: 'low',
+      measurableValue: metrics.performance.browserCacheSize,
+      measurableUnit: 'bytes',
+      actionPath: '/privacy-cleaner',
+      canAutoFix: true,
+    });
+  }
+
+  return issues;
+}
+
+function buildPerformanceIssues(metrics: DashboardMetrics): HealthIssue[] {
+  const issues: HealthIssue[] = [];
+
+  if (metrics.cpu.usage > 80) {
+    issues.push({
+      id: 'perf-cpu-high',
+      category: 'performance',
+      title: 'High CPU usage',
+      detail: `CPU usage is ${metrics.cpu.usage.toFixed(0)}%`,
+      severity: 'high',
+      measurableValue: metrics.cpu.usage,
+      measurableUnit: 'percent',
+      actionPath: '/performance',
+      canAutoFix: false,
+    });
+  } else if (metrics.cpu.usage > 60) {
+    issues.push({
+      id: 'perf-cpu-elevated',
+      category: 'performance',
+      title: 'Elevated CPU usage',
+      detail: `CPU usage is ${metrics.cpu.usage.toFixed(0)}%`,
+      severity: 'medium',
+      measurableValue: metrics.cpu.usage,
+      measurableUnit: 'percent',
+      actionPath: '/performance',
+      canAutoFix: false,
+    });
+  }
+
+  if (metrics.memory.usage > 85) {
+    issues.push({
+      id: 'perf-memory-high',
+      category: 'performance',
+      title: 'High memory usage',
+      detail: `RAM usage is ${metrics.memory.usage.toFixed(0)}% (${toGB(metrics.memory.used).toFixed(1)} GB of ${toGB(metrics.memory.total).toFixed(1)} GB)`,
+      severity: 'high',
+      measurableValue: metrics.memory.usage,
+      measurableUnit: 'percent',
+      actionPath: '/performance',
+      canAutoFix: true,
+    });
+  } else if (metrics.memory.usage > 70) {
+    issues.push({
+      id: 'perf-memory-elevated',
+      category: 'performance',
+      title: 'Elevated memory usage',
+      detail: `RAM usage is ${metrics.memory.usage.toFixed(0)}%`,
+      severity: 'medium',
+      measurableValue: metrics.memory.usage,
+      measurableUnit: 'percent',
+      actionPath: '/performance',
+      canAutoFix: true,
+    });
+  }
+
+  return issues;
+}
+
+function buildSecurityIssues(metrics: DashboardMetrics): HealthIssue[] {
+  const issues: HealthIssue[] = [];
+
+  if (!metrics.security.defender.enabled) {
+    issues.push({
+      id: 'security-defender',
+      category: 'security',
+      title: 'Windows Defender disabled',
+      detail: 'Real-time antivirus protection is not active',
+      severity: 'high',
+      measurableValue: 1,
+      measurableUnit: 'count',
+      actionPath: '/security',
+      canAutoFix: false,
+    });
+  } else if (!metrics.security.defender.realTimeProtection) {
+    issues.push({
+      id: 'security-rtp',
+      category: 'security',
+      title: 'Real-time protection off',
+      detail: 'Windows Defender real-time protection is disabled',
+      severity: 'high',
+      measurableValue: 1,
+      measurableUnit: 'count',
+      actionPath: '/security',
+      canAutoFix: false,
+    });
+  }
+
+  if (!metrics.security.firewall.enabled) {
+    issues.push({
+      id: 'security-firewall',
+      category: 'security',
+      title: 'Windows Firewall disabled',
+      detail: 'Network firewall is not active',
+      severity: 'high',
+      measurableValue: 1,
+      measurableUnit: 'count',
+      actionPath: '/security',
+      canAutoFix: false,
+    });
+  }
+
+  if (metrics.security.updates.pendingUpdates > 0) {
+    issues.push({
+      id: 'security-updates',
+      category: 'security',
+      title: `${metrics.security.updates.pendingUpdates} pending Windows updates`,
+      detail: `${metrics.security.updates.pendingUpdates} updates are waiting to be installed`,
+      severity: 'medium',
+      measurableValue: metrics.security.updates.pendingUpdates,
+      measurableUnit: 'count',
+      actionPath: '/security',
+      canAutoFix: false,
+    });
+  }
+
+  return issues;
+}
+
+function buildWindowsIssues(metrics: DashboardMetrics): HealthIssue[] {
+  const issues: HealthIssue[] = [];
+
+  const uptimeDays = metrics.windows.uptime / 86400;
+  if (uptimeDays > 30) {
+    issues.push({
+      id: 'windows-uptime',
+      category: 'windows',
+      title: 'System restart recommended',
+      detail: `System has been running for ${Math.round(uptimeDays)} days without a restart`,
+      severity: 'medium',
+      measurableValue: Math.round(uptimeDays),
+      measurableUnit: 'count',
+      actionPath: '/system-info',
+      canAutoFix: false,
+    });
+  }
+
+  return issues;
+}
+
+function buildAllIssues(metrics: DashboardMetrics, privacyRisks: number | null): HealthIssue[] {
+  return [
+    ...buildStorageIssues(metrics),
+    ...buildStartupIssues(metrics),
+    ...buildPrivacyIssues(metrics, privacyRisks),
+    ...buildPerformanceIssues(metrics),
+    ...buildSecurityIssues(metrics),
+    ...buildWindowsIssues(metrics),
+  ];
+}
+
+// ── Summary ─────────────────────────────────────────────────────────
+
+function buildSummary(issues: HealthIssue[]): HealthSummaryItem[] {
+  if (issues.length === 0) {
+    return [{ text: 'Your PC is in great shape', severity: 'success' }];
+  }
+
+  return issues.map((issue) => ({
+    text: issue.detail,
+    severity: issue.severity === 'high' ? 'danger' : issue.severity === 'medium' ? 'warning' : 'info',
+  }));
+}
+
+// ── Category details ────────────────────────────────────────────────
 
 function buildCategoryDetails(
   metrics: DashboardMetrics,
@@ -175,7 +356,6 @@ function buildCategoryDetails(
   scores: CategoryScores
 ): HealthCategoryDetail[] {
   const privacy = privacyRisks ?? 0;
-  const privacyScore = clamp(100 - privacy * 10);
 
   const securityDetail = (() => {
     if (!metrics.security.defender.enabled) return 'Windows Defender disabled';
@@ -185,10 +365,21 @@ function buildCategoryDetails(
     return 'All protections active';
   })();
 
-  const firstDrive = metrics.storage[0];
-  const storageDetail = firstDrive
-    ? `${toGB(metrics.performance.potentialRecoverable).toFixed(1)} GB junk files`
-    : 'No storage data';
+  const storageDetail = metrics.performance.temporaryFilesSize > 0
+    ? `${toMB(metrics.performance.temporaryFilesSize).toFixed(0)} MB temp files`
+    : 'No junk files detected';
+
+  const startupDetail = `${metrics.performance.startupApps} startup apps enabled`;
+
+  const privacyDetail = privacy > 0
+    ? `${privacy} browser(s) with traces`
+    : 'No privacy risks detected';
+
+  const perfDetail = `CPU ${metrics.cpu.usage.toFixed(0)}% / RAM ${metrics.memory.usage.toFixed(0)}%`;
+
+  const windowsDetail = metrics.windows.uptime > 30 * 86400
+    ? `Uptime ${Math.round(metrics.windows.uptime / 86400)} days`
+    : 'System healthy';
 
   return [
     {
@@ -201,31 +392,31 @@ function buildCategoryDetails(
       severity: determineCategorySeverity(scores.storage),
     },
     {
-      id: 'memory',
-      name: 'Memory',
-      score: Math.round(scores.memory),
-      detail: `${metrics.memory.usage.toFixed(0)}% Used`,
-      actionLabel: 'Optimize',
-      path: '/performance',
-      severity: determineCategorySeverity(scores.memory),
-    },
-    {
       id: 'startup',
       name: 'Startup',
-      score: Math.round(scores.performance),
-      detail: `${metrics.performance.startupApps} Startup Apps`,
+      score: Math.round(scores.startup),
+      detail: startupDetail,
       actionLabel: 'Review',
       path: '/startup-manager',
-      severity: determineCategorySeverity(scores.performance),
+      severity: determineCategorySeverity(scores.startup),
     },
     {
       id: 'privacy',
       name: 'Privacy',
-      score: Math.round(privacyScore),
-      detail: `${privacy} Privacy Risks`,
+      score: Math.round(scores.privacy),
+      detail: privacyDetail,
       actionLabel: 'Clean',
       path: '/privacy-cleaner',
-      severity: determineCategorySeverity(privacyScore),
+      severity: determineCategorySeverity(scores.privacy),
+    },
+    {
+      id: 'performance',
+      name: 'Performance',
+      score: Math.round(scores.performance),
+      detail: perfDetail,
+      actionLabel: 'View',
+      path: '/performance',
+      severity: determineCategorySeverity(scores.performance),
     },
     {
       id: 'security',
@@ -237,93 +428,114 @@ function buildCategoryDetails(
       severity: determineCategorySeverity(scores.security),
     },
     {
-      id: 'performance',
-      name: 'Performance',
-      score: Math.round(scores.performance),
-      detail: `CPU ${metrics.cpu.usage.toFixed(0)}% / RAM ${metrics.memory.usage.toFixed(0)}%`,
+      id: 'windows',
+      name: 'Windows Health',
+      score: Math.round(scores.windows),
+      detail: windowsDetail,
       actionLabel: 'View',
-      path: '/performance',
-      severity: determineCategorySeverity(scores.performance),
+      path: '/system-info',
+      severity: determineCategorySeverity(scores.windows),
     },
   ];
 }
 
-export function calculateHealthScore(metrics: DashboardMetrics, privacyRisks: number | null = null): HealthScore {
+// ── Main calculation ────────────────────────────────────────────────
+
+/**
+ * Calculate a HealthSnapshot from the latest DashboardMetrics.
+ *
+ * CANONICAL SOURCE: This is the ONLY health score calculation.
+ * All dashboard components read from this HealthSnapshot.
+ * No predictions. No estimates. Every value is measured from real system state.
+ */
+export function calculateHealthScore(metrics: DashboardMetrics, privacyRisks: number | null = null): HealthSnapshot {
+  // Storage score: based on drive usage + recoverable junk
+  const driveUsageScore = average(metrics.storage.map((d) => scoreFromUsage(d.usage)));
+  const junkPenalty = metrics.performance.potentialRecoverable > 0
+    ? Math.min(30, Math.log10(metrics.performance.potentialRecoverable / (1024 * 1024) + 1) * 5)
+    : 0;
+  const storageScore = clamp(driveUsageScore - junkPenalty);
+
+  // Startup score: penalty per enabled startup app
+  const startupPenalty = Math.min(50, metrics.performance.startupApps * 5);
+  const startupScore = clamp(100 - startupPenalty);
+
+  // Privacy score: penalty per privacy risk detected
+  const privacy = privacyRisks ?? 0;
+  const privacyScore = clamp(100 - privacy * 10);
+
+  // Performance score: based on CPU and memory usage
   const cpuScore = scoreFromUsage(metrics.cpu.usage);
-
   const memoryScore = scoreFromUsage(metrics.memory.usage);
+  const performanceScore = clamp((cpuScore + memoryScore) / 2);
 
-  const storageScore = clamp(
-    average(metrics.storage.map((d) => scoreFromUsage(d.usage)))
-  );
-
-  // Security is binary-ish: full points when all protections are on.
+  // Security score: binary penalties for disabled protections
   let securityScore = 100;
-  if (!metrics.security.defender.enabled) securityScore -= 25;
-  if (!metrics.security.defender.realTimeProtection) securityScore -= 25;
-  if (!metrics.security.firewall.enabled) securityScore -= 20;
+  if (!metrics.security.defender.enabled) securityScore -= 30;
+  if (!metrics.security.defender.realTimeProtection) securityScore -= 20;
+  if (!metrics.security.firewall.enabled) securityScore -= 25;
   if (!metrics.security.smartScreen) securityScore -= 10;
   if (metrics.security.updates.pendingUpdates > 0) securityScore -= 15;
   securityScore = clamp(securityScore);
 
-  // Performance score combines startup count, recoverable space, and temp files.
-  const startupPenalty = Math.min(40, metrics.performance.startupApps * 3);
-  const recoverablePenalty =
-    metrics.performance.potentialRecoverable > 0
-      ? Math.min(25, Math.log10(metrics.performance.potentialRecoverable / (1024 * 1024) + 1) * 8)
-      : 0;
-  const tempPenalty =
-    metrics.performance.temporaryFilesSize > 0
-      ? Math.min(20, Math.log10(metrics.performance.temporaryFilesSize / (1024 * 1024) + 1) * 5)
-      : 0;
-  const performanceScore = clamp(100 - startupPenalty - recoverablePenalty - tempPenalty);
+  // Windows health score: uptime, system integrity
+  const uptimeDays = metrics.windows.uptime / 86400;
+  const windowsScore = clamp(uptimeDays > 30 ? 70 : 100);
 
+  // Weighted overall score
   const weights = {
-    cpu: 0.2,
-    memory: 0.2,
-    storage: 0.25,
-    security: 0.2,
-    performance: 0.15,
+    storage: 0.20,
+    startup: 0.15,
+    privacy: 0.10,
+    performance: 0.25,
+    security: 0.20,
+    windows: 0.10,
   };
 
   const overallScore = clamp(
-    cpuScore * weights.cpu +
-      memoryScore * weights.memory +
-      storageScore * weights.storage +
-      securityScore * weights.security +
-      performanceScore * weights.performance
+    storageScore * weights.storage +
+    startupScore * weights.startup +
+    privacyScore * weights.privacy +
+    performanceScore * weights.performance +
+    securityScore * weights.security +
+    windowsScore * weights.windows
   );
 
-  const summary = buildSummary(metrics, privacyRisks);
+  const issues = buildAllIssues(metrics, privacyRisks);
+  const summary = buildSummary(issues);
   const categoryDetails = buildCategoryDetails(metrics, privacyRisks, {
-    cpu: Math.round(cpuScore),
-    memory: Math.round(memoryScore),
     storage: Math.round(storageScore),
-    security: Math.round(securityScore),
+    startup: Math.round(startupScore),
+    privacy: Math.round(privacyScore),
     performance: Math.round(performanceScore),
+    security: Math.round(securityScore),
+    windows: Math.round(windowsScore),
   });
 
-  const issuesFound = summary.filter((s) => s.severity === 'warning' || s.severity === 'danger').length;
-  const bootImprovementSeconds = Math.min(60, metrics.performance.startupApps * 1.5);
-  const memoryRecovery = metrics.memory.cached || 0;
+  const measuredRecoverableSpace =
+    metrics.performance.temporaryFilesSize +
+    metrics.performance.recycleBinSize +
+    metrics.performance.browserCacheSize;
 
   return {
+    timestamp: metrics.capturedAt,
     overallScore: Math.round(overallScore),
     categoryScores: {
-      cpu: Math.round(cpuScore),
-      memory: Math.round(memoryScore),
       storage: Math.round(storageScore),
-      security: Math.round(securityScore),
+      startup: Math.round(startupScore),
+      privacy: Math.round(privacyScore),
       performance: Math.round(performanceScore),
+      security: Math.round(securityScore),
+      windows: Math.round(windowsScore),
     },
     status: determineStatus(overallScore),
-    suggestions: buildSuggestions(metrics),
-    capturedAt: metrics.capturedAt,
-    issuesFound,
-    recoverableSpace: metrics.performance.potentialRecoverable,
-    memoryRecovery,
-    bootImprovementSeconds,
+    issues,
     summary,
     categoryDetails,
+    measuredRecoverableSpace,
+    startupAppsEnabled: metrics.performance.startupApps,
+    tempFilesSize: metrics.performance.temporaryFilesSize,
+    browserCacheSize: metrics.performance.browserCacheSize,
+    recycleBinSize: metrics.performance.recycleBinSize,
   };
 }

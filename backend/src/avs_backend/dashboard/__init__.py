@@ -419,56 +419,68 @@ def dashboard_optimize_execute(_params: dict[str, Any] | None) -> dict[str, Any]
     
     # Temporary files
     try:
-        temp_size = _get_temp_files_size()
+        temp_size_before = _get_temp_files_size()
         _clean_temp_files()
-        results["temporaryFiles"] = {"cleaned": True, "size": temp_size, "error": None}
+        temp_size_after = _get_temp_files_size()
+        actual_recovered = max(0, temp_size_before - temp_size_after)
+        results["temporaryFiles"] = {"cleaned": True, "size": actual_recovered, "error": None}
     except Exception as e:
         results["temporaryFiles"]["error"] = str(e)
         log.warning("Failed to clean temp files: %s", e)
     
     # Recycle Bin
     try:
-        recycle_size = _get_recycle_bin_size()
-        if recycle_size > 0:
+        recycle_size_before = _get_recycle_bin_size()
+        if recycle_size_before > 0:
             from avs_backend.cleaner.recycle_bin import empty_recycle_bin
             empty_recycle_bin()
-        results["recycleBin"] = {"cleaned": True, "size": recycle_size, "error": None}
+        recycle_size_after = _get_recycle_bin_size()
+        actual_recycle_recovered = max(0, recycle_size_before - recycle_size_after)
+        results["recycleBin"] = {"cleaned": True, "size": actual_recycle_recovered, "error": None}
     except Exception as e:
         results["recycleBin"]["error"] = str(e)
         log.warning("Failed to empty Recycle Bin: %s", e)
     
     # Browser cache
     try:
-        browser_size = _estimate_browser_cache_size()
+        browser_size_before = _estimate_browser_cache_size()
         _clean_browser_cache()
-        results["browserCache"] = {"cleaned": True, "size": browser_size, "error": None}
+        browser_size_after = _estimate_browser_cache_size()
+        actual_browser_recovered = max(0, browser_size_before - browser_size_after)
+        results["browserCache"] = {"cleaned": True, "size": actual_browser_recovered, "error": None}
     except Exception as e:
         results["browserCache"]["error"] = str(e)
         log.warning("Failed to clean browser cache: %s", e)
     
     # Thumbnail cache
     try:
-        thumb_size = _get_thumbnail_cache_size()
+        thumb_size_before = _get_thumbnail_cache_size()
         _clean_thumbnail_cache()
-        results["thumbnailCache"] = {"cleaned": True, "size": thumb_size, "error": None}
+        thumb_size_after = _get_thumbnail_cache_size()
+        actual_thumb_recovered = max(0, thumb_size_before - thumb_size_after)
+        results["thumbnailCache"] = {"cleaned": True, "size": actual_thumb_recovered, "error": None}
     except Exception as e:
         results["thumbnailCache"]["error"] = str(e)
         log.warning("Failed to clean thumbnail cache: %s", e)
     
     # Prefetch files
     try:
-        prefetch_size = _get_prefetch_size()
+        prefetch_size_before = _get_prefetch_size()
         _clean_prefetch()
-        results["prefetchFiles"] = {"cleaned": True, "size": prefetch_size, "error": None}
+        prefetch_size_after = _get_prefetch_size()
+        actual_prefetch_recovered = max(0, prefetch_size_before - prefetch_size_after)
+        results["prefetchFiles"] = {"cleaned": True, "size": actual_prefetch_recovered, "error": None}
     except Exception as e:
         results["prefetchFiles"]["error"] = str(e)
         log.warning("Failed to clean prefetch files: %s", e)
     
     # Windows Update cache
     try:
-        update_size = _get_windows_update_cache_size()
+        update_size_before = _get_windows_update_cache_size()
         _clean_windows_update_cache()
-        results["windowsUpdateCache"] = {"cleaned": True, "size": update_size, "error": None}
+        update_size_after = _get_windows_update_cache_size()
+        actual_update_recovered = max(0, update_size_before - update_size_after)
+        results["windowsUpdateCache"] = {"cleaned": True, "size": actual_update_recovered, "error": None}
     except Exception as e:
         results["windowsUpdateCache"]["error"] = str(e)
         log.warning("Failed to clean Windows Update cache: %s", e)
@@ -1391,8 +1403,14 @@ def _refresh_explorer() -> None:
             subprocess.run(["taskkill", "/f", "/im", "explorer.exe"], capture_output=True)
             time.sleep(1)
             subprocess.run(["start", "explorer.exe"], shell=True)
-        except Exception:
-            pass
+        except Exception as e:
+            log.error("Failed to restart Explorer: %s", e)
+            # Attempt to restart explorer as a fallback
+            try:
+                subprocess.Popen(["explorer.exe"], creationflags=_NO_WINDOW)
+            except Exception as e2:
+                log.error("Fallback explorer restart also failed: %s", e2)
+                raise RuntimeError(f"Explorer was killed but could not be restarted: {e2}") from e
 
 
 def _get_prefetch_size() -> int:

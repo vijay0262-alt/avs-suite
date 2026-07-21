@@ -19,7 +19,6 @@ import type {
   HealthScanModuleResult,
   HealthScanModuleActual,
   HealthScanReport,
-  OptimizationSelectionItem,
   OptimizationExecutionProgress,
   HealthScanHistoryEntry,
   OptimizationDetails,
@@ -83,7 +82,6 @@ export interface DashboardState {
   healthScanBeforeReport: HealthScanReport | null;
   healthScanError: string | null;
   healthScanCancelled: boolean;
-  healthScanSelection: OptimizationSelectionItem[];
   healthScanExecution: OptimizationExecutionProgress | null;
   healthScanResult: OptimizeExecuteResponse | null;
   healthScanHistory: HealthScanHistoryEntry[];
@@ -271,14 +269,14 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     };
 
     const modules: HealthScanModuleResult[] = [
-      { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Frees temporary files and browser caches', details: defaultDetails },
-      { moduleId: 'startup', moduleName: 'Startup Manager', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Reduces boot time by disabling high-impact startup items', details: defaultDetails },
-      { moduleId: 'privacy', moduleName: 'Privacy Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Removes browsing traces and activity history', details: defaultDetails },
-      { moduleId: 'performance', moduleName: 'Performance', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Reclaims memory and trims background processes', details: defaultDetails },
-      { moduleId: 'disk', moduleName: 'Disk Analyzer', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Identifies large files and disk space hogs', details: defaultDetails },
-      { moduleId: 'registry', moduleName: 'Registry Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Cleans invalid registry entries', details: defaultDetails },
-      { moduleId: 'security', moduleName: 'Security Check', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Highlights disabled security features and pending updates', details: defaultDetails },
-      { moduleId: 'system', moduleName: 'System Information', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', estimatedImprovement: 'Validates hardware and OS health', details: defaultDetails },
+      { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning temporary files and browser caches', details: defaultDetails },
+      { moduleId: 'startup', moduleName: 'Startup Manager', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking startup applications', details: defaultDetails },
+      { moduleId: 'privacy', moduleName: 'Privacy Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning browsing traces and activity history', details: defaultDetails },
+      { moduleId: 'performance', moduleName: 'Performance', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking memory and CPU usage', details: defaultDetails },
+      { moduleId: 'disk', moduleName: 'Disk Analyzer', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Analyzing disk space usage', details: defaultDetails },
+      { moduleId: 'registry', moduleName: 'Registry Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning for invalid registry entries', details: defaultDetails },
+      { moduleId: 'security', moduleName: 'Security Check', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking security features and updates', details: defaultDetails },
+      { moduleId: 'system', moduleName: 'System Information', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Validating hardware and OS health', details: defaultDetails },
     ];
 
     this.setState({
@@ -287,7 +285,6 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanReport: null,
       healthScanError: null,
       healthScanCancelled: false,
-      healthScanSelection: [],
       healthScanExecution: null,
       healthScanResult: null,
     });
@@ -307,7 +304,6 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanBeforeReport: null,
       healthScanError: null,
       healthScanCancelled: false,
-      healthScanSelection: [],
       healthScanExecution: null,
       healthScanResult: null,
     });
@@ -368,7 +364,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         healthBefore,
         healthAfter,
         recoveredSpace: Math.max(0, recovered),
-        modulesUsed: this.state.healthScanSelection.filter((i) => i.selected).map((i) => i.moduleId),
+        modulesUsed: modules.filter((m) => m.actual).map((m) => m.moduleId),
         durationMs: finishedAt - startedAt,
         result: healthAfter > healthBefore && recovered >= 0 ? 'success' : 'partial',
       };
@@ -435,12 +431,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           issuesFound: issues,
           recoverableSpace: totalSize,
           severity: totalSize > 1_000_000_000 ? 'high' : totalSize > 100_000_000 ? 'medium' : 'low',
-          estimatedImprovement: `Can free ${Math.round(totalSize / 1_000_000)} MB of junk`,
+          measuredDetail: `Can free ${Math.round(totalSize / 1_000_000)} MB of junk`,
           details: {
             summary: `${issues} temporary files and caches found (${Math.round(totalSize / 1_000_000)} MB)`,
             impact: (totalSize > 1_000_000_000 ? 'high' : totalSize > 100_000_000 ? 'medium' : 'low') as OptimizationDetails['impact'],
             safeToRemove: true,
-            estimatedRecovery: totalSize,
             groups,
             notChanged: notChanged.files,
             why: 'Temporary files accumulate over time and consume storage space. Removing them frees disk space but does not affect personal documents.',
@@ -456,13 +451,12 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           issuesFound: high.length,
           recoverableSpace: 0,
           severity: high.length > 5 ? 'high' : high.length > 0 ? 'medium' : 'low',
-          estimatedImprovement: `${high.length} high-impact startup items`,
+          measuredDetail: `${high.length} high-impact startup items`,
           rawContext: { entries },
           details: {
             summary: `${high.length} high-impact startup applications are enabled`,
             impact: (high.length > 5 ? 'high' : high.length > 0 ? 'medium' : 'low') as OptimizationDetails['impact'],
             safeToRemove: true,
-            bootImprovementSeconds: bootImprovement,
             groups: [
               {
                 title: 'Applications to disable',
@@ -492,14 +486,12 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           issuesFound: result.itemCount,
           recoverableSpace: result.totalSize,
           severity: result.totalSize > 500_000_000 ? 'high' : result.totalSize > 50_000_000 ? 'medium' : 'low',
-          estimatedImprovement: `${result.itemCount} privacy items`,
+          measuredDetail: `${result.itemCount} privacy items`,
           rawContext: { result },
           details: {
             summary: `${result.itemCount} privacy traces found across ${result.categoriesFound.length} categories`,
             impact: (result.totalSize > 500_000_000 ? 'high' : result.totalSize > 50_000_000 ? 'medium' : 'low') as OptimizationDetails['impact'],
             safeToRemove: true,
-            estimatedRecovery: result.totalSize,
-            tracesRemoved: result.itemCount,
             groups,
             notChanged: notChanged.privacy,
             why: 'Browser cache, cookies, recent files, and DNS cache can reveal browsing history and activity. Cleaning them improves privacy without deleting personal data.',
@@ -515,12 +507,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           issuesFound: alertList.length,
           recoverableSpace: ramRecovery,
           severity: alertList.length > 2 ? 'high' : alertList.length > 0 ? 'medium' : 'low',
-          estimatedImprovement: `${alertList.length} performance alerts`,
+          measuredDetail: `${alertList.length} performance alerts`,
           details: {
             summary: `${alertList.length} performance alerts and ${metrics.memory?.usage || 0}% memory usage detected`,
             impact: (alertList.length > 2 ? 'high' : alertList.length > 0 ? 'medium' : 'low') as OptimizationDetails['impact'],
             safeToRemove: true,
-            ramRecovery,
             groups: alertList.slice(0, 5).map((a) => ({
               title: a.type,
               safeToRemove: true,
@@ -540,7 +531,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           issuesFound: full.length,
           recoverableSpace: drives.reduce((s, d) => s + (d.used || 0), 0),
           severity: full.length > 0 ? 'high' : 'low',
-          estimatedImprovement: `${full.length} over capacity drives`,
+          measuredDetail: `${full.length} over capacity drives`,
           details: {
             summary: `${drives.length} drives scanned; ${full.length} over 80% capacity`,
             impact: (full.length > 0 ? 'high' : 'low') as OptimizationDetails['impact'],
@@ -574,7 +565,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           issuesFound: result.issues.length,
           recoverableSpace: 0,
           severity: result.issues.length > 50 ? 'high' : result.issues.length > 10 ? 'medium' : 'low',
-          estimatedImprovement: `${result.issues.length} registry issues`,
+          measuredDetail: `${result.issues.length} registry issues`,
           rawContext: { result },
           details: {
             summary: `${result.issues.length} invalid or obsolete registry entries found`,
@@ -596,7 +587,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           issuesFound: pending + defender + firewall,
           recoverableSpace: 0,
           severity: defender + firewall > 0 ? 'high' : pending > 0 ? 'medium' : 'low',
-          estimatedImprovement: `${pending} pending updates, ${defender + firewall} disabled protections`,
+          measuredDetail: `${pending} pending updates, ${defender + firewall} disabled protections`,
           details: {
             summary: `${pending} pending Windows updates, ${defender + firewall} disabled protections`,
             impact: (defender + firewall > 0 ? 'high' : pending > 0 ? 'medium' : 'low') as OptimizationDetails['impact'],
@@ -627,7 +618,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           issuesFound: restart ? 1 : 0,
           recoverableSpace: 0,
           severity: restart ? 'medium' : 'low',
-          estimatedImprovement: restart ? 'System restart recommended' : 'System healthy',
+          measuredDetail: restart ? 'System restart recommended' : 'System healthy',
           details: {
             summary: restart ? `System uptime is ${Math.round(uptimeDays)} days` : 'System information is healthy',
             impact: (restart ? 'medium' : 'low') as OptimizationDetails['impact'],
@@ -653,40 +644,15 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     this.finishHealthScan(this.state.healthScanModules, startedAt, phase);
   }
 
-  advanceToSelection(): void {
-    const report = this.state.healthScanReport;
-    if (!report) return;
-    const selection: OptimizationSelectionItem[] = report.modules
-      .filter((m) => m.status === 'complete' && (m.recoverableSpace > 0 || m.issuesFound > 0))
-      .map((m) => ({
-        moduleId: m.moduleId,
-        moduleName: m.moduleName,
-        selected: true,
-        recoverableSpace: m.recoverableSpace,
-      }));
-    this.setState({ healthScanStep: 'selection', healthScanSelection: selection });
-  }
-
-  returnToHealthReport(): void {
-    if (this.state.healthScanReport) {
-      this.setState({ healthScanStep: 'report', healthScanError: null });
-    }
-  }
-
-  toggleHealthSelection(moduleId: string): void {
-    this.setState({
-      healthScanSelection: this.state.healthScanSelection.map((item) =>
-        item.moduleId === moduleId ? { ...item, selected: !item.selected } : item
-      ),
-    });
-  }
-
   async executeHealthScanOptimizations(): Promise<void> {
-    const selected = this.state.healthScanSelection.filter((i) => i.selected);
-    if (selected.length === 0) return;
-
     const beforeReport = this.state.healthScanReport;
     if (!beforeReport) return;
+
+    const fixableModules = beforeReport.modules.filter(
+      (m) => m.status === 'complete' && (m.recoverableSpace > 0 || m.issuesFound > 0) && m.details.safeToRemove
+    );
+    if (fixableModules.length === 0) return;
+
     this.setState({
       healthScanStep: 'optimizing',
       healthScanBeforeReport: beforeReport,
@@ -703,12 +669,12 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     const actualMap = new Map<string, HealthScanModuleActual>();
 
     try {
-      for (const item of selected) {
+      for (const item of fixableModules) {
         this.setState({
           healthScanExecution: {
             ...this.state.healthScanExecution!,
             currentModule: item.moduleName,
-            progress: Math.max(10, Math.min(90, Math.round((actualMap.size / selected.length) * 80))),
+            progress: Math.max(10, Math.min(90, Math.round((actualMap.size / fixableModules.length) * 80))),
           },
         });
         const moduleResult = beforeReport.modules.find((m) => m.moduleId === item.moduleId);
@@ -902,7 +868,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   }
 
   cancelHealthScanOptimizations(): void {
-    this.setState({ healthScanStep: 'selection' });
+    this.setState({ healthScanStep: 'report' });
   }
 
   closeHealthScan(): void {
@@ -911,7 +877,6 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanModules: [],
       healthScanReport: null,
       healthScanBeforeReport: null,
-      healthScanSelection: [],
       healthScanExecution: null,
       healthScanResult: null,
     });

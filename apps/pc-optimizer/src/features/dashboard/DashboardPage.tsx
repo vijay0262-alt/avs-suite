@@ -8,7 +8,7 @@ import { DashboardViewModel } from './DashboardViewModel';
 import { dashboardService } from './dashboard.service';
 import { HealthScoreCard } from './components/HealthScoreCard';
 import { HealthBreakdown } from './components/HealthBreakdown';
-import { HealthSummary } from './components/HealthSummary';
+import { IssuesList } from './components/IssuesList';
 import { LiveStatus } from './components/LiveStatus';
 import { QuickActions } from './components/QuickActions';
 import { HealthScanModal } from './components/HealthScanModal';
@@ -81,7 +81,10 @@ export default function DashboardPage() {
             </Button>
           </div>
 
-          <HealthSummary summary={state.healthScore?.summary} />
+          <IssuesList
+            issues={state.healthScore?.issues}
+            onIssueClick={(issue) => navigate(issue.actionPath)}
+          />
 
           <QuickActions onNavigate={(path) => navigate(path)} />
 
@@ -99,17 +102,13 @@ export default function DashboardPage() {
           step={state.healthScanStep}
           modules={state.healthScanModules}
           report={state.healthScanReport}
-          selection={state.healthScanSelection}
           execution={state.healthScanExecution}
           result={state.healthScanResult}
           error={state.healthScanError}
           onCancel={() => vm.cancelHealthScan()}
           onClose={() => vm.closeHealthScan()}
-          onReview={() => vm.advanceToSelection()}
-          onToggleSelection={(id) => vm.toggleHealthSelection(id)}
-          onExecute={() => vm.executeHealthScanOptimizations()}
+          onOptimize={() => vm.executeHealthScanOptimizations()}
           onCancelExecute={() => vm.cancelHealthScanOptimizations()}
-          onBackToReport={() => vm.returnToHealthReport()}
         />
       )}
     </div>

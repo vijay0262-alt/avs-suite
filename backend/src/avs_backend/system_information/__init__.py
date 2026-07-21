@@ -13,7 +13,6 @@ import re
 import threading
 from pathlib import Path
 from typing import Any
-from functools import lru_cache
 
 import psutil
 

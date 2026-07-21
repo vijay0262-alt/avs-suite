@@ -94,12 +94,15 @@ export interface DashboardMetrics extends LiveMetrics {
   performance: PerformanceMetrics;
 }
 
+export type HealthCategory = 'storage' | 'startup' | 'privacy' | 'performance' | 'security' | 'windows';
+
 export interface CategoryScores {
-  cpu: number;
-  memory: number;
   storage: number;
-  security: number;
+  startup: number;
+  privacy: number;
   performance: number;
+  security: number;
+  windows: number;
 }
 
 export interface HealthSummaryItem {
@@ -108,7 +111,7 @@ export interface HealthSummaryItem {
 }
 
 export interface HealthCategoryDetail {
-  id: string;
+  id: HealthCategory;
   name: string;
   score: number;
   detail: string;
@@ -117,20 +120,34 @@ export interface HealthCategoryDetail {
   severity: 'success' | 'warning' | 'danger';
 }
 
-export interface HealthScore {
+export interface HealthIssue {
+  id: string;
+  category: HealthCategory;
+  title: string;
+  detail: string;
+  severity: 'low' | 'medium' | 'high';
+  measurableValue: number;
+  measurableUnit: 'bytes' | 'count' | 'percent' | 'none';
+  actionPath: string;
+  canAutoFix: boolean;
+}
+
+export interface HealthSnapshot {
+  timestamp: string;
   overallScore: number;
   categoryScores: CategoryScores;
   status: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
-  suggestions: string[];
-  capturedAt: string;
-  // Dashboard 2.0 commercial health center additions
-  issuesFound: number;
-  recoverableSpace: number;
-  memoryRecovery: number;
-  bootImprovementSeconds: number;
+  issues: HealthIssue[];
   summary: HealthSummaryItem[];
   categoryDetails: HealthCategoryDetail[];
+  measuredRecoverableSpace: number;
+  startupAppsEnabled: number;
+  tempFilesSize: number;
+  browserCacheSize: number;
+  recycleBinSize: number;
 }
+
+export type HealthScore = HealthSnapshot;
 
 export interface OptimizeAction {
   name: string;
@@ -188,8 +205,6 @@ export type HealthScanStep =
   | 'idle'
   | 'scanning'
   | 'report'
-  | 'preview'
-  | 'selection'
   | 'optimizing'
   | 'verifying'
   | 'complete';
@@ -213,10 +228,6 @@ export interface OptimizationDetails {
   summary: string;
   impact: 'low' | 'medium' | 'high';
   safeToRemove: boolean;
-  estimatedRecovery?: number;
-  bootImprovementSeconds?: number;
-  ramRecovery?: number;
-  tracesRemoved?: number;
   groups: OptimizationDetailGroup[];
   notChanged: string[];
   why: string;
@@ -241,7 +252,7 @@ export interface HealthScanModuleResult {
   issuesFound: number;
   recoverableSpace: number;
   severity: 'low' | 'medium' | 'high';
-  estimatedImprovement: string;
+  measuredDetail: string;
   details: OptimizationDetails;
   error?: string;
   /** Raw backend scan data needed to execute the optimization for this module. */

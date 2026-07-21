@@ -18,7 +18,7 @@ export default function StartupPage() {
   const state = useViewModel(vm);
   const [query, setQuery] = useState('');
   const [impactFilter, setImpactFilter] = useState<'all' | 'high' | 'medium' | 'low' | 'unknown'>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'enabled' | 'disabled'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'enabled' | 'disabled'>('enabled');
   const [sortBy, setSortBy] = useState<SortBy>('name');
 
   useEffect(() => {
@@ -30,10 +30,16 @@ export default function StartupPage() {
     try {
       const result = await vm.disableEntry(entry);
       if (!result.success) {
-        alert(result.message || 'Failed to disable entry');
+        const msg = result.message || result.error || result.reason || 'Failed to disable entry';
+        if (msg === 'Already Disabled') {
+          await vm.loadEntries();
+        } else {
+          alert(msg);
+        }
       }
     } catch (err) {
-      alert('Failed to disable entry');
+      const msg = err instanceof Error ? err.message : 'Failed to disable entry';
+      alert(msg);
     }
   };
 
@@ -146,9 +152,9 @@ export default function StartupPage() {
                 onChange={(e) => setStatusFilter(e.target.value as 'all' | 'enabled' | 'disabled')}
                 className="rounded-md bg-bg-secondary border border-border px-3 py-1.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
               >
-                <option value="all">All statuses</option>
-                <option value="enabled">Enabled</option>
-                <option value="disabled">Disabled</option>
+                <option value="all">Include Disabled</option>
+                <option value="enabled">Enabled Only</option>
+                <option value="disabled">Disabled Only</option>
               </select>
               <select
                 aria-label="Filter by impact"

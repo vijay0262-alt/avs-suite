@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import type { ReactNode } from 'react';
 import { Button, Card } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
 import {
@@ -9,23 +7,18 @@ import {
   ClockIcon,
   SparklesIcon,
   ArrowRightIcon,
-  ArrowLeftIcon,
   ShieldCheckIcon,
   TrashIcon,
   CpuChipIcon,
   CircleStackIcon,
   ServerIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
   InformationCircleIcon,
-  LockClosedIcon,
 } from '@heroicons/react/24/outline';
 import { Modal } from './Modal';
 import type {
   HealthScanStep,
   HealthScanModuleResult,
   HealthScanReport,
-  OptimizationSelectionItem,
   OptimizationExecutionProgress,
   OptimizeExecuteResponse,
 } from '../dashboard.types';
@@ -34,17 +27,13 @@ export interface HealthScanModalProps {
   step: HealthScanStep;
   modules: HealthScanModuleResult[];
   report: HealthScanReport | null;
-  selection: OptimizationSelectionItem[];
   execution: OptimizationExecutionProgress | null;
   result: OptimizeExecuteResponse | null;
   error: string | null;
   onCancel: () => void;
   onClose: () => void;
-  onReview: () => void;
-  onToggleSelection: (moduleId: string) => void;
-  onExecute: () => void;
+  onOptimize: () => void;
   onCancelExecute: () => void;
-  onBackToReport: () => void;
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -59,35 +48,6 @@ function formatDuration(ms: number): string {
   const remaining = seconds % 60;
   if (minutes > 0) return `${minutes}m ${remaining}s`;
   return `${remaining}s`;
-}
-
-function Expandable({ title, children }: { title: ReactNode; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border border-border rounded-md overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between p-3 text-left bg-surface-muted hover:bg-surface"
-      >
-        <span className="text-sm font-medium text-text-primary">{title}</span>
-        {open ? <ChevronUpIcon className="h-4 w-4 text-text-muted" /> : <ChevronDownIcon className="h-4 w-4 text-text-muted" />}
-      </button>
-      {open && <div className="p-3 border-t border-border">{children}</div>}
-    </div>
-  );
-}
-
-function ImpactBadge({ impact }: { impact: 'low' | 'medium' | 'high' }) {
-  const colors = {
-    high: 'bg-semantic-danger/10 text-semantic-danger',
-    medium: 'bg-semantic-warning/10 text-semantic-warning',
-    low: 'bg-semantic-success/10 text-semantic-success',
-  };
-  return (
-    <span className={`px-2 py-0.5 rounded text-xs font-medium ${colors[impact]}`}>
-      {impact.charAt(0).toUpperCase() + impact.slice(1)} Impact
-    </span>
-  );
 }
 
 function ModuleIcon({ id }: { id: string }) {
@@ -109,17 +69,13 @@ export function HealthScanModal({
   step,
   modules,
   report,
-  selection,
   execution,
   result,
   error,
   onCancel,
   onClose,
-  onReview,
-  onToggleSelection,
-  onExecute,
+  onOptimize,
   onCancelExecute,
-  onBackToReport,
 }: HealthScanModalProps) {
   const total = modules.length || 1;
   const done = modules.filter((m) => m.status === 'complete' || m.status === 'error' || m.status === 'skipped').length;
@@ -144,15 +100,9 @@ export function HealthScanModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="flex items-center gap-2 text-text-secondary">
-              <ClockIcon className="h-4 w-4" aria-hidden />
-              <span>Elapsed: {report ? formatDuration(Date.now() - report.startedAt) : '0s'}</span>
-            </div>
-            <div className="flex items-center gap-2 text-text-secondary">
-              <ClockIcon className="h-4 w-4" aria-hidden />
-              <span>Remaining: ~{Math.max(0, Math.round(((100 - progress) * 0.5)))}s</span>
-            </div>
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
+            <ClockIcon className="h-4 w-4" aria-hidden />
+            <span>Elapsed: {report ? formatDuration(Date.now() - report.startedAt) : '0s'}</span>
           </div>
 
           <div className="space-y-2">
@@ -195,9 +145,11 @@ export function HealthScanModal({
             <Button variant="secondary" onClick={onClose}>
               Close
             </Button>
-            <Button onClick={onReview} leftIcon={<SparklesIcon className="h-4 w-4" />}>
-              Review & Optimize
-            </Button>
+            {report.modules.some((m) => m.status === 'complete' && (m.recoverableSpace > 0 || m.issuesFound > 0) && m.details.safeToRemove) && (
+              <Button onClick={onOptimize} leftIcon={<SparklesIcon className="h-4 w-4" />}>
+                Optimize Now
+              </Button>
+            )}
           </div>
         }
       >
@@ -225,7 +177,7 @@ export function HealthScanModal({
 
           <div>
             <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">
-              Module Breakdown
+              Detected Issues by Category
             </div>
             <div className="space-y-2 max-h-80 overflow-y-auto">
               {report.modules.map((m) => (
@@ -239,195 +191,6 @@ export function HealthScanModal({
             {error && (
               <span className="text-semantic-danger">{error}</span>
             )}
-          </div>
-        </div>
-      </Modal>
-    );
-  }
-
-  if (step === 'selection' && report) {
-    const selected = selection.filter((i) => i.selected);
-    const selectedModules = selected.map((i) => report.modules.find((m) => m.moduleId === i.moduleId)).filter(Boolean);
-    const totalRecoverable = selected.reduce((s, i) => s + i.recoverableSpace, 0);
-    const before = report.overallScore;
-    const boost = Math.min(50, Math.round(selected.length * 6));
-    const after = Math.min(100, before + boost);
-    const bootImprovement = selectedModules.reduce((s, m) => s + (m?.details?.bootImprovementSeconds || 0), 0);
-    const ramRecovery = selectedModules.reduce((s, m) => s + (m?.details?.ramRecovery || 0), 0);
-    const tracesRemoved = selectedModules.reduce((s, m) => s + (m?.details?.tracesRemoved || 0), 0);
-
-    return (
-      <Modal
-        open
-        title="Optimization Summary"
-        onClose={onClose}
-        size="lg"
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={onBackToReport} leftIcon={<ArrowLeftIcon className="h-4 w-4" />}>
-              Back
-            </Button>
-            <Button onClick={onExecute} leftIcon={<SparklesIcon className="h-4 w-4" />}>
-              Optimize Now
-            </Button>
-          </div>
-        }
-      >
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <div className="text-2xl font-bold text-text-primary tabular-nums">{before}</div>
-              <div className="text-xs text-text-secondary">Current Health</div>
-            </Card>
-            <Card>
-              <div className="text-2xl font-bold text-semantic-success tabular-nums">{after}</div>
-              <div className="text-xs text-text-secondary">Predicted Health</div>
-            </Card>
-            <Card>
-              <div className="text-2xl font-bold text-semantic-success tabular-nums">{formatBytes(totalRecoverable)}</div>
-              <div className="text-xs text-text-secondary">Storage Recovery</div>
-            </Card>
-            <Card>
-              <div className="text-2xl font-bold text-semantic-success tabular-nums">{bootImprovement}s</div>
-              <div className="text-xs text-text-secondary">Boot Improvement</div>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <Card>
-              <div className="text-2xl font-bold text-semantic-success tabular-nums">{formatBytes(ramRecovery)}</div>
-              <div className="text-xs text-text-secondary">RAM Available After</div>
-            </Card>
-            <Card>
-              <div className="text-2xl font-bold text-semantic-success tabular-nums">{tracesRemoved}</div>
-              <div className="text-xs text-text-secondary">Traces Removed</div>
-            </Card>
-            <Card>
-              <div className="text-2xl font-bold text-text-primary tabular-nums">{selected.length}</div>
-              <div className="text-xs text-text-secondary">Categories</div>
-            </Card>
-          </div>
-
-          <div className="p-4 rounded-md bg-semantic-success/10">
-            <div className="flex items-start gap-3">
-              <LockClosedIcon className="h-5 w-5 text-semantic-success shrink-0 mt-0.5" aria-hidden />
-              <div>
-                <div className="text-sm font-medium text-text-primary">What will NOT be changed</div>
-                <ul className="mt-2 space-y-1 text-sm text-text-secondary">
-                  <li>Personal files, documents, photos, and videos will not be deleted.</li>
-                  <li>Passwords, bookmarks, and saved logins will not be removed.</li>
-                  <li>Installed software and Windows system files will not be modified.</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">
-              Select categories and review details
-            </div>
-            <div className="space-y-3">
-              {selection.map((item) => {
-                const module = report.modules.find((m) => m.moduleId === item.moduleId);
-                const details = module?.details;
-                return (
-                  <Expandable
-                    key={item.moduleId}
-                    title={
-                      <div className="flex items-center gap-3 w-full pr-2">
-                        <input
-                          type="checkbox"
-                          checked={item.selected}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleSelection(item.moduleId);
-                          }}
-                          onChange={() => {}}
-                          className="w-4 h-4"
-                        />
-                        <span className="flex-1">{item.moduleName}</span>
-                        <ImpactBadge impact={details?.impact || 'low'} />
-                        <span className="text-semantic-success tabular-nums">{formatBytes(item.recoverableSpace)}</span>
-                      </div>
-                    }
-                  >
-                    {details ? (
-                      <div className="space-y-4">
-                        <div className="text-sm text-text-secondary">
-                          <span className="font-medium text-text-primary">Summary:</span> {details.summary}
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="text-text-secondary">Safe to remove:</span>
-                            <span className={details.safeToRemove ? 'text-semantic-success' : 'text-semantic-danger'}>
-                              {details.safeToRemove ? 'Yes' : 'No'}
-                            </span>
-                          </div>
-                          {details.estimatedRecovery ? (
-                            <div className="text-semantic-success tabular-nums">
-                              Est. recovery: {formatBytes(details.estimatedRecovery)}
-                            </div>
-                          ) : null}
-                          {details.bootImprovementSeconds ? (
-                            <div className="text-semantic-success tabular-nums">
-                              Boot improvement: {details.bootImprovementSeconds}s
-                            </div>
-                          ) : null}
-                          {details.ramRecovery ? (
-                            <div className="text-semantic-success tabular-nums">
-                              RAM recovery: {formatBytes(details.ramRecovery)}
-                            </div>
-                          ) : null}
-                          {details.tracesRemoved ? (
-                            <div className="text-semantic-success tabular-nums">
-                              Traces removed: {details.tracesRemoved}
-                            </div>
-                          ) : null}
-                        </div>
-                        <div className="flex gap-2 text-sm text-text-secondary">
-                          <InformationCircleIcon className="h-5 w-5 shrink-0" aria-hidden />
-                          <span>{details.why}</span>
-                        </div>
-                        <div className="text-sm">
-                          <div className="font-medium text-text-primary mb-1">What will NOT be changed</div>
-                          <ul className="list-disc pl-5 space-y-1 text-text-secondary">
-                            {details.notChanged.map((n, idx) => (
-                              <li key={idx}>{n}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        {details.groups.length > 0 && (
-                          <div className="space-y-2">
-                            <div className="text-sm font-medium text-text-primary">Details</div>
-                            {details.groups.map((g, idx) => (
-                              <div key={idx} className="p-3 rounded-md bg-surface-muted">
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="text-sm font-medium text-text-primary">{g.title}</span>
-                                  {g.totalSize ? <span className="text-xs text-semantic-success tabular-nums">{formatBytes(g.totalSize)}</span> : null}
-                                </div>
-                                <div className="text-xs text-text-secondary mb-2">{g.why}</div>
-                                {g.items.length > 0 && (
-                                  <ul className="space-y-1 text-xs text-text-secondary">
-                                    {g.items.map((i, iidx) => (
-                                      <li key={iidx} className="flex items-center justify-between">
-                                        <span>{i.name}</span>
-                                        {i.size ? <span className="tabular-nums">{formatBytes(i.size)}</span> : null}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="text-sm text-text-secondary">No details available.</div>
-                    )}
-                  </Expandable>
-                );
-              })}
-            </div>
           </div>
         </div>
       </Modal>
@@ -500,13 +263,19 @@ export function HealthScanModal({
   }
 
   if (step === 'complete' && report) {
-    const selected = selection.filter((i) => i.selected);
     const beforeOverall = report.modules.length
       ? Math.round(report.modules.reduce((s, m) => s + (m.verification?.beforeScore ?? m.score), 0) / report.modules.length)
       : report.overallScore;
     const afterOverall = report.overallScore;
     const elapsed = result?.elapsedMs ?? execution?.elapsedMs ?? 0;
     const hasFailures = report.modules.some((m) => m.actual && !m.actual.success);
+    const modulesWithActual = report.modules.filter((m) => m.actual);
+    const totalBytesRecovered = modulesWithActual.reduce((s, m) => s + (m.actual?.bytesRecovered || 0), 0);
+    const totalItemsRemoved = modulesWithActual.reduce((s, m) => s + (m.actual?.itemsRemoved || 0), 0);
+    const totalEntriesDisabled = modulesWithActual.reduce((s, m) => s + (m.actual?.entriesDisabled || 0), 0);
+    const totalIssuesFixed = modulesWithActual.reduce((s, m) => s + (m.actual?.issuesFixed || 0), 0);
+    const totalFilesDeleted = modulesWithActual.reduce((s, m) => s + (m.actual?.filesDeleted || 0), 0);
+    const scoreChanged = afterOverall !== beforeOverall;
 
     return (
       <Modal
@@ -537,79 +306,97 @@ export function HealthScanModal({
             </div>
           </div>
 
+          {/* Actual measured results only */}
           <div>
-            <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">Before / After / Difference</div>
-            <div className="space-y-2">
-              {report.modules
-                .filter((m) => selected.some((s) => s.moduleId === m.moduleId) && m.verification)
-                .map((m) => {
-                  const v = m.verification!;
-                  const actual = m.actual;
-                  const issueDelta = v.beforeIssues - v.afterIssues;
-                  const spaceDelta = v.beforeRecoverable - v.afterRecoverable;
-                  const failed = actual && !actual.success;
-                  return (
-                    <div key={m.moduleId} className="p-3 rounded-md bg-surface-muted">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-text-primary">{m.moduleName}</span>
-                        {failed ? (
-                          <span className="text-xs font-medium text-semantic-danger">Failed</span>
-                        ) : (
-                          <span className="text-xs font-medium text-semantic-success">Verified</span>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 text-sm">
-                        <div className="text-center">
-                          <div className="text-text-secondary">Before</div>
-                          <div className="font-medium tabular-nums">{formatValue(m.moduleId, v.beforeIssues, v.beforeRecoverable)}</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-text-secondary">After</div>
-                          <div className="font-medium tabular-nums">{formatValue(m.moduleId, v.afterIssues, v.afterRecoverable)}</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-text-secondary">Difference</div>
-                          <div className={`font-medium tabular-nums ${spaceDelta > 0 || issueDelta > 0 ? 'text-semantic-success' : 'text-text-muted'}`}>
-                            {m.moduleId === 'junk' || m.moduleId === 'privacy'
-                              ? formatBytes(spaceDelta)
-                              : `-${issueDelta}`}
-                          </div>
-                        </div>
-                      </div>
-                      {actual && (
-                        <div className="mt-2 text-xs text-text-secondary">
-                          <span className="font-medium">Actually changed:</span>{' '}
-                          {actual.filesDeleted !== undefined && `${actual.filesDeleted} files deleted`}
-                          {actual.bytesRecovered !== undefined && `, ${formatBytes(actual.bytesRecovered)} recovered`}
-                          {actual.itemsRemoved !== undefined && `, ${actual.itemsRemoved} items removed`}
-                          {actual.entriesDisabled !== undefined && `, ${actual.entriesDisabled} disabled`}
-                          {actual.issuesFixed !== undefined && `, ${actual.issuesFixed} fixed`}
-                          {actual.reason && ` — ${actual.reason}`}
-                        </div>
-                      )}
-                      {actual && actual.errors.length > 0 && (
-                        <div className="mt-2 text-xs text-semantic-danger">
-                          {actual.errors.slice(0, 2).join('; ')}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+            <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">Actual Results</div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {totalFilesDeleted > 0 && (
+                <Card>
+                  <div className="text-xl font-bold text-text-primary tabular-nums">{totalFilesDeleted}</div>
+                  <div className="text-xs text-text-secondary">Files Deleted</div>
+                </Card>
+              )}
+              {totalBytesRecovered > 0 && (
+                <Card>
+                  <div className="text-xl font-bold text-semantic-success tabular-nums">{formatBytes(totalBytesRecovered)}</div>
+                  <div className="text-xs text-text-secondary">Space Recovered</div>
+                </Card>
+              )}
+              {totalEntriesDisabled > 0 && (
+                <Card>
+                  <div className="text-xl font-bold text-text-primary tabular-nums">{totalEntriesDisabled}</div>
+                  <div className="text-xs text-text-secondary">Startup Entries Disabled</div>
+                </Card>
+              )}
+              {totalItemsRemoved > 0 && (
+                <Card>
+                  <div className="text-xl font-bold text-text-primary tabular-nums">{totalItemsRemoved}</div>
+                  <div className="text-xs text-text-secondary">Privacy Traces Removed</div>
+                </Card>
+              )}
+              {totalIssuesFixed > 0 && (
+                <Card>
+                  <div className="text-xl font-bold text-text-primary tabular-nums">{totalIssuesFixed}</div>
+                  <div className="text-xs text-text-secondary">Registry Issues Fixed</div>
+                </Card>
+              )}
+              <Card>
+                <div className="text-xl font-bold text-text-primary tabular-nums">{formatDuration(elapsed)}</div>
+                <div className="text-xs text-text-secondary">Duration</div>
+              </Card>
             </div>
           </div>
 
-          {elapsed > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card>
-                <div className="text-xl font-bold text-text-primary tabular-nums">{formatDuration(elapsed)}</div>
-                <div className="text-xs text-text-secondary">Time Taken</div>
-              </Card>
-              <Card>
-                <div className="text-xl font-bold text-text-primary tabular-nums">{selected.length}</div>
-                <div className="text-xs text-text-secondary">Modules Used</div>
-              </Card>
+          {/* If nothing changed, say so honestly */}
+          {totalBytesRecovered === 0 && totalItemsRemoved === 0 && totalEntriesDisabled === 0 && totalIssuesFixed === 0 && (
+            <div className="flex items-center gap-3 py-3 px-4 rounded-md bg-surface-muted text-sm text-text-secondary">
+              <InformationCircleIcon className="h-5 w-5 shrink-0" aria-hidden />
+              <span>No measurable improvement detected. Your system may already be optimized.</span>
             </div>
           )}
+
+          {/* If score didn't change, explain why */}
+          {!scoreChanged && (
+            <div className="flex items-center gap-3 py-3 px-4 rounded-md bg-surface-muted text-sm text-text-secondary">
+              <InformationCircleIcon className="h-5 w-5 shrink-0" aria-hidden />
+              <span>Health score remained at {afterOverall}. This can happen when cleaned files were small relative to overall system state.</span>
+            </div>
+          )}
+
+          {/* Per-module before/after verification */}
+          <div>
+            <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">Before / After Verification</div>
+            <div className="space-y-2">
+              {modulesWithActual.map((m) => {
+                const actual = m.actual!;
+                const failed = !actual.success;
+                return (
+                  <div key={m.moduleId} className="p-3 rounded-md bg-surface-muted">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-text-primary">{m.moduleName}</span>
+                      {failed ? (
+                        <span className="text-xs font-medium text-semantic-danger">Failed</span>
+                      ) : (
+                        <span className="text-xs font-medium text-semantic-success">Verified</span>
+                      )}
+                    </div>
+                    <div className="text-xs text-text-secondary">
+                      {actual.bytesRecovered !== undefined && actual.bytesRecovered > 0 && `${formatBytes(actual.bytesRecovered)} recovered. `}
+                      {actual.entriesDisabled !== undefined && actual.entriesDisabled > 0 && `${actual.entriesDisabled} disabled. `}
+                      {actual.itemsRemoved !== undefined && actual.itemsRemoved > 0 && `${actual.itemsRemoved} traces removed. `}
+                      {actual.issuesFixed !== undefined && actual.issuesFixed > 0 && `${actual.issuesFixed} issues fixed. `}
+                      {actual.reason && ` — ${actual.reason}`}
+                    </div>
+                    {actual.errors.length > 0 && (
+                      <div className="mt-1 text-xs text-semantic-danger">
+                        {actual.errors.slice(0, 2).join('; ')}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           {error && (
             <div className="flex items-start gap-3 py-3 px-4 rounded-md bg-semantic-danger/10 text-sm text-semantic-danger">
@@ -623,12 +410,6 @@ export function HealthScanModal({
   }
 
   return null;
-}
-
-function formatValue(moduleId: string, issues: number, space: number): string {
-  if (moduleId === 'junk' || moduleId === 'privacy') return formatBytes(space);
-  if (moduleId === 'disk') return formatBytes(space);
-  return `${issues}`;
 }
 
 function StatusBadge({ status }: { status: HealthScanModuleResult['status'] }) {
@@ -664,10 +445,10 @@ function ModuleReportCard({ module }: { module: HealthScanModuleResult }) {
           <StatusBadge status={module.status} />
         </div>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-text-secondary">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs text-text-secondary">
         <div>Issues: {module.issuesFound}</div>
         <div>Recoverable: {formatBytes(module.recoverableSpace)}</div>
-        <div className="col-span-2">{module.estimatedImprovement}</div>
+        <div className="col-span-3">{module.measuredDetail}</div>
       </div>
     </div>
   );

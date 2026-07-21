@@ -66,10 +66,8 @@ export class StartupViewModel extends ViewModel<StartupState> {
   async disableEntry(entry: StartupEntry) {
     try {
       const result = await this.service.disableEntry(entry);
-      if (result.success) {
-        await this.loadEntries();
-        await this.loadBackups();
-      }
+      await this.loadEntries();
+      await this.loadBackups();
       return result;
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to disable entry';

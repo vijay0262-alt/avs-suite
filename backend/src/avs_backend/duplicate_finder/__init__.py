@@ -347,6 +347,8 @@ def duplicate_delete(params: dict[str, Any] | None) -> dict[str, Any]:
             errors.append(error_msg)
             logger.warning(error_msg)
     
+    logger.info(f"Duplicate delete completed: {deleted_count} files deleted, {space_freed / 1024 / 1024:.1f} MB freed, {len(errors)} errors")
+
     return {
         'deletedCount': deleted_count,
         'spaceFreed': space_freed,

@@ -1,10 +1,10 @@
 import { Card } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
 import { HEALTH_STATUS_CONFIG } from '../dashboard.types';
-import type { HealthScore } from '../dashboard.types';
+import type { HealthSnapshot } from '../dashboard.types';
 
 export interface HealthScoreCardProps {
-  healthScore: HealthScore | null;
+  healthScore: HealthSnapshot | null;
   loading: boolean;
 }
 
@@ -32,6 +32,8 @@ export function HealthScoreCard({ healthScore, loading }: HealthScoreCardProps) 
       : healthScore.overallScore >= 60
         ? 'stroke-semantic-warning'
         : 'stroke-semantic-danger';
+
+  const issueCount = healthScore.issues.length;
 
   return (
     <Card title="Health Score" role="region" aria-labelledby="health-score-title">
@@ -75,7 +77,7 @@ export function HealthScoreCard({ healthScore, loading }: HealthScoreCardProps) 
           <div className="flex-1">
             <div className={`text-2xl font-semibold ${config.color}`}>{config.label}</div>
             <div className="mt-1 inline-flex items-center rounded-full bg-surface-muted px-3 py-1 text-sm font-medium text-text-secondary">
-              {healthScore.issuesFound > 0 ? `${healthScore.issuesFound} Issues Found` : 'No Issues Found'}
+              {issueCount > 0 ? `${issueCount} Issues Found` : 'No Issues Found'}
             </div>
             <div className="mt-2 text-sm text-text-secondary">
               {healthScore.status === 'excellent' || healthScore.status === 'good'
@@ -85,18 +87,11 @@ export function HealthScoreCard({ healthScore, loading }: HealthScoreCardProps) 
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Real measured stats only */}
         <div className="grid grid-cols-3 gap-3">
-          <Stat label="Recoverable" value={formatBytes(healthScore.recoverableSpace)} />
-          <Stat label="Memory" value={formatBytes(healthScore.memoryRecovery)} />
-          <Stat
-            label="Boot"
-            value={
-              healthScore.bootImprovementSeconds > 0
-                ? `${Math.round(healthScore.bootImprovementSeconds)}s faster`
-                : 'Optimized'
-            }
-          />
+          <Stat label="Temp Files" value={formatBytes(healthScore.tempFilesSize)} />
+          <Stat label="Startup Apps" value={String(healthScore.startupAppsEnabled)} />
+          <Stat label="Recycle Bin" value={formatBytes(healthScore.recycleBinSize)} />
         </div>
       </div>
     </Card>

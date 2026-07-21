@@ -28,6 +28,8 @@ export interface StartupDisableResponse {
   message?: string;
   isMicrosoftSigned?: boolean;
   reason?: string;
+  error?: string;
+  backupId?: string;
 }
 
 export interface StartupEnableResponse {
