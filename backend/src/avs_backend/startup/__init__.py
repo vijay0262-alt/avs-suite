@@ -17,6 +17,9 @@ from avs_backend.startup.startup_manager import (
     enable_startup_entry,
     get_backups,
     StartupEntry,
+    StartupSource,
+    StartupStatus,
+    StartupImpact,
 )
 
 logger = logging.getLogger(__name__)
@@ -87,6 +90,28 @@ def startup_refresh_cache(_params: dict[str, Any] | None) -> dict[str, Any]:
         raise
 
 
+def _to_startup_entry(entry_data: dict[str, Any]) -> StartupEntry:
+    """Construct StartupEntry from dict, converting string fields to enums."""
+    def _to_enum(enum_cls: type, value: str):
+        if isinstance(value, enum_cls):
+            return value
+        try:
+            return enum_cls(value)
+        except ValueError:
+            return enum_cls(list(enum_cls)[0])
+
+    return StartupEntry(
+        name=entry_data["name"],
+        publisher=entry_data.get("publisher", ""),
+        status=_to_enum(StartupStatus, entry_data.get("status", "enabled")),
+        impact=_to_enum(StartupImpact, entry_data.get("impact", "unknown")),
+        source=_to_enum(StartupSource, entry_data.get("source", "registry_run")),
+        location=entry_data.get("location", ""),
+        command=entry_data.get("command", ""),
+        enabled=entry_data.get("enabled", True),
+    )
+
+
 @register("startup.disable")
 def startup_disable(params: dict[str, Any] | None) -> dict[str, Any]:
     """Disable a startup entry."""
@@ -95,16 +120,7 @@ def startup_disable(params: dict[str, Any] | None) -> dict[str, Any]:
 
     try:
         entry_data = params["entry"]
-        entry = StartupEntry(
-            name=entry_data["name"],
-            publisher=entry_data["publisher"],
-            status=entry_data["status"],
-            impact=entry_data["impact"],
-            source=entry_data["source"],
-            location=entry_data["location"],
-            command=entry_data["command"],
-            enabled=entry_data["enabled"],
-        )
+        entry = _to_startup_entry(entry_data)
 
         result = disable_startup_entry(entry)
         
@@ -128,16 +144,7 @@ def startup_enable(params: dict[str, Any] | None) -> dict[str, Any]:
 
     try:
         entry_data = params["entry"]
-        entry = StartupEntry(
-            name=entry_data["name"],
-            publisher=entry_data["publisher"],
-            status=entry_data["status"],
-            impact=entry_data["impact"],
-            source=entry_data["source"],
-            location=entry_data["location"],
-            command=entry_data["command"],
-            enabled=entry_data["enabled"],
-        )
+        entry = _to_startup_entry(entry_data)
 
         success = enable_startup_entry(entry)
         

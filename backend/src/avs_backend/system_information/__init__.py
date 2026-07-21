@@ -278,3 +278,49 @@ def _now_iso() -> str:
 
     return datetime.now(timezone.utc).isoformat()
 
+
+@register("system.isAdmin")
+def system_is_admin(_params: dict[str, Any] | None) -> dict[str, bool]:
+    """Check if the backend process is running with administrator privileges."""
+    if not IS_WINDOWS:
+        return {"isAdmin": False}
+    try:
+        import ctypes
+        return {"isAdmin": ctypes.windll.shell32.IsUserAnAdmin() != 0}
+    except Exception:
+        return {"isAdmin": False}
+
+
+@register("system.openWindowsSecurity")
+def system_open_windows_security(_params: dict[str, Any] | None) -> dict[str, bool]:
+    """Open Windows Security settings page."""
+    if not IS_WINDOWS:
+        return {"success": False}
+    try:
+        import subprocess
+        subprocess.Popen(
+            ["powershell", "-NoProfile", "-Command", "Start-Process 'windowsdefender:'"],
+            creationflags=0x08000000,
+        )
+        return {"success": True}
+    except Exception as e:
+        logger.warning("Failed to open Windows Security: %s", e)
+        return {"success": False}
+
+
+@register("system.openWindowsUpdate")
+def system_open_windows_update(_params: dict[str, Any] | None) -> dict[str, bool]:
+    """Open Windows Update settings page."""
+    if not IS_WINDOWS:
+        return {"success": False}
+    try:
+        import subprocess
+        subprocess.Popen(
+            ["powershell", "-NoProfile", "-Command", "Start-Process 'ms-settings:windowsupdate'"],
+            creationflags=0x08000000,
+        )
+        return {"success": True}
+    except Exception as e:
+        logger.warning("Failed to open Windows Update: %s", e)
+        return {"success": False}
+

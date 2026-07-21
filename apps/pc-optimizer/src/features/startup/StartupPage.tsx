@@ -26,6 +26,9 @@ export default function StartupPage() {
     return () => vm.dispose();
   }, [vm]);
 
+  const isPermissionError = (msg: string): boolean =>
+    /admin|permission|elevat|access.*denied/i.test(msg);
+
   const handleDisable = async (entry: StartupEntry) => {
     try {
       const result = await vm.disableEntry(entry);
@@ -33,13 +36,25 @@ export default function StartupPage() {
         const msg = result.message || result.error || result.reason || 'Failed to disable entry';
         if (msg === 'Already Disabled') {
           await vm.loadEntries();
+        } else if (isPermissionError(msg)) {
+          if (confirm(`${msg}\n\nWould you like to restart AVS PC Optimizer as administrator?`)) {
+            const w = window as unknown as { avs?: { app?: { relaunchAsAdmin?: () => Promise<unknown> } } };
+            await w.avs?.app?.relaunchAsAdmin?.();
+          }
         } else {
           alert(msg);
         }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to disable entry';
-      alert(msg);
+      if (isPermissionError(msg)) {
+        if (confirm(`${msg}\n\nWould you like to restart AVS PC Optimizer as administrator?`)) {
+          const w = window as unknown as { avs?: { app?: { relaunchAsAdmin?: () => Promise<unknown> } } };
+          await w.avs?.app?.relaunchAsAdmin?.();
+        }
+      } else {
+        alert(msg);
+      }
     }
   };
 
@@ -47,10 +62,26 @@ export default function StartupPage() {
     try {
       const result = await vm.enableEntry(entry);
       if (!result.success) {
-        alert(result.message || 'Failed to enable entry');
+        const msg = result.message || 'Failed to enable entry';
+        if (isPermissionError(msg)) {
+          if (confirm(`${msg}\n\nWould you like to restart AVS PC Optimizer as administrator?`)) {
+            const w = window as unknown as { avs?: { app?: { relaunchAsAdmin?: () => Promise<unknown> } } };
+            await w.avs?.app?.relaunchAsAdmin?.();
+          }
+        } else {
+          alert(msg);
+        }
       }
     } catch (err) {
-      alert('Failed to enable entry');
+      const msg = err instanceof Error ? err.message : 'Failed to enable entry';
+      if (isPermissionError(msg)) {
+        if (confirm(`${msg}\n\nWould you like to restart AVS PC Optimizer as administrator?`)) {
+          const w = window as unknown as { avs?: { app?: { relaunchAsAdmin?: () => Promise<unknown> } } };
+          await w.avs?.app?.relaunchAsAdmin?.();
+        }
+      } else {
+        alert(msg);
+      }
     }
   };
 

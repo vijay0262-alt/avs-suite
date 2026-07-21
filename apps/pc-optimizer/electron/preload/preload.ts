@@ -22,6 +22,8 @@ const api = {
     getVersion: (): Promise<string> => ipcRenderer.invoke('avs:app:getVersion'),
     getPlatform: (): Promise<string> => ipcRenderer.invoke('avs:app:getPlatform'),
     openExternal: (url: string): Promise<void> => ipcRenderer.invoke('avs:app:openExternal', url),
+    isAdmin: (): Promise<boolean> => ipcRenderer.invoke('avs:app:isAdmin'),
+    relaunchAsAdmin: (): Promise<{ success: boolean }> => ipcRenderer.invoke('avs:app:relaunchAsAdmin'),
   },
   updater: {
     check: (): Promise<void> => ipcRenderer.invoke('avs:updater:check'),

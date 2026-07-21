@@ -113,7 +113,14 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
     call<T>(method: string, params?: unknown): Promise<T> {
       return new Promise<T>((resolve, reject) => {
         const id = nextId++;
-        pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
+        const timeout = setTimeout(() => {
+          pending.delete(id);
+          reject(new Error(`RPC timeout: ${method} (30s)`));
+        }, 30000);
+        pending.set(id, {
+          resolve: (v: unknown) => { clearTimeout(timeout); resolve(v as T); },
+          reject: (e: Error) => { clearTimeout(timeout); reject(e); },
+        });
         const req: JsonRpcRequest = { jsonrpc: '2.0', id, method: method as never, params };
         child.stdin.write(JSON.stringify(req) + '\n');
       });

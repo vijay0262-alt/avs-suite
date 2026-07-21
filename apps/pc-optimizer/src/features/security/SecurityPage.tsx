@@ -22,9 +22,11 @@ interface SecurityItemProps {
   description: string;
   status: 'active' | 'inactive' | 'warning' | 'unknown';
   icon: React.ComponentType<{ className?: string }>;
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
-function SecurityItem({ label, description, status, icon: Icon }: SecurityItemProps) {
+function SecurityItem({ label, description, status, icon: Icon, actionLabel, onAction }: SecurityItemProps) {
   const statusConfig = {
     active: { color: 'text-semantic-success', bg: 'bg-semantic-success/10', icon: CheckCircleIcon, text: 'Active' },
     inactive: { color: 'text-semantic-danger', bg: 'bg-semantic-danger/10', icon: XCircleIcon, text: 'Inactive' },
@@ -48,6 +50,14 @@ function SecurityItem({ label, description, status, icon: Icon }: SecurityItemPr
           </div>
         </div>
         <p className="mt-1 text-xs text-text-secondary">{description}</p>
+        {actionLabel && onAction && (
+          <button
+            onClick={onAction}
+            className="mt-2 text-xs font-medium text-primary hover:text-primary-hover"
+          >
+            {actionLabel}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -79,7 +89,6 @@ export default function SecurityPage() {
     setLoading(true);
     setError(null);
     try {
-      await dashboardService.refreshCache();
       const data = await dashboardService.getMetrics();
       setMetrics(data);
     } catch (err) {
@@ -97,6 +106,20 @@ export default function SecurityPage() {
   const security: SecurityMetrics | undefined = metrics?.security;
   const windows: WindowsInfo | undefined = metrics?.windows;
 
+  const openWindowsSecurity = useCallback(() => {
+    if (typeof window !== 'undefined' && window.avs) {
+      void window.avs.rpc.call('system.openWindowsSecurity').catch(() => {
+        window.open('https://support.microsoft.com/en-us/windows/stay-protected-with-windows-security-2ae0363d-0ada-c065-1ebc-0ab2392f6dd7', '_blank');
+      });
+    }
+  }, []);
+
+  const openWindowsUpdate = useCallback(() => {
+    if (typeof window !== 'undefined' && window.avs) {
+      void window.avs.rpc.call('system.openWindowsUpdate').catch(() => {});
+    }
+  }, []);
+
   const securityItems: SecurityItemProps[] = useMemo(() => {
     if (!security) return [];
     return [
@@ -107,6 +130,8 @@ export default function SecurityPage() {
           : 'Antivirus protection is disabled. Enable Windows Defender for protection.',
         status: security.defender.enabled ? 'active' : 'inactive',
         icon: ShieldCheckIcon,
+        actionLabel: security.defender.enabled ? undefined : 'Open Windows Security',
+        onAction: security.defender.enabled ? undefined : openWindowsSecurity,
       },
       {
         label: 'Real-time Protection',
@@ -115,6 +140,8 @@ export default function SecurityPage() {
           : 'Real-time scanning is off. Your system may be vulnerable to new threats.',
         status: security.realTimeProtection ? 'active' : 'inactive',
         icon: EyeIcon,
+        actionLabel: security.realTimeProtection ? undefined : 'Open Windows Security',
+        onAction: security.realTimeProtection ? undefined : openWindowsSecurity,
       },
       {
         label: 'Firewall',
@@ -123,6 +150,8 @@ export default function SecurityPage() {
           : 'Windows Firewall is disabled. Your PC is exposed to network attacks.',
         status: security.firewall.enabled ? 'active' : 'inactive',
         icon: FireIcon,
+        actionLabel: security.firewall.enabled ? undefined : 'Open Windows Security',
+        onAction: security.firewall.enabled ? undefined : openWindowsSecurity,
       },
       {
         label: 'Windows Updates',
@@ -131,6 +160,8 @@ export default function SecurityPage() {
           : 'Your system is up to date with the latest security patches.',
         status: security.updates.pendingUpdates > 0 ? 'warning' : 'active',
         icon: ArrowUpTrayIcon,
+        actionLabel: security.updates.pendingUpdates > 0 ? 'Check for Updates' : undefined,
+        onAction: security.updates.pendingUpdates > 0 ? openWindowsUpdate : undefined,
       },
       {
         label: 'SmartScreen',
@@ -139,6 +170,8 @@ export default function SecurityPage() {
           : 'SmartScreen is disabled. Enable it for additional web protection.',
         status: security.smartScreen ? 'active' : 'inactive',
         icon: LockClosedIcon,
+        actionLabel: security.smartScreen ? undefined : 'Open Windows Security',
+        onAction: security.smartScreen ? undefined : openWindowsSecurity,
       },
       {
         label: 'Secure Boot',
@@ -157,7 +190,7 @@ export default function SecurityPage() {
         icon: CpuChipIcon,
       },
     ];
-  }, [security, windows]);
+  }, [security, windows, openWindowsSecurity, openWindowsUpdate]);
 
   const activeCount = securityItems.filter((i) => i.status === 'active').length;
   const totalCount = securityItems.length;

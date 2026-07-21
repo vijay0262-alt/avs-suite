@@ -326,7 +326,7 @@ def get_process_memory_info(sort_by: str = "memory", limit: int = 50) -> list[Pr
             try:
                 # Get process memory info
                 mem_info = proc.memory_info()
-                cpu_percent = proc.cpu_percent(interval=0.1)
+                cpu_percent = proc.cpu_percent(interval=None)
                 
                 # Determine status
                 status = proc.info['status']
@@ -424,6 +424,7 @@ def optimize_memory(
     """
     result = OptimizationResult(status=OptimizationStatus.RUNNING)
     start_time = time.time()
+    _TIMEOUT_S = 30.0
 
     try:
         # Get initial memory state
@@ -445,23 +446,14 @@ def optimize_memory(
 
         try:
             all_processes = list(psutil.process_iter(['pid', 'name']))
-            # Filter to processes with low CPU usage (inactive)
-            inactive_processes = []
-            for proc in all_processes:
-                try:
-                    if proc.cpu_percent(interval=0.1) < 1.0:  # Less than 1% CPU
-                        inactive_processes.append(proc)
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    continue
-
-            optimized = trim_process_working_sets(inactive_processes)
+            optimized = trim_process_working_sets(all_processes)
             result.processes_optimized = optimized
             logger.info(f"Optimized {optimized} processes")
         except Exception as e:
             logger.error(f"Failed to trim working sets: {e}")
             result.errors.append(f"Failed to trim working sets: {str(e)}")
 
-        if cancel.is_set():
+        if cancel.is_set() or (time.time() - start_time) > _TIMEOUT_S:
             result.status = OptimizationStatus.CANCELLED
             return result
 
@@ -476,7 +468,7 @@ def optimize_memory(
             logger.error(f"Failed to refresh explorer memory: {e}")
             result.errors.append(f"Failed to refresh explorer memory: {str(e)}")
 
-        if cancel.is_set():
+        if cancel.is_set() or (time.time() - start_time) > _TIMEOUT_S:
             result.status = OptimizationStatus.CANCELLED
             return result
 
@@ -492,7 +484,7 @@ def optimize_memory(
             logger.error(f"Failed to release cached memory: {e}")
             result.errors.append(f"Failed to release cached memory: {str(e)}")
 
-        if cancel.is_set():
+        if cancel.is_set() or (time.time() - start_time) > _TIMEOUT_S:
             result.status = OptimizationStatus.CANCELLED
             return result
 
@@ -508,7 +500,7 @@ def optimize_memory(
             logger.error(f"Failed to refresh standby memory: {e}")
             result.errors.append(f"Failed to refresh standby memory: {str(e)}")
 
-        if cancel.is_set():
+        if cancel.is_set() or (time.time() - start_time) > _TIMEOUT_S:
             result.status = OptimizationStatus.CANCELLED
             return result
 

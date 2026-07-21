@@ -129,6 +129,15 @@ def performance_memory_check_permissions(_params: dict[str, Any] | None) -> dict
         raise
 
 
+import threading
+import time as _time
+
+_metrics_lock = threading.Lock()
+_last_metrics = None
+_last_metrics_ts = 0.0
+_METRICS_TTL = 2.0
+
+
 @register("performance.monitor.getMetrics")
 def performance_monitor_get_metrics(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Get real-time system performance metrics."""
@@ -136,6 +145,11 @@ def performance_monitor_get_metrics(_params: dict[str, Any] | None) -> dict[str,
         metrics = get_system_metrics()
         # Update graph history with current metrics
         update_graph_history(metrics)
+        # Cache for getAlerts to reuse
+        global _last_metrics, _last_metrics_ts
+        with _metrics_lock:
+            _last_metrics = metrics
+            _last_metrics_ts = _time.monotonic()
         return metrics_to_dict(metrics)
     except Exception as e:
         logger.error(f"Failed to get performance metrics: {e}")
@@ -193,7 +207,13 @@ def performance_monitor_get_top_processes(params: dict[str, Any] | None) -> dict
 def performance_monitor_get_alerts(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Get current performance alerts."""
     try:
-        metrics = get_system_metrics()
+        # Reuse cached metrics if fresh enough (avoid redundant CPU sampling)
+        metrics = None
+        with _metrics_lock:
+            if _last_metrics is not None and (_time.monotonic() - _last_metrics_ts) < _METRICS_TTL:
+                metrics = _last_metrics
+        if metrics is None:
+            metrics = get_system_metrics()
         alerts = generate_alerts(metrics)
         return {
             "alerts": [

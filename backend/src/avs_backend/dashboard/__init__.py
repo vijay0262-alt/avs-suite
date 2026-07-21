@@ -16,7 +16,7 @@ import subprocess
 import tempfile
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -108,11 +108,21 @@ def _collect_metrics() -> dict[str, Any]:
         ("security", _get_security_metrics),
         ("performance", _get_performance_metrics),
     ]
+    results: dict[str, Any] = {}
     with ThreadPoolExecutor(max_workers=len(collectors)) as pool:
-        futures = {
-            name: pool.submit(fn) for name, fn in collectors
-        }
-        results = {name: fut.result() for name, fut in futures.items()}
+        futures = {pool.submit(fn): name for name, fn in collectors}
+        for fut in as_completed(futures, timeout=10.0):
+            name = futures[fut]
+            try:
+                results[name] = fut.result()
+            except Exception as e:
+                log.warning("Collector %s failed: %s", name, e)
+                results[name] = {}
+        # Cancel any still-running futures
+        for fut, name in futures.items():
+            if name not in results:
+                log.warning("Collector %s timed out", name)
+                results[name] = {}
     results["capturedAt"] = _now_iso()
     return results
 
@@ -130,7 +140,7 @@ _prev_live_net_io = None
 
 def _get_live_cpu_metrics() -> dict[str, Any]:
     """Get lightweight CPU metrics for the live feed."""
-    usage = psutil.cpu_percent(interval=0.1)
+    usage = psutil.cpu_percent(interval=0.05)
     cores = psutil.cpu_count(logical=True) or 0
     physical = psutil.cpu_count(logical=False) or 0
     freq = psutil.cpu_freq()

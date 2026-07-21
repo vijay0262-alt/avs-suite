@@ -512,6 +512,8 @@ class CleaningManager:
                  time.monotonic() - start, cleaner_id, len(paths))
         return paths
 
+    _CLEANER_TIMEOUT_S = 120.0
+
     def _run_cleaner(self, task: _Task, rt: _CleanerRuntime) -> CleaningResult:
         def on_progress(pct: int) -> None:
             rt.progress = max(0, min(100, pct))
@@ -520,7 +522,24 @@ class CleaningManager:
             rt.current_file = p
 
         try:
-            result = rt.cleaner.clean(rt.candidate_paths, task.cancel_event, on_progress, on_file)
+            # Run the cleaner's clean() in a sub-thread so we can enforce a timeout
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as sub_pool:
+                clean_future = sub_pool.submit(
+                    rt.cleaner.clean, rt.candidate_paths, task.cancel_event, on_progress, on_file
+                )
+                try:
+                    result = clean_future.result(timeout=self._CLEANER_TIMEOUT_S)
+                except concurrent.futures.TimeoutError:
+                    task.cancel_event.set()
+                    log.error("Cleaner %s timed out after %.0fs", rt.cleaner.id, self._CLEANER_TIMEOUT_S)
+                    result = CleaningResult(
+                        cleaner_id=rt.cleaner.id,
+                        name=rt.cleaner.name,
+                        category=rt.cleaner.category,
+                        result=CleaningActionResult.FAILED,
+                        errors=[f"Cleaner timed out after {self._CLEANER_TIMEOUT_S:.0f}s"],
+                    )
         except Exception as e:  # noqa: BLE001 — engine safety net
             log.exception("Cleaner %s crashed while cleaning", rt.cleaner.id)
             result = CleaningResult(
@@ -534,19 +553,6 @@ class CleaningManager:
         rt.result = result
         rt.progress = 100
         rt.current_file = None
-
-        # Track deleted files for undo functionality
-        # We store the original paths that were successfully deleted
-        if result.files_removed > 0:
-            for path in rt.candidate_paths:
-                # Check if file still exists (if not, it was deleted)
-                import os
-                if not os.path.exists(path):
-                    rt.deleted_files.append({
-                        "path": path,
-                        "size": 0,  # Size not available after deletion
-                        "deleted_at": datetime.now(timezone.utc).isoformat(),
-                    })
 
         # Persist to history immediately so the log is durable even if
         # the process is killed mid-scan of the next cleaner.
@@ -565,7 +571,7 @@ class CleaningManager:
                 "files_failed": result.files_failed,
                 "duration_ms": result.elapsed_ms,
                 "errors_json": _truncated_errors_json(result.errors),
-                "deleted_files_json": str(rt.deleted_files),  # Store for undo
+                "deleted_files_json": "[]",
             }
         )
         return result

@@ -59,8 +59,8 @@ export class PerformanceViewModel extends ViewModel<PerformanceState> {
     }
   }
 
-  async loadMetrics() {
-    this.setState({ loading: true });
+  async loadMetrics(isAutoRefresh = false) {
+    if (!isAutoRefresh) this.setState({ loading: true });
     try {
       const metrics = await this.service.getMetrics();
       this.setState({ metrics, loading: false });
@@ -140,7 +140,7 @@ export class PerformanceViewModel extends ViewModel<PerformanceState> {
     
     this.refreshTimer = setInterval(() => {
       if (this.state.bootstrap === 'ready') {
-        void this.loadMetrics();
+        void this.loadMetrics(true);
         void this.loadAlerts();
       }
     }, REFRESH_INTERVAL_MS);

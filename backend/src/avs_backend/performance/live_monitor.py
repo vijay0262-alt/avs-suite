@@ -112,7 +112,7 @@ def get_cpu_metrics() -> CpuMetrics:
         process_count = len(psutil.pids())
 
         # Per-core usage; derive overall usage from it to avoid a second sleep
-        per_core_usage = psutil.cpu_percent(interval=0.1, percpu=True)
+        per_core_usage = psutil.cpu_percent(interval=0.05, percpu=True)
         cpu_percent = sum(per_core_usage) / len(per_core_usage) if per_core_usage else 0.0
         
         # Temperature (if available)
@@ -318,7 +318,7 @@ def get_system_metrics() -> SystemMetrics:
         try:
             for p in psutil.process_iter(['num_threads']):
                 try:
-                    threads += p.info['num_threads'] or 0
+                    threads += p.info.get('num_threads', 0) or 0
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
         except Exception as e:

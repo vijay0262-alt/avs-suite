@@ -61,11 +61,13 @@ export interface JunkCleanerState {
 
 const SCAN_POLL_INTERVAL_MS = 250;
 const CLEAN_POLL_INTERVAL_MS = 300;
+const CLEAN_POLL_MAX_MS = 180_000; // 3 min safety net — stop polling if no completion
 const DETAILS_PAGE_SIZE = 500;
 
 export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
   private scanPollTimer: ReturnType<typeof setInterval> | null = null;
   private cleanPollTimer: ReturnType<typeof setInterval> | null = null;
+  private cleanPollStartedAt = 0;
 
   constructor(private readonly service: JunkCleanerService) {
     super({
@@ -424,6 +426,7 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
 
   private startCleanPolling(): void {
     this.stopCleanPolling();
+    this.cleanPollStartedAt = Date.now();
     void this.pollCleanOnce();
     this.cleanPollTimer = setInterval(() => void this.pollCleanOnce(), CLEAN_POLL_INTERVAL_MS);
   }
@@ -438,6 +441,17 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
   private async pollCleanOnce(): Promise<void> {
     const taskId = this.state.activeCleaningTaskId;
     if (!taskId) return this.stopCleanPolling();
+
+    // Safety net: stop polling after 3 minutes and show summary
+    if (Date.now() - this.cleanPollStartedAt > CLEAN_POLL_MAX_MS) {
+      this.stopCleanPolling();
+      this.setState({
+        cleaningStep: 'summary',
+        lastCleaningError: 'Cleaning timed out after 3 minutes.',
+      });
+      return;
+    }
+
     try {
       const snap = await this.service.getCleaningStatus(taskId);
       this.setState({ cleaningSnapshot: snap });
