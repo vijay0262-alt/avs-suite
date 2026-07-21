@@ -26,7 +26,7 @@ export function QuickActions({ onNavigate }: QuickActionsProps) {
       icon: ServerIcon,
       color: 'text-semantic-success',
       bgColor: 'bg-semantic-success/10',
-      path: '/startup',
+      path: '/startup-manager',
     },
     {
       id: 'privacy-cleaner',
@@ -35,7 +35,7 @@ export function QuickActions({ onNavigate }: QuickActionsProps) {
       icon: ShieldCheckIcon,
       color: 'text-semantic-warning',
       bgColor: 'bg-semantic-warning/10',
-      path: '/privacy',
+      path: '/privacy-cleaner',
     },
     {
       id: 'disk-analyzer',
@@ -62,7 +62,7 @@ export function QuickActions({ onNavigate }: QuickActionsProps) {
       icon: DocumentTextIcon,
       color: 'text-text-secondary',
       bgColor: 'bg-surface-muted',
-      path: '/system-info',
+      path: '/system-information',
     },
   ];
 

@@ -215,7 +215,7 @@ function buildCategoryDetails(
       score: Math.round(scores.performance),
       detail: `${metrics.performance.startupApps} Startup Apps`,
       actionLabel: 'Review',
-      path: '/startup',
+      path: '/startup-manager',
       severity: determineCategorySeverity(scores.performance),
     },
     {
@@ -224,7 +224,7 @@ function buildCategoryDetails(
       score: Math.round(privacyScore),
       detail: `${privacy} Privacy Risks`,
       actionLabel: 'Clean',
-      path: '/privacy',
+      path: '/privacy-cleaner',
       severity: determineCategorySeverity(privacyScore),
     },
     {

@@ -21,6 +21,19 @@ const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 const AboutPage = lazy(() => import('../pages/AboutPage'));
 const DiagnosticsPage = lazy(() => import('../features/diagnostics/DiagnosticsPage'));
 
+// Placeholder for the Security card's "Review" action until a full Security
+// module is built. This prevents the app from navigating to a missing route.
+function SecurityPlaceholder() {
+  return (
+    <div className="p-6" data-testid="page-security">
+      <h1 className="text-2xl font-bold text-text-primary mb-2">Security</h1>
+      <p className="text-text-secondary">
+        Real-time security status and protection settings are shown on the Dashboard.
+      </p>
+    </div>
+  );
+}
+
 // Module preloader - preloads frequently used modules in background
 const ModulePreloader = () => {
   useEffect(() => {
@@ -72,6 +85,7 @@ export const router = createHashRouter([
       { path: 'software-updater', element: wrap(UpdaterPage) },
       { path: 'drive-wiper', element: wrap(WiperPage) },
       { path: 'performance', element: wrap(PerformancePage) },
+      { path: 'security', element: wrap(SecurityPlaceholder) },
       { path: 'system-information', element: wrap(SystemInformationPage) },
       { path: 'settings', element: wrap(SettingsPage) },
       { path: 'about', element: wrap(AboutPage) },
