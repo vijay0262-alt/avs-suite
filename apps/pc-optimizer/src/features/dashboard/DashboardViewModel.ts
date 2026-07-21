@@ -138,7 +138,6 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanBeforeReport: null,
       healthScanError: null,
       healthScanCancelled: false,
-      healthScanSelection: [],
       healthScanExecution: null,
       healthScanResult: null,
       healthScanHistory: [],
