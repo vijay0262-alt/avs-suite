@@ -445,7 +445,6 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       scanIfNotCancelled('startup', async () => {
         const entries = await startupService.listEntries();
         const high = entries.filter((e) => e.impact === 'high' && e.enabled);
-        const bootImprovement = high.length * 2;
         return {
           score: Math.max(0, 100 - high.length * 5),
           issuesFound: high.length,
