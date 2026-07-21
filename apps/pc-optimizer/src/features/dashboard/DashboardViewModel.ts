@@ -17,20 +17,25 @@ import type {
   OptimizeExecuteResponse,
   HealthScanStep,
   HealthScanModuleResult,
+  HealthScanModuleActual,
   HealthScanReport,
   OptimizationSelectionItem,
   OptimizationExecutionProgress,
   HealthScanHistoryEntry,
   OptimizationDetails,
+  VerificationLog,
 } from './dashboard.types';
 import type { DashboardService } from './dashboard.service';
 import { privacyService as defaultPrivacyService } from '../privacy/privacy.service';
 import type { IPrivacyService } from '../privacy/privacy.service';
+import type { PrivacyItem } from '../privacy/privacy.types';
 import { junkCleanerService } from '../junk-cleaner/junkCleaner.service';
 import { startupService } from '../startup/startup.service';
+import type { StartupEntry } from '../startup/startup.types';
 import { performanceService } from '../performance/performance.service';
 import { diskAnalyzerService } from '../disk-analyzer/disk-analyzer.service';
 import { registryService } from '../registry/registry.service';
+import type { RegistryIssue } from '../registry/registry.types';
 import { systemInfoService } from '../system-info/system-info.service';
 import type { NavigateFunction } from 'react-router-dom';
 import { calculateHealthScore } from './dashboard.utils';
@@ -75,12 +80,17 @@ export interface DashboardState {
   healthScanStep: HealthScanStep;
   healthScanModules: HealthScanModuleResult[];
   healthScanReport: HealthScanReport | null;
+  healthScanBeforeReport: HealthScanReport | null;
   healthScanError: string | null;
   healthScanCancelled: boolean;
   healthScanSelection: OptimizationSelectionItem[];
   healthScanExecution: OptimizationExecutionProgress | null;
   healthScanResult: OptimizeExecuteResponse | null;
   healthScanHistory: HealthScanHistoryEntry[];
+
+  // Verification / developer logs
+  verificationLogs: VerificationLog[];
+  developerMode: boolean;
 
   // Quick actions
   quickActionsOpen: boolean;
@@ -127,12 +137,15 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanStep: 'idle',
       healthScanModules: [],
       healthScanReport: null,
+      healthScanBeforeReport: null,
       healthScanError: null,
       healthScanCancelled: false,
       healthScanSelection: [],
       healthScanExecution: null,
       healthScanResult: null,
       healthScanHistory: [],
+      verificationLogs: [],
+      developerMode: false,
 
       quickActionsOpen: false,
     });
@@ -156,12 +169,21 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   }
 
   private async bootstrapData(): Promise<void> {
-    // Live feed starts immediately; heavy analysis runs in background.
     this.startLiveMetricsPolling();
+    this.loadDeveloperMode();
     try {
       await Promise.all([this.loadMetrics(), this.loadPrivacyRisks()]);
     } catch (err) {
       console.error('Dashboard bootstrap failed:', err);
+    }
+  }
+
+  private loadDeveloperMode(): void {
+    try {
+      const enabled = typeof window !== 'undefined' && window.localStorage.getItem('avs-developer-mode') === 'true';
+      this.setState({ developerMode: enabled });
+    } catch {
+      // localStorage may not be available in test/SSR environments
     }
   }
 
@@ -270,7 +292,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanResult: null,
     });
 
-    void this.runHealthScan();
+    void this.runHealthScan('scan');
   }
 
   cancelHealthScan(): void {
@@ -282,6 +304,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanStep: 'idle',
       healthScanModules: [],
       healthScanReport: null,
+      healthScanBeforeReport: null,
       healthScanError: null,
       healthScanCancelled: false,
       healthScanSelection: [],
@@ -296,30 +319,76 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     });
   }
 
-  private finishHealthScan(modules: HealthScanModuleResult[], startedAt: number, error?: string): void {
+  private finishHealthScan(modules: HealthScanModuleResult[], startedAt: number, phase: 'scan' | 'verify' = 'scan', error?: string): void {
     const finishedAt = Date.now();
     const completed = modules.filter((m) => m.status === 'complete' || m.status === 'skipped');
     const totalRecoverable = completed.reduce((sum, m) => sum + (m.recoverableSpace || 0), 0);
     const totalIssues = completed.reduce((sum, m) => sum + (m.issuesFound || 0), 0);
     const avgScore = completed.length ? Math.round(completed.reduce((sum, m) => sum + m.score, 0) / completed.length) : 0;
 
-    this.setState({
-      healthScanStep: error ? 'idle' : 'report',
-      healthScanReport: error
-        ? null
-        : {
-            overallScore: avgScore,
-            issuesFound: totalIssues,
-            recoverableSpace: totalRecoverable,
-            modules,
-            startedAt,
-            finishedAt,
+    if (error) {
+      this.setState({ healthScanStep: phase === 'verify' ? 'complete' : 'idle', healthScanError: error });
+      return;
+    }
+
+    const report: HealthScanReport = {
+      overallScore: avgScore,
+      issuesFound: totalIssues,
+      recoverableSpace: totalRecoverable,
+      modules,
+      startedAt,
+      finishedAt,
+    };
+
+    if (phase === 'verify') {
+      const beforeReport = this.state.healthScanBeforeReport;
+      const beforeById = new Map(beforeReport?.modules.map((m) => [m.moduleId, m]));
+      const verifiedModules = modules.map((m) => {
+        const before = beforeById.get(m.moduleId);
+        if (!before) return m;
+        return {
+          ...m,
+          verification: {
+            beforeScore: before.score,
+            beforeIssues: before.issuesFound,
+            beforeRecoverable: before.recoverableSpace,
+            afterScore: m.score,
+            afterIssues: m.issuesFound,
+            afterRecoverable: m.recoverableSpace,
           },
-      healthScanError: error || null,
+        };
+      });
+      const verifiedReport = { ...report, modules: verifiedModules };
+      const recovered = (beforeReport?.recoverableSpace || 0) - verifiedReport.recoverableSpace;
+      const healthBefore = beforeReport?.overallScore || avgScore;
+      const healthAfter = avgScore;
+      const history: HealthScanHistoryEntry = {
+        id: `${Date.now()}`,
+        date: new Date().toISOString(),
+        healthBefore,
+        healthAfter,
+        recoveredSpace: Math.max(0, recovered),
+        modulesUsed: this.state.healthScanSelection.filter((i) => i.selected).map((i) => i.moduleId),
+        durationMs: finishedAt - startedAt,
+        result: healthAfter > healthBefore && recovered >= 0 ? 'success' : 'partial',
+      };
+      this.setState({
+        healthScanStep: 'complete',
+        healthScanReport: verifiedReport,
+        healthScanHistory: [history, ...this.state.healthScanHistory].slice(0, 20),
+        healthScanError: null,
+      });
+      return;
+    }
+
+    this.setState({
+      healthScanStep: 'report',
+      healthScanReport: report,
+      healthScanError: null,
     });
   }
 
-  private async runHealthScan(): Promise<void> {
+  private async runHealthScan(phase: 'scan' | 'verify' = 'scan'): Promise<void> {
     const startedAt = Date.now();
 
     const scanIfNotCancelled = async (id: string, fn: () => Promise<Partial<HealthScanModuleResult>>): Promise<void> => {
@@ -341,6 +410,10 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       privacy: ['Passwords will not be removed', 'Browser bookmarks will not be removed', 'Saved logins will not be removed'],
       system: ['Windows system files will not be changed', 'Installed applications will not be removed'],
     };
+
+    if (phase === 'verify') {
+      this.setState({ healthScanStep: 'verifying' });
+    }
 
     const tasks: Promise<void>[] = [
       scanIfNotCancelled('junk', async () => {
@@ -384,6 +457,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           recoverableSpace: 0,
           severity: high.length > 5 ? 'high' : high.length > 0 ? 'medium' : 'low',
           estimatedImprovement: `${high.length} high-impact startup items`,
+          rawContext: { entries },
           details: {
             summary: `${high.length} high-impact startup applications are enabled`,
             impact: (high.length > 5 ? 'high' : high.length > 0 ? 'medium' : 'low') as OptimizationDetails['impact'],
@@ -419,6 +493,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           recoverableSpace: result.totalSize,
           severity: result.totalSize > 500_000_000 ? 'high' : result.totalSize > 50_000_000 ? 'medium' : 'low',
           estimatedImprovement: `${result.itemCount} privacy items`,
+          rawContext: { result },
           details: {
             summary: `${result.itemCount} privacy traces found across ${result.categoriesFound.length} categories`,
             impact: (result.totalSize > 500_000_000 ? 'high' : result.totalSize > 50_000_000 ? 'medium' : 'low') as OptimizationDetails['impact'],
@@ -500,6 +575,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           recoverableSpace: 0,
           severity: result.issues.length > 50 ? 'high' : result.issues.length > 10 ? 'medium' : 'low',
           estimatedImprovement: `${result.issues.length} registry issues`,
+          rawContext: { result },
           details: {
             summary: `${result.issues.length} invalid or obsolete registry entries found`,
             impact: (result.issues.length > 50 ? 'high' : result.issues.length > 10 ? 'medium' : 'low') as OptimizationDetails['impact'],
@@ -574,7 +650,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     ];
 
     await Promise.all(tasks);
-    this.finishHealthScan(this.state.healthScanModules, startedAt);
+    this.finishHealthScan(this.state.healthScanModules, startedAt, phase);
   }
 
   advanceToSelection(): void {
@@ -609,8 +685,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     const selected = this.state.healthScanSelection.filter((i) => i.selected);
     if (selected.length === 0) return;
 
+    const beforeReport = this.state.healthScanReport;
+    if (!beforeReport) return;
     this.setState({
       healthScanStep: 'optimizing',
+      healthScanBeforeReport: beforeReport,
       healthScanExecution: {
         currentModule: 'Starting...',
         progress: 0,
@@ -621,50 +700,178 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     });
 
     const start = Date.now();
-    const report = this.state.healthScanReport;
-    const before = report?.overallScore || 0;
+    const actualMap = new Map<string, HealthScanModuleActual>();
 
     try {
-      // Phase 1: run the existing one-click optimize for global cleanup
-      this.setState({ healthScanExecution: { ...this.state.healthScanExecution!, currentModule: 'One-click optimize', progress: 25 } });
-      const result = await this.service.executeOptimize();
-
-      // Phase 2: estimated per-module impact is applied to the score
-      const recovered = result.totalRecovered + selected.reduce((s, i) => s + i.recoverableSpace, 0);
-      const boost = Math.min(50, Math.round(selected.length * 6));
-      const after = Math.min(100, before + boost);
-
-      const history: HealthScanHistoryEntry = {
-        id: `${Date.now()}`,
-        date: new Date().toISOString(),
-        healthBefore: before,
-        healthAfter: after,
-        recoveredSpace: recovered,
-        modulesUsed: selected.map((i) => i.moduleId),
-        durationMs: Date.now() - start,
-        result: result.success ? 'success' : 'partial',
-      };
+      for (const item of selected) {
+        this.setState({
+          healthScanExecution: {
+            ...this.state.healthScanExecution!,
+            currentModule: item.moduleName,
+            progress: Math.max(10, Math.min(90, Math.round((actualMap.size / selected.length) * 80))),
+          },
+        });
+        const moduleResult = beforeReport.modules.find((m) => m.moduleId === item.moduleId);
+        const actual = moduleResult ? await this.executeModuleAction(moduleResult) : { success: false, errors: ['Module not found in before report'] };
+        actualMap.set(item.moduleId, actual);
+      }
 
       this.setState({
-        healthScanStep: 'complete',
-        healthScanResult: result,
         healthScanExecution: {
-          currentModule: 'Complete',
-          progress: 100,
-          itemsProcessed: selected.length,
-          spaceRecovered: recovered,
-          elapsedMs: Date.now() - start,
+          ...this.state.healthScanExecution!,
+          currentModule: 'Verifying',
+          progress: 90,
         },
-        healthScanHistory: [history, ...this.state.healthScanHistory].slice(0, 20),
       });
 
-      // Refresh dashboard health after optimization
+      await this.runHealthScan('verify');
+      this.setState({
+        healthScanModules: this.state.healthScanModules.map((m) => (actualMap.has(m.moduleId) ? { ...m, actual: actualMap.get(m.moduleId) } : m)),
+        healthScanResult: {
+          success: [...actualMap.values()].every((a) => a.success),
+          totalRecovered: [...actualMap.values()].reduce((s, a) => s + (a.bytesRecovered || 0), 0),
+          results: {} as unknown as OptimizeExecuteResponse['results'],
+          elapsedMs: Date.now() - start,
+          completedAt: new Date().toISOString(),
+        } as OptimizeExecuteResponse,
+      });
       void this.loadMetrics();
     } catch (err) {
       this.setState({
-        healthScanStep: 'selection',
+        healthScanStep: 'complete',
         healthScanError: err instanceof Error ? err.message : String(err),
       });
+    }
+  }
+
+  private async executeModuleAction(module: HealthScanModuleResult): Promise<HealthScanModuleActual> {
+    const ctx = module.rawContext || {};
+    const start = Date.now();
+    const log = (action: string, rpcMethod: string, before?: number, after?: number, success = true, message?: string) =>
+      this.logVerification({
+        id: `${Date.now()}-${module.moduleId}`,
+        timestamp: Date.now(),
+        moduleId: module.moduleId,
+        action,
+        rpcMethod,
+        before,
+        after,
+        durationMs: Date.now() - start,
+        success,
+        message,
+      });
+
+    switch (module.moduleId) {
+      case 'junk': {
+        try {
+          const result = await this.service.executeOptimize();
+          log('executeOptimize', 'dashboard.optimize.execute', undefined, result.totalRecovered, result.success);
+          return {
+            success: result.success,
+            bytesRecovered: result.totalRecovered,
+            errors: Object.values(result.results)
+              .filter((r) => r.error)
+              .map((r) => r.error!),
+          };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          log('executeOptimize', 'dashboard.optimize.execute', undefined, undefined, false, msg);
+          return { success: false, errors: [msg], reason: msg };
+        }
+      }
+      case 'privacy': {
+        const items = (ctx.result as { items?: { path: string; size: number; category: string; description: string; safeToDelete: boolean; riskLevel: string; canRestore: boolean }[] })?.items || [];
+        if (!items.length) {
+          log('clean', 'privacy.clean', module.issuesFound, 0, false, 'No items found in scan context');
+          return { success: false, errors: ['No privacy items found in scan context'], reason: 'No items found' };
+        }
+        try {
+          const result = await this.privacyService.clean(items as unknown as PrivacyItem[]);
+          const removed = result.itemsCleaned || 0;
+          log('clean', 'privacy.clean', module.issuesFound, module.issuesFound - removed, true);
+          return {
+            success: result.errors.length === 0,
+            itemsRemoved: removed,
+            bytesRecovered: result.spaceFreed || 0,
+            errors: result.errors || [],
+          };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          log('clean', 'privacy.clean', module.issuesFound, undefined, false, msg);
+          return { success: false, errors: [msg], reason: msg };
+        }
+      }
+      case 'startup': {
+        const entries = (ctx.entries as { name: string; publisher: string; status: string; impact: string; source: string; location: string; command: string; enabled: boolean }[]) || [];
+        const toDisable = entries.filter((e) => e.enabled && e.impact === 'high');
+        let disabled = 0;
+        const errors: string[] = [];
+        for (const entry of toDisable) {
+          try {
+            const res = await startupService.disableEntry(entry as unknown as StartupEntry);
+            if (res.success) disabled += 1;
+            else errors.push(res.reason || res.message || `Failed to disable ${entry.name}`);
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            errors.push(`${entry.name}: ${msg}`);
+          }
+        }
+        log('disable', 'startup.disable', module.issuesFound, module.issuesFound - disabled, errors.length === 0, errors.join('; ') || undefined);
+        return { success: errors.length === 0, entriesDisabled: disabled, errors: errors.slice(0, 5) };
+      }
+      case 'registry': {
+        const issues = (ctx.result as { issues?: { id: string; category: string; description: string; hive: string; subkey: string; valueName: string; valueData: string; severity: string }[] })?.issues || [];
+        if (!issues.length) {
+          log('clean', 'registry.clean', module.issuesFound, 0, false, 'No issues found in scan context');
+          return { success: false, errors: ['No registry issues found in scan context'], reason: 'No issues found' };
+        }
+        try {
+          const result = await registryService.clean(issues as unknown as RegistryIssue[]);
+          log('clean', 'registry.clean', module.issuesFound, module.issuesFound - result.fixed, result.errors.length === 0);
+          return { success: result.errors.length === 0, issuesFixed: result.fixed, errors: result.errors || [] };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          log('clean', 'registry.clean', module.issuesFound, undefined, false, msg);
+          return { success: false, errors: [msg], reason: msg };
+        }
+      }
+      case 'performance':
+        log('optimize', 'performance.optimize', undefined, undefined, false, 'Performance optimization is not implemented in backend');
+        return { success: false, errors: ['Performance optimization is not implemented in backend'], reason: 'Not implemented' };
+      case 'disk':
+        log('analyze', 'disk.listDrives', undefined, undefined, true, 'Disk Analyzer does not modify files');
+        return { success: true, errors: [], reason: 'No changes made' };
+      case 'security':
+        log('apply', 'security.apply', undefined, undefined, false, 'Security fixes cannot be applied automatically');
+        return { success: false, errors: ['Security fixes cannot be applied automatically'], reason: 'Not implemented' };
+      case 'system':
+        log('info', 'system.getComprehensiveInfo', undefined, undefined, true, 'System Information does not modify state');
+        return { success: true, errors: [], reason: 'No changes made' };
+      default:
+        return { success: false, errors: [`Unknown module ${module.moduleId}`] };
+    }
+  }
+
+  private logVerification(entry: VerificationLog): void {
+    const logs = [entry, ...this.state.verificationLogs].slice(0, 500);
+    this.setState({ verificationLogs: logs });
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('avs-verification-logs', JSON.stringify(logs));
+      }
+    } catch {
+      // localStorage may not be available
+    }
+  }
+
+  setDeveloperMode(enabled: boolean): void {
+    this.setState({ developerMode: enabled });
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('avs-developer-mode', String(enabled));
+      }
+    } catch {
+      // localStorage may not be available
     }
   }
 
@@ -677,6 +884,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanStep: 'idle',
       healthScanModules: [],
       healthScanReport: null,
+      healthScanBeforeReport: null,
       healthScanSelection: [],
       healthScanExecution: null,
       healthScanResult: null,

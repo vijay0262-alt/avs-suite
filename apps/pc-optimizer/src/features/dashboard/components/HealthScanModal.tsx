@@ -480,20 +480,38 @@ export function HealthScanModal({
     );
   }
 
+  if (step === 'verifying') {
+    return (
+      <Modal open title="Verifying Results" onClose={onCancelExecute} size="lg" actions={null}>
+        <div className="space-y-6 text-center">
+          <div className="text-lg font-medium text-text-primary">{execution?.currentModule || 'Verifying...'}</div>
+          <p className="text-sm text-text-secondary">Running a fresh health scan to measure real changes. Do not close this window.</p>
+          <div className="w-full h-3 bg-bg-secondary rounded-full overflow-hidden">
+            <div className="h-full bg-brand-primary transition-all duration-300" style={{ width: `${execution?.progress || 0}%` }} />
+          </div>
+          <div className="flex justify-center">
+            <Button variant="secondary" onClick={onCancelExecute}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
   if (step === 'complete' && report) {
-    const before = report.overallScore;
     const selected = selection.filter((i) => i.selected);
-    const boost = Math.min(50, Math.round(selected.length * 6));
-    const after = Math.min(100, before + boost);
-    const recovered = result?.totalRecovered ?? execution?.spaceRecovered ?? 0;
+    const beforeOverall = report.modules.length
+      ? Math.round(report.modules.reduce((s, m) => s + (m.verification?.beforeScore ?? m.score), 0) / report.modules.length)
+      : report.overallScore;
+    const afterOverall = report.overallScore;
     const elapsed = result?.elapsedMs ?? execution?.elapsedMs ?? 0;
-    const changes = result ? buildResultChanges(result) : [];
-    const undoMap = buildUndoMap(selected);
+    const hasFailures = report.modules.some((m) => m.actual && !m.actual.success);
 
     return (
       <Modal
         open
-        title="Optimization Complete"
+        title={hasFailures ? 'Optimization Completed with Failures' : 'Optimization Complete'}
         onClose={onClose}
         size="lg"
         actions={
@@ -504,78 +522,94 @@ export function HealthScanModal({
       >
         <div className="space-y-6">
           <div className="flex items-center justify-center gap-4">
-            <div className="p-3 rounded-full bg-semantic-success/10">
-              <CheckCircleIcon className="h-10 w-10 text-semantic-success" aria-hidden />
+            <div className={`p-3 rounded-full ${hasFailures ? 'bg-semantic-warning/10' : 'bg-semantic-success/10'}`}>
+              {hasFailures ? (
+                <ExclamationTriangleIcon className="h-10 w-10 text-semantic-warning" aria-hidden />
+              ) : (
+                <CheckCircleIcon className="h-10 w-10 text-semantic-success" aria-hidden />
+              )}
             </div>
             <div>
               <div className="text-3xl font-bold text-text-primary tabular-nums">
-                {before} <ArrowRightIcon className="h-6 w-6 inline mx-1 text-text-muted" /> {after}
+                {beforeOverall} <ArrowRightIcon className="h-6 w-6 inline mx-1 text-text-muted" /> {afterOverall}
               </div>
-              <div className="text-sm text-text-secondary">Health Score</div>
+              <div className="text-sm text-text-secondary">Health Score (verified by fresh scan)</div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <div className="text-xl font-bold text-semantic-success tabular-nums">
-                {formatBytes(recovered)}
-              </div>
-              <div className="text-xs text-text-secondary">Recovered Space</div>
-            </Card>
-            <Card>
-              <div className="text-xl font-bold text-text-primary tabular-nums">
-                {selected.length}
-              </div>
-              <div className="text-xs text-text-secondary">Modules Used</div>
-            </Card>
-            <Card>
-              <div className="text-xl font-bold text-text-primary tabular-nums">
-                {formatDuration(elapsed)}
-              </div>
-              <div className="text-xs text-text-secondary">Time Taken</div>
-            </Card>
-            <Card>
-              <div className="text-xl font-bold text-semantic-success tabular-nums">
-                {formatBytes(selected.reduce((s, i) => s + i.recoverableSpace, 0))}
-              </div>
-              <div className="text-xs text-text-secondary">Est. Recoverable</div>
-            </Card>
+          <div>
+            <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">Before / After / Difference</div>
+            <div className="space-y-2">
+              {report.modules
+                .filter((m) => selected.some((s) => s.moduleId === m.moduleId) && m.verification)
+                .map((m) => {
+                  const v = m.verification!;
+                  const actual = m.actual;
+                  const issueDelta = v.beforeIssues - v.afterIssues;
+                  const spaceDelta = v.beforeRecoverable - v.afterRecoverable;
+                  const failed = actual && !actual.success;
+                  return (
+                    <div key={m.moduleId} className="p-3 rounded-md bg-surface-muted">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-text-primary">{m.moduleName}</span>
+                        {failed ? (
+                          <span className="text-xs font-medium text-semantic-danger">Failed</span>
+                        ) : (
+                          <span className="text-xs font-medium text-semantic-success">Verified</span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-sm">
+                        <div className="text-center">
+                          <div className="text-text-secondary">Before</div>
+                          <div className="font-medium tabular-nums">{formatValue(m.moduleId, v.beforeIssues, v.beforeRecoverable)}</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-text-secondary">After</div>
+                          <div className="font-medium tabular-nums">{formatValue(m.moduleId, v.afterIssues, v.afterRecoverable)}</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-text-secondary">Difference</div>
+                          <div className={`font-medium tabular-nums ${spaceDelta > 0 || issueDelta > 0 ? 'text-semantic-success' : 'text-text-muted'}`}>
+                            {m.moduleId === 'junk' || m.moduleId === 'privacy'
+                              ? formatBytes(spaceDelta)
+                              : `-${issueDelta}`}
+                          </div>
+                        </div>
+                      </div>
+                      {actual && (
+                        <div className="mt-2 text-xs text-text-secondary">
+                          <span className="font-medium">Actually changed:</span>{' '}
+                          {actual.filesDeleted !== undefined && `${actual.filesDeleted} files deleted`}
+                          {actual.bytesRecovered !== undefined && `, ${formatBytes(actual.bytesRecovered)} recovered`}
+                          {actual.itemsRemoved !== undefined && `, ${actual.itemsRemoved} items removed`}
+                          {actual.entriesDisabled !== undefined && `, ${actual.entriesDisabled} disabled`}
+                          {actual.issuesFixed !== undefined && `, ${actual.issuesFixed} fixed`}
+                          {actual.reason && ` — ${actual.reason}`}
+                        </div>
+                      )}
+                      {actual && actual.errors.length > 0 && (
+                        <div className="mt-2 text-xs text-semantic-danger">
+                          {actual.errors.slice(0, 2).join('; ')}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
           </div>
 
-          {changes.length > 0 && (
-            <div>
-              <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">Exactly what changed</div>
-              <div className="space-y-2">
-                {changes.map((c) => (
-                  <div key={c.key} className="flex items-center justify-between p-3 rounded-md bg-surface-muted">
-                    <div className="flex items-center gap-3">
-                      {c.cleaned ? (
-                        <CheckCircleIcon className="h-5 w-5 text-semantic-success" aria-hidden />
-                      ) : (
-                        <XCircleIcon className="h-5 w-5 text-semantic-warning" aria-hidden />
-                      )}
-                      <span className="text-sm text-text-primary">{c.label}</span>
-                    </div>
-                    <span className="text-sm font-medium text-text-primary tabular-nums">{formatBytes(c.size)}</span>
-                  </div>
-                ))}
-              </div>
+          {elapsed > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card>
+                <div className="text-xl font-bold text-text-primary tabular-nums">{formatDuration(elapsed)}</div>
+                <div className="text-xs text-text-secondary">Time Taken</div>
+              </Card>
+              <Card>
+                <div className="text-xl font-bold text-text-primary tabular-nums">{selected.length}</div>
+                <div className="text-xs text-text-secondary">Modules Used</div>
+              </Card>
             </div>
           )}
-
-          <div className="p-4 rounded-md bg-surface-muted">
-            <div className="mb-2 text-sm font-medium text-text-primary">Undo availability</div>
-            <div className="space-y-2">
-              {undoMap.map((u) => (
-                <div key={u.moduleId} className="flex items-center justify-between text-sm">
-                  <span className="text-text-secondary">{u.moduleName}</span>
-                  <span className={u.available ? 'text-semantic-success' : 'text-text-muted'}>
-                    {u.available ? 'Yes' : 'No'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
 
           {error && (
             <div className="flex items-start gap-3 py-3 px-4 rounded-md bg-semantic-danger/10 text-sm text-semantic-danger">
@@ -591,40 +625,10 @@ export function HealthScanModal({
   return null;
 }
 
-function buildResultChanges(result: OptimizeExecuteResponse): { key: string; label: string; cleaned: boolean; size: number }[] {
-  const labels: Record<string, string> = {
-    temporaryFiles: 'Temporary files removed',
-    recycleBin: 'Recycle bin emptied',
-    browserCache: 'Browser cache cleared',
-    thumbnailCache: 'Thumbnail cache cleared',
-    flushDNS: 'DNS cache flushed',
-    refreshExplorer: 'Explorer cache refreshed',
-    memoryTrim: 'Memory optimized',
-  };
-  return Object.entries(result.results).map(([key, value]) => ({
-    key,
-    label: labels[key] || key,
-    cleaned: value.cleaned && !value.error,
-    size: value.size,
-  }));
-}
-
-function buildUndoMap(selected: OptimizationSelectionItem[]): { moduleId: string; moduleName: string; available: boolean }[] {
-  const canUndo: Record<string, boolean> = {
-    junk: true,
-    startup: true,
-    registry: true,
-    privacy: false,
-    performance: false,
-    disk: false,
-    security: false,
-    system: false,
-  };
-  return selected.map((item) => ({
-    moduleId: item.moduleId,
-    moduleName: item.moduleName,
-    available: canUndo[item.moduleId] ?? false,
-  }));
+function formatValue(moduleId: string, issues: number, space: number): string {
+  if (moduleId === 'junk' || moduleId === 'privacy') return formatBytes(space);
+  if (moduleId === 'disk') return formatBytes(space);
+  return `${issues}`;
 }
 
 function StatusBadge({ status }: { status: HealthScanModuleResult['status'] }) {

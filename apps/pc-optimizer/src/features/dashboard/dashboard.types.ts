@@ -189,6 +189,7 @@ export type HealthScanStep =
   | 'preview'
   | 'selection'
   | 'optimizing'
+  | 'verifying'
   | 'complete';
 
 export interface OptimizationDetailItem {
@@ -219,6 +220,17 @@ export interface OptimizationDetails {
   why: string;
 }
 
+export interface HealthScanModuleActual {
+  success: boolean;
+  filesDeleted?: number;
+  bytesRecovered?: number;
+  itemsRemoved?: number;
+  entriesDisabled?: number;
+  issuesFixed?: number;
+  errors: string[];
+  reason?: string;
+}
+
 export interface HealthScanModuleResult {
   moduleId: string;
   moduleName: string;
@@ -230,6 +242,19 @@ export interface HealthScanModuleResult {
   estimatedImprovement: string;
   details: OptimizationDetails;
   error?: string;
+  /** Raw backend scan data needed to execute the optimization for this module. */
+  rawContext?: Record<string, unknown>;
+  /** Actual results measured during/after optimization for this module. */
+  actual?: HealthScanModuleActual;
+  /** Verification snapshot captured before and after the optimization. */
+  verification?: {
+    beforeScore: number;
+    beforeIssues: number;
+    beforeRecoverable: number;
+    afterScore: number;
+    afterIssues: number;
+    afterRecoverable: number;
+  };
 }
 
 export interface HealthScanReport {
@@ -265,4 +290,17 @@ export interface HealthScanHistoryEntry {
   modulesUsed: string[];
   durationMs: number;
   result: 'success' | 'partial' | 'cancelled';
+}
+
+export interface VerificationLog {
+  id: string;
+  timestamp: number;
+  moduleId: string;
+  action: string;
+  rpcMethod: string;
+  before?: number;
+  after?: number;
+  durationMs: number;
+  success: boolean;
+  message?: string;
 }
