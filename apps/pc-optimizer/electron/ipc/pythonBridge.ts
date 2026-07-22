@@ -111,7 +111,7 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
 
   const client: RpcClient = {
     call<T>(method: string, params?: unknown, customTimeoutMs?: number): Promise<T> {
-      return new Promise<T>((resolve, reject) => {
+      const doCall = (attempt: number): Promise<T> => new Promise<T>((resolve, reject) => {
         const id = nextId++;
         // Give optimize/clean/analyze operations more time since they do real work
         const isLongOperation = method.includes('optimize') || method.includes('clean') || method.includes('execute') || method.includes('analyze') || method.includes('scan');
@@ -122,11 +122,21 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
         }, timeoutMs);
         pending.set(id, {
           resolve: (v: unknown) => { clearTimeout(timeout); resolve(v as T); },
-          reject: (e: Error) => { clearTimeout(timeout); reject(e); },
+          reject: (e: Error) => {
+            clearTimeout(timeout);
+            // Retry on "Unknown method" — the backend module may still be loading
+            if (attempt < 3 && e.message.includes('Unknown method')) {
+              logger.warn(`RPC ${method} got "Unknown method" (attempt ${attempt + 1}/3), retrying in 2s...`);
+              setTimeout(() => doCall(attempt + 1).then(resolve, reject), 2000);
+            } else {
+              reject(e);
+            }
+          },
         });
         const req: JsonRpcRequest = { jsonrpc: '2.0', id, method: method as never, params };
         child.stdin.write(JSON.stringify(req) + '\n');
       });
+      return doCall(0);
     },
     async shutdown(): Promise<void> {
       child.kill();

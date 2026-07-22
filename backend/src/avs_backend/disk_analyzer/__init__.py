@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -214,6 +215,10 @@ def _collect_categorized_files(directory: str, max_depth: int = 5) -> dict[str, 
     name, path, size, extension, and modified date.
     """
     categories: dict[str, list[dict[str, Any]]] = {}
+    total_files = 0
+    start_time = time.monotonic()
+    _MAX_TOTAL_FILES = 10000
+    _MAX_SCAN_TIMEOUT_S = 30.0
     
     try:
         for root, dirs, files in os.walk(directory):
@@ -224,6 +229,12 @@ def _collect_categorized_files(directory: str, max_depth: int = 5) -> dict[str, 
                 continue
             
             for filename in files:
+                if total_files >= _MAX_TOTAL_FILES:
+                    logger.info(f"Disk analysis file limit reached: {_MAX_TOTAL_FILES} in {directory}")
+                    break
+                if time.monotonic() - start_time > _MAX_SCAN_TIMEOUT_S:
+                    logger.info(f"Disk analysis timeout reached: {_MAX_SCAN_TIMEOUT_S}s in {directory}")
+                    break
                 file_path = os.path.join(root, filename)
                 try:
                     file_size = os.path.getsize(file_path)
@@ -243,8 +254,12 @@ def _collect_categorized_files(directory: str, max_depth: int = 5) -> dict[str, 
                         'extension': ext or 'none',
                         'modified': modified,
                     })
+                    total_files += 1
                 except (OSError, PermissionError):
                     continue
+            else:
+                continue
+            break
     except (OSError, PermissionError) as e:
         logger.warning(f"Could not collect files from {directory}: {e}")
     

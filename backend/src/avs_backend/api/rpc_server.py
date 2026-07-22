@@ -59,9 +59,35 @@ _FEATURE_MODULES = [
     "avs_backend.undo",
 ]
 
-# Track which modules have finished importing
+# Track which modules have finished importing (success or failure)
 _modules_loaded: set[str] = set()
+_modules_failed: set[str] = set()
 _modules_lock = threading.Lock()
+
+# Map RPC method prefixes to feature module names so _dispatch knows which
+# module should register a given method.
+_METHOD_TO_MODULE: dict[str, str] = {}
+
+
+def _build_method_to_module_map() -> None:
+    """Build a prefix map from method names to feature modules."""
+    for mod_name in _FEATURE_MODULES:
+        # e.g. "avs_backend.dashboard" -> "dashboard"
+        prefix = mod_name.rsplit(".", 1)[-1]
+        # Map common method prefixes to module names
+        _METHOD_TO_MODULE[prefix] = mod_name
+
+
+_build_method_to_module_map()
+
+
+def _module_for_method(method: str) -> str | None:
+    """Return the feature module that should register *method*, or None."""
+    # Try exact prefix matches: "dashboard.metrics" -> "dashboard"
+    for prefix, mod_name in _METHOD_TO_MODULE.items():
+        if method.startswith(prefix + ".") or method.startswith(prefix + "_"):
+            return mod_name
+    return None
 
 
 def _import_module(name: str) -> None:
@@ -69,6 +95,8 @@ def _import_module(name: str) -> None:
         importlib.import_module(name)
     except Exception:
         log.exception("Failed to import %s", name)
+        with _modules_lock:
+            _modules_failed.add(name)
     finally:
         with _modules_lock:
             _modules_loaded.add(name)
@@ -77,6 +105,12 @@ def _import_module(name: str) -> None:
 def _all_modules_loaded() -> bool:
     with _modules_lock:
         return len(_modules_loaded) >= len(_FEATURE_MODULES)
+
+
+def _module_loaded(name: str) -> bool:
+    """Check if a specific module has finished importing (success or failure)."""
+    with _modules_lock:
+        return name in _modules_loaded
 
 
 def wait_for_modules(timeout: float = 120.0) -> bool:
@@ -154,16 +188,30 @@ def _dispatch(request: dict[str, Any]) -> None:
     handler = registry.get(method)
     if handler is None:
         # Module might still be importing in a background thread.
-        # Wait up to 90s for it to become available.
-        deadline = 90.0
+        # Wait for the specific module that should register this method.
+        target_module = _module_for_method(method)
+        deadline = 120.0
         import time as _time
         start_wait = _time.monotonic()
         while handler is None and (_time.monotonic() - start_wait) < deadline:
+            if target_module is not None and _module_loaded(target_module):
+                # The module that should register this method has finished
+                # importing (success or failure). If the handler is still
+                # missing, it won't appear — stop waiting.
+                break
             if _all_modules_loaded():
                 break
-            _time.sleep(0.5)
+            _time.sleep(0.3)
             handler = registry.get(method)
         if handler is None:
+            # Check if the module failed to import
+            if target_module is not None:
+                with _modules_lock:
+                    failed = target_module in _modules_failed
+                if failed:
+                    _error(request_id, INTERNAL_ERROR,
+                           f"Module {target_module} failed to load; method {method} unavailable")
+                    return
             _error(request_id, METHOD_NOT_FOUND, f"Unknown method: {method}")
             return
 

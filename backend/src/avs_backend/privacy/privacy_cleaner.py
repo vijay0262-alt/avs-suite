@@ -992,6 +992,9 @@ def scan_privacy_items(
     """
     result = ScanResult()
     start_time = datetime.now()
+    _MAX_ITEMS = 10000
+    _MAX_SCAN_TIMEOUT_S = 60.0
+    _scan_start = time.monotonic()
 
     if selected_categories is None:
         selected_categories = set(PrivacyCategory)
@@ -1015,7 +1018,7 @@ def scan_privacy_items(
         if items:
             result.categories_found.add(PrivacyCategory.WINDOWS_TEMP)
 
-    if cancel and cancel.is_set():
+    if cancel and cancel.is_set() or len(result.items) >= _MAX_ITEMS or time.monotonic() - _scan_start > _MAX_SCAN_TIMEOUT_S:
         return result
 
     # Scan Recent Files
@@ -1027,7 +1030,7 @@ def scan_privacy_items(
         if items:
             result.categories_found.add(PrivacyCategory.RECENT_FILES)
 
-    if cancel and cancel.is_set():
+    if cancel and cancel.is_set() or len(result.items) >= _MAX_ITEMS or time.monotonic() - _scan_start > _MAX_SCAN_TIMEOUT_S:
         return result
 
     # Scan Thumbnail Cache
@@ -1039,7 +1042,7 @@ def scan_privacy_items(
         if items:
             result.categories_found.add(PrivacyCategory.THUMBNAIL_CACHE)
 
-    if cancel and cancel.is_set():
+    if cancel and cancel.is_set() or len(result.items) >= _MAX_ITEMS or time.monotonic() - _scan_start > _MAX_SCAN_TIMEOUT_S:
         return result
 
     # Scan DNS Cache
@@ -1051,7 +1054,7 @@ def scan_privacy_items(
         if items:
             result.categories_found.add(PrivacyCategory.DNS_CACHE)
 
-    if cancel and cancel.is_set():
+    if cancel and cancel.is_set() or len(result.items) >= _MAX_ITEMS or time.monotonic() - _scan_start > _MAX_SCAN_TIMEOUT_S:
         return result
 
     # Scan Run History
@@ -1063,7 +1066,7 @@ def scan_privacy_items(
         if items:
             result.categories_found.add(PrivacyCategory.RUN_HISTORY)
 
-    if cancel and cancel.is_set():
+    if cancel and cancel.is_set() or len(result.items) >= _MAX_ITEMS or time.monotonic() - _scan_start > _MAX_SCAN_TIMEOUT_S:
         return result
 
     # Scan Recent Documents
@@ -1075,7 +1078,7 @@ def scan_privacy_items(
         if items:
             result.categories_found.add(PrivacyCategory.RECENT_DOCUMENTS)
 
-    if cancel and cancel.is_set():
+    if cancel and cancel.is_set() or len(result.items) >= _MAX_ITEMS or time.monotonic() - _scan_start > _MAX_SCAN_TIMEOUT_S:
         return result
 
     # Scan Recycle Bin
@@ -1087,7 +1090,7 @@ def scan_privacy_items(
         if items:
             result.categories_found.add(PrivacyCategory.RECYCLE_BIN)
 
-    if cancel and cancel.is_set():
+    if cancel and cancel.is_set() or len(result.items) >= _MAX_ITEMS or time.monotonic() - _scan_start > _MAX_SCAN_TIMEOUT_S:
         return result
 
     # Scan Browser Data (detailed categories)
@@ -1132,6 +1135,9 @@ def scan_privacy_items(
     ]
 
     for browser_type, category, scan_func in browser_categories:
+        if len(result.items) >= _MAX_ITEMS or time.monotonic() - _scan_start > _MAX_SCAN_TIMEOUT_S:
+            logger.info(f"Privacy scan limit reached: {len(result.items)} items or timeout")
+            break
         if browser_type in result.browsers_detected and category in selected_categories:
             if on_progress:
                 on_progress(browser_progress)

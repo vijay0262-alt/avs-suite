@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -82,13 +83,28 @@ def _calculate_file_hash(file_path: str, block_size: int = 65536) -> str:
         return ""
 
 
+MAX_FILES_PER_SCAN = 5000
+MAX_SCAN_TIMEOUT_S = 60.0
+
+
 def _scan_directory(directory: str, exclude_dirs: list[str] | None = None) -> dict[str, list[dict[str, Any]]]:
-    """Scan directory for files and group by hash."""
+    """Scan directory for files and group by hash.
+    
+    Safety limits:
+    - MAX_FILES_PER_SCAN: stop after scanning this many files
+    - MAX_SCAN_TIMEOUT_S: stop after this many seconds
+    - Files >100MB are skipped (too slow to hash)
+    - First pass groups by size, then only hashes files with same size
+    """
     if exclude_dirs is None:
         exclude_dirs = ['$RECYCLE.BIN', 'System Volume Information', 'Windows', 'Program Files', 'Program Files (x86)']
     
     hash_map: dict[str, list[dict[str, Any]]] = {}
     scanned_count = 0
+    start_time = time.monotonic()
+    
+    # Phase 1: Group by size first (fast, no hashing)
+    size_map: dict[int, list[dict[str, Any]]] = {}
     
     try:
         for root, dirs, files in os.walk(directory):
@@ -96,6 +112,12 @@ def _scan_directory(directory: str, exclude_dirs: list[str] | None = None) -> di
             dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith('.')]
             
             for file in files:
+                if scanned_count >= MAX_FILES_PER_SCAN:
+                    logger.info(f"Scan limit reached: {MAX_FILES_PER_SCAN} files in {directory}")
+                    break
+                if time.monotonic() - start_time > MAX_SCAN_TIMEOUT_S:
+                    logger.info(f"Scan timeout reached: {MAX_SCAN_TIMEOUT_S}s in {directory}")
+                    break
                 try:
                     file_path = os.path.join(root, file)
                     if not os.path.isfile(file_path):
@@ -106,27 +128,41 @@ def _scan_directory(directory: str, exclude_dirs: list[str] | None = None) -> di
                     if file_size > 100 * 1024 * 1024:
                         continue
                     
-                    file_hash = _calculate_file_hash(file_path)
-                    if not file_hash:
-                        continue
-                    
-                    if file_hash not in hash_map:
-                        hash_map[file_hash] = []
-                    
-                    hash_map[file_hash].append({
+                    scanned_count += 1
+                    file_info = {
                         'path': file_path,
                         'size': file_size,
                         'name': file,
                         'modified': datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat(),
-                    })
-                    
-                    scanned_count += 1
+                    }
+                    size_map.setdefault(file_size, []).append(file_info)
                 except (OSError, PermissionError):
                     continue
+            else:
+                continue
+            break  # Break outer loop if inner loop broke
     except (OSError, PermissionError) as e:
         logger.warning(f"Could not scan directory {directory}: {e}")
     
-    logger.info(f"Scanned {scanned_count} files in {directory}")
+    # Phase 2: Only hash files that share a size with another file
+    for file_size, file_list in size_map.items():
+        if len(file_list) < 2:
+            # Unique size — no possible duplicates, skip hashing
+            continue
+        for file_info in file_list:
+            if time.monotonic() - start_time > MAX_SCAN_TIMEOUT_S:
+                logger.info(f"Hash timeout reached: {MAX_SCAN_TIMEOUT_S}s in {directory}")
+                break
+            file_hash = _calculate_file_hash(file_info['path'])
+            if not file_hash:
+                continue
+            
+            if file_hash not in hash_map:
+                hash_map[file_hash] = []
+            
+            hash_map[file_hash].append(file_info)
+    
+    logger.info(f"Scanned {scanned_count} files in {directory} ({time.monotonic() - start_time:.1f}s)")
     return hash_map
 
 
@@ -280,11 +316,18 @@ def _estimate_directory(directory: str) -> tuple[int, int]:
     total_files = 0
     total_bytes = 0
     exclude_dirs = ['$RECYCLE.BIN', 'System Volume Information', 'Windows', 'Program Files', 'Program Files (x86)']
+    start_time = time.monotonic()
 
     try:
         for root, dirs, files in os.walk(directory):
             dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith('.')]
             for file in files:
+                if total_files >= MAX_FILES_PER_SCAN:
+                    logger.info(f"Estimate limit reached: {MAX_FILES_PER_SCAN} files in {directory}")
+                    break
+                if time.monotonic() - start_time > MAX_SCAN_TIMEOUT_S:
+                    logger.info(f"Estimate timeout reached: {MAX_SCAN_TIMEOUT_S}s in {directory}")
+                    break
                 try:
                     file_path = os.path.join(root, file)
                     if not os.path.isfile(file_path):
@@ -296,6 +339,9 @@ def _estimate_directory(directory: str) -> tuple[int, int]:
                     total_bytes += file_size
                 except (OSError, PermissionError):
                     continue
+            else:
+                continue
+            break
     except (OSError, PermissionError) as e:
         logger.warning(f"Could not estimate directory {directory}: {e}")
 
