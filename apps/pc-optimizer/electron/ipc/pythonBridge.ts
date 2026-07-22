@@ -124,9 +124,10 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
           resolve: (v: unknown) => { clearTimeout(timeout); resolve(v as T); },
           reject: (e: Error) => {
             clearTimeout(timeout);
-            // Retry on "Unknown method" — the backend module may still be loading
-            if (attempt < 3 && e.message.includes('Unknown method')) {
-              logger.warn(`RPC ${method} got "Unknown method" (attempt ${attempt + 1}/3), retrying in 2s...`);
+            // Retry on "Unknown method" or "Module failed to load" — the backend module may still be loading
+            const isTransient = e.message.includes('Unknown method') || e.message.includes('failed to load');
+            if (attempt < 3 && isTransient) {
+              logger.warn(`RPC ${method} got transient error (attempt ${attempt + 1}/3): ${e.message}, retrying in 2s...`);
               setTimeout(() => doCall(attempt + 1).then(resolve, reject), 2000);
             } else {
               reject(e);

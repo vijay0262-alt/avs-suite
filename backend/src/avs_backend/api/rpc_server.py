@@ -72,11 +72,26 @@ _METHOD_TO_MODULE: dict[str, str] = {}
 
 def _build_method_to_module_map() -> None:
     """Build a prefix map from method names to feature modules."""
+    # Explicit mappings for modules where the RPC method prefix
+    # doesn't match the module's last segment.
+    _explicit = {
+        "wiper": "avs_backend.drive_wiper",
+        "registry": "avs_backend.registry_cleaner",
+        "disk": "avs_backend.disk_analyzer",
+        "duplicate": "avs_backend.duplicate_finder",
+        "cleaner": "avs_backend.cleaner",
+        "system": "avs_backend.system_information",
+        "job": "avs_backend.common.job_rpc",
+        "updater": "avs_backend.software_updater",
+    }
+    _METHOD_TO_MODULE.update(_explicit)
+
     for mod_name in _FEATURE_MODULES:
         # e.g. "avs_backend.dashboard" -> "dashboard"
         prefix = mod_name.rsplit(".", 1)[-1]
-        # Map common method prefixes to module names
-        _METHOD_TO_MODULE[prefix] = mod_name
+        # Don't overwrite explicit mappings
+        if prefix not in _METHOD_TO_MODULE:
+            _METHOD_TO_MODULE[prefix] = mod_name
 
 
 _build_method_to_module_map()

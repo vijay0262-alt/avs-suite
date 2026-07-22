@@ -39,6 +39,9 @@ def _ttl_cache(ttl_seconds: float) -> Callable[[Callable[[], Any]], Callable[[],
     Security and hardware queries are expensive (they shell out to
     PowerShell) but change rarely, so we avoid running them on every
     metrics poll. Thread-safe via an internal lock.
+    If another thread is already computing the value, callers will wait
+    up to 5 seconds for the result, then fall back to the last cached
+    value (or None if never cached).
     """
 
     def decorator(fn: Callable[[], Any]) -> Callable[[], Any]:
@@ -50,7 +53,13 @@ def _ttl_cache(ttl_seconds: float) -> Callable[[Callable[[], Any]], Callable[[],
             now = time.monotonic()
             if state["set"] and (now - state["ts"]) < ttl_seconds:
                 return state["value"]
-            with lock:
+            acquired = lock.acquire(timeout=5.0)
+            if not acquired:
+                # Another thread is computing — return stale value if available
+                if state["set"]:
+                    return state["value"]
+                return None
+            try:
                 # Double-check after acquiring lock to avoid duplicate work
                 now = time.monotonic()
                 if state["set"] and (now - state["ts"]) < ttl_seconds:
@@ -58,6 +67,8 @@ def _ttl_cache(ttl_seconds: float) -> Callable[[Callable[[], Any]], Callable[[],
                 value = fn()
                 state.update(value=value, ts=now, set=True)
                 return value
+            finally:
+                lock.release()
 
         wrapper.cache_clear = lambda: state.update(value=None, ts=0.0, set=False)  # type: ignore[attr-defined]
         return wrapper
@@ -117,24 +128,26 @@ def _collect_metrics() -> dict[str, Any]:
         "security": {"defender": {}, "firewall": {}, "updates": {}, "realTimeProtection": False, "smartScreen": False},
         "performance": {"startupApps": 0, "backgroundProcesses": 0, "temporaryFilesSize": 0, "recycleBinSize": 0, "browserCacheSize": 0, "potentialRecoverable": 0, "memoryPressure": 0.0},
     }
-    with ThreadPoolExecutor(max_workers=len(collectors)) as pool:
-        futures = {pool.submit(fn): name for name, fn in collectors}
-        try:
-            for fut in as_completed(futures, timeout=15.0):
-                name = futures[fut]
-                try:
-                    results[name] = fut.result()
-                except Exception as e:
-                    log.warning("Collector %s failed: %s", name, e)
-                    results[name] = _DEFAULTS.get(name, {})
-        except FuturesTimeoutError:
-            log.warning("Some dashboard collectors timed out after 15s")
-        # Fill in any missing results (timed out futures)
-        for fut, name in futures.items():
-            if name not in results:
-                log.warning("Collector %s timed out", name)
+    pool = ThreadPoolExecutor(max_workers=len(collectors))
+    futures = {pool.submit(fn): name for name, fn in collectors}
+    try:
+        for fut in as_completed(futures, timeout=15.0):
+            name = futures[fut]
+            try:
+                results[name] = fut.result()
+            except Exception as e:
+                log.warning("Collector %s failed: %s", name, e)
                 results[name] = _DEFAULTS.get(name, {})
-                fut.cancel()
+    except FuturesTimeoutError:
+        log.warning("Some dashboard collectors timed out after 15s")
+    # Fill in any missing results (timed out futures)
+    for fut, name in futures.items():
+        if name not in results:
+            log.warning("Collector %s timed out", name)
+            results[name] = _DEFAULTS.get(name, {})
+            fut.cancel()
+    # Don't wait for slow threads — release the pool immediately
+    pool.shutdown(wait=False)
     results["capturedAt"] = _now_iso()
     return results
 
@@ -273,6 +286,7 @@ def _live_metrics_loop() -> None:
 @register("dashboard.live")
 def dashboard_live(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Return the latest cached live snapshot (<100ms)."""
+    _ensure_live_metrics_thread()
     with _live_metrics_lock:
         snapshot = _live_metrics.copy()
     if snapshot:
@@ -441,12 +455,12 @@ def dashboard_optimize_preview(_params: dict[str, Any] | None) -> dict[str, Any]
     """Preview what One Click Optimize will clean."""
     if not IS_WINDOWS:
         return _get_stub_optimize_preview()
-    temp_size = _get_temp_files_size()
-    recycle_bin_size = _get_recycle_bin_size()
-    browser_cache_size = _estimate_browser_cache_size()
-    thumbnail_cache_size = _get_thumbnail_cache_size()
-    prefetch_size = _get_prefetch_size()
-    update_cache_size = _get_windows_update_cache_size()
+    temp_size = _get_temp_files_size() or 0
+    recycle_bin_size = _get_recycle_bin_size() or 0
+    browser_cache_size = _estimate_browser_cache_size() or 0
+    thumbnail_cache_size = _get_thumbnail_cache_size() or 0
+    prefetch_size = _get_prefetch_size() or 0
+    update_cache_size = _get_windows_update_cache_size() or 0
     
     total_recoverable = temp_size + recycle_bin_size + browser_cache_size + thumbnail_cache_size + prefetch_size + update_cache_size
     
@@ -725,15 +739,16 @@ def _get_storage_metrics() -> list[dict[str, Any]]:
     drives: list[dict[str, Any]] = []
     try:
         partitions = psutil.disk_partitions(all=False)
-        with ThreadPoolExecutor(max_workers=len(partitions) or 1) as pool:
-            futures = [pool.submit(_build_drive, part) for part in partitions]
-            for future in futures:
-                try:
-                    drive = future.result(timeout=10.0)
-                    if drive:
-                        drives.append(drive)
-                except Exception as e:
-                    log.warning("Storage sub-collector failed: %s", e)
+        pool = ThreadPoolExecutor(max_workers=len(partitions) or 1)
+        futures = [pool.submit(_build_drive, part) for part in partitions]
+        for future in futures:
+            try:
+                drive = future.result(timeout=10.0)
+                if drive:
+                    drives.append(drive)
+            except Exception as e:
+                log.warning("Storage sub-collector failed: %s", e)
+        pool.shutdown(wait=False)
     except Exception as e:
         log.warning("Failed to get storage metrics: %s", e)
 
@@ -756,21 +771,22 @@ def _get_windows_info() -> dict[str, Any]:
         uptime = time.time() - psutil.boot_time()
         
         # Administrator status, power mode, battery, secure boot, TPM (parallel)
-        with ThreadPoolExecutor(max_workers=5) as pool:
-            windows_futures = {
-                "is_admin": pool.submit(_is_admin),
-                "power_mode": pool.submit(_get_power_mode),
-                "battery": pool.submit(_get_battery_info),
-                "secure_boot": pool.submit(_get_secure_boot_status),
-                "tpm_status": pool.submit(_get_tpm_status),
-            }
-            windows_results = {}
-            for name, fut in windows_futures.items():
-                try:
-                    windows_results[name] = fut.result(timeout=10.0)
-                except Exception as e:
-                    log.warning("Windows info sub-collector %s failed: %s", name, e)
-                    windows_results[name] = {}
+        pool = ThreadPoolExecutor(max_workers=5)
+        windows_futures = {
+            "is_admin": pool.submit(_is_admin),
+            "power_mode": pool.submit(_get_power_mode),
+            "battery": pool.submit(_get_battery_info),
+            "secure_boot": pool.submit(_get_secure_boot_status),
+            "tpm_status": pool.submit(_get_tpm_status),
+        }
+        windows_results = {}
+        for name, fut in windows_futures.items():
+            try:
+                windows_results[name] = fut.result(timeout=10.0)
+            except Exception as e:
+                log.warning("Windows info sub-collector %s failed: %s", name, e)
+                windows_results[name] = {}
+        pool.shutdown(wait=False)
 
         return {
             "version": version,
@@ -794,20 +810,21 @@ def _get_security_metrics() -> dict[str, Any]:
             return {}
         
         # Run security probes in parallel (each may shell out to PowerShell)
-        with ThreadPoolExecutor(max_workers=4) as pool:
-            security_futures = {
-                "defender": pool.submit(_get_defender_status),
-                "firewall": pool.submit(_get_firewall_status),
-                "updates": pool.submit(_get_windows_update_status),
-                "smart_screen": pool.submit(_get_smartscreen_status),
-            }
-            security_results = {}
-            for name, fut in security_futures.items():
-                try:
-                    security_results[name] = fut.result(timeout=10.0)
-                except Exception as e:
-                    log.warning("Security sub-collector %s failed: %s", name, e)
-                    security_results[name] = {}
+        pool = ThreadPoolExecutor(max_workers=4)
+        security_futures = {
+            "defender": pool.submit(_get_defender_status),
+            "firewall": pool.submit(_get_firewall_status),
+            "updates": pool.submit(_get_windows_update_status),
+            "smart_screen": pool.submit(_get_smartscreen_status),
+        }
+        security_results = {}
+        for name, fut in security_futures.items():
+            try:
+                security_results[name] = fut.result(timeout=10.0)
+            except Exception as e:
+                log.warning("Security sub-collector %s failed: %s", name, e)
+                security_results[name] = {}
+        pool.shutdown(wait=False)
 
         return {
             "defender": security_results["defender"],
@@ -833,30 +850,31 @@ def _get_performance_metrics() -> dict[str, Any]:
             ("browser_cache", _estimate_browser_cache_size),
             ("memory_pressure", _get_memory_pressure),
         ]
-        with ThreadPoolExecutor(max_workers=len(perf_tasks)) as pool:
-            perf_futures = {
-                name: pool.submit(fn) for name, fn in perf_tasks
-            }
-            perf_results = {}
-            for name, fut in perf_futures.items():
-                try:
-                    perf_results[name] = fut.result(timeout=10.0)
-                except Exception as e:
-                    log.warning("Perf sub-collector %s failed: %s", name, e)
-                    perf_results[name] = 0
+        pool = ThreadPoolExecutor(max_workers=len(perf_tasks))
+        perf_futures = {
+            name: pool.submit(fn) for name, fn in perf_tasks
+        }
+        perf_results = {}
+        for name, fut in perf_futures.items():
+            try:
+                perf_results[name] = fut.result(timeout=10.0)
+            except Exception as e:
+                log.warning("Perf sub-collector %s failed: %s", name, e)
+                perf_results[name] = 0
+        pool.shutdown(wait=False)
 
         return {
-            "startupApps": perf_results["startup_apps"],
-            "backgroundProcesses": perf_results["background_procs"],
-            "temporaryFilesSize": perf_results["temp_size"],
-            "recycleBinSize": perf_results["recycle_size"],
-            "browserCacheSize": perf_results["browser_cache"],
+            "startupApps": perf_results["startup_apps"] or 0,
+            "backgroundProcesses": perf_results["background_procs"] or 0,
+            "temporaryFilesSize": perf_results["temp_size"] or 0,
+            "recycleBinSize": perf_results["recycle_size"] or 0,
+            "browserCacheSize": perf_results["browser_cache"] or 0,
             "potentialRecoverable": (
-                perf_results["temp_size"]
-                + perf_results["recycle_size"]
-                + perf_results["browser_cache"]
+                (perf_results["temp_size"] or 0)
+                + (perf_results["recycle_size"] or 0)
+                + (perf_results["browser_cache"] or 0)
             ),
-            "memoryPressure": perf_results["memory_pressure"],
+            "memoryPressure": perf_results["memory_pressure"] or 0.0,
         }
     except Exception as e:
         log.warning("Failed to get performance metrics: %s", e)
@@ -1850,5 +1868,19 @@ __all__ = [
     "dashboard_optimize_execute",
 ]
 
-# Start the live metrics background loop now that all helpers are defined.
-threading.Thread(target=_live_metrics_loop, daemon=True, name="dashboard-live-metrics").start()
+# Start the live metrics background loop lazily to avoid import lock deadlock.
+# The thread is started on first call to dashboard_live instead of at import time.
+_live_metrics_thread: threading.Thread | None = None
+_live_metrics_thread_lock = threading.Lock()
+
+
+def _ensure_live_metrics_thread() -> None:
+    """Start the live metrics background thread if not already running."""
+    global _live_metrics_thread
+    if _live_metrics_thread is None or not _live_metrics_thread.is_alive():
+        with _live_metrics_thread_lock:
+            if _live_metrics_thread is None or not _live_metrics_thread.is_alive():
+                _live_metrics_thread = threading.Thread(
+                    target=_live_metrics_loop, daemon=True, name="dashboard-live-metrics"
+                )
+                _live_metrics_thread.start()

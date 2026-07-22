@@ -115,13 +115,35 @@ def load_settings() -> Settings:
         with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
+        # Map camelCase keys from file to snake_case expected by Settings
+        key_map = {
+            "loggingLevel": "logging_level",
+            "notificationPriority": "notification_priority",
+            "autoUpdates": "auto_updates",
+            "startupWithWindows": "startup_with_windows",
+            "autoOptimizeOnStartup": "auto_optimize_on_startup",
+            "defaultOptimizationOptions": "default_optimization_options",
+            "scanExclusions": "scan_exclusions",
+            "loggingLevel": "logging_level",
+            "enableDebugLogging": "enable_debug_logging",
+            "notificationEnabled": "notification_enabled",
+            "notificationPriority": "notification_priority",
+            "notificationSound": "notification_sound",
+            "createRestorePoints": "create_restore_points",
+            "backupBeforeChanges": "backup_before_changes",
+            "maxHistoryEntries": "max_history_entries",
+        }
+        for old_key, new_key in key_map.items():
+            if old_key in data:
+                data[new_key] = data.pop(old_key)
+
         # Convert enum strings back to enums
         if "theme" in data:
             data["theme"] = Theme(data["theme"])
-        if "loggingLevel" in data:
-            data["loggingLevel"] = LogLevel(data["loggingLevel"])
-        if "notificationPriority" in data:
-            data["notificationPriority"] = NotificationPriority(data["notificationPriority"])
+        if "logging_level" in data:
+            data["logging_level"] = LogLevel(data["logging_level"])
+        if "notification_priority" in data:
+            data["notification_priority"] = NotificationPriority(data["notification_priority"])
 
         return Settings(**data)
     except Exception as e:
@@ -144,8 +166,8 @@ def save_settings(settings: Settings) -> bool:
         # Convert to dict and handle enums
         data = asdict(settings)
         data["theme"] = settings.theme.value
-        data["loggingLevel"] = settings.logging_level.value
-        data["notificationPriority"] = settings.notification_priority.value
+        data["logging_level"] = settings.logging_level.value
+        data["notification_priority"] = settings.notification_priority.value
 
         with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
