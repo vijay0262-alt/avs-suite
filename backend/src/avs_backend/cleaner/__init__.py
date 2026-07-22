@@ -24,31 +24,49 @@ scan / cleaning / history singletons and serialise the responses.
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from typing import Any
 
 from avs_backend.api.registry import register
 from avs_backend.common.errors import INVALID_PARAMS, RpcError
 
-from .cleaners import all_cleaners
-from .cleaning_manager import CleaningManager
-from .history_store import HistoryStore, default_history_path
-from .interfaces import ScanStatus
-from .scan_manager import ScanManager
-
 log = logging.getLogger("avs.cleaner.rpc")
 
 # ---------------------------------------------------------------------
-# Singletons — the manager pair owns thread pools and shared state.
+# Singletons — lazily created on first RPC call to keep import time < 0.1s.
 # ---------------------------------------------------------------------
-_cleaners = all_cleaners()
-_cleaner_by_id = {c.id: c for c in _cleaners}
+_cleaners: list | None = None
+_cleaner_by_id: dict[str, Any] | None = None
+_scan_manager: Any | None = None
+_history: Any | None = None
+_cleaning_manager: Any | None = None
+_singleton_lock = threading.Lock()
 
-_scan_manager = ScanManager(cleaners=_cleaners)
-_history = HistoryStore(default_history_path())
-_cleaning_manager = CleaningManager(
-    scan_manager=_scan_manager, cleaner_by_id=_cleaner_by_id, history_store=_history
-)
+
+def _ensure_singletons() -> None:
+    """Create the scan/cleaning/history singletons on first call."""
+    global _cleaners, _cleaner_by_id, _scan_manager, _history, _cleaning_manager
+    if _cleaners is not None:
+        return
+    with _singleton_lock:
+        if _cleaners is not None:
+            return
+        from .cleaners import all_cleaners
+        from .cleaning_manager import CleaningManager
+        from .history_store import HistoryStore, default_history_path
+        from .scan_manager import ScanManager
+
+        _cleaners = all_cleaners()
+        _cleaner_by_id = {c.id: c for c in _cleaners}
+        _scan_manager = ScanManager(cleaners=_cleaners)
+        _history = HistoryStore(default_history_path())
+        _cleaning_manager = CleaningManager(
+            scan_manager=_scan_manager,
+            cleaner_by_id=_cleaner_by_id,
+            history_store=_history,
+        )
+        log.info("Cleaner singletons created: %d cleaners", len(_cleaners))
 
 
 def _need_str(params: dict[str, Any] | None, key: str) -> str:
@@ -75,6 +93,7 @@ def _optional_str_list(params: dict[str, Any] | None, key: str) -> list[str] | N
 
 @register("cleaner.list")
 def cleaner_list(_params: dict[str, Any] | None) -> list[dict[str, str]]:
+    _ensure_singletons()
     log.info("[RPC] cleaner.list called")
     start = time.monotonic()
     result = _scan_manager.list_cleaners()
@@ -84,6 +103,7 @@ def cleaner_list(_params: dict[str, Any] | None) -> list[dict[str, str]]:
 
 @register("cleaner.scan.start")
 def cleaner_scan_start(params: dict[str, Any] | None) -> dict[str, str]:
+    _ensure_singletons()
     log.info("[RPC] cleaner.scan.start called with params: %s", params)
     start = time.monotonic()
     only = _optional_str_list(params, "only")
@@ -94,6 +114,7 @@ def cleaner_scan_start(params: dict[str, Any] | None) -> dict[str, str]:
 
 @register("cleaner.scan.status")
 def cleaner_scan_status(params: dict[str, Any] | None) -> dict[str, Any]:
+    _ensure_singletons()
     task_id = params.get("taskId") if params else None
     log.debug("[RPC] cleaner.scan.status called for taskId=%s", task_id)
     snap = _scan_manager.snapshot(task_id if isinstance(task_id, str) else None)
@@ -118,6 +139,7 @@ def cleaner_scan_status(params: dict[str, Any] | None) -> dict[str, Any]:
 
 @register("cleaner.scan.cancel")
 def cleaner_scan_cancel(params: dict[str, Any] | None) -> dict[str, bool]:
+    _ensure_singletons()
     task_id = _need_str(params, "taskId")
     log.info("[RPC] cleaner.scan.cancel called for taskId=%s", task_id)
     result = {"cancelled": _scan_manager.cancel(task_id)}
@@ -128,6 +150,7 @@ def cleaner_scan_cancel(params: dict[str, Any] | None) -> dict[str, bool]:
 @register("cleaner.scan.refreshCache")
 def cleaner_scan_refresh_cache(_params: dict[str, Any] | None) -> dict[str, bool]:
     """Invalidate the scan cache so the next scan performs a fresh pass."""
+    _ensure_singletons()
     log.info("[RPC] cleaner.scan.refreshCache called")
     _scan_manager.invalidate_cache()
     return {"refreshed": True}
@@ -135,6 +158,7 @@ def cleaner_scan_refresh_cache(_params: dict[str, Any] | None) -> dict[str, bool
 
 @register("cleaner.scan.results")
 def cleaner_scan_results(params: dict[str, Any] | None) -> dict[str, Any]:
+    _ensure_singletons()
     task_id = _need_str(params, "taskId")
     cleaner_id = _need_str(params, "cleanerId")
     offset = int((params or {}).get("offset", 0) or 0)
@@ -161,6 +185,7 @@ def cleaner_scan_results(params: dict[str, Any] | None) -> dict[str, Any]:
 @register("cleaner.clean.preview")
 def cleaner_clean_preview(params: dict[str, Any] | None) -> dict[str, Any]:
     """Validate scan results and return per-cleaner previews."""
+    _ensure_singletons()
     scan_task_id = _need_str(params, "taskId")
     only = _optional_str_list(params, "only")
     log.info("[RPC] cleaner.clean.preview called for taskId=%s, only=%s", scan_task_id, only)
@@ -199,6 +224,7 @@ def cleaner_clean_preview(params: dict[str, Any] | None) -> dict[str, Any]:
 
 @register("cleaner.clean.execute")
 def cleaner_clean_execute(params: dict[str, Any] | None) -> dict[str, str]:
+    _ensure_singletons()
     scan_task_id = _need_str(params, "taskId")
     only = _optional_str_list(params, "only")
     log.info("[RPC] cleaner.clean.execute called for taskId=%s, only=%s", scan_task_id, only)
@@ -215,6 +241,7 @@ def cleaner_clean_execute(params: dict[str, Any] | None) -> dict[str, str]:
 
 @register("cleaner.clean.status")
 def cleaner_clean_status(params: dict[str, Any] | None) -> dict[str, Any]:
+    _ensure_singletons()
     task_id = params.get("cleaningTaskId") if params else None
     log.debug("[RPC] cleaner.clean.status called for cleaningTaskId=%s", task_id)
     snap = _cleaning_manager.snapshot(task_id if isinstance(task_id, str) else None)
@@ -243,6 +270,7 @@ def cleaner_clean_status(params: dict[str, Any] | None) -> dict[str, Any]:
 @register("cleaner.clean.cancel")
 def cleaner_clean_cancel(params: dict[str, Any] | None) -> dict[str, bool]:
     """Cancel a running cleaning task (co-operative)."""
+    _ensure_singletons()
     cleaning_task_id = _need_str(params, "cleaningTaskId")
     log.info("[RPC] cleaner.clean.cancel called for cleaningTaskId=%s", cleaning_task_id)
     result = {"cancelled": _cleaning_manager.cancel(cleaning_task_id)}
@@ -253,6 +281,7 @@ def cleaner_clean_cancel(params: dict[str, Any] | None) -> dict[str, bool]:
 @register("cleaner.clean.logs")
 def cleaner_clean_logs(params: dict[str, Any] | None) -> dict[str, Any]:
     """Paged, searchable cleaning history."""
+    _ensure_singletons()
     p = params or {}
     query = p.get("query") if isinstance(p.get("query"), str) else None
     category = p.get("category") if isinstance(p.get("category"), str) else None
@@ -279,6 +308,7 @@ def cleaner_clean_logs(params: dict[str, Any] | None) -> dict[str, Any]:
 @register("cleaner.clean.undo")
 def cleaner_clean_undo(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Undo the last cleaning operation by restoring from Recycle Bin."""
+    _ensure_singletons()
     log.info("[RPC] cleaner.clean.undo called")
     start = time.monotonic()
     result = _cleaning_manager.undo_last_clean()
@@ -287,8 +317,8 @@ def cleaner_clean_undo(_params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 __all__ = [
+    "_ensure_singletons",
     "_scan_manager",
     "_cleaning_manager",
     "_history",
-    "ScanStatus",
 ]

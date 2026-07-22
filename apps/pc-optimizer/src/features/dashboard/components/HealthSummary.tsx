@@ -1,3 +1,4 @@
+import React from 'react';
 import { Card } from '@avs/ui';
 import {
   CheckCircleIcon,
@@ -11,7 +12,7 @@ export interface HealthSummaryProps {
   summary: HealthSummaryItem[] | undefined;
 }
 
-export function HealthSummary({ summary }: HealthSummaryProps) {
+export const HealthSummary = React.memo(function HealthSummary({ summary }: HealthSummaryProps) {
   return (
     <Card title="Your PC Summary">
       <ul className="space-y-3" role="list" aria-label="PC health summary">
@@ -24,7 +25,7 @@ export function HealthSummary({ summary }: HealthSummaryProps) {
       </ul>
     </Card>
   );
-}
+});
 
 function iconForSeverity(severity: HealthSummaryItem['severity']) {
   const className = `h-5 w-5 ${severityIconColor(severity)}`;

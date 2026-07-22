@@ -1,3 +1,4 @@
+import React from 'react';
 import { Card } from '@avs/ui';
 import {
   ExclamationTriangleIcon,
@@ -23,7 +24,7 @@ const CATEGORY_LABELS: Record<HealthCategory, string> = {
 
 const CATEGORY_ORDER: HealthCategory[] = ['storage', 'startup', 'privacy', 'performance', 'security', 'windows'];
 
-export function IssuesList({ issues, onIssueClick }: IssuesListProps) {
+export const IssuesList = React.memo(function IssuesList({ issues, onIssueClick }: IssuesListProps) {
   if (!issues || issues.length === 0) {
     return (
       <Card title="Issues Found">
@@ -80,7 +81,7 @@ export function IssuesList({ issues, onIssueClick }: IssuesListProps) {
       </div>
     </Card>
   );
-}
+});
 
 function iconForSeverity(severity: HealthIssue['severity']) {
   if (severity === 'high') {

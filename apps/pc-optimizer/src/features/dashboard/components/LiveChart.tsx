@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Card } from '@avs/ui';
 
 export interface LiveChartProps {
@@ -10,7 +10,7 @@ export interface LiveChartProps {
   height?: number;
 }
 
-export function LiveChart({ title, data, maxDataPoints, color, unit, height = 120 }: LiveChartProps) {
+export const LiveChart = React.memo(function LiveChart({ title, data, maxDataPoints, color, unit, height = 120 }: LiveChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
 
@@ -167,4 +167,4 @@ export function LiveChart({ title, data, maxDataPoints, color, unit, height = 12
       </div>
     </Card>
   );
-}
+});

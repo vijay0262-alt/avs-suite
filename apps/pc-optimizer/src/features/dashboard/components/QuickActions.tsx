@@ -1,3 +1,4 @@
+import React from 'react';
 import { Card } from '@avs/ui';
 import { CpuChipIcon, ServerIcon, ShieldCheckIcon, DocumentTextIcon, ChartBarIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
@@ -6,7 +7,7 @@ export interface QuickActionsProps {
   onNavigate: (path: string) => void;
 }
 
-export function QuickActions({ onNavigate }: QuickActionsProps) {
+export const QuickActions = React.memo(function QuickActions({ onNavigate }: QuickActionsProps) {
   const navigate = useNavigate();
 
   const actions = [
@@ -99,4 +100,4 @@ export function QuickActions({ onNavigate }: QuickActionsProps) {
       </div>
     </Card>
   );
-}
+});

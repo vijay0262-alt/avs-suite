@@ -1055,11 +1055,42 @@ def _get_background_processes_count() -> int:
         return 0
 
 
+def _scan_dir_fast(root: str, max_files: int = 2000) -> tuple[int, int]:
+    """Recursively scan a directory tree using os.scandir.
+
+    Returns (total_bytes, file_count).  Uses os.scandir instead of os.walk
+    because DirEntry.stat() is cached by the OS and avoids a second stat
+    syscall per file.  Stops after *max_files* files to bound runtime.
+    """
+    total = 0
+    count = 0
+    try:
+        with os.scandir(root) as it:
+            for entry in it:
+                if count >= max_files:
+                    break
+                try:
+                    if entry.is_dir(follow_symlinks=False):
+                        sub_total, sub_count = _scan_dir_fast(entry.path, max_files - count)
+                        total += sub_total
+                        count += sub_count
+                    elif entry.is_file(follow_symlinks=False):
+                        total += entry.stat().st_size
+                        count += 1
+                except (OSError, PermissionError):
+                    continue
+    except (OSError, PermissionError):
+        pass
+    return total, count
+
+
+@_ttl_cache(60.0)
 def _get_temp_files_size() -> int:
-    """Get total size of temporary files (user temp + Windows temp)."""
+    """Get total size of temporary files (user temp + Windows temp).
+
+    Cached for 60 seconds — temp file size doesn't change rapidly.
+    """
     total_size = 0
-    max_files = 10000  # Limit to prevent slow scans
-    file_count = 0
     temp_dirs = [
         os.environ.get("TEMP", ""),
         os.path.expandvars(r"%SystemRoot%\Temp"),
@@ -1067,54 +1098,30 @@ def _get_temp_files_size() -> int:
     for temp_dir in temp_dirs:
         if not temp_dir or not os.path.exists(temp_dir):
             continue
-        stop = False
-        for root, _, files in os.walk(temp_dir):
-            if stop:
-                break
-            for file in files:
-                if file_count >= max_files:
-                    stop = True
-                    break
-                try:
-                    file_path = os.path.join(root, file)
-                    total_size += os.path.getsize(file_path)
-                    file_count += 1
-                except (OSError, PermissionError):
-                    continue
+        size, _ = _scan_dir_fast(temp_dir, max_files=2000)
+        total_size += size
     return total_size
 
 
+@_ttl_cache(60.0)
 def _get_recycle_bin_size() -> int:
-    """Get total size of Recycle Bin."""
+    """Get total size of Recycle Bin. Cached for 60 seconds."""
     try:
         recycle_bin = os.path.join(os.environ.get("SystemDrive", "C:"), "$Recycle.Bin")
         if not os.path.exists(recycle_bin):
             return 0
-
-        total_size = 0
-        max_files = 10000
-        file_count = 0
-        stop = False
-        for root, _, files in os.walk(recycle_bin):
-            if stop:
-                break
-            for file in files:
-                if file_count >= max_files:
-                    stop = True
-                    break
-                try:
-                    file_path = os.path.join(root, file)
-                    total_size += os.path.getsize(file_path)
-                    file_count += 1
-                except (OSError, PermissionError):
-                    continue
-        return total_size
+        total, _ = _scan_dir_fast(recycle_bin, max_files=2000)
+        return total
     except Exception:
         return 0
 
 
+@_ttl_cache(60.0)
 def _estimate_browser_cache_size() -> int:
-    """Estimate browser cache size for all supported browsers."""
+    """Estimate browser cache size for all supported browsers.
+
+    Cached for 60 seconds — browser cache doesn't change rapidly.
+    """
     try:
         total_size = 0
         browser_cache_dirs = [
@@ -1131,22 +1138,8 @@ def _estimate_browser_cache_size() -> int:
 
         for cache_dir in browser_cache_dirs:
             if os.path.exists(cache_dir):
-                file_count = 0
-                max_files = 10000
-                stop = False
-                for root, _, files in os.walk(cache_dir):
-                    if stop:
-                        break
-                    for file in files:
-                        if file_count >= max_files:
-                            stop = True
-                            break
-                        try:
-                            file_path = os.path.join(root, file)
-                            total_size += os.path.getsize(file_path)
-                            file_count += 1
-                        except (OSError, PermissionError):
-                            continue
+                size, _ = _scan_dir_fast(cache_dir, max_files=2000)
+                total_size += size
         return total_size
     except Exception:
         return 0
@@ -1367,10 +1360,10 @@ def _get_third_party_antivirus() -> str | None:
 
 @_ttl_cache(60.0)
 def _get_defender_status() -> dict[str, Any]:
-    """Get Windows Defender status via Get-MpComputerStatus.
+    """Get Windows Defender status via Windows Registry.
 
-    If a third-party antivirus is active, Defender is expected to be
-    disabled and should not be flagged as an issue.
+    Uses winreg instead of PowerShell for <1ms response time.
+    Falls back to PowerShell if registry keys are not found.
     """
     if os.name != "nt":
         return {}
@@ -1378,13 +1371,35 @@ def _get_defender_status() -> dict[str, Any]:
     # Check if a third-party AV is active first
     third_party = _get_third_party_antivirus()
     if third_party:
-        # Third-party AV is protecting the system — Defender being off is normal
         return {
             "enabled": True,
             "realTimeProtection": True,
             "thirdPartyAV": third_party,
         }
 
+    # Try registry first — much faster than PowerShell
+    try:
+        import winreg
+        # Defender AntiSpywareEnabled: 0=disabled, 1=enabled
+        with winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\Microsoft\Windows Defender\Real-Time Protection",
+        ) as key:
+            rtp_value, _ = winreg.QueryValueEx(key, "DisableRealtimeMonitoring")
+            rtp = rtp_value == 0  # 0 means real-time protection is ON
+
+        with winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\Microsoft\Windows Defender",
+        ) as key:
+            av_value, _ = winreg.QueryValueEx(key, "DisableAntiSpyware")
+            enabled = av_value == 0  # 0 means Defender is enabled
+
+        return {"enabled": enabled, "realTimeProtection": rtp, "thirdPartyAV": None}
+    except (FileNotFoundError, OSError):
+        pass
+
+    # Fallback to PowerShell if registry keys are not found
     out = _run_powershell(
         "$s = Get-MpComputerStatus; "
         "Write-Output \"$($s.AntivirusEnabled),$($s.RealTimeProtectionEnabled)\"",
@@ -1400,21 +1415,49 @@ def _get_defender_status() -> dict[str, Any]:
 
 @_ttl_cache(60.0)
 def _get_firewall_status() -> dict[str, Any]:
-    """Get Windows Firewall status (enabled if any profile is on).
+    """Get Windows Firewall status via Windows Registry.
 
-    If a third-party antivirus/security suite is active, it may manage
-    the firewall instead of Windows Firewall, so we don't flag it as
-    disabled in that case.
+    Uses winreg instead of PowerShell for <1ms response time.
+    Checks DomainProfile, StandardProfile, and PublicProfile EnableFirewall keys.
     """
     if os.name != "nt":
         return {}
+
+    # Try registry first
+    try:
+        import winreg
+        profiles = [
+            r"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\DomainProfile",
+            r"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\StandardProfile",
+            r"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\PublicProfile",
+        ]
+        any_enabled = False
+        for profile_path in profiles:
+            try:
+                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, profile_path) as key:
+                    value, _ = winreg.QueryValueEx(key, "EnableFirewall")
+                    if value == 1:
+                        any_enabled = True
+                        break
+            except (FileNotFoundError, OSError):
+                continue
+
+        if not any_enabled:
+            # Check if 3rd-party AV is managing firewall
+            third_party = _get_third_party_antivirus()
+            if third_party:
+                return {"enabled": True, "thirdPartyAV": third_party}
+        return {"enabled": any_enabled}
+    except (OSError, Exception):
+        pass
+
+    # Fallback to PowerShell
     out = _run_powershell(
         "(Get-NetFirewallProfile | Where-Object { $_.Enabled -eq 'True' } | "
         "Measure-Object).Count",
         timeout=1.5,
     )
     if out is None:
-        # If we can't determine, check if 3rd-party AV is active
         third_party = _get_third_party_antivirus()
         if third_party:
             return {"enabled": True, "thirdPartyAV": third_party}
@@ -1422,7 +1465,6 @@ def _get_firewall_status() -> dict[str, Any]:
     try:
         enabled = int(out) > 0
         if not enabled:
-            # Windows Firewall is off — check if 3rd-party AV is managing it
             third_party = _get_third_party_antivirus()
             if third_party:
                 return {"enabled": True, "thirdPartyAV": third_party}
@@ -1478,18 +1520,19 @@ def _get_last_update_date() -> str | None:
 
 @_ttl_cache(300.0)
 def _get_smartscreen_status() -> bool:
-    """Get Windows SmartScreen status from the registry."""
+    """Get Windows SmartScreen status from the registry via winreg."""
     if os.name != "nt":
         return False
-    out = _run_powershell(
-        "(Get-ItemProperty -Path "
-        "'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer' "
-        "-Name SmartScreenEnabled -ErrorAction SilentlyContinue).SmartScreenEnabled",
-        timeout=1.5,
-    )
-    if not out:
+    try:
+        import winreg
+        with winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer",
+        ) as key:
+            value, _ = winreg.QueryValueEx(key, "SmartScreenEnabled")
+            return str(value).lower() in ("requireadmin", "prompt", "warn", "on")
+    except (FileNotFoundError, OSError):
         return False
-    return out.strip().lower() in ("requireadmin", "prompt", "warn", "on")
 
 
 def _get_thumbnail_cache_size() -> int:

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card } from '@avs/ui';
 import {
   ShieldCheckIcon,
@@ -26,7 +26,7 @@ interface SecurityItemProps {
   onAction?: () => void;
 }
 
-function SecurityItem({ label, description, status, icon: Icon, actionLabel, onAction }: SecurityItemProps) {
+const SecurityItem = React.memo(function SecurityItem({ label, description, status, icon: Icon, actionLabel, onAction }: SecurityItemProps) {
   const statusConfig = {
     active: { color: 'text-semantic-success', bg: 'bg-semantic-success/10', icon: CheckCircleIcon, text: 'Active' },
     inactive: { color: 'text-semantic-danger', bg: 'bg-semantic-danger/10', icon: XCircleIcon, text: 'Inactive' },
@@ -61,7 +61,7 @@ function SecurityItem({ label, description, status, icon: Icon, actionLabel, onA
       </div>
     </div>
   );
-}
+});
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';

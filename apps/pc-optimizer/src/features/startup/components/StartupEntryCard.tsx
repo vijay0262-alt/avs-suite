@@ -2,6 +2,7 @@
  * StartupEntryCard - Display a single startup entry with controls
  */
 
+import React from 'react';
 import { Button } from '@avs/ui';
 import { ShieldCheckIcon, ClockIcon } from '@heroicons/react/24/outline';
 import type { StartupEntry } from '../startup.types';
@@ -13,7 +14,7 @@ interface StartupEntryCardProps {
   loading?: boolean;
 }
 
-export function StartupEntryCard({ entry, onDisable, onEnable, loading }: StartupEntryCardProps) {
+export const StartupEntryCard = React.memo(function StartupEntryCard({ entry, onDisable, onEnable, loading }: StartupEntryCardProps) {
   const getImpactColor = (impact: string) => {
     switch (impact) {
       case 'high': return 'text-red-500';
@@ -94,4 +95,4 @@ export function StartupEntryCard({ entry, onDisable, onEnable, loading }: Startu
       </div>
     </div>
   );
-}
+});

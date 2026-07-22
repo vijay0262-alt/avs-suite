@@ -1,3 +1,4 @@
+import React from 'react';
 import { Card } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
 import { HEALTH_STATUS_CONFIG } from '../dashboard.types';
@@ -9,7 +10,7 @@ export interface HealthScoreCardProps {
   error?: string | null;
 }
 
-export function HealthScoreCard({ healthScore, loading, error }: HealthScoreCardProps) {
+export const HealthScoreCard = React.memo(function HealthScoreCard({ healthScore, loading, error }: HealthScoreCardProps) {
   if (loading && !healthScore) {
     return (
       <Card title="Health Score">
@@ -109,14 +110,14 @@ export function HealthScoreCard({ healthScore, loading, error }: HealthScoreCard
       </div>
     </Card>
   );
-}
+});
 
-function Stat({ label, value }: { label: string; value: string }) {
+const Stat = React.memo(function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg bg-surface-muted p-3 text-center">
       <div className="text-lg font-bold text-text-primary tabular-nums">{value}</div>
       <div className="text-xs text-text-muted">{label}</div>
     </div>
   );
-}
+});
 

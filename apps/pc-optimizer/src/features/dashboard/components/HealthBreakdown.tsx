@@ -1,3 +1,4 @@
+import React from 'react';
 import { Card, Button } from '@avs/ui';
 import { ChevronRightIcon } from '@heroicons/react/24/outline';
 import type { HealthCategoryDetail } from '../dashboard.types';
@@ -7,7 +8,7 @@ export interface HealthBreakdownProps {
   onAction: (path: string) => void;
 }
 
-export function HealthBreakdown({ categories, onAction }: HealthBreakdownProps) {
+export const HealthBreakdown = React.memo(function HealthBreakdown({ categories, onAction }: HealthBreakdownProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {categories?.map((category) => (
@@ -43,7 +44,7 @@ export function HealthBreakdown({ categories, onAction }: HealthBreakdownProps) 
       ))}
     </div>
   );
-}
+});
 
 function severityTextColor(severity: 'success' | 'warning' | 'danger') {
   switch (severity) {

@@ -1,3 +1,4 @@
+import React from 'react';
 import { Button, Card } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
 import { SparklesIcon, CheckCircleIcon, ExclamationTriangleIcon, ClockIcon } from '@heroicons/react/24/outline';
@@ -17,7 +18,7 @@ export interface OneClickOptimizeProps {
   step: 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
 }
 
-export function OneClickOptimize({
+export const OneClickOptimize = React.memo(function OneClickOptimize({
   preview,
   previewLoading,
   previewError,
@@ -239,9 +240,9 @@ export function OneClickOptimize({
   }
 
   return null;
-}
+});
 
-function StatCard({
+const StatCard = React.memo(function StatCard({
   label,
   value,
   icon: Icon,
@@ -259,4 +260,4 @@ function StatCard({
       </div>
     </div>
   );
-}
+});

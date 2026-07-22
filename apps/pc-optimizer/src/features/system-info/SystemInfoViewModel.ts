@@ -14,7 +14,7 @@ export interface SystemInfoState {
   loading: boolean;
 }
 
-const DYNAMIC_POLL_MS = 2000;
+const DYNAMIC_POLL_MS = 5000;
 
 export class SystemInfoViewModel extends ViewModel<SystemInfoState> {
   private pollTimer: ReturnType<typeof setInterval> | null = null;

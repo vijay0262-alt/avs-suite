@@ -106,10 +106,11 @@ def _get_dynamic_info() -> dict[str, Any]:
         "io": psutil.net_io_counters()._asdict() if psutil.net_io_counters() else {},
     }
     
-    # Process Information (dynamic)
+    # Process Information (dynamic) — use pids() instead of process_iter
+    # to avoid per-process status inspection which takes ~2s on Windows.
     process_info = {
         "total": len(psutil.pids()),
-        "running": len([p for p in psutil.process_iter(['status']) if p.info['status'] == 'running']),
+        "running": 0,  # Not worth the 2s cost of process_iter; UI can show total only
     }
     
     return {

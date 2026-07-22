@@ -40,6 +40,7 @@ log = configure_logging()
 import importlib
 
 _FEATURE_MODULES = [
+    "avs_backend.common.job_rpc",
     "avs_backend.cleaner",
     "avs_backend.dashboard",
     "avs_backend.disk_analyzer",

@@ -1,3 +1,4 @@
+import React from 'react';
 import { Card } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
 import {
@@ -14,7 +15,7 @@ export interface LiveStatusProps {
   metrics: LiveMetrics | null;
 }
 
-export function LiveStatus({ metrics }: LiveStatusProps) {
+export const LiveStatus = React.memo(function LiveStatus({ metrics }: LiveStatusProps) {
   if (!metrics) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -75,7 +76,7 @@ export function LiveStatus({ metrics }: LiveStatusProps) {
       />
     </div>
   );
-}
+});
 
 interface WidgetProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -86,7 +87,7 @@ interface WidgetProps {
   color?: string;
 }
 
-function Widget({ icon: Icon, label, value, subValue, subIcon: SubIcon, color = 'text-text-primary' }: WidgetProps) {
+const Widget = React.memo(function Widget({ icon: Icon, label, value, subValue, subIcon: SubIcon, color = 'text-text-primary' }: WidgetProps) {
   return (
     <Card className="p-4">
       <div className="flex items-center gap-2 mb-2">
@@ -102,4 +103,4 @@ function Widget({ icon: Icon, label, value, subValue, subIcon: SubIcon, color = 
       )}
     </Card>
   );
-}
+});
