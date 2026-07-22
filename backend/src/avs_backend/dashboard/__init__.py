@@ -23,6 +23,7 @@ from typing import Any, Callable
 import psutil
 
 from avs_backend.api.registry import register
+from avs_backend.performance.memory_optimizer import get_memory_info, optimize_memory
 
 log = logging.getLogger("avs.dashboard")
 
@@ -1073,7 +1074,6 @@ def _generate_suggestions(metrics: dict[str, Any], scores: dict[str, float]) -> 
 def _get_memory_pressure() -> float:
     """Get memory pressure from Memory Optimizer."""
     try:
-        from avs_backend.performance.memory_optimizer import get_memory_info
         mem_info = get_memory_info()
         return mem_info.memory_pressure
     except Exception:
@@ -1856,7 +1856,6 @@ def _trim_memory() -> None:
     """Trim working sets of inactive processes (Windows only)."""
     if os.name == "nt":
         try:
-            from avs_backend.performance.memory_optimizer import optimize_memory
             from threading import Event
 
             cancel = Event()
