@@ -109,6 +109,14 @@ def _collect_metrics() -> dict[str, Any]:
         ("performance", _get_performance_metrics),
     ]
     results: dict[str, Any] = {}
+    _DEFAULTS: dict[str, Any] = {
+        "cpu": {"usage": 0, "frequency": 0, "logicalProcessors": 0, "physicalProcessors": 0, "processes": 0, "threads": 0, "temperature": None},
+        "memory": {"total": 0, "used": 0, "available": 0, "usage": 0, "cached": 0, "swapTotal": 0, "swapUsed": 0, "swapUsage": 0},
+        "storage": [],
+        "windows": {},
+        "security": {"defender": {}, "firewall": {}, "updates": {}, "realTimeProtection": False, "smartScreen": False},
+        "performance": {"startupApps": 0, "backgroundProcesses": 0, "temporaryFilesSize": 0, "recycleBinSize": 0, "browserCacheSize": 0, "potentialRecoverable": 0, "memoryPressure": 0.0},
+    }
     with ThreadPoolExecutor(max_workers=len(collectors)) as pool:
         futures = {pool.submit(fn): name for name, fn in collectors}
         try:
@@ -118,14 +126,14 @@ def _collect_metrics() -> dict[str, Any]:
                     results[name] = fut.result()
                 except Exception as e:
                     log.warning("Collector %s failed: %s", name, e)
-                    results[name] = {}
+                    results[name] = _DEFAULTS.get(name, {})
         except FuturesTimeoutError:
             log.warning("Some dashboard collectors timed out after 15s")
         # Fill in any missing results (timed out futures)
         for fut, name in futures.items():
             if name not in results:
                 log.warning("Collector %s timed out", name)
-                results[name] = {}
+                results[name] = _DEFAULTS.get(name, {})
                 fut.cancel()
     results["capturedAt"] = _now_iso()
     return results
@@ -267,17 +275,17 @@ def dashboard_live(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Return the latest cached live snapshot (<100ms)."""
     with _live_metrics_lock:
         snapshot = _live_metrics.copy()
-    if not IS_WINDOWS:
-        try:
-            return _get_stub_metrics()
-        except NameError:
-            return {}
     if snapshot:
         return snapshot
-    try:
-        return _get_stub_metrics()
-    except NameError:
-        return {}
+    # Return a minimal valid structure so the frontend doesn't crash
+    # while the background loop warms up the first snapshot.
+    return {
+        "cpu": {"usage": 0, "frequency": 0, "logicalProcessors": 0, "physicalProcessors": 0, "processes": 0, "threads": 0, "temperature": None},
+        "memory": {"total": 0, "used": 0, "available": 0, "usage": 0, "cached": 0, "swapTotal": 0, "swapUsed": 0, "swapUsage": 0},
+        "storage": [],
+        "network": {"uploadSpeed": 0.0, "downloadSpeed": 0.0, "totalBytesSent": 0, "totalBytesReceived": 0},
+        "capturedAt": _now_iso(),
+    }
 
 
 @register("dashboard.metrics")
@@ -287,11 +295,23 @@ def dashboard_metrics(_params: dict[str, Any] | None) -> dict[str, Any]:
         try:
             return _get_stub_metrics()
         except NameError:
-            return {}
-    try:
-        return _collect_metrics()
-    except NameError:
-        return {}
+            pass
+    else:
+        try:
+            return _collect_metrics()
+        except NameError:
+            pass
+    # Fallback: return a minimal valid structure so the frontend doesn't
+    # crash while the module is still importing in a background thread.
+    return {
+        "cpu": {"usage": 0, "frequency": 0, "logicalProcessors": 0, "physicalProcessors": 0, "processes": 0, "threads": 0, "temperature": None},
+        "memory": {"total": 0, "used": 0, "available": 0, "usage": 0, "cached": 0, "swapTotal": 0, "swapUsed": 0, "swapUsage": 0},
+        "storage": [],
+        "windows": {},
+        "security": {"defender": {}, "firewall": {}, "updates": {}, "realTimeProtection": False, "smartScreen": False},
+        "performance": {"startupApps": 0, "backgroundProcesses": 0, "temporaryFilesSize": 0, "recycleBinSize": 0, "browserCacheSize": 0, "potentialRecoverable": 0, "memoryPressure": 0.0},
+        "capturedAt": _now_iso(),
+    }
 
 
 @register("dashboard.refreshCache")
@@ -366,7 +386,7 @@ def dashboard_health(_params: dict[str, Any] | None) -> dict[str, Any]:
             }),
             "capturedAt": _now_iso(),
         }
-    except NameError:
+    except (NameError, KeyError, TypeError):
         return {}
 
 
@@ -1105,9 +1125,13 @@ def _estimate_browser_cache_size() -> int:
             if os.path.exists(cache_dir):
                 file_count = 0
                 max_files = 10000
+                stop = False
                 for root, _, files in os.walk(cache_dir):
+                    if stop:
+                        break
                     for file in files:
                         if file_count >= max_files:
+                            stop = True
                             break
                         try:
                             file_path = os.path.join(root, file)

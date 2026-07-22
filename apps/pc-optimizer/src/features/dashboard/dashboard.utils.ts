@@ -454,16 +454,25 @@ function buildCategoryDetails(
  * All dashboard components read from this HealthSnapshot.
  * No predictions. No estimates. Every value is measured from real system state.
  */
-export function calculateHealthScore(metrics: DashboardMetrics, privacyRisks: number | null = null): HealthSnapshot {
+export function calculateHealthScore(metrics: DashboardMetrics | null | undefined, privacyRisks: number | null = null): HealthSnapshot {
+  // Guard against empty/partial metrics (e.g. backend still loading)
+  const cpu = metrics?.cpu ?? { usage: 0, frequency: 0, logicalProcessors: 0, physicalProcessors: 0, processes: 0, threads: 0, temperature: null };
+  const memory = metrics?.memory ?? { total: 0, used: 0, available: 0, usage: 0, cached: 0, swapTotal: 0, swapUsed: 0, swapUsage: 0 };
+  const storage = metrics?.storage ?? [];
+  const windows = metrics?.windows ?? { version: '', build: '', uptime: 0, isAdministrator: false, powerMode: 'unknown', battery: null, secureBoot: false, tpmStatus: false };
+  const security = metrics?.security ?? { defender: { enabled: false, realTimeProtection: false }, firewall: { enabled: false }, updates: { pendingUpdates: 0, lastUpdateDate: null }, realTimeProtection: false, smartScreen: false };
+  const performance = metrics?.performance ?? { startupApps: 0, backgroundProcesses: 0, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 };
+  const capturedAt = metrics?.capturedAt ?? new Date().toISOString();
+
   // Storage score: based on drive usage + recoverable junk
-  const driveUsageScore = average(metrics.storage.map((d) => scoreFromUsage(d.usage)));
-  const junkPenalty = metrics.performance.potentialRecoverable > 0
-    ? Math.min(30, Math.log10(metrics.performance.potentialRecoverable / (1024 * 1024) + 1) * 5)
+  const driveUsageScore = average(storage.map((d) => scoreFromUsage(d.usage)));
+  const junkPenalty = performance.potentialRecoverable > 0
+    ? Math.min(30, Math.log10(performance.potentialRecoverable / (1024 * 1024) + 1) * 5)
     : 0;
   const storageScore = clamp(driveUsageScore - junkPenalty);
 
   // Startup score: penalty per enabled startup app
-  const startupPenalty = Math.min(50, metrics.performance.startupApps * 5);
+  const startupPenalty = Math.min(50, performance.startupApps * 5);
   const startupScore = clamp(100 - startupPenalty);
 
   // Privacy score: penalty per privacy risk detected
@@ -471,24 +480,24 @@ export function calculateHealthScore(metrics: DashboardMetrics, privacyRisks: nu
   const privacyScore = clamp(100 - privacy * 10);
 
   // Performance score: based on CPU and memory usage
-  const cpuScore = scoreFromUsage(metrics.cpu.usage);
-  const memoryScore = scoreFromUsage(metrics.memory.usage);
+  const cpuScore = scoreFromUsage(cpu.usage);
+  const memoryScore = scoreFromUsage(memory.usage);
   const performanceScore = clamp((cpuScore + memoryScore) / 2);
 
   // Security score: binary penalties for disabled protections
   let securityScore = 100;
-  const thirdPartyAV = metrics.security.defender.thirdPartyAV || metrics.security.firewall.thirdPartyAV;
+  const thirdPartyAV = security.defender.thirdPartyAV || security.firewall.thirdPartyAV;
   if (!thirdPartyAV) {
-    if (!metrics.security.defender.enabled) securityScore -= 30;
-    if (!metrics.security.defender.realTimeProtection) securityScore -= 20;
-    if (!metrics.security.firewall.enabled) securityScore -= 25;
+    if (!security.defender.enabled) securityScore -= 30;
+    if (!security.defender.realTimeProtection) securityScore -= 20;
+    if (!security.firewall.enabled) securityScore -= 25;
   }
-  if (!metrics.security.smartScreen) securityScore -= 10;
-  if (metrics.security.updates.pendingUpdates > 0) securityScore -= 15;
+  if (!security.smartScreen) securityScore -= 10;
+  if (security.updates.pendingUpdates > 0) securityScore -= 15;
   securityScore = clamp(securityScore);
 
   // Windows health score: uptime, system integrity
-  const uptimeDays = metrics.windows.uptime / 86400;
+  const uptimeDays = windows.uptime / 86400;
   const windowsScore = clamp(uptimeDays > 30 ? 70 : 100);
 
   // Weighted overall score
@@ -510,9 +519,9 @@ export function calculateHealthScore(metrics: DashboardMetrics, privacyRisks: nu
     windowsScore * weights.windows
   );
 
-  const issues = buildAllIssues(metrics, privacyRisks);
+  const issues = buildAllIssues({ cpu, memory, storage, windows, security, performance, capturedAt } as DashboardMetrics, privacyRisks);
   const summary = buildSummary(issues);
-  const categoryDetails = buildCategoryDetails(metrics, privacyRisks, {
+  const categoryDetails = buildCategoryDetails({ cpu, memory, storage, windows, security, performance, capturedAt } as DashboardMetrics, privacyRisks, {
     storage: Math.round(storageScore),
     startup: Math.round(startupScore),
     privacy: Math.round(privacyScore),
@@ -522,12 +531,12 @@ export function calculateHealthScore(metrics: DashboardMetrics, privacyRisks: nu
   });
 
   const measuredRecoverableSpace =
-    metrics.performance.temporaryFilesSize +
-    metrics.performance.recycleBinSize +
-    metrics.performance.browserCacheSize;
+    performance.temporaryFilesSize +
+    performance.recycleBinSize +
+    performance.browserCacheSize;
 
   return {
-    timestamp: metrics.capturedAt,
+    timestamp: capturedAt,
     overallScore: Math.round(overallScore),
     categoryScores: {
       storage: Math.round(storageScore),
@@ -542,9 +551,9 @@ export function calculateHealthScore(metrics: DashboardMetrics, privacyRisks: nu
     summary,
     categoryDetails,
     measuredRecoverableSpace,
-    startupAppsEnabled: metrics.performance.startupApps,
-    tempFilesSize: metrics.performance.temporaryFilesSize,
-    browserCacheSize: metrics.performance.browserCacheSize,
-    recycleBinSize: metrics.performance.recycleBinSize,
+    startupAppsEnabled: performance.startupApps,
+    tempFilesSize: performance.temporaryFilesSize,
+    browserCacheSize: performance.browserCacheSize,
+    recycleBinSize: performance.recycleBinSize,
   };
 }

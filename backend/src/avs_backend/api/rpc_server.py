@@ -94,10 +94,15 @@ def wait_for_modules(timeout: float = 120.0) -> bool:
     return True
 
 
-# Start all imports in background threads (sequential, but non-blocking
-# to the main thread which handles stdin).
-for _mod in _FEATURE_MODULES:
-    threading.Thread(target=_import_module, args=(_mod,), daemon=True).start()
+# Start imports in a single background thread. Python's import lock
+# serializes imports anyway, so parallel threads just add GIL contention.
+# A single thread keeps the main read loop responsive while importing.
+def _import_all_modules() -> None:
+    for _mod in _FEATURE_MODULES:
+        _import_module(_mod)
+
+
+threading.Thread(target=_import_all_modules, daemon=True, name="module-loader").start()
 
 
 # Register a simple ping handler immediately so the Electron bridge can

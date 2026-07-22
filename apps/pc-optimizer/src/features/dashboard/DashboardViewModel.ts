@@ -205,6 +205,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     } catch (err) {
       this.setState({
         metricsLoading: false,
+        healthScoreLoading: false,
         metricsError: err instanceof Error ? err.message : String(err),
       });
     }
