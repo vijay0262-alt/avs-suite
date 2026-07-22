@@ -114,7 +114,7 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
       return new Promise<T>((resolve, reject) => {
         const id = nextId++;
         // Give optimize/clean/analyze operations more time since they do real work
-        const isLongOperation = method.includes('optimize') || method.includes('clean') || method.includes('execute') || method.includes('analyze') || method.includes('scan') || method.includes('dashboard.metrics') || method.includes('dashboard.health');
+        const isLongOperation = method.includes('optimize') || method.includes('clean') || method.includes('execute') || method.includes('analyze') || method.includes('scan');
         const timeoutMs = customTimeoutMs ?? (isLongOperation ? 120000 : 30000);
         const timeout = setTimeout(() => {
           pending.delete(id);

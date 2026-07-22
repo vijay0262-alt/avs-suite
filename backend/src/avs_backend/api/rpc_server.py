@@ -178,6 +178,18 @@ def _dispatch(request: dict[str, Any]) -> None:
 
 
 def main() -> None:
+    import atexit
+
+    def _cleanup() -> None:
+        _dispatch_pool.shutdown(wait=False, cancel_futures=True)
+        try:
+            from avs_backend.common.job_manager import get_job_manager
+            get_job_manager().shutdown()
+        except Exception:
+            pass
+
+    atexit.register(_cleanup)
+
     log.info("avs-backend ready; %d method(s) registered (%d modules still loading)",
              len(registry.all_methods()),
              len(_FEATURE_MODULES) - len(_modules_loaded))

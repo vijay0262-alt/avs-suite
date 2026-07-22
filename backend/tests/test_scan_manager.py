@@ -138,7 +138,12 @@ def test_rpc_handlers_end_to_end(tmp_path: Path, monkeypatch) -> None:
 
     from avs_backend import cleaner as cleaner_mod
 
-    fake_mgr = ScanManager([_Cleaner("fake", root)])
+    fake_cleaners = [_Cleaner("fake", root)]
+    fake_mgr = ScanManager(fake_cleaners)
+    # With lazy-loading, _ensure_singletons() checks if _cleaners is not None.
+    # Set all singletons so the fake manager is used without re-creating.
+    monkeypatch.setattr(cleaner_mod, "_cleaners", fake_cleaners)
+    monkeypatch.setattr(cleaner_mod, "_cleaner_by_id", {c.id: c for c in fake_cleaners})
     monkeypatch.setattr(cleaner_mod, "_scan_manager", fake_mgr)
 
     try:

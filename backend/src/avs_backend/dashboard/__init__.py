@@ -328,64 +328,110 @@ def dashboard_refresh_cache(_params: dict[str, Any] | None) -> dict[str, bool]:
         _collect_metrics.cache_clear()  # type: ignore[attr-defined]
     except (NameError, AttributeError):
         pass
+    try:
+        _calculate_health_score.cache_clear()  # type: ignore[attr-defined]
+    except (NameError, AttributeError):
+        pass
     return {"refreshed": True}
+
+
+_last_metrics_snapshot: dict[str, Any] | None = None
+_metrics_lock = threading.Lock()
+
+
+def _get_cached_metrics() -> dict[str, Any]:
+    """Return the last-known metrics without forcing a fresh collection.
+    
+    If _collect_metrics is cached, returns the cached value.
+    Otherwise returns the last snapshot or a minimal default.
+    This ensures the health engine never triggers expensive scans.
+    """
+    global _last_metrics_snapshot
+    try:
+        cached = _collect_metrics()
+        if cached:
+            with _metrics_lock:
+                _last_metrics_snapshot = cached
+            return cached
+    except (NameError, AttributeError):
+        pass
+    if _last_metrics_snapshot is not None:
+        return _last_metrics_snapshot
+    # Minimal default so health calculation doesn't crash
+    return {
+        "cpu": {"usage": 0, "frequency": 0, "logicalProcessors": 0, "physicalProcessors": 0, "processes": 0, "threads": 0, "temperature": None},
+        "memory": {"total": 0, "used": 0, "available": 0, "usage": 0, "cached": 0, "swapTotal": 0, "swapUsed": 0, "swapUsage": 0},
+        "storage": [],
+        "windows": {},
+        "security": {"defender": {}, "firewall": {}, "updates": {}, "realTimeProtection": False, "smartScreen": False},
+        "performance": {"startupApps": 0, "backgroundProcesses": 0, "temporaryFilesSize": 0, "recycleBinSize": 0, "browserCacheSize": 0, "potentialRecoverable": 0, "memoryPressure": 0.0},
+        "capturedAt": _now_iso(),
+    }
+
+
+@_ttl_cache(10.0)
+def _calculate_health_score() -> dict[str, Any]:
+    """Calculate health score from cached metrics. Never triggers scans."""
+    metrics = _get_cached_metrics()
+    
+    cpu_score = _calculate_cpu_score(metrics["cpu"])
+    memory_score = _calculate_memory_score(metrics["memory"])
+    storage_score = _calculate_storage_score(metrics["storage"])
+    security_score = _calculate_security_score(metrics["security"])
+    performance_score = _calculate_performance_score(metrics["performance"])
+    
+    weights = {
+        "cpu": 0.25,
+        "memory": 0.25,
+        "storage": 0.20,
+        "security": 0.15,
+        "performance": 0.15,
+    }
+    
+    overall_score = (
+        cpu_score * weights["cpu"] +
+        memory_score * weights["memory"] +
+        storage_score * weights["storage"] +
+        security_score * weights["security"] +
+        performance_score * weights["performance"]
+    )
+    
+    overall_score = max(0, min(100, round(overall_score, 1)))
+    
+    return {
+        "overallScore": overall_score,
+        "categoryScores": {
+            "cpu": round(cpu_score, 1),
+            "memory": round(memory_score, 1),
+            "storage": round(storage_score, 1),
+            "security": round(security_score, 1),
+            "performance": round(performance_score, 1),
+        },
+        "status": _get_health_status(overall_score),
+        "suggestions": _generate_suggestions(metrics, {
+            "cpu": cpu_score,
+            "memory": memory_score,
+            "storage": storage_score,
+            "security": security_score,
+            "performance": performance_score,
+        }),
+        "capturedAt": _now_iso(),
+    }
 
 
 @register("dashboard.health")
 def dashboard_health(_params: dict[str, Any] | None) -> dict[str, Any]:
-    """Calculate comprehensive health score with category breakdown."""
+    """Calculate comprehensive health score with category breakdown.
+    
+    Uses cached metrics only — never triggers fresh scans.
+    """
     if not IS_WINDOWS:
         try:
             return _get_stub_health()
         except NameError:
             return {}
     try:
-        metrics = dashboard_metrics(None)
-        
-        cpu_score = _calculate_cpu_score(metrics["cpu"])
-        memory_score = _calculate_memory_score(metrics["memory"])
-        storage_score = _calculate_storage_score(metrics["storage"])
-        security_score = _calculate_security_score(metrics["security"])
-        performance_score = _calculate_performance_score(metrics["performance"])
-        
-        # Weighted average (adjust weights based on importance)
-        weights = {
-            "cpu": 0.25,
-            "memory": 0.25,
-            "storage": 0.20,
-            "security": 0.15,
-            "performance": 0.15,
-        }
-        
-        overall_score = (
-            cpu_score * weights["cpu"] +
-            memory_score * weights["memory"] +
-            storage_score * weights["storage"] +
-            security_score * weights["security"] +
-            performance_score * weights["performance"]
-        )
-        
-        overall_score = max(0, min(100, round(overall_score, 1)))
-        
-        return {
-            "overallScore": overall_score,
-            "categoryScores": {
-                "cpu": round(cpu_score, 1),
-                "memory": round(memory_score, 1),
-                "storage": round(storage_score, 1),
-                "security": round(security_score, 1),
-                "performance": round(performance_score, 1),
-            },
-            "status": _get_health_status(overall_score),
-            "suggestions": _generate_suggestions(metrics, {
-                "cpu": cpu_score,
-                "memory": memory_score,
-                "storage": storage_score,
-                "security": security_score,
-                "performance": performance_score,
-            }),
-            "capturedAt": _now_iso(),
-        }
+        return _calculate_health_score()
     except (NameError, KeyError, TypeError):
         return {}
 

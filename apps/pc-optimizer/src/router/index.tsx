@@ -33,6 +33,7 @@ const ModulePreloader = () => {
       void import('../pages/JunkCleanerPage');
       void import('../pages/StartupManagerPage');
       void import('../pages/PerformancePage');
+      void import('../features/security/SecurityPage');
     }, 1000); // Start preloading after 1 second
 
     return () => clearTimeout(timeout);

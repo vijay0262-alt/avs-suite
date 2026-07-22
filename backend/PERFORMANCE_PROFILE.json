@@ -1,54 +1,54 @@
 [
   {
     "label": "import avs_backend.api.registry",
-    "avg_ms": 8.08,
-    "min_ms": 8.08,
-    "max_ms": 8.08,
+    "avg_ms": 6.57,
+    "min_ms": 6.57,
+    "max_ms": 6.57,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.api.registry' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\api\\\\registry.py'>"
   },
   {
     "label": "import avs_backend.common.errors",
-    "avg_ms": 1.95,
-    "min_ms": 1.95,
-    "max_ms": 1.95,
+    "avg_ms": 1.66,
+    "min_ms": 1.66,
+    "max_ms": 1.66,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.common.errors' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\common\\\\errors.py'>"
   },
   {
     "label": "import avs_backend.common.logging_setup",
-    "avg_ms": 19.68,
-    "min_ms": 19.68,
-    "max_ms": 19.68,
+    "avg_ms": 18.6,
+    "min_ms": 18.6,
+    "max_ms": 18.6,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.common.logging_setup' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\common\\\\logging_setup.py'>"
   },
   {
     "label": "import avs_backend.dashboard",
-    "avg_ms": 775.82,
-    "min_ms": 775.82,
-    "max_ms": 775.82,
+    "avg_ms": 1889.95,
+    "min_ms": 1889.95,
+    "max_ms": 1889.95,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.dashboard' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\dashboard\\\\__init__.py'>"
   },
   {
     "label": "import avs_backend.cleaner",
-    "avg_ms": 18670.46,
-    "min_ms": 18670.46,
-    "max_ms": 18670.46,
+    "avg_ms": 1779.08,
+    "min_ms": 1779.08,
+    "max_ms": 1779.08,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.cleaner' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\cleaner\\\\__init__.py'>"
   },
   {
     "label": "import avs_backend.privacy",
-    "avg_ms": 1697.32,
-    "min_ms": 1697.32,
-    "max_ms": 1697.32,
+    "avg_ms": 2684.58,
+    "min_ms": 2684.58,
+    "max_ms": 2684.58,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.privacy' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\privacy\\\\__init__.py'>"
@@ -64,183 +64,183 @@
   },
   {
     "label": "import avs_backend.performance",
-    "avg_ms": 1682.5,
-    "min_ms": 1682.5,
-    "max_ms": 1682.5,
+    "avg_ms": 3144.86,
+    "min_ms": 3144.86,
+    "max_ms": 3144.86,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.performance' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\performance\\\\__init__.py'>"
   },
   {
     "label": "import avs_backend.disk_analyzer",
-    "avg_ms": 330.59,
-    "min_ms": 330.59,
-    "max_ms": 330.59,
+    "avg_ms": 764.87,
+    "min_ms": 764.87,
+    "max_ms": 764.87,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.disk_analyzer' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\disk_analyzer\\\\__init__.py'>"
   },
   {
     "label": "import avs_backend.duplicate_finder",
-    "avg_ms": 9.04,
-    "min_ms": 9.04,
-    "max_ms": 9.04,
+    "avg_ms": 3331.81,
+    "min_ms": 3331.81,
+    "max_ms": 3331.81,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.duplicate_finder' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\duplicate_finder\\\\__init__.py'>"
   },
   {
     "label": "import avs_backend.registry_cleaner",
-    "avg_ms": 3.61,
-    "min_ms": 3.61,
-    "max_ms": 3.61,
+    "avg_ms": 4538.13,
+    "min_ms": 4538.13,
+    "max_ms": 4538.13,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.registry_cleaner' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\registry_cleaner\\\\__init__.py'>"
   },
   {
     "label": "import avs_backend.system_information",
-    "avg_ms": 1.32,
-    "min_ms": 1.32,
-    "max_ms": 1.32,
+    "avg_ms": 826.73,
+    "min_ms": 826.73,
+    "max_ms": 826.73,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.system_information' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\system_information\\\\__init__.py'>"
   },
   {
     "label": "import avs_backend.software_updater",
-    "avg_ms": 3.13,
-    "min_ms": 3.13,
-    "max_ms": 3.13,
+    "avg_ms": 1808.85,
+    "min_ms": 1808.85,
+    "max_ms": 1808.85,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.software_updater' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\software_updater\\\\__init__.py'>"
   },
   {
     "label": "import avs_backend.uninstaller",
-    "avg_ms": 4.81,
-    "min_ms": 4.81,
-    "max_ms": 4.81,
+    "avg_ms": 1539.88,
+    "min_ms": 1539.88,
+    "max_ms": 1539.88,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.uninstaller' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\uninstaller\\\\__init__.py'>"
   },
   {
     "label": "import avs_backend.history",
-    "avg_ms": 5.78,
-    "min_ms": 5.78,
-    "max_ms": 5.78,
+    "avg_ms": 2093.77,
+    "min_ms": 2093.77,
+    "max_ms": 2093.77,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.history' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\history\\\\__init__.py'>"
   },
   {
     "label": "import avs_backend.notifications",
-    "avg_ms": 3.67,
-    "min_ms": 3.67,
-    "max_ms": 3.67,
+    "avg_ms": 399.32,
+    "min_ms": 399.32,
+    "max_ms": 399.32,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.notifications' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\notifications\\\\__init__.py'>"
   },
   {
     "label": "import avs_backend.reporting",
-    "avg_ms": 2.48,
-    "min_ms": 2.48,
-    "max_ms": 2.48,
+    "avg_ms": 2.08,
+    "min_ms": 2.08,
+    "max_ms": 2.08,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.reporting' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\reporting\\\\__init__.py'>"
   },
   {
     "label": "import avs_backend.settings",
-    "avg_ms": 4.83,
-    "min_ms": 4.83,
-    "max_ms": 4.83,
+    "avg_ms": 3.37,
+    "min_ms": 3.37,
+    "max_ms": 3.37,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.settings' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\settings\\\\__init__.py'>"
   },
   {
     "label": "import avs_backend.undo",
-    "avg_ms": 4.06,
-    "min_ms": 4.06,
-    "max_ms": 4.06,
+    "avg_ms": 4.23,
+    "min_ms": 4.23,
+    "max_ms": 4.23,
     "iterations": 1,
     "result_type": "module",
     "result_summary": "<module 'avs_backend.undo' from 'C:\\\\Users\\\\HPBP\\\\Documents\\\\GitHub\\\\avs-suite\\\\backend\\\\src\\\\avs_backend\\\\undo\\\\__init__.py'>"
   },
   {
     "label": "dashboard._get_cpu_metrics",
-    "avg_ms": 10.96,
-    "min_ms": 10.76,
-    "max_ms": 11.07,
+    "avg_ms": 11.03,
+    "min_ms": 10.6,
+    "max_ms": 11.38,
     "iterations": 3,
     "result_type": "dict",
-    "result_summary": "{'usage': 0.0, 'frequency': 1910.0, 'logicalProcessors': 8, 'physicalProcessors': 4, 'processes': 341, 'threads': 2814, 'temperature': None}"
+    "result_summary": "{'usage': 100.0, 'frequency': 1910.0, 'logicalProcessors': 8, 'physicalProcessors': 4, 'processes': 337, 'threads': 2826, 'temperature': None}"
   },
   {
     "label": "dashboard._get_memory_metrics",
-    "avg_ms": 0.72,
-    "min_ms": 0.42,
-    "max_ms": 1.17,
+    "avg_ms": 0.28,
+    "min_ms": 0.15,
+    "max_ms": 0.49,
     "iterations": 3,
     "result_type": "dict",
-    "result_summary": "{'total': 16972546048, 'used': 15597297664, 'available': 1375248384, 'usage': 91.9, 'cached': 0, 'swapTotal': 16972546048, 'swapUsed': 2375245824, 'swapUsage': 14.0}"
+    "result_summary": "{'total': 16972546048, 'used': 14002188288, 'available': 2970357760, 'usage': 82.5, 'cached': 0, 'swapTotal': 16972546048, 'swapUsed': 2502176768, 'swapUsage': 14.7}"
   },
   {
     "label": "dashboard._get_storage_metrics",
-    "avg_ms": 2.41,
-    "min_ms": 2.09,
-    "max_ms": 2.79,
+    "avg_ms": 1.33,
+    "min_ms": 1.06,
+    "max_ms": 1.86,
     "iterations": 3,
     "result_type": "list",
-    "result_summary": "[{'mount': 'C:\\\\', 'name': 'C:', 'total': 171708198912, 'used': 137086820352, 'free': 34621378560, 'usage': 79.8, 'isSSD': True, 'fileSystem': 'NTFS'}, {'mount': 'D:\\\\', 'name': 'D:', 'total': 8304406"
+    "result_summary": "[{'mount': 'C:\\\\', 'name': 'C:', 'total': 171708198912, 'used': 137100730368, 'free': 34607468544, 'usage': 79.8, 'isSSD': True, 'fileSystem': 'NTFS'}, {'mount': 'D:\\\\', 'name': 'D:', 'total': 8304406"
   },
   {
     "label": "dashboard._get_windows_info",
-    "avg_ms": 254.48,
-    "min_ms": 25.65,
-    "max_ms": 708.29,
+    "avg_ms": 338.14,
+    "min_ms": 27.38,
+    "max_ms": 953.05,
     "iterations": 3,
     "result_type": "dict",
-    "result_summary": "{'version': '10.0.26200', 'build': '10.0.26200', 'uptime': 253322.3656346798, 'isAdministrator': False, 'powerMode': 'balanced', 'battery': {'percent': 98, 'powerPlugged': True}, 'secureBoot': False, "
+    "result_summary": "{'version': '10.0.26200', 'build': '10.0.26200', 'uptime': 255492.37429714203, 'isAdministrator': False, 'powerMode': 'balanced', 'battery': {'percent': 98, 'powerPlugged': True}, 'secureBoot': False,"
   },
   {
     "label": "dashboard._get_security_metrics",
-    "avg_ms": 512.72,
-    "min_ms": 0.85,
-    "max_ms": 1536.21,
+    "avg_ms": 233.38,
+    "min_ms": 0.87,
+    "max_ms": 698.12,
     "iterations": 3,
     "result_type": "dict",
-    "result_summary": "{'defender': {'enabled': True, 'realTimeProtection': True, 'thirdPartyAV': 'Trend Micro Maximum Security'}, 'firewall': {'enabled': True, 'thirdPartyAV': 'Trend Micro Maximum Security'}, 'updates': {'"
+    "result_summary": "{'defender': {'enabled': True, 'realTimeProtection': True, 'thirdPartyAV': 'Trend Micro Maximum Security'}, 'firewall': {'enabled': True}, 'updates': {'pendingUpdates': 0, 'lastUpdateDate': None}, 're"
   },
   {
     "label": "dashboard._get_performance_metrics",
-    "avg_ms": 9598.42,
-    "min_ms": 184.47,
-    "max_ms": 28413.45,
+    "avg_ms": 68.79,
+    "min_ms": 1.5,
+    "max_ms": 203.11,
     "iterations": 3,
     "result_type": "dict",
-    "result_summary": "{'startupApps': 7, 'backgroundProcesses': 338, 'temporaryFilesSize': 199617798, 'recycleBinSize': 0, 'browserCacheSize': 75049666, 'potentialRecoverable': 274667464, 'memoryPressure': 0.91799999999999"
+    "result_summary": "{'startupApps': 7, 'backgroundProcesses': 337, 'temporaryFilesSize': 35821390, 'recycleBinSize': 0, 'browserCacheSize': 75049666, 'potentialRecoverable': 110871056, 'memoryPressure': 0.827000000000000"
   },
   {
     "label": "dashboard._collect_metrics (cached)",
-    "avg_ms": 112.24,
+    "avg_ms": 12.65,
     "min_ms": 0.0,
-    "max_ms": 336.73,
+    "max_ms": 37.94,
     "iterations": 3,
     "result_type": "dict",
-    "result_summary": "{'memory': {'total': 16972546048, 'used': 15574953984, 'available': 1397592064, 'usage': 91.8, 'cached': 0, 'swapTotal': 16972546048, 'swapUsed': 2375245824, 'swapUsage': 14.0}, 'storage': [{'mount': "
+    "result_summary": "{'memory': {'total': 16972546048, 'used': 14035824640, 'available': 2936721408, 'usage': 82.7, 'cached': 0, 'swapTotal': 16972546048, 'swapUsed': 2502176768, 'swapUsage': 14.7}, 'storage': [{'mount': "
   },
   {
     "label": "dashboard._collect_metrics.cache_clear + recollect",
-    "avg_ms": 201.14,
-    "min_ms": 201.14,
-    "max_ms": 201.14,
+    "avg_ms": 25.46,
+    "min_ms": 25.46,
+    "max_ms": 25.46,
     "iterations": 1,
     "result_type": "tuple",
-    "result_summary": "(None, {'memory': {'total': 16972546048, 'used': 15575400448, 'available': 1397145600, 'usage': 91.8, 'cached': 0, 'swapTotal': 16972546048, 'swapUsed': 2375245824, 'swapUsage': 14.0}, 'security': {'d"
+    "result_summary": "(None, {'memory': {'total': 16972546048, 'used': 14042210304, 'available': 2930335744, 'usage': 82.7, 'cached': 0, 'swapTotal': 16972546048, 'swapUsed': 2502176768, 'swapUsage': 14.7}, 'storage': [{'m"
   },
   {
     "label": "dashboard.metrics RPC",
@@ -249,16 +249,16 @@
     "max_ms": 0.0,
     "iterations": 3,
     "result_type": "dict",
-    "result_summary": "{'memory': {'total': 16972546048, 'used': 15575400448, 'available': 1397145600, 'usage': 91.8, 'cached': 0, 'swapTotal': 16972546048, 'swapUsed': 2375245824, 'swapUsage': 14.0}, 'security': {'defender"
+    "result_summary": "{'memory': {'total': 16972546048, 'used': 14042210304, 'available': 2930335744, 'usage': 82.7, 'cached': 0, 'swapTotal': 16972546048, 'swapUsed': 2502176768, 'swapUsage': 14.7}, 'storage': [{'mount': "
   },
   {
     "label": "dashboard.live RPC",
     "avg_ms": 0.0,
     "min_ms": 0.0,
-    "max_ms": 0.01,
+    "max_ms": 0.0,
     "iterations": 3,
     "result_type": "dict",
-    "result_summary": "{'cpu': {'usage': 70.8, 'frequency': 1910, 'logicalProcessors': 8, 'physicalProcessors': 4, 'processes': 0, 'threads': 0, 'temperature': None}, 'memory': {'total': 16972546048, 'used': 15574441984, 'a"
+    "result_summary": "{'cpu': {'usage': 33.3, 'frequency': 1910, 'logicalProcessors': 8, 'physicalProcessors': 4, 'processes': 0, 'threads': 0, 'temperature': None}, 'memory': {'total': 16972546048, 'used': 14061006848, 'a"
   },
   {
     "label": "dashboard.health RPC",
@@ -267,13 +267,13 @@
     "max_ms": 0.04,
     "iterations": 1,
     "result_type": "dict",
-    "result_summary": "{'overallScore': 69.2, 'categoryScores': {'cpu': 100, 'memory': 40, 'storage': 40, 'security': 100, 'performance': 75}, 'status': 'fair', 'suggestions': ['High memory usage. Consider running Memory Op"
+    "result_summary": "{'overallScore': 73.2, 'categoryScores': {'cpu': 90, 'memory': 60, 'storage': 40, 'security': 100, 'performance': 85}, 'status': 'fair', 'suggestions': ['High memory usage. Consider running Memory Opt"
   },
   {
     "label": "sysinfo._get_static_info (first call)",
-    "avg_ms": 21.57,
-    "min_ms": 21.57,
-    "max_ms": 21.57,
+    "avg_ms": 22.02,
+    "min_ms": 22.02,
+    "max_ms": 22.02,
     "iterations": 1,
     "result_type": "dict",
     "result_summary": "{'cpu': {'name': 'Intel64 Family 6 Model 142 Stepping 12, GenuineIntel', 'architecture': 'AMD64', 'cores': 4, 'logicalCores': 8, 'maxFrequency': 2112.0}, 'os': {'system': 'Windows', 'release': '11', '"
@@ -289,18 +289,18 @@
   },
   {
     "label": "sysinfo._get_dynamic_info",
-    "avg_ms": 2055.57,
-    "min_ms": 1822.55,
-    "max_ms": 2259.26,
+    "avg_ms": 85.22,
+    "min_ms": 83.39,
+    "max_ms": 86.58,
     "iterations": 3,
     "result_type": "dict",
-    "result_summary": "{'cpuUsage': 37.5, 'memory': {'total': 16972546048, 'available': 1400713216, 'used': 15571832832, 'free': 1400713216, 'percent': 91.7, 'currentFrequency': 1910.0}, 'disk': [{'device': 'C:\\\\', 'mountpo"
+    "result_summary": "{'cpuUsage': 29.2, 'memory': {'total': 16972546048, 'available': 2932113408, 'used': 14040432640, 'free': 2932113408, 'percent': 82.7, 'currentFrequency': 1910.0}, 'disk': [{'device': 'C:\\\\', 'mountpo"
   },
   {
     "label": "sysinfo.system.info RPC",
-    "avg_ms": 0.33,
+    "avg_ms": 0.2,
     "min_ms": 0.0,
-    "max_ms": 0.95,
+    "max_ms": 0.58,
     "iterations": 3,
     "result_type": "dict",
     "result_summary": "{'os': 'Windows', 'osRelease': '11', 'osVersion': '10.0.26200', 'arch': 'AMD64', 'processor': 'Intel64 Family 6 Model 142 Stepping 12, GenuineIntel', 'python': '3.14.6', 'hostname': 'DESKTOP-IFVTEET'}"
@@ -316,36 +316,36 @@
   },
   {
     "label": "sysinfo.system.dynamic RPC",
-    "avg_ms": 1933.4,
-    "min_ms": 1811.47,
-    "max_ms": 2123.26,
+    "avg_ms": 79.27,
+    "min_ms": 75.67,
+    "max_ms": 82.86,
     "iterations": 3,
     "result_type": "dict",
-    "result_summary": "{'cpuUsage': 33.3, 'memory': {'total': 16972546048, 'available': 1403052032, 'used': 15569494016, 'free': 1403052032, 'percent': 91.7, 'currentFrequency': 1910.0}, 'disk': [{'device': 'C:\\\\', 'mountpo"
+    "result_summary": "{'cpuUsage': 25.0, 'memory': {'total': 16972546048, 'available': 2933272576, 'used': 14039273472, 'free': 2933272576, 'percent': 82.7, 'currentFrequency': 1910.0}, 'disk': [{'device': 'C:\\\\', 'mountpo"
   },
   {
     "label": "sysinfo.system.comprehensive RPC",
-    "avg_ms": 1888.07,
-    "min_ms": 1862.24,
-    "max_ms": 1934.14,
+    "avg_ms": 83.22,
+    "min_ms": 78.52,
+    "max_ms": 86.93,
     "iterations": 3,
     "result_type": "dict",
     "result_summary": "{'cpu': {'name': 'Intel64 Family 6 Model 142 Stepping 12, GenuineIntel', 'architecture': 'AMD64', 'cores': 4, 'logicalCores': 8, 'maxFrequency': 2112.0}, 'os': {'system': 'Windows', 'release': '11', '"
   },
   {
     "label": "sysinfo.system.healthScore RPC",
-    "avg_ms": 50.95,
-    "min_ms": 50.65,
-    "max_ms": 51.14,
+    "avg_ms": 50.87,
+    "min_ms": 50.64,
+    "max_ms": 51.07,
     "iterations": 3,
     "result_type": "dict",
-    "result_summary": "{'score': 36.7, 'capturedAt': '2026-07-22T11:31:24.491165+00:00'}"
+    "result_summary": "{'score': 34.9, 'capturedAt': '2026-07-22T12:06:47.708919+00:00'}"
   },
   {
     "label": "startup.list RPC (first call)",
-    "avg_ms": 2671.25,
-    "min_ms": 2671.25,
-    "max_ms": 2671.25,
+    "avg_ms": 5053.49,
+    "min_ms": 5053.49,
+    "max_ms": 5053.49,
     "iterations": 1,
     "result_type": "list",
     "result_summary": "[{'name': 'SecurityHealth', 'publisher': 'Unknown', 'status': 'enabled', 'impact': 'low', 'source': 'registry_run', 'location': 'HKEY_LOCAL_MACHINE\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Run',"
@@ -361,108 +361,108 @@
   },
   {
     "label": "privacy.detectBrowsers RPC",
-    "avg_ms": 19.86,
-    "min_ms": 19.86,
-    "max_ms": 19.86,
+    "avg_ms": 931.15,
+    "min_ms": 931.15,
+    "max_ms": 931.15,
     "iterations": 1,
     "result_type": "dict",
-    "result_summary": "{'browsers': ['edge', 'chrome', 'firefox']}"
+    "result_summary": "{'browsers': ['firefox', 'edge', 'chrome']}"
   },
   {
     "label": "privacy.scan RPC",
-    "avg_ms": 548.03,
-    "min_ms": 548.03,
-    "max_ms": 548.03,
+    "avg_ms": 19903.95,
+    "min_ms": 19903.95,
+    "max_ms": 19903.95,
     "iterations": 1,
     "result_type": "dict",
     "result_summary": "{'items': [{'category': 'windows_temp', 'path': 'C:\\\\Users\\\\HPBP\\\\AppData\\\\Local\\\\Temp\\\\.ses', 'size': 53, 'description': 'Temp file: .ses', 'safeToDelete': True, 'riskLevel': 'low', 'canRestore': Fal"
   },
   {
     "label": "powershell: echo hello",
-    "avg_ms": 406.21,
-    "min_ms": 381.22,
-    "max_ms": 425.28,
+    "avg_ms": 422.06,
+    "min_ms": 404.2,
+    "max_ms": 443.29,
     "iterations": 3,
     "result_type": "str",
     "result_summary": "hello"
   },
   {
     "label": "powershell: Get-PhysicalDisk count",
-    "avg_ms": 2686.99,
-    "min_ms": 2686.99,
-    "max_ms": 2686.99,
+    "avg_ms": 2715.37,
+    "min_ms": 2715.37,
+    "max_ms": 2715.37,
     "iterations": 1,
     "result_type": "str",
     "result_summary": "1"
   },
   {
     "label": "powershell: powercfg /getactivescheme",
-    "avg_ms": 296.49,
-    "min_ms": 296.49,
-    "max_ms": 296.49,
+    "avg_ms": 329.78,
+    "min_ms": 329.78,
+    "max_ms": 329.78,
     "iterations": 1,
     "result_type": "str",
     "result_summary": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)"
   },
   {
     "label": "powershell: Get-MpComputerStatus",
-    "avg_ms": 1905.15,
-    "min_ms": 1905.15,
-    "max_ms": 1905.15,
+    "avg_ms": 1489.43,
+    "min_ms": 1489.43,
+    "max_ms": 1489.43,
     "iterations": 1,
-    "result_type": "None",
-    "result_summary": "None"
+    "result_type": "str",
+    "result_summary": "False"
   },
   {
     "label": "powershell: Get-NetFirewallProfile",
-    "avg_ms": 2415.59,
-    "min_ms": 2415.59,
-    "max_ms": 2415.59,
+    "avg_ms": 1553.57,
+    "min_ms": 1553.57,
+    "max_ms": 1553.57,
     "iterations": 1,
     "result_type": "None",
     "result_summary": "None"
   },
   {
     "label": "dashboard._get_temp_files_size",
-    "avg_ms": 17822.4,
-    "min_ms": 17822.4,
-    "max_ms": 17822.4,
+    "avg_ms": 0.0,
+    "min_ms": 0.0,
+    "max_ms": 0.0,
     "iterations": 1,
     "result_type": "int",
-    "result_summary": "199617798"
+    "result_summary": "35821390"
   },
   {
     "label": "dashboard._get_recycle_bin_size",
-    "avg_ms": 0.06,
-    "min_ms": 0.06,
-    "max_ms": 0.06,
+    "avg_ms": 0.0,
+    "min_ms": 0.0,
+    "max_ms": 0.0,
     "iterations": 1,
     "result_type": "None",
     "result_summary": "0"
   },
   {
     "label": "dashboard._estimate_browser_cache_size",
-    "avg_ms": 200.85,
-    "min_ms": 200.85,
-    "max_ms": 200.85,
+    "avg_ms": 0.0,
+    "min_ms": 0.0,
+    "max_ms": 0.0,
     "iterations": 1,
     "result_type": "int",
     "result_summary": "75049666"
   },
   {
     "label": "8 quick tasks in pool(8)",
-    "avg_ms": 2.13,
-    "min_ms": 2.13,
-    "max_ms": 2.13,
+    "avg_ms": 3.33,
+    "min_ms": 3.33,
+    "max_ms": 3.33,
     "iterations": 1,
     "result_type": "str",
     "error": "ERROR: profile_thread_contention.<locals>.quick_task() takes 0 positional arguments but 1 was given"
   },
   {
     "label": "4 slow(0.5s) tasks in pool(4)",
-    "avg_ms": 0.72,
-    "min_ms": 0.72,
-    "max_ms": 0.72,
+    "avg_ms": 0.87,
+    "min_ms": 0.87,
+    "max_ms": 0.87,
     "iterations": 1,
     "result_type": "str",
     "error": "ERROR: profile_thread_contention.<locals>.slow_task() takes 0 positional arguments but 1 was given"
