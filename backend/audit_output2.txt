@@ -1,0 +1,220 @@
+﻿Waiting for modules to load...
+python : [INFO] avs_backend.startup.startup_manager: Scanning startup entries
+At line:1 char:55
++ ... :PYTHONIOENCODING="utf-8"; python tests/release_audit.py 2>&1 | Out-F ...
++                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([INFO] avs_back...startup entries:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[INFO] avs_backend.startup.startup_manager: Found 0 startup tasks in Task Scheduler
+[INFO] avs_backend.startup.startup_manager: Found 7 startup entries
+
+============================================================
+PHASE 1: Input Validation (96 endpoints)
+============================================================
+Total registered methods: 105
+[INFO] avs.cleaner.rpc: Cleaner singletons created: 9 cleaners
+[INFO] avs.cleaner.rpc: [RPC] cleaner.list called
+[INFO] avs.cleaner.rpc: [RPC] cleaner.list completed in 0.00s
+[INFO] avs.cleaner.rpc: [RPC] cleaner.list called
+[INFO] avs.cleaner.rpc: [RPC] cleaner.list completed in 0.00s
+[INFO] avs.cleaner.rpc: [RPC] cleaner.list called
+[INFO] avs.cleaner.rpc: [RPC] cleaner.list completed in 0.00s
+[INFO] avs.cleaner.rpc: [RPC] cleaner.list called
+[INFO] avs.cleaner.rpc: [RPC] cleaner.list completed in 0.00s
+[INFO] avs.cleaner.rpc: [RPC] cleaner.list called
+[INFO] avs.cleaner.rpc: [RPC] cleaner.list completed in 0.00s
+[INFO] avs.cleaner.rpc: [RPC] cleaner.scan.refreshCache called
+[INFO] avs.cleaner.manager: Scan cache invalidated
+[INFO] avs.cleaner.rpc: [RPC] cleaner.scan.refreshCache called
+[INFO] avs.cleaner.manager: Scan cache invalidated
+[INFO] avs.cleaner.rpc: [RPC] cleaner.scan.refreshCache called
+[INFO] avs.cleaner.manager: Scan cache invalidated
+[INFO] avs.cleaner.rpc: [RPC] cleaner.scan.refreshCache called
+[INFO] avs.cleaner.manager: Scan cache invalidated
+[INFO] avs.cleaner.rpc: [RPC] cleaner.scan.refreshCache called
+[INFO] avs.cleaner.manager: Scan cache invalidated
+[INFO] avs_backend.startup.startup_manager: Scanning startup entries
+[INFO] avs_backend.startup.startup_manager: Found 0 startup tasks in Task Scheduler
+[INFO] avs_backend.startup.startup_manager: Found 7 startup entries
+[INFO] avs_backend.startup.startup_manager: Scanning startup entries
+[INFO] avs_backend.startup.startup_manager: Found 0 startup tasks in Task Scheduler
+[INFO] avs_backend.startup.startup_manager: Found 7 startup entries
+[INFO] avs_backend.startup.startup_manager: Scanning startup entries
+[INFO] avs_backend.startup.startup_manager: Found 0 startup tasks in Task Scheduler
+[INFO] avs_backend.startup.startup_manager: Found 7 startup entries
+[INFO] avs_backend.startup.startup_manager: Scanning startup entries
+[INFO] avs_backend.startup.startup_manager: Found 0 startup tasks in Task Scheduler
+[INFO] avs_backend.startup.startup_manager: Found 7 startup entries
+[INFO] avs_backend.startup.startup_manager: Scanning startup entries
+[INFO] avs_backend.startup.startup_manager: Found 0 startup tasks in Task Scheduler
+[INFO] avs_backend.startup.startup_manager: Found 7 startup entries
+[INFO] avs_backend.startup.startup_manager: Scanning startup entries
+[INFO] avs_backend.startup.startup_manager: Found 0 startup tasks in Task Scheduler
+[INFO] avs_backend.startup.startup_manager: Found 7 startup entries
+[ERROR] avs_backend.settings.settings_manager: Failed to load settings: Settings.__init__() got an unexpected keyword argument 'loggingLevel'. Did 
+you mean 'logging_level'?
+[ERROR] avs_backend.settings.settings_manager: Failed to load settings: Settings.__init__() got an unexpected keyword argument 'loggingLevel'. Did 
+you mean 'logging_level'?
+[ERROR] avs_backend.settings.settings_manager: Failed to load settings: Settings.__init__() got an unexpected keyword argument 'loggingLevel'. Did 
+you mean 'logging_level'?
+[ERROR] avs_backend.settings.settings_manager: Failed to load settings: Settings.__init__() got an unexpected keyword argument 'loggingLevel'. Did 
+you mean 'logging_level'?
+[ERROR] avs_backend.settings.settings_manager: Failed to load settings: Settings.__init__() got an unexpected keyword argument 'loggingLevel'. Did 
+you mean 'logging_level'?
+[INFO] avs_backend.settings.settings_manager: Resetting settings to defaults
+[INFO] avs_backend.settings.settings_manager: Settings saved successfully
+[INFO] avs_backend.settings.settings_manager: Resetting settings to defaults
+[INFO] avs_backend.settings.settings_manager: Settings saved successfully
+[INFO] avs_backend.settings.settings_manager: Resetting settings to defaults
+[INFO] avs_backend.settings.settings_manager: Settings saved successfully
+[INFO] avs_backend.settings.settings_manager: Resetting settings to defaults
+[INFO] avs_backend.settings.settings_manager: Settings saved successfully
+[INFO] avs_backend.settings.settings_manager: Resetting settings to defaults
+[INFO] avs_backend.settings.settings_manager: Settings saved successfully
+[INFO] avs_backend.notifications.notification_manager: Cleared 0 dismissed notifications
+[INFO] avs_backend.notifications.notification_manager: Cleared 0 dismissed notifications
+[INFO] avs_backend.notifications.notification_manager: Cleared 0 dismissed notifications
+[INFO] avs_backend.notifications.notification_manager: Cleared 0 dismissed notifications
+[INFO] avs_backend.notifications.notification_manager: Cleared 0 dismissed notifications
+[INFO] avs_backend.notifications.notification_manager: Cleared all notifications (0 total)
+[INFO] avs_backend.notifications.notification_manager: Cleared all notifications (0 total)
+[INFO] avs_backend.notifications.notification_manager: Cleared all notifications (0 total)
+[INFO] avs_backend.notifications.notification_manager: Cleared all notifications (0 total)
+[INFO] avs_backend.notifications.notification_manager: Cleared all notifications (0 total)
+[INFO] avs_backend.history.history_manager: Cleared all history
+[INFO] avs_backend.history.history_manager: Cleared all history
+[INFO] avs_backend.history.history_manager: Cleared all history
+[INFO] avs_backend.history.history_manager: Cleared all history
+[INFO] avs_backend.history.history_manager: Cleared all history
+[ERROR] avs_backend.undo: Failed to check restore availability: Missing required parameter: id
+[ERROR] avs_backend.undo: Failed to check restore availability: Missing required parameter: id
+[ERROR] avs_backend.undo: Failed to check restore availability: Missing required parameter: id
+[ERROR] avs_backend.undo: Failed to check restore availability: Missing required parameter: id
+[ERROR] avs_backend.undo: Failed to check restore availability: unsupported operand type(s) for /: 'WindowsPath' and 'NoneType'
+[ERROR] avs_backend.reporting: Failed to generate report data: Missing required parameters
+[ERROR] avs_backend.reporting: Failed to generate report data: Missing required parameters
+[ERROR] avs_backend.reporting: Failed to generate report data: Missing required parameters
+
+============================================================
+PHASE 2: Specific Edge Cases
+============================================================
+[INFO] avs.cleaner.rpc: [RPC] cleaner.clean.preview called for taskId=nonexistent, only=None
+[INFO] avs.cleaner.cleaning-manager: [CleaningManager] preview called for scan_task_id=nonexistent, only=None
+[INFO] avs.cleaner.cleaning-manager: [PERFORMANCE] Validation completed: duration=0.00s, candidates=0, validated=0, cleaners=9
+[INFO] avs.cleaner.rpc: [RPC] cleaner.clean.preview completed in 0.00s, totalFiles=0, totalBytes=0
+[INFO] avs.cleaner.rpc: [RPC] cleaner.clean.execute called for taskId=nonexistent, only=None
+[INFO] avs.cleaner.cleaning-manager: [CleaningManager] execute called for scan_task_id=nonexistent, only=None
+[INFO] avs.cleaner.cleaning-manager: [CleaningManager] Total candidates for cleaning: 0 across 0 cleaners
+[ERROR] avs.cleaner.rpc: [RPC] cleaner.clean.execute failed with ValueError: Nothing to clean ΓÇö no candidates found
+[INFO] avs.cleaner.rpc: [RPC] cleaner.clean.undo called
+[INFO] avs.cleaner.rpc: [RPC] cleaner.clean.undo completed in 0.00s, success=False
+[ERROR] avs_backend.notifications: Failed to create notification: 'INVALID_TYPE' is not a valid NotificationType
+[INFO] avs_backend.disk_analyzer: Starting disk analysis of C:\Users\HPBP with max depth 2
+[WARNING] avs_backend.disk_analyzer: Could not analyze directory C:\Users\HPBP\Application Data: [WinError 5] Access is denied: 
+'C:\\Users\\HPBP\\Application Data'
+[WARNING] avs_backend.disk_analyzer: Could not analyze directory C:\Users\HPBP\Cookies: [WinError 5] Access is denied: 'C:\\Users\\HPBP\\Cookies'
+[WARNING] avs_backend.disk_analyzer: Could not analyze directory C:\Users\HPBP\Documents\My Music: [WinError 5] Access is denied: 
+'C:\\Users\\HPBP\\Documents\\My Music'
+[WARNING] avs_backend.disk_analyzer: Could not analyze directory C:\Users\HPBP\Documents\My Pictures: [WinError 5] Access is denied: 
+'C:\\Users\\HPBP\\Documents\\My Pictures'
+[WARNING] avs_backend.disk_analyzer: Could not analyze directory C:\Users\HPBP\Documents\My Videos: [WinError 5] Access is denied: 
+'C:\\Users\\HPBP\\Documents\\My Videos'
+[WARNING] avs_backend.disk_analyzer: Could not analyze directory C:\Users\HPBP\Local Settings: [WinError 5] Access is denied: 'C:\\Users\\HPBP\\Local 
+Settings'
+[WARNING] avs_backend.disk_analyzer: Could not analyze directory C:\Users\HPBP\My Documents: [WinError 5] Access is denied: 'C:\\Users\\HPBP\\My 
+Documents'
+[WARNING] avs_backend.disk_analyzer: Could not analyze directory C:\Users\HPBP\NetHood: [WinError 5] Access is denied: 'C:\\Users\\HPBP\\NetHood'
+[WARNING] avs_backend.disk_analyzer: Could not analyze directory C:\Users\HPBP\PrintHood: [WinError 5] Access is denied: 'C:\\Users\\HPBP\\PrintHood'
+[WARNING] avs_backend.disk_analyzer: Could not analyze directory C:\Users\HPBP\Recent: [WinError 5] Access is denied: 'C:\\Users\\HPBP\\Recent'
+[WARNING] avs_backend.disk_analyzer: Could not analyze directory C:\Users\HPBP\SendTo: [WinError 5] Access is denied: 'C:\\Users\\HPBP\\SendTo'
+[WARNING] avs_backend.disk_analyzer: Could not analyze directory C:\Users\HPBP\Start Menu: [WinError 5] Access is denied: 'C:\\Users\\HPBP\\Start 
+Menu'
+[WARNING] avs_backend.disk_analyzer: Could not analyze directory C:\Users\HPBP\Templates: [WinError 5] Access is denied: 'C:\\Users\\HPBP\\Templates'
+[INFO] avs_backend.disk_analyzer: Disk analysis completed in 0.11s: 306 files, 324 directories, 1036.2 MB
+[INFO] avs_backend.disk_analyzer: Starting disk analysis of Z:\Nonexistent\Path with max depth 2
+[WARNING] avs_backend.disk_analyzer: Could not analyze directory Z:\Nonexistent\Path: [WinError 3] The system cannot find the path specified: 
+'Z:\\Nonexistent\\Path'
+[INFO] avs_backend.disk_analyzer: Disk analysis completed in 0.00s: 0 files, 0 directories, 0.0 MB
+[INFO] avs_backend.disk_analyzer: Deleted 0 files (0.0 MB freed), 1 failed
+[INFO] avs_backend.duplicate_finder: Starting duplicate scan in 4 directories
+[INFO] avs_backend.duplicate_finder: Scan limit reached: 5000 files in C:\Users\HPBP\Documents
+[INFO] avs_backend.duplicate_finder: Scanned 5000 files in C:\Users\HPBP\Documents (8.2s)
+[INFO] avs_backend.duplicate_finder: Scanned 945 files in C:\Users\HPBP\Downloads (2.9s)
+[INFO] avs_backend.duplicate_finder: Scanned 0 files in C:\Users\HPBP\Pictures (0.0s)
+[INFO] avs_backend.duplicate_finder: Duplicate scan completed in 11.12s: 512 duplicates, 478.6 MB recoverable
+[INFO] avs_backend.history.history_manager: Deleted history entry: nonexistent
+[ERROR] avs_backend.history: Failed to export history: Missing required parameter: path
+[INFO] avs_backend.performance.memory_optimizer: Starting memory optimization
+[INFO] avs_backend.performance.memory_optimizer: Memory before optimization: 13905.1 MB used
+[INFO] avs_backend.performance.memory_optimizer: Trimming working sets of inactive processes
+[INFO] avs_backend.performance.memory_optimizer: Optimized 0 processes (of 325 total, trimmed top 50)
+[INFO] avs_backend.performance.memory_optimizer: Refreshing Windows Explorer memory
+[INFO] avs_backend.performance.memory_optimizer: Releasing cached memory
+[INFO] avs_backend.performance.memory_optimizer: Refreshing standby memory
+[INFO] avs_backend.performance.memory_optimizer: Getting final memory state
+[INFO] avs_backend.performance.memory_optimizer: Memory after optimization: 13846.4 MB used
+[INFO] avs_backend.performance.memory_optimizer: Memory optimization completed: 58.8 MB freed in 1817ms
+[ERROR] avs_backend.settings.settings_manager: Failed to load settings: Settings.__init__() got an unexpected keyword argument 'loggingLevel'. Did 
+you mean 'logging_level'?
+[ERROR] avs_backend.settings: Failed to update settings: 'invalid_theme_name' is not a valid Theme
+[ERROR] avs_backend.settings.settings_manager: Failed to load settings: Settings.__init__() got an unexpected keyword argument 'loggingLevel'. Did 
+you mean 'logging_level'?
+[ERROR] avs_backend.settings: Failed to update settings: 'INVALID_LEVEL' is not a valid LogLevel
+[ERROR] avs_backend.settings.settings_manager: Failed to load settings: Settings.__init__() got an unexpected keyword argument 'loggingLevel'. Did 
+you mean 'logging_level'?
+[ERROR] avs_backend.settings: Failed to update settings: 'INVALID' is not a valid NotificationPriority
+[ERROR] avs_backend.settings.settings_manager: Failed to load settings: Settings.__init__() got an unexpected keyword argument 'loggingLevel'. Did 
+you mean 'logging_level'?
+[INFO] avs_backend.settings.settings_manager: Settings saved successfully
+[ERROR] avs_backend.settings.settings_manager: Failed to load settings: Settings.__init__() got an unexpected keyword argument 'loggingLevel'. Did 
+you mean 'logging_level'?
+
+============================================================
+PHASE 3: Data Accuracy Verification
+============================================================
+  Γ£ô dashboard.metrics: CPU=100.0%, Mem=85.6%, Storage=2 disks
+  Γ£ô dashboard.health: score=53.2, status=poor
+  Γ£ô dashboard.live: CPU=100.0%, Mem=85.8%
+  Γ£ô system.info: OS=Windows, Arch=AMD64
+  Γ£ô system.dynamic: Mem=85.8%, Procs=327
+  Γ£ô system.healthScore: score=16.2
+[ERROR] avs_backend.settings.settings_manager: Failed to load settings: Settings.__init__() got an unexpected keyword argument 'loggingLevel'. Did 
+you mean 'logging_level'?
+  Γ£ô settings.get: 15 fields
+[INFO] avs.cleaner.rpc: [RPC] cleaner.list called
+[INFO] avs.cleaner.rpc: [RPC] cleaner.list completed in 0.00s
+  Γ£ô cleaner.list: 9 cleaners
+  Γ£ô startup.list: 7 items
+  Γ£ô job.list: {'jobs': [], 'count': 0}
+  Γ£ô notifications.list: 0 notifications
+  Γ£ô history.list: 0 entries
+  Γ£ô disk.listDrives: 2 drives
+  Γ£ô wiper.drives: 2 drives
+  Γ£ô registry.categories: 5 categories
+  Γ£ô system.isAdmin: {'isAdmin': False}
+
+============================================================
+PHASE 4: Concurrency (20 parallel calls)
+============================================================
+  Γ£ô 20 concurrent dashboard.metrics calls OK
+  Γ£ô 20 concurrent dashboard.health calls OK
+
+============================================================
+PHASE 5: Repeated Operations (50x)
+============================================================
+  Γ£ô 50x dashboard.metrics OK
+  Γ£ô 50x dashboard.health OK
+  Γ£ô 50x dashboard.live OK
+  Γ£ô 50x system.dynamic OK
+  Γ£ô 10x refreshCache+metrics OK
+
+============================================================
+RELEASE AUDIT SUMMARY
+============================================================
+
+Total issues: 0
+
+Report: C:\Users\HPBP\Documents\GitHub\avs-suite\backend\tests\..\RELEASE_AUDIT.json
+
+[OK] RELEASE READY -- No Critical or High severity issues

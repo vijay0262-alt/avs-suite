@@ -41,9 +41,28 @@ if IS_WINDOWS:
     class IFileOperation(ctypes.c_void_p):
         """IFileOperation COM interface for Vista+."""
 
+    # GUID structure for COM interfaces
+    class _GUID(ctypes.Structure):
+        _fields_ = [
+            ("Data1", ctypes.c_ulong),
+            ("Data2", ctypes.c_ushort),
+            ("Data3", ctypes.c_ushort),
+            ("Data4", ctypes.c_ubyte * 8),
+        ]
+
+        @classmethod
+        def from_string(cls, s: str) -> "_GUID":
+            s = s.strip("{}")
+            parts = s.split("-")
+            d1 = int(parts[0], 16)
+            d2 = int(parts[1], 16)
+            d3 = int(parts[2], 16)
+            d4 = bytes.fromhex(parts[3] + parts[4])
+            return cls(d1, d2, d3, (ctypes.c_ubyte * 8)(*d4))
+
     # GUIDs
-    IID_IFileOperation = ctypes.GUID("{947ABA5F-0A5C-4C14-B4E7-6F7CBDD94B4C}")
-    CLSID_FileOperation = ctypes.GUID("{3AD05575-8857-4850-9277-11B85BDB8E09}")
+    IID_IFileOperation = _GUID.from_string("{947ABA5F-0A5C-4C14-B4E7-6F7CBDD94B4C}")
+    CLSID_FileOperation = _GUID.from_string("{3AD05575-8857-4850-9277-11B85BDB8E09}")
 else:
     # On non-Windows platforms, provide stub implementations
     IID_IFileOperation = None
@@ -140,7 +159,7 @@ if IS_WINDOWS:
             ("wFunc", wintypes.UINT),
             ("pFrom", wintypes.LPCWSTR),
             ("pTo", wintypes.LPCWSTR),
-            ("fFlags", wintypes.FILEOP_FLAGS),
+            ("fFlags", ctypes.c_ushort),
             ("fAnyOperationsAborted", wintypes.BOOL),
             ("hNameMappings", wintypes.LPVOID),
             ("lpszProgressTitle", wintypes.LPCWSTR),

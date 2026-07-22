@@ -1,10 +1,12 @@
 """Drive Wiper / Secure File Shredder RPC handlers."""
+from typing import Any
+
 from avs_backend.api.registry import register
 from .wiper_engine import list_drives, shred_items, wipe_free_space
 
 
 @register("wiper.drives")
-def wiper_drives(request: dict):
+def wiper_drives(_request: dict[str, Any] | None) -> dict[str, Any]:
     return {
         "drives": [
             {
@@ -20,7 +22,8 @@ def wiper_drives(request: dict):
 
 
 @register("wiper.shred")
-def wiper_shred(request: dict):
+def wiper_shred(request: dict[str, Any] | None) -> dict[str, Any]:
+    request = request or {}
     paths = request.get("paths", [])
     passes = request.get("passes", 3)
     zeros = request.get("zeros", False)
@@ -37,7 +40,8 @@ def wiper_shred(request: dict):
 
 
 @register("wiper.wipeFreeSpace")
-def wiper_wipe_free_space(request: dict):
+def wiper_wipe_free_space(request: dict[str, Any] | None) -> dict[str, Any]:
+    request = request or {}
     drive = request.get("drive", "")
     passes = request.get("passes", 1)
     zeros = request.get("zeros", False)

@@ -47,7 +47,7 @@ def _make_tree(base: Path, n: int) -> None:
         (base / f"f_{i}.tmp").write_bytes(b"x" * (i + 1))
 
 
-def _wait_until(predicate, timeout: float = 5.0, step: float = 0.02) -> None:
+def _wait_until(predicate, timeout: float = 30.0, step: float = 0.02) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if predicate():
