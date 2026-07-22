@@ -41,7 +41,7 @@ export interface JsonRpcError {
 export type JsonRpcResponse<T = unknown> = JsonRpcSuccess<T> | JsonRpcError;
 
 export interface RpcClient {
-  call<T>(method: string, params?: unknown): Promise<T>;
+  call<T>(method: string, params?: unknown, customTimeoutMs?: number): Promise<T>;
   shutdown(): Promise<void>;
 }
 
@@ -110,12 +110,12 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
   });
 
   const client: RpcClient = {
-    call<T>(method: string, params?: unknown): Promise<T> {
+    call<T>(method: string, params?: unknown, customTimeoutMs?: number): Promise<T> {
       return new Promise<T>((resolve, reject) => {
         const id = nextId++;
-        // Give optimize/clean operations more time since they do real work
-        const isLongOperation = method.includes('optimize') || method.includes('clean') || method.includes('execute');
-        const timeoutMs = isLongOperation ? 60000 : 30000;
+        // Give optimize/clean/analyze operations more time since they do real work
+        const isLongOperation = method.includes('optimize') || method.includes('clean') || method.includes('execute') || method.includes('analyze') || method.includes('scan') || method.includes('dashboard.metrics') || method.includes('dashboard.health');
+        const timeoutMs = customTimeoutMs ?? (isLongOperation ? 120000 : 30000);
         const timeout = setTimeout(() => {
           pending.delete(id);
           reject(new Error(`RPC timeout: ${method} (${timeoutMs / 1000}s)`));
@@ -134,8 +134,10 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
   };
 
   // Health-check the backend before returning.
+  // The backend imports many modules at startup (dashboard, privacy, etc.)
+  // which can take 30-60s on first run, so use a generous timeout.
   try {
-    await client.call('system.ping');
+    await client.call('system.ping', undefined, 120000);
     logger.info('Python backend ready.');
   } catch (e) {
     logger.error('Python backend failed initial ping', e);

@@ -31,25 +31,65 @@ from avs_backend.common.errors import (
 )
 from avs_backend.common.logging_setup import configure_logging
 
-# Feature-module imports register their handlers at import time.
-from avs_backend import cleaner as _cleaner  # noqa: F401
-from avs_backend import dashboard as _dashboard  # noqa: F401
-from avs_backend import disk_analyzer as _disk  # noqa: F401
-from avs_backend import duplicate_finder as _dup  # noqa: F401
-from avs_backend import performance as _perf  # noqa: F401
-from avs_backend import privacy as _priv  # noqa: F401
-from avs_backend import registry_cleaner as _registry  # noqa: F401
-from avs_backend import software_updater as _updater  # noqa: F401
-from avs_backend import startup as _startup  # noqa: F401
-from avs_backend import system_information as _sysinfo  # noqa: F401
-from avs_backend import uninstaller as _uninstaller  # noqa: F401
-from avs_backend import history as _history  # noqa: F401
-from avs_backend import notifications as _notifications  # noqa: F401
-from avs_backend import reporting as _reporting  # noqa: F401
-from avs_backend import settings as _settings  # noqa: F401
-from avs_backend import undo as _undo  # noqa: F401
-
 log = configure_logging()
+
+# Feature-module imports register their handlers at import time.
+# Import them in background threads so the main read loop can start
+# immediately and respond to system.ping without waiting 30-60s for
+# all modules to finish their import-time work (PowerShell calls, etc.).
+import importlib
+
+_FEATURE_MODULES = [
+    "avs_backend.cleaner",
+    "avs_backend.dashboard",
+    "avs_backend.disk_analyzer",
+    "avs_backend.duplicate_finder",
+    "avs_backend.performance",
+    "avs_backend.privacy",
+    "avs_backend.registry_cleaner",
+    "avs_backend.software_updater",
+    "avs_backend.startup",
+    "avs_backend.system_information",
+    "avs_backend.uninstaller",
+    "avs_backend.history",
+    "avs_backend.notifications",
+    "avs_backend.reporting",
+    "avs_backend.settings",
+    "avs_backend.undo",
+]
+
+# Track which modules have finished importing
+_modules_loaded: set[str] = set()
+_modules_lock = threading.Lock()
+
+
+def _import_module(name: str) -> None:
+    try:
+        importlib.import_module(name)
+    except Exception:
+        log.exception("Failed to import %s", name)
+    finally:
+        with _modules_lock:
+            _modules_loaded.add(name)
+
+
+def _all_modules_loaded() -> bool:
+    with _modules_lock:
+        return len(_modules_loaded) >= len(_FEATURE_MODULES)
+
+
+# Start all imports in background threads (sequential, but non-blocking
+# to the main thread which handles stdin).
+for _mod in _FEATURE_MODULES:
+    threading.Thread(target=_import_module, args=(_mod,), daemon=True).start()
+
+
+# Register a simple ping handler immediately so the Electron bridge can
+# health-check the backend without waiting for all modules to import.
+@registry.register("system.ping")
+def _system_ping(_params: dict[str, Any] | None) -> dict[str, bool]:
+    return {"pong": True}
+
 
 JSON_RPC = "2.0"
 
@@ -91,8 +131,19 @@ def _dispatch(request: dict[str, Any]) -> None:
 
     handler = registry.get(method)
     if handler is None:
-        _error(request_id, METHOD_NOT_FOUND, f"Unknown method: {method}")
-        return
+        # Module might still be importing in a background thread.
+        # Wait up to 90s for it to become available.
+        deadline = 90.0
+        import time as _time
+        start_wait = _time.monotonic()
+        while handler is None and (_time.monotonic() - start_wait) < deadline:
+            if _all_modules_loaded():
+                break
+            _time.sleep(0.5)
+            handler = registry.get(method)
+        if handler is None:
+            _error(request_id, METHOD_NOT_FOUND, f"Unknown method: {method}")
+            return
 
     try:
         result = handler(params if isinstance(params, dict) or params is None else None)
@@ -105,7 +156,9 @@ def _dispatch(request: dict[str, Any]) -> None:
 
 
 def main() -> None:
-    log.info("avs-backend ready; %d method(s) registered", len(registry.all_methods()))
+    log.info("avs-backend ready; %d method(s) registered (%d modules still loading)",
+             len(registry.all_methods()),
+             len(_FEATURE_MODULES) - len(_modules_loaded))
     # Read from binary stdin buffer; this bypasses Python's default
     # block-buffered text I/O for pipes, which would wait for 8KB before
     # yielding lines and cause the Electron bridge to hang.

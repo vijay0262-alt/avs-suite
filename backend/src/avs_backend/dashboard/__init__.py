@@ -268,16 +268,30 @@ def dashboard_live(_params: dict[str, Any] | None) -> dict[str, Any]:
     with _live_metrics_lock:
         snapshot = _live_metrics.copy()
     if not IS_WINDOWS:
+        try:
+            return _get_stub_metrics()
+        except NameError:
+            return {}
+    if snapshot:
+        return snapshot
+    try:
         return _get_stub_metrics()
-    return snapshot if snapshot else _get_stub_metrics()
+    except NameError:
+        return {}
 
 
 @register("dashboard.metrics")
 def dashboard_metrics(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Collect all real-time system metrics with minimal overhead."""
     if not IS_WINDOWS:
-        return _get_stub_metrics()
-    return _collect_metrics()
+        try:
+            return _get_stub_metrics()
+        except NameError:
+            return {}
+    try:
+        return _collect_metrics()
+    except NameError:
+        return {}
 
 
 @register("dashboard.refreshCache")
@@ -290,7 +304,10 @@ def dashboard_refresh_cache(_params: dict[str, Any] | None) -> dict[str, bool]:
     Cleaner, One-Click Optimize) so the Dashboard reflects real, current
     system state rather than the pre-optimization snapshot.
     """
-    _collect_metrics.cache_clear()  # type: ignore[attr-defined]
+    try:
+        _collect_metrics.cache_clear()  # type: ignore[attr-defined]
+    except (NameError, AttributeError):
+        pass
     return {"refreshed": True}
 
 
@@ -298,53 +315,59 @@ def dashboard_refresh_cache(_params: dict[str, Any] | None) -> dict[str, bool]:
 def dashboard_health(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Calculate comprehensive health score with category breakdown."""
     if not IS_WINDOWS:
-        return _get_stub_health()
-    metrics = dashboard_metrics(None)
-    
-    cpu_score = _calculate_cpu_score(metrics["cpu"])
-    memory_score = _calculate_memory_score(metrics["memory"])
-    storage_score = _calculate_storage_score(metrics["storage"])
-    security_score = _calculate_security_score(metrics["security"])
-    performance_score = _calculate_performance_score(metrics["performance"])
-    
-    # Weighted average (adjust weights based on importance)
-    weights = {
-        "cpu": 0.25,
-        "memory": 0.25,
-        "storage": 0.20,
-        "security": 0.15,
-        "performance": 0.15,
-    }
-    
-    overall_score = (
-        cpu_score * weights["cpu"] +
-        memory_score * weights["memory"] +
-        storage_score * weights["storage"] +
-        security_score * weights["security"] +
-        performance_score * weights["performance"]
-    )
-    
-    overall_score = max(0, min(100, round(overall_score, 1)))
-    
-    return {
-        "overallScore": overall_score,
-        "categoryScores": {
-            "cpu": round(cpu_score, 1),
-            "memory": round(memory_score, 1),
-            "storage": round(storage_score, 1),
-            "security": round(security_score, 1),
-            "performance": round(performance_score, 1),
-        },
-        "status": _get_health_status(overall_score),
-        "suggestions": _generate_suggestions(metrics, {
-            "cpu": cpu_score,
-            "memory": memory_score,
-            "storage": storage_score,
-            "security": security_score,
-            "performance": performance_score,
-        }),
-        "capturedAt": _now_iso(),
-    }
+        try:
+            return _get_stub_health()
+        except NameError:
+            return {}
+    try:
+        metrics = dashboard_metrics(None)
+        
+        cpu_score = _calculate_cpu_score(metrics["cpu"])
+        memory_score = _calculate_memory_score(metrics["memory"])
+        storage_score = _calculate_storage_score(metrics["storage"])
+        security_score = _calculate_security_score(metrics["security"])
+        performance_score = _calculate_performance_score(metrics["performance"])
+        
+        # Weighted average (adjust weights based on importance)
+        weights = {
+            "cpu": 0.25,
+            "memory": 0.25,
+            "storage": 0.20,
+            "security": 0.15,
+            "performance": 0.15,
+        }
+        
+        overall_score = (
+            cpu_score * weights["cpu"] +
+            memory_score * weights["memory"] +
+            storage_score * weights["storage"] +
+            security_score * weights["security"] +
+            performance_score * weights["performance"]
+        )
+        
+        overall_score = max(0, min(100, round(overall_score, 1)))
+        
+        return {
+            "overallScore": overall_score,
+            "categoryScores": {
+                "cpu": round(cpu_score, 1),
+                "memory": round(memory_score, 1),
+                "storage": round(storage_score, 1),
+                "security": round(security_score, 1),
+                "performance": round(performance_score, 1),
+            },
+            "status": _get_health_status(overall_score),
+            "suggestions": _generate_suggestions(metrics, {
+                "cpu": cpu_score,
+                "memory": memory_score,
+                "storage": storage_score,
+                "security": security_score,
+                "performance": performance_score,
+            }),
+            "capturedAt": _now_iso(),
+        }
+    except NameError:
+        return {}
 
 
 @register("dashboard.optimize.preview")

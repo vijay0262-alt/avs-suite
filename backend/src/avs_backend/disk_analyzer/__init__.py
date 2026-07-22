@@ -108,8 +108,18 @@ class DiskAnalysisResult:
     scanDurationMs: int
 
 
-def _analyze_directory(directory: str, maxDepth: int = 3, currentDepth: int = 0) -> DirectoryAnalysis:
-    """Analyze a directory recursively."""
+# Max files to collect per category (to keep response size reasonable)
+_MAX_FILES_PER_CATEGORY = 500
+
+
+def _analyze_directory(directory: str, maxDepth: int = 3, currentDepth: int = 0,
+                        categorized: dict[str, list[dict[str, Any]]] | None = None) -> DirectoryAnalysis:
+    """Analyze a directory recursively.
+    
+    If ``categorized`` is provided, files are also grouped into user-friendly
+    categories (Pictures, Videos, etc.) during the same walk — avoiding a
+    second recursive scan.
+    """
     total_size = 0
     file_count = 0
     directory_count = 0
@@ -145,6 +155,22 @@ def _analyze_directory(directory: str, maxDepth: int = 3, currentDepth: int = 0)
                         file_types[ext] = 0
                     file_types[ext] += file_size
                     
+                    # Categorize files in the same pass
+                    if categorized is not None:
+                        category = _get_file_category(ext if ext != 'no_extension' else '')
+                        cat_list = categorized.get(category)
+                        if cat_list is None:
+                            cat_list = []
+                            categorized[category] = cat_list
+                        if len(cat_list) < _MAX_FILES_PER_CATEGORY:
+                            cat_list.append({
+                                'name': item,
+                                'path': item_path,
+                                'size': file_size,
+                                'extension': ext if ext != 'no_extension' else 'none',
+                                'modified': datetime.fromtimestamp(os.path.getmtime(item_path)).isoformat(),
+                            })
+                    
                 except (OSError, PermissionError):
                     continue
                     
@@ -154,7 +180,7 @@ def _analyze_directory(directory: str, maxDepth: int = 3, currentDepth: int = 0)
                 # Recursively analyze subdirectories if within max depth
                 if currentDepth < maxDepth:
                     try:
-                        sub_analysis = _analyze_directory(item_path, maxDepth, currentDepth + 1)
+                        sub_analysis = _analyze_directory(item_path, maxDepth, currentDepth + 1, categorized)
                         subdirectories.append(sub_analysis)
                         total_size += sub_analysis.totalSize
                         file_count += sub_analysis.fileCount
@@ -247,8 +273,9 @@ def disk_analyze(params: dict[str, Any] | None) -> dict[str, Any]:
     
     logger.info(f"Starting disk analysis of {directory} with max depth {maxDepth}")
     
-    # Analyze directory
-    analysis = _analyze_directory(directory, maxDepth)
+    # Single-pass: analyze directory and collect categorized files together
+    categorized_files: dict[str, list[dict[str, Any]]] = {}
+    analysis = _analyze_directory(directory, maxDepth, categorized=categorized_files)
     
     # Calculate totals
     total_size = analysis.totalSize
@@ -258,19 +285,11 @@ def disk_analyze(params: dict[str, Any] | None) -> dict[str, Any]:
     elapsed = (datetime.now() - start_time).total_seconds()
     scan_duration_ms = int(elapsed * 1000)
     
-    result = DiskAnalysisResult(
-        rootPath=directory,
-        totalSize=total_size,
-        fileCount=total_files,
-        directoryCount=total_directories,
-        analysis=analysis,
-        scanDurationMs=scan_duration_ms,
-    )
-    
     logger.info(f"Disk analysis completed in {elapsed:.2f}s: {total_files} files, {total_directories} directories, {total_size / 1024 / 1024:.1f} MB")
     
-    # Also collect categorized files for user review
-    categorized_files = _collect_categorized_files(directory, max_depth=maxDepth)
+    # Sort each category by size descending
+    for cat in categorized_files:
+        categorized_files[cat].sort(key=lambda f: f['size'], reverse=True)
     
     # Build category summary with counts and total sizes
     category_summary: list[dict[str, Any]] = []
@@ -283,11 +302,11 @@ def disk_analyze(params: dict[str, Any] | None) -> dict[str, Any]:
         })
     
     return {
-        'rootPath': result.rootPath,
-        'totalSize': result.totalSize,
-        'fileCount': result.fileCount,
-        'directoryCount': result.directoryCount,
-        'scanDurationMs': result.scanDurationMs,
+        'rootPath': directory,
+        'totalSize': total_size,
+        'fileCount': total_files,
+        'directoryCount': total_directories,
+        'scanDurationMs': scan_duration_ms,
         'analysis': {
             'path': analysis.path,
             'totalSize': analysis.totalSize,

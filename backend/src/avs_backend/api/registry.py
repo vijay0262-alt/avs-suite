@@ -16,11 +16,15 @@ _HANDLERS: dict[str, Handler] = {}
 
 
 def register(method: str) -> Callable[[Handler], Handler]:
-    """Decorator: register ``fn`` as the handler for ``method``."""
+    """Decorator: register ``fn`` as the handler for ``method``.
+
+    If the method is already registered, the new handler silently replaces
+    the old one. This allows a placeholder handler (e.g. system.ping in
+    rpc_server.py) to be overridden by the real implementation when the
+    feature module finishes importing.
+    """
 
     def decorator(fn: Handler) -> Handler:
-        if method in _HANDLERS:
-            raise RuntimeError(f"RPC method already registered: {method}")
         _HANDLERS[method] = fn
         return fn
 
