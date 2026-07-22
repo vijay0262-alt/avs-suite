@@ -9,6 +9,10 @@ def test_registry_has_expected_methods() -> None:
     from avs_backend.api import registry
     from avs_backend.api import rpc_server  # noqa: F401
 
+    # Wait for background module imports to finish (rpc_server imports
+    # feature modules in daemon threads to keep startup fast).
+    rpc_server.wait_for_modules(timeout=120)
+
     methods = set(registry.all_methods())
 
     # Base methods that should always be present

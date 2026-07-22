@@ -78,6 +78,22 @@ def _all_modules_loaded() -> bool:
         return len(_modules_loaded) >= len(_FEATURE_MODULES)
 
 
+def wait_for_modules(timeout: float = 120.0) -> bool:
+    """Block until all feature modules have finished importing.
+
+    Returns True if all modules loaded within *timeout*, False otherwise.
+    Primarily intended for tests; the production read loop doesn't need to
+    call this since ``_dispatch`` polls for handlers individually.
+    """
+    import time as _time
+    deadline = _time.monotonic() + timeout
+    while not _all_modules_loaded():
+        if _time.monotonic() > deadline:
+            return False
+        _time.sleep(0.1)
+    return True
+
+
 # Start all imports in background threads (sequential, but non-blocking
 # to the main thread which handles stdin).
 for _mod in _FEATURE_MODULES:
