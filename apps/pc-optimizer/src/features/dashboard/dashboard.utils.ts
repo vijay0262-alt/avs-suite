@@ -247,14 +247,15 @@ function buildSecurityIssues(metrics: DashboardMetrics): HealthIssue[] {
   const issues: HealthIssue[] = [];
 
   const thirdPartyAV = metrics.security.defender.thirdPartyAV || metrics.security.firewall.thirdPartyAV;
+  const thirdPartyFirewall = metrics.security.firewall.thirdPartyFirewall;
 
   if (!thirdPartyAV) {
     if (!metrics.security.defender.enabled) {
       issues.push({
         id: 'security-defender',
         category: 'security',
-        title: 'Windows Defender disabled',
-        detail: 'Real-time antivirus protection is not active',
+        title: 'No active antivirus detected',
+        detail: 'No antivirus product is registered with Windows Security Center',
         severity: 'high',
         measurableValue: 1,
         measurableUnit: 'count',
@@ -266,7 +267,7 @@ function buildSecurityIssues(metrics: DashboardMetrics): HealthIssue[] {
         id: 'security-rtp',
         category: 'security',
         title: 'Real-time protection off',
-        detail: 'Windows Defender real-time protection is disabled',
+        detail: 'Antivirus real-time protection is disabled',
         severity: 'high',
         measurableValue: 1,
         measurableUnit: 'count',
@@ -275,12 +276,12 @@ function buildSecurityIssues(metrics: DashboardMetrics): HealthIssue[] {
       });
     }
 
-    if (!metrics.security.firewall.enabled) {
+    if (!metrics.security.firewall.enabled && !thirdPartyFirewall) {
       issues.push({
         id: 'security-firewall',
         category: 'security',
-        title: 'Windows Firewall disabled',
-        detail: 'Network firewall is not active',
+        title: 'No active firewall detected',
+        detail: 'No firewall product is active — your PC is exposed to network attacks',
         severity: 'high',
         measurableValue: 1,
         measurableUnit: 'count',
@@ -288,6 +289,20 @@ function buildSecurityIssues(metrics: DashboardMetrics): HealthIssue[] {
         canAutoFix: false,
       });
     }
+  }
+
+  if (metrics.security.updates.serviceEnabled === false) {
+    issues.push({
+      id: 'security-updates-disabled',
+      category: 'security',
+      title: 'Windows Update service disabled',
+      detail: 'Automatic updates are turned off — your system may miss critical security patches',
+      severity: 'high',
+      measurableValue: 1,
+      measurableUnit: 'count',
+      actionPath: '/security',
+      canAutoFix: false,
+    });
   }
 
   if (metrics.security.updates.pendingUpdates > 0) {
@@ -320,7 +335,7 @@ function buildWindowsIssues(metrics: DashboardMetrics): HealthIssue[] {
       severity: 'medium',
       measurableValue: Math.round(uptimeDays),
       measurableUnit: 'count',
-      actionPath: '/system-info',
+      actionPath: '/system-information',
       canAutoFix: false,
     });
   }
@@ -363,10 +378,12 @@ function buildCategoryDetails(
 
   const securityDetail = (() => {
     const thirdPartyAV = metrics.security.defender.thirdPartyAV || metrics.security.firewall.thirdPartyAV;
+    const thirdPartyFirewall = metrics.security.firewall.thirdPartyFirewall;
     if (thirdPartyAV) return `${thirdPartyAV} protecting system`;
-    if (!metrics.security.defender.enabled) return 'Windows Defender disabled';
+    if (!metrics.security.defender.enabled) return 'No antivirus detected';
     if (!metrics.security.defender.realTimeProtection) return 'Real-time protection off';
-    if (!metrics.security.firewall.enabled) return 'Firewall disabled';
+    if (!metrics.security.firewall.enabled && !thirdPartyFirewall) return 'No firewall active';
+    if (metrics.security.updates.serviceEnabled === false) return 'Windows Update disabled';
     if (metrics.security.updates.pendingUpdates > 0) return `${metrics.security.updates.pendingUpdates} pending updates`;
     return 'All protections active';
   })();
@@ -439,7 +456,7 @@ function buildCategoryDetails(
       score: Math.round(scores.windows),
       detail: windowsDetail,
       actionLabel: 'View',
-      path: '/system-info',
+      path: '/system-information',
       severity: determineCategorySeverity(scores.windows),
     },
   ];

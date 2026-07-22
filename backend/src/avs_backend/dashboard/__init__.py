@@ -1388,106 +1388,138 @@ def _get_tpm_status() -> bool:
     return bool(out) and out.strip().lower() == "true"
 
 
+def _decode_wsc_product_state(state: int) -> tuple[str, str]:
+    """Decode WSC productState into (status, sub_status)."""
+    if state <= 0:
+        return ("inactive", "unknown")
+    upper = (state >> 16) & 0xFF
+    if upper == 0:
+        return ("inactive", "disabled")
+    if state >= 266000:
+        return ("active", "protected")
+    return ("inactive", "unknown")
+
+
 @_ttl_cache(60.0)
-def _get_third_party_antivirus() -> str | None:
-    """Detect third-party antivirus software via Windows Security Center.
-
-    Returns the product name if a third-party AV is active, or None if
-    only Windows Defender is present.
-
-    Uses Get-CimInstance to query the SecurityCenter2 namespace which
-    lists registered security products. If a non-Microsoft product is
-    found with active protection, we return its name.
-    """
-    if os.name != "nt":
-        return None
+def _query_wsc_products() -> dict[str, list[dict[str, Any]]]:
+    """Query Windows Security Center for registered security products."""
+    if not IS_WINDOWS:
+        return {"antivirus": [], "firewall": []}
+    ps_script = (
+        "$ErrorActionPreference = 'SilentlyContinue';"
+        "$results = @{ antivirus = @(); firewall = @() };"
+        "$avProducts = Get-CimInstance -Namespace 'root/SecurityCenter2' -ClassName AntivirusProduct;"
+        "foreach ($p in $avProducts) {"
+        "  $results.antivirus += @{ name = $p.displayName; state = [int]$p.productState; guid = $p.instanceGuid }"
+        "};"
+        "$fwProducts = Get-CimInstance -Namespace 'root/SecurityCenter2' -ClassName FirewallProduct;"
+        "foreach ($p in $fwProducts) {"
+        "  $results.firewall += @{ name = $p.displayName; state = [int]$p.productState; guid = $p.instanceGuid }"
+        "};"
+        "$results | ConvertTo-Json -Depth 3 -Compress"
+    )
+    out = _run_powershell(ps_script, timeout=5.0)
+    if not out:
+        return {"antivirus": [], "firewall": []}
     try:
-        ps_script = (
-            "$ErrorActionPreference = 'SilentlyContinue';"
-            "$products = Get-CimInstance -Namespace 'root/SecurityCenter2' -ClassName AntivirusProduct;"
-            "if ($products) {"
-            "  foreach ($p in $products) {"
-            "    if ($p.displayName -notmatch 'Windows Defender|Microsoft Defender') {"
-            "      Write-Output $p.displayName;"
-            "      break;"
-            "    }"
-            "  }"
-            "}"
-        )
-        out = _run_powershell(ps_script, timeout=3.0)
-        if out and out.strip():
-            return out.strip()
-        return None
-    except Exception:
-        return None
+        import json as _json
+        data = _json.loads(out)
+        av_list = data.get("antivirus", [])
+        fw_list = data.get("firewall", [])
+        if isinstance(av_list, dict):
+            av_list = [av_list]
+        if isinstance(fw_list, dict):
+            fw_list = [fw_list]
+        return {"antivirus": av_list, "firewall": fw_list}
+    except (ValueError, TypeError):
+        return {"antivirus": [], "firewall": []}
 
 
 @_ttl_cache(60.0)
 def _get_defender_status() -> dict[str, Any]:
-    """Get Windows Defender status via Windows Registry.
+    """Get antivirus protection status using Windows Security Center.
 
-    Uses winreg instead of PowerShell for <1ms response time.
-    Falls back to PowerShell if registry keys are not found.
+    Uses WSC as primary source. If a third-party AV is registered and
+    active, reports system as protected regardless of Windows Defender
+    state. Defender being disabled is EXPECTED when a third-party AV
+    has taken over.
+
+    Only reports an issue if NO antivirus product is registered and active.
     """
-    if os.name != "nt":
+    if not IS_WINDOWS:
         return {}
 
-    # Check if a third-party AV is active first
-    third_party = _get_third_party_antivirus()
-    if third_party:
+    wsc = _query_wsc_products()
+    av_products = wsc.get("antivirus", [])
+
+    active_avs = []
+    third_party_active = None
+    for product in av_products:
+        name = product.get("name", "")
+        state = product.get("state", 0)
+        status, _ = _decode_wsc_product_state(state)
+        if status == "active":
+            active_avs.append(name)
+            if "defender" not in name.lower():
+                if third_party_active is None:
+                    third_party_active = name
+
+    if active_avs:
         return {
             "enabled": True,
             "realTimeProtection": True,
-            "thirdPartyAV": third_party,
+            "thirdPartyAV": third_party_active,
+            "activeProducts": active_avs,
         }
 
-    # Try registry first — much faster than PowerShell
+    # Fallback: check Defender registry
     try:
         import winreg
-        # Defender AntiSpywareEnabled: 0=disabled, 1=enabled
         with winreg.OpenKey(
             winreg.HKEY_LOCAL_MACHINE,
             r"SOFTWARE\Microsoft\Windows Defender\Real-Time Protection",
         ) as key:
             rtp_value, _ = winreg.QueryValueEx(key, "DisableRealtimeMonitoring")
-            rtp = rtp_value == 0  # 0 means real-time protection is ON
-
+            rtp = rtp_value == 0
         with winreg.OpenKey(
             winreg.HKEY_LOCAL_MACHINE,
             r"SOFTWARE\Microsoft\Windows Defender",
         ) as key:
             av_value, _ = winreg.QueryValueEx(key, "DisableAntiSpyware")
-            enabled = av_value == 0  # 0 means Defender is enabled
-
-        return {"enabled": enabled, "realTimeProtection": rtp, "thirdPartyAV": None}
+            enabled = av_value == 0
+        if enabled:
+            return {"enabled": True, "realTimeProtection": rtp, "thirdPartyAV": None, "activeProducts": ["Windows Defender"]}
     except (FileNotFoundError, OSError):
         pass
 
-    # Fallback to PowerShell if registry keys are not found
-    out = _run_powershell(
-        "$s = Get-MpComputerStatus; "
-        "Write-Output \"$($s.AntivirusEnabled),$($s.RealTimeProtectionEnabled)\"",
-        timeout=1.5,
-    )
-    if not out:
-        return {"enabled": False, "realTimeProtection": False, "thirdPartyAV": None}
-    parts = out.split(",")
-    enabled = parts[0].strip().lower() == "true"
-    rtp = len(parts) > 1 and parts[1].strip().lower() == "true"
-    return {"enabled": enabled, "realTimeProtection": rtp, "thirdPartyAV": None}
+    return {"enabled": False, "realTimeProtection": False, "thirdPartyAV": None, "activeProducts": []}
 
 
 @_ttl_cache(60.0)
 def _get_firewall_status() -> dict[str, Any]:
-    """Get Windows Firewall status via Windows Registry.
+    """Get firewall protection status using Windows Security Center.
 
-    Uses winreg instead of PowerShell for <1ms response time.
-    Checks DomainProfile, StandardProfile, and PublicProfile EnableFirewall keys.
+    Checks WSC for registered firewall products first. If a third-party
+    firewall is active, reports as protected. Falls back to Windows
+    Firewall registry check.
+
+    Only reports disabled if NO firewall is active (neither third-party
+    nor Windows Firewall).
     """
-    if os.name != "nt":
+    if not IS_WINDOWS:
         return {}
 
-    # Try registry first
+    # Check WSC for registered firewall products
+    wsc = _query_wsc_products()
+    fw_products = wsc.get("firewall", [])
+    for product in fw_products:
+        name = product.get("name", "")
+        state = product.get("state", 0)
+        status, _ = _decode_wsc_product_state(state)
+        if status == "active" and "windows" not in name.lower() and "microsoft" not in name.lower():
+            return {"enabled": True, "thirdPartyFirewall": name}
+
+    # Check Windows Firewall via registry
     try:
         import winreg
         profiles = [
@@ -1495,64 +1527,53 @@ def _get_firewall_status() -> dict[str, Any]:
             r"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\StandardProfile",
             r"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\PublicProfile",
         ]
-        any_enabled = False
         for profile_path in profiles:
             try:
                 with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, profile_path) as key:
                     value, _ = winreg.QueryValueEx(key, "EnableFirewall")
                     if value == 1:
-                        any_enabled = True
-                        break
+                        return {"enabled": True, "thirdPartyFirewall": None}
             except (FileNotFoundError, OSError):
                 continue
-
-        if not any_enabled:
-            # Check if 3rd-party AV is managing firewall
-            third_party = _get_third_party_antivirus()
-            if third_party:
-                return {"enabled": True, "thirdPartyAV": third_party}
-        return {"enabled": any_enabled}
-    except (OSError, Exception):
+    except OSError:
         pass
 
-    # Fallback to PowerShell
-    out = _run_powershell(
-        "(Get-NetFirewallProfile | Where-Object { $_.Enabled -eq 'True' } | "
-        "Measure-Object).Count",
-        timeout=1.5,
-    )
-    if out is None:
-        third_party = _get_third_party_antivirus()
-        if third_party:
-            return {"enabled": True, "thirdPartyAV": third_party}
-        return {"enabled": False}
-    try:
-        enabled = int(out) > 0
-        if not enabled:
-            third_party = _get_third_party_antivirus()
-            if third_party:
-                return {"enabled": True, "thirdPartyAV": third_party}
-        return {"enabled": enabled}
-    except ValueError:
-        return {"enabled": False}
+    return {"enabled": False, "thirdPartyFirewall": None}
 
 
 @_ttl_cache(300.0)
 def _get_windows_update_status() -> dict[str, Any]:
-    """Get the count of pending Windows updates and last install date.
+    """Get Windows Update status.
 
-    Uses PowerShell to query the Windows Update COM API. Cached for 5 minutes
-    since the COM call can be slow.
+    Checks:
+    1. Whether the wuauserv service is set to Automatic (not disabled)
+    2. Count of pending updates via COM API
+
+    Only reports an issue if the service is disabled.
+    Pending updates are 'warning' (user action needed), not 'disabled'.
     """
-    if os.name != "nt":
+    if not IS_WINDOWS:
         return {}
+
+    # Check wuauserv service StartType
+    service_out = _run_powershell(
+        "(Get-Service -Name wuauserv -ErrorAction SilentlyContinue).StartType",
+        timeout=3.0,
+    )
+    service_enabled = True
+    if service_out:
+        start_type = service_out.strip().lower()
+        service_enabled = start_type != "disabled"
+
+    # Query pending updates via COM API
+    pending = 0
+    last_date = None
     try:
-        # Use PowerShell to query pending updates via COM API
         ps_script = (
             "$ErrorActionPreference = 'SilentlyContinue';"
             "$session = New-Object -ComObject Microsoft.Update.Session;"
             "$searcher = $session.CreateUpdateSearcher();"
-            "$result = $searcher.Search('IsInstalled=0 and Type=\\'Software\\'');"
+            "$result = $searcher.Search(\"IsInstalled=0 and Type='Software'\");"
             "Write-Output $result.Updates.Count;"
             "$history = $searcher.QueryHistory(0, 1);"
             "if ($history.Count -gt 0) { Write-Output $history.Item(0).Date }"
@@ -1560,14 +1581,19 @@ def _get_windows_update_status() -> dict[str, Any]:
         out = subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
             capture_output=True, text=True, timeout=8,
+            creationflags=_NO_WINDOW,
         )
         lines = [l.strip() for l in out.stdout.strip().split("\n") if l.strip()]
         pending = int(lines[0]) if lines and lines[0].isdigit() else 0
         last_date = lines[1] if len(lines) > 1 else None
-        return {"pendingUpdates": pending, "lastUpdateDate": last_date}
     except Exception as e:
         log.warning("Failed to get Windows Update status: %s", e)
-        return {"pendingUpdates": 0, "lastUpdateDate": None}
+
+    return {
+        "serviceEnabled": service_enabled,
+        "pendingUpdates": pending,
+        "lastUpdateDate": last_date,
+    }
 
 
 @_ttl_cache(3600.0)
@@ -1584,18 +1610,55 @@ def _get_last_update_date() -> str | None:
 
 @_ttl_cache(300.0)
 def _get_smartscreen_status() -> bool:
-    """Get Windows SmartScreen status from the registry via winreg."""
-    if os.name != "nt":
+    """Get Windows SmartScreen status from the registry.
+
+    Checks multiple registry locations:
+    1. HKLM\\...\\Explorer\\SmartScreenEnabled (file explorer SmartScreen)
+    2. HKLM\\...\\System\\SmartShellEnabled (Windows shell SmartScreen)
+    3. HKCU\\...\\Explorer\\SmartScreenEnabled (user-level setting)
+    """
+    if not IS_WINDOWS:
         return False
     try:
         import winreg
-        with winreg.OpenKey(
-            winreg.HKEY_LOCAL_MACHINE,
-            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer",
-        ) as key:
-            value, _ = winreg.QueryValueEx(key, "SmartScreenEnabled")
-            return str(value).lower() in ("requireadmin", "prompt", "warn", "on")
-    except (FileNotFoundError, OSError):
+        # Location 1: Explorer SmartScreen
+        try:
+            with winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE,
+                r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer",
+            ) as key:
+                value, _ = winreg.QueryValueEx(key, "SmartScreenEnabled")
+                if str(value).lower() in ("requireadmin", "prompt", "warn", "on"):
+                    return True
+        except (FileNotFoundError, OSError):
+            pass
+
+        # Location 2: System SmartShell
+        try:
+            with winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE,
+                r"SOFTWARE\Policies\Microsoft\Windows\System",
+            ) as key:
+                value, _ = winreg.QueryValueEx(key, "EnableSmartScreen")
+                if str(value) == "1":
+                    return True
+        except (FileNotFoundError, OSError):
+            pass
+
+        # Location 3: User-level Explorer
+        try:
+            with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer",
+            ) as key:
+                value, _ = winreg.QueryValueEx(key, "SmartScreenEnabled")
+                if str(value).lower() in ("requireadmin", "prompt", "warn", "on"):
+                    return True
+        except (FileNotFoundError, OSError):
+            pass
+
+        return False
+    except Exception:
         return False
 
 

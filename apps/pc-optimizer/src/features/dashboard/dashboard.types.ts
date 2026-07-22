@@ -53,14 +53,17 @@ export interface SecurityMetrics {
     enabled: boolean;
     realTimeProtection: boolean;
     thirdPartyAV?: string | null;
+    activeProducts?: string[];
   };
   firewall: {
     enabled: boolean;
     thirdPartyAV?: string | null;
+    thirdPartyFirewall?: string | null;
   };
   updates: {
     pendingUpdates: number;
     lastUpdateDate: string | null;
+    serviceEnabled?: boolean;
   };
   realTimeProtection: boolean;
   smartScreen: boolean;

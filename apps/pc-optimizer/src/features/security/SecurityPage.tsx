@@ -123,6 +123,8 @@ export default function SecurityPage() {
   const securityItems: SecurityItemProps[] = useMemo(() => {
     if (!security) return [];
     const thirdPartyAV = security.defender.thirdPartyAV || security.firewall.thirdPartyAV;
+    const thirdPartyFirewall = security.firewall.thirdPartyFirewall;
+    const firewallActive = security.firewall.enabled || !!thirdPartyFirewall;
     return [
       {
         label: thirdPartyAV ? `${thirdPartyAV} (Antivirus)` : 'Windows Defender',
@@ -130,7 +132,7 @@ export default function SecurityPage() {
           ? `${thirdPartyAV} is protecting your system. Windows Defender is not needed.`
           : security.defender.enabled
             ? 'Antivirus protection is enabled and monitoring your system.'
-            : 'Antivirus protection is disabled. Enable Windows Defender for protection.',
+            : 'No antivirus product is registered. Install one or enable Windows Defender for protection.',
         status: (thirdPartyAV || security.defender.enabled) ? 'active' : 'inactive',
         icon: ShieldCheckIcon,
         actionLabel: (thirdPartyAV || security.defender.enabled) ? undefined : 'Open Windows Security',
@@ -149,26 +151,28 @@ export default function SecurityPage() {
         onAction: (thirdPartyAV || security.realTimeProtection) ? undefined : openWindowsSecurity,
       },
       {
-        label: 'Firewall',
-        description: thirdPartyAV
-          ? `${thirdPartyAV} is managing your firewall protection.`
-          : security.firewall.enabled
+        label: thirdPartyFirewall ? `${thirdPartyFirewall} (Firewall)` : 'Firewall',
+        description: thirdPartyFirewall
+          ? `${thirdPartyFirewall} is managing your firewall protection.`
+          : firewallActive
             ? 'Windows Firewall is active and filtering network traffic.'
-            : 'Windows Firewall is disabled. Your PC is exposed to network attacks.',
-        status: (thirdPartyAV || security.firewall.enabled) ? 'active' : 'inactive',
+            : 'No firewall is active. Your PC is exposed to network attacks.',
+        status: firewallActive ? 'active' : 'inactive',
         icon: FireIcon,
-        actionLabel: (thirdPartyAV || security.firewall.enabled) ? undefined : 'Open Windows Security',
-        onAction: (thirdPartyAV || security.firewall.enabled) ? undefined : openWindowsSecurity,
+        actionLabel: firewallActive ? undefined : 'Open Windows Security',
+        onAction: firewallActive ? undefined : openWindowsSecurity,
       },
       {
         label: 'Windows Updates',
-        description: security.updates.pendingUpdates > 0
-          ? `${security.updates.pendingUpdates} pending update(s) available. Install them to stay protected.`
-          : 'Your system is up to date with the latest security patches.',
-        status: security.updates.pendingUpdates > 0 ? 'warning' : 'active',
+        description: security.updates.serviceEnabled === false
+          ? 'Windows Update service is disabled. Your system may miss critical security patches.'
+          : security.updates.pendingUpdates > 0
+            ? `${security.updates.pendingUpdates} pending update(s) available. Install them to stay protected.`
+            : 'Your system is up to date with the latest security patches.',
+        status: security.updates.serviceEnabled === false ? 'inactive' : security.updates.pendingUpdates > 0 ? 'warning' : 'active',
         icon: ArrowUpTrayIcon,
-        actionLabel: security.updates.pendingUpdates > 0 ? 'Check for Updates' : undefined,
-        onAction: security.updates.pendingUpdates > 0 ? openWindowsUpdate : undefined,
+        actionLabel: security.updates.serviceEnabled === false ? 'Open Windows Update' : security.updates.pendingUpdates > 0 ? 'Check for Updates' : undefined,
+        onAction: security.updates.serviceEnabled === false ? openWindowsUpdate : security.updates.pendingUpdates > 0 ? openWindowsUpdate : undefined,
       },
       {
         label: 'SmartScreen',
