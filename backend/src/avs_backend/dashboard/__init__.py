@@ -111,18 +111,22 @@ def _collect_metrics() -> dict[str, Any]:
     results: dict[str, Any] = {}
     with ThreadPoolExecutor(max_workers=len(collectors)) as pool:
         futures = {pool.submit(fn): name for name, fn in collectors}
-        for fut in as_completed(futures, timeout=8.0):
-            name = futures[fut]
-            try:
-                results[name] = fut.result()
-            except Exception as e:
-                log.warning("Collector %s failed: %s", name, e)
-                results[name] = {}
-        # Cancel any still-running futures
+        try:
+            for fut in as_completed(futures, timeout=15.0):
+                name = futures[fut]
+                try:
+                    results[name] = fut.result()
+                except Exception as e:
+                    log.warning("Collector %s failed: %s", name, e)
+                    results[name] = {}
+        except FuturesTimeoutError:
+            log.warning("Some dashboard collectors timed out after 15s")
+        # Fill in any missing results (timed out futures)
         for fut, name in futures.items():
             if name not in results:
                 log.warning("Collector %s timed out", name)
                 results[name] = {}
+                fut.cancel()
     results["capturedAt"] = _now_iso()
     return results
 
@@ -255,7 +259,7 @@ def _live_metrics_loop() -> None:
         time.sleep(max(0.0, _LIVE_REFRESH_INTERVAL - elapsed))
 
 
-threading.Thread(target=_live_metrics_loop, daemon=True, name="dashboard-live-metrics").start()
+# Live metrics background loop started at end of module (after all helpers defined)
 
 
 @register("dashboard.live")
@@ -635,9 +639,12 @@ def _get_storage_metrics() -> list[dict[str, Any]]:
         with ThreadPoolExecutor(max_workers=len(partitions) or 1) as pool:
             futures = [pool.submit(_build_drive, part) for part in partitions]
             for future in futures:
-                drive = future.result()
-                if drive:
-                    drives.append(drive)
+                try:
+                    drive = future.result(timeout=10.0)
+                    if drive:
+                        drives.append(drive)
+                except Exception as e:
+                    log.warning("Storage sub-collector failed: %s", e)
     except Exception as e:
         log.warning("Failed to get storage metrics: %s", e)
 
@@ -668,9 +675,13 @@ def _get_windows_info() -> dict[str, Any]:
                 "secure_boot": pool.submit(_get_secure_boot_status),
                 "tpm_status": pool.submit(_get_tpm_status),
             }
-            windows_results = {
-                name: fut.result() for name, fut in windows_futures.items()
-            }
+            windows_results = {}
+            for name, fut in windows_futures.items():
+                try:
+                    windows_results[name] = fut.result(timeout=10.0)
+                except Exception as e:
+                    log.warning("Windows info sub-collector %s failed: %s", name, e)
+                    windows_results[name] = {}
 
         return {
             "version": version,
@@ -701,9 +712,13 @@ def _get_security_metrics() -> dict[str, Any]:
                 "updates": pool.submit(_get_windows_update_status),
                 "smart_screen": pool.submit(_get_smartscreen_status),
             }
-            security_results = {
-                name: fut.result() for name, fut in security_futures.items()
-            }
+            security_results = {}
+            for name, fut in security_futures.items():
+                try:
+                    security_results[name] = fut.result(timeout=10.0)
+                except Exception as e:
+                    log.warning("Security sub-collector %s failed: %s", name, e)
+                    security_results[name] = {}
 
         return {
             "defender": security_results["defender"],
@@ -733,9 +748,13 @@ def _get_performance_metrics() -> dict[str, Any]:
             perf_futures = {
                 name: pool.submit(fn) for name, fn in perf_tasks
             }
-            perf_results = {
-                name: fut.result() for name, fut in perf_futures.items()
-            }
+            perf_results = {}
+            for name, fut in perf_futures.items():
+                try:
+                    perf_results[name] = fut.result(timeout=10.0)
+                except Exception as e:
+                    log.warning("Perf sub-collector %s failed: %s", name, e)
+                    perf_results[name] = 0
 
         return {
             "startupApps": perf_results["startup_apps"],
@@ -996,6 +1015,8 @@ def _get_background_processes_count() -> int:
 def _get_temp_files_size() -> int:
     """Get total size of temporary files (user temp + Windows temp)."""
     total_size = 0
+    max_files = 10000  # Limit to prevent slow scans
+    file_count = 0
     temp_dirs = [
         os.environ.get("TEMP", ""),
         os.path.expandvars(r"%SystemRoot%\Temp"),
@@ -1005,9 +1026,12 @@ def _get_temp_files_size() -> int:
             continue
         for root, _, files in os.walk(temp_dir):
             for file in files:
+                if file_count >= max_files:
+                    return total_size
                 try:
                     file_path = os.path.join(root, file)
                     total_size += os.path.getsize(file_path)
+                    file_count += 1
                 except (OSError, PermissionError):
                     continue
     return total_size
@@ -1021,11 +1045,16 @@ def _get_recycle_bin_size() -> int:
             return 0
 
         total_size = 0
+        max_files = 10000
+        file_count = 0
         for root, _, files in os.walk(recycle_bin):
             for file in files:
+                if file_count >= max_files:
+                    return total_size
                 try:
                     file_path = os.path.join(root, file)
                     total_size += os.path.getsize(file_path)
+                    file_count += 1
                 except (OSError, PermissionError):
                     continue
         return total_size
@@ -1051,11 +1080,16 @@ def _estimate_browser_cache_size() -> int:
 
         for cache_dir in browser_cache_dirs:
             if os.path.exists(cache_dir):
+                file_count = 0
+                max_files = 10000
                 for root, _, files in os.walk(cache_dir):
                     for file in files:
+                        if file_count >= max_files:
+                            break
                         try:
                             file_path = os.path.join(root, file)
                             total_size += os.path.getsize(file_path)
+                            file_count += 1
                         except (OSError, PermissionError):
                             continue
         return total_size
@@ -1068,10 +1102,13 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _get_thread_count() -> int:
-    """Get total thread count."""
+_thread_count_value: int = 0
+_thread_count_ready: bool = False
+
+
+def _refresh_thread_count() -> None:
+    global _thread_count_value, _thread_count_ready
     try:
-        # Use process_iter with 'threads' info to avoid per-process calls
         count = 0
         for p in psutil.process_iter(['threads']):
             try:
@@ -1080,14 +1117,35 @@ def _get_thread_count() -> int:
                     count += len(threads)
             except (psutil.AccessDenied, psutil.NoSuchProcess):
                 continue
-        return count
+        _thread_count_value = count
     except Exception:
-        return 0
+        pass
+    _thread_count_ready = True
+
+
+threading.Thread(target=_refresh_thread_count, daemon=True).start()
+
+
+def _periodic_refresh_thread_count() -> None:
+    while True:
+        time.sleep(30.0)
+        _refresh_thread_count()
+
+
+threading.Thread(target=_periodic_refresh_thread_count, daemon=True).start()
+
+
+def _get_thread_count() -> int:
+    """Get total thread count (served from background cache)."""
+    return _thread_count_value if _thread_count_ready else 0
 
 
 def _get_cpu_temperature() -> float | None:
     """Get CPU temperature if available."""
     try:
+        # sensors_temperatures() is Linux-only; on Windows it raises NotImplementedError
+        if IS_WINDOWS:
+            return None
         temps = psutil.sensors_temperatures()
         if temps:
             for name, entries in temps.items():
@@ -1647,3 +1705,6 @@ __all__ = [
     "dashboard_optimize_preview",
     "dashboard_optimize_execute",
 ]
+
+# Start the live metrics background loop now that all helpers are defined.
+threading.Thread(target=_live_metrics_loop, daemon=True, name="dashboard-live-metrics").start()
