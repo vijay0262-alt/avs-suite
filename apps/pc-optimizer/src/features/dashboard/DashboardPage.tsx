@@ -52,6 +52,7 @@ export default function DashboardPage() {
               <HealthScoreCard
                 healthScore={state.healthScore}
                 loading={state.healthScoreLoading || state.metricsLoading}
+                error={state.healthScoreError || state.metricsError}
               />
             </div>
             <div className="lg:col-span-2">

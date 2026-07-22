@@ -1067,10 +1067,14 @@ def _get_temp_files_size() -> int:
     for temp_dir in temp_dirs:
         if not temp_dir or not os.path.exists(temp_dir):
             continue
+        stop = False
         for root, _, files in os.walk(temp_dir):
+            if stop:
+                break
             for file in files:
                 if file_count >= max_files:
-                    return total_size
+                    stop = True
+                    break
                 try:
                     file_path = os.path.join(root, file)
                     total_size += os.path.getsize(file_path)
@@ -1090,10 +1094,14 @@ def _get_recycle_bin_size() -> int:
         total_size = 0
         max_files = 10000
         file_count = 0
+        stop = False
         for root, _, files in os.walk(recycle_bin):
+            if stop:
+                break
             for file in files:
                 if file_count >= max_files:
-                    return total_size
+                    stop = True
+                    break
                 try:
                     file_path = os.path.join(root, file)
                     total_size += os.path.getsize(file_path)

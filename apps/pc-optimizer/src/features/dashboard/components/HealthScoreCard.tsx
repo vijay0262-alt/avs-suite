@@ -6,14 +6,27 @@ import type { HealthSnapshot } from '../dashboard.types';
 export interface HealthScoreCardProps {
   healthScore: HealthSnapshot | null;
   loading: boolean;
+  error?: string | null;
 }
 
-export function HealthScoreCard({ healthScore, loading }: HealthScoreCardProps) {
-  if (loading || !healthScore) {
+export function HealthScoreCard({ healthScore, loading, error }: HealthScoreCardProps) {
+  if (loading && !healthScore) {
     return (
       <Card title="Health Score">
         <div className="flex items-center justify-center py-12">
           <div className="text-sm text-text-muted">Calculating health score...</div>
+        </div>
+      </Card>
+    );
+  }
+
+  if (!healthScore) {
+    return (
+      <Card title="Health Score">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-sm text-text-muted">
+            {error ? error : 'Unable to load health score'}
+          </div>
         </div>
       </Card>
     );

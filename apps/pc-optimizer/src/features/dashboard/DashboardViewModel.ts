@@ -154,14 +154,18 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   async bootstrap(): Promise<void> {
     if (this.state.bootstrap === 'ready') return;
     // Render the dashboard shell immediately; load data in the background.
+    // Don't set healthScoreLoading: true — instead, calculate a default
+    // health score immediately from null metrics (all zeros) so the card
+    // shows something right away, then update with real data when it arrives.
     this.setState({
       bootstrap: 'ready',
       bootstrapError: null,
       metricsLoading: true,
       liveMetricsLoading: true,
       privacyRisksLoading: true,
-      healthScoreLoading: true,
     });
+    // Show a default health score immediately (all zeros / 'critical')
+    this.recalculateHealth(null, null);
     void this.bootstrapData();
   }
 
@@ -207,6 +211,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         metricsLoading: false,
         healthScoreLoading: false,
         metricsError: err instanceof Error ? err.message : String(err),
+        healthScoreError: err instanceof Error ? err.message : String(err),
       });
     }
   }
@@ -244,11 +249,19 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   }
 
   private recalculateHealth(metrics = this.state.metrics, privacyRisks = this.state.privacyRisks): void {
-    if (!metrics) return;
-    this.setState({
-      healthScore: calculateHealthScore(metrics, privacyRisks),
-      healthScoreLoading: false,
-    });
+    try {
+      const score = calculateHealthScore(metrics, privacyRisks);
+      this.setState({
+        healthScore: score,
+        healthScoreLoading: false,
+        healthScoreError: null,
+      });
+    } catch (err) {
+      this.setState({
+        healthScoreLoading: false,
+        healthScoreError: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   // ------------------------------------------------------------------
