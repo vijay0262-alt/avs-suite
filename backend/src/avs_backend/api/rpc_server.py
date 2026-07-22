@@ -107,9 +107,17 @@ def _module_for_method(method: str) -> str | None:
 
 
 def _import_module(name: str) -> None:
+    import traceback
+    print(f"[START] Loading module {name}...", file=sys.stderr, flush=True)
+    methods_before = set(registry.all_methods())
     try:
         importlib.import_module(name)
-    except Exception:
+        methods_after = set(registry.all_methods())
+        new_methods = sorted(methods_after - methods_before)
+        print(f"[SUCCESS] Module {name} loaded. Registered methods: {new_methods}", file=sys.stderr, flush=True)
+    except Exception as e:
+        print(f"[FAILED] Module {name} failed to load", file=sys.stderr, flush=True)
+        print(f"[TRACEBACK] {traceback.format_exc()}", file=sys.stderr, flush=True)
         log.exception("Failed to import %s", name)
         with _modules_lock:
             _modules_failed.add(name)
@@ -151,6 +159,25 @@ def wait_for_modules(timeout: float = 120.0) -> bool:
 def _import_all_modules() -> None:
     for _mod in _FEATURE_MODULES:
         _import_module(_mod)
+    # Print complete RPC registry after all modules loaded
+    print("\n========== RPC REGISTRY DUMP ==========".format(), file=sys.stderr, flush=True)
+    all_meths = registry.all_methods()
+    print(f"Total registered methods: {len(all_meths)}", file=sys.stderr, flush=True)
+    for m in all_meths:
+        print(f"  {m}", file=sys.stderr, flush=True)
+    dashboard_methods = [m for m in all_meths if m.startswith("dashboard.")]
+    print(f"\nDashboard methods: {len(dashboard_methods)}", file=sys.stderr, flush=True)
+    for m in dashboard_methods:
+        print(f"  {m}", file=sys.stderr, flush=True)
+    if not dashboard_methods:
+        print("  *** dashboard.metrics is MISSING ***", file=sys.stderr, flush=True)
+        with _modules_lock:
+            failed = _modules_failed.copy()
+        if "avs_backend.dashboard" in failed:
+            print("  REASON: avs_backend.dashboard is in _modules_failed set", file=sys.stderr, flush=True)
+        else:
+            print("  REASON: avs_backend.dashboard loaded but did not register any methods", file=sys.stderr, flush=True)
+    print("========== END RPC REGISTRY ==========\n", file=sys.stderr, flush=True)
 
 
 threading.Thread(target=_import_all_modules, daemon=True, name="module-loader").start()

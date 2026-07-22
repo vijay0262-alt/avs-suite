@@ -8,7 +8,54 @@
 
 ---
 
-## 1. Initialization Order
+## 1. ROOT CAUSE: Why `dashboard.metrics` Was Unavailable in Packaged App
+
+### Primary Root Cause: Missing PyInstaller Hidden Import
+
+**File:** `backend/avs-backend.spec`  
+**Line:** 24-44 (original)  
+
+The PyInstaller spec file was **missing `avs_backend.dashboard`** from the `hiddenimports` list. Since `rpc_server.py` imports modules dynamically via `importlib.import_module()`, PyInstaller's static analysis cannot detect them. Without `hiddenimports`, the module was **not bundled** into the exe.
+
+At runtime, `importlib.import_module("avs_backend.dashboard")` failed with `ModuleNotFoundError`, was caught by `_import_module()`, and added to `_modules_failed`. The `_dispatch()` function then returned:
+```
+-32603: Module avs_backend.dashboard failed to load; method dashboard.metrics unavailable
+```
+
+### Also Missing From hiddenimports
+
+| Module | Methods |
+|--------|---------|
+| `avs_backend.dashboard` | 6 |
+| `avs_backend.common.job_rpc` | 3 |
+| `avs_backend.history` | 7 |
+| `avs_backend.notifications` | 6 |
+| `avs_backend.reporting` | 3 |
+| `avs_backend.undo` | 8 |
+| `avs_backend.performance.memory_optimizer` | submodule |
+| `avs_backend.performance.live_monitor` | submodule |
+| `avs_backend.startup.startup_manager` | submodule |
+
+### Secondary Issue: Frontend RPC Timeout Too Short
+
+**File:** `apps/pc-optimizer/electron/ipc/pythonBridge.ts`  
+**Line:** 117  
+
+The default RPC timeout was 30s. The backend takes ~20s to load modules + ~18s to collect metrics = ~38s. The 30s timeout caused the frontend to give up before the backend responded.
+
+**Fix:** Added `dashboard.` and `metrics` to `isLongOperation` check → 120s timeout.
+
+### Verification (Packaged Exe)
+
+Tested `avs-backend.exe` directly:
+- `system.ping` → `{"pong": true}` in 2s
+- `dashboard.metrics` → full metrics response in 18.6s
+- `defender.thirdPartyAV: "Trend Micro Maximum Security"`
+- All 18 modules loaded, 105 methods registered, `dashboard.metrics` confirmed
+
+---
+
+## 2. Initialization Order
 
 The RPC server (`rpc_server.py`) starts all feature module imports in a single background daemon thread (`module-loader`). The main thread immediately enters the stdin read loop, allowing the Electron bridge to send `system.ping` without waiting for all modules to finish loading.
 

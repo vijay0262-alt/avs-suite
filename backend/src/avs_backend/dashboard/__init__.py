@@ -281,7 +281,21 @@ def _live_metrics_loop() -> None:
         time.sleep(max(0.0, _LIVE_REFRESH_INTERVAL - elapsed))
 
 
-# Live metrics background loop started at end of module (after all helpers defined)
+# Live metrics background thread (started lazily on first dashboard.live call)
+_live_metrics_thread: threading.Thread | None = None
+_live_metrics_thread_lock = threading.Lock()
+
+
+def _ensure_live_metrics_thread() -> None:
+    """Start the live metrics background thread if not already running."""
+    global _live_metrics_thread
+    if _live_metrics_thread is None or not _live_metrics_thread.is_alive():
+        with _live_metrics_thread_lock:
+            if _live_metrics_thread is None or not _live_metrics_thread.is_alive():
+                _live_metrics_thread = threading.Thread(
+                    target=_live_metrics_loop, daemon=True, name="dashboard-live-metrics"
+                )
+                _live_metrics_thread.start()
 
 
 @register("dashboard.live")
@@ -1930,19 +1944,5 @@ __all__ = [
     "dashboard_optimize_execute",
 ]
 
-# Start the live metrics background loop lazily to avoid import lock deadlock.
-# The thread is started on first call to dashboard_live instead of at import time.
-_live_metrics_thread: threading.Thread | None = None
-_live_metrics_thread_lock = threading.Lock()
-
-
-def _ensure_live_metrics_thread() -> None:
-    """Start the live metrics background thread if not already running."""
-    global _live_metrics_thread
-    if _live_metrics_thread is None or not _live_metrics_thread.is_alive():
-        with _live_metrics_thread_lock:
-            if _live_metrics_thread is None or not _live_metrics_thread.is_alive():
-                _live_metrics_thread = threading.Thread(
-                    target=_live_metrics_loop, daemon=True, name="dashboard-live-metrics"
-                )
-                _live_metrics_thread.start()
+# _ensure_live_metrics_thread and _live_metrics_thread variables
+# were moved above to before dashboard_live handler definition.
