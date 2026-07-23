@@ -40,6 +40,10 @@ import type { NavigateFunction } from 'react-router-dom';
 import { calculateHealthScore } from './dashboard.utils';
 import { invalidateMetricsCache, dashboardRefreshManager } from '../health';
 import type { OptimizationEvent } from '../health';
+import { optimizationHistoryService } from '../health/OptimizationHistoryService';
+import { healthTimelineService } from '../health/HealthTimelineService';
+import { healthNotificationService } from '../health/HealthNotificationService';
+import type { OptimizationSummary } from './OptimizationSummary.types';
 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
 
@@ -91,6 +95,9 @@ export interface DashboardState {
   // Verification / developer logs
   verificationLogs: VerificationLog[];
   developerMode: boolean;
+
+  // Improvement Summary (Part 7)
+  optimizationSummary: OptimizationSummary | null;
 
   // Quick actions
   quickActionsOpen: boolean;
@@ -150,6 +157,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       developerMode: false,
 
       quickActionsOpen: false,
+      optimizationSummary: null,
     });
   }
 
@@ -341,6 +349,19 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         healthScoreLoading: false,
         healthScoreError: null,
       });
+      // Part 9: Record health timeline entry
+      healthTimelineService.recordHealth(
+        score.overallScore,
+        score.scoreZone,
+        score.issues.length,
+      );
+      // Part 10: Check for meaningful changes and fire notifications
+      const perf = metrics?.performance;
+      healthNotificationService.checkForChanges(
+        score.overallScore,
+        perf ? perf.temporaryFilesSize + perf.recycleBinSize + perf.browserCacheSize : 0,
+        perf?.startupApps ?? 0,
+      );
     } catch (err) {
       this.setState({
         healthScoreLoading: false,
@@ -845,6 +866,45 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         console.error('Failed to invalidate dashboard cache:', err);
       }
       await Promise.all([this.loadMetrics(), this.loadPrivacyRisks()]);
+
+      // Part 7: Build improvement summary from health scan results
+      const healthAfter = this.state.healthScore?.overallScore ?? 100;
+      const totalRecovered = [...actualMap.values()].reduce((s, a) => s + (a.bytesRecovered || 0), 0);
+      const registryFixed = [...actualMap.values()].reduce((s, a) => s + (a.issuesFixed || 0), 0);
+      const startupOptimized = [...actualMap.values()].reduce((s, a) => s + (a.entriesDisabled || 0), 0);
+      const privacyCleaned = [...actualMap.values()].reduce((s, a) => s + (a.itemsRemoved || 0), 0);
+      const modulesUsed = [...actualMap.keys()];
+      const elapsedMs = Date.now() - start;
+      const completedAt = new Date().toISOString();
+
+      const summary: OptimizationSummary = {
+        healthBefore: this.state.healthScanBeforeReport?.overallScore ?? 0,
+        healthAfter,
+        storageRecovered: totalRecovered,
+        registryFixed,
+        startupOptimized,
+        privacyCleaned,
+        duplicateFilesRemoved: 0,
+        durationMs: elapsedMs,
+        completedAt,
+        success: [...actualMap.values()].every((a) => a.success),
+      };
+      this.setState({ optimizationSummary: summary });
+
+      // Part 8: Record optimization history
+      optimizationHistoryService.recordOptimization({
+        timestamp: completedAt,
+        healthBefore: this.state.healthScanBeforeReport?.overallScore ?? 0,
+        healthAfter,
+        storageRecovered: totalRecovered,
+        registryFixed,
+        startupOptimized,
+        privacyCleaned,
+        duplicateFilesRemoved: 0,
+        durationMs: elapsedMs,
+        result: [...actualMap.values()].every((a) => a.success) ? 'success' : 'partial',
+        modulesUsed,
+      });
     } catch (err) {
       this.setState({
         healthScanStep: 'complete',
@@ -1055,7 +1115,8 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
 
   async executeOptimize(): Promise<void> {
     this.setState({ optimizeStep: 'optimizing', optimizeError: null });
-    
+    const healthBefore = this.state.healthScore?.overallScore ?? 0;
+
     try {
       const result = await this.service.executeOptimize();
       this.setState({
@@ -1072,6 +1133,37 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         console.error('Failed to invalidate dashboard cache:', err);
       }
       await this.loadMetrics();
+
+      // Part 7: Build improvement summary
+      const healthAfter = this.state.healthScore?.overallScore ?? 100;
+      const summary: OptimizationSummary = {
+        healthBefore,
+        healthAfter,
+        storageRecovered: result.totalRecovered,
+        registryFixed: 0,
+        startupOptimized: 0,
+        privacyCleaned: 0,
+        duplicateFilesRemoved: 0,
+        durationMs: result.elapsedMs,
+        completedAt: result.completedAt,
+        success: result.success,
+      };
+      this.setState({ optimizationSummary: summary });
+
+      // Part 8: Record optimization history
+      optimizationHistoryService.recordOptimization({
+        timestamp: result.completedAt,
+        healthBefore,
+        healthAfter,
+        storageRecovered: result.totalRecovered,
+        registryFixed: 0,
+        startupOptimized: 0,
+        privacyCleaned: 0,
+        duplicateFilesRemoved: 0,
+        durationMs: result.elapsedMs,
+        result: result.success ? 'success' : 'partial',
+        modulesUsed: ['junk'],
+      });
     } catch (err) {
       this.setState({
         optimizeStep: 'preview',
@@ -1086,6 +1178,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       optimizePreview: null,
       optimizeResult: null,
       optimizeError: null,
+      optimizationSummary: null,
     });
   }
 

@@ -19,37 +19,34 @@ import type {
   HealthScoreWeights,
 } from './dashboard.types';
 import { DEFAULT_HEALTH_WEIGHTS } from './dashboard.types';
+import { getHealthEngineConfig } from '../health/HealthEngineConfig';
 
 function clamp(value: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, value));
 }
 
 function determineStatus(overallScore: number): HealthStatus {
-  if (overallScore >= 100) return 'perfect';
-  if (overallScore >= 90) return 'excellent';
-  if (overallScore >= 80) return 'good';
-  if (overallScore >= 60) return 'fair';
-  if (overallScore >= 40) return 'poor';
+  const t = getHealthEngineConfig().scoreZoneThresholds;
+  if (overallScore >= t.perfect) return 'perfect';
+  if (overallScore >= t.excellent) return 'excellent';
+  if (overallScore >= t.good) return 'good';
+  if (overallScore >= t.fair) return 'fair';
+  if (overallScore >= t.poor) return 'poor';
   return 'critical';
 }
 
 /**
  * Determine the score zone from the overall score.
  * Used by the UI to pick the correct color and message for the gauge.
- *
- *   100      → perfect   (green)
- *   90–99    → excellent (green)
- *   80–89    → good      (yellow)
- *   60–79    → fair      (orange)
- *   40–59    → poor      (orange-red)
- *   0–39     → critical  (red)
+ * Thresholds are configurable via HealthEngineConfig (Part 12).
  */
 function determineScoreZone(overallScore: number): ScoreZone {
-  if (overallScore >= 100) return 'perfect';
-  if (overallScore >= 90) return 'excellent';
-  if (overallScore >= 80) return 'good';
-  if (overallScore >= 60) return 'fair';
-  if (overallScore >= 40) return 'poor';
+  const t = getHealthEngineConfig().scoreZoneThresholds;
+  if (overallScore >= t.perfect) return 'perfect';
+  if (overallScore >= t.excellent) return 'excellent';
+  if (overallScore >= t.good) return 'good';
+  if (overallScore >= t.fair) return 'fair';
+  if (overallScore >= t.poor) return 'poor';
   return 'critical';
 }
 
@@ -501,62 +498,68 @@ export function calculateHealthScore(
   const capturedAt = metrics?.capturedAt ?? new Date().toISOString();
 
   // Storage score: 100 when no junk. Penalty based on recoverable junk size.
-  // Drive usage is informational — only penalize if critically full (>90%).
+  // Drive usage is informational — only penalize if critically full.
+  // Thresholds are configurable via HealthEngineConfig (Part 12).
+  const storageCfg = getHealthEngineConfig().storage;
   const junkPenalty = performance.potentialRecoverable > 0
-    ? Math.min(40, Math.log10(performance.potentialRecoverable / (1024 * 1024) + 1) * 5)
+    ? Math.min(storageCfg.maxJunkPenalty, Math.log10(performance.potentialRecoverable / (1024 * 1024) + 1) * storageCfg.junkPenaltyMultiplier)
     : 0;
   const driveFullPenalty = storage.reduce((max, d) => {
-    if (d.usage > 90) return Math.max(max, 20);
-    if (d.usage > 80) return Math.max(max, 10);
+    if (d.usage > storageCfg.driveCriticalThreshold) return Math.max(max, storageCfg.driveCriticalPenalty);
+    if (d.usage > storageCfg.driveWarningThreshold) return Math.max(max, storageCfg.driveWarningPenalty);
     return max;
   }, 0);
   const storageScore = clamp(100 - junkPenalty - driveFullPenalty);
 
   // Startup score: 100 when no startup apps. Penalty per app.
-  const startupPenalty = Math.min(50, performance.startupApps * 5);
+  const startupCfg = getHealthEngineConfig().startup;
+  const startupPenalty = Math.min(startupCfg.maxPenalty, performance.startupApps * startupCfg.penaltyPerApp);
   const startupScore = clamp(100 - startupPenalty);
 
   // Privacy score: 100 when no privacy risks. Penalty per risk.
+  const privacyCfg = getHealthEngineConfig().privacy;
   const privacy = privacyRisks ?? 0;
-  const privacyScore = clamp(100 - privacy * 10);
+  const privacyScore = clamp(100 - privacy * privacyCfg.penaltyPerRisk);
 
   // Performance score: 100 baseline. Only penalized when CPU/memory cross
-  // issue thresholds (CPU > 60%, memory > 70%). Normal usage = perfect score.
-  // This ensures that after optimization (when no performance issues exist),
-  // the performance category contributes 100 to the overall score.
+  // issue thresholds. Normal usage = perfect score.
+  // Thresholds are configurable via HealthEngineConfig (Part 12).
+  const perfCfg = getHealthEngineConfig().performance;
   let performanceScore = 100;
-  if (cpu.usage > 80) {
-    performanceScore -= 30;
-  } else if (cpu.usage > 60) {
-    performanceScore -= 15;
+  if (cpu.usage > perfCfg.cpuCriticalThreshold) {
+    performanceScore -= perfCfg.cpuCriticalPenalty;
+  } else if (cpu.usage > perfCfg.cpuWarningThreshold) {
+    performanceScore -= perfCfg.cpuWarningPenalty;
   }
-  if (memory.usage > 85) {
-    performanceScore -= 25;
-  } else if (memory.usage > 70) {
-    performanceScore -= 12;
+  if (memory.usage > perfCfg.memoryCriticalThreshold) {
+    performanceScore -= perfCfg.memoryCriticalPenalty;
+  } else if (memory.usage > perfCfg.memoryWarningThreshold) {
+    performanceScore -= perfCfg.memoryWarningPenalty;
   }
   performanceScore = clamp(performanceScore);
 
   // Security score: binary penalties for disabled protections
+  const secCfg = getHealthEngineConfig().security;
   let securityScore = 100;
   const thirdPartyAV = security.defender.thirdPartyAV || security.firewall.thirdPartyAV;
   if (!thirdPartyAV) {
-    if (!security.defender.enabled) securityScore -= 30;
-    if (!security.defender.realTimeProtection) securityScore -= 20;
-    if (!security.firewall.enabled) securityScore -= 25;
+    if (!security.defender.enabled) securityScore -= secCfg.defenderDisabledPenalty;
+    if (!security.defender.realTimeProtection) securityScore -= secCfg.realTimeProtectionDisabledPenalty;
+    if (!security.firewall.enabled) securityScore -= secCfg.firewallDisabledPenalty;
   }
-  if (!security.smartScreen) securityScore -= 10;
-  if (security.updates.pendingUpdates > 0) securityScore -= 15;
+  if (!security.smartScreen) securityScore -= secCfg.smartScreenDisabledPenalty;
+  if (security.updates.pendingUpdates > 0) securityScore -= secCfg.pendingUpdatesPenalty;
   securityScore = clamp(securityScore);
 
   // Windows health score: graduated penalty for long uptime.
-  //   < 7 days  → 100 (freshly restarted)
-  //   < 30 days → 90  (normal)
-  //   < 60 days → 70  (restart recommended)
-  //   >= 60 days → 40 (restart strongly recommended)
+  // Thresholds are configurable via HealthEngineConfig (Part 12).
+  const winCfg = getHealthEngineConfig().windows;
   const uptimeDays = windows.uptime / 86400;
   const windowsScore = clamp(
-    uptimeDays >= 60 ? 40 : uptimeDays > 30 ? 70 : uptimeDays > 7 ? 90 : 100
+    uptimeDays >= winCfg.longUptimeDays ? winCfg.veryLongScore
+      : uptimeDays > winCfg.normalUptimeDays ? winCfg.longScore
+      : uptimeDays > winCfg.freshUptimeDays ? winCfg.normalScore
+      : winCfg.freshScore
   );
 
   // Weighted overall score — weights are configurable (Part 5).
