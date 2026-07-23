@@ -24,6 +24,7 @@ import type {
   ScanStatusSnapshot,
 } from './junkCleaner.types';
 import type { JunkCleanerService } from './junkCleaner.service';
+import { optimizationEventBus } from '../health';
 
 export type ConfirmStep = 'closed' | 'preview' | 'confirm' | 'running' | 'summary';
 
@@ -481,6 +482,14 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
         } catch {
           // Best-effort — don't fail the cleaning flow.
         }
+        // Emit optimization event so Dashboard refreshes health score
+        optimizationEventBus.emit({
+          moduleId: 'junk',
+          action: 'clean',
+          bytesRecovered: snap.totalBytesRecovered,
+          itemsProcessed: snap.totalFilesRemoved,
+          timestamp: Date.now(),
+        });
       }
     } catch (err) {
       this.setState({

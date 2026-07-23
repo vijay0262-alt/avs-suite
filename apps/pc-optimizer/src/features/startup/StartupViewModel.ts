@@ -6,6 +6,7 @@ import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import type { StartupEntry, StartupBackup } from './startup.types';
 import type { IStartupService } from './startup.service';
 import { startupService } from './startup.service';
+import { optimizationEventBus } from '../health';
 
 export interface StartupState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
@@ -68,6 +69,12 @@ export class StartupViewModel extends ViewModel<StartupState> {
       const result = await this.service.disableEntry(entry);
       await this.loadEntries();
       await this.loadBackups();
+      optimizationEventBus.emit({
+        moduleId: 'startup',
+        action: 'disable',
+        itemsProcessed: 1,
+        timestamp: Date.now(),
+      });
       return result;
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to disable entry';

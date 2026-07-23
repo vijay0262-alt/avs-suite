@@ -38,6 +38,8 @@ import type { RegistryIssue } from '../registry/registry.types';
 import { systemInfoService } from '../system-info/system-info.service';
 import type { NavigateFunction } from 'react-router-dom';
 import { calculateHealthScore } from './dashboard.utils';
+import { optimizationEventBus, invalidateMetricsCache } from '../health';
+import type { OptimizationEvent } from '../health';
 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
 
@@ -98,6 +100,8 @@ const LIVE_METRICS_POLL_INTERVAL_MS = 2000;
 
 export class DashboardViewModel extends ViewModel<DashboardState> {
   private liveMetricsPollTimer: ReturnType<typeof setInterval> | null = null;
+  private optimizationUnsub: (() => void) | null = null;
+  private optimizationRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly service: DashboardService,
@@ -153,6 +157,10 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   // ------------------------------------------------------------------
   async bootstrap(): Promise<void> {
     if (this.state.bootstrap === 'ready') return;
+    // Subscribe to optimization events from other modules
+    this.optimizationUnsub = optimizationEventBus.subscribe((event: OptimizationEvent) => {
+      this.handleOptimizationEvent(event);
+    });
     // Render the dashboard shell immediately; load data in the background.
     // Don't set healthScoreLoading: true — instead, calculate a default
     // health score immediately from null metrics (all zeros) so the card
@@ -190,12 +198,47 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
 
   override dispose(): void {
     this.stopLiveMetricsPolling();
+    if (this.optimizationUnsub) {
+      this.optimizationUnsub();
+      this.optimizationUnsub = null;
+    }
+    if (this.optimizationRefreshTimer) {
+      clearTimeout(this.optimizationRefreshTimer);
+      this.optimizationRefreshTimer = null;
+    }
     super.dispose();
   }
 
   // ------------------------------------------------------------------
   // Metrics
   // ------------------------------------------------------------------
+
+  /**
+   * Handle optimization events from other modules (junk cleaned, privacy
+   * cleaned, registry fixed, startup disabled, etc.).
+   *
+   * Debounces refresh — if multiple events arrive in quick succession
+   * (e.g. a batch operation), we only reload once after 500ms of quiet.
+   */
+  private handleOptimizationEvent(_event: OptimizationEvent): void {
+    if (this.optimizationRefreshTimer) {
+      clearTimeout(this.optimizationRefreshTimer);
+    }
+    this.optimizationRefreshTimer = setTimeout(() => {
+      this.optimizationRefreshTimer = null;
+      // Invalidate the backend metrics cache so we get fresh data
+      try {
+        void this.service.refreshCache();
+      } catch {
+        // Best-effort
+      }
+      // Invalidate the local health provider metrics cache
+      invalidateMetricsCache();
+      // Reload metrics + privacy risks, which triggers recalculateHealth
+      void Promise.all([this.loadMetrics(), this.loadPrivacyRisks()]);
+    }, 500);
+  }
+
   async loadMetrics(): Promise<void> {
     this.setState({ metricsLoading: true, metricsError: null });
     try {

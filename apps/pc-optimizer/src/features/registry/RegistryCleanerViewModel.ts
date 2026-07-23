@@ -9,6 +9,7 @@ import type {
   RegistryBackup,
   RegistryCleanResult,
 } from './registry.types';
+import { optimizationEventBus } from '../health';
 
 export interface RegistryState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
@@ -118,6 +119,13 @@ export class RegistryCleanerViewModel extends ViewModel<RegistryState> {
         issues: remaining,
         selected: new Set<string>(),
         backups: backups.backups,
+      });
+      // Emit optimization event so Dashboard refreshes health score
+      optimizationEventBus.emit({
+        moduleId: 'registry',
+        action: 'clean',
+        itemsProcessed: result.fixed,
+        timestamp: Date.now(),
       });
     } catch (err) {
       this.setState({

@@ -6,6 +6,7 @@ import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import type { DuplicateFile, DuplicateScope, DuplicateFinderState } from './duplicate-finder.types';
 import type { IDuplicateFinderService } from './duplicate-finder.service';
 import { duplicateFinderService } from './duplicate-finder.service';
+import { optimizationEventBus } from '../health';
 
 export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
   constructor(private service: IDuplicateFinderService = duplicateFinderService) {
@@ -88,6 +89,16 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
       const result = await this.service.delete(filesToDelete);
       this.setState({ deleteResult: result, deleting: false });
       
+      // Emit optimization event so Dashboard refreshes health score
+      if (result.deletedCount > 0) {
+        optimizationEventBus.emit({
+          moduleId: 'duplicate',
+          action: 'delete',
+          itemsProcessed: result.deletedCount,
+          timestamp: Date.now(),
+        });
+      }
+
       // Re-scan after deletion
       if (result.deletedCount > 0) {
         await this.scan();
