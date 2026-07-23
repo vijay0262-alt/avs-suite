@@ -14,6 +14,7 @@ import { createLogger } from '../logger/logger';
 import { spawnPythonBackend } from '../ipc/pythonBridge';
 import { registerIpcHandlers } from '../ipc/handlers';
 import { initAutoUpdater } from '../updater/updater';
+import { initLicensing, shutdownLicenseBridge } from '../licensing/licenseStartup';
 
 // Local environment configuration (copied from shared package to avoid ES module import)
 type AppEnvironment = 'development' | 'staging' | 'production';
@@ -255,7 +256,8 @@ app.whenReady().then(async () => {
     rpc = await spawnPythonBackend(log);
     registerIpcHandlers(rpc, log);
     initAutoUpdater(log, env);
-    log.info('Python backend initialized successfully');
+    await initLicensing(rpc, log);
+    log.info('Python backend and licensing initialized successfully');
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
     log.error('Python backend initialization failed', err);
@@ -284,5 +286,6 @@ app.on('window-all-closed', () => {
 });
 
 app.on('will-quit', () => {
+  shutdownLicenseBridge();
   log.info('AVS PC Optimizer shutting down');
 });

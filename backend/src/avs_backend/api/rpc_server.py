@@ -58,6 +58,7 @@ _FEATURE_MODULES = [
     "avs_backend.reporting",
     "avs_backend.settings",
     "avs_backend.undo",
+    "avs_backend.licensing",
 ]
 
 # Track which modules have finished importing (success or failure)
@@ -83,6 +84,7 @@ def _build_method_to_module_map() -> None:
         "system": "avs_backend.system_information",
         "job": "avs_backend.common.job_rpc",
         "updater": "avs_backend.software_updater",
+        "license": "avs_backend.licensing",
     }
     _METHOD_TO_MODULE.update(_explicit)
 

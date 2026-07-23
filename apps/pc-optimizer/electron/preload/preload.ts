@@ -33,6 +33,29 @@ const api = {
       return () => ipcRenderer.removeListener('avs:updater:event', wrapped);
     },
   },
+  license: {
+    startup: (): Promise<unknown> => ipcRenderer.invoke('avs:license:startup'),
+    activate: (key: string, email: string, deviceName?: string): Promise<unknown> =>
+      ipcRenderer.invoke('avs:license:activate', key, email, deviceName),
+    validate: (): Promise<unknown> => ipcRenderer.invoke('avs:license:validate'),
+    refresh: (): Promise<unknown> => ipcRenderer.invoke('avs:license:refresh'),
+    deactivate: (): Promise<unknown> => ipcRenderer.invoke('avs:license:deactivate'),
+    getStatus: (): Promise<unknown> => ipcRenderer.invoke('avs:license:getStatus'),
+    isLicensed: (): Promise<boolean> => ipcRenderer.invoke('avs:license:isLicensed'),
+    getInfo: (): Promise<unknown> => ipcRenderer.invoke('avs:license:getInfo'),
+    checkUpdates: (channel?: string, architecture?: string): Promise<unknown> =>
+      ipcRenderer.invoke('avs:license:checkUpdates', channel, architecture),
+    downloadUpdate: (releaseId: number, destPath?: string): Promise<unknown> =>
+      ipcRenderer.invoke('avs:license:downloadUpdate', releaseId, destPath),
+    installUpdate: (filePath: string, silent?: boolean): Promise<unknown> =>
+      ipcRenderer.invoke('avs:license:installUpdate', filePath, silent),
+    exportDiagnostics: (): Promise<unknown> => ipcRenderer.invoke('avs:license:exportDiagnostics'),
+    onEvent(cb: (event: { type: string; payload: unknown }) => void): () => void {
+      const wrapped = (_e: Electron.IpcRendererEvent, ev: { type: string; payload: unknown }) => cb(ev);
+      ipcRenderer.on('avs:license:event', wrapped);
+      return () => ipcRenderer.removeListener('avs:license:event', wrapped);
+    },
+  },
 } as const;
 
 contextBridge.exposeInMainWorld('avs', api);
