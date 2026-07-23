@@ -14,6 +14,7 @@
  */
 import type { LicenseState } from './states';
 import { stateToEdition } from './states';
+import type * as SharedFeatureFlagsModule from '@avs/shared/featureFlags';
 
 /**
  * Feature keys supported by the FeatureManager.
@@ -143,7 +144,7 @@ function checkSharedFeature(
  * Lazy accessor for the shared feature flags module.
  * Avoids circular import issues.
  */
-type SharedFeatureFlags = typeof import('@avs/shared/featureFlags');
+type SharedFeatureFlags = typeof SharedFeatureFlagsModule;
 let _sharedFlags: SharedFeatureFlags | null = null;
 function getSharedFeatureFlags(): SharedFeatureFlags | null {
   if (_sharedFlags) return _sharedFlags;
