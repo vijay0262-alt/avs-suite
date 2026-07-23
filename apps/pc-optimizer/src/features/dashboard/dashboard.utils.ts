@@ -15,24 +15,34 @@ import type {
   HealthCategoryDetail,
   HealthIssue,
   CategoryScores,
+  ScoreZone,
 } from './dashboard.types';
 
 function clamp(value: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function scoreFromUsage(usagePercent: number): number {
-  return clamp(100 - usagePercent * 1.1);
-}
-
-function average(values: number[]): number {
-  if (values.length === 0) return 0;
-  return values.reduce((a, b) => a + b, 0) / values.length;
-}
-
 function determineStatus(overallScore: number): HealthStatus {
   if (overallScore >= 90) return 'excellent';
-  if (overallScore >= 75) return 'good';
+  if (overallScore >= 80) return 'good';
+  if (overallScore >= 60) return 'fair';
+  if (overallScore >= 40) return 'poor';
+  return 'critical';
+}
+
+/**
+ * Determine the score zone from the overall score.
+ * Used by the UI to pick the correct color for the gauge.
+ *
+ *   90–100 → excellent (green)
+ *   80–89  → good      (yellow)
+ *   60–79  → fair      (orange)
+ *   40–59  → poor      (orange-red)
+ *   0–39   → critical  (red)
+ */
+function determineScoreZone(overallScore: number): ScoreZone {
+  if (overallScore >= 90) return 'excellent';
+  if (overallScore >= 80) return 'good';
   if (overallScore >= 60) return 'fair';
   if (overallScore >= 40) return 'poor';
   return 'critical';
@@ -481,25 +491,42 @@ export function calculateHealthScore(metrics: DashboardMetrics | null | undefine
   const performance = metrics?.performance ?? { startupApps: 0, backgroundProcesses: 0, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 };
   const capturedAt = metrics?.capturedAt ?? new Date().toISOString();
 
-  // Storage score: based on drive usage + recoverable junk
-  const driveUsageScore = average(storage.map((d) => scoreFromUsage(d.usage)));
+  // Storage score: 100 when no junk. Penalty based on recoverable junk size.
+  // Drive usage is informational — only penalize if critically full (>90%).
   const junkPenalty = performance.potentialRecoverable > 0
-    ? Math.min(30, Math.log10(performance.potentialRecoverable / (1024 * 1024) + 1) * 5)
+    ? Math.min(40, Math.log10(performance.potentialRecoverable / (1024 * 1024) + 1) * 5)
     : 0;
-  const storageScore = clamp(driveUsageScore - junkPenalty);
+  const driveFullPenalty = storage.reduce((max, d) => {
+    if (d.usage > 90) return Math.max(max, 20);
+    if (d.usage > 80) return Math.max(max, 10);
+    return max;
+  }, 0);
+  const storageScore = clamp(100 - junkPenalty - driveFullPenalty);
 
-  // Startup score: penalty per enabled startup app
+  // Startup score: 100 when no startup apps. Penalty per app.
   const startupPenalty = Math.min(50, performance.startupApps * 5);
   const startupScore = clamp(100 - startupPenalty);
 
-  // Privacy score: penalty per privacy risk detected
+  // Privacy score: 100 when no privacy risks. Penalty per risk.
   const privacy = privacyRisks ?? 0;
   const privacyScore = clamp(100 - privacy * 10);
 
-  // Performance score: based on CPU and memory usage
-  const cpuScore = scoreFromUsage(cpu.usage);
-  const memoryScore = scoreFromUsage(memory.usage);
-  const performanceScore = clamp((cpuScore + memoryScore) / 2);
+  // Performance score: 100 baseline. Only penalized when CPU/memory cross
+  // issue thresholds (CPU > 60%, memory > 70%). Normal usage = perfect score.
+  // This ensures that after optimization (when no performance issues exist),
+  // the performance category contributes 100 to the overall score.
+  let performanceScore = 100;
+  if (cpu.usage > 80) {
+    performanceScore -= 30;
+  } else if (cpu.usage > 60) {
+    performanceScore -= 15;
+  }
+  if (memory.usage > 85) {
+    performanceScore -= 25;
+  } else if (memory.usage > 70) {
+    performanceScore -= 12;
+  }
+  performanceScore = clamp(performanceScore);
 
   // Security score: binary penalties for disabled protections
   let securityScore = 100;
@@ -513,9 +540,15 @@ export function calculateHealthScore(metrics: DashboardMetrics | null | undefine
   if (security.updates.pendingUpdates > 0) securityScore -= 15;
   securityScore = clamp(securityScore);
 
-  // Windows health score: uptime, system integrity
+  // Windows health score: graduated penalty for long uptime.
+  //   < 7 days  → 100 (freshly restarted)
+  //   < 30 days → 90  (normal)
+  //   < 60 days → 70  (restart recommended)
+  //   >= 60 days → 40 (restart strongly recommended)
   const uptimeDays = windows.uptime / 86400;
-  const windowsScore = clamp(uptimeDays > 30 ? 70 : 100);
+  const windowsScore = clamp(
+    uptimeDays >= 60 ? 40 : uptimeDays > 30 ? 70 : uptimeDays > 7 ? 90 : 100
+  );
 
   // Weighted overall score
   const weights = {
@@ -555,6 +588,7 @@ export function calculateHealthScore(metrics: DashboardMetrics | null | undefine
   return {
     timestamp: capturedAt,
     overallScore: Math.round(overallScore),
+    scoreZone: determineScoreZone(overallScore),
     categoryScores: {
       storage: Math.round(storageScore),
       startup: Math.round(startupScore),

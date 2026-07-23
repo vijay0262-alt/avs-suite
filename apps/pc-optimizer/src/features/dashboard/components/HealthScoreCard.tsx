@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
-import { HEALTH_STATUS_CONFIG } from '../dashboard.types';
+import { HEALTH_STATUS_CONFIG, SCORE_ZONE_CONFIG } from '../dashboard.types';
 import type { HealthSnapshot } from '../dashboard.types';
 import { useAnimatedNumber } from './useAnimatedNumber';
 
@@ -38,24 +38,11 @@ export const HealthScoreCard = React.memo(function HealthScoreCard({ healthScore
   }
 
   const config = HEALTH_STATUS_CONFIG[healthScore.status];
+  const zoneConfig = SCORE_ZONE_CONFIG[healthScore.scoreZone];
 
-  // Color zones: 0-39 Red, 40-69 Orange, 70-89 Yellow, 90-100 Green
-  const scoreColor =
-    displayScore >= 90
-      ? 'text-semantic-success'
-      : displayScore >= 70
-        ? 'text-semantic-warning'
-        : displayScore >= 40
-          ? 'text-semantic-warning'
-          : 'text-semantic-danger';
-  const strokeColor =
-    displayScore >= 90
-      ? 'stroke-semantic-success'
-      : displayScore >= 70
-        ? 'stroke-semantic-warning'
-        : displayScore >= 40
-          ? 'stroke-semantic-warning'
-          : 'stroke-semantic-danger';
+  // Colors driven by the Health Engine's scoreZone, not hardcoded in UI.
+  const scoreColor = zoneConfig.textColor;
+  const strokeColor = zoneConfig.strokeColor;
 
   const issueCount = healthScore.issues.length;
 

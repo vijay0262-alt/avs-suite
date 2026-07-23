@@ -140,6 +140,7 @@ export interface HealthIssue {
 export interface HealthSnapshot {
   timestamp: string;
   overallScore: number;
+  scoreZone: ScoreZone;
   categoryScores: CategoryScores;
   status: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
   issues: HealthIssue[];
@@ -193,6 +194,34 @@ export interface OptimizeExecuteResponse {
 }
 
 export type HealthStatus = 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+
+/**
+ * Score zones — determined by the Health Engine, not hardcoded in UI.
+ * The engine computes the zone from the overall score and exposes it
+ * via HealthSnapshot.scoreZone. UI components read from SCORE_ZONE_CONFIG.
+ *
+ * Ranges:
+ *   90–100 → excellent (green)
+ *   80–89  → good      (yellow)
+ *   60–79  → fair      (orange)
+ *   40–59  → poor      (orange-red)
+ *   0–39   → critical  (red)
+ */
+export type ScoreZone = 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+
+export interface ScoreZoneConfig {
+  textColor: string;
+  strokeColor: string;
+  label: string;
+}
+
+export const SCORE_ZONE_CONFIG: Record<ScoreZone, ScoreZoneConfig> = {
+  excellent: { textColor: 'text-semantic-success', strokeColor: 'stroke-semantic-success', label: 'Excellent' },
+  good:      { textColor: 'text-semantic-warning', strokeColor: 'stroke-semantic-warning', label: 'Good' },
+  fair:      { textColor: 'text-semantic-warning', strokeColor: 'stroke-semantic-warning', label: 'Fair' },
+  poor:      { textColor: 'text-semantic-danger',  strokeColor: 'stroke-semantic-danger',  label: 'Poor' },
+  critical:  { textColor: 'text-semantic-danger',  strokeColor: 'stroke-semantic-danger',  label: 'Critical' },
+};
 
 export const HEALTH_STATUS_CONFIG: Record<
   HealthStatus,

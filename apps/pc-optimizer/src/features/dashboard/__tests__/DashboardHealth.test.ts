@@ -147,6 +147,206 @@ describe('Health calculation', () => {
   });
 });
 
+describe('Health Score Philosophy — score 100 when fully optimized', () => {
+  it('returns overall score 100 when all issues are resolved', () => {
+    const cleanMetrics = makeMetrics({
+      cpu: { usage: 15, frequency: 3000, logicalProcessors: 8, physicalProcessors: 4, processes: 80, threads: 400, temperature: null },
+      memory: { total: 16_000_000_000, used: 4_000_000_000, available: 12_000_000_000, usage: 25, cached: 1_000_000_000, swapTotal: 4_000_000_000, swapUsed: 0, swapUsage: 0 },
+      storage: [{ mount: 'C:', name: 'SSD', total: 500_000_000_000, used: 200_000_000_000, free: 300_000_000_000, usage: 40, isSSD: true, fileSystem: 'NTFS' }],
+      performance: { startupApps: 0, backgroundProcesses: 30, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 },
+    });
+    const score = calculateHealthScore(cleanMetrics, 0);
+    expect(score.overallScore).toBe(100);
+    expect(score.issues.length).toBe(0);
+    expect(score.status).toBe('excellent');
+    expect(score.scoreZone).toBe('excellent');
+  });
+
+  it('returns all category scores 100 when fully optimized', () => {
+    const cleanMetrics = makeMetrics({
+      cpu: { usage: 10, frequency: 3000, logicalProcessors: 8, physicalProcessors: 4, processes: 50, threads: 200, temperature: null },
+      memory: { total: 16_000_000_000, used: 4_000_000_000, available: 12_000_000_000, usage: 25, cached: 1_000_000_000, swapTotal: 4_000_000_000, swapUsed: 0, swapUsage: 0 },
+      storage: [{ mount: 'C:', name: 'SSD', total: 500_000_000_000, used: 200_000_000_000, free: 300_000_000_000, usage: 40, isSSD: true, fileSystem: 'NTFS' }],
+      performance: { startupApps: 0, backgroundProcesses: 30, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 },
+    });
+    const score = calculateHealthScore(cleanMetrics, 0);
+    expect(score.categoryScores.storage).toBe(100);
+    expect(score.categoryScores.startup).toBe(100);
+    expect(score.categoryScores.privacy).toBe(100);
+    expect(score.categoryScores.performance).toBe(100);
+    expect(score.categoryScores.security).toBe(100);
+    expect(score.categoryScores.windows).toBe(100);
+  });
+
+  it('issues found = 0 when fully optimized', () => {
+    const cleanMetrics = makeMetrics({
+      cpu: { usage: 15, frequency: 3000, logicalProcessors: 8, physicalProcessors: 4, processes: 80, threads: 400, temperature: null },
+      memory: { total: 16_000_000_000, used: 4_000_000_000, available: 12_000_000_000, usage: 25, cached: 1_000_000_000, swapTotal: 4_000_000_000, swapUsed: 0, swapUsage: 0 },
+      storage: [{ mount: 'C:', name: 'SSD', total: 500_000_000_000, used: 200_000_000_000, free: 300_000_000_000, usage: 40, isSSD: true, fileSystem: 'NTFS' }],
+      performance: { startupApps: 0, backgroundProcesses: 30, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 },
+    });
+    const score = calculateHealthScore(cleanMetrics, 0);
+    expect(score.issues).toEqual([]);
+  });
+});
+
+describe('Health Score Philosophy — score zones', () => {
+  it('score 90-100 maps to excellent zone', () => {
+    const cleanMetrics = makeMetrics({
+      performance: { startupApps: 0, backgroundProcesses: 30, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 },
+    });
+    const score = calculateHealthScore(cleanMetrics, 0);
+    expect(score.scoreZone).toBe('excellent');
+  });
+
+  it('score below 40 maps to critical zone', () => {
+    const criticalMetrics = makeMetrics({
+      cpu: { usage: 95, frequency: 3000, logicalProcessors: 8, physicalProcessors: 4, processes: 300, threads: 1000, temperature: null },
+      memory: { total: 16_000_000_000, used: 15_000_000_000, available: 1_000_000_000, usage: 94, cached: 0, swapTotal: 4_000_000_000, swapUsed: 3_000_000_000, swapUsage: 75 },
+      storage: [{ mount: 'C:', name: 'SSD', total: 500_000_000_000, used: 480_000_000_000, free: 20_000_000_000, usage: 96, isSSD: true, fileSystem: 'NTFS' }],
+      windows: { version: '10', build: '19041', uptime: 65 * 86400, isAdministrator: true, powerMode: 'balanced', battery: null, secureBoot: false, tpmStatus: false },
+      security: {
+        defender: { enabled: false, realTimeProtection: false },
+        firewall: { enabled: false },
+        updates: { pendingUpdates: 10, lastUpdateDate: null },
+        realTimeProtection: false,
+        smartScreen: false,
+      },
+      performance: { startupApps: 10, backgroundProcesses: 200, temporaryFilesSize: 20_000_000_000, recycleBinSize: 10_000_000_000, browserCacheSize: 5_000_000_000, potentialRecoverable: 35_000_000_000 },
+    });
+    const score = calculateHealthScore(criticalMetrics, 5);
+    expect(score.scoreZone).toBe('critical');
+    expect(score.overallScore).toBeLessThan(40);
+  });
+
+  it('scoreZone is always consistent with overallScore range', () => {
+    const dirty = calculateHealthScore(makeMetrics({
+      performance: { startupApps: 5, backgroundProcesses: 80, temporaryFilesSize: 500_000_000, recycleBinSize: 200_000_000, browserCacheSize: 100_000_000, potentialRecoverable: 800_000_000 },
+    }), 2);
+    const s = dirty.overallScore;
+    if (s >= 90) expect(dirty.scoreZone).toBe('excellent');
+    else if (s >= 80) expect(dirty.scoreZone).toBe('good');
+    else if (s >= 60) expect(dirty.scoreZone).toBe('fair');
+    else if (s >= 40) expect(dirty.scoreZone).toBe('poor');
+    else expect(dirty.scoreZone).toBe('critical');
+  });
+});
+
+describe('Health Score Philosophy — progressive degradation', () => {
+  it('more junk produces progressively lower storage score', () => {
+    const noJunk = calculateHealthScore(makeMetrics({
+      performance: { startupApps: 0, backgroundProcesses: 0, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 },
+    }), 0);
+    const smallJunk = calculateHealthScore(makeMetrics({
+      performance: { startupApps: 0, backgroundProcesses: 0, temporaryFilesSize: 100_000_000, recycleBinSize: 50_000_000, browserCacheSize: 20_000_000, potentialRecoverable: 170_000_000 },
+    }), 0);
+    const largeJunk = calculateHealthScore(makeMetrics({
+      performance: { startupApps: 0, backgroundProcesses: 0, temporaryFilesSize: 5_000_000_000, recycleBinSize: 2_000_000_000, browserCacheSize: 1_000_000_000, potentialRecoverable: 8_000_000_000 },
+    }), 0);
+    expect(noJunk.categoryScores.storage).toBe(100);
+    expect(smallJunk.categoryScores.storage).toBeLessThan(100);
+    expect(largeJunk.categoryScores.storage).toBeLessThan(smallJunk.categoryScores.storage);
+  });
+
+  it('more startup apps produce progressively lower startup score', () => {
+    const none = calculateHealthScore(makeMetrics({ performance: { startupApps: 0, backgroundProcesses: 0, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 } }), 0);
+    const few = calculateHealthScore(makeMetrics({ performance: { startupApps: 3, backgroundProcesses: 0, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 } }), 0);
+    const many = calculateHealthScore(makeMetrics({ performance: { startupApps: 10, backgroundProcesses: 0, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 } }), 0);
+    expect(none.categoryScores.startup).toBe(100);
+    expect(few.categoryScores.startup).toBeLessThan(100);
+    expect(many.categoryScores.startup).toBeLessThan(few.categoryScores.startup);
+  });
+
+  it('more privacy risks produce progressively lower privacy score', () => {
+    const none = calculateHealthScore(makeMetrics({ performance: { startupApps: 0, backgroundProcesses: 0, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 } }), 0);
+    const some = calculateHealthScore(makeMetrics({ performance: { startupApps: 0, backgroundProcesses: 0, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 } }), 3);
+    const many = calculateHealthScore(makeMetrics({ performance: { startupApps: 0, backgroundProcesses: 0, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 } }), 8);
+    expect(none.categoryScores.privacy).toBe(100);
+    expect(some.categoryScores.privacy).toBeLessThan(100);
+    expect(many.categoryScores.privacy).toBeLessThan(some.categoryScores.privacy);
+  });
+
+  it('normal CPU/memory does not penalize performance score', () => {
+    const normal = calculateHealthScore(makeMetrics({
+      cpu: { usage: 30, frequency: 3000, logicalProcessors: 8, physicalProcessors: 4, processes: 100, threads: 500, temperature: null },
+      memory: { total: 16_000_000_000, used: 6_000_000_000, available: 10_000_000_000, usage: 37, cached: 1_000_000_000, swapTotal: 4_000_000_000, swapUsed: 0, swapUsage: 0 },
+      performance: { startupApps: 0, backgroundProcesses: 0, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 },
+    }), 0);
+    expect(normal.categoryScores.performance).toBe(100);
+  });
+
+  it('high CPU usage penalizes performance score', () => {
+    const highCpu = calculateHealthScore(makeMetrics({
+      cpu: { usage: 85, frequency: 3000, logicalProcessors: 8, physicalProcessors: 4, processes: 300, threads: 1000, temperature: null },
+      memory: { total: 16_000_000_000, used: 6_000_000_000, available: 10_000_000_000, usage: 37, cached: 1_000_000_000, swapTotal: 4_000_000_000, swapUsed: 0, swapUsage: 0 },
+      performance: { startupApps: 0, backgroundProcesses: 0, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 },
+    }), 0);
+    expect(highCpu.categoryScores.performance).toBeLessThan(100);
+  });
+});
+
+describe('Health Score Philosophy — after optimization shows 100', () => {
+  let vm: DashboardViewModel;
+  let svc: DashboardService;
+  let priv: IPrivacyService;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    optimizationEventBus.clear();
+    dashboardRefreshManager.reset();
+    dashboardRefreshManager.init();
+  });
+
+  afterEach(() => {
+    vm?.dispose();
+    vi.useRealTimers();
+  });
+
+  it('dashboard shows score 100 and 0 issues after all issues resolved', async () => {
+    const dirtyMetrics = makeMetrics({
+      performance: { startupApps: 8, backgroundProcesses: 100, temporaryFilesSize: 3_000_000_000, recycleBinSize: 1_000_000_000, browserCacheSize: 500_000_000, potentialRecoverable: 4_500_000_000 },
+    });
+    const cleanMetrics = makeMetrics({
+      cpu: { usage: 15, frequency: 3000, logicalProcessors: 8, physicalProcessors: 4, processes: 80, threads: 400, temperature: null },
+      memory: { total: 16_000_000_000, used: 4_000_000_000, available: 12_000_000_000, usage: 25, cached: 1_000_000_000, swapTotal: 4_000_000_000, swapUsed: 0, swapUsage: 0 },
+      performance: { startupApps: 0, backgroundProcesses: 30, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 },
+    });
+
+    let current = dirtyMetrics;
+    svc = makeDashboardService({
+      getMetrics: vi.fn(async () => current),
+      refreshCache: vi.fn(async () => { current = cleanMetrics; return { refreshed: true }; }),
+    });
+    priv = makePrivacyService({
+      detectBrowsers: vi.fn(async () => ({ browsers: [] })),
+    });
+    vm = new DashboardViewModel(svc, priv);
+
+    await vm.bootstrap();
+    await vi.advanceTimersByTimeAsync(0);
+
+    // Before optimization: score < 100, issues > 0
+    expect(vm.state.healthScore!.overallScore).toBeLessThan(100);
+    expect(vm.state.healthScore!.issues.length).toBeGreaterThan(0);
+
+    // Simulate optimization: emit cleaning event
+    optimizationEventBus.emit({
+      type: OptimizationEventType.CleaningCompleted,
+      moduleId: 'junk',
+      action: 'clean',
+      bytesRecovered: 4_500_000_000,
+      itemsProcessed: 100,
+      timestamp: Date.now(),
+    });
+    await vi.advanceTimersByTimeAsync(600);
+
+    // After optimization: score = 100, issues = 0
+    expect(vm.state.healthScore!.overallScore).toBe(100);
+    expect(vm.state.healthScore!.issues.length).toBe(0);
+    expect(vm.state.healthScore!.scoreZone).toBe('excellent');
+  });
+});
+
 describe('Dashboard refresh on optimization events', () => {
   let vm: DashboardViewModel;
   let svc: DashboardService;
