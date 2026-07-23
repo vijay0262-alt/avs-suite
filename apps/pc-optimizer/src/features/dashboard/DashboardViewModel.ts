@@ -102,6 +102,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   private liveMetricsPollTimer: ReturnType<typeof setInterval> | null = null;
   private optimizationUnsub: (() => void) | null = null;
   private optimizationRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private pendingEventModuleId: string | null = null;
 
   constructor(
     private readonly service: DashboardService,
@@ -218,15 +219,26 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
    * Handle optimization events from other modules (junk cleaned, privacy
    * cleaned, registry fixed, startup disabled, etc.).
    *
+   * Performance: Only reloads data affected by the module that triggered
+   * the event — avoids rescanning the entire system.
+   *
+   * Error isolation: Uses Promise.allSettled so one failing reload
+   * (e.g. registry) doesn't block others (e.g. junk, storage, health).
+   *
    * Debounces refresh — if multiple events arrive in quick succession
    * (e.g. a batch operation), we only reload once after 500ms of quiet.
    */
-  private handleOptimizationEvent(_event: OptimizationEvent): void {
+  private handleOptimizationEvent(event: OptimizationEvent): void {
+    // Track the latest module that triggered an event for targeted refresh
+    this.pendingEventModuleId = event.moduleId;
     if (this.optimizationRefreshTimer) {
       clearTimeout(this.optimizationRefreshTimer);
     }
     this.optimizationRefreshTimer = setTimeout(() => {
       this.optimizationRefreshTimer = null;
+      const moduleId = this.pendingEventModuleId;
+      this.pendingEventModuleId = null;
+
       // Invalidate the backend metrics cache so we get fresh data
       try {
         void this.service.refreshCache();
@@ -235,8 +247,36 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       }
       // Invalidate the local health provider metrics cache
       invalidateMetricsCache();
-      // Reload metrics + privacy risks + live metrics for full refresh
-      void Promise.all([this.loadMetrics(), this.loadPrivacyRisks(), this.loadLiveMetrics()]);
+
+      // Build the set of reloads needed based on which module triggered.
+      // This avoids rescanning the entire system when only one module changed.
+      const reloads: Promise<void>[] = [];
+
+      // Metrics (DashboardMetrics) covers: storage, startup, security, windows,
+      // performance snapshot. Reload for modules that affect these categories.
+      const metricsModules = ['junk', 'startup', 'disk', 'security', 'system', 'duplicate'];
+      // Privacy risks need a separate scan call.
+      const privacyModules = ['privacy'];
+      // Live metrics (CPU/RAM) only needed for performance module.
+      const liveModules = ['performance'];
+
+      // If we don't know the module (null/unknown), reload everything as fallback.
+      const knownModule = moduleId && [...metricsModules, ...privacyModules, ...liveModules].includes(moduleId);
+
+      if (!knownModule || metricsModules.includes(moduleId!)) {
+        reloads.push(this.loadMetrics());
+      }
+      if (!knownModule || privacyModules.includes(moduleId!)) {
+        reloads.push(this.loadPrivacyRisks());
+      }
+      if (!knownModule || liveModules.includes(moduleId!)) {
+        reloads.push(this.loadLiveMetrics());
+      }
+
+      // Use allSettled so one failure doesn't block the others.
+      // Each load* method already handles its own errors and updates
+      // its portion of state independently.
+      void Promise.allSettled(reloads);
     }, 500);
   }
 
@@ -251,11 +291,12 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       });
       this.recalculateHealth(metrics, this.state.privacyRisks);
     } catch (err) {
+      // Only set metricsError — don't set healthScoreError so the
+      // health score card still shows the last known score. Other
+      // data sources (privacy, live metrics) may still succeed.
       this.setState({
         metricsLoading: false,
-        healthScoreLoading: false,
         metricsError: err instanceof Error ? err.message : String(err),
-        healthScoreError: err instanceof Error ? err.message : String(err),
       });
     }
   }
