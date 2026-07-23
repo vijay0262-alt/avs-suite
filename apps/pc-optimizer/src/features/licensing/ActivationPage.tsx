@@ -238,7 +238,7 @@ export default function ActivationPage() {
               </Button>
             </div>
             <p className="text-xs text-text-muted">
-              Don't have a license key? You can continue using the Free edition
+              Don&apos;t have a license key? You can continue using the Free edition
               with basic features.
             </p>
           </div>

@@ -11,7 +11,6 @@
  */
 import type { LicenseModel } from './model';
 import type { ActivationResult, DeactivationResult, ValidationResult } from './model';
-import type { LicenseState } from './states';
 
 /**
  * Activation service — handles license lifecycle operations.

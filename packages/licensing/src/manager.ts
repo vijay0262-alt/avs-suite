@@ -20,11 +20,11 @@ import type { LicenseModel, LicenseView, ValidationResult, ActivationResult, Dea
 import { toLicenseView } from './model';
 import type { LicenseState } from './states';
 import { stateToEdition } from './states';
-import { LicenseEventEmitter, createLicenseEvent, type LicenseEvent, type LicenseEventListener } from './events';
+import { LicenseEventEmitter, createLicenseEvent, type LicenseEventListener } from './events';
 import type { IActivationService } from './activation';
 import type { ILicenseStorage } from './storage';
 import type { IDeviceIdProvider } from './deviceId';
-import { validateOffline, getOfflineState, shouldEnterGrace, calculateGraceExpiry, hasGraceEnded, type OfflineConfig, DEFAULT_OFFLINE_CONFIG } from './offline';
+import { validateOffline, shouldEnterGrace, calculateGraceExpiry, hasGraceEnded, type OfflineConfig, DEFAULT_OFFLINE_CONFIG } from './offline';
 
 /**
  * Configuration for the LicenseManager.

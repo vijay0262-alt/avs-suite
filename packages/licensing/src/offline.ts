@@ -42,7 +42,7 @@ export const DEFAULT_OFFLINE_CONFIG: OfflineConfig = {
  */
 export function validateOffline(
   license: LicenseModel,
-  config: OfflineConfig = DEFAULT_OFFLINE_CONFIG,
+  _config: OfflineConfig = DEFAULT_OFFLINE_CONFIG,
   now: Date = new Date(),
 ): ValidationResult {
   // If already invalid or revoked, stay that way

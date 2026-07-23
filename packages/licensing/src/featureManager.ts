@@ -143,8 +143,9 @@ function checkSharedFeature(
  * Lazy accessor for the shared feature flags module.
  * Avoids circular import issues.
  */
-let _sharedFlags: typeof import('@avs/shared/featureFlags') | null = null;
-function getSharedFeatureFlags(): typeof import('@avs/shared/featureFlags') | null {
+type SharedFeatureFlags = typeof import('@avs/shared/featureFlags');
+let _sharedFlags: SharedFeatureFlags | null = null;
+function getSharedFeatureFlags(): SharedFeatureFlags | null {
   if (_sharedFlags) return _sharedFlags;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
