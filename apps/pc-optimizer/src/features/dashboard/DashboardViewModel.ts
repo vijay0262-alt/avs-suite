@@ -342,6 +342,10 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   }
 
   private recalculateHealth(metrics = this.state.metrics, privacyRisks = this.state.privacyRisks): void {
+    // Part 13: recalculateHealth is only called after events (loadMetrics,
+    // loadPrivacyRisks, bootstrap) — never on every 2s live metrics poll.
+    // The debounce in handleOptimizationEvent already prevents redundant
+    // recalculations from rapid event bursts.
     try {
       const score = calculateHealthScore(metrics, privacyRisks);
       this.setState({

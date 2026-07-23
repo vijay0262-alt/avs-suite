@@ -209,6 +209,9 @@ export interface HealthSnapshot {
   tempFilesSize: number;
   browserCacheSize: number;
   recycleBinSize: number;
+  /** Issues the app cannot resolve (failing disk, disabled security, outdated drivers).
+   *  When non-empty, score is capped below 100 — see Part 13 refinement. */
+  unresolvableIssues: string[];
 }
 
 export type HealthScore = HealthSnapshot;

@@ -562,6 +562,34 @@ export function calculateHealthScore(
       : winCfg.freshScore
   );
 
+  // Part 13 Refinement: Identify unresolvable issues — problems the app
+  // cannot fix (critically full disk, disabled security requiring user action,
+  // failing hardware, outdated drivers for future Driver Updater module).
+  // These prevent the score from reaching 100 even after full optimization.
+  const unresolvableIssues: string[] = [];
+
+  // Critically full disk — app cannot free disk space beyond cleaning junk
+  if (driveFullPenalty > 0) {
+    const criticalDrives = storage.filter((d) => d.usage > storageCfg.driveCriticalThreshold);
+    criticalDrives.forEach((d) => {
+      unresolvableIssues.push(`Drive ${d.mount} is critically full (${d.usage.toFixed(0)}%)`);
+    });
+  }
+
+  // Disabled security — requires user action, not something the app can auto-fix
+  if (!thirdPartyAV) {
+    if (!security.defender.enabled) unresolvableIssues.push('Windows Defender is disabled');
+    if (!security.defender.realTimeProtection) unresolvableIssues.push('Real-time protection is disabled');
+    if (!security.firewall.enabled) unresolvableIssues.push('Firewall is disabled');
+  }
+  if (!security.smartScreen) unresolvableIssues.push('SmartScreen is disabled');
+  if (security.updates.pendingUpdates > 0) unresolvableIssues.push(`${security.updates.pendingUpdates} pending Windows updates`);
+
+  // Long uptime — requires a manual reboot, app cannot do this
+  if (uptimeDays >= winCfg.longUptimeDays) {
+    unresolvableIssues.push(`System uptime is ${Math.round(uptimeDays)} days — restart recommended`);
+  }
+
   // Weighted overall score — weights are configurable (Part 5).
   // Default weights sum to 1.0 so the overall is a direct weighted average.
   // Future modules can register custom weights without changing this logic.
@@ -569,7 +597,7 @@ export function calculateHealthScore(
     weights.storage + weights.startup + weights.privacy +
     weights.performance + weights.security + weights.windows;
 
-  const overallScore = clamp(
+  let overallScore = clamp(
     (storageScore * weights.storage +
     startupScore * weights.startup +
     privacyScore * weights.privacy +
@@ -577,6 +605,14 @@ export function calculateHealthScore(
     securityScore * weights.security +
     windowsScore * weights.windows) / (weightSum || 1)
   );
+
+  // Part 13 Refinement: Cap score below 100 if unresolvable issues exist.
+  // The app can improve the score by fixing what it can (junk, startup,
+  // privacy), but it cannot honestly report 100 when issues remain that
+  // require user action or future modules (Driver Updater, etc.).
+  if (unresolvableIssues.length > 0 && overallScore >= 100) {
+    overallScore = 99;
+  }
 
   const issues = buildAllIssues({ cpu, memory, storage, windows, security, performance, capturedAt } as DashboardMetrics, privacyRisks);
   const summary = buildSummary(issues);
@@ -615,5 +651,6 @@ export function calculateHealthScore(
     tempFilesSize: performance.temporaryFilesSize,
     browserCacheSize: performance.browserCacheSize,
     recycleBinSize: performance.recycleBinSize,
+    unresolvableIssues,
   };
 }

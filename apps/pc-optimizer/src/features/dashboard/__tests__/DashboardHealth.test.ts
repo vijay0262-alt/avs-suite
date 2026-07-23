@@ -11,6 +11,8 @@ import { optimizationEventBus, OptimizationEventType } from '../../health/Optimi
 import { dashboardRefreshManager } from '../../health/DashboardRefreshManager';
 import { HealthScoreService } from '../../health/HealthScoreService';
 import type { HealthContribution, HealthContributionProvider, ModuleId } from '../../health/HealthContribution';
+import { resetHealthEngineConfig } from '../../health/HealthEngineConfig';
+import { healthNotificationService } from '../../health/HealthNotificationService';
 import { useAnimatedNumber } from '../components/useAnimatedNumber';
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
@@ -117,6 +119,13 @@ function renderHookWithProps<T, P>(
 }
 
 // ── Tests ────────────────────────────────────────────────────────────
+
+// Global cleanup: reset singletons between test suites to prevent
+// cross-test contamination (Part 13/14 test isolation).
+afterEach(() => {
+  resetHealthEngineConfig();
+  healthNotificationService.reset();
+});
 
 describe('Health calculation', () => {
   it('calculates a score from metrics + privacy risks', () => {
