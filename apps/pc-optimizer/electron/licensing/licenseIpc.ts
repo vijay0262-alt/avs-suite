@@ -17,6 +17,7 @@ interface Logger {
 
 let bridge: LicenseBridge | null = null;
 let updateCheckInterval: NodeJS.Timeout | null = null;
+let handlersRegistered = false;
 
 function broadcast(type: string, payload: unknown) {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -25,6 +26,13 @@ function broadcast(type: string, payload: unknown) {
 }
 
 export function initLicenseBridge(rpc: RpcClient, logger: Logger): LicenseBridge {
+  // If already initialized, just update the bridge instance (e.g. after reconnect)
+  // but do NOT re-register IPC handlers — Electron throws on duplicate handle() calls.
+  if (handlersRegistered && bridge) {
+    logger.info('License bridge already initialized — skipping IPC handler registration');
+    return bridge;
+  }
+
   bridge = new LicenseBridge(rpc);
 
   // ── Startup Sequence ─────────────────────────────────────
@@ -206,6 +214,8 @@ export function initLicenseBridge(rpc: RpcClient, logger: Logger): LicenseBridge
     }
   });
 
+  handlersRegistered = true;
+
   return bridge;
 }
 
@@ -218,4 +228,5 @@ export function shutdownLicenseBridge(): void {
     bridge.close().catch(() => {});
     bridge = null;
   }
+  handlersRegistered = false;
 }

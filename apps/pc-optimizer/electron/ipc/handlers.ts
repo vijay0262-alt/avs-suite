@@ -14,7 +14,15 @@ interface Logger {
   error(m: string, meta?: unknown): void;
 }
 
+let ipcHandlersRegistered = false;
+
 export function registerIpcHandlers(rpc: RpcClient, logger: Logger): void {
+  if (ipcHandlersRegistered) {
+    logger.info('IPC handlers already registered — skipping duplicate registration');
+    return;
+  }
+  ipcHandlersRegistered = true;
+
   ipcMain.handle('avs:app:getVersion', () => app.getVersion());
   ipcMain.handle('avs:app:getPlatform', () => process.platform);
 

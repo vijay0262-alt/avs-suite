@@ -25,15 +25,20 @@ export async function initLicensing(
   rpc: RpcClient,
   logger: Logger,
 ): Promise<void> {
-  logger.info('Initializing licensing subsystem...');
+  const t0 = Date.now();
+  logger.info('[startup] Initializing licensing subsystem...');
+
+  // Register IPC handlers exactly once. This must happen before any
+  // bridge calls so the renderer can communicate even if startup fails.
+  const bridge = initLicenseBridge(rpc, logger);
+  logger.info(`[startup] License bridge initialized (${Date.now() - t0}ms)`);
 
   try {
-    const bridge = initLicenseBridge(rpc, logger);
-
     // Perform startup sequence (load local license, validate or check grace)
+    const t1 = Date.now();
     const status = await bridge.startup();
     logger.info(
-      `License startup complete: status=${status.status}, edition=${status.edition}, offline=${status.is_offline}`,
+      `[startup] License startup complete (${Date.now() - t1}ms): status=${status.status}, edition=${status.edition}, offline=${status.is_offline}`,
     );
 
     // Start automatic update check (default: every 24 hours)
@@ -45,10 +50,12 @@ export async function initLicensing(
 
     try {
       // Check for updates immediately on startup
+      const t2 = Date.now();
       const updateInfo = await bridge.checkUpdates(updateChannel);
+      logger.info(`[startup] Update check complete (${Date.now() - t2}ms)`);
       if (updateInfo?.update_available) {
         logger.info(
-          `Update available: ${updateInfo.latest_version} (force=${updateInfo.force_upgrade}, critical=${updateInfo.critical})`,
+          `[startup] Update available: ${updateInfo.latest_version} (force=${updateInfo.force_upgrade}, critical=${updateInfo.critical})`,
         );
         for (const win of BrowserWindow.getAllWindows()) {
           win.webContents.send('avs:license:event', {
@@ -58,7 +65,7 @@ export async function initLicensing(
         }
       }
     } catch (err) {
-      logger.warn('Initial update check failed', err);
+      logger.warn('[startup] Initial update check failed', err);
     }
 
     // Start periodic update checks
@@ -68,7 +75,7 @@ export async function initLicensing(
         try {
           const result = await bridge.checkUpdates(updateChannel);
           if (result?.update_available) {
-            logger.info(`Auto update check: ${result.latest_version} available`);
+            logger.info(`[auto-update] ${result.latest_version} available`);
             for (const win of BrowserWindow.getAllWindows()) {
               win.webContents.send('avs:license:event', {
                 type: 'update-available',
@@ -77,15 +84,18 @@ export async function initLicensing(
             }
           }
         } catch (err) {
-          logger.warn('Auto update check failed', err);
+          logger.warn('[auto-update] Check failed', err);
         }
       }, intervalMs);
-      logger.info(`Auto update check started (every ${updateIntervalHours}h)`);
+      logger.info(`[startup] Auto update check scheduled (every ${updateIntervalHours}h)`);
     }
+
+    logger.info(`[startup] Licensing subsystem fully initialized (${Date.now() - t0}ms total)`);
   } catch (err) {
-    logger.error('Licensing initialization failed — continuing in free mode', err);
-    // Still initialize the bridge so the renderer can attempt activation later
-    initLicenseBridge(rpc, logger);
+    // The bridge is already initialized with IPC handlers.
+    // Do NOT call initLicenseBridge again — that would re-register handlers
+    // and cause "Attempted to register second handler" errors.
+    logger.error('[startup] License startup sequence failed — continuing in free mode', err);
   }
 }
 
