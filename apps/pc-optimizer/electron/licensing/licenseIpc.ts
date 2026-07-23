@@ -5,8 +5,8 @@
  * All operations delegate to the LicenseBridge which calls the Python
  * backend's JSON-RPC handlers that use the AVS License SDK.
  */
-import { ipcMain, BrowserWindow, dialog } from 'electron';
-import { LicenseBridge, type LicenseStatus, type UpdateCheckResult } from './licenseBridge';
+import { ipcMain, BrowserWindow } from 'electron';
+import { LicenseBridge, type LicenseStatus } from './licenseBridge';
 import type { RpcClient } from '../ipc/pythonBridge';
 
 interface Logger {

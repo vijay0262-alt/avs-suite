@@ -27,8 +27,7 @@ jq>=1.6.0
 typer>=0.9.0
 psutil>=5.9.0
 pyinstaller>=6.0.0
-# AVS License SDK — editable install from AVS-License-Server repo
-# For development: pip install -e ../Avs-license-server/packages/avs_license_sdk
-# For production: the SDK is bundled via PyInstaller
-avs_license_sdk>=1.0.0
+# AVS License SDK — installed separately via editable install:
+#   pip install -e ../Avs-license-server/packages/avs_license_sdk
+# Do NOT list it here — it's a local package, not on PyPI.
 httpx>=0.27.0

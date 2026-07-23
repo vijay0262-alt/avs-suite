@@ -28,18 +28,6 @@ interface SdkLicenseInfo {
   days_remaining: number | null;
 }
 
-interface SdkLicenseStatus {
-  status: string;
-  edition: string;
-  expiry: string | null;
-  grace_expiry: string | null;
-  days_remaining: number | null;
-  remaining_devices: number;
-  last_validated: string | null;
-  is_offline: boolean;
-  message: string;
-}
-
 /**
  * Map SDK status strings to AVS Suite LicenseState.
  */
@@ -119,7 +107,7 @@ export class SdkActivationService implements IActivationService {
     }
   }
 
-  async deactivate(licenseId: string, _deviceId: string): Promise<DeactivationResult> {
+  async deactivate(_licenseId: string, _deviceId: string): Promise<DeactivationResult> {
     try {
       const result = await this.licenseApi.deactivate();
       return { success: result.success, error: result.error };
@@ -131,7 +119,7 @@ export class SdkActivationService implements IActivationService {
     }
   }
 
-  async validate(license: LicenseModel): Promise<ValidationResult> {
+  async validate(_license: LicenseModel): Promise<ValidationResult> {
     try {
       const status = await this.licenseApi.getStatus();
       if (!status) {
