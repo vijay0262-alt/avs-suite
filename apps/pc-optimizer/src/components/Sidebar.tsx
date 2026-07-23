@@ -16,6 +16,7 @@ import {
   WrenchScrewdriverIcon,
   ArchiveBoxXMarkIcon,
   ArrowPathIcon,
+  KeyIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import type { ComponentType } from 'react';
@@ -39,6 +40,7 @@ const NAV: readonly NavEntry[] = [
   { id: 'software-updater', to: '/software-updater', labelKey: 'nav.softwareUpdater', Icon: ArrowPathIcon },
   { id: 'performance', to: '/performance', labelKey: 'nav.performance', Icon: BoltIcon },
   { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
+  { id: 'license', to: '/license', labelKey: 'nav.license', Icon: KeyIcon },
   { id: 'settings', to: '/settings', labelKey: 'nav.settings', Icon: Cog6ToothIcon },
   { id: 'about', to: '/about', labelKey: 'nav.about', Icon: InformationCircleIcon },
 ];

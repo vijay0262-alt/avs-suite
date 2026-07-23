@@ -9,7 +9,9 @@ import {
   getEditionString,
   getArchitectureString,
 } from '../config/version';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLicense } from '../features/licensing/LicenseContext';
+import { LICENSE_STATE_LABELS } from '@avs/licensing';
 
 const { APP_METADATA } = constants;
 
@@ -19,9 +21,30 @@ interface UpdateStatus {
   latestVersion?: string;
 }
 
+interface SdkInfo {
+  status: {
+    status: string;
+    edition: string;
+    is_offline: boolean;
+    message: string;
+  };
+  sdk_version: string;
+  product_code: string;
+  app_version: string;
+  server_url: string;
+}
+
 export default function AboutPage() {
   const versionInfo = getVersionInfo();
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ status: 'idle' });
+  const { state, edition, isActivated } = useLicense();
+  const [sdkInfo, setSdkInfo] = useState<SdkInfo | null>(null);
+
+  useEffect(() => {
+    void window.avs.license.getInfo().then((info) => {
+      if (info) setSdkInfo(info as SdkInfo);
+    }).catch(() => {});
+  }, []);
 
   const handleCheckUpdates = () => {
     setUpdateStatus({ status: 'checking' });
@@ -145,6 +168,51 @@ export default function AboutPage() {
             {updateStatus.status === 'checking' ? 'Checking...' : 'Check for Updates'}
           </Button>
         </div>
+      </Card>
+
+      <Card title="License Information">
+        <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+          <div>
+            <dt className="text-text-muted">License Status</dt>
+            <dd className="flex items-center gap-2 mt-1">
+              <span className="font-medium text-text-primary">{LICENSE_STATE_LABELS[state]}</span>
+              <Badge tone={isActivated ? 'success' : 'neutral'}>
+                {isActivated ? 'Activated' : 'Free'}
+              </Badge>
+            </dd>
+          </div>
+          <div>
+            <dt className="text-text-muted">Edition</dt>
+            <dd className="font-medium text-text-primary capitalize mt-1">{edition}</dd>
+          </div>
+          <div>
+            <dt className="text-text-muted">Product Code</dt>
+            <dd className="font-mono text-xs text-text-secondary mt-1">
+              {sdkInfo?.product_code ?? 'AVS_PC_OPTIMIZER'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-text-muted">SDK Version</dt>
+            <dd className="font-medium text-text-primary mt-1">
+              {sdkInfo?.sdk_version ?? '—'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-text-muted">Update Channel</dt>
+            <dd className="font-medium text-text-primary mt-1">{getChannelString()}</dd>
+          </div>
+          <div>
+            <dt className="text-text-muted">Server Connection</dt>
+            <dd className="flex items-center gap-2 mt-1">
+              <span
+                className={`h-2 w-2 rounded-full ${sdkInfo && !sdkInfo.status.is_offline ? 'bg-semantic-success' : 'bg-semantic-danger'}`}
+              />
+              <span className="font-medium text-text-primary">
+                {sdkInfo && !sdkInfo.status.is_offline ? 'Connected' : 'Offline'}
+              </span>
+            </dd>
+          </div>
+        </dl>
       </Card>
 
       <Card title="Legal & Privacy">

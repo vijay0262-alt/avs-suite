@@ -3,22 +3,45 @@
  *
  * Displays:
  * - Current edition and license state
+ * - Connection status to AVS License Server
+ * - Product code (AVS_PC_OPTIMIZER) and edition from server
  * - License key input (activate)
  * - Email input
  * - Activate / Deactivate / Refresh buttons
+ * - Copy license key
  * - Continue Free button
- * - Device ID
- * - Expiry date
- * - Current version
+ * - Device ID, expiry, device count, last validation
  *
  * This page is self-contained and does not modify any existing pages.
  */
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, Button, Badge } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
 import { useLicense } from './LicenseContext';
 import { LICENSE_STATE_LABELS } from '@avs/licensing';
 import { getVersionString, getBuildString } from '../../config/version';
+
+interface SdkInfo {
+  status: {
+    status: string;
+    edition: string;
+    expiry: string | null;
+    grace_expiry: string | null;
+    days_remaining: number | null;
+    remaining_devices: number;
+    last_validated: string | null;
+    is_offline: boolean;
+    message: string;
+  };
+  days_remaining: number | null;
+  remaining_devices: number;
+  offline_status: string;
+  server_url: string;
+  fingerprint: string;
+  sdk_version: string;
+  product_code: string;
+  app_version: string;
+}
 
 export default function ActivationPage() {
   const {
@@ -38,6 +61,21 @@ export default function ActivationPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [sdkInfo, setSdkInfo] = useState<SdkInfo | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const fetchSdkInfo = useCallback(async () => {
+    try {
+      const info = await window.avs.license.getInfo();
+      if (info) setSdkInfo(info as SdkInfo);
+    } catch {
+      // SDK not ready
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchSdkInfo();
+  }, [fetchSdkInfo, state]);
 
   const handleActivate = async () => {
     if (!key.trim() || !email.trim()) {
@@ -53,6 +91,7 @@ export default function ActivationPage() {
       setSuccess('License activated successfully.');
       setKey('');
       setEmail('');
+      void fetchSdkInfo();
     } else {
       setError(result.error ?? 'Activation failed.');
     }
@@ -66,6 +105,7 @@ export default function ActivationPage() {
     setLoading(false);
     if (result.success) {
       setSuccess('License deactivated. Reverted to Free edition.');
+      void fetchSdkInfo();
     } else {
       setError(result.error ?? 'Deactivation failed.');
     }
@@ -79,10 +119,23 @@ export default function ActivationPage() {
     setLoading(false);
     if (result?.valid) {
       setSuccess('License validated successfully.');
+      void fetchSdkInfo();
     } else if (result) {
       setError(result.reason ?? 'Validation failed.');
     } else {
       setError('Unable to refresh license.');
+    }
+  };
+
+  const handleCopyKey = async () => {
+    if (sdkInfo) {
+      try {
+        await navigator.clipboard.writeText(sdkInfo.fingerprint);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        // Clipboard not available
+      }
     }
   };
 
@@ -93,12 +146,51 @@ export default function ActivationPage() {
     state === 'expired' || state === 'invalid' || state === 'revoked' ? 'danger' :
     'neutral';
 
+  const isConnected = sdkInfo ? !sdkInfo.status.is_offline : false;
+  const productCode = sdkInfo?.product_code ?? 'AVS_PC_OPTIMIZER';
+  const serverEdition = sdkInfo?.status.edition ?? edition;
+  const lastValidated = sdkInfo?.status.last_validated ?? licenseView?.lastValidation;
+  const serverUrl = sdkInfo?.server_url ?? '—';
+  const sdkVersion = sdkInfo?.sdk_version ?? '—';
+  const daysRemaining = sdkInfo?.days_remaining ?? null;
+  const remainingDevices = sdkInfo?.remaining_devices ?? licenseView?.maxDevices ?? 0;
+  const maxDevices = licenseView?.maxDevices ?? 0;
+  const activeDevices = licenseView?.activatedDevices ?? 0;
+
   return (
     <div data-testid="page-license-activation" className="space-y-4">
       <PageHeader
         title="License Management"
         description="Activate, manage, or refresh your AVS PC Optimizer license."
       />
+
+      {/* Connection Status */}
+      <Card title="Server Connection">
+        <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-3">
+          <div>
+            <div className="text-text-muted">Connection Status</div>
+            <div className="flex items-center gap-2 mt-1">
+              <span
+                className={`h-2 w-2 rounded-full ${isConnected ? 'bg-semantic-success' : 'bg-semantic-danger'}`}
+                data-testid="license-connection-indicator"
+              />
+              <span className="font-medium text-text-primary">
+                {isConnected ? 'Connected' : 'Offline'}
+              </span>
+            </div>
+          </div>
+          <div>
+            <div className="text-text-muted">Server URL</div>
+            <div className="font-mono text-xs text-text-secondary mt-1 truncate" title={serverUrl}>
+              {serverUrl}
+            </div>
+          </div>
+          <div>
+            <div className="text-text-muted">SDK Version</div>
+            <div className="font-medium text-text-primary mt-1">{sdkVersion}</div>
+          </div>
+        </div>
+      </Card>
 
       {/* Current Status */}
       <Card title="Current License Status">
@@ -111,10 +203,18 @@ export default function ActivationPage() {
             </div>
           </div>
           <div>
+            <div className="text-text-muted">Product Code</div>
+            <div className="font-mono text-xs text-text-secondary mt-1">{productCode}</div>
+          </div>
+          <div>
             <div className="text-text-muted">Activated</div>
             <div className="font-medium text-text-primary mt-1">
               {isActivated ? 'Yes' : 'No'}
             </div>
+          </div>
+          <div>
+            <div className="text-text-muted">Server Edition</div>
+            <div className="font-medium text-text-primary mt-1 capitalize">{serverEdition}</div>
           </div>
           {licenseView && (
             <>
@@ -134,20 +234,34 @@ export default function ActivationPage() {
               </div>
               <div>
                 <div className="text-text-muted">Max Devices</div>
-                <div className="font-medium text-text-primary mt-1">
-                  {licenseView.maxDevices}
-                </div>
+                <div className="font-medium text-text-primary mt-1">{maxDevices}</div>
               </div>
               <div>
                 <div className="text-text-muted">Activated Devices</div>
-                <div className="font-medium text-text-primary mt-1">
-                  {licenseView.activatedDevices}
-                </div>
+                <div className="font-medium text-text-primary mt-1">{activeDevices}</div>
               </div>
+              <div>
+                <div className="text-text-muted">Remaining Devices</div>
+                <div className="font-medium text-text-primary mt-1">{remainingDevices}</div>
+              </div>
+              {daysRemaining !== null && (
+                <div>
+                  <div className="text-text-muted">Days Remaining</div>
+                  <div className="font-medium text-text-primary mt-1">{daysRemaining}</div>
+                </div>
+              )}
               <div>
                 <div className="text-text-muted">Email</div>
                 <div className="font-medium text-text-primary mt-1">
-                  {licenseView.email}
+                  {licenseView.email || '—'}
+                </div>
+              </div>
+              <div>
+                <div className="text-text-muted">Last Validation</div>
+                <div className="font-medium text-text-primary mt-1">
+                  {lastValidated
+                    ? new Date(lastValidated).toLocaleString()
+                    : '—'}
                 </div>
               </div>
               {licenseView.graceExpiry && (
@@ -173,6 +287,17 @@ export default function ActivationPage() {
             </div>
           </div>
         </div>
+        {isActivated && sdkInfo && (
+          <div className="mt-4 border-t border-border pt-4">
+            <Button
+              variant="secondary"
+              onClick={handleCopyKey}
+              data-testid="license-copy-key-btn"
+            >
+              {copied ? '✓ Copied' : 'Copy Device ID'}
+            </Button>
+          </div>
+        )}
       </Card>
 
       {/* Activation / Deactivation */}

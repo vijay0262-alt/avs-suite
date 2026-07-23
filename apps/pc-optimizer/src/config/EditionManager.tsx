@@ -10,7 +10,8 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { Edition, FeatureKey } from '@avs/shared/featureFlags';
 import { isFeatureEnabled, shouldHideFeature } from '@avs/shared/featureFlags';
 import type { LicenseInfo } from '@avs/licensing';
-import { NullLicensingService, type ILicensingService } from '@avs/licensing';
+import { type ILicensingService } from '@avs/licensing';
+import { useLicense } from '../features/licensing/LicenseContext';
 
 export interface EditionManagerValue {
   edition: Edition;
@@ -21,8 +22,7 @@ export interface EditionManagerValue {
   refresh: () => Promise<void>;
 }
 
-const defaultService = new NullLicensingService();
-
+// Default context — replaced by EditionManagerProvider with real license state
 const EditionManagerContext = createContext<EditionManagerValue>({
   edition: 'free',
   isActivated: false,
@@ -34,25 +34,31 @@ const EditionManagerContext = createContext<EditionManagerValue>({
 
 export function EditionManagerProvider({
   children,
-  service = defaultService,
+  service,
 }: {
   children: ReactNode;
   service?: ILicensingService;
 }) {
+  const { edition: licenseEdition, isActivated, refresh } = useLicense();
+
   const value = useMemo<EditionManagerValue>(() => {
-    const edition = service.currentEdition();
-    const isActivated = service.isActivated();
+    const edition = service ? service.currentEdition() : licenseEdition;
+    const activated = service ? service.isActivated() : isActivated;
     return {
       edition,
-      isActivated,
+      isActivated: activated,
       license: null,
       isFeatureAvailable: (feature: FeatureKey) => isFeatureEnabled(feature, edition),
       isFeatureHidden: (feature: FeatureKey) => shouldHideFeature(feature, edition),
       refresh: async () => {
-        await service.refresh();
+        if (service) {
+          await service.refresh();
+        } else {
+          await refresh();
+        }
       },
     };
-  }, [service]);
+  }, [service, licenseEdition, isActivated, refresh]);
 
   return <EditionManagerContext.Provider value={value}>{children}</EditionManagerContext.Provider>;
 }

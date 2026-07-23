@@ -3,6 +3,9 @@ import { lazy, Suspense, useEffect } from 'react';
 import { AppLayout } from '../layouts/AppLayout';
 import { LoadingFallback } from '../components/LoadingFallback';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { LicenseBootstrap } from '../features/licensing/LicenseBootstrap';
+import { EditionManagerProvider } from '../config/EditionManager';
+import { UpgradeDialogProvider } from '../components/UpgradeDialog';
 
 // Lazy load all pages
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
@@ -55,10 +58,16 @@ export const router = createHashRouter([
   {
     path: '/',
     element: (
-      <>
-        <ModulePreloader />
-        <AppLayout />
-      </>
+      <LicenseBootstrap>
+        <EditionManagerProvider>
+          <UpgradeDialogProvider>
+            <>
+              <ModulePreloader />
+              <AppLayout />
+            </>
+          </UpgradeDialogProvider>
+        </EditionManagerProvider>
+      </LicenseBootstrap>
     ),
     errorElement: <ErrorBoundary standalone />,
     children: [

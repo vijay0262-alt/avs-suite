@@ -45,6 +45,7 @@ export const en = {
     softwareUpdater: 'Software Updater',
     performance: 'Performance',
     systemInformation: 'System Information',
+    license: 'License',
     settings: 'Settings',
     about: 'About',
   },
