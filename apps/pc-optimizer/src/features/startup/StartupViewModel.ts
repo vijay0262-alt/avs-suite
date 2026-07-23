@@ -6,7 +6,7 @@ import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import type { StartupEntry, StartupBackup } from './startup.types';
 import type { IStartupService } from './startup.service';
 import { startupService } from './startup.service';
-import { optimizationEventBus } from '../health';
+import { optimizationEventBus, OptimizationEventType } from '../health';
 
 export interface StartupState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
@@ -70,6 +70,7 @@ export class StartupViewModel extends ViewModel<StartupState> {
       await this.loadEntries();
       await this.loadBackups();
       optimizationEventBus.emit({
+        type: OptimizationEventType.StartupOptimized,
         moduleId: 'startup',
         action: 'disable',
         itemsProcessed: 1,

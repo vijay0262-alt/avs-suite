@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HealthScoreService } from '../HealthScoreService';
-import { optimizationEventBus } from '../OptimizationEventBus';
+import { optimizationEventBus, OptimizationEventType } from '../OptimizationEventBus';
 import { dashboardRefreshManager } from '../DashboardRefreshManager';
 import type { HealthContribution, HealthContributionProvider, ModuleId } from '../HealthContribution';
 
@@ -95,6 +95,7 @@ describe('OptimizationEventBus', () => {
     const listener = vi.fn();
     optimizationEventBus.subscribe(listener);
     optimizationEventBus.emit({
+      type: OptimizationEventType.CleaningCompleted,
       moduleId: 'junk',
       action: 'clean',
       bytesRecovered: 1024,
@@ -113,6 +114,7 @@ describe('OptimizationEventBus', () => {
     const unsub = optimizationEventBus.subscribe(listener);
     unsub();
     optimizationEventBus.emit({
+      type: OptimizationEventType.CleaningCompleted,
       moduleId: 'junk',
       action: 'clean',
       timestamp: Date.now(),
@@ -125,6 +127,7 @@ describe('OptimizationEventBus', () => {
     optimizationEventBus.subscribe(() => { throw new Error('boom'); });
     optimizationEventBus.subscribe(goodListener);
     optimizationEventBus.emit({
+      type: OptimizationEventType.CleaningCompleted,
       moduleId: 'junk',
       action: 'clean',
       timestamp: Date.now(),
@@ -138,6 +141,7 @@ describe('OptimizationEventBus', () => {
     optimizationEventBus.subscribe(l1);
     optimizationEventBus.subscribe(l2);
     optimizationEventBus.emit({
+      type: OptimizationEventType.PrivacyCleaned,
       moduleId: 'privacy',
       action: 'clean',
       timestamp: Date.now(),
@@ -158,6 +162,7 @@ describe('DashboardRefreshManager', () => {
     const cb = vi.fn();
     dashboardRefreshManager.register(cb);
     optimizationEventBus.emit({
+      type: OptimizationEventType.CleaningCompleted,
       moduleId: 'junk',
       action: 'clean',
       timestamp: Date.now(),
@@ -167,6 +172,7 @@ describe('DashboardRefreshManager', () => {
 
   it('stores pending refresh when no callback registered', () => {
     optimizationEventBus.emit({
+      type: OptimizationEventType.CleaningCompleted,
       moduleId: 'junk',
       action: 'clean',
       timestamp: Date.now(),
@@ -176,6 +182,7 @@ describe('DashboardRefreshManager', () => {
 
   it('fires pending refresh on next register', async () => {
     optimizationEventBus.emit({
+      type: OptimizationEventType.CleaningCompleted,
       moduleId: 'junk',
       action: 'clean',
       timestamp: Date.now(),
@@ -193,6 +200,7 @@ describe('DashboardRefreshManager', () => {
     const unsub = dashboardRefreshManager.register(cb);
     unsub();
     optimizationEventBus.emit({
+      type: OptimizationEventType.CleaningCompleted,
       moduleId: 'junk',
       action: 'clean',
       timestamp: Date.now(),

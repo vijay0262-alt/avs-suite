@@ -11,7 +11,29 @@
 
 import type { ModuleId } from './HealthContribution';
 
+/**
+ * Typed optimization event names.
+ *
+ * Future modules publish events using these constants so the Dashboard
+ * can subscribe without knowing about specific module implementations.
+ * To add a new event type, just add a constant here and emit it —
+ * no Dashboard changes required.
+ */
+export const OptimizationEventType = {
+  CleaningCompleted: 'cleaning_completed',
+  RegistryOptimized: 'registry_optimized',
+  PrivacyCleaned: 'privacy_cleaned',
+  StartupOptimized: 'startup_optimized',
+  DuplicateRemoved: 'duplicate_removed',
+  PerformanceOptimized: 'performance_optimized',
+  ScanCompleted: 'scan_completed',
+} as const;
+
+export type OptimizationEventTypeName =
+  (typeof OptimizationEventType)[keyof typeof OptimizationEventType];
+
 export interface OptimizationEvent {
+  type: OptimizationEventTypeName;
   moduleId: ModuleId;
   action: string;
   bytesRecovered?: number;

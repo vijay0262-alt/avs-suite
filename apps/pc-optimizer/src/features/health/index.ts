@@ -2,8 +2,8 @@ export type { HealthContribution, HealthContributionProvider, ModuleId } from '.
 export { clampHealth } from './HealthContribution';
 export type { AggregatedHealthScore } from './HealthScoreService';
 export { healthScoreService, HealthScoreService, subscribeToOptimizations } from './HealthScoreService';
-export type { OptimizationEvent } from './OptimizationEventBus';
-export { optimizationEventBus } from './OptimizationEventBus';
+export type { OptimizationEvent, OptimizationEventTypeName } from './OptimizationEventBus';
+export { optimizationEventBus, OptimizationEventType } from './OptimizationEventBus';
 export {
   JunkHealthProvider,
   RegistryHealthProvider,

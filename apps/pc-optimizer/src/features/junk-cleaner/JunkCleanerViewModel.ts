@@ -24,7 +24,7 @@ import type {
   ScanStatusSnapshot,
 } from './junkCleaner.types';
 import type { JunkCleanerService } from './junkCleaner.service';
-import { optimizationEventBus } from '../health';
+import { optimizationEventBus, OptimizationEventType } from '../health';
 
 export type ConfirmStep = 'closed' | 'preview' | 'confirm' | 'running' | 'summary';
 
@@ -484,6 +484,7 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
         }
         // Emit optimization event so Dashboard refreshes health score
         optimizationEventBus.emit({
+          type: OptimizationEventType.CleaningCompleted,
           moduleId: 'junk',
           action: 'clean',
           bytesRecovered: snap.totalBytesRecovered,

@@ -6,7 +6,7 @@ import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import type { DuplicateFile, DuplicateScope, DuplicateFinderState } from './duplicate-finder.types';
 import type { IDuplicateFinderService } from './duplicate-finder.service';
 import { duplicateFinderService } from './duplicate-finder.service';
-import { optimizationEventBus } from '../health';
+import { optimizationEventBus, OptimizationEventType } from '../health';
 
 export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
   constructor(private service: IDuplicateFinderService = duplicateFinderService) {
@@ -92,6 +92,7 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
       // Emit optimization event so Dashboard refreshes health score
       if (result.deletedCount > 0) {
         optimizationEventBus.emit({
+          type: OptimizationEventType.DuplicateRemoved,
           moduleId: 'duplicate',
           action: 'delete',
           itemsProcessed: result.deletedCount,

@@ -3,6 +3,7 @@ import { Card } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
 import { HEALTH_STATUS_CONFIG } from '../dashboard.types';
 import type { HealthSnapshot } from '../dashboard.types';
+import { useAnimatedNumber } from './useAnimatedNumber';
 
 export interface HealthScoreCardProps {
   healthScore: HealthSnapshot | null;
@@ -11,6 +12,9 @@ export interface HealthScoreCardProps {
 }
 
 export const HealthScoreCard = React.memo(function HealthScoreCard({ healthScore, loading, error }: HealthScoreCardProps) {
+  const animatedScore = useAnimatedNumber(healthScore?.overallScore ?? 0);
+  const displayScore = Math.round(animatedScore);
+
   if (loading && !healthScore) {
     return (
       <Card title="Health Score">
@@ -34,18 +38,24 @@ export const HealthScoreCard = React.memo(function HealthScoreCard({ healthScore
   }
 
   const config = HEALTH_STATUS_CONFIG[healthScore.status];
+
+  // Color zones: 0-39 Red, 40-69 Orange, 70-89 Yellow, 90-100 Green
   const scoreColor =
-    healthScore.overallScore >= 80
+    displayScore >= 90
       ? 'text-semantic-success'
-      : healthScore.overallScore >= 60
+      : displayScore >= 70
         ? 'text-semantic-warning'
-        : 'text-semantic-danger';
+        : displayScore >= 40
+          ? 'text-semantic-warning'
+          : 'text-semantic-danger';
   const strokeColor =
-    healthScore.overallScore >= 80
+    displayScore >= 90
       ? 'stroke-semantic-success'
-      : healthScore.overallScore >= 60
+      : displayScore >= 70
         ? 'stroke-semantic-warning'
-        : 'stroke-semantic-danger';
+        : displayScore >= 40
+          ? 'stroke-semantic-warning'
+          : 'stroke-semantic-danger';
 
   const issueCount = healthScore.issues.length;
 
@@ -58,7 +68,7 @@ export const HealthScoreCard = React.memo(function HealthScoreCard({ healthScore
           <div
             className="relative h-32 w-32 shrink-0"
             role="img"
-            aria-label={`Health score: ${healthScore.overallScore} out of 100, status: ${config.label}`}
+            aria-label={`Health score: ${displayScore} out of 100, status: ${config.label}`}
           >
             <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
               <circle
@@ -77,12 +87,13 @@ export const HealthScoreCard = React.memo(function HealthScoreCard({ healthScore
                 className={strokeColor}
                 strokeWidth="8"
                 strokeLinecap="round"
-                strokeDasharray={`${healthScore.overallScore * 2.83} 283`}
+                strokeDasharray={`${animatedScore * 2.83} 283`}
+                style={{ transition: 'stroke-dasharray 0.8s ease-out' }}
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
-                <div className={`text-3xl font-bold ${scoreColor}`}>{healthScore.overallScore}</div>
+                <div className={`text-3xl font-bold ${scoreColor} tabular-nums`}>{displayScore}</div>
                 <div className="text-xs text-text-muted">/ 100</div>
               </div>
             </div>

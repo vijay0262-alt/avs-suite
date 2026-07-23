@@ -6,7 +6,7 @@ import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import type { PrivacyScanResult, PrivacyCleanResult } from './privacy.types';
 import type { IPrivacyService } from './privacy.service';
 import { privacyService } from './privacy.service';
-import { optimizationEventBus } from '../health';
+import { optimizationEventBus, OptimizationEventType } from '../health';
 
 export interface PrivacyState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
@@ -129,6 +129,7 @@ export class PrivacyViewModel extends ViewModel<PrivacyState> {
       this.setState({ cleanResult: result, cleaning: false });
       // Emit optimization event so Dashboard refreshes health score
       optimizationEventBus.emit({
+        type: OptimizationEventType.PrivacyCleaned,
         moduleId: 'privacy',
         action: 'clean',
         bytesRecovered: result.spaceFreed,
