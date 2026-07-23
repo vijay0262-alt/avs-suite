@@ -8,9 +8,11 @@
  * 4. The startup state machine never double-registers
  */
 
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 const registeredChannels: Record<string, number> = {};
 
-jest.mock('electron', () => ({
+vi.mock('electron', () => ({
   ipcMain: {
     handle(channel: string, _handler: unknown) {
       registeredChannels[channel] = (registeredChannels[channel] ?? 0) + 1;
@@ -18,81 +20,81 @@ jest.mock('electron', () => ({
         throw new Error(`Attempted to register second handler '${channel}'`);
       }
     },
-    removeHandler: jest.fn(),
+    removeHandler: vi.fn(),
   },
   BrowserWindow: {
-    getAllWindows: jest.fn(() => []),
+    getAllWindows: vi.fn(() => []),
   },
   app: {
-    getVersion: jest.fn(() => '1.0.0'),
-    getPath: jest.fn(() => '/tmp'),
-    quit: jest.fn(),
+    getVersion: vi.fn(() => '1.0.0'),
+    getPath: vi.fn(() => '/tmp'),
+    quit: vi.fn(),
   },
   shell: {
-    openExternal: jest.fn(),
+    openExternal: vi.fn(),
   },
   dialog: {
-    showErrorBox: jest.fn(),
+    showErrorBox: vi.fn(),
   },
 }));
 
-jest.mock('child_process', () => ({
-  exec: jest.fn(),
-  execSync: jest.fn(),
-  spawn: jest.fn(() => ({
-    stdout: { on: jest.fn() },
-    stderr: { on: jest.fn() },
-    stdin: { write: jest.fn() },
-    on: jest.fn(),
-    kill: jest.fn(),
+vi.mock('child_process', () => ({
+  exec: vi.fn(),
+  execSync: vi.fn(),
+  spawn: vi.fn(() => ({
+    stdout: { on: vi.fn() },
+    stderr: { on: vi.fn() },
+    stdin: { write: vi.fn() },
+    on: vi.fn(),
+    kill: vi.fn(),
   })),
 }));
 
-jest.mock('electron-updater', () => ({
+vi.mock('electron-updater', () => ({
   autoUpdater: {
     autoDownload: false,
     allowPrerelease: false,
     logger: null,
-    on: jest.fn(),
-    checkForUpdates: jest.fn(),
-    downloadUpdate: jest.fn(),
-    quitAndInstall: jest.fn(),
+    on: vi.fn(),
+    checkForUpdates: vi.fn(),
+    downloadUpdate: vi.fn(),
+    quitAndInstall: vi.fn(),
   },
 }));
 
 const mockLogger = {
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
 };
 
 // Mock LicenseBridge
-jest.mock('../licensing/licenseBridge', () => ({
-  LicenseBridge: jest.fn().mockImplementation(() => ({
-    startup: jest.fn().mockResolvedValue({
+vi.mock('../licensing/licenseBridge', () => ({
+  LicenseBridge: vi.fn().mockImplementation(() => ({
+    startup: vi.fn().mockResolvedValue({
       status: 'active',
       edition: 'professional',
       is_offline: false,
     }),
-    checkUpdates: jest.fn().mockResolvedValue({ update_available: false }),
-    activate: jest.fn(),
-    validate: jest.fn(),
-    refresh: jest.fn(),
-    deactivate: jest.fn(),
-    getStatus: jest.fn(),
-    isLicensed: jest.fn(),
-    getInfo: jest.fn(),
-    downloadUpdate: jest.fn(),
-    installUpdate: jest.fn(),
-    close: jest.fn().mockResolvedValue(undefined),
+    checkUpdates: vi.fn().mockResolvedValue({ update_available: false }),
+    activate: vi.fn(),
+    validate: vi.fn(),
+    refresh: vi.fn(),
+    deactivate: vi.fn(),
+    getStatus: vi.fn(),
+    isLicensed: vi.fn(),
+    getInfo: vi.fn(),
+    downloadUpdate: vi.fn(),
+    installUpdate: vi.fn(),
+    close: vi.fn().mockResolvedValue(undefined),
   })),
 }));
 
 // Mock pythonBridge
-jest.mock('../ipc/pythonBridge', () => ({
-  spawnPythonBackend: jest.fn().mockResolvedValue({
-    call: jest.fn().mockResolvedValue({}),
-    shutdown: jest.fn().mockResolvedValue(undefined),
+vi.mock('../ipc/pythonBridge', () => ({
+  spawnPythonBackend: vi.fn().mockResolvedValue({
+    call: vi.fn().mockResolvedValue({}),
+    shutdown: vi.fn().mockResolvedValue(undefined),
   }),
 }));
 
@@ -101,7 +103,7 @@ describe('Central IPC registry — duplicate registration prevention', () => {
     for (const key of Object.keys(registeredChannels)) {
       delete registeredChannels[key];
     }
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('registerAllHandlers', () => {
@@ -109,7 +111,7 @@ describe('Central IPC registry — duplicate registration prevention', () => {
       const { registerAllHandlers, _resetIpcRegistry, getRegisteredChannels } = await import('../ipc/registerAllHandlers');
       _resetIpcRegistry();
 
-      const mockRpc = { call: jest.fn(), shutdown: jest.fn() };
+      const mockRpc = { call: vi.fn(), shutdown: vi.fn() };
       const { LicenseBridge } = await import('../licensing/licenseBridge');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const bridge = new LicenseBridge(mockRpc as any);
@@ -130,7 +132,7 @@ describe('Central IPC registry — duplicate registration prevention', () => {
       const { registerAllHandlers, _resetIpcRegistry } = await import('../ipc/registerAllHandlers');
       _resetIpcRegistry();
 
-      const mockRpc = { call: jest.fn(), shutdown: jest.fn() };
+      const mockRpc = { call: vi.fn(), shutdown: vi.fn() };
       const { LicenseBridge } = await import('../licensing/licenseBridge');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const bridge = new LicenseBridge(mockRpc as any);
@@ -153,7 +155,7 @@ describe('Central IPC registry — duplicate registration prevention', () => {
       const { registerAllHandlers, _resetIpcRegistry } = await import('../ipc/registerAllHandlers');
       _resetIpcRegistry();
 
-      const mockRpc = { call: jest.fn(), shutdown: jest.fn() };
+      const mockRpc = { call: vi.fn(), shutdown: vi.fn() };
       const { LicenseBridge } = await import('../licensing/licenseBridge');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const bridge = new LicenseBridge(mockRpc as any);
@@ -176,17 +178,17 @@ describe('Central IPC registry — duplicate registration prevention', () => {
     };
 
     it('should not double-register handlers when backend fails', async () => {
-      jest.resetModules();
+      vi.resetModules();
 
       // Re-mock with backend failure
-      jest.doMock('../ipc/pythonBridge', () => ({
-        spawnPythonBackend: jest.fn().mockRejectedValue(new Error('Backend unavailable')),
+      vi.doMock('../ipc/pythonBridge', () => ({
+        spawnPythonBackend: vi.fn().mockRejectedValue(new Error('Backend unavailable')),
       }));
 
       const { runStartup, getStartupState } = await import('../startup/startupStateMachine');
 
-      const createMainWindow = jest.fn().mockResolvedValue(undefined);
-      const closeSplash = jest.fn();
+      const createMainWindow = vi.fn().mockResolvedValue(undefined);
+      const closeSplash = vi.fn();
 
       await runStartup(
         mockLogger,
@@ -206,32 +208,32 @@ describe('Central IPC registry — duplicate registration prevention', () => {
     });
 
     it('should complete full startup without duplicate registrations', async () => {
-      jest.resetModules();
+      vi.resetModules();
 
       // Re-mock with successful backend
-      jest.doMock('../ipc/pythonBridge', () => ({
-        spawnPythonBackend: jest.fn().mockResolvedValue({
-          call: jest.fn().mockResolvedValue({}),
-          shutdown: jest.fn().mockResolvedValue(undefined),
+      vi.doMock('../ipc/pythonBridge', () => ({
+        spawnPythonBackend: vi.fn().mockResolvedValue({
+          call: vi.fn().mockResolvedValue({}),
+          shutdown: vi.fn().mockResolvedValue(undefined),
         }),
       }));
 
-      jest.doMock('../licensing/licenseBridge', () => ({
-        LicenseBridge: jest.fn().mockImplementation(() => ({
-          startup: jest.fn().mockResolvedValue({
+      vi.doMock('../licensing/licenseBridge', () => ({
+        LicenseBridge: vi.fn().mockImplementation(() => ({
+          startup: vi.fn().mockResolvedValue({
             status: 'active',
             edition: 'professional',
             is_offline: false,
           }),
-          checkUpdates: jest.fn().mockResolvedValue({ update_available: false }),
-          close: jest.fn().mockResolvedValue(undefined),
+          checkUpdates: vi.fn().mockResolvedValue({ update_available: false }),
+          close: vi.fn().mockResolvedValue(undefined),
         })),
       }));
 
       const { runStartup, getStartupState } = await import('../startup/startupStateMachine');
 
-      const createMainWindow = jest.fn().mockResolvedValue(undefined);
-      const closeSplash = jest.fn();
+      const createMainWindow = vi.fn().mockResolvedValue(undefined);
+      const closeSplash = vi.fn();
 
       await runStartup(
         mockLogger,
