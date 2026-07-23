@@ -110,6 +110,64 @@ export interface CategoryScores {
   windows: number;
 }
 
+/**
+ * Configurable module weights for the Health Engine.
+ *
+ * Each value is the **max penalty** that module can inflict on the
+ * overall score (0–100 scale). The sum of all max penalties is 100,
+ * so the overall score is:
+ *
+ *   100 - sum(categoryPenalty * weight / maxPenalty * maxPenalty)
+ *   = 100 - sum(categoryPenalty)
+ *
+ * In practice, each category produces a 0–100 score and the weight
+ * determines how much that category contributes to the overall score.
+ *
+ * Future modules register their weight here — no Dashboard logic changes.
+ */
+export interface HealthScoreWeights {
+  storage: number;
+  startup: number;
+  privacy: number;
+  performance: number;
+  security: number;
+  windows: number;
+}
+
+/**
+ * Default module weights (max penalties).
+ *
+ *   Junk Cleaner (storage)    → 30
+ *   Startup Manager            → 15
+ *   Privacy Cleaner            → 10
+ *   Performance                → 10
+ *   Security                   → 20
+ *   Windows Health             → 5  (disk space + system integrity)
+ *
+ * Total = 100. Future modules add their weight and the total is
+ * re-normalised automatically.
+ */
+export const DEFAULT_HEALTH_WEIGHTS: HealthScoreWeights = {
+  storage: 0.30,
+  startup: 0.15,
+  privacy: 0.10,
+  performance: 0.15,
+  security: 0.20,
+  windows: 0.10,
+};
+
+/**
+ * Registry for future module weights.
+ *
+ * Modules call `registerModuleWeight(moduleId, maxPenalty)` at startup.
+ * The Health Engine reads from this registry to compute the overall score.
+ */
+export interface ModuleWeightEntry {
+  moduleId: string;
+  maxPenalty: number;
+  displayName: string;
+}
+
 export interface HealthSummaryItem {
   text: string;
   severity: 'info' | 'success' | 'warning' | 'danger';
@@ -142,7 +200,7 @@ export interface HealthSnapshot {
   overallScore: number;
   scoreZone: ScoreZone;
   categoryScores: CategoryScores;
-  status: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+  status: HealthStatus;
   issues: HealthIssue[];
   summary: HealthSummaryItem[];
   categoryDetails: HealthCategoryDetail[];
@@ -193,7 +251,7 @@ export interface OptimizeExecuteResponse {
   completedAt: string;
 }
 
-export type HealthStatus = 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+export type HealthStatus = 'perfect' | 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
 
 /**
  * Score zones — determined by the Health Engine, not hardcoded in UI.
@@ -201,37 +259,41 @@ export type HealthStatus = 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
  * via HealthSnapshot.scoreZone. UI components read from SCORE_ZONE_CONFIG.
  *
  * Ranges:
- *   90–100 → excellent (green)
- *   80–89  → good      (yellow)
- *   60–79  → fair      (orange)
- *   40–59  → poor      (orange-red)
- *   0–39   → critical  (red)
+ *   100      → perfect   (green)
+ *   90–99    → excellent (green)
+ *   80–89    → good      (yellow)
+ *   60–79    → fair      (orange)
+ *   40–59    → poor      (orange-red)
+ *   0–39     → critical  (red)
  */
-export type ScoreZone = 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+export type ScoreZone = 'perfect' | 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
 
 export interface ScoreZoneConfig {
   textColor: string;
   strokeColor: string;
   label: string;
+  message: string;
 }
 
 export const SCORE_ZONE_CONFIG: Record<ScoreZone, ScoreZoneConfig> = {
-  excellent: { textColor: 'text-semantic-success', strokeColor: 'stroke-semantic-success', label: 'Excellent' },
-  good:      { textColor: 'text-semantic-warning', strokeColor: 'stroke-semantic-warning', label: 'Good' },
-  fair:      { textColor: 'text-semantic-warning', strokeColor: 'stroke-semantic-warning', label: 'Fair' },
-  poor:      { textColor: 'text-semantic-danger',  strokeColor: 'stroke-semantic-danger',  label: 'Poor' },
-  critical:  { textColor: 'text-semantic-danger',  strokeColor: 'stroke-semantic-danger',  label: 'Critical' },
+  perfect:   { textColor: 'text-semantic-success', strokeColor: 'stroke-semantic-success', label: 'Perfect',   message: 'Your PC is perfectly optimized.' },
+  excellent: { textColor: 'text-semantic-success', strokeColor: 'stroke-semantic-success', label: 'Excellent', message: 'Your PC is running smoothly.' },
+  good:      { textColor: 'text-semantic-warning', strokeColor: 'stroke-semantic-warning', label: 'Good',      message: 'Your PC is in good shape.' },
+  fair:      { textColor: 'text-semantic-warning', strokeColor: 'stroke-semantic-warning', label: 'Fair',      message: 'Your PC can be optimized.' },
+  poor:      { textColor: 'text-semantic-danger',  strokeColor: 'stroke-semantic-danger',  label: 'Poor',      message: 'Your PC needs optimization.' },
+  critical:  { textColor: 'text-semantic-danger',  strokeColor: 'stroke-semantic-danger',  label: 'Critical',  message: 'Your PC needs immediate attention.' },
 };
 
 export const HEALTH_STATUS_CONFIG: Record<
   HealthStatus,
   { color: string; label: string; icon: string }
 > = {
+  perfect:   { color: 'text-semantic-success', label: 'Perfect',   icon: 'check-circle' },
   excellent: { color: 'text-semantic-success', label: 'Excellent', icon: 'check-circle' },
-  good: { color: 'text-semantic-success', label: 'Good', icon: 'check-circle' },
-  fair: { color: 'text-semantic-warning', label: 'Fair', icon: 'exclamation-triangle' },
-  poor: { color: 'text-semantic-danger', label: 'Poor', icon: 'x-circle' },
-  critical: { color: 'text-semantic-danger', label: 'Critical', icon: 'alert-triangle' },
+  good:      { color: 'text-semantic-success', label: 'Good',      icon: 'check-circle' },
+  fair:      { color: 'text-semantic-warning', label: 'Fair',      icon: 'exclamation-triangle' },
+  poor:      { color: 'text-semantic-danger',  label: 'Poor',      icon: 'x-circle' },
+  critical:  { color: 'text-semantic-danger',  label: 'Critical',  icon: 'alert-triangle' },
 };
 
 // Health Scan workflow

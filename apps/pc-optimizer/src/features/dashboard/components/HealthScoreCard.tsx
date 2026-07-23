@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
-import { HEALTH_STATUS_CONFIG, SCORE_ZONE_CONFIG } from '../dashboard.types';
+import { SCORE_ZONE_CONFIG } from '../dashboard.types';
 import type { HealthSnapshot } from '../dashboard.types';
 import { useAnimatedNumber } from './useAnimatedNumber';
 
@@ -37,10 +37,9 @@ export const HealthScoreCard = React.memo(function HealthScoreCard({ healthScore
     );
   }
 
-  const config = HEALTH_STATUS_CONFIG[healthScore.status];
   const zoneConfig = SCORE_ZONE_CONFIG[healthScore.scoreZone];
 
-  // Colors driven by the Health Engine's scoreZone, not hardcoded in UI.
+  // Colors and messaging driven by the Health Engine's scoreZone, not hardcoded in UI.
   const scoreColor = zoneConfig.textColor;
   const strokeColor = zoneConfig.strokeColor;
 
@@ -55,7 +54,7 @@ export const HealthScoreCard = React.memo(function HealthScoreCard({ healthScore
           <div
             className="relative h-32 w-32 shrink-0"
             role="img"
-            aria-label={`Health score: ${displayScore} out of 100, status: ${config.label}`}
+            aria-label={`Health score: ${displayScore} out of 100, status: ${zoneConfig.label}`}
           >
             <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
               <circle
@@ -87,14 +86,12 @@ export const HealthScoreCard = React.memo(function HealthScoreCard({ healthScore
           </div>
 
           <div className="flex-1">
-            <div className={`text-2xl font-semibold ${config.color}`}>{config.label}</div>
+            <div className={`text-2xl font-semibold ${zoneConfig.textColor}`}>{zoneConfig.label}</div>
             <div className="mt-1 inline-flex items-center rounded-full bg-surface-muted px-3 py-1 text-sm font-medium text-text-secondary">
               {issueCount > 0 ? `${issueCount} Issues Found` : 'No Issues Found'}
             </div>
             <div className="mt-2 text-sm text-text-secondary">
-              {healthScore.status === 'excellent' || healthScore.status === 'good'
-                ? 'Your PC is in great shape.'
-                : 'Your PC can be improved with a quick cleanup.'}
+              {zoneConfig.message}
             </div>
           </div>
         </div>

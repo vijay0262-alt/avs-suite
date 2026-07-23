@@ -5,6 +5,7 @@ import { DashboardViewModel } from '../DashboardViewModel';
 import type { DashboardService } from '../dashboard.service';
 import type { IPrivacyService } from '../../privacy/privacy.service';
 import type { DashboardMetrics, LiveMetrics } from '../dashboard.types';
+import { SCORE_ZONE_CONFIG, DEFAULT_HEALTH_WEIGHTS } from '../dashboard.types';
 import { calculateHealthScore } from '../dashboard.utils';
 import { optimizationEventBus, OptimizationEventType } from '../../health/OptimizationEventBus';
 import { dashboardRefreshManager } from '../../health/DashboardRefreshManager';
@@ -158,8 +159,8 @@ describe('Health Score Philosophy — score 100 when fully optimized', () => {
     const score = calculateHealthScore(cleanMetrics, 0);
     expect(score.overallScore).toBe(100);
     expect(score.issues.length).toBe(0);
-    expect(score.status).toBe('excellent');
-    expect(score.scoreZone).toBe('excellent');
+    expect(score.status).toBe('perfect');
+    expect(score.scoreZone).toBe('perfect');
   });
 
   it('returns all category scores 100 when fully optimized', () => {
@@ -191,11 +192,21 @@ describe('Health Score Philosophy — score 100 when fully optimized', () => {
 });
 
 describe('Health Score Philosophy — score zones', () => {
-  it('score 90-100 maps to excellent zone', () => {
+  it('score 100 maps to perfect zone', () => {
     const cleanMetrics = makeMetrics({
       performance: { startupApps: 0, backgroundProcesses: 30, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 },
     });
     const score = calculateHealthScore(cleanMetrics, 0);
+    expect(score.scoreZone).toBe('perfect');
+  });
+
+  it('score 90-99 maps to excellent zone', () => {
+    const nearCleanMetrics = makeMetrics({
+      performance: { startupApps: 1, backgroundProcesses: 30, temporaryFilesSize: 50_000_000, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 50_000_000 },
+    });
+    const score = calculateHealthScore(nearCleanMetrics, 0);
+    expect(score.overallScore).toBeGreaterThanOrEqual(90);
+    expect(score.overallScore).toBeLessThan(100);
     expect(score.scoreZone).toBe('excellent');
   });
 
@@ -214,7 +225,7 @@ describe('Health Score Philosophy — score zones', () => {
       },
       performance: { startupApps: 10, backgroundProcesses: 200, temporaryFilesSize: 20_000_000_000, recycleBinSize: 10_000_000_000, browserCacheSize: 5_000_000_000, potentialRecoverable: 35_000_000_000 },
     });
-    const score = calculateHealthScore(criticalMetrics, 5);
+    const score = calculateHealthScore(criticalMetrics, 10);
     expect(score.scoreZone).toBe('critical');
     expect(score.overallScore).toBeLessThan(40);
   });
@@ -224,7 +235,8 @@ describe('Health Score Philosophy — score zones', () => {
       performance: { startupApps: 5, backgroundProcesses: 80, temporaryFilesSize: 500_000_000, recycleBinSize: 200_000_000, browserCacheSize: 100_000_000, potentialRecoverable: 800_000_000 },
     }), 2);
     const s = dirty.overallScore;
-    if (s >= 90) expect(dirty.scoreZone).toBe('excellent');
+    if (s >= 100) expect(dirty.scoreZone).toBe('perfect');
+    else if (s >= 90) expect(dirty.scoreZone).toBe('excellent');
     else if (s >= 80) expect(dirty.scoreZone).toBe('good');
     else if (s >= 60) expect(dirty.scoreZone).toBe('fair');
     else if (s >= 40) expect(dirty.scoreZone).toBe('poor');
@@ -343,7 +355,7 @@ describe('Health Score Philosophy — after optimization shows 100', () => {
     // After optimization: score = 100, issues = 0
     expect(vm.state.healthScore!.overallScore).toBe(100);
     expect(vm.state.healthScore!.issues.length).toBe(0);
-    expect(vm.state.healthScore!.scoreZone).toBe('excellent');
+    expect(vm.state.healthScore!.scoreZone).toBe('perfect');
   });
 });
 
@@ -817,5 +829,203 @@ describe('Future module registration', () => {
     const service = new HealthScoreService();
     const result = service.getCachedContributions();
     expect(result).toEqual([]);
+  });
+});
+
+describe('Part 5 — Configurable module weights', () => {
+  it('calculateHealthScore accepts custom weights', () => {
+    const metrics = makeMetrics({
+      performance: { startupApps: 5, backgroundProcesses: 50, temporaryFilesSize: 500_000_000, recycleBinSize: 200_000_000, browserCacheSize: 100_000_000, potentialRecoverable: 800_000_000 },
+    });
+
+    const defaultScore = calculateHealthScore(metrics, 0);
+    const customScore = calculateHealthScore(metrics, 0, {
+      storage: 0.50,
+      startup: 0.10,
+      privacy: 0.05,
+      performance: 0.10,
+      security: 0.15,
+      windows: 0.10,
+    });
+
+    // With higher storage weight, the junk penalty impacts the overall score more
+    expect(customScore.overallScore).not.toBe(defaultScore.overallScore);
+  });
+
+  it('default weights sum to 1.0', () => {
+    const sum = Object.values(DEFAULT_HEALTH_WEIGHTS).reduce((a: number, b: number) => a + b, 0);
+    expect(Math.abs(sum - 1.0)).toBeLessThan(0.001);
+  });
+
+  it('weights are re-normalised when they do not sum to 1.0', () => {
+    const metrics = makeMetrics({
+      performance: { startupApps: 0, backgroundProcesses: 0, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 },
+    });
+    // Weights sum to 2.0 — should still produce score 100 for a clean system
+    const score = calculateHealthScore(metrics, 0, {
+      storage: 0.60,
+      startup: 0.30,
+      privacy: 0.20,
+      performance: 0.30,
+      security: 0.40,
+      windows: 0.20,
+    });
+    expect(score.overallScore).toBe(100);
+  });
+
+  it('HealthScoreService registers and retrieves module weights', () => {
+    const service = new HealthScoreService();
+    service.registerModuleWeight('junk', 30, 'Junk Cleaner');
+    service.registerModuleWeight('registry', 20, 'Registry Cleaner');
+    service.registerModuleWeight('startup', 15, 'Startup Manager');
+
+    const weights = service.getModuleWeights();
+    expect(weights).toHaveLength(3);
+    expect(weights.find(w => w.moduleId === 'junk')?.maxPenalty).toBe(30);
+    expect(weights.find(w => w.moduleId === 'registry')?.maxPenalty).toBe(20);
+    expect(weights.find(w => w.moduleId === 'startup')?.maxPenalty).toBe(15);
+  });
+
+  it('HealthScoreService unregisters module weights', () => {
+    const service = new HealthScoreService();
+    service.registerModuleWeight('junk', 30, 'Junk Cleaner');
+    service.registerModuleWeight('registry', 20, 'Registry Cleaner');
+
+    service.unregisterModuleWeight('registry');
+    const weights = service.getModuleWeights();
+    expect(weights).toHaveLength(1);
+    expect(weights.find(w => w.moduleId === 'registry')).toBeUndefined();
+  });
+});
+
+describe('Part 3 — Progressive degradation curve', () => {
+  it('score degrades gradually as junk accumulates', () => {
+    const base = makeMetrics({
+      performance: { startupApps: 0, backgroundProcesses: 0, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 },
+    });
+
+    const day0 = calculateHealthScore(base, 0);
+
+    const day2 = calculateHealthScore(makeMetrics({
+      performance: { startupApps: 0, backgroundProcesses: 0, temporaryFilesSize: 80_000_000, recycleBinSize: 30_000_000, browserCacheSize: 10_000_000, potentialRecoverable: 120_000_000 },
+    }), 0);
+
+    const day5 = calculateHealthScore(makeMetrics({
+      performance: { startupApps: 1, backgroundProcesses: 10, temporaryFilesSize: 200_000_000, recycleBinSize: 80_000_000, browserCacheSize: 40_000_000, potentialRecoverable: 320_000_000 },
+    }), 1);
+
+    const day10 = calculateHealthScore(makeMetrics({
+      performance: { startupApps: 3, backgroundProcesses: 30, temporaryFilesSize: 500_000_000, recycleBinSize: 200_000_000, browserCacheSize: 100_000_000, potentialRecoverable: 800_000_000 },
+    }), 2);
+
+    expect(day0.overallScore).toBe(100);
+    expect(day2.overallScore).toBeLessThan(100);
+    expect(day2.overallScore).toBeGreaterThan(day5.overallScore);
+    expect(day5.overallScore).toBeGreaterThan(day10.overallScore);
+  });
+
+  it('score does not artificially decrease — only real issues cause penalties', () => {
+    const clean = calculateHealthScore(makeMetrics({
+      cpu: { usage: 35, frequency: 3000, logicalProcessors: 8, physicalProcessors: 4, processes: 120, threads: 600, temperature: null },
+      memory: { total: 16_000_000_000, used: 8_000_000_000, available: 8_000_000_000, usage: 50, cached: 1_000_000_000, swapTotal: 4_000_000_000, swapUsed: 0, swapUsage: 0 },
+      performance: { startupApps: 0, backgroundProcesses: 80, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 },
+    }), 0);
+
+    // Normal CPU/memory with no junk = perfect score, no artificial penalty
+    expect(clean.overallScore).toBe(100);
+    expect(clean.issues.length).toBe(0);
+  });
+});
+
+describe('Part 6 — Health categories and messaging', () => {
+  it('score 100 shows Perfect label and message', () => {
+    const clean = calculateHealthScore(makeMetrics({
+      performance: { startupApps: 0, backgroundProcesses: 0, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 },
+    }), 0);
+    const zone = SCORE_ZONE_CONFIG[clean.scoreZone];
+    expect(zone.label).toBe('Perfect');
+    expect(zone.message).toBe('Your PC is perfectly optimized.');
+  });
+
+  it('score 90-99 shows Excellent label and message', () => {
+    const near = calculateHealthScore(makeMetrics({
+      performance: { startupApps: 1, backgroundProcesses: 30, temporaryFilesSize: 50_000_000, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 50_000_000 },
+    }), 0);
+    const zone = SCORE_ZONE_CONFIG[near.scoreZone];
+    expect(zone.label).toBe('Excellent');
+    expect(zone.message).toBe('Your PC is running smoothly.');
+  });
+
+  it('score 80-89 shows Good label and message', () => {
+    const good = calculateHealthScore(makeMetrics({
+      performance: { startupApps: 6, backgroundProcesses: 50, temporaryFilesSize: 1_200_000_000, recycleBinSize: 600_000_000, browserCacheSize: 300_000_000, potentialRecoverable: 2_100_000_000 },
+    }), 3);
+    expect(good.overallScore).toBeGreaterThanOrEqual(80);
+    expect(good.overallScore).toBeLessThan(90);
+    const zone = SCORE_ZONE_CONFIG[good.scoreZone];
+    expect(zone.label).toBe('Good');
+    expect(zone.message).toBe('Your PC is in good shape.');
+  });
+
+  it('score 60-79 shows Fair label and message', () => {
+    const fair = calculateHealthScore(makeMetrics({
+      cpu: { usage: 65, frequency: 3000, logicalProcessors: 8, physicalProcessors: 4, processes: 200, threads: 800, temperature: null },
+      memory: { total: 16_000_000_000, used: 12_000_000_000, available: 4_000_000_000, usage: 75, cached: 1_000_000_000, swapTotal: 4_000_000_000, swapUsed: 1_000_000_000, swapUsage: 25 },
+      performance: { startupApps: 10, backgroundProcesses: 120, temporaryFilesSize: 5_000_000_000, recycleBinSize: 2_000_000_000, browserCacheSize: 1_000_000_000, potentialRecoverable: 8_000_000_000 },
+    }), 5);
+    expect(fair.overallScore).toBeGreaterThanOrEqual(60);
+    expect(fair.overallScore).toBeLessThan(80);
+    const zone = SCORE_ZONE_CONFIG[fair.scoreZone];
+    expect(zone.label).toBe('Fair');
+    expect(zone.message).toBe('Your PC can be optimized.');
+  });
+
+  it('score 40-59 shows Poor label and message', () => {
+    const poor = calculateHealthScore(makeMetrics({
+      cpu: { usage: 85, frequency: 3000, logicalProcessors: 8, physicalProcessors: 4, processes: 250, threads: 900, temperature: null },
+      memory: { total: 16_000_000_000, used: 13_000_000_000, available: 3_000_000_000, usage: 81, cached: 1_000_000_000, swapTotal: 4_000_000_000, swapUsed: 2_000_000_000, swapUsage: 50 },
+      security: {
+        defender: { enabled: false, realTimeProtection: false },
+        firewall: { enabled: false },
+        updates: { pendingUpdates: 5, lastUpdateDate: null },
+        realTimeProtection: false,
+        smartScreen: false,
+      },
+      performance: { startupApps: 10, backgroundProcesses: 150, temporaryFilesSize: 15_000_000_000, recycleBinSize: 5_000_000_000, browserCacheSize: 3_000_000_000, potentialRecoverable: 23_000_000_000 },
+    }), 8);
+    expect(poor.overallScore).toBeGreaterThanOrEqual(40);
+    expect(poor.overallScore).toBeLessThan(60);
+    const zone = SCORE_ZONE_CONFIG[poor.scoreZone];
+    expect(zone.label).toBe('Poor');
+    expect(zone.message).toBe('Your PC needs optimization.');
+  });
+
+  it('score below 40 shows Critical label and message', () => {
+    const critical = calculateHealthScore(makeMetrics({
+      cpu: { usage: 95, frequency: 3000, logicalProcessors: 8, physicalProcessors: 4, processes: 300, threads: 1000, temperature: null },
+      memory: { total: 16_000_000_000, used: 15_000_000_000, available: 1_000_000_000, usage: 94, cached: 0, swapTotal: 4_000_000_000, swapUsed: 3_000_000_000, swapUsage: 75 },
+      storage: [{ mount: 'C:', name: 'SSD', total: 500_000_000_000, used: 480_000_000_000, free: 20_000_000_000, usage: 96, isSSD: true, fileSystem: 'NTFS' }],
+      windows: { version: '10', build: '19041', uptime: 65 * 86400, isAdministrator: true, powerMode: 'balanced', battery: null, secureBoot: false, tpmStatus: false },
+      security: {
+        defender: { enabled: false, realTimeProtection: false },
+        firewall: { enabled: false },
+        updates: { pendingUpdates: 10, lastUpdateDate: null },
+        realTimeProtection: false,
+        smartScreen: false,
+      },
+      performance: { startupApps: 10, backgroundProcesses: 200, temporaryFilesSize: 20_000_000_000, recycleBinSize: 10_000_000_000, browserCacheSize: 5_000_000_000, potentialRecoverable: 35_000_000_000 },
+    }), 10);
+    expect(critical.overallScore).toBeLessThan(40);
+    const zone = SCORE_ZONE_CONFIG[critical.scoreZone];
+    expect(zone.label).toBe('Critical');
+    expect(zone.message).toBe('Your PC needs immediate attention.');
+  });
+
+  it('all score zones have unique labels and messages', () => {
+    const zones = Object.values(SCORE_ZONE_CONFIG);
+    const labels = new Set(zones.map((z) => z.label));
+    const messages = new Set(zones.map((z) => z.message));
+    expect(labels.size).toBe(zones.length);
+    expect(messages.size).toBe(zones.length);
   });
 });

@@ -19,6 +19,7 @@
 import type { HealthContribution, HealthContributionProvider, ModuleId } from './HealthContribution';
 import { clampHealth } from './HealthContribution';
 import { optimizationEventBus, type OptimizationEvent } from './OptimizationEventBus';
+import type { ModuleWeightEntry } from '../dashboard/dashboard.types';
 
 export interface AggregatedHealthScore {
   overallScore: number;
@@ -30,6 +31,7 @@ export interface AggregatedHealthScore {
 
 export class HealthScoreService {
   private providers = new Map<ModuleId, HealthContributionProvider>();
+  private moduleWeights = new Map<string, ModuleWeightEntry>();
   private cachedContributions: HealthContribution[] = [];
   private lastComputeTimestamp = 0;
 
@@ -39,6 +41,22 @@ export class HealthScoreService {
 
   unregisterProvider(moduleId: ModuleId): void {
     this.providers.delete(moduleId);
+  }
+
+  /**
+   * Register a module's weight (max penalty) for the health score.
+   * Future modules call this at startup — no Dashboard logic changes.
+   */
+  registerModuleWeight(moduleId: string, maxPenalty: number, displayName: string): void {
+    this.moduleWeights.set(moduleId, { moduleId, maxPenalty, displayName });
+  }
+
+  unregisterModuleWeight(moduleId: string): void {
+    this.moduleWeights.delete(moduleId);
+  }
+
+  getModuleWeights(): ModuleWeightEntry[] {
+    return Array.from(this.moduleWeights.values());
   }
 
   async computeHealth(): Promise<AggregatedHealthScore> {

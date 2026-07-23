@@ -16,13 +16,16 @@ import type {
   HealthIssue,
   CategoryScores,
   ScoreZone,
+  HealthScoreWeights,
 } from './dashboard.types';
+import { DEFAULT_HEALTH_WEIGHTS } from './dashboard.types';
 
 function clamp(value: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, value));
 }
 
 function determineStatus(overallScore: number): HealthStatus {
+  if (overallScore >= 100) return 'perfect';
   if (overallScore >= 90) return 'excellent';
   if (overallScore >= 80) return 'good';
   if (overallScore >= 60) return 'fair';
@@ -32,15 +35,17 @@ function determineStatus(overallScore: number): HealthStatus {
 
 /**
  * Determine the score zone from the overall score.
- * Used by the UI to pick the correct color for the gauge.
+ * Used by the UI to pick the correct color and message for the gauge.
  *
- *   90–100 → excellent (green)
- *   80–89  → good      (yellow)
- *   60–79  → fair      (orange)
- *   40–59  → poor      (orange-red)
- *   0–39   → critical  (red)
+ *   100      → perfect   (green)
+ *   90–99    → excellent (green)
+ *   80–89    → good      (yellow)
+ *   60–79    → fair      (orange)
+ *   40–59    → poor      (orange-red)
+ *   0–39     → critical  (red)
  */
 function determineScoreZone(overallScore: number): ScoreZone {
+  if (overallScore >= 100) return 'perfect';
   if (overallScore >= 90) return 'excellent';
   if (overallScore >= 80) return 'good';
   if (overallScore >= 60) return 'fair';
@@ -481,7 +486,11 @@ function buildCategoryDetails(
  * All dashboard components read from this HealthSnapshot.
  * No predictions. No estimates. Every value is measured from real system state.
  */
-export function calculateHealthScore(metrics: DashboardMetrics | null | undefined, privacyRisks: number | null = null): HealthSnapshot {
+export function calculateHealthScore(
+  metrics: DashboardMetrics | null | undefined,
+  privacyRisks: number | null = null,
+  weights: HealthScoreWeights = DEFAULT_HEALTH_WEIGHTS,
+): HealthSnapshot {
   // Guard against empty/partial metrics (e.g. backend still loading)
   const cpu = metrics?.cpu ?? { usage: 0, frequency: 0, logicalProcessors: 0, physicalProcessors: 0, processes: 0, threads: 0, temperature: null };
   const memory = metrics?.memory ?? { total: 0, used: 0, available: 0, usage: 0, cached: 0, swapTotal: 0, swapUsed: 0, swapUsage: 0 };
@@ -550,23 +559,20 @@ export function calculateHealthScore(metrics: DashboardMetrics | null | undefine
     uptimeDays >= 60 ? 40 : uptimeDays > 30 ? 70 : uptimeDays > 7 ? 90 : 100
   );
 
-  // Weighted overall score
-  const weights = {
-    storage: 0.20,
-    startup: 0.15,
-    privacy: 0.10,
-    performance: 0.25,
-    security: 0.20,
-    windows: 0.10,
-  };
+  // Weighted overall score — weights are configurable (Part 5).
+  // Default weights sum to 1.0 so the overall is a direct weighted average.
+  // Future modules can register custom weights without changing this logic.
+  const weightSum =
+    weights.storage + weights.startup + weights.privacy +
+    weights.performance + weights.security + weights.windows;
 
   const overallScore = clamp(
-    storageScore * weights.storage +
+    (storageScore * weights.storage +
     startupScore * weights.startup +
     privacyScore * weights.privacy +
     performanceScore * weights.performance +
     securityScore * weights.security +
-    windowsScore * weights.windows
+    windowsScore * weights.windows) / (weightSum || 1)
   );
 
   const issues = buildAllIssues({ cpu, memory, storage, windows, security, performance, capturedAt } as DashboardMetrics, privacyRisks);
@@ -588,7 +594,7 @@ export function calculateHealthScore(metrics: DashboardMetrics | null | undefine
   return {
     timestamp: capturedAt,
     overallScore: Math.round(overallScore),
-    scoreZone: determineScoreZone(overallScore),
+    scoreZone: determineScoreZone(Math.round(overallScore)),
     categoryScores: {
       storage: Math.round(storageScore),
       startup: Math.round(startupScore),
@@ -597,7 +603,7 @@ export function calculateHealthScore(metrics: DashboardMetrics | null | undefine
       security: Math.round(securityScore),
       windows: Math.round(windowsScore),
     },
-    status: determineStatus(overallScore),
+    status: determineStatus(Math.round(overallScore)),
     issues,
     summary,
     categoryDetails,
