@@ -1,6 +1,6 @@
 {
   "name": "@avs/pc-optimizer",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "AVS PC Optimizer — Windows performance, cleanup, and privacy utility.",
   "author": {
@@ -53,7 +53,7 @@
   "build": {
     "appId": "com.avs.pcoptimizer",
     "productName": "AVS PC Optimizer",
-    "copyright": "Copyright © 2024 Advanced Vision Software LLC. All rights reserved.",
+    "copyright": "Copyright © 2024-2026 Advanced Vision Software LLC. All rights reserved.",
     "directories": {
       "output": "release",
       "buildResources": "build"

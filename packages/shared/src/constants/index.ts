@@ -5,10 +5,12 @@
 
 export const APP_METADATA = {
   name: 'AVS PC Optimizer',
-  vendor: 'AVS Software',
-  copyright: '© AVS Software. All rights reserved.',
+  vendor: 'Advanced Vision Software LLC',
+  copyright: '© 2024-2026 Advanced Vision Software LLC. All rights reserved.',
   supportEmail: 'support@avs.example.com',
   websiteUrl: 'https://www.avs.example.com',
+  publisherName: 'Advanced Vision Software LLC',
+  description: 'Windows performance, cleanup, and privacy utility.',
 } as const;
 
 /** Filesystem folders used at runtime, relative to the OS userData path. */

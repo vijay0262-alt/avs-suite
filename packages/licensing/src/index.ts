@@ -1,57 +1,87 @@
 /**
- * @avs/licensing — public interfaces only.
+ * @avs/licensing — licensing foundation for AVS PC Optimizer.
  *
- * A working implementation (offline license file, online activation,
- * subscription renewal) is intentionally deferred. Any consumer must
- * depend on these interfaces, never on a concrete implementation.
+ * This package provides:
+ *   - License model and states
+ *   - License events (typed pub/sub)
+ *   - Feature Manager (FeatureManager.has(feature))
+ *   - License Manager (centralized orchestrator)
+ *   - License Storage (encrypted, tamper-resistant, versioned)
+ *   - Activation Service (interfaces only — no implementation)
+ *   - Device ID (anonymous fingerprint)
+ *   - Offline Mode (cached license, grace period, local validation)
+ *
+ * No mock/fake implementations are provided for the activation
+ * service. Clean interfaces are defined here. The concrete
+ * implementation will be provided when the real license server
+ * is built. The NullLicenseManager is a legitimate null-object
+ * pattern for when no licensing infrastructure is configured —
+ * it always returns 'free' state and is NOT a mock.
  */
-import type { Edition } from '@avs/shared/featureFlags';
 
-export interface LicenseInfo {
-  edition: Edition;
-  activated: boolean;
-  seats?: number;
-  expiresAt?: string; // ISO-8601 UTC
-  licenseeName?: string;
-  licenseeEmail?: string;
-}
+// Re-export existing types for backward compatibility
+export type { LicenseInfo, ILicensingService } from './legacy';
+export { NullLicensingService } from './legacy';
 
-export interface ILicensingService {
-  /** Currently active edition, resolved from license file or fallback (`free`). */
-  currentEdition(): Edition;
-  /** True if a paid license (Pro/Enterprise/Trial) has been activated. */
-  isActivated(): boolean;
-  /** Read the full license record (redacted for UI display). */
-  getLicense(): Promise<LicenseInfo>;
-  /** Activate with a user-supplied key. */
-  activate(key: string): Promise<LicenseInfo>;
-  /** Deactivate and revert to Free. */
-  deactivate(): Promise<void>;
-  /** Force a background re-check against the license server. */
-  refresh(): Promise<LicenseInfo>;
-}
+// License states
+export type { LicenseState } from './states';
+export {
+  ALL_LICENSE_STATES,
+  LICENSE_STATE_LABELS,
+  isActiveState,
+  isGraceState,
+  isFunctionalState,
+  isErrorState,
+  stateToEdition,
+} from './states';
 
-/**
- * Null-object implementation used until real licensing ships. Returns
- * `free` edition, no activation, and rejects activation attempts.
- */
-export class NullLicensingService implements ILicensingService {
-  currentEdition(): Edition {
-    return 'free';
-  }
-  isActivated(): boolean {
-    return false;
-  }
-  async getLicense(): Promise<LicenseInfo> {
-    return { edition: 'free', activated: false };
-  }
-  async activate(_key: string): Promise<LicenseInfo> {
-    throw new Error('Licensing is not yet available in this build.');
-  }
-  async deactivate(): Promise<void> {
-    /* no-op */
-  }
-  async refresh(): Promise<LicenseInfo> {
-    return this.getLicense();
-  }
-}
+// License model
+export type {
+  LicenseModel,
+  LicenseView,
+  ValidationResult,
+  ActivationResult,
+  DeactivationResult,
+} from './model';
+export { CURRENT_FORMAT_VERSION, toLicenseView } from './model';
+
+// License events
+export type { LicenseEventType, LicenseEvent, LicenseEventListener } from './events';
+export { createLicenseEvent, LicenseEventEmitter } from './events';
+
+// Feature Manager
+export type { ManagedFeature, IFeatureManager, FeatureManagerConfig } from './featureManager';
+export { createFeatureManager, isFeatureAvailableForState, FEATURE_MAP } from './featureManager';
+
+// License Manager
+export type { LicenseManagerConfig, ILicenseManager } from './manager';
+export { LicenseManager } from './manager';
+
+// License Storage
+export type { StorageEnvelope, ILicenseStorage, StorageErrorType } from './storage';
+export {
+  LicenseStorageError,
+  serializeLicense,
+  deserializeLicense,
+  computeChecksum,
+} from './storage';
+
+// Activation Service (interfaces only)
+export type { IActivationService, ActivationConfig } from './activation';
+export { DEFAULT_ACTIVATION_CONFIG, ACTIVATION_ERROR_REASONS } from './activation';
+
+// Device ID
+export type { IDeviceIdProvider } from './deviceId';
+export { deriveDeviceId, isValidDeviceId } from './deviceId';
+
+// Offline Mode
+export type { OfflineConfig } from './offline';
+export {
+  DEFAULT_OFFLINE_CONFIG,
+  validateOffline,
+  calculateGraceExpiry,
+  shouldEnterGrace,
+  hasGraceEnded,
+  canStartOffline,
+  getOfflineState,
+} from './offline';

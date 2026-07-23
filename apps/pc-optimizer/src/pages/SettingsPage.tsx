@@ -1,8 +1,11 @@
-import { Card, Button } from '@avs/ui';
+import { Card, Button, Badge } from '@avs/ui';
 import { useTheme } from '@avs/ui';
 import { PageHeader } from '../components/PageHeader';
 import type { ThemeMode } from '@avs/shared/types';
 import { useEffect, useState } from 'react';
+import { useEdition } from '../config/EditionManager';
+import { getVersionString, getBuildString, getChannelString, getEditionString } from '../config/version';
+import { useUpgradeDialog } from '../components/UpgradeDialog';
 
 interface VerificationLog {
   id: string;
@@ -35,6 +38,8 @@ export default function SettingsPage() {
   const { mode, setMode } = useTheme();
   const [devMode, setDevMode] = useState(false);
   const [logs, setLogs] = useState<VerificationLog[]>([]);
+  const edition = useEdition();
+  const { show: showUpgrade } = useUpgradeDialog();
 
   useEffect(() => {
     try {
@@ -103,17 +108,84 @@ export default function SettingsPage() {
           </p>
         </Card>
 
-        <Card title="Updates">
-          <p className="text-sm text-text-secondary">
-            The application checks for updates automatically on the stable channel. Update
-            configuration will be exposed here in a future build.
-          </p>
+        <Card title="Application Edition">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-text-primary">{getEditionString()}</span>
+                <Badge tone={edition === 'free' ? 'neutral' : 'brand'}>
+                  {edition.toUpperCase()}
+                </Badge>
+              </div>
+              <p className="mt-1 text-xs text-text-secondary">
+                {edition === 'free'
+                  ? 'Free edition includes basic junk cleaning, startup management, privacy cleaning, and disk analysis.'
+                  : 'Pro edition includes all features with priority support.'}
+              </p>
+            </div>
+            {edition === 'free' && (
+              <Button variant="primary" onClick={() => showUpgrade('Settings')} data-testid="settings-upgrade">
+                Upgrade to Pro
+              </Button>
+            )}
+          </div>
+        </Card>
+
+        <Card title="Version">
+          <dl className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
+            <div>
+              <dt className="text-text-muted">Version</dt>
+              <dd className="font-medium text-text-primary">{getVersionString()}</dd>
+            </div>
+            <div>
+              <dt className="text-text-muted">Build</dt>
+              <dd className="font-medium text-text-primary">{getBuildString()}</dd>
+            </div>
+            <div>
+              <dt className="text-text-muted">Channel</dt>
+              <dd className="font-medium text-text-primary">{getChannelString()}</dd>
+            </div>
+          </dl>
+        </Card>
+
+        <Card title="Update Preferences">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-text-primary">Check for updates automatically</div>
+                <p className="text-xs text-text-secondary">Not enabled in this build. Future versions will support automatic update checks.</p>
+              </div>
+              <Button variant="secondary" disabled data-testid="settings-auto-update-toggle">
+                Disabled
+              </Button>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-text-primary">Update channel</div>
+                <p className="text-xs text-text-secondary">Stable channel is recommended for most users.</p>
+              </div>
+              <Badge tone="brand">Stable</Badge>
+            </div>
+          </div>
+        </Card>
+
+        <Card title="Telemetry">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium text-text-primary">Anonymous usage data</div>
+              <p className="text-xs text-text-secondary">Help improve AVS PC Optimizer by sending anonymous diagnostics. Future feature.</p>
+            </div>
+            <Button variant="secondary" disabled data-testid="settings-telemetry-toggle">
+              Disabled
+            </Button>
+          </div>
         </Card>
 
         <Card title="License">
           <p className="text-sm text-text-secondary">
-            Currently running the Free edition. Activation is not enabled in this build of the
-            scaffold.
+            {edition === 'free'
+              ? 'Currently running the Free edition. License activation will be available in a future update.'
+              : 'Pro edition is active. License management will be available here once licensing is enabled.'}
           </p>
         </Card>
 
