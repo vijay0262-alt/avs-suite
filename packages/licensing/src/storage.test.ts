@@ -2,6 +2,7 @@
  * License storage tests — validates serialization, checksum,
  * and error handling.
  */
+import { describe, expect, it } from 'vitest';
 import { serializeLicense, deserializeLicense, computeChecksum, LicenseStorageError } from './storage';
 import { CURRENT_FORMAT_VERSION } from './model';
 import type { LicenseModel } from './model';

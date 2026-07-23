@@ -9,6 +9,7 @@
  * 3. Grace period is calculated from the original expiry, not the clock
  * 4. Last validation timestamp detects clock manipulation
  */
+import { describe, expect, it } from 'vitest';
 import {
   validateOffline,
   calculateGraceExpiry,

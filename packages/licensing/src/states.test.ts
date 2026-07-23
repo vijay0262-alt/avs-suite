@@ -1,6 +1,7 @@
 /**
  * License states tests — validates state classification functions.
  */
+import { describe, expect, it } from 'vitest';
 import {
   isActiveState,
   isGraceState,

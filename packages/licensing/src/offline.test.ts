@@ -2,6 +2,7 @@
  * Offline mode tests — validates offline license validation,
  * grace period calculation, and state transitions.
  */
+import { describe, expect, it } from 'vitest';
 import {
   validateOffline,
   calculateGraceExpiry,

@@ -1,6 +1,7 @@
 /**
  * License events tests — validates event emitter and event creation.
  */
+import { describe, expect, it } from 'vitest';
 import { LicenseEventEmitter, createLicenseEvent } from './events';
 
 describe('License Events', () => {

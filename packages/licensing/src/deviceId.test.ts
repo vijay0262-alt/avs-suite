@@ -1,6 +1,7 @@
 /**
  * Device ID tests — validates fingerprint derivation and format.
  */
+import { describe, expect, it } from 'vitest';
 import { deriveDeviceId, isValidDeviceId } from './deviceId';
 
 describe('Device ID', () => {

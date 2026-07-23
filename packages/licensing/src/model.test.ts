@@ -2,6 +2,7 @@
  * License model tests — validates serialization, deserialization,
  * and view conversion.
  */
+import { describe, expect, it } from 'vitest';
 import { toLicenseView, deserializeLicense, CURRENT_FORMAT_VERSION } from './model';
 import type { LicenseModel } from './model';
 import { LicenseStorageError } from './storage';
