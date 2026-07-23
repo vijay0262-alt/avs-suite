@@ -6,15 +6,12 @@
  * Everything Windows-specific is delegated to the Python child; this
  * module is intentionally OS-agnostic.
  */
-import { app, BrowserWindow, dialog, shell } from 'electron';
+import { app, BrowserWindow, shell } from 'electron';
 import { exec, execSync } from 'child_process';
 import path from 'node:path';
 import { installCrashHandler } from '../crash/crashReporter';
 import { createLogger } from '../logger/logger';
-import { spawnPythonBackend } from '../ipc/pythonBridge';
-import { registerIpcHandlers } from '../ipc/handlers';
-import { initAutoUpdater } from '../updater/updater';
-import { initLicensing, shutdownLicenseBridge } from '../licensing/licenseStartup';
+import { runStartup, shutdownStartup } from '../startup/startupStateMachine';
 
 // Local environment configuration (copied from shared package to avoid ES module import)
 type AppEnvironment = 'development' | 'staging' | 'production';
@@ -193,18 +190,6 @@ async function createMainWindow(): Promise<void> {
   mainWindow.on('closed', () => (mainWindow = null));
 }
 
-function showBackendError(error: Error): void {
-  // Close splash window so the error dialog is visible
-  if (splashWindow) {
-    splashWindow.close();
-    splashWindow = null;
-  }
-  dialog.showErrorBox(
-    'Backend Initialization Failed',
-    `The Python backend failed to start:\n\n${error.message}\n\nThe application will continue with limited functionality. License activation and Python-dependent features will be unavailable.`,
-  );
-}
-
 function checkAndRelaunchAsAdmin(): boolean {
   if (process.platform !== 'win32') return false;
   if (process.env.AVS_NO_ELEVATE) return false;
@@ -242,64 +227,35 @@ function checkAndRelaunchAsAdmin(): boolean {
 
 app.whenReady().then(async () => {
   const appStart = Date.now();
-  log.info(`[startup-timeline] App ready (env=${env.env}, version=${app.getVersion()})`);
+  log.info(`[startup] AVS PC Optimizer starting (env=${env.env}, version=${app.getVersion()})`);
 
   // Auto-elevate to administrator on Windows for full functionality
-  // (registry access, working set trimming, startup management, etc.)
   if (checkAndRelaunchAsAdmin()) {
-    // Wait briefly for the elevated instance to start, then quit
     setTimeout(() => app.quit(), 1000);
     return;
   }
-  log.info(`[startup-timeline] Admin check passed (${Date.now() - appStart}ms)`);
+  log.info(`[startup] Admin check passed (${Date.now() - appStart}ms)`);
 
   // Show splash screen while the backend boots
   splashWindow = createSplashWindow();
 
-  // Start the Python backend *before* loading the renderer so IPC handlers
-  // are already registered when the React app makes its first RPC calls.
-  const startupBegin = Date.now();
-  let rpc: Awaited<ReturnType<typeof spawnPythonBackend>> | null = null;
-  try {
-    const t0 = Date.now();
-    rpc = await spawnPythonBackend(log);
-    log.info(`[startup-timeline] Python backend spawned (${Date.now() - t0}ms)`);
-
-    const t1 = Date.now();
-    registerIpcHandlers(rpc, log);
-    log.info(`[startup-timeline] Core IPC handlers registered (${Date.now() - t1}ms)`);
-
-    const t2 = Date.now();
-    initAutoUpdater(log, env);
-    log.info(`[startup-timeline] Auto-updater initialized (${Date.now() - t2}ms)`);
-
-    const t3 = Date.now();
-    await initLicensing(rpc, log);
-    log.info(`[startup-timeline] Licensing subsystem initialized (${Date.now() - t3}ms)`);
-
-    log.info(`[startup-timeline] Full backend startup completed (${Date.now() - startupBegin}ms total)`);
-  } catch (error) {
-    const err = error instanceof Error ? error : new Error(String(error));
-    log.error('[startup-timeline] Backend initialization failed', err);
-    showBackendError(err);
-    // registerIpcHandlers is idempotent — safe to call with mock RPC
-    // even if it was already called with the real RPC above.
-    const mockRpc = {
-      call<T>(_method: string, _params?: unknown): Promise<T> {
-        return Promise.reject(new Error('Backend not available'));
-      },
-      shutdown(): Promise<void> {
-        return Promise.resolve();
-      },
-    };
-    registerIpcHandlers(mockRpc as unknown as Parameters<typeof registerIpcHandlers>[0], log);
-  }
-
-  // Load the main window only after handlers are registered
-  const tRender = Date.now();
-  await createMainWindow();
-  log.info(`[startup-timeline] Renderer window created (${Date.now() - tRender}ms)`);
-  log.info(`[startup-timeline] Total startup time: ${Date.now() - appStart}ms`);
+  // Run the full startup state machine — handles:
+  //   1. Python backend spawn
+  //   2. IPC handler registration (exactly once)
+  //   3. License SDK initialization
+  //   4. Main window creation
+  // On failure: shows error dialog, continues in degraded mode or exits.
+  await runStartup(
+    log,
+    createMainWindow,
+    () => {
+      if (splashWindow) {
+        splashWindow.close();
+        splashWindow = null;
+      }
+    },
+    env,
+  );
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) void createMainWindow();
@@ -311,6 +267,6 @@ app.on('window-all-closed', () => {
 });
 
 app.on('will-quit', () => {
-  shutdownLicenseBridge();
+  shutdownStartup();
   log.info('AVS PC Optimizer shutting down');
 });
