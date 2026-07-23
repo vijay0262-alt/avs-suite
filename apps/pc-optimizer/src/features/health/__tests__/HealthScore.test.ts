@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HealthScoreService } from '../HealthScoreService';
 import { optimizationEventBus } from '../OptimizationEventBus';
+import { dashboardRefreshManager } from '../DashboardRefreshManager';
 import type { HealthContribution, HealthContributionProvider, ModuleId } from '../HealthContribution';
 
 function makeProvider(moduleId: ModuleId, moduleName: string, penalty: number, maxPenalty = 100): HealthContributionProvider {
@@ -143,5 +144,59 @@ describe('OptimizationEventBus', () => {
     });
     expect(l1).toHaveBeenCalledTimes(1);
     expect(l2).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('DashboardRefreshManager', () => {
+  beforeEach(() => {
+    optimizationEventBus.clear();
+    dashboardRefreshManager.reset();
+    dashboardRefreshManager.init();
+  });
+
+  it('relays events to registered callbacks', () => {
+    const cb = vi.fn();
+    dashboardRefreshManager.register(cb);
+    optimizationEventBus.emit({
+      moduleId: 'junk',
+      action: 'clean',
+      timestamp: Date.now(),
+    });
+    expect(cb).toHaveBeenCalledTimes(1);
+  });
+
+  it('stores pending refresh when no callback registered', () => {
+    optimizationEventBus.emit({
+      moduleId: 'junk',
+      action: 'clean',
+      timestamp: Date.now(),
+    });
+    expect(dashboardRefreshManager.hasPendingRefresh()).toBe(true);
+  });
+
+  it('fires pending refresh on next register', async () => {
+    optimizationEventBus.emit({
+      moduleId: 'junk',
+      action: 'clean',
+      timestamp: Date.now(),
+    });
+    const cb = vi.fn();
+    dashboardRefreshManager.register(cb);
+    // Pending refresh fires on next tick
+    await new Promise((r) => setTimeout(r, 10));
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(dashboardRefreshManager.hasPendingRefresh()).toBe(false);
+  });
+
+  it('stops relaying after unregister', () => {
+    const cb = vi.fn();
+    const unsub = dashboardRefreshManager.register(cb);
+    unsub();
+    optimizationEventBus.emit({
+      moduleId: 'junk',
+      action: 'clean',
+      timestamp: Date.now(),
+    });
+    expect(cb).not.toHaveBeenCalled();
   });
 });

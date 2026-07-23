@@ -16,3 +16,4 @@ export {
   registerAllHealthProviders,
   invalidateMetricsCache,
 } from './healthProviders';
+export { dashboardRefreshManager } from './DashboardRefreshManager';

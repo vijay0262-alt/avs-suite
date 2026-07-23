@@ -38,7 +38,7 @@ import type { RegistryIssue } from '../registry/registry.types';
 import { systemInfoService } from '../system-info/system-info.service';
 import type { NavigateFunction } from 'react-router-dom';
 import { calculateHealthScore } from './dashboard.utils';
-import { optimizationEventBus, invalidateMetricsCache } from '../health';
+import { invalidateMetricsCache, dashboardRefreshManager } from '../health';
 import type { OptimizationEvent } from '../health';
 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
@@ -157,8 +157,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   // ------------------------------------------------------------------
   async bootstrap(): Promise<void> {
     if (this.state.bootstrap === 'ready') return;
-    // Subscribe to optimization events from other modules
-    this.optimizationUnsub = optimizationEventBus.subscribe((event: OptimizationEvent) => {
+    // Register with the global refresh manager so we receive optimization
+    // events even if they arrived while the Dashboard was not mounted.
+    this.optimizationUnsub = dashboardRefreshManager.register((event: OptimizationEvent) => {
       this.handleOptimizationEvent(event);
     });
     // Render the dashboard shell immediately; load data in the background.
@@ -234,8 +235,8 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       }
       // Invalidate the local health provider metrics cache
       invalidateMetricsCache();
-      // Reload metrics + privacy risks, which triggers recalculateHealth
-      void Promise.all([this.loadMetrics(), this.loadPrivacyRisks()]);
+      // Reload metrics + privacy risks + live metrics for full refresh
+      void Promise.all([this.loadMetrics(), this.loadPrivacyRisks(), this.loadLiveMetrics()]);
     }, 500);
   }
 
