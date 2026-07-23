@@ -41,7 +41,7 @@ export type ManagedFeature =
  * Mapping from ManagedFeature (snake_case) to FeatureKey (PascalCase)
  * in the @avs/shared/featureFlags registry.
  */
-const FEATURE_MAP: Record<ManagedFeature, string> = {
+export const FEATURE_MAP: Record<ManagedFeature, string> = {
   privacy_cleaner: 'PRIVACY_CLEANER',
   registry_cleaner: 'REGISTRY_CLEANER',
   software_updater: 'SOFTWARE_UPDATER',

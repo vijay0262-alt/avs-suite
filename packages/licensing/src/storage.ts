@@ -76,7 +76,7 @@ export class LicenseStorageError extends Error {
   constructor(
     public readonly type: StorageErrorType,
     message: string,
-    public readonly cause?: unknown,
+    public override readonly cause?: unknown,
   ) {
     super(message);
     this.name = 'LicenseStorageError';
