@@ -72,7 +72,7 @@ export function UpgradeDialog({ open, moduleName, features, onClose, onUpgrade }
               {moduleName} requires a paid license
             </div>
             <div className="text-sm text-text-secondary">
-              You're currently using the Free edition.
+              You&apos;re currently using the Free edition.
             </div>
           </div>
         </div>
