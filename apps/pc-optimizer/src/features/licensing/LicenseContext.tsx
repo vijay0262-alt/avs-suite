@@ -79,7 +79,17 @@ export function LicenseProvider({
     const unsub = manager.onEvent(() => {
       syncFromManager();
     });
-    return unsub;
+
+    // Periodic background refresh — keeps renderer in sync with backend
+    // (catches upgrades, downgrades, expirations without restart)
+    const refreshInterval = setInterval(() => {
+      manager.refresh().then(() => syncFromManager()).catch(() => {});
+    }, 4 * 60 * 60 * 1000); // every 4 hours
+
+    return () => {
+      unsub();
+      clearInterval(refreshInterval);
+    };
   }, [manager, syncFromManager]);
 
   useEffect(() => {

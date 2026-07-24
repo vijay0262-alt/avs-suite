@@ -7,10 +7,12 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { UpdaterViewModel } from './UpdaterViewModel';
 import { updaterService } from './updater.service';
+import { useFeatureGuard } from '../licensing/useFeatureGuard';
 
 export default function UpdaterPage() {
   const vm = useMemo(() => new UpdaterViewModel(updaterService), []);
   const state = useViewModel(vm);
+  const { guard, dialogElement } = useFeatureGuard();
   const [confirmAll, setConfirmAll] = useState(false);
 
   useEffect(() => {
@@ -52,7 +54,7 @@ export default function UpdaterPage() {
                 {state.loading ? 'Checking…' : 'Check for Updates'}
               </Button>
               {state.upgrades.length > 0 && (
-                <Button variant="primary" onClick={() => setConfirmAll(true)} disabled={state.loading}>
+                <Button variant="primary" onClick={() => guard('software.update_all', 'Software Updater', () => setConfirmAll(true))} disabled={state.loading}>
                   Update All
                 </Button>
               )}
@@ -92,7 +94,7 @@ export default function UpdaterPage() {
                       variant="secondary"
                       size="sm"
                       disabled={state.busyIds.has(u.packageId)}
-                      onClick={() => vm.upgrade(u.packageId)}
+                      onClick={() => guard('software.update_manual', 'Software Updater', () => vm.upgrade(u.packageId))}
                     >
                       {state.busyIds.has(u.packageId) ? 'Updating…' : 'Update'}
                     </Button>
@@ -128,6 +130,7 @@ export default function UpdaterPage() {
           </div>
         </div>
       )}
+      {dialogElement}
     </div>
   );
 }

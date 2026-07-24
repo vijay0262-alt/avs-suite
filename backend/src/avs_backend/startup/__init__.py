@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 from avs_backend.startup.startup_manager import (
     scan_startup_entries,
     disable_startup_entry,
@@ -113,6 +114,7 @@ def _to_startup_entry(entry_data: dict[str, Any]) -> StartupEntry:
 
 
 @register("startup.disable")
+@require_feature("startup.disable")
 def startup_disable(params: dict[str, Any] | None) -> dict[str, Any]:
     """Disable a startup entry."""
     if not params or "entry" not in params:
@@ -137,6 +139,7 @@ def startup_disable(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("startup.enable")
+@require_feature("startup.enable")
 def startup_enable(params: dict[str, Any] | None) -> dict[str, Any]:
     """Enable a startup entry."""
     if not params or "entry" not in params:

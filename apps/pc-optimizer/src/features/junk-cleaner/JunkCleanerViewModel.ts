@@ -25,6 +25,9 @@ import type {
 } from './junkCleaner.types';
 import type { JunkCleanerService } from './junkCleaner.service';
 import { optimizationEventBus, OptimizationEventType } from '../health';
+import { canUse, currentEdition } from '../licensing/FeatureGate';
+
+const FREE_CLEAN_LIMIT_BYTES = 500 * 1024 * 1024; // 500 MB
 
 export type ConfirmStep = 'closed' | 'preview' | 'confirm' | 'running' | 'summary';
 
@@ -277,8 +280,33 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
     const taskId = this.state.activeTaskId;
     const preview = this.state.cleaningPreview;
     if (!taskId || !preview) return;
-    const only = preview.cleaners.filter((c) => c.totalFiles > 0).map((c) => c.id);
+    let only = preview.cleaners.filter((c) => c.totalFiles > 0).map((c) => c.id);
     if (only.length === 0) return;
+
+    // Enforce 500MB Free edition limit: sort cleaners by bytes (largest first)
+    // and only include enough to stay under the limit.
+    const isFree = currentEdition() === 'free';
+    const hasUnlimited = canUse('junk.clean_unlimited');
+    if (isFree && !hasUnlimited && preview.totalBytes > FREE_CLEAN_LIMIT_BYTES) {
+      const sorted = [...preview.cleaners]
+        .filter((c) => c.totalFiles > 0)
+        .sort((a, b) => b.totalBytes - a.totalBytes);
+      const capped: string[] = [];
+      let accumulated = 0;
+      for (const c of sorted) {
+        if (accumulated + c.totalBytes > FREE_CLEAN_LIMIT_BYTES) continue;
+        capped.push(c.id);
+        accumulated += c.totalBytes;
+      }
+      only = capped;
+      if (only.length === 0) {
+        this.setState({
+          cleaningStep: 'preview',
+          lastCleaningError: 'Free edition cleans up to 500 MB. Upgrade to clean everything.',
+        });
+        return;
+      }
+    }
 
     console.log('[JunkCleanerViewModel] confirmAndExecute called', { taskId, only });
     this.setState({ cleaningStep: 'running', lastCleaningError: null });
@@ -491,6 +519,15 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
           itemsProcessed: snap.totalFilesRemoved,
           timestamp: Date.now(),
         });
+        // Clear stale scan results and trigger a rescan so the UI
+        // shows fresh "remaining junk" instead of pre-cleaning values.
+        this.setState({
+          snapshot: { present: false },
+          selected: new Set<string>(),
+          detailsCleanerId: null,
+          detailsItems: [],
+        });
+        void this.rescan();
       }
     } catch (err) {
       this.setState({

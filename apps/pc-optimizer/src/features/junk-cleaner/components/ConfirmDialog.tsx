@@ -3,6 +3,9 @@ import { formatBytes } from '@avs/shared/utils';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { Modal } from './Modal';
 import type { CleaningPreview } from '../junkCleaner.types';
+import { canUse, currentEdition } from '../../licensing/FeatureGate';
+
+const FREE_CLEAN_LIMIT_BYTES = 500 * 1024 * 1024; // 500 MB
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -25,6 +28,11 @@ export function ConfirmDialog({ open, preview, onBack, onConfirm }: ConfirmDialo
   const categories = preview.cleaners.filter((c) => c.totalFiles > 0);
   const eta = estimateSeconds(preview.totalFiles);
 
+  const isFree = currentEdition() === 'free';
+  const hasUnlimited = canUse('junk.clean_unlimited');
+  const exceedsLimit = isFree && !hasUnlimited && preview.totalBytes > FREE_CLEAN_LIMIT_BYTES;
+  const cappedBytes = exceedsLimit ? FREE_CLEAN_LIMIT_BYTES : preview.totalBytes;
+
   return (
     <Modal
       open={open}
@@ -42,7 +50,7 @@ export function ConfirmDialog({ open, preview, onBack, onConfirm }: ConfirmDialo
             onClick={onConfirm}
             data-testid="cleaning-confirm-proceed"
           >
-            Clean {formatBytes(preview.totalBytes)}
+            Clean {formatBytes(cappedBytes)}{exceedsLimit ? ' (500 MB Free limit)' : ''}
           </Button>
         </>
       }
@@ -51,11 +59,16 @@ export function ConfirmDialog({ open, preview, onBack, onConfirm }: ConfirmDialo
         <div className="flex items-start gap-3 rounded-md border border-[color-mix(in_srgb,var(--avs-warning)_35%,transparent)] bg-[color-mix(in_srgb,var(--avs-warning)_10%,transparent)] p-3">
           <ExclamationTriangleIcon className="h-5 w-5 shrink-0 text-[color-mix(in_srgb,var(--avs-warning)_85%,black)]" />
           <p className="text-sm text-text-primary" data-testid="cleaning-confirm-summary">
-            You are about to remove <b>{formatBytes(preview.totalBytes)}</b> from{' '}
+            You are about to remove <b>{formatBytes(cappedBytes)}</b>{exceedsLimit ? ` of ${formatBytes(preview.totalBytes)}` : ''} from{' '}
             <b>{categories.length}</b>{' '}
             {categories.length === 1 ? 'category' : 'categories'} — a total of{' '}
             <b>{preview.totalFiles.toLocaleString()}</b> files.
           </p>
+          {exceedsLimit && (
+            <p className="mt-2 text-xs text-semantic-warning">
+              Free edition cleans up to 500 MB. Upgrade to remove all {formatBytes(preview.totalBytes)}.
+            </p>
+          )}
         </div>
 
         <div>

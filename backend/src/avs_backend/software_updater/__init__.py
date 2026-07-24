@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 from avs_backend.software_updater.update_manager import (
     list_upgrades,
     upgrade_all,
@@ -33,6 +34,7 @@ def updater_list(_params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("updater.upgrade")
+@require_feature("updater.upgrade")
 def updater_upgrade(params: dict[str, Any] | None) -> dict[str, Any]:
     """Update a single package by id."""
     if not params or "packageId" not in params:
@@ -45,6 +47,7 @@ def updater_upgrade(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("updater.upgradeAll")
+@require_feature("updater.upgradeAll")
 def updater_upgrade_all(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Update all packages with available upgrades."""
     try:

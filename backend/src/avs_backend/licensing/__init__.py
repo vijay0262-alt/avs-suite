@@ -10,9 +10,10 @@ The renderer never calls REST APIs directly — only through this bridge.
 
 from __future__ import annotations
 
+import functools
 import logging
 import os
-from typing import Any
+from typing import Any, Callable
 
 from avs_backend.api import registry
 
@@ -122,10 +123,35 @@ def _error_response(exc: Exception) -> dict[str, Any]:
 
 @registry.register("license.startup")
 def license_startup(_params: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Perform startup sequence: load local license, validate or check grace."""
+    """Perform startup sequence: load local license, validate or check grace.
+
+    If no license exists and the server is reachable, automatically register
+    this installation to create a Free license. This only happens once —
+    subsequent startups reuse the stored license.
+    """
     try:
         client = _get_client()
         status = client.startup()
+
+        # Auto-register Free license on first install if no license exists.
+        # The SDK's startup() returns status='free' when no local license is stored.
+        # We attempt to register with the server to create a permanent Free license.
+        if status.status.value == "free" or (hasattr(status, 'is_offline') and status.is_offline is False and status.edition == "free"):
+            try:
+                # Attempt auto-registration — the SDK checks if a device already
+                # has a license before creating a new one, so this is idempotent.
+                auto_status = client.auto_register_free()
+                if auto_status is not None:
+                    log.info("Auto-registered Free license for device %s", client.fingerprint)
+                    return _status_to_dict(auto_status)
+            except AttributeError:
+                # SDK doesn't support auto_register_free yet — continue with free status
+                log.debug("SDK does not support auto_register_free — continuing in free mode")
+            except Exception as reg_err:
+                # Registration failed (server unreachable, already exists, etc.)
+                # Continue with free status — the app still works in Free mode.
+                log.debug("Auto Free license registration failed: %s", reg_err)
+
         return _status_to_dict(status)
     except Exception as exc:
         log.error("License startup failed: %s", exc)
@@ -331,6 +357,90 @@ def license_close(_params: dict[str, Any] | None = None) -> dict[str, Any]:
             pass
         _client = None
     return {"success": True}
+
+
+# ── Backend Edition Guard ─────────────────────────────────────
+
+# Maps RPC method names to the minimum edition required to execute them.
+# This mirrors the frontend FeatureGate / FEATURE_MAP so that locked
+# modules cannot be bypassed by calling the RPC directly.
+_FEATURE_EDITION_RANK: dict[str, int] = {
+    "free": 0,
+    "professional": 1,
+    "ultimate": 2,
+    "trial": 2,  # trial has access to everything
+}
+
+# RPC methods that require a minimum edition.
+# Format: { "rpc.method.name": "minimum_edition" }
+_LOCKED_RPC_METHODS: dict[str, str] = {
+    "registry.clean": "professional",
+    "privacy.clean": "professional",
+    "startup.disable": "professional",
+    "startup.enable": "professional",
+    "duplicate.delete": "professional",
+    "updater.upgrade": "professional",
+    "updater.upgradeAll": "ultimate",
+    "performance.optimize": "professional",
+}
+
+
+def _get_current_edition() -> str:
+    """Get the current license edition from the SDK client.
+
+    Returns 'free' if the SDK is unavailable or no license is active.
+    """
+    try:
+        client = _get_client()
+        status = client.get_status()
+        edition = status.edition.lower() if status.edition else "free"
+        # If license is expired/invalid, downgrade to free
+        status_value = status.status.value if hasattr(status.status, "value") else str(status.status)
+        if status_value in ("expired", "invalid", "revoked"):
+            return "free"
+        if edition not in _FEATURE_EDITION_RANK:
+            return "free"
+        return edition
+    except Exception:
+        return "free"
+
+
+def require_feature(rpc_method: str) -> Callable:
+    """Decorator: enforce edition restrictions on an RPC handler.
+
+    If the current license edition doesn't meet the minimum required
+    edition for the given RPC method, return an error response instead
+    of executing the handler.
+
+    Usage:
+        @register("registry.clean")
+        @require_feature("registry.clean")
+        def registry_clean(params): ...
+    """
+
+    def decorator(fn: Callable) -> Callable:
+        @functools.wraps(fn)
+        def wrapper(params: dict[str, Any] | None = None) -> Any:
+            required_edition = _LOCKED_RPC_METHODS.get(rpc_method)
+            if required_edition is not None:
+                current_edition = _get_current_edition()
+                if _FEATURE_EDITION_RANK.get(current_edition, 0) < _FEATURE_EDITION_RANK.get(required_edition, 0):
+                    log.warning(
+                        "RPC %s blocked: edition '%s' requires '%s'",
+                        rpc_method, current_edition, required_edition,
+                    )
+                    return {
+                        "success": False,
+                        "error": f"This feature requires {required_edition.title()} edition. Please upgrade to use it.",
+                        "error_code": "EDITION_LOCKED",
+                        "required_edition": required_edition,
+                        "current_edition": current_edition,
+                    }
+            return fn(params)
+
+        return wrapper
+
+    return decorator
 
 
 def _get_sdk_version() -> str:

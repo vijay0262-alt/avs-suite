@@ -63,6 +63,22 @@ export function LicenseBootstrap({ children }: { children: ReactNode }) {
         // 4. Initialize (loads cached license, validates offline)
         await manager.initialize();
 
+        // 4b. If manager has no license, try to load from backend.
+        // The Python backend may have auto-registered a Free license or
+        // have a cached license from a previous session.
+        if (!manager.getLicenseView()) {
+          try {
+            const backendLicense = await activation.getLicense();
+            if (backendLicense && backendLicense.state !== 'invalid') {
+              // Inject the license into the manager via storage + reinitialize
+              await storage.write(backendLicense);
+              await manager.initialize();
+            }
+          } catch {
+            // Backend not ready or no license — continue in free mode
+          }
+        }
+
         // 5. Create FeatureManager
         const featureManager = createFeatureManager({
           getState: () => manager.getState(),

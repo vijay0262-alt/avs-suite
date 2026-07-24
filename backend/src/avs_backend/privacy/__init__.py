@@ -7,6 +7,7 @@ from threading import Event
 from typing import Any
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 from avs_backend.privacy.privacy_cleaner import (
     PrivacyCategory,
     ScanResult,
@@ -59,6 +60,7 @@ def privacy_scan(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("privacy.clean")
+@require_feature("privacy.clean")
 def privacy_clean(params: dict[str, Any] | None) -> dict[str, Any]:
     """Clean privacy items."""
     try:

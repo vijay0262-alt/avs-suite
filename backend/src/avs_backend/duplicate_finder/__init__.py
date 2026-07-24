@@ -18,6 +18,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import psutil
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 
 logger = logging.getLogger(__name__)
 
@@ -369,6 +370,7 @@ def duplicate_estimate(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("duplicate.delete")
+@require_feature("duplicate.delete")
 def duplicate_delete(params: dict[str, Any] | None) -> dict[str, Any]:
     """Delete selected duplicate files."""
     if not params or 'files' not in params:

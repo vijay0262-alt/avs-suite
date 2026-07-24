@@ -20,6 +20,10 @@ import { ConfirmDialog } from './components/ConfirmDialog';
 import { CleaningProgress } from './components/CleaningProgress';
 import { CleaningSummary } from './components/CleaningSummary';
 import { CleaningLog } from './components/CleaningLog';
+import { canUse, currentEdition } from '../licensing/FeatureGate';
+import { useFeatureGuard } from '../licensing/useFeatureGuard';
+
+const FREE_CLEAN_LIMIT_BYTES = 500 * 1024 * 1024; // 500 MB
 
 /**
  * JunkCleanerPage — top-level view for the module.
@@ -70,6 +74,7 @@ export default function JunkCleanerPage() {
   }, [historyOpen, state.historyQuery, state.historyCategory, state.historyResultFilter, vm]);
 
   const running = state.snapshot.status === 'running';
+  const { guard, dialogElement } = useFeatureGuard();
   const hasResults =
     state.snapshot.present && !running && Boolean(state.snapshot.cleaners?.length);
   const scanEverStarted = scanIssuedOnce || state.snapshot.present;
@@ -82,6 +87,10 @@ export default function JunkCleanerPage() {
     : null;
 
   // Enable "Clean" once a scan finished with at least one file found.
+  const totalJunkBytes = state.snapshot.totalBytes ?? 0;
+  const isFreeEdition = currentEdition() === 'free';
+  const hasUnlimitedClean = canUse('junk.clean_unlimited');
+  const exceedsFreeLimit = isFreeEdition && !hasUnlimitedClean && totalJunkBytes > FREE_CLEAN_LIMIT_BYTES;
   const canClean =
     hasResults &&
     (state.snapshot.totalFiles ?? 0) > 0 &&
@@ -127,6 +136,15 @@ export default function JunkCleanerPage() {
                   >
                     Clean…
                   </Button>
+                )}
+                {exceedsFreeLimit && (
+                  <button
+                    className="text-xs text-semantic-warning flex items-center gap-1 hover:underline"
+                    onClick={() => guard('junk.clean_unlimited', 'Junk Cleaner', () => {})}
+                  >
+                    <ExclamationTriangleIcon className="h-4 w-4" />
+                    Free edition cleans up to 500 MB. {(totalJunkBytes / (1024 * 1024)).toFixed(0)} MB detected — click to upgrade.
+                  </button>
                 )}
                 <Button
                   variant="ghost"
@@ -286,6 +304,7 @@ export default function JunkCleanerPage() {
         onClose={() => vm.closeCleaningSummary()}
         onUndo={() => void vm.undoLastClean()}
       />
+      {dialogElement}
     </div>
   );
 }

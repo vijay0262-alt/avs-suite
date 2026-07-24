@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 from avs_backend.performance.memory_optimizer import (
     get_memory_info,
     optimize_memory,
@@ -51,6 +52,7 @@ def performance_memory_get_info(_params: dict[str, Any] | None) -> dict[str, Any
 
 
 @register("performance.memory.optimize")
+@require_feature("performance.optimize")
 def performance_memory_optimize(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Perform safe memory optimization."""
     from threading import Event

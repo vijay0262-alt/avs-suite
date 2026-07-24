@@ -9,10 +9,12 @@ import { PageHeader } from '../../components/PageHeader';
 import { PerformanceViewModel } from './PerformanceViewModel';
 import { performanceService } from './performance.service';
 import { BoltIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { useFeatureGuard } from '../licensing/useFeatureGuard';
 
 export default function PerformancePage() {
   const vm = useMemo(() => new PerformanceViewModel(performanceService), []);
   const state = useViewModel(vm);
+  const { guard, dialogElement } = useFeatureGuard();
   const [sortBy, setSortBy] = useState('cpu');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -35,7 +37,7 @@ export default function PerformancePage() {
   };
 
   const handleOptimize = () => {
-    void vm.optimizeMemory();
+    guard('performance.optimize', 'Performance Optimization', () => vm.optimizeMemory());
   };
 
   const getSeverityColor = (severity: string) => {
@@ -342,6 +344,7 @@ export default function PerformancePage() {
           )}
         </>
       )}
+      {dialogElement}
     </div>
   );
 }

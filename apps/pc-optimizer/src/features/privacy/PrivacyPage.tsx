@@ -8,10 +8,12 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { PrivacyViewModel } from './PrivacyViewModel';
 import { privacyService } from './privacy.service';
+import { useFeatureGuard } from '../licensing/useFeatureGuard';
 
 export default function PrivacyPage() {
   const vm = useMemo(() => new PrivacyViewModel(privacyService), []);
   const state = useViewModel(vm);
+  const { guard, dialogElement } = useFeatureGuard();
 
   useEffect(() => {
     void vm.bootstrap();
@@ -23,7 +25,7 @@ export default function PrivacyPage() {
   };
 
   const handleClean = () => {
-    void vm.clean();
+    guard('privacy.clean', 'Privacy Cleaner', () => vm.clean());
   };
 
   const handleToggleCategory = (category: string) => {
@@ -292,6 +294,7 @@ export default function PrivacyPage() {
           )}
         </>
       )}
+      {dialogElement}
     </div>
   );
 }

@@ -9,10 +9,12 @@ import { PageHeader } from '../../components/PageHeader';
 import { DuplicateFinderViewModel } from './DuplicateFinderViewModel';
 import { duplicateFinderService } from './duplicate-finder.service';
 import type { DuplicateScope } from './duplicate-finder.types';
+import { useFeatureGuard } from '../licensing/useFeatureGuard';
 
 export default function DuplicateFinderPage() {
   const vm = useMemo(() => new DuplicateFinderViewModel(duplicateFinderService), []);
   const state = useViewModel(vm);
+  const { guard, dialogElement } = useFeatureGuard();
 
   useEffect(() => {
     void vm.bootstrap();
@@ -24,7 +26,7 @@ export default function DuplicateFinderPage() {
   };
 
   const handleDelete = () => {
-    void vm.delete();
+    guard('duplicate.delete', 'Duplicate Finder', () => vm.delete());
   };
 
   const handleSelectAll = () => {
@@ -326,6 +328,7 @@ export default function DuplicateFinderPage() {
           )}
         </>
       )}
+      {dialogElement}
     </div>
   );
 }

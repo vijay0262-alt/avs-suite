@@ -10,12 +10,14 @@ import { StartupViewModel } from './StartupViewModel';
 import { startupService } from './startup.service';
 import { StartupEntryCard } from './components/StartupEntryCard';
 import type { StartupEntry } from './startup.types';
+import { useFeatureGuard } from '../licensing/useFeatureGuard';
 
 type SortBy = 'name' | 'impact' | 'publisher' | 'status';
 
 export default function StartupPage() {
   const vm = useMemo(() => new StartupViewModel(startupService), []);
   const state = useViewModel(vm);
+  const { guardAsync, dialogElement } = useFeatureGuard();
   const [query, setQuery] = useState('');
   const [impactFilter, setImpactFilter] = useState<'all' | 'high' | 'medium' | 'low' | 'unknown'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'enabled' | 'disabled'>('enabled');
@@ -30,13 +32,25 @@ export default function StartupPage() {
     /admin|permission|elevat|access.*denied/i.test(msg);
 
   const handleDisable = async (entry: StartupEntry) => {
-    try {
-      const result = await vm.disableEntry(entry);
-      if (!result.success) {
-        const msg = result.message || result.error || result.reason || 'Failed to disable entry';
-        if (msg === 'Already Disabled') {
-          await vm.loadEntries();
-        } else if (isPermissionError(msg)) {
+    await guardAsync('startup.disable', 'Startup Manager', async () => {
+      try {
+        const result = await vm.disableEntry(entry);
+        if (!result.success) {
+          const msg = result.message || result.error || result.reason || 'Failed to disable entry';
+          if (msg === 'Already Disabled') {
+            await vm.loadEntries();
+          } else if (isPermissionError(msg)) {
+            if (confirm(`${msg}\n\nWould you like to restart AVS PC Optimizer as administrator?`)) {
+              const w = window as unknown as { avs?: { app?: { relaunchAsAdmin?: () => Promise<unknown> } } };
+              await w.avs?.app?.relaunchAsAdmin?.();
+            }
+          } else {
+            alert(msg);
+          }
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to disable entry';
+        if (isPermissionError(msg)) {
           if (confirm(`${msg}\n\nWould you like to restart AVS PC Optimizer as administrator?`)) {
             const w = window as unknown as { avs?: { app?: { relaunchAsAdmin?: () => Promise<unknown> } } };
             await w.avs?.app?.relaunchAsAdmin?.();
@@ -45,17 +59,7 @@ export default function StartupPage() {
           alert(msg);
         }
       }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to disable entry';
-      if (isPermissionError(msg)) {
-        if (confirm(`${msg}\n\nWould you like to restart AVS PC Optimizer as administrator?`)) {
-          const w = window as unknown as { avs?: { app?: { relaunchAsAdmin?: () => Promise<unknown> } } };
-          await w.avs?.app?.relaunchAsAdmin?.();
-        }
-      } else {
-        alert(msg);
-      }
-    }
+    });
   };
 
   const handleEnable = async (entry: StartupEntry) => {
@@ -264,6 +268,7 @@ export default function StartupPage() {
           )}
         </>
       )}
+      {dialogElement}
     </div>
   );
 }
