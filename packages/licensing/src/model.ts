@@ -52,6 +52,12 @@ export interface LicenseModel {
 
   /** Storage format version for migration support. */
   formatVersion: number;
+
+  /** Trial start date (ISO-8601 UTC). Null if not a trial. */
+  trialStartDate?: string | null;
+
+  /** Trial duration in days. Null if not a trial. */
+  trialDurationDays?: number | null;
 }
 
 /**
@@ -77,6 +83,10 @@ export interface LicenseView {
   graceExpiry: string | null;
   /** True if the license key is present (but not the key itself). */
   hasKey: boolean;
+  /** Trial start date if applicable. */
+  trialStartDate?: string | null;
+  /** Trial duration in days if applicable. */
+  trialDurationDays?: number | null;
 }
 
 /**
@@ -96,6 +106,8 @@ export function toLicenseView(model: LicenseModel): LicenseView {
     lastValidation: model.lastValidation,
     graceExpiry: model.graceExpiry,
     hasKey: Boolean(model.licenseKey),
+    trialStartDate: model.trialStartDate ?? null,
+    trialDurationDays: model.trialDurationDays ?? null,
   };
 }
 

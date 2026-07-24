@@ -85,3 +85,12 @@ export {
   canStartOffline,
   getOfflineState,
 } from './offline';
+
+// Trial Architecture
+export type { TrialInfo } from './trial';
+export {
+  DEFAULT_TRIAL_DURATION_DAYS,
+  getTrialInfo,
+  isActiveTrial,
+  isExpiredTrial,
+} from './trial';

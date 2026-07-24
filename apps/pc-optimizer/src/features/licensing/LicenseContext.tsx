@@ -12,6 +12,7 @@ import type { IFeatureManager, ManagedFeature } from '@avs/licensing';
 import type { LicenseView, ValidationResult } from '@avs/licensing';
 import type { LicenseState } from '@avs/licensing';
 import { LICENSE_STATE_LABELS } from '@avs/licensing';
+import { initFeatureGate, updateFeatureGateEdition } from './FeatureGate';
 
 export interface LicenseContextValue {
   manager: ILicenseManager | null;
@@ -60,8 +61,14 @@ export function LicenseProvider({
 
   const syncFromManager = useCallback(() => {
     if (!manager) return;
-    setState(manager.getState());
+    const newState = manager.getState();
+    setState(newState);
     setLicenseView(manager.getLicenseView());
+    initFeatureGate(newState);
+    const view = manager.getLicenseView();
+    if (view) {
+      updateFeatureGateEdition(view.edition);
+    }
   }, [manager]);
 
   useEffect(() => {

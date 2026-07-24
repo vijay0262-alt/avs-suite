@@ -20,6 +20,25 @@ import type { HealthContribution, HealthContributionProvider, ModuleId } from '.
 import { clampHealth } from './HealthContribution';
 import { optimizationEventBus, type OptimizationEvent } from './OptimizationEventBus';
 import type { ModuleWeightEntry } from '../dashboard/dashboard.types';
+import { FeatureGate } from '../licensing/FeatureGate';
+import type { ManagedFeature } from '@avs/licensing';
+
+/**
+ * Mapping from ModuleId to the ManagedFeature that gates it.
+ * If a module's feature is not available in the current edition,
+ * its penalty is skipped to keep the health score fair.
+ */
+const MODULE_FEATURE_MAP: Record<string, ManagedFeature> = {
+  junk: 'junk.scan',
+  registry: 'registry.scan',
+  startup: 'startup.view',
+  privacy: 'privacy.scan',
+  duplicate: 'duplicate.scan',
+  performance: 'performance.optimize',
+  disk: 'disk.analyzer',
+  security: 'system.info',
+  system: 'system.info',
+};
 
 export interface AggregatedHealthScore {
   overallScore: number;
@@ -61,7 +80,11 @@ export class HealthScoreService {
 
   async computeHealth(): Promise<AggregatedHealthScore> {
     const contributions: HealthContribution[] = [];
-    for (const provider of this.providers.values()) {
+    for (const [moduleId, provider] of this.providers) {
+      const gatingFeature = MODULE_FEATURE_MAP[moduleId as string];
+      if (gatingFeature && !FeatureGate.canUse(gatingFeature)) {
+        continue;
+      }
       try {
         const contribution = await provider.getContribution();
         contributions.push(contribution);
