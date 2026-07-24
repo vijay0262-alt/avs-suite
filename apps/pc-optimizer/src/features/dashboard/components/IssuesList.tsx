@@ -4,6 +4,7 @@ import {
   ExclamationTriangleIcon,
   XCircleIcon,
   InformationCircleIcon,
+  CheckCircleIcon,
   ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import type { HealthIssue, HealthCategory } from '../dashboard.types';
@@ -28,9 +29,14 @@ export const IssuesList = React.memo(function IssuesList({ issues, onIssueClick 
   if (!issues || issues.length === 0) {
     return (
       <Card title="Issues Found">
-        <div className="flex items-center gap-3 py-4">
-          <InformationCircleIcon className="h-5 w-5 text-semantic-success" aria-hidden />
-          <span className="text-sm text-text-secondary">No issues detected. Your PC is in great shape.</span>
+        <div className="flex flex-col items-center gap-3 py-8 text-center" data-testid="issues-empty-state">
+          <div className="flex items-center justify-center h-12 w-12 rounded-full bg-semantic-success/10">
+            <CheckCircleIcon className="h-7 w-7 text-semantic-success" aria-hidden />
+          </div>
+          <div className="space-y-1">
+            <div className="text-base font-medium text-text-primary">Everything looks great.</div>
+            <div className="text-sm text-text-secondary">No optimization required. Your PC is running at peak performance.</div>
+          </div>
         </div>
       </Card>
     );

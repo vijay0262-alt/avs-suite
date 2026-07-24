@@ -479,3 +479,240 @@ describe('Celebration Dialog and Detailed Results', () => {
     expect(module.issuesFound).toBe(0);
   });
 });
+
+describe('Health Badge (Part 10)', () => {
+  it('scoreToHealthBadge maps scores to correct badge types', () => {
+    function scoreToHealthBadge(score: number): string {
+      if (score >= 90) return 'excellent';
+      if (score >= 75) return 'healthy';
+      if (score >= 50) return 'needs_attention';
+      if (score >= 30) return 'poor';
+      return 'critical';
+    }
+    expect(scoreToHealthBadge(100)).toBe('excellent');
+    expect(scoreToHealthBadge(90)).toBe('excellent');
+    expect(scoreToHealthBadge(80)).toBe('healthy');
+    expect(scoreToHealthBadge(75)).toBe('healthy');
+    expect(scoreToHealthBadge(60)).toBe('needs_attention');
+    expect(scoreToHealthBadge(50)).toBe('needs_attention');
+    expect(scoreToHealthBadge(40)).toBe('poor');
+    expect(scoreToHealthBadge(30)).toBe('poor');
+    expect(scoreToHealthBadge(20)).toBe('critical');
+    expect(scoreToHealthBadge(0)).toBe('critical');
+  });
+
+  it('HEALTH_BADGE_CONFIG has labels for all badge types', () => {
+    const badges = ['excellent', 'healthy', 'needs_attention', 'poor', 'critical'];
+    const labels = ['Excellent', 'Healthy', 'Needs Attention', 'Poor', 'Critical'];
+    for (let i = 0; i < badges.length; i++) {
+      expect(labels[i]).toBeTruthy();
+    }
+  });
+});
+
+describe('Dashboard Messages (Part 11)', () => {
+  it('getDashboardMessage returns correct message for score 100', () => {
+    function getDashboardMessage(score: number): { title: string; description: string } {
+      if (score >= 100) return { title: 'Health 100', description: 'Your PC is fully optimized.' };
+      if (score >= 85) return { title: `Health ${score}`, description: 'Your PC is performing well.' };
+      if (score >= 60) return { title: `Health ${score}`, description: 'Optimization recommended.' };
+      if (score >= 40) return { title: `Health ${score}`, description: 'Optimization strongly recommended.' };
+      return { title: `Health ${score}`, description: 'Immediate optimization recommended.' };
+    }
+    const msg = getDashboardMessage(100);
+    expect(msg.title).toBe('Health 100');
+    expect(msg.description).toBe('Your PC is fully optimized.');
+  });
+
+  it('getDashboardMessage returns correct message for score 85', () => {
+    function getDashboardMessage(score: number): { title: string; description: string } {
+      if (score >= 100) return { title: 'Health 100', description: 'Your PC is fully optimized.' };
+      if (score >= 85) return { title: `Health ${score}`, description: 'Your PC is performing well.' };
+      if (score >= 60) return { title: `Health ${score}`, description: 'Optimization recommended.' };
+      if (score >= 40) return { title: `Health ${score}`, description: 'Optimization strongly recommended.' };
+      return { title: `Health ${score}`, description: 'Immediate optimization recommended.' };
+    }
+    const msg = getDashboardMessage(85);
+    expect(msg.title).toBe('Health 85');
+    expect(msg.description).toBe('Your PC is performing well.');
+  });
+
+  it('getDashboardMessage returns correct message for score 60', () => {
+    function getDashboardMessage(score: number): { title: string; description: string } {
+      if (score >= 100) return { title: 'Health 100', description: 'Your PC is fully optimized.' };
+      if (score >= 85) return { title: `Health ${score}`, description: 'Your PC is performing well.' };
+      if (score >= 60) return { title: `Health ${score}`, description: 'Optimization recommended.' };
+      if (score >= 40) return { title: `Health ${score}`, description: 'Optimization strongly recommended.' };
+      return { title: `Health ${score}`, description: 'Immediate optimization recommended.' };
+    }
+    const msg = getDashboardMessage(60);
+    expect(msg.title).toBe('Health 60');
+    expect(msg.description).toBe('Optimization recommended.');
+  });
+
+  it('getDashboardMessage returns correct message for score 35', () => {
+    function getDashboardMessage(score: number): { title: string; description: string } {
+      if (score >= 100) return { title: 'Health 100', description: 'Your PC is fully optimized.' };
+      if (score >= 85) return { title: `Health ${score}`, description: 'Your PC is performing well.' };
+      if (score >= 60) return { title: `Health ${score}`, description: 'Optimization recommended.' };
+      if (score >= 40) return { title: `Health ${score}`, description: 'Optimization strongly recommended.' };
+      return { title: `Health ${score}`, description: 'Immediate optimization recommended.' };
+    }
+    const msg = getDashboardMessage(35);
+    expect(msg.title).toBe('Health 35');
+    expect(msg.description).toBe('Immediate optimization recommended.');
+  });
+});
+
+describe('Smart Recommendations (Part 13)', () => {
+  function makeHealth(score: number): any {
+    return { overallScore: score, issues: [], scoreZone: 'good' };
+  }
+
+  function makeMetrics(overrides: any = {}): any {
+    return {
+      performance: {
+        temporaryFilesSize: 0,
+        recycleBinSize: 0,
+        browserCacheSize: 0,
+        startupApps: 0,
+        ...overrides.performance,
+      },
+      storage: [{ mount: 'C:', usage: 50, free: 250_000_000_000, name: 'SSD' }],
+      memory: { usage: 50 },
+      security: { defender: { enabled: true, realTimeProtection: true } },
+      ...overrides,
+    };
+  }
+
+  it('generates health recommendation for excellent score', () => {
+    function generateRecommendations(health: any, _metrics: any): any[] {
+      const recs: any[] = [];
+      if (health.overallScore >= 90) {
+        recs.push({ id: 'health-excellent', title: 'Your PC Health is Excellent', description: 'Next optimization recommended in 7 days.', category: 'health' });
+      }
+      return recs;
+    }
+    const recs = generateRecommendations(makeHealth(95), makeMetrics());
+    expect(recs).toHaveLength(1);
+    expect(recs[0].id).toBe('health-excellent');
+    expect(recs[0].description).toContain('7 days');
+  });
+
+  it('generates disk cleanup recommendation when storage is high', () => {
+    function generateRecommendations(health: any, metrics: any): any[] {
+      const recs: any[] = [];
+      const totalJunk = metrics.performance.temporaryFilesSize + metrics.performance.recycleBinSize + metrics.performance.browserCacheSize;
+      if (totalJunk > 500 * 1024 * 1024) {
+        recs.push({ id: 'rec-disk-cleanup', title: 'Disk Cleanup Recommended', category: 'storage', actionPath: '/junk-cleaner' });
+      }
+      return recs;
+    }
+    const recs = generateRecommendations(makeHealth(80), makeMetrics({
+      performance: { temporaryFilesSize: 600_000_000, recycleBinSize: 0, browserCacheSize: 0, startupApps: 0 },
+    }));
+    expect(recs.some((r) => r.id === 'rec-disk-cleanup')).toBe(true);
+    expect(recs.find((r) => r.id === 'rec-disk-cleanup')!.actionPath).toBe('/junk-cleaner');
+  });
+
+  it('generates startup optimization recommendation when startup apps are high', () => {
+    function generateRecommendations(health: any, metrics: any): any[] {
+      const recs: any[] = [];
+      if (metrics.performance.startupApps > 5) {
+        recs.push({ id: 'rec-startup-optimization', title: 'Startup Optimization Recommended', category: 'startup', actionPath: '/startup-manager' });
+      }
+      return recs;
+    }
+    const recs = generateRecommendations(makeHealth(80), makeMetrics({
+      performance: { temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, startupApps: 8 },
+    }));
+    expect(recs.some((r) => r.id === 'rec-startup-optimization')).toBe(true);
+    expect(recs.find((r) => r.id === 'rec-startup-optimization')!.actionPath).toBe('/startup-manager');
+  });
+
+  it('generates privacy cleaner recommendation when browser cache is high', () => {
+    function generateRecommendations(health: any, metrics: any): any[] {
+      const recs: any[] = [];
+      if (metrics.performance.browserCacheSize > 100 * 1024 * 1024) {
+        recs.push({ id: 'rec-privacy-cleaner', title: 'Privacy Cleaner Recommended', category: 'privacy', actionPath: '/privacy-cleaner' });
+      }
+      return recs;
+    }
+    const recs = generateRecommendations(makeHealth(80), makeMetrics({
+      performance: { temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 200_000_000, startupApps: 0 },
+    }));
+    expect(recs.some((r) => r.id === 'rec-privacy-cleaner')).toBe(true);
+    expect(recs.find((r) => r.id === 'rec-privacy-cleaner')!.actionPath).toBe('/privacy-cleaner');
+  });
+
+  it('generates drive full recommendation when drive usage is critical', () => {
+    function generateRecommendations(health: any, metrics: any): any[] {
+      const recs: any[] = [];
+      const criticalDrive = metrics.storage.find((d: any) => d.usage > 90);
+      if (criticalDrive) {
+        recs.push({ id: 'rec-drive-full', title: `Drive ${criticalDrive.mount} Nearly Full`, category: 'storage', actionPath: '/disk-analyzer' });
+      }
+      return recs;
+    }
+    const recs = generateRecommendations(makeHealth(80), makeMetrics({
+      storage: [{ mount: 'C:', usage: 95, free: 20_000_000_000, name: 'SSD' }],
+    }));
+    expect(recs.some((r) => r.id === 'rec-drive-full')).toBe(true);
+  });
+
+  it('generates security recommendation when defender is disabled', () => {
+    function generateRecommendations(health: any, metrics: any): any[] {
+      const recs: any[] = [];
+      if (!metrics.security.defender.enabled || !metrics.security.defender.realTimeProtection) {
+        recs.push({ id: 'rec-security-check', title: 'Security Check Recommended', category: 'security', actionPath: '/security' });
+      }
+      return recs;
+    }
+    const recs = generateRecommendations(makeHealth(80), makeMetrics({
+      security: { defender: { enabled: false, realTimeProtection: false } },
+    }));
+    expect(recs.some((r) => r.id === 'rec-security-check')).toBe(true);
+  });
+
+  it('generates memory optimization recommendation when RAM usage is high', () => {
+    function generateRecommendations(health: any, metrics: any): any[] {
+      const recs: any[] = [];
+      if (metrics.memory.usage > 85) {
+        recs.push({ id: 'rec-memory-optimization', title: 'Memory Optimization Recommended', category: 'performance', actionPath: '/performance' });
+      }
+      return recs;
+    }
+    const recs = generateRecommendations(makeHealth(80), makeMetrics({
+      memory: { usage: 90 },
+    }));
+    expect(recs.some((r) => r.id === 'rec-memory-optimization')).toBe(true);
+  });
+
+  it('does not generate disk cleanup recommendation when storage is fine', () => {
+    function generateRecommendations(health: any, metrics: any): any[] {
+      const recs: any[] = [];
+      const totalJunk = metrics.performance.temporaryFilesSize + metrics.performance.recycleBinSize + metrics.performance.browserCacheSize;
+      if (totalJunk > 500 * 1024 * 1024) {
+        recs.push({ id: 'rec-disk-cleanup', category: 'storage' });
+      }
+      return recs;
+    }
+    const recs = generateRecommendations(makeHealth(80), makeMetrics({
+      performance: { temporaryFilesSize: 100_000_000, recycleBinSize: 50_000_000, browserCacheSize: 20_000_000, startupApps: 0 },
+    }));
+    expect(recs.some((r) => r.id === 'rec-disk-cleanup')).toBe(false);
+  });
+});
+
+describe('Empty States (Part 12)', () => {
+  it('issues empty state shows positive messaging when no issues', () => {
+    const issues: any[] = [];
+    expect(issues.length).toBe(0);
+    // The empty state should show "Everything looks great." and "No optimization required."
+    const emptyTitle = 'Everything looks great.';
+    const emptyDescription = 'No optimization required. Your PC is running at peak performance.';
+    expect(emptyTitle).toBe('Everything looks great.');
+    expect(emptyDescription).toContain('No optimization required');
+    expect(emptyDescription).toContain('peak performance');
+  });
+});

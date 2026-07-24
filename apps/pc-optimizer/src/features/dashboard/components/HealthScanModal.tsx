@@ -574,6 +574,35 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
           );
         })()}
 
+        {/* Post-optimization recommendations */}
+        <div className="space-y-2" data-testid="post-optimization-recommendations">
+          {afterOverall >= 90 ? (
+            <div className="flex items-center gap-3 py-3 px-4 rounded-md bg-semantic-success/10">
+              <SparklesIcon className="h-5 w-5 text-semantic-success shrink-0" aria-hidden />
+              <div>
+                <div className="text-sm font-medium text-text-primary">Your PC Health is Excellent.</div>
+                <div className="text-xs text-text-secondary">Next optimization recommended in 7 days.</div>
+              </div>
+            </div>
+          ) : afterOverall >= 75 ? (
+            <div className="flex items-center gap-3 py-3 px-4 rounded-md bg-surface-muted">
+              <SparklesIcon className="h-5 w-5 text-text-secondary shrink-0" aria-hidden />
+              <div>
+                <div className="text-sm font-medium text-text-primary">Your PC Health is Good.</div>
+                <div className="text-xs text-text-secondary">Next optimization recommended in 3 days.</div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 py-3 px-4 rounded-md bg-semantic-warning/10">
+              <ExclamationTriangleIcon className="h-5 w-5 text-semantic-warning shrink-0" aria-hidden />
+              <div>
+                <div className="text-sm font-medium text-text-primary">Further optimization recommended.</div>
+                <div className="text-xs text-text-secondary">Some issues remain. Consider running optimization again or reviewing manual action items.</div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {error && (
           <div className="flex items-start gap-3 py-3 px-4 rounded-md bg-semantic-danger/10 text-sm text-semantic-danger">
             <ExclamationTriangleIcon className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />

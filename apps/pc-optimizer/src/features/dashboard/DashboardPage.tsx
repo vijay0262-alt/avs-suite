@@ -6,11 +6,13 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { DashboardViewModel } from './DashboardViewModel';
 import { dashboardService } from './dashboard.service';
+import { generateRecommendations } from './dashboard.utils';
 import { HealthScoreCard } from './components/HealthScoreCard';
 import { HealthBreakdown } from './components/HealthBreakdown';
 import { IssuesList } from './components/IssuesList';
 import { LiveStatus } from './components/LiveStatus';
 import { QuickActions } from './components/QuickActions';
+import { Recommendations } from './components/Recommendations';
 import { HealthScanModal } from './components/HealthScanModal';
 
 export default function DashboardPage() {
@@ -94,6 +96,15 @@ export default function DashboardPage() {
           <IssuesList
             issues={state.healthScore?.issues}
             onIssueClick={(issue) => navigate(issue.actionPath)}
+          />
+
+          <Recommendations
+            recommendations={
+              state.healthScore
+                ? generateRecommendations(state.healthScore, state.metrics)
+                : []
+            }
+            onAction={(path) => navigate(path)}
           />
 
           <QuickActions onNavigate={(path) => navigate(path)} />

@@ -173,6 +173,32 @@ export interface HealthSummaryItem {
   severity: 'info' | 'success' | 'warning' | 'danger';
 }
 
+export type HealthBadgeType = 'excellent' | 'healthy' | 'needs_attention' | 'poor' | 'critical';
+
+export interface HealthBadgeConfig {
+  label: string;
+  colorClass: string;
+  bgClass: string;
+}
+
+export const HEALTH_BADGE_CONFIG: Record<HealthBadgeType, HealthBadgeConfig> = {
+  excellent:      { label: 'Excellent',      colorClass: 'text-semantic-success', bgClass: 'bg-semantic-success/10' },
+  healthy:        { label: 'Healthy',        colorClass: 'text-semantic-success', bgClass: 'bg-semantic-success/10' },
+  needs_attention:{ label: 'Needs Attention',colorClass: 'text-semantic-warning', bgClass: 'bg-semantic-warning/10' },
+  poor:           { label: 'Poor',           colorClass: 'text-semantic-danger',  bgClass: 'bg-semantic-danger/10' },
+  critical:       { label: 'Critical',       colorClass: 'text-semantic-danger',  bgClass: 'bg-semantic-danger/10' },
+};
+
+export interface Recommendation {
+  id: string;
+  title: string;
+  description: string;
+  actionLabel: string;
+  actionPath: string;
+  severity: 'info' | 'success' | 'warning' | 'danger';
+  category: 'health' | 'storage' | 'startup' | 'privacy' | 'security' | 'performance' | 'upgrade';
+}
+
 export interface HealthCategoryDetail {
   id: HealthCategory;
   name: string;

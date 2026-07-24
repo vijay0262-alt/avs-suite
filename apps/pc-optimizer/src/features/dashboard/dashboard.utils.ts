@@ -17,6 +17,8 @@ import type {
   CategoryScores,
   ScoreZone,
   HealthScoreWeights,
+  HealthBadgeType,
+  Recommendation,
 } from './dashboard.types';
 import { DEFAULT_HEALTH_WEIGHTS } from './dashboard.types';
 import { getHealthEngineConfig } from '../health/HealthEngineConfig';
@@ -653,4 +655,176 @@ export function calculateHealthScore(
     recycleBinSize: performance.recycleBinSize,
     unresolvableIssues,
   };
+}
+
+// ── Health Badge ─────────────────────────────────────────────────────
+
+export function scoreToHealthBadge(score: number): HealthBadgeType {
+  if (score >= 90) return 'excellent';
+  if (score >= 75) return 'healthy';
+  if (score >= 50) return 'needs_attention';
+  if (score >= 30) return 'poor';
+  return 'critical';
+}
+
+// ── Dashboard Messages ───────────────────────────────────────────────
+
+export function getDashboardMessage(score: number): { title: string; description: string } {
+  if (score >= 100) return { title: 'Health 100', description: 'Your PC is fully optimized.' };
+  if (score >= 85) return { title: `Health ${score}`, description: 'Your PC is performing well.' };
+  if (score >= 60) return { title: `Health ${score}`, description: 'Optimization recommended.' };
+  if (score >= 40) return { title: `Health ${score}`, description: 'Optimization strongly recommended.' };
+  return { title: `Health ${score}`, description: 'Immediate optimization recommended.' };
+}
+
+// ── Smart Recommendations ────────────────────────────────────────────
+
+export function generateRecommendations(
+  health: HealthSnapshot,
+  metrics: DashboardMetrics | null,
+  edition: 'free' | 'professional' | 'ultimate' = 'free',
+): Recommendation[] {
+  const recs: Recommendation[] = [];
+  const score = health.overallScore;
+
+  // Post-optimization health recommendation
+  if (score >= 90) {
+    recs.push({
+      id: 'health-excellent',
+      title: 'Your PC Health is Excellent',
+      description: 'Next optimization recommended in 7 days.',
+      actionLabel: 'View Details',
+      actionPath: '/dashboard',
+      severity: 'success',
+      category: 'health',
+    });
+  } else if (score >= 75) {
+    recs.push({
+      id: 'health-good',
+      title: 'Your PC Health is Good',
+      description: 'Next optimization recommended in 3 days.',
+      actionLabel: 'View Details',
+      actionPath: '/dashboard',
+      severity: 'info',
+      category: 'health',
+    });
+  } else if (score >= 50) {
+    recs.push({
+      id: 'health-fair',
+      title: 'Your PC Health is Fair',
+      description: 'Optimization recommended soon to maintain performance.',
+      actionLabel: 'Optimize Now',
+      actionPath: '/dashboard',
+      severity: 'warning',
+      category: 'health',
+    });
+  } else {
+    recs.push({
+      id: 'health-critical',
+      title: 'Your PC Health Needs Immediate Attention',
+      description: 'Run optimization now to improve system performance.',
+      actionLabel: 'Optimize Now',
+      actionPath: '/dashboard',
+      severity: 'danger',
+      category: 'health',
+    });
+  }
+
+  if (!metrics) return recs;
+
+  // Storage low → recommend Disk Cleanup
+  const tempFiles = metrics.performance.temporaryFilesSize;
+  const recycleBin = metrics.performance.recycleBinSize;
+  const totalJunk = tempFiles + recycleBin + metrics.performance.browserCacheSize;
+  if (totalJunk > 500 * 1024 * 1024) {
+    recs.push({
+      id: 'rec-disk-cleanup',
+      title: 'Disk Cleanup Recommended',
+      description: `${Math.round(totalJunk / (1024 * 1024))} MB of junk files detected. Free up space with Disk Cleanup.`,
+      actionLabel: 'Open Disk Cleanup',
+      actionPath: '/junk-cleaner',
+      severity: 'warning',
+      category: 'storage',
+    });
+  }
+
+  const criticalDrive = metrics.storage.find((d) => d.usage > 90);
+  if (criticalDrive) {
+    recs.push({
+      id: 'rec-drive-full',
+      title: `Drive ${criticalDrive.mount} Nearly Full`,
+      description: `${criticalDrive.usage.toFixed(0)}% used. Use Disk Analyzer to free up space.`,
+      actionLabel: 'Open Disk Analyzer',
+      actionPath: '/disk-analyzer',
+      severity: 'danger',
+      category: 'storage',
+    });
+  }
+
+  // Startup high → recommend Startup Optimization
+  if (metrics.performance.startupApps > 5) {
+    recs.push({
+      id: 'rec-startup-optimization',
+      title: 'Startup Optimization Recommended',
+      description: `${metrics.performance.startupApps} startup apps detected. Disabling unnecessary ones can speed up boot time.`,
+      actionLabel: 'Manage Startup',
+      actionPath: '/startup-manager',
+      severity: 'warning',
+      category: 'startup',
+    });
+  }
+
+  // Privacy high → recommend Privacy Cleaner
+  if (metrics.performance.browserCacheSize > 100 * 1024 * 1024) {
+    recs.push({
+      id: 'rec-privacy-cleaner',
+      title: 'Privacy Cleaner Recommended',
+      description: `${Math.round(metrics.performance.browserCacheSize / (1024 * 1024))} MB of browser cache detected. Clean traces to protect your privacy.`,
+      actionLabel: 'Open Privacy Cleaner',
+      actionPath: '/privacy-cleaner',
+      severity: 'info',
+      category: 'privacy',
+    });
+  }
+
+  // Performance issues
+  if (metrics.memory.usage > 85) {
+    recs.push({
+      id: 'rec-memory-optimization',
+      title: 'Memory Optimization Recommended',
+      description: `RAM usage is ${metrics.memory.usage.toFixed(0)}%. Optimize memory to improve responsiveness.`,
+      actionLabel: 'Optimize Memory',
+      actionPath: '/performance',
+      severity: 'warning',
+      category: 'performance',
+    });
+  }
+
+  // Security issues
+  if (!metrics.security.defender.enabled || !metrics.security.defender.realTimeProtection) {
+    recs.push({
+      id: 'rec-security-check',
+      title: 'Security Check Recommended',
+      description: 'Antivirus protection is not fully active. Review your security settings.',
+      actionLabel: 'Review Security',
+      actionPath: '/security',
+      severity: 'danger',
+      category: 'security',
+    });
+  }
+
+  // Upgrade recommendation for free edition
+  if (edition === 'free' && score < 90) {
+    recs.push({
+      id: 'rec-upgrade-professional',
+      title: 'Upgrade to Professional',
+      description: 'Automatically clean your PC every week with scheduled optimization.',
+      actionLabel: 'Learn More',
+      actionPath: '/settings',
+      severity: 'info',
+      category: 'upgrade',
+    });
+  }
+
+  return recs;
 }

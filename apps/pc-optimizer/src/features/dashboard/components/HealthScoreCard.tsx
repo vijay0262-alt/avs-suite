@@ -3,7 +3,9 @@ import { Card } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
 import { SCORE_ZONE_CONFIG } from '../dashboard.types';
 import type { HealthSnapshot } from '../dashboard.types';
+import { scoreToHealthBadge, getDashboardMessage } from '../dashboard.utils';
 import { useAnimatedNumber } from './useAnimatedNumber';
+import { HealthBadge } from './HealthBadge';
 
 export interface HealthScoreCardProps {
   healthScore: HealthSnapshot | null;
@@ -86,12 +88,24 @@ export const HealthScoreCard = React.memo(function HealthScoreCard({ healthScore
           </div>
 
           <div className="flex-1">
-            <div className={`text-2xl font-semibold ${zoneConfig.textColor}`}>{zoneConfig.label}</div>
+            <div className="flex items-center gap-3">
+              <div className={`text-2xl font-semibold ${zoneConfig.textColor}`}>{zoneConfig.label}</div>
+              <HealthBadge badge={scoreToHealthBadge(displayScore)} size="sm" />
+            </div>
             <div className="mt-1 inline-flex items-center rounded-full bg-surface-muted px-3 py-1 text-sm font-medium text-text-secondary">
               {issueCount > 0 ? `${issueCount} Issues Found` : 'No Issues Found'}
             </div>
             <div className="mt-2 text-sm text-text-secondary">
-              {zoneConfig.message}
+              {(() => {
+                const msg = getDashboardMessage(displayScore);
+                return (
+                  <>
+                    <span className="font-medium text-text-primary">{msg.title}</span>
+                    {' — '}
+                    {msg.description}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
