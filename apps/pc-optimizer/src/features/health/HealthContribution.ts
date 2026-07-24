@@ -23,7 +23,12 @@ export type ModuleId =
   | 'antivirus'
   | 'vpn'
   | 'backup'
-  | 'file-recovery';
+  | 'file-recovery'
+  | 'browser-cleaner'
+  | 'disk-defragmenter'
+  | 'network-optimizer'
+  | 'memory-optimizer'
+  | 'battery-optimizer';
 
 export interface HealthContribution {
   /** Unique module identifier. */

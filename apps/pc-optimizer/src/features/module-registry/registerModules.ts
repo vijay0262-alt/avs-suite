@@ -75,6 +75,10 @@ class StubModuleAdapter implements OptimizerModule {
  *   - Health Engine (via health providers + weights)
  *   - FeatureGate (via feature permissions in metadata)
  *   - Recommendations (via getRecommendations())
+ *
+ * Part 14: Future modules are registered lazily — their factory is
+ * only called when the module is first accessed, avoiding eager
+ * loading of heavy modules at startup.
  */
 export function registerAllModules(): void {
   // Register health providers (existing pattern)
@@ -89,12 +93,17 @@ export function registerAllModules(): void {
     );
   }
 
-  // Register all modules with the Module Registry
+  // Register modules — eagerly for existing, lazily for future (Part 14)
+  // Future modules are identified by version '0.0.0' (not yet implemented)
   for (const def of ALL_MODULE_DEFINITIONS) {
-    // For now, use stub adapters. As real adapters are created,
-    // replace with the actual implementation.
-    const module = new StubModuleAdapter(def);
-    moduleRegistry.register(module);
+    if (def.version === '0.0.0') {
+      // Lazy: factory called only when module is first accessed
+      moduleRegistry.registerLazy(def.moduleId, () => new StubModuleAdapter(def));
+    } else {
+      // Eager: create immediately for existing modules
+      const module = new StubModuleAdapter(def);
+      moduleRegistry.register(module);
+    }
   }
 }
 

@@ -241,8 +241,8 @@ describe('Dashboard Integration (Part 4)', () => {
 });
 
 describe('Health Engine Integration (Part 5)', () => {
-  it('ALL_MODULE_DEFINITIONS includes all 14 modules', () => {
-    expect(ALL_MODULE_DEFINITIONS).toHaveLength(14);
+  it('ALL_MODULE_DEFINITIONS includes all 19 modules', () => {
+    expect(ALL_MODULE_DEFINITIONS).toHaveLength(19);
   });
 
   it('each module definition has maxHealthPenalty > 0', () => {
@@ -272,8 +272,11 @@ describe('Health Engine Integration (Part 5)', () => {
   it('registerAllModules registers all modules', () => {
     clearModuleRegistry();
     registerAllModules();
-    const entries = moduleRegistry.getRegistryEntries();
-    expect(entries.length).toBeGreaterThanOrEqual(14);
+    // Eagerly loaded modules appear in getRegistryEntries
+    const eagerEntries = moduleRegistry.getRegistryEntries();
+    // Lazy modules appear in getLazyModuleIds
+    const lazyIds = moduleRegistry.getLazyModuleIds();
+    expect(eagerEntries.length + lazyIds.length).toBeGreaterThanOrEqual(19);
     clearModuleRegistry();
   });
 });

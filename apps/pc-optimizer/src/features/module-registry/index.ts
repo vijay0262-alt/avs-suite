@@ -33,6 +33,11 @@ export {
   VPN_MODULE,
   BACKUP_MODULE,
   FILE_RECOVERY_MODULE,
+  BROWSER_CLEANER_MODULE,
+  DISK_DEFRAGMENTER_MODULE,
+  NETWORK_OPTIMIZER_MODULE,
+  MEMORY_OPTIMIZER_MODULE,
+  BATTERY_OPTIMIZER_MODULE,
   ALL_MODULE_DEFINITIONS,
 } from './moduleDefinitions';
 export { useModuleRegistry, useAvailableModules, useModuleByPath } from './useModuleRegistry';
@@ -52,3 +57,14 @@ export { aggregateModuleSummaries } from './ModuleOptimizationSummary';
 // Part 10 — Module Health History
 export type { ModuleHistoryEntry } from './ModuleHistoryService';
 export { moduleHistoryService } from './ModuleHistoryService';
+
+// Part 13 — Centralized Configuration
+export type { CategoryConfig, DefaultModuleSettings } from './ModuleConfig';
+export {
+  CATEGORY_CONFIG,
+  DEFAULT_HEALTH_WEIGHTS,
+  DEFAULT_MODULE_SETTINGS,
+  MODULE_DISPLAY_ORDER,
+  getModuleDisplayOrder,
+  sortByDisplayOrder,
+} from './ModuleConfig';

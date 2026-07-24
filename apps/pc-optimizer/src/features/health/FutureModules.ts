@@ -51,6 +51,36 @@ export const FUTURE_MODULE_CONFIGS: FutureModuleConfig[] = [
     maxPenalty: 5,
     actionPath: '/file-recovery',
   },
+  {
+    moduleId: 'browser-cleaner',
+    displayName: 'Browser Cleaner',
+    maxPenalty: 8,
+    actionPath: '/browser-cleaner',
+  },
+  {
+    moduleId: 'disk-defragmenter',
+    displayName: 'Disk Defragmenter',
+    maxPenalty: 8,
+    actionPath: '/disk-defragmenter',
+  },
+  {
+    moduleId: 'network-optimizer',
+    displayName: 'Network Optimizer',
+    maxPenalty: 5,
+    actionPath: '/network-optimizer',
+  },
+  {
+    moduleId: 'memory-optimizer',
+    displayName: 'Memory Optimizer',
+    maxPenalty: 7,
+    actionPath: '/memory-optimizer',
+  },
+  {
+    moduleId: 'battery-optimizer',
+    displayName: 'Battery Optimizer',
+    maxPenalty: 5,
+    actionPath: '/battery-optimizer',
+  },
 ];
 
 export function isFutureModule(moduleId: string): boolean {

@@ -240,6 +240,94 @@ export const FILE_RECOVERY_MODULE: ModuleMetadata = {
   supportedOS: [],
 };
 
+export const BROWSER_CLEANER_MODULE: ModuleMetadata = {
+  moduleId: 'browser-cleaner',
+  displayName: 'Browser Cleaner',
+  description: 'Clean browser cache, cookies, and browsing history.',
+  category: 'privacy',
+  icon: 'GlobeAltIcon',
+  version: '0.0.0',
+  routePath: '/browser-cleaner',
+  capabilities: { canScan: true, canClean: true, canOptimize: false, canRunInBackground: true },
+  featurePermissions: {
+    scan: 'browser.protection',
+    clean: 'browser.protection',
+    background: 'auto.privacy_protection',
+  },
+  maxHealthPenalty: 8,
+  supportedOS: [],
+};
+
+export const DISK_DEFRAGMENTER_MODULE: ModuleMetadata = {
+  moduleId: 'disk-defragmenter',
+  displayName: 'Disk Defragmenter',
+  description: 'Defragment and optimize disk drives for faster access.',
+  category: 'optimization',
+  icon: 'CircleStackIcon',
+  version: '0.0.0',
+  routePath: '/disk-defragmenter',
+  capabilities: { canScan: true, canClean: false, canOptimize: true, canRunInBackground: false },
+  featurePermissions: {
+    scan: 'disk.analyzer',
+    optimize: 'performance.optimize',
+  },
+  maxHealthPenalty: 8,
+  supportedOS: ['win32'],
+};
+
+export const NETWORK_OPTIMIZER_MODULE: ModuleMetadata = {
+  moduleId: 'network-optimizer',
+  displayName: 'Network Optimizer',
+  description: 'Optimize network settings for faster internet speeds.',
+  category: 'optimization',
+  icon: 'WifiIcon',
+  version: '0.0.0',
+  routePath: '/network-optimizer',
+  capabilities: { canScan: true, canClean: false, canOptimize: true, canRunInBackground: false },
+  featurePermissions: {
+    scan: 'performance.optimize',
+    optimize: 'performance.optimize',
+  },
+  maxHealthPenalty: 5,
+  supportedOS: [],
+};
+
+export const MEMORY_OPTIMIZER_MODULE: ModuleMetadata = {
+  moduleId: 'memory-optimizer',
+  displayName: 'Memory Optimizer',
+  description: 'Free up RAM and optimize memory usage.',
+  category: 'optimization',
+  icon: 'CpuChipIcon',
+  version: '0.0.0',
+  routePath: '/memory-optimizer',
+  capabilities: { canScan: true, canClean: false, canOptimize: true, canRunInBackground: true },
+  featurePermissions: {
+    scan: 'performance.optimize',
+    optimize: 'performance.optimize',
+    background: 'background.monitoring',
+  },
+  maxHealthPenalty: 7,
+  supportedOS: [],
+};
+
+export const BATTERY_OPTIMIZER_MODULE: ModuleMetadata = {
+  moduleId: 'battery-optimizer',
+  displayName: 'Battery Optimizer',
+  description: 'Optimize battery life and power consumption.',
+  category: 'optimization',
+  icon: 'Battery50Icon',
+  version: '0.0.0',
+  routePath: '/battery-optimizer',
+  capabilities: { canScan: true, canClean: false, canOptimize: true, canRunInBackground: true },
+  featurePermissions: {
+    scan: 'battery.optimization',
+    optimize: 'battery.optimization',
+    background: 'background.monitoring',
+  },
+  maxHealthPenalty: 5,
+  supportedOS: [],
+};
+
 export const ALL_MODULE_DEFINITIONS: ModuleMetadata[] = [
   JUNK_CLEANER_MODULE,
   REGISTRY_CLEANER_MODULE,
@@ -255,4 +343,9 @@ export const ALL_MODULE_DEFINITIONS: ModuleMetadata[] = [
   VPN_MODULE,
   BACKUP_MODULE,
   FILE_RECOVERY_MODULE,
+  BROWSER_CLEANER_MODULE,
+  DISK_DEFRAGMENTER_MODULE,
+  NETWORK_OPTIMIZER_MODULE,
+  MEMORY_OPTIMIZER_MODULE,
+  BATTERY_OPTIMIZER_MODULE,
 ];
