@@ -17,6 +17,8 @@ import type {
 import type { HealthContribution } from '../health/HealthContribution';
 import type { Recommendation } from '../dashboard/dashboard.types';
 import { moduleRegistry } from './ModuleRegistry';
+import { emitModuleEvent, ModuleEventType } from './ModuleEventBus';
+import { moduleHistoryService } from './ModuleHistoryService';
 
 export abstract class BaseModuleAdapter implements OptimizerModule {
   protected _status: ModuleLifecycleState = 'ready';
@@ -42,7 +44,9 @@ export abstract class BaseModuleAdapter implements OptimizerModule {
 
   // Operations — subclasses override
   async scan(): Promise<unknown> {
+    const startedAt = Date.now();
     this.setStatus('scanning');
+    emitModuleEvent(ModuleEventType.ScanStarted, this.metadata.moduleId, this.metadata.displayName);
     try {
       const result = await this.doScan();
       this.setStatus('completed');
@@ -52,15 +56,34 @@ export abstract class BaseModuleAdapter implements OptimizerModule {
         totalScans: this._statistics.totalScans + 1,
       };
       moduleRegistry.updateStatistics(this.metadata.moduleId, this._statistics);
+      emitModuleEvent(ModuleEventType.ScanCompleted, this.metadata.moduleId, this.metadata.displayName, {
+        durationMs: Date.now() - startedAt,
+      });
+      moduleHistoryService.record({
+        moduleId: this.metadata.moduleId,
+        moduleName: this.metadata.displayName,
+        timestamp: new Date().toISOString(),
+        itemsFound: 0,
+        itemsResolved: 0,
+        durationMs: Date.now() - startedAt,
+        bytesRecovered: 0,
+        healthImpact: 0,
+        operation: 'scan',
+      });
       return result;
     } catch (err) {
       this.setStatus('error');
+      emitModuleEvent(ModuleEventType.ErrorOccurred, this.metadata.moduleId, this.metadata.displayName, {
+        error: err instanceof Error ? err.message : String(err),
+      });
       throw err;
     }
   }
 
   async clean(): Promise<unknown> {
+    const startedAt = Date.now();
     this.setStatus('cleaning');
+    emitModuleEvent(ModuleEventType.CleaningStarted, this.metadata.moduleId, this.metadata.displayName);
     try {
       const result = await this.doClean();
       this.setStatus('completed');
@@ -70,21 +93,57 @@ export abstract class BaseModuleAdapter implements OptimizerModule {
         totalCleans: this._statistics.totalCleans + 1,
       };
       moduleRegistry.updateStatistics(this.metadata.moduleId, this._statistics);
+      emitModuleEvent(ModuleEventType.CleaningCompleted, this.metadata.moduleId, this.metadata.displayName, {
+        durationMs: Date.now() - startedAt,
+      });
+      moduleHistoryService.record({
+        moduleId: this.metadata.moduleId,
+        moduleName: this.metadata.displayName,
+        timestamp: new Date().toISOString(),
+        itemsFound: 0,
+        itemsResolved: 0,
+        durationMs: Date.now() - startedAt,
+        bytesRecovered: 0,
+        healthImpact: 0,
+        operation: 'clean',
+      });
       return result;
     } catch (err) {
       this.setStatus('error');
+      emitModuleEvent(ModuleEventType.ErrorOccurred, this.metadata.moduleId, this.metadata.displayName, {
+        error: err instanceof Error ? err.message : String(err),
+      });
       throw err;
     }
   }
 
   async optimize(): Promise<unknown> {
+    const startedAt = Date.now();
     this.setStatus('optimizing');
+    emitModuleEvent(ModuleEventType.OptimizationStarted, this.metadata.moduleId, this.metadata.displayName);
     try {
       const result = await this.doOptimize();
       this.setStatus('completed');
+      emitModuleEvent(ModuleEventType.OptimizationCompleted, this.metadata.moduleId, this.metadata.displayName, {
+        durationMs: Date.now() - startedAt,
+      });
+      moduleHistoryService.record({
+        moduleId: this.metadata.moduleId,
+        moduleName: this.metadata.displayName,
+        timestamp: new Date().toISOString(),
+        itemsFound: 0,
+        itemsResolved: 0,
+        durationMs: Date.now() - startedAt,
+        bytesRecovered: 0,
+        healthImpact: 0,
+        operation: 'optimize',
+      });
       return result;
     } catch (err) {
       this.setStatus('error');
+      emitModuleEvent(ModuleEventType.ErrorOccurred, this.metadata.moduleId, this.metadata.displayName, {
+        error: err instanceof Error ? err.message : String(err),
+      });
       throw err;
     }
   }
@@ -127,7 +186,12 @@ export abstract class BaseModuleAdapter implements OptimizerModule {
 
   // Helper
   protected setStatus(status: ModuleLifecycleState): void {
+    const oldStatus = this._status;
     this._status = status;
     moduleRegistry.setStatus(this.metadata.moduleId, status);
+    emitModuleEvent(ModuleEventType.StatusChanged, this.metadata.moduleId, this.metadata.displayName, {
+      oldStatus,
+      newStatus: status,
+    });
   }
 }

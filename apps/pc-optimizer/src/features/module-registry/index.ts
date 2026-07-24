@@ -37,3 +37,18 @@ export {
 } from './moduleDefinitions';
 export { useModuleRegistry, useAvailableModules, useModuleByPath } from './useModuleRegistry';
 export { ModuleCards } from './components/ModuleCards';
+
+// Part 7 — Module Event System
+export type { ModuleEvent, ModuleEventTypeName, ModuleEventData } from './ModuleEventBus';
+export { ModuleEventType, moduleEventBus, emitModuleEvent } from './ModuleEventBus';
+
+// Part 8 — Recommendation Aggregator
+export { recommendationAggregator } from './RecommendationAggregator';
+
+// Part 9 — Module Optimization Summary
+export type { ModuleOptimizationSummary, AggregatedOptimizationSummary } from './ModuleOptimizationSummary';
+export { aggregateModuleSummaries } from './ModuleOptimizationSummary';
+
+// Part 10 — Module Health History
+export type { ModuleHistoryEntry } from './ModuleHistoryService';
+export { moduleHistoryService } from './ModuleHistoryService';
