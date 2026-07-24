@@ -5,6 +5,12 @@
  * Part 2: Module Isolation
  * Part 3: Structured Logging
  * Part 4: Diagnostics Service
+ * Part 5: Startup Validation
+ * Part 6: Performance Monitoring
+ * Part 7: Background Task Management
+ * Part 8: Resource Management
+ * Part 9: Configuration Management
+ * Part 10: Retry & Recovery
  */
 
 // Part 1 — Centralized Error Handling
@@ -21,3 +27,27 @@ export { LOG_LEVEL_PRIORITY, LOG_LEVEL_LABELS, logger, createModuleLogger } from
 // Part 4 — Diagnostics Service
 export type { ModuleDiagnosticsInfo, DiagnosticsReport, MemoryInfo, CpuInfo } from './DiagnosticsReport';
 export { diagnosticsReportService } from './DiagnosticsReport';
+
+// Part 5 — Startup Validation
+export type { ValidationStatus, ValidationResult, StartupValidationReport } from './StartupValidator';
+export { startupValidator } from './StartupValidator';
+
+// Part 6 — Performance Monitoring
+export type { MetricType, PerformanceMetric, MetricSummary } from './PerformanceMonitor';
+export { performanceMonitor } from './PerformanceMonitor';
+
+// Part 7 — Background Task Management
+export type { TaskStatus, BackgroundTask, TaskProgress, TaskContext } from './BackgroundTaskManager';
+export { backgroundTaskManager } from './BackgroundTaskManager';
+
+// Part 8 — Resource Management
+export type { ResourceType, TrackedResource } from './ResourceManager';
+export { resourceManager, DisposableScope } from './ResourceManager';
+
+// Part 9 — Configuration Management
+export type { ApplicationConfig, HealthEngineConfig, LoggingConfig, TimeoutConfig, RetryConfig, BackgroundTaskConfig, UIPreferencesConfig } from './AppConfig';
+export { configManager } from './AppConfig';
+
+// Part 10 — Retry & Recovery
+export type { RetryOptions, RetryResult } from './RetryService';
+export { withRetry, retryModuleInit, retryLicenseValidation, retryFileAccess, calculateRetryDelay } from './RetryService';
