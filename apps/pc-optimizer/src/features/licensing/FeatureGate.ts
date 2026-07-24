@@ -1,83 +1,74 @@
 /**
- * FeatureGate — the single entry point for feature access checks.
+ * FeatureGate — lightweight, importable feature gate for modules.
  *
- * Modules call FeatureGate.can_use("registry_cleaner") to determine
- * if a feature is available in the current license state.
+ * Modules call:
+ *   FeatureGate.canUse("junk.clean")
+ *   FeatureGate.canUse("registry.fix")
  *
- * FeatureGate delegates to the @avs/licensing FeatureManager which
- * maps license state → edition → feature availability.
- *
- * Usage:
- *   import { FeatureGate } from './features/licensing/FeatureGate';
- *   if (FeatureGate.can_use('registry_cleaner')) { ... }
+ * This avoids importing React context in non-component code.
+ * The gate is initialized at bootstrap with the current license state
+ * and updated when the license state changes.
  */
-import { createFeatureManager, type IFeatureManager, type ManagedFeature } from '@avs/licensing';
 import type { LicenseState } from '@avs/licensing';
+import { stateToEdition } from '@avs/licensing';
+import { isFeatureEnabled, shouldHideFeature, normalizeEdition, type FeatureKey, type Edition } from '@avs/shared/featureFlags';
+import { FEATURE_MAP, type ManagedFeature } from '@avs/licensing';
 
-let featureManager: IFeatureManager | null = null;
-let currentState: LicenseState = 'free';
+let _currentEdition: Edition = 'free';
 
 /**
- * Initialize the FeatureGate with the current license state.
- * Called when the LicenseManager state changes.
+ * Initialize or update the FeatureGate with a new license state.
+ * Called at bootstrap and whenever the license state changes.
  */
 export function initFeatureGate(state: LicenseState): void {
-  currentState = state;
-  featureManager = createFeatureManager({ getState: () => currentState });
+  _currentEdition = stateToEdition(state);
 }
 
 /**
- * Update the license state (called on license events).
+ * Update the FeatureGate with a specific edition (e.g., from LicenseModel.edition).
+ * This allows the gate to know about 'ultimate' even when stateToEdition
+ * defaults to 'professional'.
  */
-export function updateLicenseState(state: LicenseState): void {
-  currentState = state;
-}
-
-/**
- * Check if a feature can be used in the current license state.
- */
-export function can_use(feature: ManagedFeature): boolean {
-  if (!featureManager) {
-    featureManager = createFeatureManager({ getState: () => currentState });
-  }
-  return featureManager.has(feature);
-}
-
-/**
- * Check if a feature should be hidden entirely (hard-gated).
- */
-export function is_hidden(feature: ManagedFeature): boolean {
-  if (!featureManager) {
-    featureManager = createFeatureManager({ getState: () => currentState });
-  }
-  return featureManager.isHidden(feature);
+export function updateFeatureGateEdition(edition: string): void {
+  _currentEdition = normalizeEdition(edition);
 }
 
 /**
  * Get the current edition.
  */
-export function current_edition(): 'free' | 'pro' | 'enterprise' | 'trial' {
-  if (!featureManager) {
-    featureManager = createFeatureManager({ getState: () => currentState });
-  }
-  return featureManager.currentEdition();
+export function currentEdition(): Edition {
+  return _currentEdition;
 }
 
 /**
- * Get the current license state.
+ * Check if a feature action is available in the current edition.
+ * Uses dot notation: canUse("junk.clean"), canUse("registry.fix"), etc.
  */
-export function current_state(): LicenseState {
-  return currentState;
+export function canUse(feature: ManagedFeature): boolean {
+  const featureKey = FEATURE_MAP[feature];
+  if (!featureKey) return false;
+  return isFeatureEnabled(featureKey as FeatureKey, _currentEdition);
 }
 
 /**
- * Convenience object for modules that prefer an object-style API.
+ * Check if a feature should be hidden entirely (hard-gated).
  */
+export function isHidden(feature: ManagedFeature): boolean {
+  const featureKey = FEATURE_MAP[feature];
+  if (!featureKey) return false;
+  return shouldHideFeature(featureKey as FeatureKey, _currentEdition);
+}
+
+/**
+ * Backward-compatible snake_case alias.
+ */
+export const can_use = canUse;
+
 export const FeatureGate = {
+  canUse,
   can_use,
-  is_hidden,
-  current_edition,
-  current_state,
-  init: initFeatureGate,
-  updateState: updateLicenseState,
+  isHidden,
+  currentEdition,
+  initFeatureGate,
+  updateFeatureGateEdition,
 };

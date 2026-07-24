@@ -46,7 +46,7 @@ export interface ILicenseManager {
   getState(): LicenseState;
 
   /** Current resolved edition (derived from state). */
-  getEdition(): 'free' | 'pro' | 'enterprise' | 'trial';
+  getEdition(): 'free' | 'professional' | 'ultimate' | 'trial';
 
   /** Whether a paid license is currently active. */
   isActivated(): boolean;
@@ -117,7 +117,16 @@ export class LicenseManager implements ILicenseManager {
     return this.currentState;
   }
 
-  getEdition(): 'free' | 'pro' | 'enterprise' | 'trial' {
+  getEdition(): 'free' | 'professional' | 'ultimate' | 'trial' {
+    if (this.currentLicense && this.currentLicense.edition) {
+      const modelEdition = this.currentLicense.edition;
+      if (this.currentState === 'expired' || this.currentState === 'invalid' || this.currentState === 'revoked') {
+        return 'free';
+      }
+      if (this.currentState === 'trial') return 'trial';
+      if (this.currentState === 'free') return 'free';
+      return modelEdition;
+    }
     return stateToEdition(this.currentState);
   }
 

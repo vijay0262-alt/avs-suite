@@ -77,11 +77,11 @@ describe('License States', () => {
       expect(stateToEdition('trial')).toBe('trial');
     });
 
-    it('maps monthly, annual, lifetime, grace_period to pro', () => {
-      expect(stateToEdition('monthly')).toBe('pro');
-      expect(stateToEdition('annual')).toBe('pro');
-      expect(stateToEdition('lifetime')).toBe('pro');
-      expect(stateToEdition('grace_period')).toBe('pro');
+    it('maps monthly, annual, lifetime, grace_period to professional', () => {
+      expect(stateToEdition('monthly')).toBe('professional');
+      expect(stateToEdition('annual')).toBe('professional');
+      expect(stateToEdition('lifetime')).toBe('professional');
+      expect(stateToEdition('grace_period')).toBe('professional');
     });
 
     it('maps error states to free', () => {

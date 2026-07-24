@@ -17,7 +17,7 @@ export interface LicenseContextValue {
   manager: ILicenseManager | null;
   featureManager: IFeatureManager | null;
   state: LicenseState;
-  edition: 'free' | 'pro' | 'enterprise' | 'trial';
+  edition: 'free' | 'professional' | 'ultimate' | 'trial';
   isActivated: boolean;
   isInGracePeriod: boolean;
   licenseView: LicenseView | null;

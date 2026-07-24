@@ -16,7 +16,7 @@ import { LicenseManager, createFeatureManager, type ILicenseManager, type IFeatu
 import { LicenseProvider } from './LicenseContext';
 import { SdkActivationService } from './SdkActivationService';
 import { MemoryLicenseStorage, IpcDeviceIdProvider } from './rendererProviders';
-import { initFeatureGate } from './FeatureGate';
+import { initFeatureGate, updateFeatureGateEdition } from './FeatureGate';
 
 type BootstrapPhase = 'loading' | 'ready' | 'error';
 
@@ -70,6 +70,12 @@ export function LicenseBootstrap({ children }: { children: ReactNode }) {
 
         // 6. Initialize FeatureGate
         initFeatureGate(manager.getState());
+
+        // 6b. Update edition from license model if available (e.g., 'ultimate')
+        const licenseView = manager.getLicenseView();
+        if (licenseView) {
+          updateFeatureGateEdition(licenseView.edition);
+        }
 
         if (cancelled) return;
 

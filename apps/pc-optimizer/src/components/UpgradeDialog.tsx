@@ -215,8 +215,8 @@ export function useFeatureGate() {
   const { show } = useUpgradeDialog();
 
   const checkFeature = (featureName: string, trigger?: string): boolean => {
-    if (edition === 'pro' || edition === 'enterprise') return true;
-    show(trigger ?? `Pro feature: ${featureName}`);
+    if (edition === 'professional' || edition === 'ultimate' || edition === 'trial') return true;
+    show(trigger ?? `Professional feature: ${featureName}`);
     return false;
   };
 

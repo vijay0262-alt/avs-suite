@@ -46,9 +46,11 @@ function mapStatus(sdkStatus: string): LicenseModel['state'] {
 /**
  * Map SDK edition to AVS Suite edition.
  */
-function mapEdition(sdkEdition: string): 'pro' | 'enterprise' {
-  if (sdkEdition.toLowerCase().includes('enterprise')) return 'enterprise';
-  return 'pro';
+function mapEdition(sdkEdition: string): 'professional' | 'ultimate' {
+  const lower = sdkEdition.toLowerCase();
+  if (lower.includes('ultimate')) return 'ultimate';
+  if (lower.includes('enterprise')) return 'ultimate';
+  return 'professional';
 }
 
 /**
