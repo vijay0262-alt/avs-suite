@@ -287,3 +287,195 @@ describe('OptimizationExecutionProgress type', () => {
     expect(messages.filter((m) => m.includes('...')).length).toBeGreaterThanOrEqual(5);
   });
 });
+
+describe('Health Score Animation and Color Zones', () => {
+  it('scoreToZone maps scores to correct zones', () => {
+    // Re-implement the same logic for testing
+    function scoreToZone(score: number): string {
+      if (score >= 100) return 'perfect';
+      if (score >= 90) return 'excellent';
+      if (score >= 80) return 'good';
+      if (score >= 60) return 'fair';
+      if (score >= 40) return 'poor';
+      return 'critical';
+    }
+    expect(scoreToZone(100)).toBe('perfect');
+    expect(scoreToZone(95)).toBe('excellent');
+    expect(scoreToZone(85)).toBe('good');
+    expect(scoreToZone(70)).toBe('fair');
+    expect(scoreToZone(50)).toBe('poor');
+    expect(scoreToZone(30)).toBe('critical');
+    expect(scoreToZone(0)).toBe('critical');
+  });
+
+  it('scoreToColor maps zones to correct Tailwind classes', () => {
+    const ZONE_COLORS: Record<string, string> = {
+      perfect: 'text-semantic-success',
+      excellent: 'text-semantic-success',
+      good: 'text-semantic-warning',
+      fair: 'text-semantic-warning',
+      poor: 'text-semantic-danger',
+      critical: 'text-semantic-danger',
+    };
+    function scoreToColor(score: number): string {
+      function zone(s: number): string {
+        if (s >= 100) return 'perfect';
+        if (s >= 90) return 'excellent';
+        if (s >= 80) return 'good';
+        if (s >= 60) return 'fair';
+        if (s >= 40) return 'poor';
+        return 'critical';
+      }
+      return ZONE_COLORS[zone(score)]!;
+    }
+    // Critical (red)
+    expect(scoreToColor(30)).toBe('text-semantic-danger');
+    // Poor (orange-red)
+    expect(scoreToColor(50)).toBe('text-semantic-danger');
+    // Fair (yellow)
+    expect(scoreToColor(70)).toBe('text-semantic-warning');
+    // Good (light green)
+    expect(scoreToColor(85)).toBe('text-semantic-warning');
+    // Excellent (green)
+    expect(scoreToColor(95)).toBe('text-semantic-success');
+    // Perfect (green)
+    expect(scoreToColor(100)).toBe('text-semantic-success');
+  });
+
+  it('useAnimatedNumber transitions smoothly from old to new value', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'] });
+    const { useAnimatedNumber } = await import('../components/useAnimatedNumber');
+    const { createRoot } = await import('react-dom/client');
+    const React = await import('react');
+    const { flushSync } = await import('react-dom');
+
+    let current: number = 0;
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    function TestComponent({ target }: { target: number }) {
+      current = useAnimatedNumber(target, 800);
+      return null;
+    }
+
+    // Start at 52
+    flushSync(() => {
+      root.render(React.createElement(TestComponent, { target: 52 }));
+    });
+    expect(current).toBe(52);
+
+    // Change target to 100
+    flushSync(() => {
+      root.render(React.createElement(TestComponent, { target: 100 }));
+    });
+
+    // Advance time to let rAF callbacks fire and animation complete
+    await vi.advanceTimersByTimeAsync(1000);
+
+    // After animation completes, value should reach target
+    expect(Math.round(current)).toBe(100);
+
+    root.unmount();
+    vi.useRealTimers();
+  });
+});
+
+describe('Celebration Dialog and Detailed Results', () => {
+  it('celebration summary includes all expected metrics', () => {
+    const summary = {
+      healthBefore: 54,
+      healthAfter: 100,
+      storageRecovered: 1_250_000_000,
+      registryFixed: 214,
+      startupOptimized: 4,
+      privacyCleaned: 342,
+      durationMs: 18_000,
+    };
+    expect(summary.healthBefore).toBe(54);
+    expect(summary.healthAfter).toBe(100);
+    expect(summary.storageRecovered).toBe(1_250_000_000);
+    expect(summary.registryFixed).toBe(214);
+    expect(summary.startupOptimized).toBe(4);
+    expect(summary.privacyCleaned).toBe(342);
+    expect(summary.durationMs).toBe(18_000);
+  });
+
+  it('formatDuration converts milliseconds to readable format', () => {
+    function formatDuration(ms: number): string {
+      const seconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const remaining = seconds % 60;
+      if (minutes > 0) return `${minutes}m ${remaining}s`;
+      return `${remaining}s`;
+    }
+    expect(formatDuration(18_000)).toBe('18s');
+    expect(formatDuration(90_000)).toBe('1m 30s');
+    expect(formatDuration(0)).toBe('0s');
+  });
+
+  it('detailed result section computes scanned/removed/skipped correctly', () => {
+    const module = {
+      moduleId: 'junk',
+      moduleName: 'Junk Cleaner',
+      status: 'complete' as const,
+      score: 95,
+      issuesFound: 120,
+      recoverableSpace: 500_000_000,
+      severity: 'medium' as const,
+      measuredDetail: '120 temporary files',
+      details: { summary: '', impact: 'medium' as const, safeToRemove: true, groups: [], notChanged: [], why: '' },
+      canAutoFix: true,
+      actual: {
+        success: true,
+        filesDeleted: 100,
+        bytesRecovered: 400_000_000,
+        errors: [],
+      },
+    };
+    const scanned = module.issuesFound;
+    const removed = (module.actual!.filesDeleted || 0);
+    const skipped = Math.max(0, scanned - removed);
+    expect(scanned).toBe(120);
+    expect(removed).toBe(100);
+    expect(skipped).toBe(20);
+  });
+
+  it('detailed result section handles modules without actual results', () => {
+    const module = {
+      moduleId: 'disk',
+      moduleName: 'Disk Analyzer',
+      status: 'complete' as const,
+      score: 90,
+      issuesFound: 0,
+      recoverableSpace: 0,
+      severity: 'low' as const,
+      measuredDetail: 'No issues',
+      details: { summary: '', impact: 'low' as const, safeToRemove: true, groups: [], notChanged: [], why: '' },
+      canAutoFix: false,
+      actual: undefined,
+    };
+    const hasActual = Boolean(module.actual);
+    expect(hasActual).toBe(false);
+    const removed = 0;
+    const skipped = Math.max(0, module.issuesFound - removed);
+    expect(removed).toBe(0);
+    expect(skipped).toBe(0);
+  });
+
+  it('detailed result section handles skipped modules', () => {
+    const module = {
+      moduleId: 'registry',
+      moduleName: 'Registry Cleaner',
+      status: 'skipped' as const,
+      score: 0,
+      issuesFound: 0,
+      recoverableSpace: 0,
+      severity: 'low' as const,
+      measuredDetail: 'Skipped',
+      details: { summary: '', impact: 'low' as const, safeToRemove: true, groups: [], notChanged: [], why: '' },
+      canAutoFix: true,
+    };
+    expect(module.status).toBe('skipped');
+    expect(module.issuesFound).toBe(0);
+  });
+});

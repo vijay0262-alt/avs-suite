@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button, Card } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
 import {
@@ -14,8 +15,11 @@ import {
   CircleStackIcon,
   ServerIcon,
   InformationCircleIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/outline';
 import { Modal } from './Modal';
+import { useAnimatedNumber } from './useAnimatedNumber';
+import { SCORE_ZONE_CONFIG, type ScoreZone } from '../dashboard.types';
 import type {
   HealthScanStep,
   HealthScanModuleResult,
@@ -49,6 +53,19 @@ function formatDuration(ms: number): string {
   const remaining = seconds % 60;
   if (minutes > 0) return `${minutes}m ${remaining}s`;
   return `${remaining}s`;
+}
+
+function scoreToZone(score: number): ScoreZone {
+  if (score >= 100) return 'perfect';
+  if (score >= 90) return 'excellent';
+  if (score >= 80) return 'good';
+  if (score >= 60) return 'fair';
+  if (score >= 40) return 'poor';
+  return 'critical';
+}
+
+function scoreToColor(score: number): string {
+  return SCORE_ZONE_CONFIG[scoreToZone(score)].textColor;
 }
 
 function ModuleIcon({ id }: { id: string }) {
@@ -337,182 +354,333 @@ export function HealthScanModal({
   }
 
   if (step === 'complete' && report) {
-    const beforeOverall = report.modules.length
-      ? Math.round(report.modules.reduce((s, m) => s + (m.verification?.beforeScore ?? m.score), 0) / report.modules.length)
-      : report.overallScore;
-    const afterOverall = report.overallScore;
-    const elapsed = result?.elapsedMs ?? execution?.elapsedMs ?? 0;
-    const hasFailures = report.modules.some((m) => m.actual && !m.actual.success);
-    const modulesWithActual = report.modules.filter((m) => m.actual);
-    const totalBytesRecovered = modulesWithActual.reduce((s, m) => s + (m.actual?.bytesRecovered || 0), 0);
-    const totalItemsRemoved = modulesWithActual.reduce((s, m) => s + (m.actual?.itemsRemoved || 0), 0);
-    const totalEntriesDisabled = modulesWithActual.reduce((s, m) => s + (m.actual?.entriesDisabled || 0), 0);
-    const totalIssuesFixed = modulesWithActual.reduce((s, m) => s + (m.actual?.issuesFixed || 0), 0);
-    const totalFilesDeleted = modulesWithActual.reduce((s, m) => s + (m.actual?.filesDeleted || 0), 0);
-    const scoreChanged = afterOverall !== beforeOverall;
-
     return (
-      <Modal
-        open
-        title={hasFailures ? 'Optimization Completed with Failures' : 'Optimization Complete'}
+      <CompleteStep
+        report={report}
+        result={result}
+        execution={execution}
+        error={error}
         onClose={onClose}
-        size="lg"
-        actions={
-          <Button onClick={onClose} leftIcon={<CheckCircleIcon className="h-4 w-4" />}>
-            Done
-          </Button>
-        }
-      >
-        <div className="space-y-6">
-          <div className="flex items-center justify-center gap-4">
-            <div className={`p-3 rounded-full ${hasFailures ? 'bg-semantic-warning/10' : 'bg-semantic-success/10'}`}>
-              {hasFailures ? (
-                <ExclamationTriangleIcon className="h-10 w-10 text-semantic-warning" aria-hidden />
-              ) : (
-                <CheckCircleIcon className="h-10 w-10 text-semantic-success" aria-hidden />
-              )}
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-text-primary tabular-nums">
-                {beforeOverall} <ArrowRightIcon className="h-6 w-6 inline mx-1 text-text-muted" /> {afterOverall}
-              </div>
-              <div className="text-sm text-text-secondary">Health Score (verified by fresh scan)</div>
-            </div>
-          </div>
-
-          {/* Actual measured results only */}
-          <div>
-            <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">Actual Results</div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {totalFilesDeleted > 0 && (
-                <Card>
-                  <div className="text-xl font-bold text-text-primary tabular-nums">{totalFilesDeleted}</div>
-                  <div className="text-xs text-text-secondary">Files Deleted</div>
-                </Card>
-              )}
-              {totalBytesRecovered > 0 && (
-                <Card>
-                  <div className="text-xl font-bold text-semantic-success tabular-nums">{formatBytes(totalBytesRecovered)}</div>
-                  <div className="text-xs text-text-secondary">Space Recovered</div>
-                </Card>
-              )}
-              {totalEntriesDisabled > 0 && (
-                <Card>
-                  <div className="text-xl font-bold text-text-primary tabular-nums">{totalEntriesDisabled}</div>
-                  <div className="text-xs text-text-secondary">Startup Entries Disabled</div>
-                </Card>
-              )}
-              {totalItemsRemoved > 0 && (
-                <Card>
-                  <div className="text-xl font-bold text-text-primary tabular-nums">{totalItemsRemoved}</div>
-                  <div className="text-xs text-text-secondary">Privacy Traces Removed</div>
-                </Card>
-              )}
-              {totalIssuesFixed > 0 && (
-                <Card>
-                  <div className="text-xl font-bold text-text-primary tabular-nums">{totalIssuesFixed}</div>
-                  <div className="text-xs text-text-secondary">Registry Issues Fixed</div>
-                </Card>
-              )}
-              <Card>
-                <div className="text-xl font-bold text-text-primary tabular-nums">{formatDuration(elapsed)}</div>
-                <div className="text-xs text-text-secondary">Duration</div>
-              </Card>
-            </div>
-          </div>
-
-          {/* If nothing changed, say so honestly */}
-          {totalBytesRecovered === 0 && totalItemsRemoved === 0 && totalEntriesDisabled === 0 && totalIssuesFixed === 0 && (
-            <div className="flex items-center gap-3 py-3 px-4 rounded-md bg-surface-muted text-sm text-text-secondary">
-              <InformationCircleIcon className="h-5 w-5 shrink-0" aria-hidden />
-              <span>No measurable improvement detected. Your system may already be optimized.</span>
-            </div>
-          )}
-
-          {/* If score didn't change, explain why */}
-          {!scoreChanged && (
-            <div className="flex items-center gap-3 py-3 px-4 rounded-md bg-surface-muted text-sm text-text-secondary">
-              <InformationCircleIcon className="h-5 w-5 shrink-0" aria-hidden />
-              <span>Health score remained at {afterOverall}. This can happen when cleaned files were small relative to overall system state.</span>
-            </div>
-          )}
-
-          {/* Per-module before/after verification */}
-          <div>
-            <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">Before / After Verification</div>
-            <div className="space-y-2">
-              {modulesWithActual.map((m) => {
-                const actual = m.actual!;
-                const failed = !actual.success;
-                return (
-                  <div key={m.moduleId} className="p-3 rounded-md bg-surface-muted">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-text-primary">{m.moduleName}</span>
-                      {failed ? (
-                        <span className="text-xs font-medium text-semantic-danger">Failed</span>
-                      ) : (
-                        <span className="text-xs font-medium text-semantic-success">Verified</span>
-                      )}
-                    </div>
-                    <div className="text-xs text-text-secondary">
-                      {actual.bytesRecovered !== undefined && actual.bytesRecovered > 0 && `${formatBytes(actual.bytesRecovered)} recovered. `}
-                      {actual.entriesDisabled !== undefined && actual.entriesDisabled > 0 && `${actual.entriesDisabled} disabled. `}
-                      {actual.itemsRemoved !== undefined && actual.itemsRemoved > 0 && `${actual.itemsRemoved} traces removed. `}
-                      {actual.issuesFixed !== undefined && actual.issuesFixed > 0 && `${actual.issuesFixed} issues fixed. `}
-                      {actual.reason && ` — ${actual.reason}`}
-                    </div>
-                    {actual.errors.length > 0 && (
-                      <div className="mt-1 text-xs text-semantic-danger">
-                        {actual.errors.slice(0, 2).join('; ')}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Issues that still need user action */}
-          {(() => {
-            const needsAction = report.modules.filter(
-              (m) => m.status === 'complete' && !m.canAutoFix && m.issuesFound > 0
-            );
-            if (needsAction.length === 0) return null;
-            return (
-              <div>
-                <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">
-                  Still needs your attention
-                </div>
-                <div className="space-y-2">
-                  {needsAction.map((m) => (
-                    <div key={m.moduleId} className="p-3 rounded-md bg-semantic-warning/10 border border-semantic-warning/20">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-text-primary">{m.moduleName}</span>
-                        <span className="text-xs font-medium text-semantic-warning">Manual action</span>
-                      </div>
-                      <div className="text-xs text-text-secondary">{m.measuredDetail}</div>
-                      <div className="text-xs text-text-secondary mt-1">
-                        {m.details.groups.flatMap((g) => g.items.map((i) => i.name)).slice(0, 3).join(', ')}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-
-          {error && (
-            <div className="flex items-start gap-3 py-3 px-4 rounded-md bg-semantic-danger/10 text-sm text-semantic-danger">
-              <ExclamationTriangleIcon className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
-              <span>{error}</span>
-            </div>
-          )}
-        </div>
-      </Modal>
+      />
     );
   }
 
   return null;
+}
+
+// ── Complete Step: Celebration with animated health score ───────────
+
+interface CompleteStepProps {
+  report: HealthScanReport;
+  result: OptimizeExecuteResponse | null;
+  execution: OptimizationExecutionProgress | null;
+  error: string | null;
+  onClose: () => void;
+}
+
+function CompleteStep({ report, result, execution, error, onClose }: CompleteStepProps) {
+  const beforeOverall = report.modules.length
+    ? Math.round(report.modules.reduce((s, m) => s + (m.verification?.beforeScore ?? m.score), 0) / report.modules.length)
+    : report.overallScore;
+  const afterOverall = report.overallScore;
+  const elapsed = result?.elapsedMs ?? execution?.elapsedMs ?? 0;
+  const hasFailures = report.modules.some((m) => m.actual && !m.actual.success);
+  const modulesWithActual = report.modules.filter((m) => m.actual);
+  const totalBytesRecovered = modulesWithActual.reduce((s, m) => s + (m.actual?.bytesRecovered || 0), 0);
+  const totalItemsRemoved = modulesWithActual.reduce((s, m) => s + (m.actual?.itemsRemoved || 0), 0);
+  const totalEntriesDisabled = modulesWithActual.reduce((s, m) => s + (m.actual?.entriesDisabled || 0), 0);
+  const totalIssuesFixed = modulesWithActual.reduce((s, m) => s + (m.actual?.issuesFixed || 0), 0);
+  const totalFilesDeleted = modulesWithActual.reduce((s, m) => s + (m.actual?.filesDeleted || 0), 0);
+  const scoreChanged = afterOverall !== beforeOverall;
+
+  // Animate from before score to after score
+  const animatedScore = useAnimatedNumber(afterOverall, 1200);
+  const displayScore = Math.round(animatedScore);
+  const animatedColor = scoreToColor(animatedScore);
+  const beforeColor = scoreToColor(beforeOverall);
+
+  const [showDetails, setShowDetails] = useState(false);
+
+  return (
+    <Modal
+      open
+      title={hasFailures ? 'Optimization Completed with Failures' : 'Optimization Complete'}
+      onClose={onClose}
+      size="lg"
+      actions={
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => setShowDetails((v) => !v)} data-testid="complete-view-details">
+            {showDetails ? 'Hide Details' : 'View Details'}
+          </Button>
+          <Button onClick={onClose} leftIcon={<CheckCircleIcon className="h-4 w-4" />} data-testid="complete-done">
+            Done
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-6" data-testid="celebration-dialog">
+        {/* Celebration header */}
+        <div className="text-center" data-testid="celebration-header">
+          <div className={`inline-flex p-3 rounded-full mb-3 ${hasFailures ? 'bg-semantic-warning/10' : 'bg-semantic-success/10'}`}>
+            {hasFailures ? (
+              <ExclamationTriangleIcon className="h-10 w-10 text-semantic-warning" aria-hidden />
+            ) : (
+              <CheckCircleIcon className="h-10 w-10 text-semantic-success" aria-hidden />
+            )}
+          </div>
+          <h3 className="text-lg font-semibold text-text-primary">
+            {hasFailures ? 'Optimization Completed with Failures' : 'Your PC has been successfully optimized.'}
+          </h3>
+        </div>
+
+        {/* Animated Health Score Gauge */}
+        <div className="flex items-center justify-center gap-6 py-4" data-testid="health-score-animation">
+          {/* Before score */}
+          <div className="text-center">
+            <div className={`text-4xl font-bold tabular-nums ${beforeColor}`}>
+              {beforeOverall}
+            </div>
+            <div className="text-xs text-text-muted mt-1">Before</div>
+          </div>
+
+          {/* Arrow */}
+          <ArrowRightIcon className="h-8 w-8 text-text-muted" aria-hidden />
+
+          {/* After score (animated) */}
+          <div className="text-center">
+            <div
+              className={`text-5xl font-bold tabular-nums ${animatedColor} transition-colors duration-500`}
+              data-testid="animated-health-score"
+            >
+              {displayScore}
+            </div>
+            <div className="text-xs text-text-muted mt-1">After</div>
+            <div className={`text-sm font-medium mt-1 ${animatedColor} transition-colors duration-500`}>
+              {SCORE_ZONE_CONFIG[scoreToZone(animatedScore)].label}
+            </div>
+          </div>
+        </div>
+
+        {/* Summary metrics grid */}
+        <div>
+          <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">Optimization Summary</div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4" data-testid="celebration-summary">
+            <Card>
+              <div className="text-xl font-bold text-semantic-success tabular-nums">
+                {formatBytes(totalBytesRecovered)}
+              </div>
+              <div className="text-xs text-text-secondary">Recovered Storage</div>
+            </Card>
+            {totalIssuesFixed > 0 && (
+              <Card>
+                <div className="text-xl font-bold text-text-primary tabular-nums">
+                  {totalIssuesFixed}
+                </div>
+                <div className="text-xs text-text-secondary">Registry Fixed</div>
+              </Card>
+            )}
+            {totalEntriesDisabled > 0 && (
+              <Card>
+                <div className="text-xl font-bold text-text-primary tabular-nums">
+                  {totalEntriesDisabled}
+                </div>
+                <div className="text-xs text-text-secondary">Startup Optimized</div>
+              </Card>
+            )}
+            {totalItemsRemoved > 0 && (
+              <Card>
+                <div className="text-xl font-bold text-text-primary tabular-nums">
+                  {totalItemsRemoved}
+                </div>
+                <div className="text-xs text-text-secondary">Privacy Files Removed</div>
+              </Card>
+            )}
+            {totalFilesDeleted > 0 && (
+              <Card>
+                <div className="text-xl font-bold text-text-primary tabular-nums">
+                  {totalFilesDeleted}
+                </div>
+                <div className="text-xs text-text-secondary">Files Deleted</div>
+              </Card>
+            )}
+            <Card>
+              <div className="text-xl font-bold text-text-primary tabular-nums">
+                {formatDuration(elapsed)}
+              </div>
+              <div className="text-xs text-text-secondary">Time Taken</div>
+            </Card>
+          </div>
+        </div>
+
+        {/* If nothing changed, say so honestly */}
+        {totalBytesRecovered === 0 && totalItemsRemoved === 0 && totalEntriesDisabled === 0 && totalIssuesFixed === 0 && (
+          <div className="flex items-center gap-3 py-3 px-4 rounded-md bg-surface-muted text-sm text-text-secondary">
+            <InformationCircleIcon className="h-5 w-5 shrink-0" aria-hidden />
+            <span>No measurable improvement detected. Your system may already be optimized.</span>
+          </div>
+        )}
+
+        {/* If score didn't change, explain why */}
+        {!scoreChanged && (
+          <div className="flex items-center gap-3 py-3 px-4 rounded-md bg-surface-muted text-sm text-text-secondary">
+            <InformationCircleIcon className="h-5 w-5 shrink-0" aria-hidden />
+            <span>Health score remained at {afterOverall}. This can happen when cleaned files were small relative to overall system state.</span>
+          </div>
+        )}
+
+        {/* Expandable Detailed Results */}
+        {showDetails && (
+          <div className="space-y-3" data-testid="detailed-results">
+            <div className="text-xs uppercase tracking-wide text-text-muted">Detailed Results</div>
+            {modulesWithActual.map((m) => (
+              <DetailedResultSection key={m.moduleId} module={m} />
+            ))}
+
+            {/* Modules without actual results (skipped or no issues) */}
+            {report.modules
+              .filter((m) => !m.actual)
+              .map((m) => (
+                <DetailedResultSection key={m.moduleId} module={m} />
+              ))}
+          </div>
+        )}
+
+        {/* Issues that still need user action */}
+        {(() => {
+          const needsAction = report.modules.filter(
+            (m) => m.status === 'complete' && !m.canAutoFix && m.issuesFound > 0
+          );
+          if (needsAction.length === 0) return null;
+          return (
+            <div>
+              <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">
+                Still needs your attention
+              </div>
+              <div className="space-y-2">
+                {needsAction.map((m) => (
+                  <div key={m.moduleId} className="p-3 rounded-md bg-semantic-warning/10 border border-semantic-warning/20">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-text-primary">{m.moduleName}</span>
+                      <span className="text-xs font-medium text-semantic-warning">Manual action</span>
+                    </div>
+                    <div className="text-xs text-text-secondary">{m.measuredDetail}</div>
+                    <div className="text-xs text-text-secondary mt-1">
+                      {m.details.groups.flatMap((g) => g.items.map((i) => i.name)).slice(0, 3).join(', ')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {error && (
+          <div className="flex items-start gap-3 py-3 px-4 rounded-md bg-semantic-danger/10 text-sm text-semantic-danger">
+            <ExclamationTriangleIcon className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
+            <span>{error}</span>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+// ── Expandable Detailed Result Section ───────────────────────────────
+
+function DetailedResultSection({ module: m }: { module: HealthScanModuleResult }) {
+  const [expanded, setExpanded] = useState(false);
+  const actual = m.actual;
+  const hasActual = Boolean(actual);
+  const scanned = m.issuesFound;
+  const removed = actual
+    ? (actual.filesDeleted || 0) + (actual.itemsRemoved || 0) + (actual.entriesDisabled || 0) + (actual.issuesFixed || 0)
+    : 0;
+  const skipped = Math.max(0, scanned - removed);
+  const reason = actual?.reason || (m.canAutoFix ? 'Automatically optimized' : 'Requires manual action');
+
+  return (
+    <div className="rounded-md bg-surface-muted overflow-hidden" data-testid={`detail-section-${m.moduleId}`}>
+      <button
+        className="w-full flex items-center justify-between p-3 text-left hover:bg-surface-muted/80 transition-colors"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        data-testid={`detail-toggle-${m.moduleId}`}
+      >
+        <div className="flex items-center gap-3">
+          <div className="text-text-muted">
+            <ModuleIcon id={m.moduleId} />
+          </div>
+          <span className="text-sm font-medium text-text-primary">{m.moduleName}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          {hasActual && (
+            <span className={`text-xs font-medium ${actual!.success ? 'text-semantic-success' : 'text-semantic-danger'}`}>
+              {actual!.success ? 'Verified' : 'Failed'}
+            </span>
+          )}
+          {!hasActual && m.status === 'skipped' && (
+            <span className="text-xs font-medium text-text-muted">Skipped</span>
+          )}
+          {!hasActual && m.status === 'complete' && m.issuesFound === 0 && (
+            <span className="text-xs font-medium text-semantic-success">Clean</span>
+          )}
+          <ChevronDownIcon
+            className={`h-4 w-4 text-text-muted transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+            aria-hidden
+          />
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="px-3 pb-3 space-y-2 border-t border-border/50 pt-2" data-testid={`detail-content-${m.moduleId}`}>
+          {/* Scanned / Removed / Skipped / Reason */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div>
+              <div className="text-text-muted">Scanned</div>
+              <div className="font-medium text-text-primary tabular-nums">{scanned}</div>
+            </div>
+            <div>
+              <div className="text-text-muted">Removed</div>
+              <div className="font-medium text-semantic-success tabular-nums">{removed}</div>
+            </div>
+            <div>
+              <div className="text-text-muted">Skipped</div>
+              <div className="font-medium text-text-secondary tabular-nums">{skipped}</div>
+            </div>
+            <div>
+              <div className="text-text-muted">Reason</div>
+              <div className="font-medium text-text-secondary">{reason}</div>
+            </div>
+          </div>
+
+          {/* Actual measured results */}
+          {hasActual && actual!.bytesRecovered !== undefined && actual!.bytesRecovered > 0 && (
+            <div className="text-xs text-text-secondary">
+              {formatBytes(actual!.bytesRecovered)} recovered
+            </div>
+          )}
+
+          {/* Errors */}
+          {hasActual && actual!.errors.length > 0 && (
+            <div className="text-xs text-semantic-danger">
+              {actual!.errors.slice(0, 3).join('; ')}
+            </div>
+          )}
+
+          {/* Before/After verification if available */}
+          {m.verification && (
+            <div className="text-xs text-text-secondary">
+              Score: {m.verification.beforeScore} → {m.verification.afterScore}
+              {' · '}
+              Issues: {m.verification.beforeIssues} → {m.verification.afterIssues}
+              {' · '}
+              Recoverable: {formatBytes(m.verification.beforeRecoverable)} → {formatBytes(m.verification.afterRecoverable)}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function StatusBadge({ status }: { status: HealthScanModuleResult['status'] }) {
