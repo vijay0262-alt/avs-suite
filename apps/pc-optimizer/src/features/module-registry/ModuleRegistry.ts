@@ -189,6 +189,10 @@ class ModuleRegistryImpl {
     this.notifyListeners();
   }
 
+  refreshEntries(): void {
+    this.notifyListeners();
+  }
+
   getStatus(moduleId: ModuleId): ModuleLifecycleState {
     return this.statuses.get(moduleId) ?? 'ready';
   }

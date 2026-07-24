@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { Card, Button } from '@avs/ui';
-import { ChevronRightIcon } from '@heroicons/react/24/outline';
+import { ChevronRightIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 import { useModuleRegistry } from '../useModuleRegistry';
 import { MODULE_LIFECYCLE_CONFIG } from '../moduleRegistry.types';
 import type { ModuleRegistryEntry } from '../moduleRegistry.types';
@@ -44,7 +44,12 @@ function ModuleCard({ entry, onNavigate }: { entry: ModuleRegistryEntry; onNavig
       data-testid={`module-card-${metadata.moduleId}`}
     >
       <div className="flex items-center justify-between mb-2">
-        <div className="text-base font-semibold text-text-primary">{metadata.displayName}</div>
+        <div className="flex items-center gap-2">
+          {locked && (
+            <LockClosedIcon className="h-4 w-4 text-text-muted" aria-hidden data-testid={`module-lock-${metadata.moduleId}`} />
+          )}
+          <div className="text-base font-semibold text-text-primary">{metadata.displayName}</div>
+        </div>
         <div className="flex items-center gap-2">
           <span
             className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusConfig.colorClass} ${statusConfig.bgClass}`}
@@ -63,11 +68,17 @@ function ModuleCard({ entry, onNavigate }: { entry: ModuleRegistryEntry; onNavig
         <span className="text-xs text-text-muted capitalize">{metadata.category}</span>
       </div>
 
+      {locked && (
+        <div className="mb-3 text-xs text-text-muted" data-testid={`module-upgrade-${metadata.moduleId}`}>
+          Upgrade to unlock this feature
+        </div>
+      )}
+
       <Button
         variant="secondary"
         size="sm"
         onClick={() => onNavigate(metadata.routePath)}
-        rightIcon={<ChevronRightIcon className="h-4 w-4" />}
+        rightIcon={locked ? <LockClosedIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
         disabled={locked}
         className="w-full justify-between"
       >

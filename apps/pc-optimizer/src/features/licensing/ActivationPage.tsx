@@ -156,8 +156,8 @@ export default function ActivationPage() {
   const productCode = sdkInfo?.product_code ?? 'AVS_PC_OPTIMIZER';
   const serverEdition = sdkInfo?.status.edition ?? edition;
   const lastValidated = sdkInfo?.status.last_validated ?? licenseView?.lastValidation;
-  const serverUrl = sdkInfo?.server_url ?? '—';
-  const sdkVersion = sdkInfo?.sdk_version ?? '—';
+  const serverUrl = sdkInfo?.server_url ?? 'Not connected';
+  const sdkVersion = sdkInfo?.sdk_version ?? 'Not available';
   const daysRemaining = sdkInfo?.days_remaining ?? null;
   const remainingDevices = sdkInfo?.remaining_devices ?? licenseView?.maxDevices ?? 0;
   const maxDevices = licenseView?.maxDevices ?? 0;
@@ -283,7 +283,7 @@ export default function ActivationPage() {
           <div>
             <div className="text-text-muted">Device ID</div>
             <div className="font-mono text-xs text-text-secondary mt-1">
-              {deviceId ?? 'Not available'}
+              {deviceId && deviceId !== 'pending-device-id' ? deviceId : 'Acquiring...'}
             </div>
           </div>
           <div>

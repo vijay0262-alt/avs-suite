@@ -13,6 +13,7 @@ import type { LicenseView, ValidationResult } from '@avs/licensing';
 import type { LicenseState } from '@avs/licensing';
 import { LICENSE_STATE_LABELS } from '@avs/licensing';
 import { initFeatureGate, updateFeatureGateEdition } from './FeatureGate';
+import { moduleRegistry } from '../module-registry/ModuleRegistry';
 
 export interface LicenseContextValue {
   manager: ILicenseManager | null;
@@ -69,6 +70,7 @@ export function LicenseProvider({
     if (view) {
       updateFeatureGateEdition(view.edition);
     }
+    moduleRegistry.refreshEntries();
   }, [manager]);
 
   useEffect(() => {

@@ -880,6 +880,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       }
 
       this.setState({
+        healthScanStep: 'verifying',
         healthScanExecution: {
           ...this.state.healthScanExecution!,
           currentModule: 'Verifying',

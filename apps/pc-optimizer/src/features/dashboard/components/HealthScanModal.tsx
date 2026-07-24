@@ -365,6 +365,27 @@ export function HealthScanModal({
     );
   }
 
+  if (step === 'complete') {
+    return (
+      <Modal open title="Optimization Complete" onClose={onClose} size="md" actions={
+        <Button onClick={onClose} leftIcon={<CheckCircleIcon className="h-4 w-4" />}>Done</Button>
+      }>
+        <div className="space-y-4 text-center">
+          <div className="flex justify-center">
+            {error ? (
+              <XCircleIcon className="h-10 w-10 text-semantic-danger" aria-hidden />
+            ) : (
+              <CheckCircleIcon className="h-10 w-10 text-semantic-success" aria-hidden />
+            )}
+          </div>
+          <div className="text-sm text-text-secondary">
+            {error ? error : 'No optimization was required. Your system is already healthy.'}
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
   return null;
 }
 
