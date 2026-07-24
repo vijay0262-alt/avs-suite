@@ -23,8 +23,17 @@ export default function DashboardPage() {
     return () => vm.dispose();
   }, [vm]);
 
-  const isScanning = state.healthScanStep !== 'idle';
-  const isOptimizing = state.healthScanStep === 'optimizing';
+  const isScanning = state.healthScanStep !== 'idle' && state.healthScanStep !== 'complete';
+  const buttonLabel = (() => {
+    switch (state.healthScanStep) {
+      case 'preparing': return 'Preparing...';
+      case 'scanning': return 'Analyzing...';
+      case 'optimizing': return 'Optimizing...';
+      case 'verifying': return 'Verifying...';
+      case 'updating_dashboard': return 'Updating Dashboard...';
+      default: return 'Improve PC Health';
+    }
+  })();
 
   return (
     <div data-testid="page-dashboard">
@@ -78,7 +87,7 @@ export default function DashboardPage() {
               }
               data-testid="improve-health-button"
             >
-              {isScanning ? (isOptimizing ? 'Optimizing...' : 'Analyzing...') : 'Improve PC Health'}
+              {buttonLabel}
             </Button>
           </div>
 

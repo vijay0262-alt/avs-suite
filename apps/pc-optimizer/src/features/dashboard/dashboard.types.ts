@@ -302,10 +302,12 @@ export const HEALTH_STATUS_CONFIG: Record<
 // Health Scan workflow
 export type HealthScanStep =
   | 'idle'
+  | 'preparing'
   | 'scanning'
   | 'report'
   | 'optimizing'
   | 'verifying'
+  | 'updating_dashboard'
   | 'complete';
 
 export interface OptimizationDetailItem {
@@ -393,6 +395,10 @@ export interface OptimizationExecutionProgress {
   itemsProcessed: number;
   spaceRecovered: number;
   elapsedMs: number;
+  /** Live status messages shown during optimization (e.g. "Cleaning Temporary Files..."). */
+  liveMessages: string[];
+  /** Total files removed during optimization. */
+  filesRemoved: number;
 }
 
 export interface HealthScanHistoryEntry {

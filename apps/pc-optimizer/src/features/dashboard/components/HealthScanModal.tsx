@@ -7,6 +7,7 @@ import {
   ClockIcon,
   SparklesIcon,
   ArrowRightIcon,
+  ArrowPathIcon,
   ShieldCheckIcon,
   TrashIcon,
   CpuChipIcon,
@@ -81,6 +82,32 @@ export function HealthScanModal({
   const done = modules.filter((m) => m.status === 'complete' || m.status === 'error' || m.status === 'skipped').length;
   const progress = Math.round((done / total) * 100);
   const currentModule = modules.find((m) => m.status === 'scanning');
+
+  if (step === 'preparing') {
+    return (
+      <Modal open title="Preparing Optimization" onClose={onCancel} size="lg" actions={null}>
+        <div className="space-y-6 text-center" data-testid="health-scan-preparing">
+          <div className="flex justify-center">
+            <SparklesIcon className="h-12 w-12 text-brand-primary animate-pulse" aria-hidden />
+          </div>
+          <div className="text-lg font-medium text-text-primary">
+            Preparing Optimization...
+          </div>
+          <p className="text-sm text-text-secondary">
+            Analyzing your system to find the best optimization actions.
+          </p>
+          <div className="w-full h-3 bg-bg-secondary rounded-full overflow-hidden">
+            <div className="h-full bg-brand-primary transition-all duration-500" style={{ width: '5%' }} />
+          </div>
+          <div className="flex justify-center">
+            <Button variant="secondary" onClick={onCancel}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
 
   if (step === 'scanning') {
     return (
@@ -200,7 +227,7 @@ export function HealthScanModal({
   if (step === 'optimizing') {
     return (
       <Modal open title="Optimizing" onClose={onCancelExecute} size="lg" actions={null}>
-        <div className="space-y-6 text-center">
+        <div className="space-y-6 text-center" data-testid="health-scan-optimizing">
           <div className="text-lg font-medium text-text-primary">
             {execution?.currentModule || 'Optimizing...'}
           </div>
@@ -212,12 +239,12 @@ export function HealthScanModal({
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
               <div className="text-2xl font-bold text-text-primary tabular-nums">
-                {execution?.itemsProcessed || 0}
+                {execution?.filesRemoved || 0}
               </div>
-              <div className="text-sm text-text-secondary">Items Processed</div>
+              <div className="text-sm text-text-secondary">Files Removed</div>
             </Card>
             <Card>
               <div className="text-2xl font-bold text-semantic-success tabular-nums">
@@ -227,11 +254,34 @@ export function HealthScanModal({
             </Card>
             <Card>
               <div className="text-2xl font-bold text-text-primary tabular-nums">
+                {execution?.itemsProcessed || 0}
+              </div>
+              <div className="text-sm text-text-secondary">Items Processed</div>
+            </Card>
+            <Card>
+              <div className="text-2xl font-bold text-text-primary tabular-nums">
                 {execution ? formatDuration(execution.elapsedMs) : '0s'}
               </div>
               <div className="text-sm text-text-secondary">Elapsed</div>
             </Card>
           </div>
+
+          {execution?.liveMessages && execution.liveMessages.length > 0 && (
+            <div className="text-left space-y-1.5 max-h-32 overflow-y-auto" data-testid="optimization-live-messages">
+              {execution.liveMessages.slice(-8).map((msg, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm text-text-secondary">
+                  {msg.startsWith('✓') ? (
+                    <CheckCircleIcon className="h-4 w-4 text-semantic-success shrink-0" aria-hidden />
+                  ) : msg.startsWith('✗') ? (
+                    <XCircleIcon className="h-4 w-4 text-semantic-danger shrink-0" aria-hidden />
+                  ) : (
+                    <ArrowPathIcon className="h-4 w-4 text-brand-primary shrink-0 animate-spin" aria-hidden />
+                  )}
+                  <span>{msg}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="flex justify-center">
             <Button variant="secondary" onClick={onCancelExecute}>
@@ -256,6 +306,30 @@ export function HealthScanModal({
             <Button variant="secondary" onClick={onCancelExecute}>
               Cancel
             </Button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (step === 'updating_dashboard') {
+    return (
+      <Modal open title="Updating Dashboard" onClose={onCancelExecute} size="lg" actions={null}>
+        <div className="space-y-6 text-center" data-testid="health-scan-updating-dashboard">
+          <div className="flex justify-center">
+            <ArrowPathIcon className="h-12 w-12 text-brand-primary animate-spin" aria-hidden />
+          </div>
+          <div className="text-lg font-medium text-text-primary">
+            {execution?.currentModule || 'Updating Dashboard...'}
+          </div>
+          <p className="text-sm text-text-secondary">
+            Refreshing health score, issues, and dashboard cards with verified post-optimization data.
+          </p>
+          <div className="w-full h-3 bg-bg-secondary rounded-full overflow-hidden">
+            <div
+              className="h-full bg-brand-primary transition-all duration-300"
+              style={{ width: `${execution?.progress || 95}%` }}
+            />
           </div>
         </div>
       </Modal>

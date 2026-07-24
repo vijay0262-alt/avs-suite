@@ -403,7 +403,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     ];
 
     this.setState({
-      healthScanStep: 'scanning',
+      healthScanStep: 'preparing',
       healthScanModules: modules,
       healthScanReport: null,
       healthScanError: null,
@@ -412,7 +412,15 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanResult: null,
     });
 
-    void this.runHealthScan('scan');
+    // Brief preparing phase for UX feedback, then start scanning
+    setTimeout(() => {
+      if (this.state.healthScanCancelled) {
+        this.resetHealthScan();
+        return;
+      }
+      this.setState({ healthScanStep: 'scanning' });
+      void this.runHealthScan('scan');
+    }, 600);
   }
 
   cancelHealthScan(): void {
@@ -792,6 +800,8 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         itemsProcessed: 0,
         spaceRecovered: 0,
         elapsedMs: 0,
+        liveMessages: ['Preparing optimization...'],
+        filesRemoved: 0,
       },
     });
 
@@ -800,16 +810,35 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
 
     try {
       for (const item of fixableModules) {
+        const liveMessage = this.getLiveMessageForModule(item.moduleId);
+        const prevExecution = this.state.healthScanExecution!;
         this.setState({
           healthScanExecution: {
-            ...this.state.healthScanExecution!,
+            ...prevExecution,
             currentModule: item.moduleName,
             progress: Math.max(10, Math.min(90, Math.round((actualMap.size / fixableModules.length) * 80))),
+            liveMessages: [...prevExecution.liveMessages, liveMessage],
           },
         });
         const moduleResult = beforeReport.modules.find((m) => m.moduleId === item.moduleId);
         const actual = moduleResult ? await this.executeModuleAction(moduleResult) : { success: false, errors: ['Module not found in before report'] };
         actualMap.set(item.moduleId, actual);
+
+        // Update real-time counters after each module completes
+        const totalSpace = [...actualMap.values()].reduce((s, a) => s + (a.bytesRecovered || 0), 0);
+        const totalItems = [...actualMap.values()].reduce((s, a) => s + (a.itemsRemoved || 0) + (a.entriesDisabled || 0) + (a.issuesFixed || 0), 0);
+        const totalFiles = [...actualMap.values()].reduce((s, a) => s + (a.filesDeleted || 0), 0);
+        const doneMessage = this.getDoneMessageForModule(item.moduleId, actual);
+        const currentExec = this.state.healthScanExecution!;
+        this.setState({
+          healthScanExecution: {
+            ...currentExec,
+            spaceRecovered: totalSpace,
+            itemsProcessed: totalItems,
+            filesRemoved: totalFiles,
+            liveMessages: [...currentExec.liveMessages, doneMessage],
+          },
+        });
       }
 
       this.setState({
@@ -817,10 +846,22 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           ...this.state.healthScanExecution!,
           currentModule: 'Verifying',
           progress: 90,
+          liveMessages: [...this.state.healthScanExecution!.liveMessages, 'Verifying results...'],
         },
       });
 
       await this.runHealthScan('verify');
+
+      // Transition to updating_dashboard before refreshing metrics
+      this.setState({
+        healthScanStep: 'updating_dashboard',
+        healthScanExecution: {
+          ...this.state.healthScanExecution!,
+          currentModule: 'Updating Dashboard',
+          progress: 95,
+          liveMessages: [...this.state.healthScanExecution!.liveMessages, 'Refreshing Health Score...', 'Updating Dashboard cards...'],
+        },
+      });
       const modulesWithActual = this.state.healthScanModules.map((m) => (actualMap.has(m.moduleId) ? { ...m, actual: actualMap.get(m.moduleId) } : m));
       this.setState({
         healthScanModules: modulesWithActual,
@@ -915,6 +956,33 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         healthScanError: err instanceof Error ? err.message : String(err),
       });
     }
+  }
+
+  private getLiveMessageForModule(moduleId: string): string {
+    const messages: Record<string, string> = {
+      junk: 'Cleaning Temporary Files...',
+      privacy: 'Cleaning Browser Cache...',
+      registry: 'Optimizing Registry...',
+      startup: 'Checking Startup Items...',
+      performance: 'Optimizing Memory...',
+      disk: 'Analyzing Disk Usage...',
+      security: 'Checking Security Status...',
+      system: 'Validating System Health...',
+    };
+    return messages[moduleId] ?? `Optimizing ${moduleId}...`;
+  }
+
+  private getDoneMessageForModule(moduleId: string, actual: HealthScanModuleActual): string {
+    const parts: string[] = [];
+    if (actual.filesDeleted) parts.push(`${actual.filesDeleted} files removed`);
+    if (actual.bytesRecovered) parts.push(`${Math.round(actual.bytesRecovered / 1_000_000)} MB recovered`);
+    if (actual.itemsRemoved) parts.push(`${actual.itemsRemoved} traces cleaned`);
+    if (actual.entriesDisabled) parts.push(`${actual.entriesDisabled} startup items disabled`);
+    if (actual.issuesFixed) parts.push(`${actual.issuesFixed} registry issues fixed`);
+    if (parts.length === 0) {
+      return actual.success ? '✓ No changes needed' : `✗ ${actual.reason || 'Failed'}`;
+    }
+    return `✓ ${parts.join(', ')}`;
   }
 
   private async executeModuleAction(module: HealthScanModuleResult): Promise<HealthScanModuleActual> {
@@ -1071,8 +1139,10 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanModules: [],
       healthScanReport: null,
       healthScanBeforeReport: null,
+      healthScanError: null,
       healthScanExecution: null,
       healthScanResult: null,
+      optimizationSummary: null,
     });
   }
 
