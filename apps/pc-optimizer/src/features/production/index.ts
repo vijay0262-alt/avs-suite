@@ -11,6 +11,10 @@
  * Part 8: Resource Management
  * Part 9: Configuration Management
  * Part 10: Retry & Recovery
+ * Part 11: User-Friendly Error Messages
+ * Part 12: Health Checks
+ * Part 13: Safe Shutdown
+ * Part 14: Future Telemetry Readiness
  */
 
 // Part 1 — Centralized Error Handling
@@ -51,3 +55,18 @@ export { configManager } from './AppConfig';
 // Part 10 — Retry & Recovery
 export type { RetryOptions, RetryResult } from './RetryService';
 export { withRetry, retryModuleInit, retryLicenseValidation, retryFileAccess, calculateRetryDelay } from './RetryService';
+
+// Part 11 — User-Friendly Error Messages
+export { userMessageService } from './UserMessages';
+
+// Part 12 — Health Checks
+export type { HealthCheckStatus, HealthCheckResult, HealthCheckReport } from './HealthChecks';
+export { healthCheckService } from './HealthChecks';
+
+// Part 13 — Safe Shutdown
+export type { ShutdownStep, ShutdownResult, ShutdownReport } from './SafeShutdown';
+export { safeShutdownService } from './SafeShutdown';
+
+// Part 14 — Future Telemetry Readiness
+export type { TelemetryConsentStatus, TelemetryConsent, TelemetryEvent, TelemetryConfig, ITelemetryProvider } from './Telemetry';
+export { telemetryProvider } from './Telemetry';
