@@ -14,6 +14,7 @@ import { LiveStatus } from './components/LiveStatus';
 import { QuickActions } from './components/QuickActions';
 import { Recommendations } from './components/Recommendations';
 import { HealthScanModal } from './components/HealthScanModal';
+import { ModuleCards } from '../module-registry';
 
 export default function DashboardPage() {
   const vm = useMemo(() => new DashboardViewModel(dashboardService), []);
@@ -108,6 +109,13 @@ export default function DashboardPage() {
           />
 
           <QuickActions onNavigate={(path) => navigate(path)} />
+
+          <div>
+            <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">
+              Modules
+            </div>
+            <ModuleCards onNavigate={(path) => navigate(path)} />
+          </div>
 
           <div>
             <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">

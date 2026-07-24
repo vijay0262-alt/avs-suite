@@ -1,0 +1,39 @@
+// Module Registry — central registry for all optimizer modules.
+export type {
+  ModuleLifecycleState,
+  ModuleLifecycleStateConfig,
+  ModuleCategory,
+  ModuleCapabilities,
+  ModuleMetadata,
+  ModuleStatistics,
+  OptimizerModule,
+  ModuleRegistryEntry,
+} from './moduleRegistry.types';
+export { MODULE_LIFECYCLE_CONFIG } from './moduleRegistry.types';
+export { moduleRegistry, ModuleRegistryImpl } from './ModuleRegistry';
+export { BaseModuleAdapter } from './BaseModuleAdapter';
+export {
+  registerAllModules,
+  initializeAllModules,
+  disposeAllModules,
+  clearModuleRegistry,
+} from './registerModules';
+export {
+  JUNK_CLEANER_MODULE,
+  REGISTRY_CLEANER_MODULE,
+  STARTUP_MANAGER_MODULE,
+  PRIVACY_CLEANER_MODULE,
+  DUPLICATE_FINDER_MODULE,
+  DISK_ANALYZER_MODULE,
+  PERFORMANCE_MODULE,
+  SYSTEM_INFORMATION_MODULE,
+  SECURITY_MODULE,
+  DRIVER_UPDATER_MODULE,
+  ANTIVIRUS_MODULE,
+  VPN_MODULE,
+  BACKUP_MODULE,
+  FILE_RECOVERY_MODULE,
+  ALL_MODULE_DEFINITIONS,
+} from './moduleDefinitions';
+export { useModuleRegistry, useAvailableModules, useModuleByPath } from './useModuleRegistry';
+export { ModuleCards } from './components/ModuleCards';
