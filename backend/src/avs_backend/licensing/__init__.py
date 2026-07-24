@@ -374,10 +374,7 @@ _FEATURE_EDITION_RANK: dict[str, int] = {
 # RPC methods that require a minimum edition.
 # Format: { "rpc.method.name": "minimum_edition" }
 _LOCKED_RPC_METHODS: dict[str, str] = {
-    "registry.clean": "professional",
     "privacy.clean": "professional",
-    "startup.disable": "professional",
-    "startup.enable": "professional",
     "duplicate.delete": "professional",
     "updater.upgrade": "professional",
     "updater.upgradeAll": "ultimate",

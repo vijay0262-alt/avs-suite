@@ -752,7 +752,7 @@ describe('Partial failures', () => {
         throw new Error('registry provider failed');
       },
     });
-    service.registerProvider('privacy', makeProvider('privacy', 10));
+    service.registerProvider('startup', makeProvider('startup', 10));
 
     const result = await service.computeHealth();
     expect(result.contributions).toHaveLength(2);

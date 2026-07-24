@@ -16,10 +16,13 @@ describe('Edition Matrix', () => {
   describe('Free edition', () => {
     const edition = 'free';
 
-    it('grants Dashboard, System Info, Disk Analyzer', () => {
+    it('grants Dashboard, System Info', () => {
       expect(isFeatureEnabled('DASHBOARD', edition)).toBe(true);
       expect(isFeatureEnabled('SYSTEM_INFO', edition)).toBe(true);
-      expect(isFeatureEnabled('DISK_ANALYZER', edition)).toBe(true);
+    });
+
+    it('denies Disk Analyzer in Free edition', () => {
+      expect(isFeatureEnabled('DISK_ANALYZER', edition)).toBe(false);
     });
 
     it('grants Junk Cleaner Basic (scan, preview, clean)', () => {
@@ -31,34 +34,34 @@ describe('Edition Matrix', () => {
       expect(isFeatureEnabled('JUNK_CLEANER_UNLIMITED', edition)).toBe(false);
     });
 
-    it('grants Registry Scan but denies Registry Fix', () => {
+    it('grants Registry Scan and Registry Fix', () => {
       expect(isFeatureEnabled('REGISTRY_SCAN', edition)).toBe(true);
-      expect(isFeatureEnabled('REGISTRY_FIX', edition)).toBe(false);
+      expect(isFeatureEnabled('REGISTRY_FIX', edition)).toBe(true);
     });
 
-    it('grants Startup View but denies Startup Disable', () => {
+    it('grants Startup View and Startup Disable', () => {
       expect(isFeatureEnabled('STARTUP_VIEW', edition)).toBe(true);
-      expect(isFeatureEnabled('STARTUP_DISABLE', edition)).toBe(false);
+      expect(isFeatureEnabled('STARTUP_DISABLE', edition)).toBe(true);
     });
 
-    it('grants Privacy Scan but denies Privacy Clean', () => {
-      expect(isFeatureEnabled('PRIVACY_SCAN', edition)).toBe(true);
+    it('denies Privacy Scan and Privacy Clean', () => {
+      expect(isFeatureEnabled('PRIVACY_SCAN', edition)).toBe(false);
       expect(isFeatureEnabled('PRIVACY_CLEAN', edition)).toBe(false);
     });
 
-    it('grants Duplicate Scan but denies Duplicate Delete', () => {
-      expect(isFeatureEnabled('DUPLICATE_SCAN', edition)).toBe(true);
+    it('denies Duplicate Scan and Duplicate Delete', () => {
+      expect(isFeatureEnabled('DUPLICATE_SCAN', edition)).toBe(false);
       expect(isFeatureEnabled('DUPLICATE_DELETE', edition)).toBe(false);
     });
 
-    it('grants Uninstaller View + Standard but denies Deep', () => {
-      expect(isFeatureEnabled('UNINSTALLER_VIEW', edition)).toBe(true);
-      expect(isFeatureEnabled('UNINSTALLER_STANDARD', edition)).toBe(true);
+    it('denies Uninstaller View, Standard, and Deep', () => {
+      expect(isFeatureEnabled('UNINSTALLER_VIEW', edition)).toBe(false);
+      expect(isFeatureEnabled('UNINSTALLER_STANDARD', edition)).toBe(false);
       expect(isFeatureEnabled('UNINSTALLER_DEEP', edition)).toBe(false);
     });
 
-    it('grants Software Update Scan but denies Manual and All', () => {
-      expect(isFeatureEnabled('SOFTWARE_UPDATE_SCAN', edition)).toBe(true);
+    it('denies Software Update Scan, Manual, and All', () => {
+      expect(isFeatureEnabled('SOFTWARE_UPDATE_SCAN', edition)).toBe(false);
       expect(isFeatureEnabled('SOFTWARE_UPDATE_MANUAL', edition)).toBe(false);
       expect(isFeatureEnabled('SOFTWARE_UPDATE_ALL', edition)).toBe(false);
     });
@@ -112,6 +115,14 @@ describe('Edition Matrix', () => {
     it('grants Uninstaller Deep, Software Update Manual', () => {
       expect(isFeatureEnabled('UNINSTALLER_DEEP', edition)).toBe(true);
       expect(isFeatureEnabled('SOFTWARE_UPDATE_MANUAL', edition)).toBe(true);
+    });
+
+    it('grants Disk Analyzer, Privacy Scan, Duplicate Scan, Uninstaller View, Software Update Scan', () => {
+      expect(isFeatureEnabled('DISK_ANALYZER', edition)).toBe(true);
+      expect(isFeatureEnabled('PRIVACY_SCAN', edition)).toBe(true);
+      expect(isFeatureEnabled('DUPLICATE_SCAN', edition)).toBe(true);
+      expect(isFeatureEnabled('UNINSTALLER_VIEW', edition)).toBe(true);
+      expect(isFeatureEnabled('SOFTWARE_UPDATE_SCAN', edition)).toBe(true);
     });
 
     it('grants Performance, Scheduled, Smart Recommendations, History, Health Timeline', () => {

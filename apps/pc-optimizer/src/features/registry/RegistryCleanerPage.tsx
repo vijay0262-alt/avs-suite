@@ -8,12 +8,10 @@ import { PageHeader } from '../../components/PageHeader';
 import { RegistryCleanerViewModel } from './RegistryCleanerViewModel';
 import { registryService } from './registry.service';
 import { CATEGORY_LABELS } from './registry.types';
-import { useFeatureGuard } from '../licensing/useFeatureGuard';
 
 export default function RegistryCleanerPage() {
   const vm = useMemo(() => new RegistryCleanerViewModel(registryService), []);
   const state = useViewModel(vm);
-  const { guard, dialogElement } = useFeatureGuard();
 
   useEffect(() => {
     void vm.bootstrap();
@@ -55,7 +53,7 @@ export default function RegistryCleanerPage() {
               </Button>
               <Button
                 variant="primary"
-                onClick={() => guard('registry.fix', 'Registry Cleaner', () => vm.clean())}
+                onClick={() => vm.clean()}
                 disabled={state.cleaning || selectedCount === 0}
               >
                 {state.cleaning ? 'Fixing…' : `Fix Selected (${selectedCount})`}
@@ -180,7 +178,6 @@ export default function RegistryCleanerPage() {
           )}
         </>
       )}
-      {dialogElement}
     </div>
   );
 }

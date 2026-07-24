@@ -6,7 +6,6 @@ import logging
 from typing import Any
 
 from avs_backend.api.registry import register
-from avs_backend.licensing import require_feature
 from avs_backend.registry_cleaner.registry_scanner import (
     CATEGORIES,
     RegistryIssue,
@@ -46,7 +45,6 @@ def registry_scan(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("registry.clean")
-@require_feature("registry.clean")
 def registry_clean(params: dict[str, Any] | None) -> dict[str, Any]:
     """Back up and remove the selected invalid registry entries."""
     if not params or "issues" not in params:

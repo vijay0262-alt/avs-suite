@@ -76,7 +76,7 @@ export const FEATURES = {
   DISK_ANALYZER: {
     key: 'disk-analyzer',
     description: 'Visualise disk usage by folder and file type.',
-    editions: ['free', 'professional', 'ultimate', 'trial'] as const,
+    editions: ['professional', 'ultimate', 'trial'] as const,
   },
 
   // ── Junk Cleaner ─────────────────────────────────────────────
@@ -104,8 +104,8 @@ export const FEATURES = {
   },
   REGISTRY_FIX: {
     key: 'registry-fix',
-    description: 'Fix registry issues (unlimited entries).',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    description: 'Fix registry issues.',
+    editions: ['free', 'professional', 'ultimate', 'trial'] as const,
   },
 
   // ── Startup Manager ──────────────────────────────────────────
@@ -117,14 +117,14 @@ export const FEATURES = {
   STARTUP_DISABLE: {
     key: 'startup-disable',
     description: 'Enable / disable Windows startup entries and services.',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['free', 'professional', 'ultimate', 'trial'] as const,
   },
 
   // ── Privacy Cleaner ──────────────────────────────────────────
   PRIVACY_SCAN: {
     key: 'privacy-scan',
     description: 'Scan and preview privacy traces.',
-    editions: ['free', 'professional', 'ultimate', 'trial'] as const,
+    editions: ['professional', 'ultimate', 'trial'] as const,
   },
   PRIVACY_CLEAN: {
     key: 'privacy-clean',
@@ -136,7 +136,7 @@ export const FEATURES = {
   DUPLICATE_SCAN: {
     key: 'duplicate-scan',
     description: 'Scan and preview duplicate files.',
-    editions: ['free', 'professional', 'ultimate', 'trial'] as const,
+    editions: ['professional', 'ultimate', 'trial'] as const,
   },
   DUPLICATE_DELETE: {
     key: 'duplicate-delete',
@@ -148,12 +148,12 @@ export const FEATURES = {
   UNINSTALLER_VIEW: {
     key: 'uninstaller-view',
     description: 'View installed applications.',
-    editions: ['free', 'professional', 'ultimate', 'trial'] as const,
+    editions: ['professional', 'ultimate', 'trial'] as const,
   },
   UNINSTALLER_STANDARD: {
     key: 'uninstaller-standard',
     description: 'Standard application uninstall.',
-    editions: ['free', 'professional', 'ultimate', 'trial'] as const,
+    editions: ['professional', 'ultimate', 'trial'] as const,
   },
   UNINSTALLER_DEEP: {
     key: 'uninstaller-deep',
@@ -165,7 +165,7 @@ export const FEATURES = {
   SOFTWARE_UPDATE_SCAN: {
     key: 'software-update-scan',
     description: 'Scan installed software for available updates.',
-    editions: ['free', 'professional', 'ultimate', 'trial'] as const,
+    editions: ['professional', 'ultimate', 'trial'] as const,
   },
   SOFTWARE_UPDATE_MANUAL: {
     key: 'software-update-manual',

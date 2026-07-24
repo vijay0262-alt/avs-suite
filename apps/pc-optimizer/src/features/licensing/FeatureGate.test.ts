@@ -23,12 +23,12 @@ describe('FeatureGate', () => {
       expect(canUse('registry.scan')).toBe(true);
     });
 
-    it('denies registry.fix in free edition', () => {
-      expect(canUse('registry.fix')).toBe(false);
+    it('allows registry.fix in free edition', () => {
+      expect(canUse('registry.fix')).toBe(true);
     });
 
-    it('denies performance.optimize in free edition', () => {
-      expect(canUse('performance.optimize')).toBe(false);
+    it('denies privacy.clean in free edition', () => {
+      expect(canUse('privacy.clean')).toBe(false);
     });
 
     it('denies driver.update in free edition', () => {
@@ -116,10 +116,10 @@ describe('FeatureGate', () => {
   describe('Dynamic unlocking', () => {
     it('unlocks features when state changes from free to annual', () => {
       initFeatureGate('free');
-      expect(canUse('registry.fix')).toBe(false);
+      expect(canUse('privacy.clean')).toBe(false);
 
       initFeatureGate('annual');
-      expect(canUse('registry.fix')).toBe(true);
+      expect(canUse('privacy.clean')).toBe(true);
     });
 
     it('unlocks ultimate features when edition is updated', () => {
@@ -134,10 +134,10 @@ describe('FeatureGate', () => {
   describe('Dynamic locking (expiry)', () => {
     it('locks features when state changes to expired', () => {
       initFeatureGate('annual');
-      expect(canUse('registry.fix')).toBe(true);
+      expect(canUse('privacy.clean')).toBe(true);
 
       initFeatureGate('expired');
-      expect(canUse('registry.fix')).toBe(false);
+      expect(canUse('privacy.clean')).toBe(false);
     });
 
     it('locks ultimate features when edition reverts to free', () => {
