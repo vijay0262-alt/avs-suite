@@ -209,6 +209,22 @@ export interface HealthCategoryDetail {
   severity: 'success' | 'warning' | 'danger';
 }
 
+export type ModuleStatus = 'healthy' | 'needs_cleaning' | 'needs_optimization' | 'not_scanned' | 'running';
+
+export interface ModuleStatusConfig {
+  label: string;
+  colorClass: string;
+  bgClass: string;
+}
+
+export const MODULE_STATUS_CONFIG: Record<ModuleStatus, ModuleStatusConfig> = {
+  healthy:            { label: 'Healthy',          colorClass: 'text-semantic-success', bgClass: 'bg-semantic-success/10' },
+  needs_cleaning:     { label: 'Needs Cleaning',   colorClass: 'text-semantic-warning', bgClass: 'bg-semantic-warning/10' },
+  needs_optimization: { label: 'Needs Optimization', colorClass: 'text-semantic-danger',  bgClass: 'bg-semantic-danger/10' },
+  not_scanned:        { label: 'Not Scanned',      colorClass: 'text-text-muted',       bgClass: 'bg-surface-muted' },
+  running:            { label: 'Running',          colorClass: 'text-brand-primary',    bgClass: 'bg-brand-primary/10' },
+};
+
 export interface HealthIssue {
   id: string;
   category: HealthCategory;

@@ -44,6 +44,7 @@ import { optimizationHistoryService } from '../health/OptimizationHistoryService
 import { healthTimelineService } from '../health/HealthTimelineService';
 import { healthNotificationService } from '../health/HealthNotificationService';
 import type { OptimizationSummary } from './OptimizationSummary.types';
+import { saveSession, loadSession, clearSession } from './sessionPersistence';
 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
 
@@ -184,6 +185,15 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     });
     // Show a default health score immediately (all zeros / 'critical')
     this.recalculateHealth(null, null);
+
+    // Part 15: Restore persisted session from previous app run
+    const persisted = loadSession();
+    if (persisted && persisted.healthScore !== null) {
+      this.setState({
+        optimizationSummary: persisted.optimizationSummary as OptimizationSummary | null,
+      });
+    }
+
     void this.bootstrapData();
   }
 
@@ -936,6 +946,16 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       };
       this.setState({ optimizationSummary: summary });
 
+      // Part 15: Persist session for restart recovery
+      saveSession({
+        optimizationSummary: summary,
+        healthScore: healthAfter,
+        healthZone: this.state.healthScore?.scoreZone ?? null,
+        recommendations: [],
+        lastOptimizationAt: completedAt,
+        savedAt: new Date().toISOString(),
+      });
+
       // Part 8: Record optimization history
       optimizationHistoryService.recordOptimization({
         timestamp: completedAt,
@@ -1144,6 +1164,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanResult: null,
       optimizationSummary: null,
     });
+    clearSession();
   }
 
   // ------------------------------------------------------------------

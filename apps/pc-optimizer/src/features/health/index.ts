@@ -18,6 +18,10 @@ export {
 } from './healthProviders';
 export { dashboardRefreshManager } from './DashboardRefreshManager';
 
+// Part 17 — Future Module Registration
+export type { FutureModuleConfig } from './FutureModules';
+export { FUTURE_MODULE_CONFIGS, isFutureModule, getFutureModuleConfig } from './FutureModules';
+
 // Part 8 — Optimization History
 export type {
   OptimizationHistoryEntry,

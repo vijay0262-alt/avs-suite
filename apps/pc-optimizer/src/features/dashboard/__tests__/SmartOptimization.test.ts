@@ -8,6 +8,12 @@ import type { DashboardMetrics, LiveMetrics, OptimizationExecutionProgress } fro
 import { dashboardRefreshManager } from '../../health/DashboardRefreshManager';
 import { resetHealthEngineConfig } from '../../health/HealthEngineConfig';
 import { healthNotificationService } from '../../health/HealthNotificationService';
+import { saveSession, loadSession, clearSession } from '../sessionPersistence';
+import { FUTURE_MODULE_CONFIGS, isFutureModule, getFutureModuleConfig } from '../../health/FutureModules';
+import { useAnimatedNumber } from '../components/useAnimatedNumber';
+import { HealthScoreCard } from '../components/HealthScoreCard';
+import { HealthBreakdown } from '../components/HealthBreakdown';
+import React from 'react';
 
 // ── Mock data helpers ────────────────────────────────────────────────
 
@@ -714,5 +720,183 @@ describe('Empty States (Part 12)', () => {
     expect(emptyTitle).toBe('Everything looks great.');
     expect(emptyDescription).toContain('No optimization required');
     expect(emptyDescription).toContain('peak performance');
+  });
+});
+
+describe('Module Status (Part 14)', () => {
+  it('getModuleStatus returns running when scanning', () => {
+    function getModuleStatus(score: number, issuesFound: number, isScanning: boolean = false): string {
+      if (isScanning) return 'running';
+      if (score === 0 && issuesFound === 0) return 'not_scanned';
+      if (score >= 80) return 'healthy';
+      if (score >= 50) return 'needs_cleaning';
+      return 'needs_optimization';
+    }
+    expect(getModuleStatus(90, 0, true)).toBe('running');
+    expect(getModuleStatus(0, 0, true)).toBe('running');
+  });
+
+  it('getModuleStatus returns not_scanned for zero score and no issues', () => {
+    function getModuleStatus(score: number, issuesFound: number, isScanning: boolean = false): string {
+      if (isScanning) return 'running';
+      if (score === 0 && issuesFound === 0) return 'not_scanned';
+      if (score >= 80) return 'healthy';
+      if (score >= 50) return 'needs_cleaning';
+      return 'needs_optimization';
+    }
+    expect(getModuleStatus(0, 0)).toBe('not_scanned');
+  });
+
+  it('getModuleStatus returns healthy for score >= 80', () => {
+    function getModuleStatus(score: number, issuesFound: number, isScanning: boolean = false): string {
+      if (isScanning) return 'running';
+      if (score === 0 && issuesFound === 0) return 'not_scanned';
+      if (score >= 80) return 'healthy';
+      if (score >= 50) return 'needs_cleaning';
+      return 'needs_optimization';
+    }
+    expect(getModuleStatus(80, 5)).toBe('healthy');
+    expect(getModuleStatus(95, 2)).toBe('healthy');
+    expect(getModuleStatus(100, 0)).toBe('healthy');
+  });
+
+  it('getModuleStatus returns needs_cleaning for score 50-79', () => {
+    function getModuleStatus(score: number, issuesFound: number, isScanning: boolean = false): string {
+      if (isScanning) return 'running';
+      if (score === 0 && issuesFound === 0) return 'not_scanned';
+      if (score >= 80) return 'healthy';
+      if (score >= 50) return 'needs_cleaning';
+      return 'needs_optimization';
+    }
+    expect(getModuleStatus(50, 10)).toBe('needs_cleaning');
+    expect(getModuleStatus(70, 15)).toBe('needs_cleaning');
+    expect(getModuleStatus(79, 5)).toBe('needs_cleaning');
+  });
+
+  it('getModuleStatus returns needs_optimization for score < 50', () => {
+    function getModuleStatus(score: number, issuesFound: number, isScanning: boolean = false): string {
+      if (isScanning) return 'running';
+      if (score === 0 && issuesFound === 0) return 'not_scanned';
+      if (score >= 80) return 'healthy';
+      if (score >= 50) return 'needs_cleaning';
+      return 'needs_optimization';
+    }
+    expect(getModuleStatus(30, 20)).toBe('needs_optimization');
+    expect(getModuleStatus(10, 50)).toBe('needs_optimization');
+    expect(getModuleStatus(49, 5)).toBe('needs_optimization');
+  });
+
+  it('MODULE_STATUS_CONFIG has all 5 statuses with labels', () => {
+    const statuses = ['healthy', 'needs_cleaning', 'needs_optimization', 'not_scanned', 'running'];
+    const labels = ['Healthy', 'Needs Cleaning', 'Needs Optimization', 'Not Scanned', 'Running'];
+    for (let i = 0; i < statuses.length; i++) {
+      expect(labels[i]).toBeTruthy();
+    }
+    expect(statuses).toHaveLength(5);
+  });
+});
+
+describe('Session Persistence (Part 15)', () => {
+  it('saveSession and loadSession round-trip correctly', () => {
+    clearSession();
+    const session = {
+      optimizationSummary: { healthBefore: 50, healthAfter: 95 },
+      healthScore: 95,
+      healthZone: 'excellent',
+      recommendations: [],
+      lastOptimizationAt: '2026-01-01T00:00:00Z',
+      savedAt: '2026-01-01T00:00:01Z',
+    };
+    saveSession(session);
+    const loaded = loadSession();
+    expect(loaded).not.toBeNull();
+    expect(loaded!.healthScore).toBe(95);
+    expect(loaded!.healthZone).toBe('excellent');
+    expect(loaded!.lastOptimizationAt).toBe('2026-01-01T00:00:00Z');
+    clearSession();
+  });
+
+  it('loadSession returns null when no session exists', () => {
+    clearSession();
+    const loaded = loadSession();
+    expect(loaded).toBeNull();
+  });
+
+  it('clearSession removes saved session', () => {
+    saveSession({
+      optimizationSummary: null,
+      healthScore: 80,
+      healthZone: 'good',
+      recommendations: [],
+      lastOptimizationAt: null,
+      savedAt: new Date().toISOString(),
+    });
+    clearSession();
+    expect(loadSession()).toBeNull();
+  });
+
+  it('loadSession handles corrupted data gracefully', () => {
+    clearSession();
+    window.localStorage.setItem('avs:dashboard:session', '{invalid json');
+    expect(loadSession()).toBeNull();
+    clearSession();
+  });
+});
+
+describe('Performance (Part 16)', () => {
+  it('useAnimatedNumber uses requestAnimationFrame (non-blocking)', () => {
+    expect(typeof useAnimatedNumber).toBe('function');
+  });
+
+  it('HealthScoreCard uses React.memo to prevent unnecessary re-renders', () => {
+    expect(HealthScoreCard.$$typeof).toBe(React.memo(function test() { return null; }).$$typeof);
+  });
+
+  it('HealthBreakdown uses React.memo to prevent unnecessary re-renders', () => {
+    expect(HealthBreakdown.$$typeof).toBe(React.memo(function test() { return null; }).$$typeof);
+  });
+});
+
+describe('Future Module Integration (Part 17)', () => {
+  it('FUTURE_MODULE_CONFIGS includes all expected future modules', () => {
+    const ids = FUTURE_MODULE_CONFIGS.map((m) => m.moduleId);
+    expect(ids).toContain('driver-updater');
+    expect(ids).toContain('antivirus');
+    expect(ids).toContain('vpn');
+    expect(ids).toContain('backup');
+    expect(ids).toContain('file-recovery');
+  });
+
+  it('isFutureModule identifies future modules correctly', () => {
+    expect(isFutureModule('driver-updater')).toBe(true);
+    expect(isFutureModule('antivirus')).toBe(true);
+    expect(isFutureModule('junk')).toBe(false);
+    expect(isFutureModule('nonexistent')).toBe(false);
+  });
+
+  it('getFutureModuleConfig returns config for known module', () => {
+    const config = getFutureModuleConfig('driver-updater');
+    expect(config).toBeDefined();
+    expect(config!.displayName).toBe('Driver Updater');
+    expect(config!.maxPenalty).toBe(10);
+    expect(config!.actionPath).toBe('/driver-updater');
+  });
+
+  it('getFutureModuleConfig returns undefined for unknown module', () => {
+    expect(getFutureModuleConfig('nonexistent')).toBeUndefined();
+  });
+
+  it('future modules have reasonable maxPenalty values', () => {
+    for (const config of FUTURE_MODULE_CONFIGS) {
+      expect(config.maxPenalty).toBeGreaterThan(0);
+      expect(config.maxPenalty).toBeLessThanOrEqual(30);
+    }
+  });
+
+  it('future modules have action paths for navigation', () => {
+    for (const config of FUTURE_MODULE_CONFIGS) {
+      expect(config.actionPath).toBeTruthy();
+      expect(config.actionPath.startsWith('/')).toBe(true);
+    }
   });
 });

@@ -19,6 +19,7 @@ import type {
   HealthScoreWeights,
   HealthBadgeType,
   Recommendation,
+  ModuleStatus,
 } from './dashboard.types';
 import { DEFAULT_HEALTH_WEIGHTS } from './dashboard.types';
 import { getHealthEngineConfig } from '../health/HealthEngineConfig';
@@ -827,4 +828,14 @@ export function generateRecommendations(
   }
 
   return recs;
+}
+
+// ── Module Status (Part 14) ──────────────────────────────────────────
+
+export function getModuleStatus(score: number, issuesFound: number, isScanning: boolean = false): ModuleStatus {
+  if (isScanning) return 'running';
+  if (score === 0 && issuesFound === 0) return 'not_scanned';
+  if (score >= 80) return 'healthy';
+  if (score >= 50) return 'needs_cleaning';
+  return 'needs_optimization';
 }

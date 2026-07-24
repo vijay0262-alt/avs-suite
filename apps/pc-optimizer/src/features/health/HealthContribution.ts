@@ -16,7 +16,14 @@ export type ModuleId =
   | 'performance'
   | 'disk'
   | 'security'
-  | 'system';
+  | 'system'
+  // Future modules — automatically participate in health score, dashboard,
+  // optimization summary, and recommendations without Dashboard changes.
+  | 'driver-updater'
+  | 'antivirus'
+  | 'vpn'
+  | 'backup'
+  | 'file-recovery';
 
 export interface HealthContribution {
   /** Unique module identifier. */
