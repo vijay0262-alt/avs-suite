@@ -77,6 +77,12 @@ export default function ActivationPage() {
     void fetchSdkInfo();
   }, [fetchSdkInfo, state]);
 
+  useEffect(() => {
+    if (sdkInfo) return;
+    const timer = setTimeout(() => { void fetchSdkInfo(); }, 3000);
+    return () => clearTimeout(timer);
+  }, [fetchSdkInfo, sdkInfo]);
+
   const handleActivate = async () => {
     if (!key.trim() || !email.trim()) {
       setError('Please enter both license key and email.');

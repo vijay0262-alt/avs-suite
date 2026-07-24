@@ -45,6 +45,8 @@ import { healthTimelineService } from '../health/HealthTimelineService';
 import { healthNotificationService } from '../health/HealthNotificationService';
 import type { OptimizationSummary } from './OptimizationSummary.types';
 import { saveSession, loadSession, clearSession } from './sessionPersistence';
+import { canUse as featureGateCanUse } from '../licensing/FeatureGate';
+import type { ManagedFeature } from '@avs/licensing';
 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
 
@@ -796,10 +798,36 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     const beforeReport = this.state.healthScanReport;
     if (!beforeReport) return;
 
+    const moduleFeatureMap: Record<string, string> = {
+      junk: 'junk.clean',
+      privacy: 'privacy.clean',
+      registry: 'registry.fix',
+      startup: 'startup.disable',
+      performance: 'performance.optimize',
+    };
     const fixableModules = beforeReport.modules.filter(
-      (m) => m.status === 'complete' && m.canAutoFix && (m.recoverableSpace > 0 || m.issuesFound > 0)
+      (m) => {
+        if (m.status !== 'complete' || !m.canAutoFix) return false;
+        if (m.recoverableSpace <= 0 && m.issuesFound <= 0) return false;
+        const feature = moduleFeatureMap[m.moduleId];
+        if (feature && !featureGateCanUse(feature as ManagedFeature)) return false;
+        return true;
+      }
     );
-    if (fixableModules.length === 0) return;
+    if (fixableModules.length === 0) {
+      this.setState({
+        healthScanStep: 'complete',
+        healthScanError: null,
+        healthScanResult: {
+          success: true,
+          totalRecovered: 0,
+          results: {} as unknown as OptimizeExecuteResponse['results'],
+          elapsedMs: 0,
+          completedAt: new Date().toISOString(),
+        } as OptimizeExecuteResponse,
+      });
+      return;
+    }
 
     this.setState({
       healthScanStep: 'optimizing',
@@ -970,6 +998,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         result: [...actualMap.values()].every((a) => a.success) ? 'success' : 'partial',
         modulesUsed,
       });
+
+      this.setState({
+        healthScanStep: 'complete',
+        healthScanError: null,
+      });
     } catch (err) {
       this.setState({
         healthScanStep: 'complete',
@@ -1021,6 +1054,19 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         success,
         message,
       });
+
+    const moduleFeatureMap: Record<string, string> = {
+      junk: 'junk.clean',
+      privacy: 'privacy.clean',
+      registry: 'registry.fix',
+      startup: 'startup.disable',
+      performance: 'performance.optimize',
+    };
+    const requiredFeature = moduleFeatureMap[module.moduleId];
+    if (requiredFeature && !featureGateCanUse(requiredFeature as ManagedFeature)) {
+      log('blocked', 'feature-gate', undefined, undefined, false, `Feature ${requiredFeature} not available in current edition`);
+      return { success: false, errors: [`This feature requires a higher edition.`], reason: 'Feature not available in Free edition' };
+    }
 
     switch (module.moduleId) {
       case 'junk': {

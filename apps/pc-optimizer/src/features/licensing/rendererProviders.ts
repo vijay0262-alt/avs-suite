@@ -30,7 +30,7 @@ export class MemoryLicenseStorage implements ILicenseStorage {
 
 export class IpcDeviceIdProvider implements IDeviceIdProvider {
   async getDeviceId(): Promise<string> {
-    if (cachedDeviceId) return cachedDeviceId;
+    if (cachedDeviceId && cachedDeviceId !== 'pending-device-id') return cachedDeviceId;
     try {
       const info = await window.avs.license.getInfo();
       if (info?.fingerprint) {
@@ -41,7 +41,7 @@ export class IpcDeviceIdProvider implements IDeviceIdProvider {
       // SDK not ready yet — fall through to fallback
     }
     const fallback = 'pending-device-id';
-    cachedDeviceId = fallback;
+    // Do NOT cache the fallback — allow retry on next call
     return fallback;
   }
 

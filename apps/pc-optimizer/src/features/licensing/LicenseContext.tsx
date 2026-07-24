@@ -83,7 +83,7 @@ export function LicenseProvider({
   useEffect(() => {
     if (!manager) return;
     manager.getDeviceId().then(setDeviceId).catch(() => setDeviceId(null));
-  }, [manager]);
+  }, [manager, state]);
 
   const activate = useCallback(
     async (key: string, email: string) => {
