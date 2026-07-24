@@ -14,10 +14,12 @@ import { moduleRegistry } from './ModuleRegistry';
 type RecommendationListener = (recommendations: Recommendation[]) => void;
 
 const SEVERITY_PRIORITY: Record<string, number> = {
+  danger: 0,
   critical: 0,
   high: 1,
   warning: 2,
-  info: 3,
+  success: 3,
+  info: 4,
 };
 
 class RecommendationAggregatorImpl {
