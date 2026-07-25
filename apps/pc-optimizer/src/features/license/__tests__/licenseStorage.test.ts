@@ -15,6 +15,10 @@ const VALID_LICENSE: StoredLicense = {
   expires_at: null,
   signature: 'base64-signature-data-here',
   last_refreshed: '2026-07-25T12:00:00+00:00',
+  last_successful_validation: '2026-07-25T12:00:00+00:00',
+  grace_period_expiration: '2026-08-24T12:00:00+00:00',
+  product_version: '1.0.0',
+  cache_version: 2,
 };
 
 describe('licenseStorage', () => {
