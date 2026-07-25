@@ -420,7 +420,7 @@ export default function ActivationPage() {
           <div>
             <div className="text-sm font-medium text-text-primary">Continue with Free</div>
             <p className="text-xs text-text-secondary mt-1">
-              Use basic junk cleaning, startup management, privacy cleaning, and disk analysis at no cost.
+              Use junk cleaning (up to 500 MB), registry cleaning, and startup management at no cost.
             </p>
           </div>
           <Badge tone="neutral">Active</Badge>

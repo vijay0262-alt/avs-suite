@@ -13,9 +13,9 @@
  * - Continue with Free
  */
 import { useState, useCallback, createContext, useContext, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button, Card, Badge } from '@avs/ui';
 import { useEdition } from '../config/EditionManager';
-import { useLicense } from '../features/licensing/LicenseContext';
 import type { Edition } from '@avs/shared/featureFlags';
 
 interface UpgradeDialogProps {
@@ -38,10 +38,13 @@ const COMPARISON: readonly FeatureRow[] = [
   { feature: 'Junk Cleaner (Basic)', free: true, professional: true, ultimate: true },
   { feature: 'Junk Cleaner (Deep Scan)', free: false, professional: true, ultimate: true },
   { feature: 'Unlimited Junk Cleaning', free: '500 MB/day', professional: true, ultimate: true },
-  { feature: 'Registry Fix', free: '10 entries', professional: true, ultimate: true },
-  { feature: 'Startup Disable', free: false, professional: true, ultimate: true },
+  { feature: 'Registry Fix', free: true, professional: true, ultimate: true },
+  { feature: 'Startup Disable', free: true, professional: true, ultimate: true },
   { feature: 'Privacy Cleaning', free: false, professional: true, ultimate: true },
-  { feature: 'Duplicate Deletion', free: false, professional: true, ultimate: true },
+  { feature: 'Duplicate File Finder', free: false, professional: true, ultimate: true },
+  { feature: 'Disk Analyzer', free: false, professional: true, ultimate: true },
+  { feature: 'Uninstaller', free: false, professional: true, ultimate: true },
+  { feature: 'Software Updater', free: false, professional: true, ultimate: true },
   { feature: 'Uninstaller Deep Cleanup', free: false, professional: true, ultimate: true },
   { feature: 'Software Update (Manual)', free: false, professional: true, ultimate: true },
   { feature: 'Performance Optimization', free: false, professional: true, ultimate: true },
@@ -277,7 +280,7 @@ const UpgradeDialogContext = createContext<UpgradeDialogState>({
 export function UpgradeDialogProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [trigger, setTrigger] = useState<string | undefined>(undefined);
-  const { activate } = useLicense();
+  const navigate = useNavigate();
 
   const show = useCallback((t?: string) => {
     setTrigger(t);
@@ -296,8 +299,11 @@ export function UpgradeDialogProvider({ children }: { children: ReactNode }) {
         open={open}
         trigger={trigger}
         onClose={hide}
+        onUpgrade={() => {
+          navigate('/license');
+        }}
         onActivate={() => {
-          void activate('', '');
+          navigate('/license');
         }}
         onLearnMore={() => {
           window.open('https://www.avs.example.com/editions', '_blank');

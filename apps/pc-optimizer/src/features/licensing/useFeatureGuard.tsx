@@ -9,6 +9,7 @@
  *   <Button onClick={() => guard('registry.fix', 'Registry Cleaner', () => vm.clean())} />
  */
 import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { canUse } from './FeatureGate';
 import type { ManagedFeature } from '@avs/licensing';
 import { UpgradeDialog, type UpgradeTier } from './UpgradeDialog';
@@ -20,6 +21,7 @@ interface UpgradeDialogState {
 }
 
 export function useFeatureGuard() {
+  const navigate = useNavigate();
   const [dialog, setDialog] = useState<UpgradeDialogState>({
     open: false,
     moduleName: '',
@@ -55,12 +57,9 @@ export function useFeatureGuard() {
   const handleUpgrade = useCallback(
     (_tier: UpgradeTier) => {
       closeDialog();
-      // Navigate to activation page — architecture prepared for purchase flow
-      if (typeof window !== 'undefined') {
-        window.location.hash = '#/license/activation';
-      }
+      navigate('/license');
     },
-    [closeDialog],
+    [closeDialog, navigate],
   );
 
   const dialogElement = (
