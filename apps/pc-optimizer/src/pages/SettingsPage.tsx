@@ -10,7 +10,8 @@ import { useAuthStore } from '../features/auth/authStore';
 import { useEntitlementStore } from '../features/entitlement/entitlementStore';
 import { useLicenseStore } from '../features/license/licenseStore';
 import { useFeatureStore, FEATURE_LABELS } from '../features/feature-engine';
-import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, TrashIcon, LockClosedIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { useUpdateStore } from '../features/update';
+import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, TrashIcon, LockClosedIcon, CheckCircleIcon, CloudArrowDownIcon, ArrowDownTrayIcon, XCircleIcon, RocketLaunchIcon } from '@heroicons/react/24/outline';
 
 interface VerificationLog {
   id: string;
@@ -49,6 +50,24 @@ export default function SettingsPage() {
   const { entitlement, created, syncPhase, syncError, lastSyncAt, syncEntitlement } = useEntitlementStore();
   const { license, activationState, validation, syncStatus, error: licenseError, lastRefreshAt, refresh: refreshLicense, clear: clearLicense, isOffline, cacheStatus, gracePeriod, lastSuccessfulValidation, gracePeriodExpiration, limitedMode } = useLicenseStore();
   const { editionLabel, enabledFeatures, disabledFeatures, enabledCount, disabledCount, initialized: featureEngineInitialized } = useFeatureStore();
+  const {
+    status: updateStatus,
+    updateInfo,
+    manifest: updateManifest,
+    downloadProgress,
+    installer: updateInstaller,
+    error: updateError,
+    lastCheckAt: updateLastCheckAt,
+    currentVersion: updateCurrentVersion,
+    forceUpdate: updateForceUpdate,
+    checkForUpdates,
+    download: downloadUpdate,
+    cancelDownload: cancelUpdateDownload,
+    verifyUpdate,
+    prepareInstaller,
+    launchInstaller,
+    clearError: clearUpdateError,
+  } = useUpdateStore();
 
   useEffect(() => {
     try {
@@ -446,6 +465,158 @@ export default function SettingsPage() {
                     </span>
                   ))}
                 </div>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        <Card
+          title="Updates"
+          actions={
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void checkForUpdates('optimizer')}
+                loading={updateStatus === 'checking'}
+                leftIcon={<CloudArrowDownIcon className="h-4 w-4" />}
+                data-testid="settings-update-check"
+              >
+                Check Now
+              </Button>
+              {updateStatus === 'downloading' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => cancelUpdateDownload()}
+                  leftIcon={<XCircleIcon className="h-4 w-4" />}
+                  data-testid="settings-update-cancel"
+                >
+                  Cancel
+                </Button>
+              )}
+              {updateStatus === 'update-available' && updateManifest && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void downloadUpdate('optimizer')}
+                  leftIcon={<ArrowDownTrayIcon className="h-4 w-4" />}
+                  data-testid="settings-update-download"
+                >
+                  Download
+                </Button>
+              )}
+              {updateStatus === 'downloaded' && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void verifyUpdate()}
+                  data-testid="settings-update-verify"
+                >
+                  Verify
+                </Button>
+              )}
+              {updateStatus === 'verified' && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void prepareInstaller()}
+                  data-testid="settings-update-prepare"
+                >
+                  Prepare
+                </Button>
+              )}
+              {updateStatus === 'ready' && updateInstaller && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => void launchInstaller()}
+                  leftIcon={<RocketLaunchIcon className="h-4 w-4" />}
+                  data-testid="settings-update-install"
+                >
+                  Install
+                </Button>
+              )}
+            </div>
+          }
+        >
+          <div className="space-y-3" data-testid="settings-update-section">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              <span className="text-text-muted">Current Version</span>
+              <span className="text-text-primary">{updateCurrentVersion}</span>
+              <span className="text-text-muted">Latest Version</span>
+              <span className="text-text-primary">{updateInfo?.latestVersion ?? '—'}</span>
+              <span className="text-text-muted">Release Channel</span>
+              <span className="text-text-primary">{updateManifest?.releaseChannel ?? '—'}</span>
+              <span className="text-text-muted">Published Date</span>
+              <span className="text-text-primary">{updateManifest?.publishedAt ? new Date(updateManifest.publishedAt).toLocaleDateString() : '—'}</span>
+              <span className="text-text-muted">File Size</span>
+              <span className="text-text-primary">{updateManifest?.fileSize ? `${(updateManifest.fileSize / 1024 / 1024).toFixed(1)} MB` : '—'}</span>
+              <span className="text-text-muted">Update Status</span>
+              <span>
+                <Badge tone={
+                  updateStatus === 'no-update' ? 'success' :
+                  updateStatus === 'update-available' ? 'warning' :
+                  updateStatus === 'downloading' || updateStatus === 'verifying' || updateStatus === 'preparing' ? 'neutral' :
+                  updateStatus === 'downloaded' || updateStatus === 'verified' || updateStatus === 'ready' ? 'success' :
+                  updateStatus === 'error' ? 'danger' : 'neutral'
+                }>
+                  {updateStatus}
+                </Badge>
+              </span>
+              <span className="text-text-muted">Last Check</span>
+              <span className="text-text-primary">{updateLastCheckAt ? new Date(updateLastCheckAt).toLocaleString() : '—'}</span>
+            </div>
+
+            {updateForceUpdate && updateStatus === 'update-available' && (
+              <div className="rounded-md bg-semantic-danger/10 border border-semantic-danger/30 px-3 py-2" data-testid="settings-force-update-notice">
+                <p className="text-sm text-semantic-danger">
+                  A mandatory update is available. Premium features will be limited until the update is installed.
+                </p>
+              </div>
+            )}
+
+            {downloadProgress && updateStatus === 'downloading' && (
+              <div data-testid="settings-download-progress">
+                <div className="flex items-center justify-between text-xs text-text-muted mb-1">
+                  <span>Downloading… {downloadProgress.percent.toFixed(0)}%</span>
+                  <span>{(downloadProgress.downloadedBytes / 1024 / 1024).toFixed(1)} / {(downloadProgress.totalBytes / 1024 / 1024).toFixed(1)} MB</span>
+                </div>
+                <div className="h-2 rounded-full bg-surface-muted overflow-hidden">
+                  <div
+                    className="h-full bg-brand-primary transition-all"
+                    style={{ width: `${downloadProgress.percent}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {updateManifest?.releaseNotes && updateStatus === 'update-available' && (
+              <div>
+                <div className="text-xs font-medium text-text-muted mb-1">Release Notes</div>
+                <p className="text-sm text-text-secondary whitespace-pre-line">{updateManifest.releaseNotes}</p>
+              </div>
+            )}
+
+            {updateError && (
+              <div className="rounded-md bg-semantic-danger/10 border border-semantic-danger/30 px-3 py-2" data-testid="settings-update-error">
+                <p className="text-sm text-semantic-danger">{updateError}</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => clearUpdateError()}
+                  className="mt-1"
+                >
+                  Dismiss
+                </Button>
+              </div>
+            )}
+
+            {updateStatus === 'ready' && updateInstaller && (
+              <div className="rounded-md bg-semantic-success/10 border border-semantic-success/30 px-3 py-2" data-testid="settings-update-ready">
+                <p className="text-sm text-semantic-success">
+                  Update is ready to install. Click &quot;Install&quot; to launch the installer. The application will close during installation.
+                </p>
               </div>
             )}
           </div>
