@@ -23,7 +23,7 @@ import { useFeatureStore } from '../feature-engine';
 export function AuthBootstrap({ children }: { children: ReactNode }) {
   const { phase, restoreSession, logout } = useAuthStore();
   const { syncEntitlement, clearEntitlement } = useEntitlementStore();
-  const { activate: activateLicense, clear: clearLicense } = useLicenseStore();
+  const { activate: activateLicense, clear: clearLicense, restoreFromCache } = useLicenseStore();
   const { init: initFeatureEngine, destroy: destroyFeatureEngine } = useFeatureStore();
   const [restored, setRestored] = useState(false);
   const syncedRef = useRef(false);
@@ -51,27 +51,29 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (phase === 'authenticated' && !syncedRef.current) {
       syncedRef.current = true;
-      void syncEntitlement('optimizer').then(async (ok) => {
-        // After entitlement sync, activate the license
-        if (ok && !licenseActivatedRef.current) {
-          licenseActivatedRef.current = true;
-          await activateLicense('optimizer').catch(() => {
-            // License activation failure is non-fatal — app continues.
-            // The store records the error; user can retry from Settings.
-          });
-          // Initialize the Feature Engine after license activation
-          initFeatureEngine();
-        }
-      }).catch(() => {
-        // Entitlement sync failure is non-fatal — auth remains valid.
-        // The store records the error; user can retry from Settings.
+      // First, try to restore from cache for instant offline startup
+      void restoreFromCache().then(async () => {
+        // Initialize Feature Engine with cached license (if any)
+        initFeatureEngine();
+        // Then sync entitlement and activate from server
+        void syncEntitlement('optimizer').then(async (ok) => {
+          if (ok && !licenseActivatedRef.current) {
+            licenseActivatedRef.current = true;
+            await activateLicense('optimizer').catch(() => {
+              // License activation failure is non-fatal — app continues.
+              // If offline, cached license (if valid) is already loaded.
+            });
+          }
+        }).catch(() => {
+          // Entitlement sync failure is non-fatal
+        });
       });
     }
     if (phase !== 'authenticated') {
       syncedRef.current = false;
       licenseActivatedRef.current = false;
     }
-  }, [phase, syncEntitlement, activateLicense, initFeatureEngine]);
+  }, [phase, syncEntitlement, activateLicense, initFeatureEngine, restoreFromCache]);
 
   if (!restored || phase === 'checking') {
     return (

@@ -149,5 +149,7 @@ export function isLicenseStructurallyValid(license: unknown): license is StoredL
     typeof l.status === 'string' &&
     typeof l.issued_at === 'string' &&
     typeof l.signature === 'string'
+    // M4.4 fields (last_successful_validation, grace_period_expiration,
+    // product_version, cache_version) are optional for backward compat
   );
 }

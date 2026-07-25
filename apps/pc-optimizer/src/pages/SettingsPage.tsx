@@ -47,7 +47,7 @@ export default function SettingsPage() {
   const { show: showUpgrade } = useUpgradeDialog();
   const { customer, session, logout } = useAuthStore();
   const { entitlement, created, syncPhase, syncError, lastSyncAt, syncEntitlement } = useEntitlementStore();
-  const { license, activationState, validation, syncStatus, error: licenseError, lastRefreshAt, refresh: refreshLicense, clear: clearLicense } = useLicenseStore();
+  const { license, activationState, validation, syncStatus, error: licenseError, lastRefreshAt, refresh: refreshLicense, clear: clearLicense, isOffline, cacheStatus, gracePeriod, lastSuccessfulValidation, gracePeriodExpiration, limitedMode } = useLicenseStore();
   const { editionLabel, enabledFeatures, disabledFeatures, enabledCount, disabledCount, initialized: featureEngineInitialized } = useFeatureStore();
 
   useEffect(() => {
@@ -340,7 +340,45 @@ export default function SettingsPage() {
                 <span className="text-text-primary">{lastRefreshAt ? new Date(lastRefreshAt).toLocaleString() : '—'}</span>
                 <span className="text-text-muted">Validation</span>
                 <span className="text-text-primary">{validation?.message ?? '—'}</span>
+                <span className="text-text-muted">Offline Status</span>
+                <span>
+                  <Badge tone={isOffline ? 'warning' : 'success'}>
+                    {isOffline ? 'Offline' : 'Online'}
+                  </Badge>
+                </span>
+                <span className="text-text-muted">Cache Status</span>
+                <span>
+                  <Badge tone={cacheStatus === 'valid' ? 'success' : cacheStatus === 'expired' ? 'warning' : cacheStatus === 'empty' ? 'neutral' : 'danger'}>
+                    {cacheStatus}
+                  </Badge>
+                </span>
+                <span className="text-text-muted">Last Validation</span>
+                <span className="text-text-primary">{lastSuccessfulValidation ? new Date(lastSuccessfulValidation).toLocaleString() : '—'}</span>
+                <span className="text-text-muted">Grace Expiration</span>
+                <span className="text-text-primary">{gracePeriodExpiration ? new Date(gracePeriodExpiration).toLocaleString() : '—'}</span>
+                {gracePeriod && gracePeriod.status === 'active' && (
+                  <>
+                    <span className="text-text-muted">Grace Remaining</span>
+                    <span className="text-text-primary">{gracePeriod.daysRemaining} day{gracePeriod.daysRemaining === 1 ? '' : 's'}</span>
+                  </>
+                )}
               </div>
+
+              {limitedMode && (
+                <div className="rounded-md bg-semantic-warning/10 border border-semantic-warning/30 px-3 py-2" data-testid="settings-limited-mode-notice">
+                  <p className="text-sm text-semantic-warning">
+                    {gracePeriod?.message ?? 'Grace period expired. Premium features are limited. Please connect to the internet and refresh your license.'}
+                  </p>
+                </div>
+              )}
+
+              {isOffline && !limitedMode && gracePeriod && gracePeriod.status === 'active' && (
+                <div className="rounded-md bg-semantic-warning/10 border border-semantic-warning/30 px-3 py-2" data-testid="settings-offline-notice">
+                  <p className="text-sm text-semantic-warning">
+                    {gracePeriod.message}
+                  </p>
+                </div>
+              )}
             </div>
           ) : licenseError ? (
             <div className="space-y-2" data-testid="settings-license-error">

@@ -110,8 +110,19 @@ function classifyError(err: unknown): LicenseServiceError {
   );
 }
 
-/** Convert API response to StoredLicense. */
+/** Default grace period in days. */
+const DEFAULT_GRACE_PERIOD_DAYS = 30;
+
+/** Current cache format version. */
+const CACHE_VERSION = 2;
+
+/** Current product version — in production this would come from the app version. */
+const PRODUCT_VERSION = '1.0.0';
+
+/** Convert API response to StoredLicense with M4.4 cache fields. */
 function toStoredLicense(resp: LicenseIssueResponse): StoredLicense {
+  const now = new Date();
+  const graceExpiry = new Date(now.getTime() + DEFAULT_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000);
   return {
     uuid: resp.license.uuid,
     license_key: resp.license.license_key,
@@ -120,7 +131,11 @@ function toStoredLicense(resp: LicenseIssueResponse): StoredLicense {
     issued_at: resp.license.issued_at,
     expires_at: resp.license.expires_at,
     signature: resp.license.signature,
-    last_refreshed: new Date().toISOString(),
+    last_refreshed: now.toISOString(),
+    last_successful_validation: now.toISOString(),
+    grace_period_expiration: graceExpiry.toISOString(),
+    product_version: PRODUCT_VERSION,
+    cache_version: CACHE_VERSION,
   };
 }
 
