@@ -10,6 +10,7 @@ import { useState, useCallback, useEffect } from 'react';
 import type { UpdateInfo, DownloadProgress, IUpdateService } from '@avs/updater';
 import { NullUpdateService } from '@avs/updater';
 import { getVersionInfo } from '../config/version';
+import { resolveEnvironment } from '@avs/shared/env';
 
 export type UpdateCheckStatus = 'idle' | 'checking' | 'up-to-date' | 'available' | 'downloading' | 'downloaded' | 'error';
 
@@ -105,12 +106,14 @@ export function useUpdateManager(service: IUpdateService = defaultService): Upda
 
 /**
  * Update configuration — URL and channel settings.
- * These are placeholders for future update server integration.
+ * URLs are resolved from the environment configuration.
  */
+const _envConfig = resolveEnvironment(typeof process !== 'undefined' ? process.env?.AVS_ENV : undefined);
+
 export const UPDATE_CONFIG = {
-  feedUrl: 'https://www.avs.example.com/updates',
-  downloadUrl: 'https://www.avs.example.com/downloads',
-  changelogUrl: 'https://www.avs.example.com/changelog',
+  feedUrl: _envConfig.updateFeedUrl,
+  downloadUrl: 'https://www.avsshield.com/download',
+  changelogUrl: 'https://www.avsshield.com/download',
   autoCheckEnabled: false,
   autoDownloadEnabled: false,
 } as const;

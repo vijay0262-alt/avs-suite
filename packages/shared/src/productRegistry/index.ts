@@ -13,6 +13,7 @@
  * just check features via the registry.
  */
 import type { FeatureKey, Edition } from '../featureFlags';
+import { PRODUCT_CODES } from '../platformConfig';
 
 /**
  * ManagedFeature is defined in @avs/licensing as a union of dot-notation
@@ -90,11 +91,11 @@ export function getProductFeatures(productCode: string): readonly ManagedFeature
 
 // ── Built-in product: AVS PC Optimizer ──────────────────────────
 
-export const AVS_PC_OPTIMIZER = 'AVS_PC_OPTIMIZER';
+export const AVS_PC_OPTIMIZER = PRODUCT_CODES.optimizer;
 
 const PC_OPTIMIZER_REGISTRATION: ProductRegistration = {
   productCode: AVS_PC_OPTIMIZER,
-  productName: 'AVS PC Optimizer',
+  productName: 'AVS Shield Optimizer',
   features: [
     'junk.scan', 'junk.preview', 'junk.clean', 'junk.clean_unlimited', 'junk.deep_scan',
     'registry.scan', 'registry.fix',
@@ -127,9 +128,9 @@ const PC_OPTIMIZER_REGISTRATION: ProductRegistration = {
 
 // ── Future product templates (not active yet) ───────────────────
 
-export const AVS_DRIVER_UPDATER = 'AVS_DRIVER_UPDATER';
-export const AVS_ANTIVIRUS = 'AVS_ANTIVIRUS';
-export const AVS_VPN = 'AVS_VPN';
+export const AVS_DRIVER_UPDATER = PRODUCT_CODES.driverUpdater;
+export const AVS_ANTIVIRUS = PRODUCT_CODES.antivirus;
+export const AVS_VPN = PRODUCT_CODES.vpn;
 export const AVS_BACKUP = 'AVS_BACKUP';
 export const AVS_FILE_RECOVERY = 'AVS_FILE_RECOVERY';
 export const AVS_DISK_MANAGER = 'AVS_DISK_MANAGER';

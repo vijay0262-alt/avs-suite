@@ -11,15 +11,19 @@
  * should use `apiClient` instead of raw fetch.
  */
 import { tokenStorage, type StoredSession } from './tokenStorage';
+import { resolveEnvironment } from '@avs/shared/env';
 
 /** Base URL for the AVS License Server customer API. */
-const DEFAULT_BASE_URL = 'http://localhost:8000';
+function getDefaultBaseUrl(): string {
+  const envConfig = resolveEnvironment(process?.env?.AVS_ENV);
+  return envConfig.licenseApiUrl;
+}
 
 export function getBaseUrl(): string {
   if (typeof process !== 'undefined' && process.env?.LICENSE_SERVER_URL) {
     return process.env.LICENSE_SERVER_URL;
   }
-  return DEFAULT_BASE_URL;
+  return getDefaultBaseUrl();
 }
 
 export class ApiError extends Error {

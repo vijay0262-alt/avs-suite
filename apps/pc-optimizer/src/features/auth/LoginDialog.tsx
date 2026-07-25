@@ -25,8 +25,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from './authStore';
 
-const CREATE_ACCOUNT_URL = 'https://www.avsshield.com/account/create';
-const FORGOT_PASSWORD_URL = 'https://www.avsshield.com/account/forgot-password';
+const CREATE_ACCOUNT_URL = 'https://www.avsshield.com/register';
+const FORGOT_PASSWORD_URL = 'https://www.avsshield.com/forgot-password';
 
 export function LoginDialog() {
   const { login, loading, error, clearError } = useAuthStore();

@@ -1,16 +1,20 @@
 /**
  * Application-wide constants.
  * These are pure values with no runtime dependencies.
+ *
+ * Company/brand/URL values are sourced from platformConfig to ensure
+ * a single source of truth across all repositories.
  */
+import { COMPANY, URLS, CONTACT } from '../platformConfig';
 
 export const APP_METADATA = {
-  name: 'AVS PC Optimizer',
-  vendor: 'Advanced Vision Software LLC',
-  copyright: '© 2024-2026 Advanced Vision Software LLC. All rights reserved.',
-  supportEmail: 'support@avs.example.com',
-  websiteUrl: 'https://www.avs.example.com',
-  publisherName: 'Advanced Vision Software LLC',
-  description: 'Windows performance, cleanup, and privacy utility.',
+  name: 'AVS Shield Optimizer',
+  vendor: COMPANY.vendor,
+  copyright: COMPANY.copyright,
+  supportEmail: CONTACT.supportEmail,
+  websiteUrl: URLS.website,
+  publisherName: COMPANY.publisherName,
+  description: COMPANY.description,
 } as const;
 
 /** Filesystem folders used at runtime, relative to the OS userData path. */

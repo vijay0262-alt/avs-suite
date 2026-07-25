@@ -13,7 +13,7 @@ import { installCrashHandler } from '../crash/crashReporter';
 import { createLogger } from '../logger/logger';
 import { runStartup, shutdownStartup } from '../startup/startupStateMachine';
 
-// Local environment configuration (copied from shared package to avoid ES module import)
+// Local environment configuration (mirrors @avs/shared/env to avoid ES module import in Electron main)
 type AppEnvironment = 'development' | 'staging' | 'production';
 
 interface EnvironmentConfig {
@@ -28,25 +28,25 @@ interface EnvironmentConfig {
 const CONFIGS: Record<AppEnvironment, EnvironmentConfig> = {
   development: {
     env: 'development',
-    updateFeedUrl: 'https://updates.dev.avs.example.com',
-    licenseApiUrl: 'https://license.dev.avs.example.com',
+    updateFeedUrl: 'http://localhost:8000/updates',
+    licenseApiUrl: 'http://localhost:8000',
     analyticsUrl: null,
     logLevel: 'debug',
     openDevTools: true,
   },
   staging: {
     env: 'staging',
-    updateFeedUrl: 'https://updates.staging.avs.example.com',
-    licenseApiUrl: 'https://license.staging.avs.example.com',
-    analyticsUrl: 'https://telemetry.staging.avs.example.com',
+    updateFeedUrl: 'https://api-staging.avsshield.com/updates',
+    licenseApiUrl: 'https://api-staging.avsshield.com',
+    analyticsUrl: null,
     logLevel: 'info',
     openDevTools: false,
   },
   production: {
     env: 'production',
-    updateFeedUrl: 'https://updates.avs.example.com',
-    licenseApiUrl: 'https://license.avs.example.com',
-    analyticsUrl: 'https://telemetry.avs.example.com',
+    updateFeedUrl: 'https://api.avsshield.com/updates',
+    licenseApiUrl: 'https://api.avsshield.com',
+    analyticsUrl: null,
     logLevel: 'warn',
     openDevTools: false,
   },
@@ -131,7 +131,7 @@ function createSplashWindow(): BrowserWindow {
       </head>
       <body>
         <div class="container">
-          <div class="logo">AVS PC Optimizer</div>
+          <div class="logo">AVS Shield Optimizer</div>
           <div class="spinner"></div>
           <div class="loading">Loading...</div>
         </div>
@@ -227,7 +227,7 @@ function checkAndRelaunchAsAdmin(): boolean {
 
 app.whenReady().then(async () => {
   const appStart = Date.now();
-  log.info(`[startup] AVS PC Optimizer starting (env=${env.env}, version=${app.getVersion()})`);
+  log.info(`[startup] AVS Shield Optimizer starting (env=${env.env}, version=${app.getVersion()})`);
 
   // Auto-elevate to administrator on Windows for full functionality
   if (checkAndRelaunchAsAdmin()) {
@@ -268,5 +268,5 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
   shutdownStartup();
-  log.info('AVS PC Optimizer shutting down');
+  log.info('AVS Shield Optimizer shutting down');
 });

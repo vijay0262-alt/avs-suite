@@ -13,6 +13,8 @@ export * as tokens from './tokens';
 export * as i18n from './i18n';
 export * as featureFlags from './featureFlags';
 export * as productRegistry from './productRegistry';
+export * as productCatalog from './productCatalog';
+export * as platformConfig from './platformConfig';
 export * as env from './env';
 export * as rpc from './rpc';
 export * as constants from './constants';
