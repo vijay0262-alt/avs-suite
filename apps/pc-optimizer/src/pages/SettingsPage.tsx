@@ -6,6 +6,9 @@ import { useEffect, useState } from 'react';
 import { useEdition } from '../config/EditionManager';
 import { getVersionString, getBuildString, getChannelString, getEditionString } from '../config/version';
 import { useUpgradeDialog } from '../components/UpgradeDialog';
+import { useAuthStore } from '../features/auth/authStore';
+import { useEntitlementStore } from '../features/entitlement/entitlementStore';
+import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 interface VerificationLog {
   id: string;
@@ -40,6 +43,8 @@ export default function SettingsPage() {
   const [logs, setLogs] = useState<VerificationLog[]>([]);
   const edition = useEdition();
   const { show: showUpgrade } = useUpgradeDialog();
+  const { customer, session, logout } = useAuthStore();
+  const { entitlement, created, syncPhase, syncError, lastSyncAt, syncEntitlement } = useEntitlementStore();
 
   useEffect(() => {
     try {
@@ -179,6 +184,103 @@ export default function SettingsPage() {
               Disabled
             </Button>
           </div>
+        </Card>
+
+        <Card title="AVS Shield Account">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <UserCircleIcon className="h-10 w-10 text-text-muted" aria-hidden />
+              <div>
+                <div className="text-sm font-medium text-text-primary">
+                  {customer?.display_name ?? session?.customerName ?? 'AVS Shield Customer'}
+                </div>
+                <div className="text-xs text-text-secondary">
+                  {customer?.email ?? session?.customerEmail ?? '—'}
+                </div>
+                <div className="mt-1 flex items-center gap-2">
+                  <Badge tone={
+                    (customer?.account_status ?? session?.accountStatus) === 'ACTIVE' ? 'success' :
+                    (customer?.account_status ?? session?.accountStatus) === 'PENDING_EMAIL_VERIFICATION' ? 'warning' :
+                    'neutral'
+                  }>
+                    {customer?.account_status ?? session?.accountStatus ?? 'UNKNOWN'}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={logout}
+              leftIcon={<ArrowRightOnRectangleIcon className="h-4 w-4" />}
+              data-testid="settings-logout"
+            >
+              Log Out
+            </Button>
+          </div>
+        </Card>
+
+        <Card
+          title="Optimizer Entitlement"
+          actions={
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void syncEntitlement('optimizer')}
+              loading={syncPhase === 'syncing'}
+              leftIcon={<ArrowPathIcon className="h-4 w-4" />}
+              data-testid="settings-entitlement-resync"
+            >
+              Sync
+            </Button>
+          }
+        >
+          {entitlement ? (
+            <div className="space-y-2" data-testid="settings-entitlement-info">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <span className="text-text-muted">Product</span>
+                <span className="text-text-primary">{entitlement.product_name}</span>
+                <span className="text-text-muted">Edition</span>
+                <span className="text-text-primary">{entitlement.edition}</span>
+                <span className="text-text-muted">Status</span>
+                <span>
+                  <Badge tone={entitlement.status === 'ACTIVE' ? 'success' : 'neutral'}>
+                    {entitlement.status}
+                  </Badge>
+                </span>
+                <span className="text-text-muted">Activation Type</span>
+                <span className="text-text-primary">{entitlement.activation_type}</span>
+                <span className="text-text-muted">Auto Renew</span>
+                <span className="text-text-primary">{entitlement.auto_renew ? 'Yes' : 'No'}</span>
+                <span className="text-text-muted">Provisioning</span>
+                <span className="text-text-primary">{created ? 'Newly created' : 'Existing'}</span>
+                <span className="text-text-muted">Valid Until</span>
+                <span className="text-text-primary">{entitlement.valid_until ?? 'Lifetime'}</span>
+                <span className="text-text-muted">Last Sync</span>
+                <span className="text-text-primary">{lastSyncAt ? new Date(lastSyncAt).toLocaleString() : '—'}</span>
+              </div>
+            </div>
+          ) : syncError ? (
+            <div className="space-y-2" data-testid="settings-entitlement-error">
+              <p className="text-sm text-semantic-danger">{syncError}</p>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void syncEntitlement('optimizer')}
+                data-testid="settings-entitlement-retry"
+              >
+                Retry Sync
+              </Button>
+            </div>
+          ) : syncPhase === 'syncing' ? (
+            <p className="text-sm text-text-muted" data-testid="settings-entitlement-syncing">
+              Synchronizing entitlement…
+            </p>
+          ) : (
+            <p className="text-sm text-text-muted" data-testid="settings-entitlement-empty">
+              No entitlement synced yet.
+            </p>
+          )}
         </Card>
 
         <Card title="License">
