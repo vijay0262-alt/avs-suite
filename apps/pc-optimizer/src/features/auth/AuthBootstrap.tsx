@@ -17,12 +17,15 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAuthStore } from './authStore';
 import { LoginDialog } from './LoginDialog';
 import { useEntitlementStore } from '../entitlement/entitlementStore';
+import { useLicenseStore } from '../license/licenseStore';
 
 export function AuthBootstrap({ children }: { children: ReactNode }) {
   const { phase, restoreSession, logout } = useAuthStore();
   const { syncEntitlement, clearEntitlement } = useEntitlementStore();
+  const { activate: activateLicense, clear: clearLicense, restoreFromCache } = useLicenseStore();
   const [restored, setRestored] = useState(false);
   const syncedRef = useRef(false);
+  const licenseActivatedRef = useRef(false);
 
   useEffect(() => {
     if (!restored) {
@@ -35,24 +38,35 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
     import('./authService').then(({ authService }) => {
       authService.onExpired(() => {
         clearEntitlement();
+        clearLicense();
         logout();
       });
     });
-  }, [logout, clearEntitlement]);
+  }, [logout, clearEntitlement, clearLicense]);
 
-  // Silently sync entitlement after authentication
+  // Silently sync entitlement after authentication, then activate license
   useEffect(() => {
     if (phase === 'authenticated' && !syncedRef.current) {
       syncedRef.current = true;
-      void syncEntitlement('optimizer').catch(() => {
+      void syncEntitlement('optimizer').then(async (ok) => {
+        // After entitlement sync, activate the license
+        if (ok && !licenseActivatedRef.current) {
+          licenseActivatedRef.current = true;
+          await activateLicense('optimizer').catch(() => {
+            // License activation failure is non-fatal — app continues.
+            // The store records the error; user can retry from Settings.
+          });
+        }
+      }).catch(() => {
         // Entitlement sync failure is non-fatal — auth remains valid.
         // The store records the error; user can retry from Settings.
       });
     }
     if (phase !== 'authenticated') {
       syncedRef.current = false;
+      licenseActivatedRef.current = false;
     }
-  }, [phase, syncEntitlement]);
+  }, [phase, syncEntitlement, activateLicense]);
 
   if (!restored || phase === 'checking') {
     return (

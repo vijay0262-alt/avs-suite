@@ -8,7 +8,8 @@ import { getVersionString, getBuildString, getChannelString, getEditionString } 
 import { useUpgradeDialog } from '../components/UpgradeDialog';
 import { useAuthStore } from '../features/auth/authStore';
 import { useEntitlementStore } from '../features/entitlement/entitlementStore';
-import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { useLicenseStore } from '../features/license/licenseStore';
+import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 interface VerificationLog {
   id: string;
@@ -45,6 +46,7 @@ export default function SettingsPage() {
   const { show: showUpgrade } = useUpgradeDialog();
   const { customer, session, logout } = useAuthStore();
   const { entitlement, created, syncPhase, syncError, lastSyncAt, syncEntitlement } = useEntitlementStore();
+  const { license, activationState, validation, syncStatus, error: licenseError, lastRefreshAt, refresh: refreshLicense, clear: clearLicense } = useLicenseStore();
 
   useEffect(() => {
     try {
@@ -283,12 +285,82 @@ export default function SettingsPage() {
           )}
         </Card>
 
-        <Card title="License">
-          <p className="text-sm text-text-secondary">
-            {edition === 'free'
-              ? 'Currently running the Free edition. License activation will be available in a future update.'
-              : 'Pro edition is active. License management will be available here once licensing is enabled.'}
-          </p>
+        <Card
+          title="License"
+          actions={
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void refreshLicense('optimizer')}
+                loading={syncStatus === 'syncing'}
+                leftIcon={<ArrowPathIcon className="h-4 w-4" />}
+                data-testid="settings-license-refresh"
+              >
+                Refresh
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => clearLicense()}
+                leftIcon={<TrashIcon className="h-4 w-4" />}
+                data-testid="settings-license-clear"
+              >
+                Clear Cache
+              </Button>
+            </div>
+          }
+        >
+          {license ? (
+            <div className="space-y-2" data-testid="settings-license-info">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <span className="text-text-muted">License Key</span>
+                <span className="font-mono text-text-primary">{license.license_key}</span>
+                <span className="text-text-muted">Edition</span>
+                <span className="text-text-primary">{license.edition}</span>
+                <span className="text-text-muted">Status</span>
+                <span>
+                  <Badge tone={license.status === 'ACTIVE' ? 'success' : 'neutral'}>
+                    {license.status}
+                  </Badge>
+                </span>
+                <span className="text-text-muted">Issued</span>
+                <span className="text-text-primary">{license.issued_at ? new Date(license.issued_at).toLocaleDateString() : '—'}</span>
+                <span className="text-text-muted">Expiration</span>
+                <span className="text-text-primary">{license.expires_at ? new Date(license.expires_at).toLocaleDateString() : 'Lifetime'}</span>
+                <span className="text-text-muted">Activation</span>
+                <span>
+                  <Badge tone={activationState === 'activated' ? 'success' : activationState === 'offline' ? 'warning' : 'neutral'}>
+                    {activationState}
+                  </Badge>
+                </span>
+                <span className="text-text-muted">Last Refresh</span>
+                <span className="text-text-primary">{lastRefreshAt ? new Date(lastRefreshAt).toLocaleString() : '—'}</span>
+                <span className="text-text-muted">Validation</span>
+                <span className="text-text-primary">{validation?.message ?? '—'}</span>
+              </div>
+            </div>
+          ) : licenseError ? (
+            <div className="space-y-2" data-testid="settings-license-error">
+              <p className="text-sm text-semantic-danger">{licenseError}</p>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void refreshLicense('optimizer')}
+                data-testid="settings-license-retry"
+              >
+                Retry Activation
+              </Button>
+            </div>
+          ) : syncStatus === 'syncing' ? (
+            <p className="text-sm text-text-muted" data-testid="settings-license-syncing">
+              Activating license…
+            </p>
+          ) : (
+            <p className="text-sm text-text-muted" data-testid="settings-license-empty">
+              No license activated yet.
+            </p>
+          )}
         </Card>
 
         <Card title="Developer">
