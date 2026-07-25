@@ -9,7 +9,8 @@ import { useUpgradeDialog } from '../components/UpgradeDialog';
 import { useAuthStore } from '../features/auth/authStore';
 import { useEntitlementStore } from '../features/entitlement/entitlementStore';
 import { useLicenseStore } from '../features/license/licenseStore';
-import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { useFeatureStore, FEATURE_LABELS } from '../features/feature-engine';
+import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, TrashIcon, LockClosedIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 interface VerificationLog {
   id: string;
@@ -47,6 +48,7 @@ export default function SettingsPage() {
   const { customer, session, logout } = useAuthStore();
   const { entitlement, created, syncPhase, syncError, lastSyncAt, syncEntitlement } = useEntitlementStore();
   const { license, activationState, validation, syncStatus, error: licenseError, lastRefreshAt, refresh: refreshLicense, clear: clearLicense } = useLicenseStore();
+  const { editionLabel, enabledFeatures, disabledFeatures, enabledCount, disabledCount, initialized: featureEngineInitialized } = useFeatureStore();
 
   useEffect(() => {
     try {
@@ -361,6 +363,54 @@ export default function SettingsPage() {
               No license activated yet.
             </p>
           )}
+        </Card>
+
+        <Card
+          title="Feature Engine"
+          actions={
+            <Badge tone={featureEngineInitialized ? 'success' : 'neutral'}>
+              {featureEngineInitialized ? 'Active' : 'Inactive'}
+            </Badge>
+          }
+        >
+          <div className="space-y-3" data-testid="settings-feature-engine">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              <span className="text-text-muted">License Edition</span>
+              <span className="text-text-primary">{editionLabel}</span>
+              <span className="text-text-muted">Enabled Features</span>
+              <span className="text-text-primary">{enabledCount} / {enabledCount + disabledCount}</span>
+              <span className="text-text-muted">Disabled Features</span>
+              <span className="text-text-primary">{disabledCount}</span>
+            </div>
+
+            {enabledFeatures.length > 0 && (
+              <div>
+                <div className="text-xs font-medium text-text-muted mb-1">Enabled</div>
+                <div className="flex flex-wrap gap-1">
+                  {enabledFeatures.map((f) => (
+                    <span key={f} className="inline-flex items-center gap-1 rounded-md bg-surface-muted px-2 py-0.5 text-xs text-text-secondary">
+                      <CheckCircleIcon className="h-3 w-3 text-semantic-success" />
+                      {FEATURE_LABELS[f]}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {disabledFeatures.length > 0 && (
+              <div>
+                <div className="text-xs font-medium text-text-muted mb-1">Disabled</div>
+                <div className="flex flex-wrap gap-1">
+                  {disabledFeatures.map((f) => (
+                    <span key={f} className="inline-flex items-center gap-1 rounded-md bg-surface-muted px-2 py-0.5 text-xs text-text-muted">
+                      <LockClosedIcon className="h-3 w-3 text-text-muted" />
+                      {FEATURE_LABELS[f]}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </Card>
 
         <Card title="Developer">

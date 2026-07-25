@@ -18,11 +18,13 @@ import { useAuthStore } from './authStore';
 import { LoginDialog } from './LoginDialog';
 import { useEntitlementStore } from '../entitlement/entitlementStore';
 import { useLicenseStore } from '../license/licenseStore';
+import { useFeatureStore } from '../feature-engine';
 
 export function AuthBootstrap({ children }: { children: ReactNode }) {
   const { phase, restoreSession, logout } = useAuthStore();
   const { syncEntitlement, clearEntitlement } = useEntitlementStore();
   const { activate: activateLicense, clear: clearLicense } = useLicenseStore();
+  const { init: initFeatureEngine, destroy: destroyFeatureEngine } = useFeatureStore();
   const [restored, setRestored] = useState(false);
   const syncedRef = useRef(false);
   const licenseActivatedRef = useRef(false);
@@ -39,10 +41,11 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
       authService.onExpired(() => {
         clearEntitlement();
         clearLicense();
+        destroyFeatureEngine();
         logout();
       });
     });
-  }, [logout, clearEntitlement, clearLicense]);
+  }, [logout, clearEntitlement, clearLicense, destroyFeatureEngine]);
 
   // Silently sync entitlement after authentication, then activate license
   useEffect(() => {
@@ -56,6 +59,8 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
             // License activation failure is non-fatal — app continues.
             // The store records the error; user can retry from Settings.
           });
+          // Initialize the Feature Engine after license activation
+          initFeatureEngine();
         }
       }).catch(() => {
         // Entitlement sync failure is non-fatal — auth remains valid.
@@ -66,7 +71,7 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
       syncedRef.current = false;
       licenseActivatedRef.current = false;
     }
-  }, [phase, syncEntitlement, activateLicense]);
+  }, [phase, syncEntitlement, activateLicense, initFeatureEngine]);
 
   if (!restored || phase === 'checking') {
     return (
