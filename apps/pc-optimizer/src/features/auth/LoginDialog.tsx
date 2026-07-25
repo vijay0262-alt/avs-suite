@@ -20,7 +20,6 @@ import {
   EyeSlashIcon,
   ArrowRightIcon,
   UserPlusIcon,
-  KeyIcon,
   ShieldCheckIcon,
   ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
@@ -30,7 +29,7 @@ const CREATE_ACCOUNT_URL = 'https://www.avsshield.com/account/create';
 const FORGOT_PASSWORD_URL = 'https://www.avsshield.com/account/forgot-password';
 
 export function LoginDialog() {
-  const { login, loading, error, errorCode, clearError } = useAuthStore();
+  const { login, loading, error, clearError } = useAuthStore();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
