@@ -11,12 +11,20 @@
 // ── Company ──────────────────────────────────────────────────────
 
 export const COMPANY = {
+  legalCompanyName: 'Advanced Vision Software LLC',
   companyName: 'AVS Shield',
   brandName: 'AVS Shield',
   vendor: 'AVS Shield',
   publisherName: 'AVS Shield',
-  copyright: '© 2024-2026 AVS Shield. All rights reserved.',
+  copyright: '© 2024-2026 Advanced Vision Software LLC. All rights reserved.',
   description: 'Windows performance, cleanup, and privacy utility.',
+  address: {
+    street: '30 N Gould St, Ste 4000',
+    city: 'Sheridan',
+    state: 'WY',
+    zip: '82801',
+    country: 'USA',
+  },
 } as const;
 
 // ── URLs ─────────────────────────────────────────────────────────
