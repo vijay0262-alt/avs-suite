@@ -22,7 +22,7 @@ import { useLicenseStore } from '../license/licenseStore';
 export function AuthBootstrap({ children }: { children: ReactNode }) {
   const { phase, restoreSession, logout } = useAuthStore();
   const { syncEntitlement, clearEntitlement } = useEntitlementStore();
-  const { activate: activateLicense, clear: clearLicense, restoreFromCache } = useLicenseStore();
+  const { activate: activateLicense, clear: clearLicense } = useLicenseStore();
   const [restored, setRestored] = useState(false);
   const syncedRef = useRef(false);
   const licenseActivatedRef = useRef(false);

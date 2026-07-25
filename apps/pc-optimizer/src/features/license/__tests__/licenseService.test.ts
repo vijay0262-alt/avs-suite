@@ -4,7 +4,7 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { licenseService, LicenseServiceError } from '../licenseService';
+import { licenseService } from '../licenseService';
 import { licenseStorage, type StoredLicense } from '../licenseStorage';
 import { tokenStorage } from '../../auth/tokenStorage';
 import '../../auth/authService'; // side-effect: configures apiClient callbacks

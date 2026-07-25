@@ -32,9 +32,6 @@ export interface ValidationResult {
   message: string;
 }
 
-/** Expected product code for the Optimizer. */
-const EXPECTED_PRODUCT_CODE = 'optimizer';
-
 /**
  * Verify the license signature.
  *
@@ -80,7 +77,6 @@ function isExpired(license: StoredLicense): boolean {
  */
 export async function validateLicense(
   license: StoredLicense | null,
-  expectedProductCode: string = EXPECTED_PRODUCT_CODE,
 ): Promise<ValidationResult> {
   if (!license) {
     return {
