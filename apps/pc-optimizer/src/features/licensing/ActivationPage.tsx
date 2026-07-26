@@ -1,52 +1,29 @@
 /**
- * ActivationPage — license activation, deactivation, and status display.
+ * AccountAndLicensePage — dynamic account & license display.
  *
- * Displays:
- * - Current edition and license state
- * - Connection status to AVS License Server
- * - Product code (AVS_PC_OPTIMIZER) and edition from server
- * - License key input (activate)
- * - Email input
- * - Activate / Deactivate / Refresh buttons
- * - Copy license key
- * - Continue Free button
- * - Device ID, expiry, device count, last validation
+ * Replaces the old static ActivationPage. The backend is the single
+ * source of truth — this page displays exactly what the API returns.
  *
- * This page is self-contained and does not modify any existing pages.
+ * FREE customers:
+ *   - Shows subscription as FREE, no license required
+ *   - Hides license key input, activate button, refresh button
+ *   - Shows "FREE Edition — No license key required"
+ *
+ * PROFESSIONAL customers:
+ *   - Shows license key, edition, activation status, expiration
+ *   - Shows Refresh License button
+ *   - Activate License only appears if no Professional license exists
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Button, Badge } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
 import { useLicense } from './LicenseContext';
-import { LICENSE_STATE_LABELS } from '@avs/licensing';
+import { useAuthStore } from '../auth/authStore';
+import { useSubscriptionStore } from '../subscription/subscriptionStore';
 import { getVersionString, getBuildString } from '../../config/version';
-
-interface SdkInfo {
-  status: {
-    status: string;
-    edition: string;
-    expiry: string | null;
-    grace_expiry: string | null;
-    days_remaining: number | null;
-    remaining_devices: number;
-    last_validated: string | null;
-    is_offline: boolean;
-    message: string;
-  };
-  days_remaining: number | null;
-  remaining_devices: number;
-  offline_status: string;
-  server_url: string;
-  fingerprint: string;
-  sdk_version: string;
-  product_code: string;
-  app_version: string;
-}
 
 export default function ActivationPage() {
   const {
-    state,
-    edition,
     isActivated,
     isInGracePeriod,
     licenseView,
@@ -56,374 +33,423 @@ export default function ActivationPage() {
     refresh,
   } = useLicense();
 
+  const { customer, session } = useAuthStore();
+  const { subscription, loading, error, lastSyncAt, connectionStatus, serverVersion, serverUrl, sync, checkConnection } = useSubscriptionStore();
+
   const [key, setKey] = useState('');
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [sdkInfo, setSdkInfo] = useState<SdkInfo | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
-  const fetchSdkInfo = useCallback(async () => {
-    try {
-      const info = await window.avs.license.getInfo();
-      if (info) setSdkInfo(info as SdkInfo);
-    } catch {
-      // SDK not ready
-    }
-  }, []);
+  const fetchAll = useCallback(async () => {
+    await Promise.all([sync(), checkConnection()]);
+  }, [sync, checkConnection]);
 
   useEffect(() => {
-    void fetchSdkInfo();
-  }, [fetchSdkInfo, state]);
-
-  useEffect(() => {
-    if (sdkInfo) return;
-    const timer = setTimeout(() => { void fetchSdkInfo(); }, 3000);
-    return () => clearTimeout(timer);
-  }, [fetchSdkInfo, sdkInfo]);
+    void fetchAll();
+  }, [fetchAll]);
 
   const handleActivate = async () => {
     if (!key.trim() || !email.trim()) {
-      setError('Please enter both license key and email.');
+      setActionError('Please enter both license key and email.');
       return;
     }
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
+    setActionLoading(true);
+    setActionError(null);
+    setActionSuccess(null);
     const result = await activate(key.trim(), email.trim());
-    setLoading(false);
+    setActionLoading(false);
     if (result.success) {
-      setSuccess('License activated successfully.');
+      setActionSuccess('License activated successfully.');
       setKey('');
       setEmail('');
-      void fetchSdkInfo();
+      void sync();
     } else {
-      setError(result.error ?? 'Activation failed.');
+      setActionError(result.error ?? 'Activation failed.');
     }
   };
 
   const handleDeactivate = async () => {
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
+    setActionLoading(true);
+    setActionError(null);
+    setActionSuccess(null);
     const result = await deactivate();
-    setLoading(false);
+    setActionLoading(false);
     if (result.success) {
-      setSuccess('License deactivated. Reverted to Free edition.');
-      void fetchSdkInfo();
+      setActionSuccess('License deactivated. Reverted to Free edition.');
+      void sync();
     } else {
-      setError(result.error ?? 'Deactivation failed.');
+      setActionError(result.error ?? 'Deactivation failed.');
     }
   };
 
   const handleRefresh = async () => {
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
+    setActionLoading(true);
+    setActionError(null);
+    setActionSuccess(null);
     const result = await refresh();
-    setLoading(false);
+    setActionLoading(false);
     if (result?.valid) {
-      setSuccess('License validated successfully.');
-      void fetchSdkInfo();
+      setActionSuccess('License validated successfully.');
+      void sync();
     } else if (result) {
-      setError(result.reason ?? 'Validation failed.');
+      setActionError(result.reason ?? 'Validation failed.');
     } else {
-      setError('Unable to refresh license.');
+      setActionError('Unable to refresh license.');
     }
   };
 
-  const handleCopyKey = async () => {
-    if (sdkInfo) {
-      try {
-        await navigator.clipboard.writeText(sdkInfo.fingerprint);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch {
-        // Clipboard not available
-      }
-    }
-  };
+  const plan = subscription?.plan ?? 'FREE';
+  const isProfessional = plan.toUpperCase() === 'PROFESSIONAL';
+  const isConnected = connectionStatus === 'connected';
 
-  const stateLabel = LICENSE_STATE_LABELS[state];
-  const stateTone: 'neutral' | 'brand' | 'success' | 'warning' | 'danger' =
-    isActivated && !isInGracePeriod ? 'success' :
-    isInGracePeriod ? 'warning' :
-    state === 'expired' || state === 'invalid' || state === 'revoked' ? 'danger' :
-    'neutral';
-
-  const isConnected = sdkInfo ? !sdkInfo.status.is_offline : false;
-  const productCode = sdkInfo?.product_code ?? 'AVS_PC_OPTIMIZER';
-  const serverEdition = sdkInfo?.status.edition ?? edition;
-  const lastValidated = sdkInfo?.status.last_validated ?? licenseView?.lastValidation;
-  const serverUrl = sdkInfo?.server_url ?? 'Not connected';
-  const sdkVersion = sdkInfo?.sdk_version ?? 'Not available';
-  const daysRemaining = sdkInfo?.days_remaining ?? null;
-  const remainingDevices = sdkInfo?.remaining_devices ?? licenseView?.maxDevices ?? 0;
-  const maxDevices = licenseView?.maxDevices ?? 0;
-  const activeDevices = licenseView?.activatedDevices ?? 0;
+  const customerName = customer?.display_name ?? session?.customerName ?? '—';
+  const customerEmail = customer?.email ?? session?.customerEmail ?? '—';
+  const accountStatus = customer?.account_status ?? session?.accountStatus ?? 'UNKNOWN';
 
   return (
     <div data-testid="page-license-activation" className="space-y-4">
       <PageHeader
-        title="License Management"
-        description="Activate, manage, or refresh your AVS PC Optimizer license."
+        title="Account & License"
+        description="Your AVS Shield subscription, license, and connection status."
       />
 
-      {/* Connection Status */}
+      {/* Server Connection */}
       <Card title="Server Connection">
         <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-3">
           <div>
             <div className="text-text-muted">Connection Status</div>
             <div className="flex items-center gap-2 mt-1">
               <span
-                className={`h-2 w-2 rounded-full ${isConnected ? 'bg-semantic-success' : 'bg-semantic-danger'}`}
+                className={`h-2 w-2 rounded-full ${
+                  isConnected ? 'bg-semantic-success' :
+                  connectionStatus === 'checking' ? 'bg-semantic-warning' :
+                  'bg-semantic-danger'
+                }`}
                 data-testid="license-connection-indicator"
               />
               <span className="font-medium text-text-primary">
-                {isConnected ? 'Connected' : 'Offline'}
+                {isConnected ? 'Connected' : connectionStatus === 'checking' ? 'Checking…' : 'Disconnected'}
               </span>
             </div>
           </div>
           <div>
-            <div className="text-text-muted">Server URL</div>
-            <div className="font-mono text-xs text-text-secondary mt-1 truncate" title={serverUrl}>
+            <div className="text-text-muted">Server</div>
+            <div className="font-mono text-xs text-text-secondary mt-1">
               {serverUrl}
             </div>
           </div>
           <div>
-            <div className="text-text-muted">SDK Version</div>
-            <div className="font-medium text-text-primary mt-1">{sdkVersion}</div>
+            <div className="text-text-muted">API Version</div>
+            <div className="font-medium text-text-primary mt-1">
+              {serverVersion ? `v${serverVersion}` : '—'}
+            </div>
           </div>
         </div>
       </Card>
 
-      {/* Current Status */}
-      <Card title="Current License Status">
+      {/* Account Info */}
+      <Card title="Account">
         <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
           <div>
-            <div className="text-text-muted">Edition</div>
+            <div className="text-text-muted">Signed in as</div>
+            <div className="font-medium text-text-primary mt-1">{customerName}</div>
+          </div>
+          <div>
+            <div className="text-text-muted">Email</div>
+            <div className="font-medium text-text-primary mt-1">{customerEmail}</div>
+          </div>
+          <div>
+            <div className="text-text-muted">Account Status</div>
             <div className="flex items-center gap-2 mt-1">
-              <span className="font-medium text-text-primary capitalize">{edition}</span>
-              <Badge tone={stateTone}>{stateLabel}</Badge>
+              <Badge tone={accountStatus === 'ACTIVE' ? 'success' : accountStatus === 'PENDING_EMAIL_VERIFICATION' ? 'warning' : 'neutral'}>
+                {accountStatus}
+              </Badge>
             </div>
           </div>
           <div>
-            <div className="text-text-muted">Product Code</div>
-            <div className="font-mono text-xs text-text-secondary mt-1">{productCode}</div>
-          </div>
-          <div>
-            <div className="text-text-muted">Activated</div>
-            <div className="font-medium text-text-primary mt-1">
-              {isActivated ? 'Yes' : 'No'}
-            </div>
-          </div>
-          <div>
-            <div className="text-text-muted">Server Edition</div>
-            <div className="font-medium text-text-primary mt-1 capitalize">{serverEdition}</div>
-          </div>
-          {licenseView && (
-            <>
-              <div>
-                <div className="text-text-muted">License ID</div>
-                <div className="font-mono text-xs text-text-secondary mt-1">
-                  {licenseView.licenseId}
-                </div>
-              </div>
-              <div>
-                <div className="text-text-muted">Expiry Date</div>
-                <div className="font-medium text-text-primary mt-1">
-                  {licenseView.expiryDate
-                    ? new Date(licenseView.expiryDate).toLocaleDateString()
-                    : 'Lifetime'}
-                </div>
-              </div>
-              <div>
-                <div className="text-text-muted">Max Devices</div>
-                <div className="font-medium text-text-primary mt-1">{maxDevices}</div>
-              </div>
-              <div>
-                <div className="text-text-muted">Activated Devices</div>
-                <div className="font-medium text-text-primary mt-1">{activeDevices}</div>
-              </div>
-              <div>
-                <div className="text-text-muted">Remaining Devices</div>
-                <div className="font-medium text-text-primary mt-1">{remainingDevices}</div>
-              </div>
-              {daysRemaining !== null && (
-                <div>
-                  <div className="text-text-muted">Days Remaining</div>
-                  <div className="font-medium text-text-primary mt-1">{daysRemaining}</div>
-                </div>
-              )}
-              <div>
-                <div className="text-text-muted">Email</div>
-                <div className="font-medium text-text-primary mt-1">
-                  {licenseView.email || '—'}
-                </div>
-              </div>
-              <div>
-                <div className="text-text-muted">Last Validation</div>
-                <div className="font-medium text-text-primary mt-1">
-                  {lastValidated
-                    ? new Date(lastValidated).toLocaleString()
-                    : '—'}
-                </div>
-              </div>
-              {licenseView.graceExpiry && (
-                <div>
-                  <div className="text-text-muted">Grace Period Ends</div>
-                  <div className="font-medium text-semantic-warning mt-1">
-                    {new Date(licenseView.graceExpiry).toLocaleDateString()}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-          <div>
-            <div className="text-text-muted">Device ID</div>
-            <div className="font-mono text-xs text-text-secondary mt-1">
-              {deviceId && deviceId !== 'pending-device-id' ? deviceId : 'Acquiring...'}
-            </div>
-          </div>
-          <div>
-            <div className="text-text-muted">Version</div>
+            <div className="text-text-muted">App Version</div>
             <div className="font-medium text-text-primary mt-1">
               {getVersionString()} · {getBuildString()}
             </div>
           </div>
         </div>
-        {isActivated && sdkInfo && (
-          <div className="mt-4 border-t border-border pt-4">
-            <Button
-              variant="secondary"
-              onClick={handleCopyKey}
-              data-testid="license-copy-key-btn"
-            >
-              {copied ? '✓ Copied' : 'Copy Device ID'}
+      </Card>
+
+      {/* Subscription */}
+      <Card title="Subscription">
+        {loading && !subscription ? (
+          <p className="text-sm text-text-muted">Loading subscription…</p>
+        ) : error && !subscription ? (
+          <div className="space-y-2">
+            <p className="text-sm text-semantic-danger">{error}</p>
+            <Button variant="secondary" size="sm" onClick={() => void sync()} data-testid="subscription-retry">
+              Retry
             </Button>
           </div>
+        ) : subscription ? (
+          <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+            <div>
+              <div className="text-text-muted">Current Plan</div>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="font-medium text-text-primary">{subscription.plan}</span>
+                <Badge tone={subscription.status === 'ACTIVE' ? 'success' : 'neutral'}>
+                  {subscription.status}
+                </Badge>
+              </div>
+            </div>
+            <div>
+              <div className="text-text-muted">Expiration Date</div>
+              <div className="font-medium text-text-primary mt-1">
+                {subscription.expires_at
+                  ? new Date(subscription.expires_at).toLocaleDateString()
+                  : '—'}
+              </div>
+            </div>
+            {subscription.features.length > 0 && (
+              <div className="md:col-span-2">
+                <div className="text-text-muted mb-1">Features</div>
+                <div className="flex flex-wrap gap-1">
+                  {subscription.features.map((f) => (
+                    <span
+                      key={f}
+                      className="inline-flex items-center rounded-md bg-surface-muted px-2 py-0.5 text-xs text-text-secondary"
+                    >
+                      {f}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {!isProfessional && (
+              <div className="md:col-span-2">
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      window.open('https://www.avsshield.com/upgrade', '_blank');
+                    }
+                  }}
+                  data-testid="upgrade-to-professional"
+                >
+                  Upgrade to Professional
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-text-muted">No subscription data available.</p>
         )}
       </Card>
 
-      {/* Activation / Deactivation */}
-      {!isActivated ? (
-        <Card title="Activate License">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-1">
-                License Key
-              </label>
-              <input
-                type="text"
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
-                placeholder="XXXX-XXXX-XXXX-XXXX"
-                className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none"
-                data-testid="license-key-input"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-1">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none"
-                data-testid="license-email-input"
-              />
-            </div>
-            {error && (
-              <div className="rounded-md bg-semantic-danger/10 px-3 py-2 text-sm text-semantic-danger">
-                {error}
+      {/* License Section — only for PROFESSIONAL */}
+      {isProfessional ? (
+        <Card title="License">
+          {isActivated && licenseView ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+                <div>
+                  <div className="text-text-muted">License Key</div>
+                  <div className="font-mono text-xs text-text-secondary mt-1">
+                    {licenseView.hasKey ? '••••-••••-••••-••••' : '—'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-text-muted">Edition</div>
+                  <div className="font-medium text-text-primary mt-1">PROFESSIONAL</div>
+                </div>
+                <div>
+                  <div className="text-text-muted">Activated</div>
+                  <div className="font-medium text-text-primary mt-1">
+                    {isActivated ? 'Yes' : 'No'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-text-muted">Expiration</div>
+                  <div className="font-medium text-text-primary mt-1">
+                    {licenseView.expiryDate
+                      ? new Date(licenseView.expiryDate).toLocaleDateString()
+                      : 'Lifetime'}
+                  </div>
+                </div>
+                {licenseView.maxDevices > 0 && (
+                  <div>
+                    <div className="text-text-muted">Devices</div>
+                    <div className="font-medium text-text-primary mt-1">
+                      {licenseView.activatedDevices} / {licenseView.maxDevices}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <div className="text-text-muted">Device ID</div>
+                  <div className="font-mono text-xs text-text-secondary mt-1">
+                    {deviceId && deviceId !== 'pending-device-id' ? deviceId : 'Acquiring...'}
+                  </div>
+                </div>
               </div>
-            )}
-            {success && (
-              <div className="rounded-md bg-semantic-success/10 px-3 py-2 text-sm text-semantic-success">
-                {success}
+
+              {actionError && (
+                <div className="rounded-md bg-semantic-danger/10 px-3 py-2 text-sm text-semantic-danger">
+                  {actionError}
+                </div>
+              )}
+              {actionSuccess && (
+                <div className="rounded-md bg-semantic-success/10 px-3 py-2 text-sm text-semantic-success">
+                  {actionSuccess}
+                </div>
+              )}
+              {isInGracePeriod && (
+                <div className="rounded-md bg-semantic-warning/10 px-3 py-2 text-sm text-semantic-warning">
+                  Your license is in a grace period. Please renew to maintain access to Professional features.
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 border-t border-border pt-4">
+                <Button
+                  variant="primary"
+                  onClick={handleRefresh}
+                  disabled={actionLoading}
+                  data-testid="license-refresh-btn"
+                >
+                  {actionLoading ? 'Refreshing…' : 'Refresh License'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleDeactivate}
+                  disabled={actionLoading}
+                  data-testid="license-deactivate-btn"
+                >
+                  {actionLoading ? 'Deactivating…' : 'Deactivate'}
+                </Button>
               </div>
-            )}
-            <div className="flex items-center gap-3">
-              <Button
-                variant="primary"
-                onClick={handleActivate}
-                disabled={loading}
-                data-testid="license-activate-btn"
-              >
-                {loading ? 'Activating...' : 'Activate'}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setKey('');
-                  setEmail('');
-                  setError(null);
-                  setSuccess(null);
-                }}
-                data-testid="license-clear-btn"
-              >
-                Clear
-              </Button>
             </div>
-            <p className="text-xs text-text-muted">
-              Don&apos;t have a license key? You can continue using the Free edition
-              with basic features.
-            </p>
-          </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-text-secondary">
+                Your subscription is Professional but no license is activated on this device.
+                Enter your license key below to activate.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-1">
+                  License Key
+                </label>
+                <input
+                  type="text"
+                  value={key}
+                  onChange={(e) => setKey(e.target.value)}
+                  placeholder="XXXX-XXXX-XXXX-XXXX"
+                  className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none"
+                  data-testid="license-key-input"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none"
+                  data-testid="license-email-input"
+                />
+              </div>
+              {actionError && (
+                <div className="rounded-md bg-semantic-danger/10 px-3 py-2 text-sm text-semantic-danger">
+                  {actionError}
+                </div>
+              )}
+              {actionSuccess && (
+                <div className="rounded-md bg-semantic-success/10 px-3 py-2 text-sm text-semantic-success">
+                  {actionSuccess}
+                </div>
+              )}
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="primary"
+                  onClick={handleActivate}
+                  disabled={actionLoading}
+                  data-testid="license-activate-btn"
+                >
+                  {actionLoading ? 'Activating…' : 'Activate License'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setKey('');
+                    setEmail('');
+                    setActionError(null);
+                    setActionSuccess(null);
+                  }}
+                  data-testid="license-clear-btn"
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       ) : (
-        <Card title="Manage License">
-          <div className="space-y-4">
-            {error && (
-              <div className="rounded-md bg-semantic-danger/10 px-3 py-2 text-sm text-semantic-danger">
-                {error}
-              </div>
-            )}
-            {success && (
-              <div className="rounded-md bg-semantic-success/10 px-3 py-2 text-sm text-semantic-success">
-                {success}
-              </div>
-            )}
-            <div className="flex items-center gap-3">
-              <Button
-                variant="primary"
-                onClick={handleRefresh}
-                disabled={loading}
-                data-testid="license-refresh-btn"
-              >
-                {loading ? 'Refreshing...' : 'Refresh License'}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={handleDeactivate}
-                disabled={loading}
-                data-testid="license-deactivate-btn"
-              >
-                {loading ? 'Deactivating...' : 'Deactivate'}
-              </Button>
+        <Card title="License">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Badge tone="neutral">FREE Edition</Badge>
             </div>
-            {isInGracePeriod && (
-              <div className="rounded-md bg-semantic-warning/10 px-3 py-2 text-sm text-semantic-warning">
-                Your license is in a grace period. Please renew to maintain access to Pro features.
+            <p className="text-sm text-text-secondary">
+              No license key required. Your account authenticates directly with AVS Shield.
+            </p>
+            <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 mt-2">
+              <div>
+                <div className="text-text-muted">License</div>
+                <div className="font-medium text-text-primary mt-1">Not Required</div>
               </div>
-            )}
+              <div>
+                <div className="text-text-muted">Connection</div>
+                <div className="font-medium text-text-primary mt-1">
+                  {isConnected ? 'Connected' : 'Disconnected'}
+                </div>
+              </div>
+              <div>
+                <div className="text-text-muted">Server</div>
+                <div className="font-mono text-xs text-text-secondary mt-1">{serverUrl}</div>
+              </div>
+              <div>
+                <div className="text-text-muted">Device</div>
+                <div className="font-medium text-text-primary mt-1">
+                  {deviceId && deviceId !== 'pending-device-id' ? 'Registered' : 'Acquiring...'}
+                </div>
+              </div>
+            </div>
           </div>
         </Card>
       )}
 
-      {/* Continue Free */}
-      <Card title="Free Edition">
-        <div className="flex items-center justify-between">
+      {/* Sync Info */}
+      <Card title="Sync">
+        <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-3">
           <div>
-            <div className="text-sm font-medium text-text-primary">Continue with Free</div>
-            <p className="text-xs text-text-secondary mt-1">
-              Use junk cleaning (up to 500 MB), registry cleaning, and startup management at no cost.
-            </p>
+            <div className="text-text-muted">Last Sync</div>
+            <div className="font-medium text-text-primary mt-1">
+              {lastSyncAt ? new Date(lastSyncAt).toLocaleString() : '—'}
+            </div>
           </div>
-          <Badge tone="neutral">Active</Badge>
+          <div>
+            <div className="text-text-muted">Server</div>
+            <div className="font-mono text-xs text-text-secondary mt-1">{serverUrl}</div>
+          </div>
+          <div className="flex items-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void fetchAll()}
+              disabled={loading}
+              data-testid="license-sync-btn"
+            >
+              {loading ? 'Syncing…' : 'Refresh'}
+            </Button>
+          </div>
         </div>
       </Card>
     </div>

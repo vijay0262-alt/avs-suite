@@ -26,7 +26,7 @@ export function initFeatureGate(state: LicenseState): void {
 
 /**
  * Update the FeatureGate with a specific edition (e.g., from LicenseModel.edition).
- * This allows the gate to know about 'ultimate' even when stateToEdition
+ * This allows the gate to know the exact edition even when stateToEdition
  * defaults to 'professional'.
  */
 export function updateFeatureGateEdition(edition: string): void {

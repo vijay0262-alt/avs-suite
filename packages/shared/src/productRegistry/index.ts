@@ -122,7 +122,7 @@ const PC_OPTIMIZER_REGISTRATION: ProductRegistration = {
     'dashboard', 'system.info', 'disk.analyzer',
   ],
   featureKeys: [],
-  editions: ['free', 'professional', 'ultimate', 'trial'],
+  editions: ['free', 'professional'],
   active: true,
 };
 

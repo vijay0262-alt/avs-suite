@@ -45,11 +45,9 @@ function mapStatus(sdkStatus: string): LicenseModel['state'] {
 
 /**
  * Map SDK edition to AVS Suite edition.
+ * All SDK-activated licenses map to 'professional' (FREE doesn't go through SDK activation).
  */
-function mapEdition(sdkEdition: string): 'professional' | 'ultimate' {
-  const lower = sdkEdition.toLowerCase();
-  if (lower.includes('ultimate')) return 'ultimate';
-  if (lower.includes('enterprise')) return 'ultimate';
+function mapEdition(_sdkEdition: string): 'professional' {
   return 'professional';
 }
 

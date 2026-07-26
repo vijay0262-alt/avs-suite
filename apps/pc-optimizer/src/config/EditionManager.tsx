@@ -73,5 +73,5 @@ export function useEdition(): Edition {
 
 export function useIsPro(): boolean {
   const { edition } = useContext(EditionManagerContext);
-  return edition === 'professional' || edition === 'ultimate' || edition === 'trial';
+  return edition === 'professional';
 }

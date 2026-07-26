@@ -127,8 +127,6 @@ function renderCell(value: string | boolean): ReactNode {
 const EDITION_LABELS: Record<Edition, string> = {
   free: 'Free',
   professional: 'Professional',
-  ultimate: 'Ultimate',
-  trial: 'Trial',
 };
 
 export function UpgradeDialog({ open, onClose, onUpgrade, onActivate, onLearnMore, trigger }: UpgradeDialogProps) {
@@ -324,7 +322,7 @@ export function useFeatureGate() {
   const { show } = useUpgradeDialog();
 
   const checkFeature = (featureName: string, trigger?: string): boolean => {
-    if (edition === 'professional' || edition === 'ultimate' || edition === 'trial') return true;
+    if (edition === 'professional') return true;
     show(trigger ?? `Professional feature: ${featureName}`);
     return false;
   };

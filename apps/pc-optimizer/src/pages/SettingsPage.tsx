@@ -8,9 +8,9 @@ import { getVersionString, getBuildString, getChannelString, getEditionString } 
 import { useUpgradeDialog } from '../components/UpgradeDialog';
 import { useAuthStore } from '../features/auth/authStore';
 import { useEntitlementStore } from '../features/entitlement/entitlementStore';
-import { useLicenseStore } from '../features/license/licenseStore';
 import { useFeatureStore, FEATURE_LABELS } from '../features/feature-engine';
 import { useUpdateStore } from '../features/update';
+import { useSubscriptionStore } from '../features/subscription/subscriptionStore';
 import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, TrashIcon, LockClosedIcon, CheckCircleIcon, CloudArrowDownIcon, ArrowDownTrayIcon, XCircleIcon, RocketLaunchIcon } from '@heroicons/react/24/outline';
 
 interface VerificationLog {
@@ -48,8 +48,8 @@ export default function SettingsPage() {
   const { show: showUpgrade } = useUpgradeDialog();
   const { customer, session, logout } = useAuthStore();
   const { entitlement, created, syncPhase, syncError, lastSyncAt, syncEntitlement } = useEntitlementStore();
-  const { license, activationState, validation, syncStatus, error: licenseError, lastRefreshAt, refresh: refreshLicense, clear: clearLicense, isOffline, cacheStatus, gracePeriod, lastSuccessfulValidation, gracePeriodExpiration, limitedMode } = useLicenseStore();
   const { editionLabel, enabledFeatures, disabledFeatures, enabledCount, disabledCount, initialized: featureEngineInitialized } = useFeatureStore();
+  const { subscription, loading: subLoading, error: subError, lastSyncAt: subLastSyncAt, connectionStatus, serverVersion, serverUrl, sync: syncSubscription, checkConnection } = useSubscriptionStore();
   const {
     status: updateStatus,
     updateInfo,
@@ -148,12 +148,12 @@ export default function SettingsPage() {
               <p className="mt-1 text-xs text-text-secondary">
                 {edition === 'free'
                   ? 'Free edition includes basic junk cleaning, startup management, privacy cleaning, and disk analysis.'
-                  : 'Pro edition includes all features with priority support.'}
+                  : 'Professional edition includes all features with priority support.'}
               </p>
             </div>
             {edition === 'free' && (
               <Button variant="primary" onClick={() => showUpgrade('Settings')} data-testid="settings-upgrade">
-                Upgrade to Pro
+                Upgrade to Professional
               </Button>
             )}
           </div>
@@ -307,117 +307,82 @@ export default function SettingsPage() {
         </Card>
 
         <Card
-          title="License"
+          title="Subscription"
           actions={
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => void refreshLicense('optimizer')}
-                loading={syncStatus === 'syncing'}
-                leftIcon={<ArrowPathIcon className="h-4 w-4" />}
-                data-testid="settings-license-refresh"
-              >
-                Refresh
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => clearLicense()}
-                leftIcon={<TrashIcon className="h-4 w-4" />}
-                data-testid="settings-license-clear"
-              >
-                Clear Cache
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void syncSubscription()}
+              loading={subLoading}
+              leftIcon={<ArrowPathIcon className="h-4 w-4" />}
+              data-testid="settings-subscription-refresh"
+            >
+              Refresh
+            </Button>
           }
         >
-          {license ? (
-            <div className="space-y-2" data-testid="settings-license-info">
+          {subscription ? (
+            <div className="space-y-2" data-testid="settings-subscription-info">
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                <span className="text-text-muted">License Key</span>
-                <span className="font-mono text-text-primary">{license.license_key}</span>
-                <span className="text-text-muted">Edition</span>
-                <span className="text-text-primary">{license.edition}</span>
+                <span className="text-text-muted">Plan</span>
+                <span className="text-text-primary">{subscription.plan}</span>
                 <span className="text-text-muted">Status</span>
                 <span>
-                  <Badge tone={license.status === 'ACTIVE' ? 'success' : 'neutral'}>
-                    {license.status}
+                  <Badge tone={subscription.status === 'ACTIVE' ? 'success' : 'neutral'}>
+                    {subscription.status}
                   </Badge>
                 </span>
-                <span className="text-text-muted">Issued</span>
-                <span className="text-text-primary">{license.issued_at ? new Date(license.issued_at).toLocaleDateString() : '—'}</span>
-                <span className="text-text-muted">Expiration</span>
-                <span className="text-text-primary">{license.expires_at ? new Date(license.expires_at).toLocaleDateString() : 'Lifetime'}</span>
-                <span className="text-text-muted">Activation</span>
+                <span className="text-text-muted">Started</span>
+                <span className="text-text-primary">{subscription.started_at ? new Date(subscription.started_at).toLocaleDateString() : '—'}</span>
+                <span className="text-text-muted">Expires</span>
+                <span className="text-text-primary">{subscription.expires_at ? new Date(subscription.expires_at).toLocaleDateString() : '—'}</span>
+                <span className="text-text-muted">Last Sync</span>
+                <span className="text-text-primary">{subLastSyncAt ? new Date(subLastSyncAt).toLocaleString() : '—'}</span>
+                <span className="text-text-muted">Connection</span>
                 <span>
-                  <Badge tone={activationState === 'activated' ? 'success' : activationState === 'offline' ? 'warning' : 'neutral'}>
-                    {activationState}
+                  <Badge tone={connectionStatus === 'connected' ? 'success' : connectionStatus === 'checking' ? 'warning' : 'danger'}>
+                    {connectionStatus === 'connected' ? 'Connected' : connectionStatus === 'checking' ? 'Checking…' : 'Disconnected'}
                   </Badge>
                 </span>
-                <span className="text-text-muted">Last Refresh</span>
-                <span className="text-text-primary">{lastRefreshAt ? new Date(lastRefreshAt).toLocaleString() : '—'}</span>
-                <span className="text-text-muted">Validation</span>
-                <span className="text-text-primary">{validation?.message ?? '—'}</span>
-                <span className="text-text-muted">Offline Status</span>
-                <span>
-                  <Badge tone={isOffline ? 'warning' : 'success'}>
-                    {isOffline ? 'Offline' : 'Online'}
-                  </Badge>
-                </span>
-                <span className="text-text-muted">Cache Status</span>
-                <span>
-                  <Badge tone={cacheStatus === 'valid' ? 'success' : cacheStatus === 'expired' ? 'warning' : cacheStatus === 'empty' ? 'neutral' : 'danger'}>
-                    {cacheStatus}
-                  </Badge>
-                </span>
-                <span className="text-text-muted">Last Validation</span>
-                <span className="text-text-primary">{lastSuccessfulValidation ? new Date(lastSuccessfulValidation).toLocaleString() : '—'}</span>
-                <span className="text-text-muted">Grace Expiration</span>
-                <span className="text-text-primary">{gracePeriodExpiration ? new Date(gracePeriodExpiration).toLocaleString() : '—'}</span>
-                {gracePeriod && gracePeriod.status === 'active' && (
-                  <>
-                    <span className="text-text-muted">Grace Remaining</span>
-                    <span className="text-text-primary">{gracePeriod.daysRemaining} day{gracePeriod.daysRemaining === 1 ? '' : 's'}</span>
-                  </>
-                )}
+                <span className="text-text-muted">Server</span>
+                <span className="font-mono text-xs text-text-primary">{serverUrl}</span>
+                <span className="text-text-muted">API Version</span>
+                <span className="text-text-primary">{serverVersion ? `v${serverVersion}` : '—'}</span>
               </div>
 
-              {limitedMode && (
-                <div className="rounded-md bg-semantic-warning/10 border border-semantic-warning/30 px-3 py-2" data-testid="settings-limited-mode-notice">
-                  <p className="text-sm text-semantic-warning">
-                    {gracePeriod?.message ?? 'Grace period expired. Premium features are limited. Please connect to the internet and refresh your license.'}
-                  </p>
-                </div>
-              )}
-
-              {isOffline && !limitedMode && gracePeriod && gracePeriod.status === 'active' && (
-                <div className="rounded-md bg-semantic-warning/10 border border-semantic-warning/30 px-3 py-2" data-testid="settings-offline-notice">
-                  <p className="text-sm text-semantic-warning">
-                    {gracePeriod.message}
-                  </p>
+              {subscription.features.length > 0 && (
+                <div>
+                  <div className="text-xs font-medium text-text-muted mb-1">Features</div>
+                  <div className="flex flex-wrap gap-1">
+                    {subscription.features.map((f) => (
+                      <span key={f} className="inline-flex items-center gap-1 rounded-md bg-surface-muted px-2 py-0.5 text-xs text-text-secondary">
+                        <CheckCircleIcon className="h-3 w-3 text-semantic-success" />
+                        {f}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
-          ) : licenseError ? (
-            <div className="space-y-2" data-testid="settings-license-error">
-              <p className="text-sm text-semantic-danger">{licenseError}</p>
+          ) : subError ? (
+            <div className="space-y-2" data-testid="settings-subscription-error">
+              <p className="text-sm text-semantic-danger">{subError}</p>
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => void refreshLicense('optimizer')}
-                data-testid="settings-license-retry"
+                onClick={() => void syncSubscription()}
+                data-testid="settings-subscription-retry"
               >
-                Retry Activation
+                Retry
               </Button>
             </div>
-          ) : syncStatus === 'syncing' ? (
-            <p className="text-sm text-text-muted" data-testid="settings-license-syncing">
-              Activating license…
+          ) : subLoading ? (
+            <p className="text-sm text-text-muted" data-testid="settings-subscription-loading">
+              Loading subscription…
             </p>
           ) : (
-            <p className="text-sm text-text-muted" data-testid="settings-license-empty">
-              No license activated yet.
+            <p className="text-sm text-text-muted" data-testid="settings-subscription-empty">
+              No subscription data available.
             </p>
           )}
         </Card>

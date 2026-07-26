@@ -172,7 +172,7 @@ export interface IFeatureManager {
   /** Check if a feature should be hidden entirely (hard-gated). */
   isHidden(feature: ManagedFeature): boolean;
   /** Get the current resolved edition. */
-  currentEdition(): 'free' | 'professional' | 'ultimate' | 'trial';
+  currentEdition(): 'free' | 'professional';
 }
 
 /**

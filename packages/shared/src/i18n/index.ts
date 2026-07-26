@@ -45,7 +45,7 @@ export const en = {
     softwareUpdater: 'Software Updater',
     performance: 'Performance',
     systemInformation: 'System Information',
-    license: 'License',
+    license: 'Account & License',
     settings: 'Settings',
     about: 'About',
   },
@@ -57,7 +57,7 @@ export const en = {
     save: 'Save',
     close: 'Close',
     loading: 'Loading…',
-    upgrade: 'Upgrade to Pro',
+    upgrade: 'Upgrade to Professional',
     comingSoon: 'Coming soon',
   },
   dashboard: {
@@ -79,7 +79,7 @@ export const en = {
     themeSystem: 'System',
     language: 'Language',
     updates: 'Updates',
-    license: 'License',
+    license: 'Account & License',
     advanced: 'Advanced',
   },
 } as const;

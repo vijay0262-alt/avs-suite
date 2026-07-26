@@ -7,7 +7,7 @@
  */
 
 export type ReleaseChannel = 'stable' | 'beta' | 'nightly';
-export type AppEdition = 'free' | 'professional' | 'ultimate';
+export type AppEdition = 'free' | 'professional';
 export type AppArchitecture = 'x64' | 'arm64';
 
 export interface VersionInfo {
@@ -54,7 +54,6 @@ export function getEditionString(): string {
   const labels: Record<AppEdition, string> = {
     free: 'Free Edition',
     professional: 'Professional Edition',
-    ultimate: 'Ultimate Edition',
   };
   return labels[APP_VERSION.edition];
 }
@@ -77,7 +76,6 @@ export function getFullVersionDisplay(): string {
   const editionLabels: Record<AppEdition, string> = {
     free: 'Free Edition',
     professional: 'Professional Edition',
-    ultimate: 'Ultimate Edition',
   };
   const archLabels: Record<AppArchitecture, string> = {
     x64: '64-bit',

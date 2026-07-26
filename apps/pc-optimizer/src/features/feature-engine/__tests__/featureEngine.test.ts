@@ -72,20 +72,20 @@ describe('FeatureEngine', () => {
       expect(engine.isEnabled(Feature.DISK_ANALYZER)).toBe(true);
     });
 
-    it('disables REALTIME_MONITOR', () => {
-      expect(engine.isEnabled(Feature.REALTIME_MONITOR)).toBe(false);
+    it('enables REALTIME_MONITOR', () => {
+      expect(engine.isEnabled(Feature.REALTIME_MONITOR)).toBe(true);
     });
 
-    it('disables DRIVER_UPDATER', () => {
-      expect(engine.isEnabled(Feature.DRIVER_UPDATER)).toBe(false);
+    it('enables DRIVER_UPDATER', () => {
+      expect(engine.isEnabled(Feature.DRIVER_UPDATER)).toBe(true);
     });
 
-    it('returns 8 enabled features (3 FREE + 5 PRO)', () => {
-      expect(engine.getEnabledFeatures()).toHaveLength(8);
+    it('returns all features as enabled', () => {
+      expect(engine.getEnabledFeatures()).toHaveLength(ALL_FEATURES.length);
     });
   });
 
-  describe('TOTAL_SECURITY edition', () => {
+  describe('TRIAL edition (maps to PROFESSIONAL)', () => {
     beforeEach(() => {
       editionProvider.mockReturnValue('TOTAL_SECURITY');
       engine.refresh();
@@ -108,16 +108,16 @@ describe('FeatureEngine', () => {
       expect(engine.isEnabled(Feature.FILE_SHREDDER)).toBe(true);
     });
 
-    it('disables UNINSTALL_MANAGER (ULTIMATE only)', () => {
-      expect(engine.isEnabled(Feature.UNINSTALL_MANAGER)).toBe(false);
+    it('enables UNINSTALL_MANAGER', () => {
+      expect(engine.isEnabled(Feature.UNINSTALL_MANAGER)).toBe(true);
     });
 
-    it('returns 11 enabled features (8 + 3)', () => {
-      expect(engine.getEnabledFeatures()).toHaveLength(11);
+    it('returns all features as enabled', () => {
+      expect(engine.getEnabledFeatures()).toHaveLength(ALL_FEATURES.length);
     });
   });
 
-  describe('ULTIMATE edition', () => {
+  describe('ULTIMATE edition (maps to PROFESSIONAL)', () => {
     beforeEach(() => {
       editionProvider.mockReturnValue('ULTIMATE');
       engine.refresh();
@@ -216,7 +216,7 @@ describe('FeatureEngine', () => {
       engine.subscribe(l1);
       engine.subscribe(l2);
 
-      editionProvider.mockReturnValue('ULTIMATE');
+      editionProvider.mockReturnValue('PROFESSIONAL');
       engine.refresh();
 
       expect(l1).toHaveBeenCalledTimes(1);
@@ -233,7 +233,7 @@ describe('FeatureEngine', () => {
 
       unsub();
 
-      editionProvider.mockReturnValue('ULTIMATE');
+      editionProvider.mockReturnValue('FREE');
       engine.refresh();
       expect(listener).toHaveBeenCalledTimes(1); // Not called again
     });
@@ -248,12 +248,12 @@ describe('FeatureEngine', () => {
       expect(engine.requiresEdition(Feature.STARTUP_MANAGER)).toBe('Professional');
     });
 
-    it('returns "Total Security" for REALTIME_MONITOR', () => {
-      expect(engine.requiresEdition(Feature.REALTIME_MONITOR)).toBe('Total Security');
+    it('returns "Professional" for REALTIME_MONITOR', () => {
+      expect(engine.requiresEdition(Feature.REALTIME_MONITOR)).toBe('Professional');
     });
 
-    it('returns "Ultimate" for UNINSTALL_MANAGER', () => {
-      expect(engine.requiresEdition(Feature.UNINSTALL_MANAGER)).toBe('Ultimate');
+    it('returns "Professional" for UNINSTALL_MANAGER', () => {
+      expect(engine.requiresEdition(Feature.UNINSTALL_MANAGER)).toBe('Professional');
     });
   });
 
@@ -263,8 +263,8 @@ describe('FeatureEngine', () => {
       expect(engine.getDisabledCount()).toBe(ALL_FEATURES.length - 3);
     });
 
-    it('returns correct counts for ULTIMATE', () => {
-      editionProvider.mockReturnValue('ULTIMATE');
+    it('returns correct counts for PROFESSIONAL', () => {
+      editionProvider.mockReturnValue('PROFESSIONAL');
       engine.refresh();
 
       expect(engine.getEnabledCount()).toBe(ALL_FEATURES.length);
@@ -277,10 +277,10 @@ describe('FeatureEngine', () => {
       expect(engine.getEditionLabel()).toBe('Free');
     });
 
-    it('returns "Ultimate" for ULTIMATE', () => {
-      editionProvider.mockReturnValue('ULTIMATE');
+    it('returns "Professional" for PROFESSIONAL', () => {
+      editionProvider.mockReturnValue('PROFESSIONAL');
       engine.refresh();
-      expect(engine.getEditionLabel()).toBe('Ultimate');
+      expect(engine.getEditionLabel()).toBe('Professional');
     });
   });
 });

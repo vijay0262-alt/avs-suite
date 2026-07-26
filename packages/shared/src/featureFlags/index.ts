@@ -2,40 +2,41 @@
  * Edition & feature-flag registry.
  *
  * Every gated capability lives here so the app can compile once and be
- * shipped as Free, Professional, or Ultimate by resolving the current
+ * shipped as Free or Professional by resolving the current
  * edition at runtime (from the licensing package).
  *
  * A capability is a boolean-valued key. Its enabled editions are declared
  * declaratively — no scattered `if (edition === 'professional')` in components.
  *
- * Three commercial editions:
+ * Two commercial editions:
  *   - free         — basic features, encourages upgrade
  *   - professional — full optimization suite
- *   - ultimate     — premium suite with extras (antivirus, driver updater, AI, etc.)
- *
- * Trial maps to professional-level access for evaluation.
  */
 
-export type Edition = 'free' | 'professional' | 'ultimate' | 'trial';
+export type Edition = 'free' | 'professional';
 
-export const ALL_EDITIONS: readonly Edition[] = ['free', 'professional', 'ultimate', 'trial'];
+export const ALL_EDITIONS: readonly Edition[] = ['free', 'professional'];
 
 /**
  * Backward-compatibility aliases.
- * Old code that references 'pro' or 'enterprise' should use these
- * to map to the new edition names.
+ * Old code that references 'pro', 'enterprise', 'ultimate', or 'trial'
+ * should map to the new edition names.
  */
 export const EDITION_ALIASES: Record<string, Edition> = {
   pro: 'professional',
-  enterprise: 'ultimate',
+  enterprise: 'professional',
+  ultimate: 'professional',
+  trial: 'professional',
+  total_security: 'professional',
 };
 
 /**
  * Normalize any edition string (including old aliases) to the current type.
  */
 export function normalizeEdition(raw: string): Edition {
-  if (EDITION_ALIASES[raw]) return EDITION_ALIASES[raw];
-  if (ALL_EDITIONS.includes(raw as Edition)) return raw as Edition;
+  const lower = raw.toLowerCase();
+  if (EDITION_ALIASES[lower]) return EDITION_ALIASES[lower];
+  if (ALL_EDITIONS.includes(lower as Edition)) return lower as Edition;
   return 'free';
 }
 
@@ -57,254 +58,254 @@ export interface FeatureFlag {
  * Central feature registry. Adding a new capability = add a row here.
  *
  * Edition matrix:
- *   F = free, P = professional, U = ultimate, T = trial
+ *   F = free, P = professional
  */
 export const FEATURES = {
   // ── Dashboard & System Info ──────────────────────────────────
   DASHBOARD: {
     key: 'dashboard',
     description: 'Full system dashboard with health overview.',
-    editions: ['free', 'professional', 'ultimate', 'trial'] as const,
+    editions: ['free', 'professional'] as const,
   },
   SYSTEM_INFO: {
     key: 'system-info',
     description: 'Full system information display.',
-    editions: ['free', 'professional', 'ultimate', 'trial'] as const,
+    editions: ['free', 'professional'] as const,
   },
 
   // ── Disk Analyzer ────────────────────────────────────────────
   DISK_ANALYZER: {
     key: 'disk-analyzer',
     description: 'Visualise disk usage by folder and file type.',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
   // ── Junk Cleaner ─────────────────────────────────────────────
   JUNK_CLEANER_BASIC: {
     key: 'junk-cleaner-basic',
     description: 'Scan and preview junk files.',
-    editions: ['free', 'professional', 'ultimate', 'trial'] as const,
+    editions: ['free', 'professional'] as const,
   },
   JUNK_CLEANER_DEEP: {
     key: 'junk-cleaner-deep',
     description: 'Deep browser + application cache sweep with rules engine.',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
   JUNK_CLEANER_UNLIMITED: {
     key: 'junk-cleaner-unlimited',
     description: 'Unlimited junk cleaning (no daily cap).',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
   // ── Registry Cleaner ─────────────────────────────────────────
   REGISTRY_SCAN: {
     key: 'registry-scan',
     description: 'Scan and preview registry issues.',
-    editions: ['free', 'professional', 'ultimate', 'trial'] as const,
+    editions: ['free', 'professional'] as const,
   },
   REGISTRY_FIX: {
     key: 'registry-fix',
     description: 'Fix registry issues.',
-    editions: ['free', 'professional', 'ultimate', 'trial'] as const,
+    editions: ['free', 'professional'] as const,
   },
 
   // ── Startup Manager ──────────────────────────────────────────
   STARTUP_VIEW: {
     key: 'startup-view',
     description: 'View startup programs and services.',
-    editions: ['free', 'professional', 'ultimate', 'trial'] as const,
+    editions: ['free', 'professional'] as const,
   },
   STARTUP_DISABLE: {
     key: 'startup-disable',
     description: 'Enable / disable Windows startup entries and services.',
-    editions: ['free', 'professional', 'ultimate', 'trial'] as const,
+    editions: ['free', 'professional'] as const,
   },
 
   // ── Privacy Cleaner ──────────────────────────────────────────
   PRIVACY_SCAN: {
     key: 'privacy-scan',
     description: 'Scan and preview privacy traces.',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
   PRIVACY_CLEAN: {
     key: 'privacy-clean',
     description: 'Clear traces from browsers and Windows components.',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
   // ── Duplicate Finder ─────────────────────────────────────────
   DUPLICATE_SCAN: {
     key: 'duplicate-scan',
     description: 'Scan and preview duplicate files.',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
   DUPLICATE_DELETE: {
     key: 'duplicate-delete',
     description: 'Delete duplicate files.',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
   // ── Uninstaller ──────────────────────────────────────────────
   UNINSTALLER_VIEW: {
     key: 'uninstaller-view',
     description: 'View installed applications.',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
   UNINSTALLER_STANDARD: {
     key: 'uninstaller-standard',
     description: 'Standard application uninstall.',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
   UNINSTALLER_DEEP: {
     key: 'uninstaller-deep',
     description: 'Deep cleanup after uninstall (residual files, registry).',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
   // ── Software Updater ─────────────────────────────────────────
   SOFTWARE_UPDATE_SCAN: {
     key: 'software-update-scan',
     description: 'Scan installed software for available updates.',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
   SOFTWARE_UPDATE_MANUAL: {
     key: 'software-update-manual',
     description: 'Manually update individual software.',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
   SOFTWARE_UPDATE_ALL: {
     key: 'software-update-all',
     description: 'One-click update all software at once.',
-    editions: ['ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
   // ── Performance ──────────────────────────────────────────────
   PERFORMANCE_OPTIMIZE: {
     key: 'performance-optimize',
     description: 'One-click tuning presets for gaming, work, and battery.',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
   // ── Scheduled Optimization ───────────────────────────────────
   SCHEDULED_MAINTENANCE: {
     key: 'scheduled-maintenance',
     description: 'Run scans automatically on a schedule (weekly, monthly, custom).',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
   // ── Smart Recommendations & History ──────────────────────────
   SMART_RECOMMENDATIONS: {
     key: 'smart-recommendations',
     description: 'AI-powered optimization recommendations.',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
   OPTIMIZATION_HISTORY: {
     key: 'optimization-history',
     description: 'View past optimization actions and results.',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
   HEALTH_TIMELINE: {
     key: 'health-timeline',
     description: 'Historical health score timeline.',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
   // ── Background & Real-Time ───────────────────────────────────
   BACKGROUND_MONITORING: {
     key: 'background-monitoring',
     description: 'Continuous background system monitoring.',
-    editions: ['ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
   REAL_TIME_PROTECTION: {
     key: 'real-time-protection',
     description: 'Real-time system protection and alerts.',
-    editions: ['ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
   AUTO_BACKGROUND_CLEANUP: {
     key: 'auto-background-cleanup',
     description: 'Automatic cleanup in the background without user intervention.',
-    editions: ['ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
   AUTO_STARTUP_OPTIMIZATION: {
     key: 'auto-startup-optimization',
     description: 'Automatically optimize startup items.',
-    editions: ['ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
   AUTO_JUNK_CLEANUP: {
     key: 'auto-junk-cleanup',
     description: 'Automatically clean junk files on a schedule.',
-    editions: ['ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
   AUTO_PRIVACY_PROTECTION: {
     key: 'auto-privacy-protection',
     description: 'Automatically clear privacy traces.',
-    editions: ['ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
   REAL_TIME_NOTIFICATIONS: {
     key: 'real-time-notifications',
     description: 'Real-time system notifications and alerts.',
-    editions: ['ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
-  // ── Driver Updater (Ultimate) ────────────────────────────────
+  // ── Driver Updater ───────────────────────────────────────────
   DRIVER_UPDATER: {
     key: 'driver-updater',
     description: 'Scan and update system drivers.',
-    editions: ['ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
-  // ── Antivirus (Ultimate) ─────────────────────────────────────
+  // ── Antivirus ────────────────────────────────────────────────
   ANTIVIRUS: {
     key: 'antivirus',
     description: 'Built-in antivirus scanning and protection.',
-    editions: ['ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
-  // ── AI Smart Optimization (Ultimate) ─────────────────────────
+  // ── AI Smart Optimization ────────────────────────────────────
   AI_SMART_OPTIMIZATION: {
     key: 'ai-smart-optimization',
     description: 'AI-driven automatic system optimization.',
-    editions: ['ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
-  // ── Browser Protection (Ultimate) ────────────────────────────
+  // ── Browser Protection ───────────────────────────────────────
   BROWSER_PROTECTION: {
     key: 'browser-protection',
     description: 'Real-time browser security and privacy protection.',
-    editions: ['ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
-  // ── Battery Optimization (Ultimate) ──────────────────────────
+  // ── Battery Optimization ─────────────────────────────────────
   BATTERY_OPTIMIZATION: {
     key: 'battery-optimization',
     description: 'Battery life optimization and power management.',
-    editions: ['ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
-  // ── Game Mode (Ultimate) ─────────────────────────────────────
+  // ── Game Mode ────────────────────────────────────────────────
   GAME_MODE: {
     key: 'game-mode',
     description: 'Optimized system settings for gaming.',
-    editions: ['ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
   // ── Support ──────────────────────────────────────────────────
   PRIORITY_SUPPORT: {
     key: 'priority-support',
     description: 'Priority customer support.',
-    editions: ['professional', 'ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
   PREMIUM_SUPPORT: {
     key: 'premium-support',
     description: 'Premium 24/7 customer support with remote assistance.',
-    editions: ['ultimate', 'trial'] as const,
+    editions: ['professional'] as const,
   },
 
-  // ── Multi-Device (kept for backward compat) ──────────────────
+  // ── Multi-Device ─────────────────────────────────────────────
   MULTI_DEVICE_MANAGEMENT: {
     key: 'multi-device-management',
     description: 'Central console across multiple licensed devices.',
-    editions: ['ultimate'] as const,
+    editions: ['professional'] as const,
     hardGated: true,
   },
 } satisfies Record<string, FeatureFlag>;

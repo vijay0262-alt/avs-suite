@@ -32,19 +32,12 @@ describe('editionMappings', () => {
       expect(prof).toContain(Feature.DISK_ANALYZER);
     });
 
-    it('TOTAL_SECURITY adds realtime, driver updater, file shredder', () => {
-      const ts = EDITION_MAPPINGS.TOTAL_SECURITY;
-      expect(ts).toContain(Feature.REALTIME_MONITOR);
-      expect(ts).toContain(Feature.DRIVER_UPDATER);
-      expect(ts).toContain(Feature.FILE_SHREDDER);
-    });
-
-    it('ULTIMATE includes all features', () => {
-      const ult = EDITION_MAPPINGS.ULTIMATE;
-      expect(ult.length).toBe(ALL_FEATURES.length);
-      for (const f of ALL_FEATURES) {
-        expect(ult).toContain(f);
-      }
+    it('PROFESSIONAL adds realtime, driver updater, file shredder, uninstall manager', () => {
+      const prof = EDITION_MAPPINGS.PROFESSIONAL;
+      expect(prof).toContain(Feature.REALTIME_MONITOR);
+      expect(prof).toContain(Feature.DRIVER_UPDATER);
+      expect(prof).toContain(Feature.FILE_SHREDDER);
+      expect(prof).toContain(Feature.UNINSTALL_MANAGER);
     });
   });
 
@@ -57,14 +50,6 @@ describe('editionMappings', () => {
       expect(resolveEdition('PROFESSIONAL')).toBe('PROFESSIONAL');
     });
 
-    it('resolves TOTAL_SECURITY', () => {
-      expect(resolveEdition('TOTAL_SECURITY')).toBe('TOTAL_SECURITY');
-    });
-
-    it('resolves ULTIMATE', () => {
-      expect(resolveEdition('ULTIMATE')).toBe('ULTIMATE');
-    });
-
     it('resolves TRIAL as PROFESSIONAL', () => {
       expect(resolveEdition('TRIAL')).toBe('PROFESSIONAL');
     });
@@ -73,8 +58,16 @@ describe('editionMappings', () => {
       expect(resolveEdition('PRO')).toBe('PROFESSIONAL');
     });
 
-    it('resolves ENTERPRISE alias to ULTIMATE', () => {
-      expect(resolveEdition('ENTERPRISE')).toBe('ULTIMATE');
+    it('resolves TOTAL_SECURITY alias to PROFESSIONAL', () => {
+      expect(resolveEdition('TOTAL_SECURITY')).toBe('PROFESSIONAL');
+    });
+
+    it('resolves ULTIMATE alias to PROFESSIONAL', () => {
+      expect(resolveEdition('ULTIMATE')).toBe('PROFESSIONAL');
+    });
+
+    it('resolves ENTERPRISE alias to PROFESSIONAL', () => {
+      expect(resolveEdition('ENTERPRISE')).toBe('PROFESSIONAL');
     });
 
     it('resolves null to FREE', () => {
@@ -92,7 +85,7 @@ describe('editionMappings', () => {
     it('is case-insensitive', () => {
       expect(resolveEdition('free')).toBe('FREE');
       expect(resolveEdition('Professional')).toBe('PROFESSIONAL');
-      expect(resolveEdition('Ultimate')).toBe('ULTIMATE');
+      expect(resolveEdition('ultimate')).toBe('PROFESSIONAL');
     });
   });
 
@@ -110,25 +103,9 @@ describe('editionMappings', () => {
       }
     });
 
-    it('TOTAL_SECURITY includes PROFESSIONAL features', () => {
+    it('PROFESSIONAL includes all features', () => {
       const prof = getFeaturesForEdition('PROFESSIONAL');
-      const ts = getFeaturesForEdition('TOTAL_SECURITY');
-      for (const f of prof) {
-        expect(ts.has(f)).toBe(true);
-      }
-    });
-
-    it('ULTIMATE includes all features', () => {
-      const ult = getFeaturesForEdition('ULTIMATE');
-      expect(ult.size).toBe(ALL_FEATURES.length);
-    });
-
-    it('ULTIMATE includes TOTAL_SECURITY features', () => {
-      const ts = getFeaturesForEdition('TOTAL_SECURITY');
-      const ult = getFeaturesForEdition('ULTIMATE');
-      for (const f of ts) {
-        expect(ult.has(f)).toBe(true);
-      }
+      expect(prof.size).toBe(ALL_FEATURES.length);
     });
 
     it('FREE does not include STARTUP_MANAGER', () => {
@@ -141,9 +118,9 @@ describe('editionMappings', () => {
       expect(free.has(Feature.DRIVER_UPDATER)).toBe(false);
     });
 
-    it('PROFESSIONAL does not include REALTIME_MONITOR', () => {
+    it('PROFESSIONAL includes REALTIME_MONITOR', () => {
       const prof = getFeaturesForEdition('PROFESSIONAL');
-      expect(prof.has(Feature.REALTIME_MONITOR)).toBe(false);
+      expect(prof.has(Feature.REALTIME_MONITOR)).toBe(true);
     });
   });
 
@@ -156,18 +133,18 @@ describe('editionMappings', () => {
       expect(getRequiredEdition(Feature.STARTUP_MANAGER)).toBe('PROFESSIONAL');
     });
 
-    it('REALTIME_MONITOR requires TOTAL_SECURITY', () => {
-      expect(getRequiredEdition(Feature.REALTIME_MONITOR)).toBe('TOTAL_SECURITY');
+    it('REALTIME_MONITOR requires PROFESSIONAL', () => {
+      expect(getRequiredEdition(Feature.REALTIME_MONITOR)).toBe('PROFESSIONAL');
     });
 
-    it('UNINSTALL_MANAGER requires ULTIMATE', () => {
-      expect(getRequiredEdition(Feature.UNINSTALL_MANAGER)).toBe('ULTIMATE');
+    it('UNINSTALL_MANAGER requires PROFESSIONAL', () => {
+      expect(getRequiredEdition(Feature.UNINSTALL_MANAGER)).toBe('PROFESSIONAL');
     });
   });
 
   describe('EDITION_TIERS', () => {
-    it('has 4 tiers in ascending order', () => {
-      expect(EDITION_TIERS).toEqual(['FREE', 'PROFESSIONAL', 'TOTAL_SECURITY', 'ULTIMATE']);
+    it('has 2 tiers in ascending order', () => {
+      expect(EDITION_TIERS).toEqual(['FREE', 'PROFESSIONAL']);
     });
   });
 });

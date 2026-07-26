@@ -145,12 +145,12 @@ describe('featureStore', () => {
       expect(useFeatureStore.getState().isEnabled(Feature.DISK_ANALYZER)).toBe(true);
     });
 
-    it('disables REALTIME_MONITOR', () => {
-      expect(useFeatureStore.getState().isEnabled(Feature.REALTIME_MONITOR)).toBe(false);
+    it('enables REALTIME_MONITOR', () => {
+      expect(useFeatureStore.getState().isEnabled(Feature.REALTIME_MONITOR)).toBe(true);
     });
   });
 
-  describe('ULTIMATE features', () => {
+  describe('ULTIMATE features (maps to PROFESSIONAL)', () => {
     beforeEach(async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(LICENSE_ULTIMATE));
       await useLicenseStore.getState().activate('optimizer');

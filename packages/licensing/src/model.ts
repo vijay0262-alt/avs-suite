@@ -24,7 +24,7 @@ export interface LicenseModel {
   state: LicenseState;
 
   /** Edition this license grants. */
-  edition: 'professional' | 'ultimate';
+  edition: 'professional';
 
   /** ISO-8601 UTC timestamp when the license was activated on this device. */
   activationDate: string;
@@ -72,7 +72,7 @@ export const CURRENT_FORMAT_VERSION = 1;
 export interface LicenseView {
   licenseId: string;
   state: LicenseState;
-  edition: 'professional' | 'ultimate';
+  edition: 'professional';
   activationDate: string;
   expiryDate: string | null;
   maxDevices: number;

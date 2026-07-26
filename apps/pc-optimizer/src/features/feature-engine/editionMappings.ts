@@ -6,9 +6,7 @@
  * tier below, plus additional features.
  *
  *   FREE             → basic features
- *   PROFESSIONAL     → FREE + advanced optimization
- *   TOTAL_SECURITY   → PROFESSIONAL + security + drivers
- *   ULTIMATE         → all features
+ *   PROFESSIONAL     → FREE + all advanced features
  *
  * The engine reads from this map. Adding a new edition or changing
  * which features belong to a tier only requires editing this file.
@@ -23,9 +21,7 @@ import { Feature, ALL_FEATURES } from './features';
  */
 export type FeatureEdition =
   | 'FREE'
-  | 'PROFESSIONAL'
-  | 'TOTAL_SECURITY'
-  | 'ULTIMATE';
+  | 'PROFESSIONAL';
 
 /**
  * All editions in ascending order of capability.
@@ -33,8 +29,6 @@ export type FeatureEdition =
 export const EDITION_TIERS: readonly FeatureEdition[] = [
   'FREE',
   'PROFESSIONAL',
-  'TOTAL_SECURITY',
-  'ULTIMATE',
 ];
 
 /**
@@ -43,8 +37,6 @@ export const EDITION_TIERS: readonly FeatureEdition[] = [
 export const EDITION_LABELS: Record<FeatureEdition, string> = {
   FREE: 'Free',
   PROFESSIONAL: 'Professional',
-  TOTAL_SECURITY: 'Total Security',
-  ULTIMATE: 'Ultimate',
 };
 
 /**
@@ -59,24 +51,18 @@ export const EDITION_MAPPINGS: Record<FeatureEdition, readonly Feature[]> = {
   ],
 
   PROFESSIONAL: [
-    // Everything in FREE, plus:
+    // Everything in FREE, plus all advanced features:
     Feature.STARTUP_MANAGER,
     Feature.PRIVACY_CLEANER,
     Feature.SCHEDULED_CLEANING,
     Feature.AUTO_CLEAN,
     Feature.DISK_ANALYZER,
-  ],
-
-  TOTAL_SECURITY: [
-    // Everything in PROFESSIONAL, plus:
     Feature.REALTIME_MONITOR,
     Feature.DRIVER_UPDATER,
     Feature.FILE_SHREDDER,
-  ],
-
-  ULTIMATE: [
-    // All features
-    ...ALL_FEATURES,
+    Feature.DUPLICATE_FINDER,
+    Feature.UNINSTALL_MANAGER,
+    Feature.REGISTRY_CLEANER,
   ],
 };
 
@@ -96,15 +82,12 @@ export function resolveEdition(licenseEdition: string | null | undefined): Featu
       return 'FREE';
     case 'PROFESSIONAL':
     case 'PRO':
-      return 'PROFESSIONAL';
-    case 'TOTAL_SECURITY':
-    case 'TOTAL-SECURITY':
-      return 'TOTAL_SECURITY';
     case 'ULTIMATE':
     case 'ENTERPRISE':
-      return 'ULTIMATE';
+    case 'TOTAL_SECURITY':
+    case 'TOTAL-SECURITY':
     case 'TRIAL':
-      return 'PROFESSIONAL'; // Trial gets professional-level access
+      return 'PROFESSIONAL';
     default:
       return 'FREE';
   }
@@ -113,8 +96,7 @@ export function resolveEdition(licenseEdition: string | null | undefined): Featu
 /**
  * Get the set of all features enabled for a given edition (cumulative).
  *
- * Resolves the tier hierarchy: ULTIMATE includes TOTAL_SECURITY,
- * which includes PROFESSIONAL, which includes FREE.
+ * Resolves the tier hierarchy: PROFESSIONAL includes FREE.
  */
 export function getFeaturesForEdition(edition: FeatureEdition): Set<Feature> {
   const enabled = new Set<Feature>();

@@ -73,8 +73,8 @@ describe('License States', () => {
       expect(stateToEdition('free')).toBe('free');
     });
 
-    it('maps trial to trial', () => {
-      expect(stateToEdition('trial')).toBe('trial');
+    it('maps trial to professional', () => {
+      expect(stateToEdition('trial')).toBe('professional');
     });
 
     it('maps monthly, annual, lifetime, grace_period to professional', () => {

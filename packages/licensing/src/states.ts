@@ -76,16 +76,14 @@ export function isErrorState(state: LicenseState): boolean {
 /**
  * Map a license state to an edition for feature-flag purposes.
  *
- * Active paid states (monthly, annual, lifetime, grace_period) default
- * to 'professional'. The LicenseModel.edition field may override this
- * to 'ultimate' when the license grants ultimate access.
+ * Active paid states (monthly, annual, lifetime, grace_period, trial)
+ * all map to 'professional'. Error states revert to 'free'.
  */
-export function stateToEdition(state: LicenseState): 'free' | 'professional' | 'ultimate' | 'trial' {
+export function stateToEdition(state: LicenseState): 'free' | 'professional' {
   switch (state) {
     case 'free':
       return 'free';
     case 'trial':
-      return 'trial';
     case 'monthly':
     case 'annual':
     case 'lifetime':

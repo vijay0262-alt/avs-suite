@@ -57,12 +57,12 @@ describe('FeatureGate', () => {
       expect(canUse('performance.optimize')).toBe(true);
     });
 
-    it('denies driver.update in professional edition', () => {
-      expect(canUse('driver.update')).toBe(false);
+    it('allows driver.update in professional edition', () => {
+      expect(canUse('driver.update')).toBe(true);
     });
 
-    it('denies antivirus.scan in professional edition', () => {
-      expect(canUse('antivirus.scan')).toBe(false);
+    it('allows antivirus.scan in professional edition', () => {
+      expect(canUse('antivirus.scan')).toBe(true);
     });
 
     it('reports professional as current edition', () => {
@@ -70,30 +70,7 @@ describe('FeatureGate', () => {
     });
   });
 
-  describe('Ultimate edition (via updateFeatureGateEdition)', () => {
-    beforeEach(() => {
-      initFeatureGate('annual');
-      updateFeatureGateEdition('ultimate');
-    });
-
-    it('allows driver.update in ultimate edition', () => {
-      expect(canUse('driver.update')).toBe(true);
-    });
-
-    it('allows antivirus.scan in ultimate edition', () => {
-      expect(canUse('antivirus.scan')).toBe(true);
-    });
-
-    it('allows ai.smart_optimization in ultimate edition', () => {
-      expect(canUse('ai.smart_optimization')).toBe(true);
-    });
-
-    it('reports ultimate as current edition', () => {
-      expect(currentEdition()).toBe('ultimate');
-    });
-  });
-
-  describe('Trial edition (via state)', () => {
+  describe('Trial edition (via state, maps to professional)', () => {
     beforeEach(() => {
       initFeatureGate('trial');
     });
@@ -103,13 +80,13 @@ describe('FeatureGate', () => {
       expect(canUse('performance.optimize')).toBe(true);
     });
 
-    it('allows ultimate features in trial', () => {
+    it('allows all features in trial (maps to professional)', () => {
       expect(canUse('driver.update')).toBe(true);
       expect(canUse('antivirus.scan')).toBe(true);
     });
 
-    it('reports trial as current edition', () => {
-      expect(currentEdition()).toBe('trial');
+    it('reports professional as current edition', () => {
+      expect(currentEdition()).toBe('professional');
     });
   });
 
@@ -122,11 +99,11 @@ describe('FeatureGate', () => {
       expect(canUse('privacy.clean')).toBe(true);
     });
 
-    it('unlocks ultimate features when edition is updated', () => {
+    it('unlocks all features when edition is updated to professional', () => {
       initFeatureGate('free');
       expect(canUse('driver.update')).toBe(false);
 
-      updateFeatureGateEdition('ultimate');
+      updateFeatureGateEdition('professional');
       expect(canUse('driver.update')).toBe(true);
     });
   });
@@ -140,9 +117,9 @@ describe('FeatureGate', () => {
       expect(canUse('privacy.clean')).toBe(false);
     });
 
-    it('locks ultimate features when edition reverts to free', () => {
+    it('locks all features when edition reverts to free', () => {
       initFeatureGate('annual');
-      updateFeatureGateEdition('ultimate');
+      updateFeatureGateEdition('professional');
       expect(canUse('driver.update')).toBe(true);
 
       initFeatureGate('free');
@@ -157,9 +134,8 @@ describe('FeatureGate', () => {
       expect(canUse('performance.optimize')).toBe(true);
     });
 
-    it('continues honoring ultimate edition during grace period', () => {
+    it('continues honoring professional edition during grace period', () => {
       initFeatureGate('grace_period');
-      updateFeatureGateEdition('ultimate');
       expect(canUse('driver.update')).toBe(true);
       expect(canUse('antivirus.scan')).toBe(true);
     });
@@ -171,9 +147,9 @@ describe('FeatureGate', () => {
       expect(currentEdition()).toBe('professional');
     });
 
-    it('normalizes old enterprise alias to ultimate', () => {
+    it('normalizes old enterprise alias to professional', () => {
       updateFeatureGateEdition('enterprise');
-      expect(currentEdition()).toBe('ultimate');
+      expect(currentEdition()).toBe('professional');
     });
   });
 
@@ -184,7 +160,7 @@ describe('FeatureGate', () => {
     });
 
     it('does not hide hardGated features from eligible editions', () => {
-      updateFeatureGateEdition('ultimate');
+      updateFeatureGateEdition('professional');
       expect(isHidden('multi_device.management')).toBe(false);
     });
   });
