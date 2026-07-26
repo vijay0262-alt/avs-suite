@@ -53,7 +53,9 @@ const CONFIGS: Record<AppEnvironment, EnvironmentConfig> = {
 };
 
 function resolveEnvironment(raw: string | undefined): EnvironmentConfig {
-  const key = (raw ?? 'development').toLowerCase() as AppEnvironment;
+  // When AVS_ENV is not set, use production if the app is packaged, otherwise development.
+  // This ensures the installed app always hits api.avsshield.com without needing env vars.
+  const key = (raw ?? (app.isPackaged ? 'production' : 'development')).toLowerCase() as AppEnvironment;
   return CONFIGS[key] ?? CONFIGS.development;
 }
 

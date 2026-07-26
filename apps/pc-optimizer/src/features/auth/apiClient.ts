@@ -11,15 +11,28 @@
  * should use `apiClient` instead of raw fetch.
  */
 import { tokenStorage, type StoredSession } from './tokenStorage';
-import { resolveEnvironment } from '@avs/shared/env';
+
+// Production API URL — used when Vite builds for production (import.meta.env.PROD = true).
+// In development, falls back to localhost.
+const PRODUCTION_API_URL = 'https://api.avsshield.com';
+const DEVELOPMENT_API_URL = 'http://localhost:8000';
 
 /** Base URL for the AVS License Server customer API. */
 function getDefaultBaseUrl(): string {
-  const envConfig = resolveEnvironment(process?.env?.AVS_ENV);
-  return envConfig.licenseApiUrl;
+  // Vite sets import.meta.env.PROD at build time — always correct in bundled code.
+  // Also check process.env.AVS_ENV for Node/Electron main process compatibility.
+  const avsEnv = typeof process !== 'undefined' ? process.env?.AVS_ENV : undefined;
+  if (avsEnv === 'production' || (import.meta as any).env?.PROD) {
+    return PRODUCTION_API_URL;
+  }
+  if (avsEnv === 'staging') {
+    return 'https://api-staging.avsshield.com';
+  }
+  return DEVELOPMENT_API_URL;
 }
 
 export function getBaseUrl(): string {
+  // Allow explicit override via env var (e.g. for testing)
   if (typeof process !== 'undefined' && process.env?.LICENSE_SERVER_URL) {
     return process.env.LICENSE_SERVER_URL;
   }
