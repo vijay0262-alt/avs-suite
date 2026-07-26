@@ -10,6 +10,7 @@ import {
   ALL_EDITIONS,
   FEATURES,
   type FeatureKey,
+  type Edition,
 } from './index';
 
 describe('Edition Matrix', () => {
@@ -137,30 +138,30 @@ describe('Edition Matrix', () => {
       expect(isFeatureEnabled('PRIORITY_SUPPORT', edition)).toBe(true);
     });
 
-    it('denies Ultimate-only features', () => {
-      expect(isFeatureEnabled('SOFTWARE_UPDATE_ALL', edition)).toBe(false);
-      expect(isFeatureEnabled('DRIVER_UPDATER', edition)).toBe(false);
-      expect(isFeatureEnabled('ANTIVIRUS', edition)).toBe(false);
-      expect(isFeatureEnabled('AI_SMART_OPTIMIZATION', edition)).toBe(false);
-      expect(isFeatureEnabled('BROWSER_PROTECTION', edition)).toBe(false);
-      expect(isFeatureEnabled('BATTERY_OPTIMIZATION', edition)).toBe(false);
-      expect(isFeatureEnabled('GAME_MODE', edition)).toBe(false);
-      expect(isFeatureEnabled('PREMIUM_SUPPORT', edition)).toBe(false);
+    it('grants all advanced features (formerly Ultimate-only)', () => {
+      expect(isFeatureEnabled('SOFTWARE_UPDATE_ALL', edition)).toBe(true);
+      expect(isFeatureEnabled('DRIVER_UPDATER', edition)).toBe(true);
+      expect(isFeatureEnabled('ANTIVIRUS', edition)).toBe(true);
+      expect(isFeatureEnabled('AI_SMART_OPTIMIZATION', edition)).toBe(true);
+      expect(isFeatureEnabled('BROWSER_PROTECTION', edition)).toBe(true);
+      expect(isFeatureEnabled('BATTERY_OPTIMIZATION', edition)).toBe(true);
+      expect(isFeatureEnabled('GAME_MODE', edition)).toBe(true);
+      expect(isFeatureEnabled('PREMIUM_SUPPORT', edition)).toBe(true);
     });
 
-    it('denies Ultimate-only background/auto features', () => {
-      expect(isFeatureEnabled('BACKGROUND_MONITORING', edition)).toBe(false);
-      expect(isFeatureEnabled('REAL_TIME_PROTECTION', edition)).toBe(false);
-      expect(isFeatureEnabled('AUTO_BACKGROUND_CLEANUP', edition)).toBe(false);
-      expect(isFeatureEnabled('AUTO_STARTUP_OPTIMIZATION', edition)).toBe(false);
-      expect(isFeatureEnabled('AUTO_JUNK_CLEANUP', edition)).toBe(false);
-      expect(isFeatureEnabled('AUTO_PRIVACY_PROTECTION', edition)).toBe(false);
-      expect(isFeatureEnabled('REAL_TIME_NOTIFICATIONS', edition)).toBe(false);
+    it('grants all background/auto features', () => {
+      expect(isFeatureEnabled('BACKGROUND_MONITORING', edition)).toBe(true);
+      expect(isFeatureEnabled('REAL_TIME_PROTECTION', edition)).toBe(true);
+      expect(isFeatureEnabled('AUTO_BACKGROUND_CLEANUP', edition)).toBe(true);
+      expect(isFeatureEnabled('AUTO_STARTUP_OPTIMIZATION', edition)).toBe(true);
+      expect(isFeatureEnabled('AUTO_JUNK_CLEANUP', edition)).toBe(true);
+      expect(isFeatureEnabled('AUTO_PRIVACY_PROTECTION', edition)).toBe(true);
+      expect(isFeatureEnabled('REAL_TIME_NOTIFICATIONS', edition)).toBe(true);
     });
   });
 
-  describe('Ultimate edition', () => {
-    const edition = 'ultimate';
+  describe('Ultimate edition (maps to Professional)', () => {
+    const edition: Edition = normalizeEdition('ultimate');
 
     it('grants everything from Professional', () => {
       const proFeatures: FeatureKey[] = [
@@ -175,7 +176,7 @@ describe('Edition Matrix', () => {
       }
     });
 
-    it('grants Ultimate-only features', () => {
+    it('grants all advanced features', () => {
       expect(isFeatureEnabled('DRIVER_UPDATER', edition)).toBe(true);
       expect(isFeatureEnabled('ANTIVIRUS', edition)).toBe(true);
       expect(isFeatureEnabled('AI_SMART_OPTIMIZATION', edition)).toBe(true);
@@ -193,8 +194,8 @@ describe('Edition Matrix', () => {
     });
   });
 
-  describe('Trial edition', () => {
-    const edition = 'trial';
+  describe('Trial edition (maps to Professional)', () => {
+    const edition: Edition = normalizeEdition('trial');
 
     it('grants Professional-level features', () => {
       expect(isFeatureEnabled('REGISTRY_FIX', edition)).toBe(true);
@@ -202,7 +203,7 @@ describe('Edition Matrix', () => {
       expect(isFeatureEnabled('PRIORITY_SUPPORT', edition)).toBe(true);
     });
 
-    it('grants Ultimate-level features for evaluation', () => {
+    it('grants all advanced features for evaluation', () => {
       expect(isFeatureEnabled('DRIVER_UPDATER', edition)).toBe(true);
       expect(isFeatureEnabled('ANTIVIRUS', edition)).toBe(true);
       expect(isFeatureEnabled('AI_SMART_OPTIMIZATION', edition)).toBe(true);
@@ -214,8 +215,8 @@ describe('Edition Matrix', () => {
       expect(normalizeEdition('pro')).toBe('professional');
     });
 
-    it('normalizes enterprise → ultimate', () => {
-      expect(normalizeEdition('enterprise')).toBe('ultimate');
+    it('normalizes enterprise → professional', () => {
+      expect(normalizeEdition('enterprise')).toBe('professional');
     });
 
     it('falls back to free for unknown editions', () => {

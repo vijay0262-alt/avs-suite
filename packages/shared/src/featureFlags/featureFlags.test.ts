@@ -8,43 +8,36 @@ describe('featureFlags', () => {
     }
   });
 
-  it('restricts Duplicate Delete to Professional / Ultimate / Trial', () => {
+  it('restricts Duplicate Delete to Professional', () => {
     expect(isFeatureEnabled('DUPLICATE_DELETE', 'free')).toBe(false);
     expect(isFeatureEnabled('DUPLICATE_DELETE', 'professional')).toBe(true);
-    expect(isFeatureEnabled('DUPLICATE_DELETE', 'ultimate')).toBe(true);
-    expect(isFeatureEnabled('DUPLICATE_DELETE', 'trial')).toBe(true);
   });
 
-  it('restricts Driver Updater to Ultimate / Trial only', () => {
+  it('grants Driver Updater to Professional', () => {
     expect(isFeatureEnabled('DRIVER_UPDATER', 'free')).toBe(false);
-    expect(isFeatureEnabled('DRIVER_UPDATER', 'professional')).toBe(false);
-    expect(isFeatureEnabled('DRIVER_UPDATER', 'ultimate')).toBe(true);
-    expect(isFeatureEnabled('DRIVER_UPDATER', 'trial')).toBe(true);
+    expect(isFeatureEnabled('DRIVER_UPDATER', 'professional')).toBe(true);
   });
 
-  it('grants Performance Optimize to Professional / Ultimate / Trial', () => {
+  it('grants Performance Optimize to Professional', () => {
     expect(isFeatureEnabled('PERFORMANCE_OPTIMIZE', 'free')).toBe(false);
     expect(isFeatureEnabled('PERFORMANCE_OPTIMIZE', 'professional')).toBe(true);
-    expect(isFeatureEnabled('PERFORMANCE_OPTIMIZE', 'ultimate')).toBe(true);
   });
 
-  it('grants Antivirus to Ultimate / Trial only', () => {
+  it('grants Antivirus to Professional', () => {
     expect(isFeatureEnabled('ANTIVIRUS', 'free')).toBe(false);
-    expect(isFeatureEnabled('ANTIVIRUS', 'professional')).toBe(false);
-    expect(isFeatureEnabled('ANTIVIRUS', 'ultimate')).toBe(true);
+    expect(isFeatureEnabled('ANTIVIRUS', 'professional')).toBe(true);
   });
 
-  it('hides hardGated Ultimate-only features from other editions', () => {
+  it('hides hardGated Professional-only features from Free', () => {
     expect(shouldHideFeature('MULTI_DEVICE_MANAGEMENT', 'free')).toBe(true);
-    expect(shouldHideFeature('MULTI_DEVICE_MANAGEMENT', 'professional')).toBe(true);
-    expect(shouldHideFeature('MULTI_DEVICE_MANAGEMENT', 'ultimate')).toBe(false);
+    expect(shouldHideFeature('MULTI_DEVICE_MANAGEMENT', 'professional')).toBe(false);
   });
 
   it('normalizes old edition aliases', () => {
     expect(normalizeEdition('pro')).toBe('professional');
-    expect(normalizeEdition('enterprise')).toBe('ultimate');
+    expect(normalizeEdition('enterprise')).toBe('professional');
     expect(normalizeEdition('free')).toBe('free');
     expect(normalizeEdition('professional')).toBe('professional');
-    expect(normalizeEdition('ultimate')).toBe('ultimate');
+    expect(normalizeEdition('ultimate')).toBe('professional');
   });
 });
