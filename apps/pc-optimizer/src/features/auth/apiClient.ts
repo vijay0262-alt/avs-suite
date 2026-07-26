@@ -61,8 +61,19 @@ export class AuthError extends Error {
   }
 }
 
+export type NetworkErrorKind =
+  | 'TIMEOUT'
+  | 'DNS_FAILURE'
+  | 'SSL_FAILURE'
+  | 'CONNECTION_REFUSED'
+  | 'NETWORK_UNREACHABLE'
+  | 'UNKNOWN';
+
 export class NetworkError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    public readonly kind: NetworkErrorKind = 'UNKNOWN',
+  ) {
     super(message);
     this.name = 'NetworkError';
   }
@@ -127,18 +138,43 @@ async function doFetch(
       signal: controller.signal,
     });
     if (!response.ok) {
-      console.error(`[AVS] API error: ${opts.method ?? 'GET'} ${url} → ${response.status} ${response.statusText}`);
+      // Log the full error details — read body as text so it can be re-read later
+      const cloned = response.clone();
+      let bodyText = '';
+      try { bodyText = await cloned.text(); } catch { /* ignore */ }
+      console.error(
+        `[AVS] API error: ${opts.method ?? 'GET'} ${url}\n` +
+        `  HTTP Status: ${response.status} ${response.statusText}\n` +
+        `  Response: ${bodyText}`,
+      );
     }
     return response;
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
       console.error(`[AVS] Request timed out: ${opts.method ?? 'GET'} ${url} (timeout: ${timeoutMs}ms)`);
-      throw new NetworkError('Request timed out');
+      throw new NetworkError(`Request timed out after ${timeoutMs}ms`, 'TIMEOUT');
     }
-    console.error(`[AVS] Network error: ${opts.method ?? 'GET'} ${url} →`, err instanceof Error ? err.message : err);
-    throw new NetworkError(
-      err instanceof Error ? err.message : 'Unable to connect to the server',
+
+    // Classify the network error based on the error message
+    const msg = err instanceof Error ? err.message : String(err);
+    const lowerMsg = msg.toLowerCase();
+    let kind: NetworkErrorKind = 'UNKNOWN';
+
+    if (lowerMsg.includes('dns') || lowerMsg.includes('getaddrinfo') || lowerMsg.includes('enotfound') || lowerMsg.includes('name_not_resolved')) {
+      kind = 'DNS_FAILURE';
+    } else if (lowerMsg.includes('ssl') || lowerMsg.includes('tls') || lowerMsg.includes('certificate') || lowerMsg.includes('cert_')) {
+      kind = 'SSL_FAILURE';
+    } else if (lowerMsg.includes('econnrefused') || lowerMsg.includes('connection refused')) {
+      kind = 'CONNECTION_REFUSED';
+    } else if (lowerMsg.includes('enetwork') || lowerMsg.includes('network request failed') || lowerMsg.includes('fetch failed')) {
+      kind = 'NETWORK_UNREACHABLE';
+    }
+
+    console.error(
+      `[AVS] Network error [${kind}]: ${opts.method ?? 'GET'} ${url}\n` +
+      `  Error: ${msg}`,
     );
+    throw new NetworkError(msg, kind);
   } finally {
     clearTimeout(timeoutId);
   }

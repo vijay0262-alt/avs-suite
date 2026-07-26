@@ -7,7 +7,7 @@
  *   POST /api/customer/auth/refresh — refresh access token
  *   GET  /api/customer/profile      — validate token + get customer info
  */
-import { apiClient, ApiError, NetworkError, AuthError, configureApiClient } from './apiClient';
+import { apiClient, ApiError, NetworkError, AuthError, configureApiClient, getBaseUrl } from './apiClient';
 import { tokenStorage, type StoredSession } from './tokenStorage';
 
 export interface LoginResponse {
@@ -49,11 +49,15 @@ export interface CustomerProfile {
 
 export type AuthErrorCode =
   | 'INVALID_CREDENTIALS'
+  | 'ACCOUNT_INACTIVE'
   | 'ACCOUNT_LOCKED'
   | 'ACCOUNT_SUSPENDED'
   | 'ACCOUNT_DELETED'
   | 'TOKEN_EXPIRED'
   | 'NETWORK_ERROR'
+  | 'DNS_FAILURE'
+  | 'SSL_FAILURE'
+  | 'TIMEOUT'
   | 'SERVER_ERROR'
   | 'UNKNOWN';
 
@@ -70,10 +74,38 @@ export class AuthResultError extends Error {
 /** Map HTTP error details to user-friendly error codes. */
 function classifyError(err: unknown): AuthResultError {
   if (err instanceof NetworkError) {
-    return new AuthResultError(
-      'Unable to connect to AVS Shield server. Please check your internet connection.',
-      'NETWORK_ERROR',
-    );
+    switch (err.kind) {
+      case 'TIMEOUT':
+        return new AuthResultError(
+          'The server took too long to respond. Please check your internet connection and try again.',
+          'TIMEOUT',
+        );
+      case 'DNS_FAILURE':
+        return new AuthResultError(
+          'Could not resolve the AVS Shield server address. Please check your internet connection.',
+          'DNS_FAILURE',
+        );
+      case 'SSL_FAILURE':
+        return new AuthResultError(
+          'Secure connection failed. The server certificate could not be verified.',
+          'SSL_FAILURE',
+        );
+      case 'CONNECTION_REFUSED':
+        return new AuthResultError(
+          'The AVS Shield server refused the connection. Please try again later.',
+          'NETWORK_ERROR',
+        );
+      case 'NETWORK_UNREACHABLE':
+        return new AuthResultError(
+          'Unable to reach the AVS Shield server. Please check your internet connection.',
+          'NETWORK_ERROR',
+        );
+      default:
+        return new AuthResultError(
+          err.message || 'Unable to connect to the AVS Shield server.',
+          'NETWORK_ERROR',
+        );
+    }
   }
 
   if (err instanceof AuthError) {
@@ -81,29 +113,51 @@ function classifyError(err: unknown): AuthResultError {
   }
 
   if (err instanceof ApiError) {
-    const detail = (err.detail ?? '').toLowerCase();
+    const detail = err.detail ?? '';
+    const lowerDetail = detail.toLowerCase();
 
+    // 401/403 — show the actual backend message
     if (err.statusCode === 401 || err.statusCode === 403) {
-      if (detail.includes('locked')) {
-        return new AuthResultError('Your account is locked. Please contact support.', 'ACCOUNT_LOCKED');
+      if (lowerDetail.includes('locked')) {
+        return new AuthResultError(
+          detail || 'Your account is locked. Please contact support.',
+          'ACCOUNT_LOCKED',
+        );
       }
-      if (detail.includes('suspend')) {
-        return new AuthResultError('Your account is suspended. Please contact support.', 'ACCOUNT_SUSPENDED');
+      if (lowerDetail.includes('suspend')) {
+        return new AuthResultError(
+          detail || 'Your account is suspended. Please contact support.',
+          'ACCOUNT_SUSPENDED',
+        );
       }
-      if (detail.includes('deleted') || detail.includes('delet')) {
-        return new AuthResultError('This account has been deleted.', 'ACCOUNT_DELETED');
+      if (lowerDetail.includes('deleted') || lowerDetail.includes('delet')) {
+        return new AuthResultError(
+          detail || 'This account has been deleted.',
+          'ACCOUNT_DELETED',
+        );
       }
-      return new AuthResultError('Invalid email/phone or password.', 'INVALID_CREDENTIALS');
+      if (lowerDetail.includes('inactive') || lowerDetail.includes('disabled') || lowerDetail.includes('verify')) {
+        return new AuthResultError(
+          detail || 'Your account is not active. Please contact support.',
+          'ACCOUNT_INACTIVE',
+        );
+      }
+      // Use the backend's actual message if available, otherwise generic
+      return new AuthResultError(
+        detail || 'Invalid email/phone or password.',
+        'INVALID_CREDENTIALS',
+      );
     }
 
     if (err.statusCode >= 500) {
       return new AuthResultError(
-        'The AVS Shield server is experiencing issues. Please try again later.',
+        detail || 'The AVS Shield server is experiencing issues. Please try again later.',
         'SERVER_ERROR',
       );
     }
 
-    return new AuthResultError(err.detail ?? err.message, 'UNKNOWN');
+    // Other HTTP errors — show the actual backend message
+    return new AuthResultError(detail || err.message, 'UNKNOWN');
   }
 
   return new AuthResultError(
@@ -172,10 +226,19 @@ export const authService = {
    * On failure, throws AuthResultError with a classified code.
    */
   async login(identifier: string, password: string): Promise<StoredSession> {
+    const baseUrl = getBaseUrl();
+    const endpoint = '/api/customer/auth/login';
+    const fullUrl = `${baseUrl}${endpoint}`;
     try {
-      console.log(`[AVS] Login attempt for: ${identifier}`);
+      console.log(
+        `[AVS] Login attempt:\n` +
+        `  API Base URL: ${baseUrl}\n` +
+        `  POST: ${endpoint}\n` +
+        `  Full URL: ${fullUrl}\n` +
+        `  Identifier: ${identifier}`,
+      );
       const resp = await apiClient.post<LoginResponse>(
-        '/api/customer/auth/login',
+        endpoint,
         { identifier, password },
         { noAuth: true },
       );
@@ -184,7 +247,27 @@ export const authService = {
       tokenStorage.save(session);
       return session;
     } catch (err) {
-      console.error(`[AVS] Login failed for: ${identifier}`, err instanceof Error ? `${err.name}: ${err.message}` : err);
+      // Log structured error details
+      if (err instanceof ApiError) {
+        console.error(
+          `[AVS] Login failed:\n` +
+          `  POST: ${fullUrl}\n` +
+          `  HTTP Status: ${err.statusCode}\n` +
+          `  Response: ${JSON.stringify({ detail: err.detail })}`,
+        );
+      } else if (err instanceof NetworkError) {
+        console.error(
+          `[AVS] Login failed [${err.kind}]:\n` +
+          `  POST: ${fullUrl}\n` +
+          `  Error: ${err.message}`,
+        );
+      } else {
+        console.error(
+          `[AVS] Login failed:\n` +
+          `  POST: ${fullUrl}\n` +
+          `  Error: ${err instanceof Error ? `${err.name}: ${err.message}` : String(err)}`,
+        );
+      }
       throw classifyError(err);
     }
   },
