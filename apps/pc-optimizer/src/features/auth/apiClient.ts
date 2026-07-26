@@ -22,7 +22,7 @@ function getDefaultBaseUrl(): string {
   // Vite sets import.meta.env.PROD at build time — always correct in bundled code.
   // Also check process.env.AVS_ENV for Node/Electron main process compatibility.
   const avsEnv = typeof process !== 'undefined' ? process.env?.AVS_ENV : undefined;
-  if (avsEnv === 'production' || (import.meta as any).env?.PROD) {
+  if (avsEnv === 'production' || import.meta.env?.PROD) {
     return PRODUCTION_API_URL;
   }
   if (avsEnv === 'staging') {
