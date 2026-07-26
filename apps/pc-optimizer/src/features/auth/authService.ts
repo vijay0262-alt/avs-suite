@@ -173,15 +173,18 @@ export const authService = {
    */
   async login(identifier: string, password: string): Promise<StoredSession> {
     try {
+      console.log(`[AVS] Login attempt for: ${identifier}`);
       const resp = await apiClient.post<LoginResponse>(
         '/api/customer/auth/login',
         { identifier, password },
         { noAuth: true },
       );
+      console.log(`[AVS] Login successful for: ${identifier}`);
       const session = sessionFromLogin(resp);
       tokenStorage.save(session);
       return session;
     } catch (err) {
+      console.error(`[AVS] Login failed for: ${identifier}`, err instanceof Error ? `${err.name}: ${err.message}` : err);
       throw classifyError(err);
     }
   },

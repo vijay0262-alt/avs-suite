@@ -26,6 +26,10 @@ export function getBaseUrl(): string {
   return getDefaultBaseUrl();
 }
 
+// Log the API base URL on module load for debugging connectivity issues
+const _baseUrl = getBaseUrl();
+console.log(`[AVS] API base URL: ${_baseUrl}`);
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -109,11 +113,16 @@ async function doFetch(
       body: opts.body ? JSON.stringify(opts.body) : undefined,
       signal: controller.signal,
     });
+    if (!response.ok) {
+      console.error(`[AVS] API error: ${opts.method ?? 'GET'} ${url} → ${response.status} ${response.statusText}`);
+    }
     return response;
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
+      console.error(`[AVS] Request timed out: ${opts.method ?? 'GET'} ${url} (timeout: ${timeoutMs}ms)`);
       throw new NetworkError('Request timed out');
     }
+    console.error(`[AVS] Network error: ${opts.method ?? 'GET'} ${url} →`, err instanceof Error ? err.message : err);
     throw new NetworkError(
       err instanceof Error ? err.message : 'Unable to connect to the server',
     );

@@ -60,6 +60,10 @@ function resolveEnvironment(raw: string | undefined): EnvironmentConfig {
 const env = resolveEnvironment(process.env.AVS_ENV);
 const log = createLogger('main', env.logLevel);
 
+log.info(`[AVS] Environment: ${env.env}`);
+log.info(`[AVS] API base URL: ${env.licenseApiUrl}`);
+log.info(`[AVS] Update feed URL: ${env.updateFeedUrl}`);
+
 // Override to write to main.log instead of avs-main.log
 log.transports.file.resolvePathFn = () => path.join(app.getPath('userData'), 'logs', 'main.log');
 

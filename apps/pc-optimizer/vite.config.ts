@@ -11,6 +11,9 @@ import path from 'node:path';
  */
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'process.env.AVS_ENV': JSON.stringify(process.env.AVS_ENV || 'development'),
+  },
   resolve: {
     extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
     alias: {
