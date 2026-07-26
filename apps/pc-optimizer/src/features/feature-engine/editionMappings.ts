@@ -11,7 +11,7 @@
  * The engine reads from this map. Adding a new edition or changing
  * which features belong to a tier only requires editing this file.
  */
-import { Feature, ALL_FEATURES } from './features';
+import { Feature } from './features';
 
 /**
  * Edition tiers recognized by the Feature Engine.

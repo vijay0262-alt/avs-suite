@@ -9,8 +9,8 @@ import {
   fetchSubscription,
   fetchServerHealth,
   type SubscriptionResponse,
-  type HealthResponse,
 } from './subscriptionService';
+import { getBaseUrl } from '../auth/apiClient';
 
 export type ConnectionStatus = 'connected' | 'disconnected' | 'checking';
 
@@ -29,14 +29,7 @@ export interface SubscriptionState {
   clear: () => void;
 }
 
-const API_BASE_URL = (() => {
-  try {
-    const { getBaseUrl } = require('../auth/apiClient');
-    return getBaseUrl();
-  } catch {
-    return 'https://api.avsshield.com';
-  }
-})();
+const API_BASE_URL = getBaseUrl();
 
 function extractHostname(url: string): string {
   try {

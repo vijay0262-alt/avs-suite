@@ -11,7 +11,7 @@ import { useEntitlementStore } from '../features/entitlement/entitlementStore';
 import { useFeatureStore, FEATURE_LABELS } from '../features/feature-engine';
 import { useUpdateStore } from '../features/update';
 import { useSubscriptionStore } from '../features/subscription/subscriptionStore';
-import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, TrashIcon, LockClosedIcon, CheckCircleIcon, CloudArrowDownIcon, ArrowDownTrayIcon, XCircleIcon, RocketLaunchIcon } from '@heroicons/react/24/outline';
+import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, LockClosedIcon, CheckCircleIcon, CloudArrowDownIcon, ArrowDownTrayIcon, XCircleIcon, RocketLaunchIcon } from '@heroicons/react/24/outline';
 
 interface VerificationLog {
   id: string;
@@ -49,7 +49,7 @@ export default function SettingsPage() {
   const { customer, session, logout } = useAuthStore();
   const { entitlement, created, syncPhase, syncError, lastSyncAt, syncEntitlement } = useEntitlementStore();
   const { editionLabel, enabledFeatures, disabledFeatures, enabledCount, disabledCount, initialized: featureEngineInitialized } = useFeatureStore();
-  const { subscription, loading: subLoading, error: subError, lastSyncAt: subLastSyncAt, connectionStatus, serverVersion, serverUrl, sync: syncSubscription, checkConnection } = useSubscriptionStore();
+  const { subscription, loading: subLoading, error: subError, lastSyncAt: subLastSyncAt, connectionStatus, serverVersion, serverUrl, sync: syncSubscription } = useSubscriptionStore();
   const {
     status: updateStatus,
     updateInfo,
