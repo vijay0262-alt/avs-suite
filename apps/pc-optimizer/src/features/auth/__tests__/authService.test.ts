@@ -169,7 +169,7 @@ describe('authService', () => {
       } catch (err) {
         const authErr = err as AuthResultError;
         expect(authErr.code).toBe('NETWORK_ERROR');
-        expect(authErr.message).toContain('Unable to connect');
+        expect(authErr.message).toContain('Failed to fetch');
       }
     });
   });

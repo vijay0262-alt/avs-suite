@@ -138,15 +138,18 @@ async function doFetch(
       signal: controller.signal,
     });
     if (!response.ok) {
-      // Log the full error details — read body as text so it can be re-read later
-      const cloned = response.clone();
-      let bodyText = '';
-      try { bodyText = await cloned.text(); } catch { /* ignore */ }
-      console.error(
-        `[AVS] API error: ${opts.method ?? 'GET'} ${url}\n` +
-        `  HTTP Status: ${response.status} ${response.statusText}\n` +
-        `  Response: ${bodyText}`,
-      );
+      // Log the full error details — wrapped in try-catch so logging failures
+      // (e.g. missing clone() in test mocks) don't break the response flow
+      try {
+        const cloned = response.clone();
+        let bodyText = '';
+        try { bodyText = await cloned.text(); } catch { /* ignore */ }
+        console.error(
+          `[AVS] API error: ${opts.method ?? 'GET'} ${url}\n` +
+          `  HTTP Status: ${response.status} ${response.statusText}\n` +
+          `  Response: ${bodyText}`,
+        );
+      } catch { /* logging is best-effort */ }
     }
     return response;
   } catch (err) {
