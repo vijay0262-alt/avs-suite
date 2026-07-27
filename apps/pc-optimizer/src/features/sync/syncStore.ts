@@ -123,7 +123,7 @@ export function planToEdition(plan: string): 'FREE' | 'PROFESSIONAL' {
 const SYNC_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 let syncIntervalId: ReturnType<typeof setInterval> | null = null;
 
-export const useSyncStore = create<SyncStoreState>((set, get) => ({
+export const useSyncStore = create<SyncStoreState>((set, _get) => ({
   data: null,
   phase: 'idle',
   error: null,

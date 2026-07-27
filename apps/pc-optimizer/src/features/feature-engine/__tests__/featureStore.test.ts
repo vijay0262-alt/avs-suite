@@ -7,26 +7,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useFeatureStore } from '../featureStore';
 import { useSyncStore } from '../../sync/syncStore';
+import type { SyncResponse } from '../../sync/syncService';
 import { tokenStorage } from '../../auth/tokenStorage';
 import { Feature } from '../features';
 
 // Import authService side-effect to configure apiClient
 import '../../auth/authService';
 
-const mockFetch = vi.fn();
-vi.stubGlobal('fetch', mockFetch);
-
-function mockResponse(body: unknown, status = 200): Response {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    statusText: status === 200 ? 'OK' : 'Error',
-    json: () => Promise.resolve(body),
-    text: () => Promise.resolve(JSON.stringify(body)),
-  } as Response;
-}
-
-function createSyncData(plan: string) {
+function createSyncData(plan: string): SyncResponse {
   return {
     customer: {
       id: 'cust-1',
@@ -47,7 +35,7 @@ function createSyncData(plan: string) {
     devices: [],
     server_time: '2025-07-27T12:00:00Z',
     server_version: '1.2.0',
-  };
+  } as SyncResponse;
 }
 
 function seedValidSession() {
@@ -65,7 +53,6 @@ function seedValidSession() {
 describe('featureStore', () => {
   beforeEach(() => {
     window.localStorage.clear();
-    mockFetch.mockReset();
     seedValidSession();
     // Reset sync store
     useSyncStore.getState().clear();
@@ -90,7 +77,7 @@ describe('featureStore', () => {
 
     it('initializes with PROFESSIONAL edition from sync store', async () => {
       useSyncStore.setState({
-        data: createSyncData('PROFESSIONAL') as any,
+        data: createSyncData('PROFESSIONAL'),
         phase: 'success',
       });
 
@@ -105,7 +92,7 @@ describe('featureStore', () => {
   describe('FREE features', () => {
     beforeEach(() => {
       useSyncStore.setState({
-        data: createSyncData('FREE') as any,
+        data: createSyncData('FREE'),
         phase: 'success',
       });
       useFeatureStore.getState().init();
@@ -123,7 +110,7 @@ describe('featureStore', () => {
   describe('PROFESSIONAL features', () => {
     beforeEach(() => {
       useSyncStore.setState({
-        data: createSyncData('PROFESSIONAL') as any,
+        data: createSyncData('PROFESSIONAL'),
         phase: 'success',
       });
       useFeatureStore.getState().init();
@@ -145,7 +132,7 @@ describe('featureStore', () => {
   describe('ULTIMATE features (maps to PROFESSIONAL)', () => {
     beforeEach(() => {
       useSyncStore.setState({
-        data: createSyncData('ULTIMATE') as any,
+        data: createSyncData('ULTIMATE'),
         phase: 'success',
       });
       useFeatureStore.getState().init();
@@ -166,7 +153,7 @@ describe('featureStore', () => {
     it('updates features when sync data changes', async () => {
       // Start with FREE
       useSyncStore.setState({
-        data: createSyncData('FREE') as any,
+        data: createSyncData('FREE'),
         phase: 'success',
       });
       useFeatureStore.getState().init();
@@ -175,7 +162,7 @@ describe('featureStore', () => {
 
       // Update to PROFESSIONAL
       useSyncStore.setState({
-        data: createSyncData('PROFESSIONAL') as any,
+        data: createSyncData('PROFESSIONAL'),
         phase: 'success',
       });
 

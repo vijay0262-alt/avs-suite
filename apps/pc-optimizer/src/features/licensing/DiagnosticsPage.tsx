@@ -47,7 +47,7 @@ interface SystemInfo {
 }
 
 export default function DiagnosticsPage() {
-  const { data: syncData, isOffline } = useSyncStore();
+  const { data: syncData } = useSyncStore();
   const edition = syncData ? planToEdition(syncData.subscription.plan).toLowerCase() : 'free';
   const licenseStatus = syncData?.license?.status ?? 'FREE';
   const [diag, setDiag] = useState<DiagnosticsData | null>(null);
