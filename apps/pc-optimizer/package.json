@@ -55,7 +55,7 @@
   },
   "build": {
     "appId": "com.avs.pcoptimizer",
-    "productName": "AVS PC Optimizer",
+    "productName": "AVS Shield Optimizer",
     "copyright": "Copyright © 2024-2026 Advanced Vision Software LLC. All rights reserved.",
     "directories": {
       "output": "release",
@@ -90,7 +90,7 @@
           "arch": ["x64"]
         }
       ],
-      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "artifactName": "${productName}-Setup.${ext}",
       "publisherName": "Advanced Vision Software LLC",
       "signAndEditExecutable": false
     },

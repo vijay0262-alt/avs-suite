@@ -17,7 +17,7 @@ export function TitleBar() {
       <div className="flex items-center gap-2">
         <div className="h-5 w-5 rounded-sm bg-brand-primary" aria-hidden />
         <span className="text-xs font-semibold tracking-wide text-text-primary">
-          AVS PC Optimizer
+          AVS Shield Optimizer
         </span>
       </div>
       <div className="text-xs text-text-muted">Windows 10 / 11 · x64</div>

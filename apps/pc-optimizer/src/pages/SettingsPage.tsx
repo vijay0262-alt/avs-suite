@@ -201,7 +201,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-medium text-text-primary">Anonymous usage data</div>
-              <p className="text-xs text-text-secondary">Help improve AVS PC Optimizer by sending anonymous diagnostics. Future feature.</p>
+              <p className="text-xs text-text-secondary">Help improve AVS Shield Optimizer by sending anonymous diagnostics. Future feature.</p>
             </div>
             <Button variant="secondary" disabled data-testid="settings-telemetry-toggle">
               Disabled
