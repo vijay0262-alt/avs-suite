@@ -20,6 +20,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { useSyncStore } from '../sync/syncStore';
 import { useAuthStore } from '../auth/authStore';
 import { getVersionString, getBuildString } from '../../config/version';
+import { apiClient, ApiError } from '../auth/apiClient';
 
 export default function ActivationPage() {
   const { data: syncData, phase, isOffline, lastSyncAt, sync, error } = useSyncStore();
@@ -27,6 +28,42 @@ export default function ActivationPage() {
 
   const [actionLoading, setActionLoading] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  // License key activation state
+  const [licenseKeyInput, setLicenseKeyInput] = useState('');
+  const [activateLoading, setActivateLoading] = useState(false);
+  const [activateError, setActivateError] = useState<string | null>(null);
+  const [activateSuccess, setActivateSuccess] = useState<string | null>(null);
+
+  const handleActivateLicense = useCallback(async () => {
+    const trimmed = licenseKeyInput.trim();
+    if (!trimmed) return;
+    setActivateLoading(true);
+    setActivateError(null);
+    setActivateSuccess(null);
+    try {
+      const resp = await apiClient.post<{ redeemed: boolean }>(
+        '/api/customer/licenses/redeem',
+        { license_key: trimmed },
+      );
+      if (resp.redeemed) {
+        setActivateSuccess('License activated successfully! Your account has been upgraded to Professional.');
+      } else {
+        setActivateSuccess('This license key is already linked to your account.');
+      }
+      setLicenseKeyInput('');
+      // Re-sync to get updated subscription/license data
+      await sync();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setActivateError(err.detail ?? err.message);
+      } else {
+        setActivateError(err instanceof Error ? err.message : 'Failed to activate license. Please try again.');
+      }
+    } finally {
+      setActivateLoading(false);
+    }
+  }, [licenseKeyInput, sync]);
 
   const handleRefresh = useCallback(async () => {
     setActionLoading(true);
@@ -274,24 +311,67 @@ export default function ActivationPage() {
         </Card>
       ) : (
         <Card title="License">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge tone="neutral">FREE Edition</Badge>
-            </div>
-            <p className="text-sm text-text-secondary">
-              No license key required. Your account authenticates directly with AVS Shield.
-            </p>
-            <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 mt-2">
-              <div>
-                <div className="text-text-muted">License</div>
-                <div className="font-medium text-text-primary mt-1">Not Required</div>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Badge tone="neutral">FREE Edition</Badge>
               </div>
-              <div>
-                <div className="text-text-muted">Connection</div>
-                <div className="font-medium text-text-primary mt-1">
-                  {isConnected ? 'Connected' : isOffline ? 'Offline (cached)' : 'Disconnected'}
+              <p className="text-sm text-text-secondary">
+                No license key required. Your account authenticates directly with AVS Shield.
+              </p>
+              <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 mt-2">
+                <div>
+                  <div className="text-text-muted">License</div>
+                  <div className="font-medium text-text-primary mt-1">Not Required</div>
+                </div>
+                <div>
+                  <div className="text-text-muted">Connection</div>
+                  <div className="font-medium text-text-primary mt-1">
+                    {isConnected ? 'Connected' : isOffline ? 'Offline (cached)' : 'Disconnected'}
+                  </div>
                 </div>
               </div>
+            </div>
+
+            {/* License Key Activation */}
+            <div className="border-t border-border pt-4" data-testid="license-key-activation">
+              <div className="mb-2">
+                <h4 className="text-sm font-semibold text-text-primary">Have a License Key?</h4>
+                <p className="text-xs text-text-muted mt-0.5">
+                  Activate your product to Professional version by entering your license key.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  type="text"
+                  value={licenseKeyInput}
+                  onChange={(e) => setLicenseKeyInput(e.target.value)}
+                  placeholder="AVS-XXXX-XXXX-XXXX-XXXX"
+                  disabled={activateLoading || !isConnected}
+                  className="flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm font-mono uppercase text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-50"
+                  data-testid="license-key-input"
+                />
+                <Button
+                  variant="primary"
+                  onClick={handleActivateLicense}
+                  disabled={activateLoading || !licenseKeyInput.trim() || !isConnected}
+                  data-testid="activate-license-btn"
+                >
+                  {activateLoading ? 'Activating…' : 'Activate'}
+                </Button>
+              </div>
+
+              {activateError && (
+                <div className="mt-2 rounded-md bg-semantic-danger/10 px-3 py-2 text-sm text-semantic-danger" data-testid="activate-license-error">
+                  {activateError}
+                </div>
+              )}
+
+              {activateSuccess && (
+                <div className="mt-2 rounded-md bg-semantic-success/10 px-3 py-2 text-sm text-semantic-success" data-testid="activate-license-success">
+                  {activateSuccess}
+                </div>
+              )}
             </div>
           </div>
         </Card>
