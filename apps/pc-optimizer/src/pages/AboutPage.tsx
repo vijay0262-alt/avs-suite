@@ -10,8 +10,7 @@ import {
   getArchitectureString,
 } from '../config/version';
 import { useState, useEffect } from 'react';
-import { useLicense } from '../features/licensing/LicenseContext';
-import { LICENSE_STATE_LABELS } from '@avs/licensing';
+import { useSyncStore, planToEdition } from '../features/sync/syncStore';
 
 const { APP_METADATA } = constants;
 
@@ -37,7 +36,10 @@ interface SdkInfo {
 export default function AboutPage() {
   const versionInfo = getVersionInfo();
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ status: 'idle' });
-  const { state, edition, isActivated } = useLicense();
+  const { data: syncData, isOffline } = useSyncStore();
+  const edition = syncData ? planToEdition(syncData.subscription.plan).toLowerCase() : 'free';
+  const licenseStatus = syncData?.license?.status ?? 'FREE';
+  const isActivated = edition === 'professional';
   const [sdkInfo, setSdkInfo] = useState<SdkInfo | null>(null);
 
   useEffect(() => {
@@ -175,7 +177,7 @@ export default function AboutPage() {
           <div>
             <dt className="text-text-muted">License Status</dt>
             <dd className="flex items-center gap-2 mt-1">
-              <span className="font-medium text-text-primary">{LICENSE_STATE_LABELS[state]}</span>
+              <span className="font-medium text-text-primary">{licenseStatus}</span>
               <Badge tone={isActivated ? 'success' : 'neutral'}>
                 {isActivated ? 'Activated' : 'Free'}
               </Badge>
@@ -205,10 +207,10 @@ export default function AboutPage() {
             <dt className="text-text-muted">Server Connection</dt>
             <dd className="flex items-center gap-2 mt-1">
               <span
-                className={`h-2 w-2 rounded-full ${sdkInfo && !sdkInfo.status.is_offline ? 'bg-semantic-success' : 'bg-semantic-danger'}`}
+                className={`h-2 w-2 rounded-full ${!isOffline ? 'bg-semantic-success' : 'bg-semantic-danger'}`}
               />
               <span className="font-medium text-text-primary">
-                {sdkInfo && !sdkInfo.status.is_offline ? 'Connected' : 'Offline'}
+                {!isOffline ? 'Connected' : 'Offline'}
               </span>
             </dd>
           </div>

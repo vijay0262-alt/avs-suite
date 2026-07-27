@@ -1,14 +1,17 @@
 /**
  * AuthBootstrap — wraps the app and handles session restore on startup.
  *
- * Flow:
+ * Thin-client flow:
  * 1. Check for stored session
  * 2. If session exists and valid → restore
  * 3. If session expired → attempt refresh
  * 4. If refresh fails → show login
  * 5. If no session → show login
  *
- * When authenticated, silently syncs the Optimizer entitlement.
+ * When authenticated:
+ *   - Restore cached sync data (for instant offline startup)
+ *   - Call GET /api/customer/sync to get everything from the backend
+ *   - Start periodic background sync
  * When unauthenticated, renders LoginDialog.
  *
  * @vitest-environment happy-dom
@@ -16,18 +19,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAuthStore } from './authStore';
 import { LoginDialog } from './LoginDialog';
-import { useEntitlementStore } from '../entitlement/entitlementStore';
-import { useLicenseStore } from '../license/licenseStore';
-import { useFeatureStore } from '../feature-engine';
+import { useSyncStore, startPeriodicSync, stopPeriodicSync } from '../sync/syncStore';
 
 export function AuthBootstrap({ children }: { children: ReactNode }) {
   const { phase, restoreSession, logout } = useAuthStore();
-  const { syncEntitlement, clearEntitlement } = useEntitlementStore();
-  const { activate: activateLicense, clear: clearLicense, restoreFromCache } = useLicenseStore();
-  const { init: initFeatureEngine, destroy: destroyFeatureEngine } = useFeatureStore();
+  const { sync, restoreFromCache, clear: clearSync } = useSyncStore();
   const [restored, setRestored] = useState(false);
   const syncedRef = useRef(false);
-  const licenseActivatedRef = useRef(false);
 
   useEffect(() => {
     if (!restored) {
@@ -39,41 +37,31 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
   useEffect(() => {
     import('./authService').then(({ authService }) => {
       authService.onExpired(() => {
-        clearEntitlement();
-        clearLicense();
-        destroyFeatureEngine();
+        clearSync();
+        stopPeriodicSync();
         logout();
       });
     });
-  }, [logout, clearEntitlement, clearLicense, destroyFeatureEngine]);
+  }, [logout, clearSync]);
 
-  // Silently sync entitlement after authentication, then activate license
+  // Sync with backend after authentication
   useEffect(() => {
     if (phase === 'authenticated' && !syncedRef.current) {
       syncedRef.current = true;
-      // First, try to restore from cache for instant offline startup
-      void restoreFromCache().then(async () => {
-        // Initialize Feature Engine with cached license (if any)
-        initFeatureEngine();
-        // Then sync entitlement and activate from server
-        void syncEntitlement('optimizer').then(async (ok) => {
-          if (ok && !licenseActivatedRef.current) {
-            licenseActivatedRef.current = true;
-            await activateLicense('optimizer').catch(() => {
-              // License activation failure is non-fatal — app continues.
-              // If offline, cached license (if valid) is already loaded.
-            });
-          }
-        }).catch(() => {
-          // Entitlement sync failure is non-fatal
-        });
+      // 1. Restore from cache for instant offline startup
+      restoreFromCache();
+      // 2. Sync from backend (non-blocking — UI renders with cache first)
+      void sync().then(() => {
+        startPeriodicSync();
+      }).catch(() => {
+        // Sync failure is non-fatal — cached data (if any) is already loaded
       });
     }
     if (phase !== 'authenticated') {
       syncedRef.current = false;
-      licenseActivatedRef.current = false;
+      stopPeriodicSync();
     }
-  }, [phase, syncEntitlement, activateLicense, initFeatureEngine, restoreFromCache]);
+  }, [phase, sync, restoreFromCache]);
 
   if (!restored || phase === 'checking') {
     return (

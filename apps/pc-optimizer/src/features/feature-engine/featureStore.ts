@@ -1,20 +1,19 @@
 /**
  * Feature store — Zustand store that wraps the FeatureEngine.
  *
- * UI components consume only this store. The store:
- *   - Creates and owns the FeatureEngine instance
- *   - Reads the edition from the license store
- *   - Auto-refreshes when the license changes
- *   - Exposes feature state to React components
+ * In the thin-client architecture, the edition is derived from the
+ * syncStore (GET /api/customer/sync subscription plan), not from
+ * local license state. The FeatureEngine reads the edition from
+ * the syncStore and resolves features accordingly.
  *
  * Architecture:
- *   UI → useFeatureStore → FeatureEngine → licenseStore → License
+ *   UI → useFeatureStore → FeatureEngine → syncStore → Backend
  */
 import { create } from 'zustand';
 import { FeatureEngine, type FeatureChangeListener } from './featureEngine';
 import { type Feature, ALL_FEATURES, FEATURE_LABELS } from './features';
 import { type FeatureEdition, EDITION_LABELS } from './editionMappings';
-import { useLicenseStore } from '../license/licenseStore';
+import { useSyncStore, planToEdition } from '../sync/syncStore';
 
 export interface FeatureStoreState {
   /** The FeatureEngine instance (singleton). */
@@ -56,7 +55,9 @@ let _unsubscribeEngine: (() => void) | null = null;
 function createEngine(): FeatureEngine {
   if (_engine) return _engine;
   _engine = new FeatureEngine(() => {
-    return useLicenseStore.getState().license?.edition ?? null;
+    const syncData = useSyncStore.getState().data;
+    if (!syncData) return null;
+    return planToEdition(syncData.subscription.plan);
   });
   return _engine;
 }
@@ -94,8 +95,8 @@ export const useFeatureStore = create<FeatureStoreState>((set, get) => ({
     };
     _unsubscribeEngine = engine.subscribe(listener);
 
-    // Subscribe to license store changes — when license changes, refresh engine
-    _unsubscribeLicense = useLicenseStore.subscribe(() => {
+    // Subscribe to sync store changes — when sync data changes, refresh engine
+    _unsubscribeLicense = useSyncStore.subscribe(() => {
       engine.refresh();
     });
 

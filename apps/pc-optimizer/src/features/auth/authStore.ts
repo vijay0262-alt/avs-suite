@@ -7,7 +7,7 @@
 import { create } from 'zustand';
 import { authService, type AuthResultError, type CustomerProfile } from './authService';
 import { tokenStorage, type StoredSession } from './tokenStorage';
-import { useEntitlementStore } from '../entitlement/entitlementStore';
+import { useSyncStore, stopPeriodicSync } from '../sync/syncStore';
 
 export type AuthPhase = 'checking' | 'authenticated' | 'unauthenticated';
 
@@ -59,7 +59,8 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: () => {
     authService.logout();
-    useEntitlementStore.getState().clearEntitlement();
+    stopPeriodicSync();
+    useSyncStore.getState().clear();
     set({
       phase: 'unauthenticated',
       customer: null,

@@ -14,7 +14,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Badge } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
-import { useLicense } from './LicenseContext';
+import { useSyncStore, planToEdition } from '../sync/syncStore';
 import { getVersionString, getBuildString } from '../../config/version';
 
 interface DiagnosticsData {
@@ -47,7 +47,9 @@ interface SystemInfo {
 }
 
 export default function DiagnosticsPage() {
-  const { state, edition } = useLicense();
+  const { data: syncData, isOffline } = useSyncStore();
+  const edition = syncData ? planToEdition(syncData.subscription.plan).toLowerCase() : 'free';
+  const licenseStatus = syncData?.license?.status ?? 'FREE';
   const [diag, setDiag] = useState<DiagnosticsData | null>(null);
   const [sysInfo, setSysInfo] = useState<SystemInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -147,7 +149,7 @@ export default function DiagnosticsPage() {
               <div className="text-text-muted">Edition</div>
               <div className="flex items-center gap-2 mt-1">
                 <span className="font-medium text-text-primary capitalize">{edition}</span>
-                <Badge tone={state === 'expired' || state === 'invalid' ? 'danger' : 'neutral'}>{state}</Badge>
+                <Badge tone={licenseStatus === 'EXPIRED' || licenseStatus === 'REVOKED' ? 'danger' : 'neutral'}>{licenseStatus}</Badge>
               </div>
             </div>
             <div>

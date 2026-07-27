@@ -3,7 +3,6 @@ import { lazy, Suspense, useEffect } from 'react';
 import { AppLayout } from '../layouts/AppLayout';
 import { LoadingFallback } from '../components/LoadingFallback';
 import { ErrorBoundary } from '../components/ErrorBoundary';
-import { LicenseBootstrap } from '../features/licensing/LicenseBootstrap';
 import { AuthBootstrap } from '../features/auth/AuthBootstrap';
 import { EditionManagerProvider } from '../config/EditionManager';
 import { UpgradeDialogProvider } from '../components/UpgradeDialog';
@@ -60,16 +59,14 @@ export const router = createHashRouter([
     path: '/',
     element: (
       <AuthBootstrap>
-        <LicenseBootstrap>
-          <EditionManagerProvider>
-            <UpgradeDialogProvider>
-              <>
-                <ModulePreloader />
-                <AppLayout />
-              </>
-            </UpgradeDialogProvider>
-          </EditionManagerProvider>
-        </LicenseBootstrap>
+        <EditionManagerProvider>
+          <UpgradeDialogProvider>
+            <>
+              <ModulePreloader />
+              <AppLayout />
+            </>
+          </UpgradeDialogProvider>
+        </EditionManagerProvider>
       </AuthBootstrap>
     ),
     errorElement: <ErrorBoundary standalone />,

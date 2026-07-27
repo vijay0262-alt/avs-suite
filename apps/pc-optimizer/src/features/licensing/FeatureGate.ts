@@ -1,24 +1,43 @@
 /**
  * FeatureGate — lightweight, importable feature gate for modules.
  *
+ * In the thin-client architecture, feature availability is determined
+ * by the backend sync response. The gate reads the edition from the
+ * syncStore (which mirrors GET /api/customer/sync) and uses the
+ * shared feature flag registry for local UI gating decisions.
+ *
  * Modules call:
  *   FeatureGate.canUse("junk.clean")
  *   FeatureGate.canUse("registry.fix")
  *
- * This avoids importing React context in non-component code.
- * The gate is initialized at bootstrap with the current license state
- * and updated when the license state changes.
+ * The gate is initialized at bootstrap with the current sync state
+ * and updated when the sync data changes.
  */
 import type { LicenseState } from '@avs/licensing';
 import { stateToEdition } from '@avs/licensing';
 import { isFeatureEnabled, shouldHideFeature, normalizeEdition, type FeatureKey, type Edition } from '@avs/shared/featureFlags';
 import { FEATURE_MAP, type ManagedFeature } from '@avs/licensing';
+import { useSyncStore, planToEdition } from '../sync/syncStore';
 
 let _currentEdition: Edition = 'free';
 
 /**
- * Initialize or update the FeatureGate with a new license state.
- * Called at bootstrap and whenever the license state changes.
+ * Initialize or update the FeatureGate from the sync store data.
+ * Called at bootstrap and whenever the sync data changes.
+ */
+export function initFeatureGateFromSync(): void {
+  const syncData = useSyncStore.getState().data;
+  if (!syncData) {
+    _currentEdition = 'free';
+    return;
+  }
+  const planEdition = planToEdition(syncData.subscription.plan);
+  _currentEdition = planEdition === 'PROFESSIONAL' ? 'professional' : 'free';
+}
+
+/**
+ * Initialize or update the FeatureGate with a license state.
+ * Kept for backward compatibility with legacy licensing components.
  */
 export function initFeatureGate(state: LicenseState): void {
   _currentEdition = stateToEdition(state);
@@ -26,8 +45,6 @@ export function initFeatureGate(state: LicenseState): void {
 
 /**
  * Update the FeatureGate with a specific edition (e.g., from LicenseModel.edition).
- * This allows the gate to know the exact edition even when stateToEdition
- * defaults to 'professional'.
  */
 export function updateFeatureGateEdition(edition: string): void {
   _currentEdition = normalizeEdition(edition);

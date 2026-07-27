@@ -1,64 +1,67 @@
 /**
  * Edition Manager — centralized runtime edition resolution.
  *
- * Wraps the existing @avs/licensing ILicensingService and
- * @avs/shared/featureFlags to provide a single hook and context
- * for the entire frontend. No module should contain hardcoded
- * edition checks — all go through here.
+ * In the thin-client architecture, edition and feature availability are
+ * determined solely by the backend sync response. The EditionManager
+ * reads from the syncStore (GET /api/customer/sync) and provides:
+ *   - Current edition (derived from subscription plan)
+ *   - Feature availability (from backend feature flags)
+ *   - Refresh capability (re-sync from backend)
+ *
+ * No local business logic for edition selection or feature gating.
  */
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { Edition, FeatureKey } from '@avs/shared/featureFlags';
 import { isFeatureEnabled, shouldHideFeature } from '@avs/shared/featureFlags';
-import type { LicenseInfo } from '@avs/licensing';
-import { type ILicensingService } from '@avs/licensing';
-import { useLicense } from '../features/licensing/LicenseContext';
+import { useSyncStore, planToEdition } from '../features/sync/syncStore';
 
 export interface EditionManagerValue {
   edition: Edition;
   isActivated: boolean;
-  license: LicenseInfo | null;
+  isOffline: boolean;
   isFeatureAvailable: (feature: FeatureKey) => boolean;
   isFeatureHidden: (feature: FeatureKey) => boolean;
+  /** Check if a backend feature flag is present. */
+  hasBackendFeature: (feature: string) => boolean;
   refresh: () => Promise<void>;
 }
 
-// Default context — replaced by EditionManagerProvider with real license state
+// Default context — replaced by EditionManagerProvider with real sync data
 const EditionManagerContext = createContext<EditionManagerValue>({
   edition: 'free',
   isActivated: false,
-  license: null,
+  isOffline: false,
   isFeatureAvailable: () => false,
   isFeatureHidden: () => false,
+  hasBackendFeature: () => false,
   refresh: async () => {},
 });
 
 export function EditionManagerProvider({
   children,
-  service,
 }: {
   children: ReactNode;
-  service?: ILicensingService;
 }) {
-  const { edition: licenseEdition, isActivated, refresh } = useLicense();
+  const { data, sync, isOffline } = useSyncStore();
 
   const value = useMemo<EditionManagerValue>(() => {
-    const edition = service ? service.currentEdition() : licenseEdition;
-    const activated = service ? service.isActivated() : isActivated;
+    const plan = data?.subscription.plan ?? 'FREE';
+    const edition: Edition = planToEdition(plan) === 'PROFESSIONAL' ? 'professional' : 'free';
+    const isActivated = edition === 'professional';
+    const backendFeatures = data?.features ?? [];
+
     return {
       edition,
-      isActivated: activated,
-      license: null,
+      isActivated,
+      isOffline,
       isFeatureAvailable: (feature: FeatureKey) => isFeatureEnabled(feature, edition),
       isFeatureHidden: (feature: FeatureKey) => shouldHideFeature(feature, edition),
+      hasBackendFeature: (feature: string) => backendFeatures.includes(feature),
       refresh: async () => {
-        if (service) {
-          await service.refresh();
-        } else {
-          await refresh();
-        }
+        await sync();
       },
     };
-  }, [service, licenseEdition, isActivated, refresh]);
+  }, [data, sync, isOffline]);
 
   return <EditionManagerContext.Provider value={value}>{children}</EditionManagerContext.Provider>;
 }

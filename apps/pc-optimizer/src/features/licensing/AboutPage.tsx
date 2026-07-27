@@ -14,7 +14,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Badge } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
-import { useLicense } from './LicenseContext';
+import { useSyncStore, planToEdition } from '../sync/syncStore';
 import { getVersionString, getBuildString, getChannelString, getFullVersionDisplay } from '../../config/version';
 
 interface LicenseInfo {
@@ -40,7 +40,10 @@ interface LicenseInfo {
 }
 
 export default function AboutPage() {
-  const { state, edition, isActivated, isInGracePeriod } = useLicense();
+  const { data: syncData, isOffline } = useSyncStore();
+  const edition = syncData ? planToEdition(syncData.subscription.plan).toLowerCase() : 'free';
+  const licenseStatus = syncData?.license?.status ?? 'FREE';
+  const isActivated = edition === 'professional';
   const [info, setInfo] = useState<LicenseInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -52,9 +55,9 @@ export default function AboutPage() {
   }, []);
 
   const stateTone: 'neutral' | 'brand' | 'success' | 'warning' | 'danger' =
-    isActivated && !isInGracePeriod ? 'success' :
-    isInGracePeriod ? 'warning' :
-    state === 'expired' || state === 'invalid' || state === 'revoked' ? 'danger' :
+    isActivated && !isOffline ? 'success' :
+    isOffline ? 'warning' :
+    licenseStatus === 'EXPIRED' || licenseStatus === 'REVOKED' || licenseStatus === 'INVALID' ? 'danger' :
     'neutral';
 
   return (
@@ -110,7 +113,7 @@ export default function AboutPage() {
               <div className="text-text-muted">Edition</div>
               <div className="flex items-center gap-2 mt-1">
                 <span className="font-medium text-text-primary capitalize">{edition}</span>
-                <Badge tone={stateTone}>{state}</Badge>
+                <Badge tone={stateTone}>{licenseStatus}</Badge>
               </div>
             </div>
             <div>

@@ -1,12 +1,12 @@
 /**
  * Tests for featureStore — Zustand store wrapping FeatureEngine,
- * integration with license store, init/destroy, isEnabled.
+ * integration with sync store, init/destroy, isEnabled.
  *
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useFeatureStore } from '../featureStore';
-import { useLicenseStore } from '../../license/licenseStore';
+import { useSyncStore } from '../../sync/syncStore';
 import { tokenStorage } from '../../auth/tokenStorage';
 import { Feature } from '../features';
 
@@ -26,36 +26,29 @@ function mockResponse(body: unknown, status = 200): Response {
   } as Response;
 }
 
-const LICENSE_FREE = {
-  license: {
-    uuid: 'lic-001',
-    license_key: 'AVS-ABCD-1234-EFGH-5678',
-    edition: 'FREE',
-    status: 'ACTIVE',
-    issued_at: '2026-07-25T12:00:00+00:00',
-    expires_at: null,
-    signature: 'base64-signature-data-here-at-least-10-chars',
-  },
-  issued: true,
-};
-
-const LICENSE_PROFESSIONAL = {
-  license: {
-    ...LICENSE_FREE.license,
-    uuid: 'lic-002',
-    edition: 'PROFESSIONAL',
-  },
-  issued: true,
-};
-
-const LICENSE_ULTIMATE = {
-  license: {
-    ...LICENSE_FREE.license,
-    uuid: 'lic-003',
-    edition: 'ULTIMATE',
-  },
-  issued: true,
-};
+function createSyncData(plan: string) {
+  return {
+    customer: {
+      id: 'cust-1',
+      email: 'test@example.com',
+      first_name: 'Test',
+      last_name: 'User',
+      display_name: 'Test User',
+      account_status: 'ACTIVE',
+    },
+    subscription: {
+      plan,
+      status: 'ACTIVE',
+      started_at: '2025-01-01T00:00:00Z',
+      expires_at: null,
+    },
+    license: null,
+    features: [],
+    devices: [],
+    server_time: '2025-07-27T12:00:00Z',
+    server_version: '1.2.0',
+  };
+}
 
 function seedValidSession() {
   tokenStorage.save({
@@ -74,28 +67,19 @@ describe('featureStore', () => {
     window.localStorage.clear();
     mockFetch.mockReset();
     seedValidSession();
-    // Reset both stores
-    useLicenseStore.setState({
-      license: null,
-      issued: false,
-      fromCache: false,
-      activationState: 'idle',
-      validation: null,
-      syncStatus: 'idle',
-      error: null,
-      errorCode: null,
-      lastRefreshAt: null,
-    });
+    // Reset sync store
+    useSyncStore.getState().clear();
     useFeatureStore.getState().destroy();
   });
 
   afterEach(() => {
     useFeatureStore.getState().destroy();
+    useSyncStore.getState().clear();
     vi.restoreAllMocks();
   });
 
   describe('init', () => {
-    it('initializes with FREE edition when no license', () => {
+    it('initializes with FREE edition when no sync data', () => {
       useFeatureStore.getState().init();
 
       const state = useFeatureStore.getState();
@@ -104,9 +88,11 @@ describe('featureStore', () => {
       expect(state.enabledCount).toBe(3);
     });
 
-    it('initializes with edition from license store', async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse(LICENSE_PROFESSIONAL));
-      await useLicenseStore.getState().activate('optimizer');
+    it('initializes with PROFESSIONAL edition from sync store', async () => {
+      useSyncStore.setState({
+        data: createSyncData('PROFESSIONAL') as any,
+        phase: 'success',
+      });
 
       useFeatureStore.getState().init();
 
@@ -118,6 +104,10 @@ describe('featureStore', () => {
 
   describe('FREE features', () => {
     beforeEach(() => {
+      useSyncStore.setState({
+        data: createSyncData('FREE') as any,
+        phase: 'success',
+      });
       useFeatureStore.getState().init();
     });
 
@@ -131,9 +121,11 @@ describe('featureStore', () => {
   });
 
   describe('PROFESSIONAL features', () => {
-    beforeEach(async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse(LICENSE_PROFESSIONAL));
-      await useLicenseStore.getState().activate('optimizer');
+    beforeEach(() => {
+      useSyncStore.setState({
+        data: createSyncData('PROFESSIONAL') as any,
+        phase: 'success',
+      });
       useFeatureStore.getState().init();
     });
 
@@ -151,9 +143,11 @@ describe('featureStore', () => {
   });
 
   describe('ULTIMATE features (maps to PROFESSIONAL)', () => {
-    beforeEach(async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse(LICENSE_ULTIMATE));
-      await useLicenseStore.getState().activate('optimizer');
+    beforeEach(() => {
+      useSyncStore.setState({
+        data: createSyncData('ULTIMATE') as any,
+        phase: 'success',
+      });
       useFeatureStore.getState().init();
     });
 
@@ -168,18 +162,22 @@ describe('featureStore', () => {
     });
   });
 
-  describe('license refresh triggers feature recalculation', () => {
-    it('updates features when license changes', async () => {
+  describe('sync store update triggers feature recalculation', () => {
+    it('updates features when sync data changes', async () => {
       // Start with FREE
-      mockFetch.mockResolvedValueOnce(mockResponse(LICENSE_FREE));
-      await useLicenseStore.getState().activate('optimizer');
+      useSyncStore.setState({
+        data: createSyncData('FREE') as any,
+        phase: 'success',
+      });
       useFeatureStore.getState().init();
 
       expect(useFeatureStore.getState().isEnabled(Feature.STARTUP_MANAGER)).toBe(false);
 
-      // Refresh with PROFESSIONAL
-      mockFetch.mockResolvedValueOnce(mockResponse(LICENSE_PROFESSIONAL));
-      await useLicenseStore.getState().refresh('optimizer');
+      // Update to PROFESSIONAL
+      useSyncStore.setState({
+        data: createSyncData('PROFESSIONAL') as any,
+        phase: 'success',
+      });
 
       expect(useFeatureStore.getState().isEnabled(Feature.STARTUP_MANAGER)).toBe(true);
       expect(useFeatureStore.getState().edition).toBe('PROFESSIONAL');
