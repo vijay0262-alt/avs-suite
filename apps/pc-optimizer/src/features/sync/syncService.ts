@@ -126,14 +126,78 @@ function classifyError(err: unknown): SyncServiceError {
 
 // ── Service ─────────────────────────────────────────────────────
 
+/**
+ * Get device info from the Electron backend for sync registration.
+ * Returns null if not available (e.g. running in browser/test).
+ */
+async function getDeviceInfo(): Promise<{
+  fingerprint: string;
+  deviceName: string;
+  appVersion: string;
+  windowsVersion: string;
+} | null> {
+  try {
+    const avs = (window as unknown as { avs?: { license?: { getInfo?: () => Promise<unknown> }; app?: { getVersion?: () => Promise<string>; getPlatform?: () => Promise<string> } } }).avs;
+    if (!avs?.license?.getInfo) return null;
+
+    const info = await avs.license.getInfo() as {
+      fingerprint?: string;
+      app_version?: string;
+    };
+
+    let appVersion = '1.0.0';
+    try {
+      if (avs.app?.getVersion) appVersion = await avs.app.getVersion();
+    } catch { /* ignore */ }
+
+    let deviceName = 'Unknown';
+    try {
+      deviceName = typeof navigator !== 'undefined' ? navigator.userAgent : 'Desktop';
+    } catch { /* ignore */ }
+
+    let windowsVersion = '';
+    try {
+      const platform = avs.app?.getPlatform ? await avs.app.getPlatform() : '';
+      windowsVersion = platform || '';
+    } catch { /* ignore */ }
+
+    if (!info?.fingerprint) return null;
+
+    return {
+      fingerprint: info.fingerprint,
+      deviceName,
+      appVersion: info.app_version || appVersion,
+      windowsVersion,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export const syncService = {
   /**
    * Fetch the full sync payload from the backend.
    * This is the single API call that gives the desktop everything it needs.
+   *
+   * If device info is available (from the SDK), it is passed as query params
+   * so the backend can auto-register the device for this customer.
    */
   async sync(): Promise<SyncResponse> {
     try {
-      return await apiClient.get<SyncResponse>('/api/customer/sync');
+      const deviceInfo = await getDeviceInfo();
+      let path = '/api/customer/sync';
+      if (deviceInfo) {
+        const params = new URLSearchParams({
+          device_fingerprint: deviceInfo.fingerprint,
+          device_name: deviceInfo.deviceName,
+          app_version: deviceInfo.appVersion,
+        });
+        if (deviceInfo.windowsVersion) {
+          params.set('windows_version', deviceInfo.windowsVersion);
+        }
+        path += `?${params.toString()}`;
+      }
+      return await apiClient.get<SyncResponse>(path);
     } catch (err) {
       throw classifyError(err);
     }
