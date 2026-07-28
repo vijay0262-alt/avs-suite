@@ -21,7 +21,8 @@ import type {
   SyncResult,
   ConfigurationEvent,
 } from './types';
-import { configSyncService, ConfigSyncError } from './configSyncService';
+import { configSyncService } from './configSyncService';
+import type { ConfigSyncError } from './configSyncService';
 import { configCache, createDefaultConfiguration } from './configCache';
 import { configEvents } from './configEvents';
 
