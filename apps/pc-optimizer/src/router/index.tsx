@@ -24,6 +24,8 @@ const AboutPage = lazy(() => import('../pages/AboutPage'));
 const DiagnosticsPage = lazy(() => import('../features/diagnostics/DiagnosticsPage'));
 const SecurityPage = lazy(() => import('../features/security/SecurityPage'));
 const ActivationPage = lazy(() => import('../features/licensing/ActivationPage'));
+const MaintenanceHistoryPage = lazy(() => import('../pages/MaintenanceHistoryPage'));
+const ReportsPage = lazy(() => import('../pages/ReportsPage'));
 
 // Module preloader - preloads frequently used modules in background
 const ModulePreloader = () => {
@@ -84,6 +86,8 @@ export const router = createHashRouter([
       { path: 'performance', element: wrap(PerformancePage) },
       { path: 'security', element: wrap(SecurityPage) },
       { path: 'system-information', element: wrap(SystemInformationPage) },
+      { path: 'maintenance-history', element: wrap(MaintenanceHistoryPage) },
+      { path: 'reports', element: wrap(ReportsPage) },
       { path: 'settings', element: wrap(SettingsPage) },
       { path: 'about', element: wrap(AboutPage) },
       { path: 'license', element: wrap(ActivationPage) },

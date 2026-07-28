@@ -17,6 +17,8 @@ import {
   ArchiveBoxXMarkIcon,
   ArrowPathIcon,
   KeyIcon,
+  ClipboardDocumentListIcon,
+  DocumentChartBarIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import type { ComponentType } from 'react';
@@ -45,6 +47,8 @@ const NAV: readonly NavEntry[] = [
   { id: 'software-updater', to: '/software-updater', labelKey: 'nav.softwareUpdater', Icon: ArrowPathIcon, feature: 'software.update_scan' },
   { id: 'performance', to: '/performance', labelKey: 'nav.performance', Icon: BoltIcon, feature: 'performance.optimize' },
   { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
+  { id: 'maintenance-history', to: '/maintenance-history', labelKey: 'nav.maintenanceHistory', Icon: ClipboardDocumentListIcon },
+  { id: 'reports', to: '/reports', labelKey: 'nav.reports', Icon: DocumentChartBarIcon },
   { id: 'license', to: '/license', labelKey: 'nav.license', Icon: KeyIcon },
   { id: 'settings', to: '/settings', labelKey: 'nav.settings', Icon: Cog6ToothIcon },
   { id: 'about', to: '/about', labelKey: 'nav.about', Icon: InformationCircleIcon },
