@@ -14,12 +14,6 @@ import type {
 } from '../../ai-intelligence/recommendations/types';
 import type {
   OptimizationPlanV2,
-  OptimizationPlanType,
-  PlanStep,
-  PlanRiskLevel,
-  PlanConfiguration,
-  PlanBuilderInput,
-  PlanUserPreferences,
 } from '../types';
 import {
   getPlanTypeLabel,

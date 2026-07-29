@@ -6,9 +6,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type {
   DashboardActionDefinition,
   ActionContext,
-  ActionConfiguration,
-  ActionState,
-  ActionRoute,
+  ActionResult,
 } from '../types';
 import {
   generateActionId,
@@ -708,7 +706,7 @@ describe('ActionFactory', () => {
 describe('BaseAction', () => {
   it('starts in available state', () => {
     class TestAction extends BaseAction {
-      async execute(): Promise<import('../types').ActionResult> {
+      async execute(): Promise<ActionResult> {
         return { actionId: this.id, success: true, route: 'internal_dashboard', data: null, error: null, durationMs: 0, timestamp: new Date().toISOString() };
       }
     }
@@ -718,7 +716,7 @@ describe('BaseAction', () => {
   });
   it('cancel changes state from executing', () => {
     class TestAction extends BaseAction {
-      async execute(): Promise<import('../types').ActionResult> {
+      async execute(): Promise<ActionResult> {
         return { actionId: this.id, success: true, route: 'internal_dashboard', data: null, error: null, durationMs: 0, timestamp: new Date().toISOString() };
       }
     }
@@ -729,7 +727,7 @@ describe('BaseAction', () => {
   });
   it('reset returns to available', () => {
     class TestAction extends BaseAction {
-      async execute(): Promise<import('../types').ActionResult> {
+      async execute(): Promise<ActionResult> {
         return { actionId: this.id, success: true, route: 'internal_dashboard', data: null, error: null, durationMs: 0, timestamp: new Date().toISOString() };
       }
     }
@@ -741,7 +739,7 @@ describe('BaseAction', () => {
   });
   it('getExplanation returns definition explanation', () => {
     class TestAction extends BaseAction {
-      async execute(): Promise<import('../types').ActionResult> {
+      async execute(): Promise<ActionResult> {
         return { actionId: this.id, success: true, route: 'internal_dashboard', data: null, error: null, durationMs: 0, timestamp: new Date().toISOString() };
       }
     }
