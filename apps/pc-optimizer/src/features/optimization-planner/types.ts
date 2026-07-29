@@ -322,3 +322,349 @@ export function formatDuration(seconds: number): string {
 export function clampScore(value: number): number {
   return Math.max(0, Math.min(100, value));
 }
+
+// ═══════════════════════════════════════════════════════════════
+// EPIC 3 PHASE A PART 5 — Optimization Plan Engine
+// Consumes Recommendations from AI Intelligence Platform.
+// NEVER executes optimizations. Creates plans only.
+// ═══════════════════════════════════════════════════════════════
+
+import type {
+  Recommendation,
+  RecommendationCategory,
+  RecommendationPriority as AIRecommendationPriority,
+} from '../ai-intelligence/recommendations/types';
+
+// ── Plan Engine Types ─────────────────────────────────────────
+
+export type OptimizationPlanType =
+  | 'quick_optimize'
+  | 'performance_boost'
+  | 'storage_recovery'
+  | 'privacy_cleanup'
+  | 'startup_optimization'
+  | 'maintenance'
+  | 'health_recovery'
+  | 'deep_optimization'
+  | 'custom_plan'
+  | 'future_plan';
+
+export type PlanRiskLevel =
+  | 'none'
+  | 'very_low'
+  | 'low'
+  | 'medium'
+  | 'high'
+  | 'critical';
+
+export type PlanStepStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'executing'
+  | 'completed'
+  | 'failed'
+  | 'skipped'
+  | 'rolled_back';
+
+// ── Plan Step ─────────────────────────────────────────────────
+
+export interface PlanStep {
+  id: string;
+  title: string;
+  description: string;
+  category: RecommendationCategory;
+  estimatedDuration: number;
+  estimatedBenefit: string;
+  riskLevel: PlanRiskLevel;
+  rollbackAvailable: boolean;
+  rollbackMethod: string | null;
+  rollbackConfidence: number;
+  estimatedRollbackTime: number;
+  relatedRecommendation: string;
+  confidence: number;
+  status: PlanStepStatus;
+  priority: AIRecommendationPriority;
+  futureMetadata: Record<string, unknown>;
+}
+
+// ── Optimization Plan (Part 5) ────────────────────────────────
+
+export interface OptimizationPlanV2 {
+  id: string;
+  title: string;
+  description: string;
+  summary: string;
+  generatedAt: string;
+  expiresAt: string;
+  planType: OptimizationPlanType;
+  estimatedDuration: number;
+  estimatedHealthGain: number;
+  estimatedStorageRecovery: number;
+  estimatedPerformanceGain: number;
+  estimatedPrivacyGain: number;
+  estimatedStartupGain: number;
+  estimatedRisk: PlanRiskLevel;
+  confidenceScore: number;
+  rollbackAvailable: boolean;
+  requiresConfirmation: boolean;
+  recommendedOrder: string[];
+  steps: PlanStep[];
+  relatedRecommendations: string[];
+  futureMetadata: Record<string, unknown>;
+}
+
+// ── Plan Comparison ───────────────────────────────────────────
+
+export interface PlanComparisonEntry {
+  planId: string;
+  planType: OptimizationPlanType;
+  title: string;
+  estimatedDuration: number;
+  estimatedHealthGain: number;
+  estimatedRisk: PlanRiskLevel;
+  stepCount: number;
+  rollbackAvailable: boolean;
+  confidenceScore: number;
+}
+
+export interface PlanComparison {
+  plans: PlanComparisonEntry[];
+  bestForHealth: string | null;
+  bestForSpeed: string | null;
+  bestForSafety: string | null;
+  bestForStorage: string | null;
+}
+
+// ── Plan Validation ───────────────────────────────────────────
+
+export interface PlanValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+// ── Plan Statistics ───────────────────────────────────────────
+
+export interface PlanStatistics {
+  totalPlans: number;
+  byType: Record<string, number>;
+  byRisk: Record<string, number>;
+  averageDuration: number;
+  averageHealthGain: number;
+  averageConfidence: number;
+  totalSteps: number;
+}
+
+// ── Plan History Entry ────────────────────────────────────────
+
+export interface PlanHistoryEntry {
+  id: string;
+  planId: string;
+  planType: OptimizationPlanType;
+  action: 'generated' | 'updated' | 'selected' | 'validated' | 'expired' | 'compared';
+  timestamp: string;
+  metadata: Record<string, unknown>;
+}
+
+// ── Plan Events ───────────────────────────────────────────────
+
+export type PlanEventType =
+  | 'plan_generated'
+  | 'plan_updated'
+  | 'plan_selected'
+  | 'plan_validated'
+  | 'plan_expired'
+  | 'plan_compared';
+
+export interface PlanEvent {
+  type: PlanEventType;
+  planId: string;
+  timestamp: string;
+  data: unknown;
+}
+
+export type PlanEventListener = (event: PlanEvent) => void;
+
+// ── Plan Configuration ────────────────────────────────────────
+
+export interface BenefitRules {
+  healthGainMultiplier: number;
+  storageRecoveryMultiplier: number;
+  performanceGainMultiplier: number;
+  privacyGainMultiplier: number;
+  startupGainMultiplier: number;
+  maxHealthGain: number;
+  maxStorageRecovery: number;
+}
+
+export interface RiskRules {
+  defaultRisk: PlanRiskLevel;
+  highRiskThreshold: number;
+  criticalRiskThreshold: number;
+  riskFromSafetyScore: boolean;
+}
+
+export interface OrderingRules {
+  prioritizeBy: 'priority' | 'benefit' | 'risk' | 'duration';
+  groupByCategory: boolean;
+  criticalFirst: boolean;
+}
+
+export interface PlanFeatureFlags {
+  enableQuickOptimize: boolean;
+  enablePerformanceBoost: boolean;
+  enableStorageRecovery: boolean;
+  enablePrivacyCleanup: boolean;
+  enableStartupOptimization: boolean;
+  enableMaintenance: boolean;
+  enableHealthRecovery: boolean;
+  enableDeepOptimization: boolean;
+  enableCustomPlan: boolean;
+  enablePlanComparison: boolean;
+  futureFlags: Record<string, boolean>;
+}
+
+export interface PlanConfiguration {
+  configVersion: string;
+  benefitRules: BenefitRules;
+  riskRules: RiskRules;
+  orderingRules: OrderingRules;
+  featureFlags: PlanFeatureFlags;
+  enableEvents: boolean;
+  planExpiryMinutes: number;
+  maxStepsPerPlan: number;
+  minConfidenceThreshold: number;
+}
+
+// ── Plan Builder Input ────────────────────────────────────────
+
+export interface PlanBuilderInput {
+  recommendations: Recommendation[];
+  planType: OptimizationPlanType;
+  customRecommendationIds?: string[];
+  userPreferences?: PlanUserPreferences;
+}
+
+export interface PlanUserPreferences {
+  avoidHighRisk: boolean;
+  maxDurationSeconds: number;
+  prioritizePrivacy: boolean;
+  prioritizeStorage: boolean;
+  prioritizePerformance: boolean;
+}
+
+// ── Helper Functions (Part 5) ─────────────────────────────────
+
+export function getPlanTypeLabel(type: OptimizationPlanType): string {
+  const labels: Record<OptimizationPlanType, string> = {
+    quick_optimize: 'Quick Optimize',
+    performance_boost: 'Performance Boost',
+    storage_recovery: 'Storage Recovery',
+    privacy_cleanup: 'Privacy Cleanup',
+    startup_optimization: 'Startup Optimization',
+    maintenance: 'Maintenance',
+    health_recovery: 'Health Recovery',
+    deep_optimization: 'Deep Optimization',
+    custom_plan: 'Custom Plan',
+    future_plan: 'Future Plan',
+  };
+  return labels[type] ?? 'Unknown Plan';
+}
+
+export function getPlanRiskLabel(risk: PlanRiskLevel): string {
+  const labels: Record<PlanRiskLevel, string> = {
+    none: 'None',
+    very_low: 'Very Low',
+    low: 'Low',
+    medium: 'Medium',
+    high: 'High',
+    critical: 'Critical',
+  };
+  return labels[risk] ?? 'Unknown';
+}
+
+export function riskToPlanRisk(risk: string): PlanRiskLevel {
+  const map: Record<string, PlanRiskLevel> = {
+    none: 'none',
+    low: 'low',
+    medium: 'medium',
+    high: 'high',
+    critical: 'critical',
+  };
+  return map[risk] ?? 'medium';
+}
+
+export function planRiskToWeight(risk: PlanRiskLevel): number {
+  const weights: Record<PlanRiskLevel, number> = {
+    none: 0,
+    very_low: 10,
+    low: 25,
+    medium: 50,
+    high: 75,
+    critical: 100,
+  };
+  return weights[risk] ?? 50;
+}
+
+export function createDefaultPlanConfiguration(): PlanConfiguration {
+  return {
+    configVersion: '2.0.0',
+    benefitRules: {
+      healthGainMultiplier: 1.0,
+      storageRecoveryMultiplier: 1.0,
+      performanceGainMultiplier: 0.8,
+      privacyGainMultiplier: 0.7,
+      startupGainMultiplier: 0.6,
+      maxHealthGain: 30,
+      maxStorageRecovery: 10000,
+    },
+    riskRules: {
+      defaultRisk: 'low',
+      highRiskThreshold: 0.3,
+      criticalRiskThreshold: 0.1,
+      riskFromSafetyScore: true,
+    },
+    orderingRules: {
+      prioritizeBy: 'priority',
+      groupByCategory: true,
+      criticalFirst: true,
+    },
+    featureFlags: {
+      enableQuickOptimize: true,
+      enablePerformanceBoost: true,
+      enableStorageRecovery: true,
+      enablePrivacyCleanup: true,
+      enableStartupOptimization: true,
+      enableMaintenance: true,
+      enableHealthRecovery: true,
+      enableDeepOptimization: true,
+      enableCustomPlan: true,
+      enablePlanComparison: true,
+      futureFlags: {},
+    },
+    enableEvents: true,
+    planExpiryMinutes: 30,
+    maxStepsPerPlan: 50,
+    minConfidenceThreshold: 0.3,
+  };
+}
+
+export function createDefaultPlanUserPreferences(): PlanUserPreferences {
+  return {
+    avoidHighRisk: false,
+    maxDurationSeconds: 0,
+    prioritizePrivacy: false,
+    prioritizeStorage: false,
+    prioritizePerformance: false,
+  };
+}
+
+export function generatePlanId(planType: OptimizationPlanType): string {
+  return `plan_${planType}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+}
+
+export function generateStepId(index: number): string {
+  return `step_${index}_${Math.random().toString(36).slice(2, 6)}`;
+}
+
