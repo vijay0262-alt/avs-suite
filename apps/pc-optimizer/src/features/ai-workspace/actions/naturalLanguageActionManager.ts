@@ -31,7 +31,6 @@ import type {
   ActionAnalyticsData,
   ApprovalPolicyType,
 } from './types';
-import type { ToolDefinition } from '../tools/types';
 import type { ToolManager } from '../tools/toolManager';
 import { DEFAULT_ACTION_CONFIGURATION, createActionConfiguration, validateActionConfiguration } from './actionConfiguration';
 import { ActionEvents, actionEvents } from './actionEvents';

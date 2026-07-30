@@ -7,7 +7,6 @@
  * Does NOT execute tools — only selects them.
  */
 import type { ClassifiedIntent, ToolDefinition, CopilotContext, CopilotIntentType } from './types';
-import type { ToolResolutionResult } from '../tools/types';
 import type { ToolManager } from '../tools/toolManager';
 
 export class ActionResolver {

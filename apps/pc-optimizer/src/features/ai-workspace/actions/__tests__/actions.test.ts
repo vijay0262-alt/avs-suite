@@ -12,7 +12,6 @@ import { NaturalLanguageActionManager } from '../naturalLanguageActionManager';
 import { IntentClassifier } from '../intentClassifier';
 import { EntityExtractor } from '../entityExtractor';
 import { ActionContextResolver } from '../actionContextResolver';
-import { ActionResolver } from '../actionResolver';
 import { ActionPlanner } from '../actionPlanner';
 import { ActionValidator } from '../actionValidator';
 import { ActionApprovalEngine } from '../actionApprovalEngine';
@@ -31,9 +30,8 @@ import {
   createDefaultEntityRules,
   createDefaultApprovalPolicies,
   createDefaultSuggestionRules,
-  createDefaultActionConfiguration,
 } from '../types';
-import type { CopilotContext, ClassifiedIntent, ExtractedEntity, ActionPlan, ApprovalPolicy, ActionRiskLevel, PermissionLevel, SuggestionRule } from '../types';
+import type { CopilotContext, ClassifiedIntent, PermissionLevel } from '../types';
 import type { ToolDefinition } from '../../tools/types';
 
 function createMockTool(id: string, name: string, riskLevel: string = 'low', requiredPermissions: PermissionLevel = 'free'): ToolDefinition {

@@ -8,7 +8,6 @@
  * one_time_approval, session_approval.
  */
 import type { ActionPlan, ApprovalPolicy, ApprovalResult, ApprovalPolicyType, ActionRiskLevel } from './types';
-import { generateApprovalRequestId } from './types';
 
 export class ActionApprovalEngine {
   private _policies: ApprovalPolicy[];

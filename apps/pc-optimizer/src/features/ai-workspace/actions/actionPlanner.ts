@@ -18,7 +18,6 @@ import type {
   ActionRiskLevel,
   ActionExplanation,
   CopilotEvidence,
-  ActionPlanStatus,
 } from './types';
 import { generateActionPlanId, generateActionStepId } from './types';
 
@@ -77,7 +76,7 @@ export class ActionPlanner {
     return steps;
   }
 
-  private _extractParameters(intent: ClassifiedIntent, entities: ExtractedEntity[], tool: ToolDefinition): Record<string, unknown> {
+  private _extractParameters(intent: ClassifiedIntent, entities: ExtractedEntity[], _tool: ToolDefinition): Record<string, unknown> {
     const params: Record<string, unknown> = {};
 
     for (const entity of entities) {
@@ -114,12 +113,13 @@ export class ActionPlanner {
     return maxRisk;
   }
 
-  private _estimateBenefit(intent: ClassifiedIntent, context: CopilotContext, entities: ExtractedEntity[]): string {
+  private _estimateBenefit(intent: ClassifiedIntent, context: CopilotContext, _entities: ExtractedEntity[]): string {
     switch (intent.intent) {
-      case 'optimization':
+      case 'optimization': {
         const score = context.healthScore ?? 50;
         const projected = Math.min(100, score + 10);
         return `Expected health score improvement from ${score} to ~${projected}`;
+      }
       case 'maintenance':
         return 'Improved system stability and cleanliness';
       case 'recovery':
@@ -139,7 +139,7 @@ export class ActionPlanner {
     }
   }
 
-  private _requiresApproval(risk: ActionRiskLevel, intent: ClassifiedIntent): boolean {
+  private _requiresApproval(risk: ActionRiskLevel, _intent: ClassifiedIntent): boolean {
     const riskScores: Record<ActionRiskLevel, number> = { none: 0, low: 1, medium: 2, high: 3, critical: 4 };
     return riskScores[risk] >= riskScores['medium'];
   }

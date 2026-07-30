@@ -29,7 +29,6 @@ export type {
 } from '../tools/types';
 
 import type {
-  CopilotContext,
   CopilotEvidence,
   PermissionLevel,
   CopilotCapability,
@@ -37,7 +36,6 @@ import type {
 
 import type {
   ToolDefinition,
-  ToolResolutionResult,
 } from '../tools/types';
 
 // ── Action Types ──────────────────────────────────────────────

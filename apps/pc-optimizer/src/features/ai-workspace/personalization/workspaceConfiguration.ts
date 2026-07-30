@@ -58,7 +58,9 @@ function mergeConfiguration(
           ...overrides.featureFlags,
           futureFlags: {
             ...base.featureFlags.futureFlags,
-            ...(overrides.featureFlags.futureFlags ?? {}),
+            ...Object.fromEntries(
+              Object.entries(overrides.featureFlags.futureFlags ?? {}).filter(([, v]) => v !== undefined),
+            ) as Record<string, boolean>,
           },
         }
       : base.featureFlags,

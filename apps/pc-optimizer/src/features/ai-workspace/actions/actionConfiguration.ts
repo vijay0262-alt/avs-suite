@@ -3,8 +3,8 @@
  *
  * EPIC 5 PHASE A PART 4
  */
-import type { ActionConfiguration, ActionFeatureFlags, ActionPerformanceTargets, IntentDefinition, EntityRule, ApprovalPolicy, SuggestionRule, ActionProviderSettings } from './types';
-import { createDefaultActionConfiguration, createDefaultActionFeatureFlags, createDefaultActionPerformanceTargets } from './types';
+import type { ActionConfiguration, IntentDefinition, EntityRule, ApprovalPolicy, SuggestionRule, ActionProviderSettings } from './types';
+import { createDefaultActionConfiguration } from './types';
 
 export type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends Record<string, unknown>

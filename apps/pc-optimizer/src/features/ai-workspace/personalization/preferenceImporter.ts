@@ -83,7 +83,7 @@ export class PreferenceImporter {
       }
     }
 
-    let validTemplates: WorkspaceTemplate[] = [];
+    const validTemplates: WorkspaceTemplate[] = [];
     if (data.templates && data.templates.length > 0) {
       for (const template of data.templates) {
         const templateValidation = this._validator.validateTemplate(template);

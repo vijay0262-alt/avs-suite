@@ -6,7 +6,7 @@
  * Classifies natural language requests into action intents.
  * Uses keyword matching and phrase matching with confidence scoring.
  */
-import type { IntentDefinition, ClassifiedIntent, ActionType, ExtractedEntity, ActionRiskLevel, PermissionLevel } from './types';
+import type { IntentDefinition, ClassifiedIntent, ActionType, ExtractedEntity } from './types';
 import { generateIntentId, clampConfidence } from './types';
 
 export class IntentClassifier {

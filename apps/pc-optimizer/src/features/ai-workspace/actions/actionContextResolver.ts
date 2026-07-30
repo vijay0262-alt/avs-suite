@@ -44,8 +44,7 @@ export class ActionContextResolver {
     };
   }
 
-  private _filterRelevantEntities(intent: ClassifiedIntent, entities: ExtractedEntity[]): ExtractedEntity[] {
-    const intentDef = intent.requiredTools;
+  private _filterRelevantEntities(_intent: ClassifiedIntent, entities: ExtractedEntity[]): ExtractedEntity[] {
     // Return all extracted entities — the planner will use what it needs
     return entities;
   }

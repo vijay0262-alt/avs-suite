@@ -33,7 +33,7 @@ export class InputNormalizer {
 
     let text = '';
     let extractedData: Record<string, unknown> = {};
-    let confidence = input.metadata.confidence;
+    const confidence = input.metadata.confidence;
 
     switch (input.modality) {
       case 'text':
