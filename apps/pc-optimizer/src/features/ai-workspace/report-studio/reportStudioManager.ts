@@ -36,7 +36,6 @@ import type {
   PermissionLevel,
   ReportPlugin,
   ReportValidationResult,
-  ReportEvent,
 } from './types';
 import {
   DEFAULT_REPORT_STUDIO_CONFIGURATION,

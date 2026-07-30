@@ -138,7 +138,7 @@ export class ReportBuilder {
     return data;
   }
 
-  private _buildSections(template: ReportTemplate, widgets: ReportWidgetInstance[]): ReportSection[] {
+  private _buildSections(template: ReportTemplate, _widgets: ReportWidgetInstance[]): ReportSection[] {
     return template.sections.map((sec) => ({
       ...sec,
       insights: [],

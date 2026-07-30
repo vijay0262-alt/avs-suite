@@ -17,7 +17,6 @@ import type {
   CopilotIntentType,
   CopilotEvidence,
   ContextSourceType,
-  ExecutionStatus,
 } from './types';
 import { generateExecutionId, clampConfidence } from './types';
 

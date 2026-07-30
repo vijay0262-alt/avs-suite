@@ -434,7 +434,7 @@ export class MultimodalManager {
     };
   }
 
-  private _routeToTools(intent: DetectedIntent, context: CopilotContext): ToolRoutingResult {
+  private _routeToTools(intent: DetectedIntent, _context: CopilotContext): ToolRoutingResult {
     const toolMap: Partial<Record<CopilotIntentType, string[]>> = {
       explanation: ['explain_health'],
       optimization: ['create_optimization_session'],
@@ -509,7 +509,7 @@ export class MultimodalManager {
     return parts.join(' ');
   }
 
-  private _buildSpeakable(text: string, intent: DetectedIntent): string {
+  private _buildSpeakable(text: string, _intent: DetectedIntent): string {
     return text.replace(/[()]/g, '').replace(/\b\d+%/g, 'percent');
   }
 

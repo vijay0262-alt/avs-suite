@@ -3,7 +3,7 @@
  *
  * EPIC 5 PHASE A PART 2
  */
-import type { ToolTelemetryEntry, ExecutionStatus } from './types';
+import type { ToolTelemetryEntry } from './types';
 
 export class ToolTelemetry {
   private _entries: ToolTelemetryEntry[] = [];

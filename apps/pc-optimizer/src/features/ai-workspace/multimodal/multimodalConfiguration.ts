@@ -12,18 +12,10 @@ import type {
   MultimodalProviderSettings,
   MultimodalValidationRules,
   AttachmentPolicy,
-  MultimodalFeatureFlags,
-  MultimodalPerformanceTargets,
   InputModality,
 } from './types';
 import {
   createDefaultMultimodalConfiguration,
-  createDefaultProviderSettings,
-  createDefaultValidationRules,
-  createDefaultAttachmentPolicy,
-  createDefaultFeatureFlags,
-  createDefaultPerformanceTargets,
-  createDefaultSupportedModalities,
 } from './types';
 
 export type DeepPartial<T> = {

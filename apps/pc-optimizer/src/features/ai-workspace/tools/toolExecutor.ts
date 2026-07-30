@@ -9,7 +9,7 @@
  * The executor NEVER executes optimizations directly.
  * It calls tool.execute() which orchestrates business module outputs.
  */
-import type { ToolConfiguration, ToolInput, ToolResult, Tool, ExecutionStatus } from './types';
+import type { ToolConfiguration, ToolInput, ToolResult, Tool } from './types';
 import { generateExecutionId } from './types';
 import type { ToolRegistry } from './toolRegistry';
 import type { ToolValidator } from './toolValidator';

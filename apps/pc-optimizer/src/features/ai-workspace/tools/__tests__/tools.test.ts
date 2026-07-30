@@ -13,17 +13,14 @@ import { ToolRegistry } from '../toolRegistry';
 import { ToolResolver } from '../toolResolver';
 import { ToolValidator } from '../toolValidator';
 import { ToolPermissionEngine } from '../toolPermissionEngine';
-import { ToolExecutor } from '../toolExecutor';
 import { ToolResultFormatter } from '../toolResultFormatter';
 import { ToolTelemetry } from '../toolTelemetry';
 import { ToolAnalytics } from '../toolAnalytics';
 import { ToolEvents } from '../toolEvents';
-import { BaseTool } from '../baseTool';
-import { createDefaultTools, ExplainHealthTool, ReportGenerationTool, OptimizationSessionTool } from '../builtinTools';
+import { createDefaultTools, ExplainHealthTool, OptimizationSessionTool } from '../builtinTools';
 import { DEFAULT_TOOL_CONFIGURATION, createToolConfiguration, validateToolConfiguration } from '../toolConfiguration';
 import { generateToolId, clampConfidence, getToolCategoryLabel, getRiskLevelLabel } from '../types';
-import type { Tool, ToolDefinition, ToolInput, ToolResult, CopilotContext } from '../types';
-import type { CopilotContext as Ctx } from '../../copilot/types';
+import type { Tool, ToolInput, ToolResult, CopilotContext } from '../types';
 
 function createMockContext(): CopilotContext {
   return {

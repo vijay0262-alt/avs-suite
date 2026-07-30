@@ -7,7 +7,6 @@
  * PDF-ready data model. Supports future export providers.
  */
 import type { Report, ReportExportResult, ExportFormat } from './types';
-import { getExportFormatLabel } from './types';
 
 export class ReportExporter {
   export(report: Report, format: ExportFormat): ReportExportResult {

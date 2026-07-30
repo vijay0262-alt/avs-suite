@@ -11,7 +11,6 @@ import type {
   VoiceSessionStatus,
   VoiceProcessingResult,
   VoiceProvider,
-  VoiceOperation,
   MultimodalConfiguration,
 } from './types';
 import { generateVoiceSessionId } from './types';

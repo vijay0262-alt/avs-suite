@@ -7,7 +7,7 @@
  * Enterprise Policies, Feature Flags, Safety Policies.
  * Does NOT modify Authentication or Licensing modules.
  */
-import type { ToolConfiguration, ToolPermissionResult, PermissionLevel, CopilotCapability } from './types';
+import type { ToolConfiguration, ToolPermissionResult, ToolPermissionRule, PermissionLevel, CopilotCapability } from './types';
 import type { ToolDefinition } from './types';
 
 const LEVEL_HIERARCHY: PermissionLevel[] = ['guest', 'free', 'pro', 'enterprise', 'future_level'];
@@ -75,11 +75,11 @@ export class ToolPermissionEngine {
     };
   }
 
-  private _findRule(toolId: string): import('./types').ToolPermissionRule | null {
+  private _findRule(toolId: string): ToolPermissionRule | null {
     return this._config.permissionRules.rules.find((r) => r.toolId === toolId) ?? null;
   }
 
-  getRules(): import('./types').ToolPermissionRule[] {
+  getRules(): ToolPermissionRule[] {
     return this._config.permissionRules.rules;
   }
 }

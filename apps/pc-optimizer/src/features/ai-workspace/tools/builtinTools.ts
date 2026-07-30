@@ -6,7 +6,7 @@
  * 12 built-in tools that expose AI capabilities through the tool framework.
  * Each tool orchestrates existing AI module outputs without duplicating logic.
  */
-import type { ToolDefinition, ToolInput, ToolResult, CopilotEvidence } from './types';
+import type { Tool, ToolDefinition, ToolInput, ToolResult, CopilotEvidence } from './types';
 import { BaseTool } from './baseTool';
 
 // ── 1. ExplainHealthTool ─────────────────────────────────────
@@ -687,7 +687,7 @@ export class ReportGenerationTool extends BaseTool {
 
 // ── Factory ──────────────────────────────────────────────────
 
-export function createDefaultTools(): import('./types').Tool[] {
+export function createDefaultTools(): Tool[] {
   return [
     new ExplainHealthTool(),
     new ExplainRecommendationTool(),

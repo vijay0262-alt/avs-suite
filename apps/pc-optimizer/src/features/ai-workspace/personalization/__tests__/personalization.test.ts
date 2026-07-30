@@ -15,7 +15,7 @@
  * - Performance
  * - Edge cases
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   WorkspacePersonalizationManager,
   WorkspaceProfileManager,
@@ -47,15 +47,12 @@ import type {
   WorkspaceConfiguration,
   UserPreferences,
   BehaviorEvent,
-  WorkspaceProfile,
   WorkspaceProfileType,
   WorkspaceTemplate,
   PersonalizationSuggestion,
   PreferenceExportData,
   PersonalizationPlugin,
   WorkspaceTemplatePlugin,
-  WorkspaceEventType,
-  WorkspaceEventListener,
   BehaviorAnalysisResult,
 } from '../index';
 
@@ -93,7 +90,7 @@ function createMockPlugin(name: string = 'test_plugin'): PersonalizationPlugin {
     getVersion: () => '1.0.0',
     getPriority: () => 10,
     isAvailable: () => true,
-    generateSuggestions: (prefs: UserPreferences, _analysis: BehaviorAnalysisResult | null): PersonalizationSuggestion[] => {
+    generateSuggestions: (_prefs: UserPreferences, _analysis: BehaviorAnalysisResult | null): PersonalizationSuggestion[] => {
       return [{
         id: generateSuggestionId(),
         type: 'goal_suggestion',

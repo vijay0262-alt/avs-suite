@@ -11,7 +11,6 @@ import type {
   NormalizedInput,
   NormalizationWarning,
   MultimodalConfiguration,
-  InputModality,
   CopilotEntity,
 } from './types';
 import { generateNormalizedInputId } from './types';

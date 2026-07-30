@@ -3,7 +3,7 @@
  *
  * EPIC 5 PHASE A PART 5
  */
-import type { ReportStudioConfiguration, ReportFeatureFlags, ReportPerformanceTargets, ExportFormat, TimeRangePreset } from './types';
+import type { ReportStudioConfiguration, ExportFormat, TimeRangePreset } from './types';
 import { createDefaultReportStudioConfiguration } from './types';
 
 export type DeepPartial<T> = {

@@ -11,20 +11,12 @@ import type {
   WorkspaceConfiguration,
   PreferenceRules,
   TemplateDefinition,
-  WorkspaceFeatureFlags,
   EnterprisePolicies,
   PrivacySettings,
-  WorkspacePerformanceTargets,
   WorkspaceProfileType,
 } from './types';
 import {
   createDefaultWorkspaceConfiguration,
-  createDefaultPreferenceRules,
-  createDefaultTemplateDefinitions,
-  createDefaultWorkspaceFeatureFlags,
-  createDefaultEnterprisePolicies,
-  createDefaultPrivacySettings,
-  createDefaultWorkspacePerformanceTargets,
 } from './types';
 
 export type DeepPartial<T> = {

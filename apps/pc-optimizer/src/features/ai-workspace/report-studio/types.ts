@@ -21,7 +21,6 @@ export type {
 } from '../copilot/types';
 
 import type {
-  CopilotContext,
   CopilotEvidence,
   PermissionLevel,
 } from '../copilot/types';

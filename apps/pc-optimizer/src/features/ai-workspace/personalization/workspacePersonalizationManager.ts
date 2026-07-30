@@ -30,11 +30,12 @@ import type {
   BehaviorAnalysisResult,
   WorkspaceLayout,
   AIInteractionStyle,
-  CopilotIntentType,
-  CopilotCapability,
   PersonalizationPlugin,
   QuickActionSuggestion,
   RecentActivity,
+  LearnedPreference,
+  WorkspaceAnalyticsData,
+  WorkspaceValidationResult,
 } from './types';
 import {
   createDefaultUserPreferences,
@@ -209,9 +210,9 @@ export class WorkspacePersonalizationManager {
       .sort((a, b) => b.confidence - a.confidence)
       .slice(0, maxPerSession);
 
-    for (const suggestion of filtered) {
+    filtered.forEach(() => {
       this._analytics.recordSuggestionGenerated();
-    }
+    });
 
     this._emit('suggestions_generated', { userId, suggestions: filtered });
     return filtered;
@@ -375,7 +376,7 @@ export class WorkspacePersonalizationManager {
     return this.setPreference(userId, 'manualMode', manual);
   }
 
-  getLearnedPreferences(userId: string): import('./types').LearnedPreference[] {
+  getLearnedPreferences(userId: string): LearnedPreference[] {
     const preferences = this._preferences.get(userId);
     return preferences?.learnedPreferences ?? [];
   }
@@ -522,7 +523,7 @@ export class WorkspacePersonalizationManager {
 
   // ── Analytics ───────────────────────────────────────────────
 
-  getAnalytics(): import('./types').WorkspaceAnalyticsData {
+  getAnalytics(): WorkspaceAnalyticsData {
     return this._analytics.getAnalytics();
   }
 
@@ -614,7 +615,7 @@ export class WorkspacePersonalizationManager {
 
   // ── Validation ──────────────────────────────────────────────
 
-  validatePreferences(userId: string): import('./types').WorkspaceValidationResult {
+  validatePreferences(userId: string): WorkspaceValidationResult {
     const preferences = this._preferences.get(userId);
     if (!preferences) {
       throw new Error(`No workspace loaded for user ${userId}`);

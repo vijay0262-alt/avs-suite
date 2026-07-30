@@ -45,8 +45,6 @@ import type {
   CopilotIntentType,
   CopilotEntity,
   CopilotEvidence,
-  PermissionLevel,
-  CopilotCapability,
 } from '../copilot/types';
 
 // ── Input Modalities ──────────────────────────────────────────

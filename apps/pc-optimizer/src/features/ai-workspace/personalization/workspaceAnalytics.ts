@@ -9,7 +9,6 @@
 import type {
   WorkspaceAnalyticsData,
   BehaviorEvent,
-  PersonalizationSuggestion,
   WorkspaceProfileType,
 } from './types';
 

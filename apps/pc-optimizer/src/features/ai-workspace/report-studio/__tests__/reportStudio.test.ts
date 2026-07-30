@@ -48,14 +48,8 @@ import type {
   CopilotContext,
   Report,
   ReportType,
-  ExportFormat,
-  ScheduleFrequency,
-  ComparisonType,
-  ReportWidgetDefinition,
   ReportTemplate,
-  ReportFilterSet,
   ReportPlugin,
-  ReportDefinition,
   PermissionLevel,
 } from '../types';
 

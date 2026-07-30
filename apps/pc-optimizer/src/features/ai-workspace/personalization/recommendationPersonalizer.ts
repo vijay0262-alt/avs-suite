@@ -11,7 +11,6 @@ import type {
   BehaviorAnalysisResult,
   PersonalizationSuggestion,
   WorkspaceConfiguration,
-  PreferenceEvidence,
 } from './types';
 import { generateSuggestionId } from './types';
 

@@ -11,7 +11,6 @@ import type {
   ConversationContext,
   MultimodalInput,
   MultimodalConfiguration,
-  CopilotContext,
 } from './types';
 import type { CopilotContextResolverInput } from '../copilot/copilotContextResolver';
 import { CopilotContextResolver } from '../copilot/copilotContextResolver';

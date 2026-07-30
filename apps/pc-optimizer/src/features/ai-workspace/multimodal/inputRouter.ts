@@ -9,10 +9,9 @@
 import type {
   MultimodalInput,
   InputModality,
-  ModalityDefinition,
   MultimodalConfiguration,
 } from './types';
-import { ModalityRegistry } from './modalityRegistry';
+import type { ModalityRegistry } from './modalityRegistry';
 
 export interface RoutingResult {
   modality: InputModality;

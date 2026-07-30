@@ -27,6 +27,7 @@ import type {
   CopilotContext,
   PermissionLevel,
   CopilotCapability,
+  ToolPermissionResult,
 } from './types';
 import { DEFAULT_TOOL_CONFIGURATION, createToolConfiguration, validateToolConfiguration } from './toolConfiguration';
 import { ToolEvents, toolEvents } from './toolEvents';
@@ -163,7 +164,7 @@ export class ToolManager {
     toolId: string,
     currentLevel: PermissionLevel,
     userCapabilities: CopilotCapability[],
-  ): import('./types').ToolPermissionResult {
+  ): ToolPermissionResult {
     const tool = this._registry.getTool(toolId);
     if (!tool) {
       return {

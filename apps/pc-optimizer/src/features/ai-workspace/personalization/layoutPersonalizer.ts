@@ -49,7 +49,7 @@ export class LayoutPersonalizer {
     return layout;
   }
 
-  applyProfileLayout(profile: WorkspaceProfile, currentLayout: WorkspaceLayout): WorkspaceLayout {
+  applyProfileLayout(profile: WorkspaceProfile, _currentLayout: WorkspaceLayout): WorkspaceLayout {
     return structuredClone(profile.layout);
   }
 

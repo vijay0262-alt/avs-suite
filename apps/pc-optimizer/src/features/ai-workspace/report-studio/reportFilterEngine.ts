@@ -7,7 +7,7 @@
  * goal, optimization type, automation, maintenance, recovery, health
  * score, tags, severity, and custom filters.
  */
-import type { ReportFilter, ReportFilterSet, CopilotContext } from './types';
+import type { ReportFilter, ReportFilterSet } from './types';
 
 export class ReportFilterEngine {
   apply(filters: ReportFilterSet, data: Record<string, unknown>[]): Record<string, unknown>[] {

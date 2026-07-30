@@ -6,12 +6,12 @@
  * Central registry for all tools.
  * Supports registration, unregistration, querying, and discovery.
  */
-import type { Tool, ToolDefinition, ToolDiscoveryResult, ToolSearchQuery, ToolCategory, ContextSourceType } from './types';
+import type { Tool, ToolDefinition, ToolDiscoveryResult, ToolSearchQuery, ToolCategory, ToolPlugin } from './types';
 import type { CopilotIntentType, CopilotCapability } from '../copilot/types';
 
 export class ToolRegistry {
   private _tools: Map<string, Tool> = new Map();
-  private _plugins: Map<string, { plugin: import('./types').ToolPlugin; tools: Tool[] }> = new Map();
+  private _plugins: Map<string, { plugin: ToolPlugin; tools: Tool[] }> = new Map();
 
   register(tool: Tool): boolean {
     if (this._tools.has(tool.definition.id)) {
@@ -109,7 +109,7 @@ export class ToolRegistry {
     return this._tools.get(toolId)?.definition ?? null;
   }
 
-  registerPlugin(plugin: import('./types').ToolPlugin): boolean {
+  registerPlugin(plugin: ToolPlugin): boolean {
     if (this._plugins.has(plugin.getPluginName())) return false;
     const tools = plugin.getTools();
     for (const tool of tools) {
