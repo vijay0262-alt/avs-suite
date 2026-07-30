@@ -6,7 +6,7 @@
  * Manages widget refresh: manual, interval, event-driven,
  * on focus, on demand.
  */
-import type { RefreshPolicy, RefreshPolicyType, CopilotContext } from './types';
+import type { RefreshPolicy, CopilotContext } from './types';
 import type { CommandCenterWidgetManager } from './commandCenterWidgetManager';
 
 export class CommandCenterRefreshEngine {

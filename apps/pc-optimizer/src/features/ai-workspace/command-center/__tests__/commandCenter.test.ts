@@ -26,9 +26,8 @@ import {
   getWidgetPriorityLabel,
   createDefaultWidgetDefinitions,
   createDefaultDashboardLayout,
-  createDefaultCommandCenterConfiguration,
 } from '../types';
-import type { CopilotContext, WidgetDefinition, WidgetDataProvider, WidgetCategory, WidgetData, DashboardLayout, SearchQuery } from '../types';
+import type { CopilotContext, WidgetDefinition, WidgetDataProvider, WidgetCategory } from '../types';
 
 function createMockContext(): CopilotContext {
   return {

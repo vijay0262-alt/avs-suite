@@ -167,8 +167,8 @@ export class CopilotResponseEngine {
   private _composeAnswer(
     intent: CopilotIntentType,
     context: CopilotContext,
-    entities: CopilotEntity[],
-    prompt: string,
+    _entities: CopilotEntity[],
+    _prompt: string,
   ): string {
     const parts: string[] = [];
 

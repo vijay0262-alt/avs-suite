@@ -8,9 +8,10 @@
  * which is already resolved from existing AI modules.
  */
 import type { CopilotContext, CopilotEvidence, CommandCenterViewModel, HealthViewModel, GoalsViewModel, RecommendationsViewModel, PredictionsViewModel, MaintenanceViewModel, AutomationViewModel, TimelineViewModel, RecoveryViewModel, DeviceProfileViewModel, CopilotViewModel, OptimizationViewModel } from './types';
+import type { CopilotSuggestion, CopilotActionPlan } from '../copilot/types';
 
 export class CommandCenterDataAggregator {
-  aggregate(context: CopilotContext, copilotSuggestions: import('../copilot/types').CopilotSuggestion[] = [], copilotActions: import('../copilot/types').CopilotActionPlan[] = []): CommandCenterViewModel {
+  aggregate(context: CopilotContext, copilotSuggestions: CopilotSuggestion[] = [], copilotActions: CopilotActionPlan[] = []): CommandCenterViewModel {
     return {
       health: this._aggregateHealth(context),
       goals: this._aggregateGoals(context),
@@ -130,7 +131,7 @@ export class CommandCenterDataAggregator {
     };
   }
 
-  private _aggregateCopilot(suggestions: import('../copilot/types').CopilotSuggestion[], actions: import('../copilot/types').CopilotActionPlan[]): CopilotViewModel {
+  private _aggregateCopilot(suggestions: CopilotSuggestion[], actions: CopilotActionPlan[]): CopilotViewModel {
     return {
       suggestions,
       pendingActions: actions,

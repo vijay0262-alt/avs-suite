@@ -5,7 +5,7 @@
  *
  * Manages widget instances, their lifecycle, and data fetching.
  */
-import type { WidgetInstance, WidgetDefinition, WidgetData, WidgetDataProvider, CopilotContext, WidgetStatus } from './types';
+import type { WidgetInstance, WidgetDefinition, WidgetData, CopilotContext, WidgetStatus } from './types';
 import type { CommandCenterWidgetRegistry } from './commandCenterWidgetRegistry';
 
 export class CommandCenterWidgetManager {

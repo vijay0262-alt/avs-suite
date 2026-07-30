@@ -14,8 +14,6 @@ import type {
   CopilotActionPlan,
   TopicCount,
   EntityCount,
-  CopilotIntentType,
-  CopilotCapability,
   EntityType,
 } from './types';
 

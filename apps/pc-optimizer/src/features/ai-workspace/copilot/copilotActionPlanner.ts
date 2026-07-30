@@ -14,7 +14,6 @@ import type {
   CopilotContext,
   CopilotIntentType,
   CopilotEvidence,
-  PermissionResult,
 } from './types';
 import { generateActionPlanId } from './types';
 import type { CopilotPermissionEngine } from './copilotPermissionEngine';

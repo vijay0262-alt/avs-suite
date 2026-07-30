@@ -10,7 +10,6 @@ import type {
   CopilotConfiguration,
   IntentDefinitions,
   ResponseTemplates,
-  SuggestionRules,
   PermissionRules,
   CopilotFeatureFlags,
   ProviderConfiguration,

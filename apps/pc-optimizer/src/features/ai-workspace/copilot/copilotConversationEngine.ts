@@ -11,7 +11,6 @@
 import type {
   CopilotConfiguration,
   CopilotConversation,
-  CopilotResponse,
   CopilotSuggestion,
   CopilotActionPlan,
   CopilotContext,
@@ -19,7 +18,6 @@ import type {
   CopilotIntentType,
   CopilotPromptInput,
   CopilotPromptResult,
-  CopilotEvidence,
   CopilotReference,
   CopilotMessage,
 } from './types';
@@ -219,7 +217,7 @@ export class CopilotConversationEngine {
     };
   }
 
-  private _extractEntities(context: CopilotContext, intent: CopilotIntentType): CopilotEntity[] {
+  private _extractEntities(context: CopilotContext, _intent: CopilotIntentType): CopilotEntity[] {
     const entities: CopilotEntity[] = [];
 
     if (context.healthScore !== null) {

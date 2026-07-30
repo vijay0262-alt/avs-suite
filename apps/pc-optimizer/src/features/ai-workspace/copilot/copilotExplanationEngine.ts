@@ -16,7 +16,7 @@ import type {
   GoalSummary,
   TimelineEventSummary,
 } from './types';
-import { generateExplanationId, clampConfidence } from './types';
+import { clampConfidence } from './types';
 
 export class CopilotExplanationEngine {
   explainRecommendation(
