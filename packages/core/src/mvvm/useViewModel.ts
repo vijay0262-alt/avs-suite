@@ -1,8 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import type { ViewModel } from './ViewModel';
 
 /**
  * React binding for a ViewModel instance.
+ *
+ * Uses `useSyncExternalStore` (React 18+) for:
+ *   - Automatic batching of synchronous state updates
+ *   - Tear-free concurrent rendering
+ *   - No unnecessary rerenders when state reference is unchanged
  *
  * Usage:
  *   const vm = useMemo(() => new DashboardViewModel(container), [container]);
@@ -12,7 +17,7 @@ import type { ViewModel } from './ViewModel';
  * synchronises the state.
  */
 export function useViewModel<TState>(vm: ViewModel<TState>): TState {
-  const [state, setState] = useState<TState>(vm.state);
-  useEffect(() => vm.subscribe(setState), [vm]);
-  return state;
+  const subscribe = (callback: () => void) => vm.subscribe(() => callback());
+  const getSnapshot = () => vm.state;
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

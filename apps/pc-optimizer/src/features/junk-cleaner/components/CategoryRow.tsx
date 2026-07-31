@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { memo } from 'react';
 import { Badge } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
 import {
@@ -67,7 +68,7 @@ export interface CategoryRowProps {
  * Single row in the Junk Cleaner category list. Displays icon, label,
  * status pill, live progress, file count / size, and "View details".
  */
-export function CategoryRow({
+export const CategoryRow = memo(function CategoryRow({
   id,
   name,
   description,
@@ -157,4 +158,4 @@ export function CategoryRow({
       </button>
     </div>
   );
-}
+});

@@ -143,12 +143,26 @@ export async function runStartup(
   // ── Stage 2: Register ALL IPC handlers ───────────────────
   // This happens AFTER backend is ready but does NOT depend on
   // license SDK — the bridge is created with the real RPC client.
+  // Auto-updater init is independent and runs in parallel.
   const t1 = Date.now();
   try {
     const rpc = rpcClient ?? createMockRpc();
     licenseBridge = new LicenseBridge(rpc);
     const deps: IpcDependencies = { rpc, licenseBridge, logger };
-    registerAllHandlers(deps);
+
+    // Run IPC registration and auto-updater init in parallel
+    // since they are completely independent.
+    await Promise.all([
+      Promise.resolve(registerAllHandlers(deps)),
+      (async () => {
+        try {
+          initAutoUpdater(logger, env);
+        } catch (err) {
+          logger.warn('[startup] Auto-updater init failed — continuing', err);
+        }
+      })(),
+    ]);
+
     recordTiming('ipc-registration', t1, logger);
     transition('IPC_REGISTERED', logger);
   } catch (err) {
@@ -156,16 +170,6 @@ export async function runStartup(
     logger.error('[startup] FAILED: IPC handler registration', lastError);
     recordTiming('ipc-registration-failed', t1, logger);
     return handleStartupFailure(logger, createMainWindow, closeSplashWindow);
-  }
-
-  // ── Stage 2b: Initialize auto-updater events ─────────────
-  const t1b = Date.now();
-  try {
-    initAutoUpdater(logger, env);
-    recordTiming('auto-updater-init', t1b, logger);
-  } catch (err) {
-    logger.warn('[startup] Auto-updater init failed — continuing', err);
-    recordTiming('auto-updater-init-skipped', t1b, logger);
   }
 
   // ── Stage 3: Initialize License SDK ──────────────────────

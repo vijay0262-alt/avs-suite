@@ -21,11 +21,6 @@ export function OnboardingProvider({ children }: OnboardingProviderProps) {
     setWelcomeOpen(false);
   }, []);
 
-  const restartOnboarding = useCallback(() => {
-    onboardingService.resetOnboarding();
-    setWelcomeOpen(true);
-  }, []);
-
   return (
     <>
       <WelcomeDialog open={welcomeOpen} onClose={closeWelcome} />

@@ -98,6 +98,9 @@ export function ContextualTips() {
         location.pathname.startsWith(tip.route) &&
         !dismissed.has(tip.id),
     );
+    // dismissedRefresh is an indirect dependency — it forces recompute
+    // when tips are dismissed via onboardingService.dismissTip()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, dismissedRefresh]);
 
   // Don't render if no tips or onboarding not completed

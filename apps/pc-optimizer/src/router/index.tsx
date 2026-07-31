@@ -31,18 +31,21 @@ const ReportsPage = lazy(() => import('../pages/ReportsPage'));
 // Module preloader - preloads frequently used modules in background
 const ModulePreloader = () => {
   useEffect(() => {
-    // Preload frequently used modules after initial render
-    const timeout = setTimeout(() => {
-      // Preload Dashboard (already loaded, but ensures it stays in memory)
-      void import('../pages/DashboardPage');
-      
-      // Preload other frequently accessed modules
+    const preload = () => {
+      // Preload frequently accessed modules
       void import('../pages/JunkCleanerPage');
       void import('../pages/StartupManagerPage');
       void import('../pages/PerformancePage');
       void import('../features/security/SecurityPage');
-    }, 1000); // Start preloading after 1 second
+    };
 
+    // Use requestIdleCallback if available (better than setTimeout)
+    // Falls back to setTimeout for older browsers
+    if (typeof requestIdleCallback !== 'undefined') {
+      const handle = requestIdleCallback(preload, { timeout: 3000 });
+      return () => cancelIdleCallback(handle);
+    }
+    const timeout = setTimeout(preload, 1500);
     return () => clearTimeout(timeout);
   }, []);
 

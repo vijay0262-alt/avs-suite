@@ -107,6 +107,8 @@ export interface DashboardState {
 }
 
 const LIVE_METRICS_POLL_INTERVAL_MS = 2000;
+const LIVE_METRICS_POLL_IDLE_INTERVAL_MS = 5000;
+const LIVE_METRICS_POLL_HIDDEN_INTERVAL_MS = 30000;
 
 export class DashboardViewModel extends ViewModel<DashboardState> {
   private liveMetricsPollTimer: ReturnType<typeof setInterval> | null = null;
@@ -1339,21 +1341,57 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   }
 
   // ------------------------------------------------------------------
-  // Polling
+  // Polling — adaptive based on page visibility and user activity
   // ------------------------------------------------------------------
+  private liveMetricsPollActive = false;
+  private visibilityHandler: (() => void) | null = null;
+
+  private getLiveMetricsPollInterval(): number {
+    if (typeof document !== 'undefined' && document.hidden) {
+      return LIVE_METRICS_POLL_HIDDEN_INTERVAL_MS;
+    }
+    return LIVE_METRICS_POLL_INTERVAL_MS;
+  }
+
   private startLiveMetricsPolling(): void {
     this.stopLiveMetricsPolling();
+    this.liveMetricsPollActive = true;
     void this.loadLiveMetrics();
-    this.liveMetricsPollTimer = setInterval(
-      () => void this.loadLiveMetrics(),
-      LIVE_METRICS_POLL_INTERVAL_MS
-    );
+
+    const scheduleNext = () => {
+      if (!this.liveMetricsPollActive) return;
+      const interval = this.getLiveMetricsPollInterval();
+      this.liveMetricsPollTimer = setTimeout(() => {
+        void this.loadLiveMetrics().finally(() => scheduleNext());
+      }, interval);
+    };
+    scheduleNext();
+
+    if (typeof document !== 'undefined') {
+      this.visibilityHandler = () => {
+        if (!this.liveMetricsPollActive) return;
+        if (this.liveMetricsPollTimer) {
+          clearTimeout(this.liveMetricsPollTimer);
+          this.liveMetricsPollTimer = null;
+        }
+        if (!document.hidden) {
+          void this.loadLiveMetrics();
+        }
+        scheduleNext();
+      };
+      document.addEventListener('visibilitychange', this.visibilityHandler);
+    }
   }
 
   private stopLiveMetricsPolling(): void {
+    this.liveMetricsPollActive = false;
     if (this.liveMetricsPollTimer) {
-      clearInterval(this.liveMetricsPollTimer);
+      clearTimeout(this.liveMetricsPollTimer);
       this.liveMetricsPollTimer = null;
+    }
+    if (this.visibilityHandler && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
     }
   }
 }
