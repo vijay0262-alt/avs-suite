@@ -75,12 +75,21 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
     cwd,
   });
 
-  const pending = new Map<string | number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+  const pending = new Map<string | number, { resolve: (v: unknown) => void; reject: (e: Error) => void; timer?: ReturnType<typeof setTimeout> }>();
   let nextId = 1;
   let buffer = '';
+  let disposed = false;
+
+  // Cap buffer size to prevent memory growth from malformed backend output
+  const MAX_BUFFER_SIZE = 1024 * 1024; // 1 MB
 
   child.stdout.on('data', (chunk: Buffer) => {
     buffer += chunk.toString('utf8');
+    // Prevent unbounded buffer growth from malformed output
+    if (buffer.length > MAX_BUFFER_SIZE) {
+      logger.warn('Python backend stdout buffer overflow — truncating');
+      buffer = buffer.slice(-MAX_BUFFER_SIZE);
+    }
     let idx: number;
     while ((idx = buffer.indexOf('\n')) !== -1) {
       const line = buffer.slice(0, idx).trim();
@@ -91,6 +100,7 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
         const cb = pending.get(msg.id as string | number);
         if (!cb) continue;
         pending.delete(msg.id as string | number);
+        if (cb.timer) clearTimeout(cb.timer);
         if ('error' in msg) cb.reject(new Error(`${msg.error.code}: ${msg.error.message}`));
         else cb.resolve(msg.result);
       } catch (e) {
@@ -105,12 +115,17 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
 
   child.on('exit', (code, signal) => {
     logger.error(`Python backend exited (code=${code}, signal=${signal})`);
-    for (const cb of pending.values()) cb.reject(new Error('Backend process exited'));
+    disposed = true;
+    for (const cb of pending.values()) {
+      if (cb.timer) clearTimeout(cb.timer);
+      cb.reject(new Error('Backend process exited'));
+    }
     pending.clear();
   });
 
   const client: RpcClient = {
     call<T>(method: string, params?: unknown, customTimeoutMs?: number): Promise<T> {
+      if (disposed) return Promise.reject(new Error('Backend process is not running'));
       const doCall = (attempt: number): Promise<T> => new Promise<T>((resolve, reject) => {
         const id = nextId++;
         // Give optimize/clean/analyze operations more time since they do real work
@@ -133,13 +148,37 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
               reject(e);
             }
           },
+          timer: timeout,
         });
+        if (disposed) {
+          pending.delete(id);
+          clearTimeout(timeout);
+          reject(new Error('Backend process is not running'));
+          return;
+        }
         const req: JsonRpcRequest = { jsonrpc: '2.0', id, method: method as never, params };
         child.stdin.write(JSON.stringify(req) + '\n');
       });
       return doCall(0);
     },
     async shutdown(): Promise<void> {
+      if (disposed) return;
+      disposed = true;
+      // Graceful shutdown: try sending a shutdown command first
+      try {
+        const req: JsonRpcRequest = { jsonrpc: '2.0', id: nextId++, method: 'system.shutdown' as never };
+        child.stdin.write(JSON.stringify(req) + '\n');
+        // Give the backend 2 seconds to shut down gracefully
+        await new Promise((r) => setTimeout(r, 2000));
+      } catch {
+        // Best-effort — if write fails, just kill
+      }
+      // Clear all pending requests
+      for (const cb of pending.values()) {
+        if (cb.timer) clearTimeout(cb.timer);
+        cb.reject(new Error('Backend shutting down'));
+      }
+      pending.clear();
       child.kill();
     },
   };

@@ -23,7 +23,7 @@
 
 import { app, dialog } from 'electron';
 import { spawnPythonBackend, type RpcClient } from '../ipc/pythonBridge';
-import { registerAllHandlers, getRegisteredChannels, type IpcDependencies, type Logger } from '../ipc/registerAllHandlers';
+import { registerAllHandlers, getRegisteredChannels, cleanupAllHandlers, type IpcDependencies, type Logger } from '../ipc/registerAllHandlers';
 import { LicenseBridge } from '../licensing/licenseBridge';
 import { initAutoUpdater, type EnvironmentConfig } from '../updater/updater';
 
@@ -316,4 +316,5 @@ export function shutdownStartup(): void {
     rpcClient.shutdown().catch(() => {});
     rpcClient = null;
   }
+  cleanupAllHandlers();
 }

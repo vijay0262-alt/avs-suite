@@ -7,7 +7,7 @@
  * module is intentionally OS-agnostic.
  */
 import { app, BrowserWindow, shell } from 'electron';
-import { exec, execSync } from 'child_process';
+import { exec } from 'child_process';
 import path from 'node:path';
 import { installCrashHandler } from '../crash/crashReporter';
 import { createLogger } from '../logger/logger';
@@ -170,6 +170,7 @@ async function createMainWindow(): Promise<void> {
       nodeIntegration: false,
       sandbox: true,
       spellcheck: false,
+      backgroundThrottling: true,
     },
   });
 
@@ -196,39 +197,42 @@ async function createMainWindow(): Promise<void> {
   mainWindow.on('closed', () => (mainWindow = null));
 }
 
-function checkAndRelaunchAsAdmin(): boolean {
-  if (process.platform !== 'win32') return false;
-  if (process.env.AVS_NO_ELEVATE) return false;
+function checkAndRelaunchAsAdmin(): Promise<boolean> {
+  if (process.platform !== 'win32') return Promise.resolve(false);
+  if (process.env.AVS_NO_ELEVATE) return Promise.resolve(false);
 
-  try {
-    // Check if already running as admin using PowerShell
-    const output = execSync(
-      'powershell -NoProfile -Command "([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)"',
-      { encoding: 'utf8', timeout: 5000 }
-    ).trim();
-
-    if (output.toLowerCase() === 'true') {
-      return false; // Already admin, no need to relaunch
-    }
-
-    // Not admin — relaunch with elevation
-    const exePath = app.getPath('exe');
-    const escapedPath = exePath.replace(/'/g, "''");
+  return new Promise((resolve) => {
     exec(
-      `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`,
-      (err) => {
+      'powershell -NoProfile -Command "([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)"',
+      { encoding: 'utf8', timeout: 5000 },
+      (err, stdout) => {
         if (err) {
-          log.error('Failed to relaunch as admin', err);
-        } else {
-          log.info('Admin relaunch triggered, exiting current instance');
-          app.quit();
+          resolve(false);
+          return;
         }
+        const output = stdout.trim();
+        if (output.toLowerCase() === 'true') {
+          resolve(false); // Already admin
+          return;
+        }
+        // Not admin — relaunch with elevation
+        const exePath = app.getPath('exe');
+        const escapedPath = exePath.replace(/'/g, "''");
+        exec(
+          `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`,
+          (relaunchErr) => {
+            if (relaunchErr) {
+              log.error('Failed to relaunch as admin', relaunchErr);
+              resolve(false);
+            } else {
+              log.info('Admin relaunch triggered, exiting current instance');
+              resolve(true);
+            }
+          }
+        );
       }
     );
-    return true;
-  } catch {
-    return false;
-  }
+  });
 }
 
 app.whenReady().then(async () => {
@@ -236,7 +240,8 @@ app.whenReady().then(async () => {
   log.info(`[startup] AVS Shield Optimizer starting (env=${env.env}, version=${app.getVersion()})`);
 
   // Auto-elevate to administrator on Windows for full functionality
-  if (checkAndRelaunchAsAdmin()) {
+  const needsRelaunch = await checkAndRelaunchAsAdmin();
+  if (needsRelaunch) {
     setTimeout(() => app.quit(), 1000);
     return;
   }

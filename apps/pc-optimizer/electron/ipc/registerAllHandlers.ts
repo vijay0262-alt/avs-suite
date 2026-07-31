@@ -39,15 +39,62 @@ const registeredChannels = new Set<string>();
 type IpcHandler = (event: Electron.IpcMainInvokeEvent, ...args: any[]) => unknown;
 
 /**
- * Register a single IPC handler with tracking.
+ * Default timeout for IPC handlers (30 seconds).
+ * Long-running operations like scans use a longer timeout.
+ */
+const IPC_DEFAULT_TIMEOUT_MS = 30_000;
+
+/**
+ * Wrap an IPC handler with a timeout. If the handler doesn't resolve
+ * within `timeoutMs`, a timeout error is thrown to the renderer.
+ */
+function withTimeout<T extends IpcHandler>(
+  handler: T,
+  timeoutMs: number = IPC_DEFAULT_TIMEOUT_MS,
+): T {
+  return (async (event: Electron.IpcMainInvokeEvent, ...args: never[]) => {
+    return Promise.race([
+      handler(event, ...args),
+      new Promise<never>((_, reject) => {
+        setTimeout(
+          () => reject(new Error(`IPC timeout after ${timeoutMs}ms`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  }) as T;
+}
+
+/**
+ * Validate that a value is a non-empty string.
+ */
+function requireString(value: unknown, name: string): string {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new Error(`Invalid ${name}: expected non-empty string`);
+  }
+  return value;
+}
+
+/**
+ * Validate that a value is a positive number.
+ */
+function requirePositiveNumber(value: unknown, name: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    throw new Error(`Invalid ${name}: expected positive number`);
+  }
+  return value;
+}
+
+/**
+ * Register a single IPC handler with tracking and timeout protection.
  * Throws if the channel is already registered.
  */
-function registerHandler(channel: string, handler: IpcHandler): void {
+function registerHandler(channel: string, handler: IpcHandler, timeoutMs?: number): void {
   if (registeredChannels.has(channel)) {
     throw new Error(`[ipc] Attempted to register duplicate handler for channel '${channel}'`);
   }
   registeredChannels.add(channel);
-  ipcMain.handle(channel, handler);
+  ipcMain.handle(channel, timeoutMs ? withTimeout(handler, timeoutMs) : handler);
 }
 
 // ── App handlers ────────────────────────────────────────────
@@ -57,10 +104,11 @@ function registerAppHandlers(rpc: RpcClient, logger: Logger): void {
   registerHandler('avs:app:getPlatform', () => process.platform);
 
   registerHandler('avs:app:openExternal', async (_e, url: string) => {
-    if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
-      throw new Error('Invalid URL');
+    const validated = requireString(url, 'url');
+    if (!/^https?:\/\//i.test(validated)) {
+      throw new Error('Invalid URL: must be http(s)://');
     }
-    await shell.openExternal(url);
+    await shell.openExternal(validated);
   });
 
   registerHandler('avs:app:isAdmin', async () => {
@@ -99,7 +147,9 @@ function registerAppHandlers(rpc: RpcClient, logger: Logger): void {
 
 function registerRpcHandler(rpc: RpcClient, logger: Logger): void {
   registerHandler('avs:rpc:call', async (_e, msg: { method: string; params?: unknown }) => {
-    if (!msg || typeof msg.method !== 'string') throw new Error('Invalid RPC payload');
+    if (!msg || typeof msg.method !== 'string' || msg.method.length === 0) {
+      throw new Error('Invalid RPC payload: method must be a non-empty string');
+    }
     try {
       return await rpc.call(msg.method, msg.params);
     } catch (err) {
@@ -141,6 +191,8 @@ function registerLicenseHandlers(bridge: LicenseBridge, logger: Logger): void {
   });
 
   registerHandler('avs:license:activate', async (_e, key: string, email: string, deviceName?: string) => {
+    requireString(key, 'license key');
+    requireString(email, 'email');
     try {
       const info = await bridge.activate(key, email, deviceName);
       broadcast('activated', info);
@@ -216,9 +268,10 @@ function registerLicenseHandlers(bridge: LicenseBridge, logger: Logger): void {
     }
   });
 
-  registerHandler('avs:license:downloadUpdate', async (_e, releaseId: number, destPath?: string) => {
+  registerHandler('avs:license:downloadUpdate', async (_e, releaseId: number, _destPath?: string) => {
+    requirePositiveNumber(releaseId, 'releaseId');
     try {
-      const filePath = await bridge.downloadUpdate(releaseId, destPath);
+      const filePath = await bridge.downloadUpdate(releaseId, _destPath);
       broadcast('update-downloaded', { file_path: filePath });
       return { success: true, file_path: filePath };
     } catch (err) {
@@ -226,9 +279,10 @@ function registerLicenseHandlers(bridge: LicenseBridge, logger: Logger): void {
     }
   });
 
-  registerHandler('avs:license:installUpdate', async (_e, filePath: string, silent?: boolean) => {
+  registerHandler('avs:license:installUpdate', async (_e, filePath: string, _silent?: boolean) => {
+    requireString(filePath, 'filePath');
     try {
-      await bridge.installUpdate(filePath, silent);
+      await bridge.installUpdate(filePath, _silent);
       broadcast('update-installed', { file_path: filePath });
       return { success: true };
     } catch (err) {
@@ -237,7 +291,11 @@ function registerLicenseHandlers(bridge: LicenseBridge, logger: Logger): void {
   });
 
   registerHandler('avs:license:startAutoUpdateCheck', async (_e, intervalHours?: number) => {
-    const ms = (intervalHours ?? 24) * 60 * 60 * 1000;
+    const hours = intervalHours ?? 24;
+    if (typeof hours !== 'number' || hours < 1) {
+      throw new Error('intervalHours must be a positive number');
+    }
+    const ms = hours * 60 * 60 * 1000;
     const interval = setInterval(async () => {
       try {
         const result = await bridge.checkUpdates();
@@ -334,4 +392,20 @@ export function _resetIpcRegistry(): void {
   allHandlersRegistered = false;
   registeredChannels.clear();
   clearAutoUpdateIntervals();
+}
+
+/**
+ * Clean up ALL IPC handlers and intervals on application shutdown.
+ * Called from the main process 'will-quit' event to prevent:
+ *   - Duplicate handler errors on restart
+ *   - Memory leaks from lingering intervals
+ *   - Stale listener references
+ */
+export function cleanupAllHandlers(): void {
+  clearAutoUpdateIntervals();
+  for (const channel of registeredChannels) {
+    ipcMain.removeHandler(channel);
+  }
+  registeredChannels.clear();
+  allHandlersRegistered = false;
 }
