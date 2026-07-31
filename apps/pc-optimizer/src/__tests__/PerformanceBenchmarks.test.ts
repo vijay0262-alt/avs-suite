@@ -12,7 +12,7 @@
  * - Lazy loading / code splitting
  * - Electron startup parallelization
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import * as fs from 'fs';
 import * as path from 'path';

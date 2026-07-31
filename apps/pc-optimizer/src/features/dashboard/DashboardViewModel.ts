@@ -107,7 +107,6 @@ export interface DashboardState {
 }
 
 const LIVE_METRICS_POLL_INTERVAL_MS = 2000;
-const LIVE_METRICS_POLL_IDLE_INTERVAL_MS = 5000;
 const LIVE_METRICS_POLL_HIDDEN_INTERVAL_MS = 30000;
 
 export class DashboardViewModel extends ViewModel<DashboardState> {
