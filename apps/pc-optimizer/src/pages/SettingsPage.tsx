@@ -1,6 +1,7 @@
 import { Card, Button, Badge } from '@avs/ui';
 import { useTheme } from '@avs/ui';
 import { PageHeader } from '../components/PageHeader';
+import { HelpButton } from '../components/HelpButton';
 import type { ThemeMode } from '@avs/shared/types';
 import { useEffect, useState } from 'react';
 import { useEdition } from '../config/EditionManager';
@@ -11,7 +12,9 @@ import { useEntitlementStore } from '../features/entitlement/entitlementStore';
 import { useFeatureStore, FEATURE_LABELS } from '../features/feature-engine';
 import { useUpdateStore } from '../features/update';
 import { useSubscriptionStore } from '../features/subscription/subscriptionStore';
-import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, LockClosedIcon, CheckCircleIcon, CloudArrowDownIcon, ArrowDownTrayIcon, XCircleIcon, RocketLaunchIcon } from '@heroicons/react/24/outline';
+import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, LockClosedIcon, CheckCircleIcon, CloudArrowDownIcon, ArrowDownTrayIcon, XCircleIcon, RocketLaunchIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { onboardingService } from '../features/onboarding/OnboardingProvider';
+import { KEYBOARD_SHORTCUTS } from '../components/useKeyboardShortcuts';
 
 interface VerificationLog {
   id: string;
@@ -108,6 +111,7 @@ export default function SettingsPage() {
       <PageHeader
         title="Settings"
         description="Configure appearance, updates, and advanced behaviour."
+        actions={<HelpButton text="Customize the application's appearance, manage updates, review feature entitlements, and access account information. Changes are saved automatically." />}
       />
 
       <div className="space-y-4">
@@ -641,6 +645,55 @@ export default function SettingsPage() {
               )}
             </div>
           )}
+        </Card>
+
+        <Card title="Onboarding & Help">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-text-primary">Restart Welcome Tour</div>
+                <p className="text-xs text-text-secondary">
+                  Replay the first-run onboarding experience and guided tour.
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                onClick={() => onboardingService.resetOnboarding()}
+                leftIcon={<SparklesIcon className="h-4 w-4" />}
+                data-testid="settings-restart-onboarding"
+              >
+                Restart
+              </Button>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-text-primary">Learning Mode</div>
+                <p className="text-xs text-text-secondary">
+                  Show contextual tips and hints throughout the application.
+                </p>
+              </div>
+              <Button
+                variant={onboardingService.isLearningMode() ? 'primary' : 'secondary'}
+                onClick={() => onboardingService.setLearningMode(!onboardingService.isLearningMode())}
+                data-testid="settings-learning-mode"
+              >
+                {onboardingService.isLearningMode() ? 'Enabled' : 'Disabled'}
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        <Card title="Keyboard Shortcuts">
+          <div className="space-y-1.5" data-testid="settings-keyboard-shortcuts">
+            {KEYBOARD_SHORTCUTS.map((shortcut) => (
+              <div key={shortcut.keys} className="flex items-center justify-between py-1">
+                <span className="text-sm text-text-secondary">{shortcut.description}</span>
+                <kbd className="rounded border border-border bg-bg-secondary px-2 py-0.5 text-xs font-mono text-text-primary">
+                  {shortcut.keys}
+                </kbd>
+              </div>
+            ))}
+          </div>
         </Card>
       </div>
     </div>

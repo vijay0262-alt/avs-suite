@@ -5,6 +5,9 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { Card, Button } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
+import { ModuleErrorBanner, ModuleSuccessBanner } from '../../components/ModuleStates';
+import { SharedConfirmDialog } from '../../components/SharedConfirmDialog';
+import { HelpButton } from '../../components/HelpButton';
 import { WiperViewModel } from './WiperViewModel';
 import { wiperService } from './wiper.service';
 
@@ -36,6 +39,7 @@ export default function WiperPage() {
       <PageHeader
         title="Drive Wiper"
         description="Securely shred files and folders or wipe free space on a selected drive."
+        actions={<HelpButton text="The File Shredder securely deletes files by overwriting them multiple times, preventing recovery. The Free-Space Wiper overwrites empty disk space to prevent recovery of previously deleted files." />}
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -171,55 +175,40 @@ export default function WiperPage() {
       </div>
 
       {state.error && (
-        <Card className="mt-6">
-          <p className="text-red-500">{state.error}</p>
-        </Card>
+        <ModuleErrorBanner
+          message={state.error}
+          testId="wiper-error"
+        />
       )}
 
       {state.message && (
-        <Card className="mt-6">
-          <p className="text-green-500 mb-2">{state.message}</p>
-          {state.lastResults && state.lastResults.some((r) => !r.success) && (
-            <div className="max-h-40 overflow-auto">
-              {state.lastResults.filter((r) => !r.success).map((r, i) => (
-                <p key={i} className="text-xs text-red-400 truncate" title={r.path}>
-                  {r.path}: {r.message}
-                </p>
-              ))}
-            </div>
-          )}
-          {state.lastWipe && (
-            <p className="text-sm text-text-secondary">
-              {vm.formatBytes(state.lastWipe.bytesProcessed)} of filler written and removed on {state.lastWipe.drive}
-            </p>
-          )}
-        </Card>
+        <ModuleSuccessBanner
+          title={state.message}
+          message={state.lastWipe ? `${vm.formatBytes(state.lastWipe.bytesProcessed)} of filler written and removed on ${state.lastWipe.drive}` : undefined}
+          testId="wiper-success"
+        />
       )}
 
-      {confirmWipe && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-surface p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-text-primary mb-2">Wipe free space?</h3>
-            <p className="text-sm text-text-secondary mb-6">
-              This will create large temporary files on {state.selectedDrive} to overwrite free space, then remove them. It can take a long time on large drives.
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setConfirmWipe(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setConfirmWipe(false);
-                  void vm.wipeFreeSpace();
-                }}
-              >
-                Wipe Free Space
-              </Button>
-            </div>
-          </div>
-        </div>
+      {state.lastResults && state.lastResults.some((r) => !r.success) && (
+        <ModuleErrorBanner
+          message={`${state.lastResults.filter((r) => !r.success).length} item(s) could not be shredded.`}
+          testId="wiper-partial-errors"
+        />
       )}
+
+      <SharedConfirmDialog
+        open={confirmWipe}
+        title="Wipe free space?"
+        variant="danger"
+        message={`This will create large temporary files on ${state.selectedDrive} to overwrite free space, then remove them. It can take a long time on large drives.`}
+        confirmLabel="Wipe Free Space"
+        onConfirm={() => {
+          setConfirmWipe(false);
+          void vm.wipeFreeSpace();
+        }}
+        onCancel={() => setConfirmWipe(false)}
+        testId="wiper-confirm"
+      />
     </div>
   );
 }

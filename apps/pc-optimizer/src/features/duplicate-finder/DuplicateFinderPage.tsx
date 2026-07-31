@@ -6,6 +6,8 @@ import { useEffect, useMemo } from 'react';
 import { Card, Button } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
+import { ModuleErrorState, ModuleLoadingState, ModuleEmptyState, ModuleSuccessBanner } from '../../components/ModuleStates';
+import { HelpButton } from '../../components/HelpButton';
 import { DuplicateFinderViewModel } from './DuplicateFinderViewModel';
 import { duplicateFinderService } from './duplicate-finder.service';
 import type { DuplicateScope } from './duplicate-finder.types';
@@ -50,23 +52,22 @@ export default function DuplicateFinderPage() {
       <PageHeader
         title="Duplicate Finder"
         description="Locate duplicate files by content hash to reclaim disk space"
+        actions={<HelpButton text="The duplicate finder compares file contents using cryptographic hashes, not just file names. This ensures true duplicates are found. The first file in each group is marked as 'Original' and protected from deletion." />}
       />
 
       {state.bootstrap === 'loading' && (
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-text-secondary">Loading...</p>
-          </div>
-        </Card>
+        <ModuleLoadingState
+          message="Loading…"
+          testId="duplicate-finder-loading"
+        />
       )}
 
       {state.bootstrap === 'error' && (
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-red-500 mb-4">{state.bootstrapError}</p>
-            <Button onClick={() => vm.bootstrap()}>Retry</Button>
-          </div>
-        </Card>
+        <ModuleErrorState
+          message={state.bootstrapError ?? 'Unknown error'}
+          onRetry={() => vm.bootstrap()}
+          testId="duplicate-finder-error"
+        />
       )}
 
       {state.bootstrap === 'ready' && (
@@ -224,11 +225,11 @@ export default function DuplicateFinderPage() {
               </div>
 
               {state.scanResult.groups.length === 0 ? (
-                <Card>
-                  <div className="text-center py-8">
-                    <p className="text-text-secondary">No duplicates found</p>
-                  </div>
-                </Card>
+                <ModuleEmptyState
+                  title="No duplicates found"
+                  message="The scan completed successfully. No duplicate files were detected in the selected scope."
+                  testId="duplicate-finder-empty"
+                />
               ) : (
                 <div className="space-y-4 mb-4">
                   {state.scanResult.groups.map((group, groupIndex) => (
@@ -301,28 +302,11 @@ export default function DuplicateFinderPage() {
               )}
 
               {state.deleteResult && (
-                <Card title="Delete Results">
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-text-secondary">Files Deleted</span>
-                      <span className="text-sm text-text-primary">{state.deleteResult.deletedCount}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-text-secondary">Space Freed</span>
-                      <span className="text-sm text-text-primary">{vm.formatBytes(state.deleteResult.spaceFreed)}</span>
-                    </div>
-                    {state.deleteResult.errors.length > 0 && (
-                      <div>
-                        <p className="text-sm text-red-500 mb-1">Errors:</p>
-                        <ul className="list-disc list-inside space-y-1">
-                          {state.deleteResult.errors.map((error, index) => (
-                            <li key={index} className="text-xs text-text-secondary">{error}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </Card>
+                <ModuleSuccessBanner
+                  title={`Deleted ${state.deleteResult.deletedCount} files, freed ${vm.formatBytes(state.deleteResult.spaceFreed)}`}
+                  message={state.deleteResult.errors.length > 0 ? `${state.deleteResult.errors.length} error(s) occurred.` : undefined}
+                  testId="duplicate-finder-delete-result"
+                />
               )}
             </>
           )}

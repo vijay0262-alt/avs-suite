@@ -6,6 +6,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, Button } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
+import { ModuleErrorState, ModuleLoadingState, ModuleEmptyState } from '../../components/ModuleStates';
+import { SharedConfirmDialog } from '../../components/SharedConfirmDialog';
+import { HelpButton } from '../../components/HelpButton';
 import { DiskAnalyzerViewModel } from './DiskAnalyzerViewModel';
 import { diskAnalyzerService } from './disk-analyzer.service';
 
@@ -45,23 +48,22 @@ export default function DiskAnalyzerPage() {
       <PageHeader
         title="Disk Analyzer"
         description="Analyze disk usage by directory and file type to identify space hogs"
+        actions={<HelpButton text="Select a drive or folder to analyze. The scanner categorizes files by type so you can quickly identify what's taking up space. Use the depth slider to control scan thoroughness." />}
       />
 
       {state.bootstrap === 'loading' && (
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-text-secondary">Loading...</p>
-          </div>
-        </Card>
+        <ModuleLoadingState
+          message="Loading drives…"
+          testId="disk-analyzer-loading"
+        />
       )}
 
       {state.bootstrap === 'error' && (
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-red-500 mb-4">{state.bootstrapError}</p>
-            <Button onClick={() => vm.bootstrap()}>Retry</Button>
-          </div>
-        </Card>
+        <ModuleErrorState
+          message={state.bootstrapError ?? 'Unknown error'}
+          onRetry={() => vm.bootstrap()}
+          testId="disk-analyzer-error"
+        />
       )}
 
       {state.bootstrap === 'ready' && (
@@ -173,11 +175,10 @@ export default function DiskAnalyzerPage() {
           </Card>
 
           {state.analyzing && (
-            <Card>
-              <div className="text-center py-8">
-                <p className="text-text-secondary">Analyzing disk usage...</p>
-              </div>
-            </Card>
+            <ModuleLoadingState
+              message="Analyzing disk usage…"
+              testId="disk-analyzer-analyzing"
+            />
           )}
 
           {state.analysisResult && !state.analyzing && (
@@ -433,33 +434,28 @@ export default function DiskAnalyzerPage() {
         </>
       )}
 
-      {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-surface p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-text-primary mb-2">Delete selected files?</h3>
-            <p className="text-sm text-text-secondary mb-2">
+      <SharedConfirmDialog
+        open={confirmDelete}
+        title="Delete selected files?"
+        variant="danger"
+        message={
+          <>
+            <p className="mb-2">
               You are about to delete <strong>{selectedCount}</strong> file(s) totaling <strong>{vm.formatBytes(selectedSize)}</strong>.
             </p>
-            <p className="text-sm text-text-muted mb-6">
+            <p className="text-text-muted">
               This action cannot be undone. Files will be permanently deleted.
             </p>
-            <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setConfirmDelete(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setConfirmDelete(false);
-                  void vm.deleteSelectedFiles();
-                }}
-              >
-                Delete {selectedCount} File(s)
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        }
+        confirmLabel={`Delete ${selectedCount} File(s)`}
+        onConfirm={() => {
+          setConfirmDelete(false);
+          void vm.deleteSelectedFiles();
+        }}
+        onCancel={() => setConfirmDelete(false)}
+        testId="disk-analyzer-confirm-delete"
+      />
     </div>
   );
 }

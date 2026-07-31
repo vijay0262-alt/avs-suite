@@ -10,6 +10,7 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { PageHeader } from '../../components/PageHeader';
+import { HelpButton } from '../../components/HelpButton';
 import { JunkCleanerViewModel } from './JunkCleanerViewModel';
 import { junkCleanerService } from './junkCleaner.service';
 import { CategoryRow } from './components/CategoryRow';
@@ -104,6 +105,7 @@ export default function JunkCleanerPage() {
         description="Scan, preview, and safely remove temporary files, caches, and other clutter."
         actions={
           <div className="flex items-center gap-2">
+            <HelpButton text="The Junk Cleaner scans for temporary files, caches, logs, and other clutter. Preview files before cleaning. All items can be restored from the cleaning log." />
             {!running ? (
               <>
                 <Button

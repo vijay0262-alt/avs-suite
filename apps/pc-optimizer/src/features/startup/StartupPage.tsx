@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, Button } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
+import { ModuleErrorState, ModuleLoadingState, ModuleEmptyState } from '../../components/ModuleStates';
+import { HelpButton } from '../../components/HelpButton';
 import { StartupViewModel } from './StartupViewModel';
 import { startupService } from './startup.service';
 import { StartupEntryCard } from './components/StartupEntryCard';
@@ -131,23 +133,22 @@ export default function StartupPage() {
       <PageHeader
         title="Startup Manager"
         description="Control which programs launch when Windows starts"
+        actions={<HelpButton text="Disable unnecessary startup programs to speed up boot time. High-impact items have the biggest effect on startup duration. Changes can be reversed anytime using the backup history." />}
       />
 
       {state.bootstrap === 'loading' && (
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-text-secondary">Loading startup entries...</p>
-          </div>
-        </Card>
+        <ModuleLoadingState
+          message="Loading startup entries…"
+          testId="startup-loading"
+        />
       )}
 
       {state.bootstrap === 'error' && (
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-red-500 mb-4">{state.bootstrapError}</p>
-            <Button onClick={handleRefresh}>Retry</Button>
-          </div>
-        </Card>
+        <ModuleErrorState
+          message={state.bootstrapError ?? 'Unknown error'}
+          onRetry={handleRefresh}
+          testId="startup-error"
+        />
       )}
 
       {state.bootstrap === 'ready' && (
@@ -217,13 +218,11 @@ export default function StartupPage() {
           </Card>
 
           {filteredEntries.length === 0 ? (
-            <Card>
-              <div className="text-center py-8">
-                <p className="text-text-secondary">
-                  {state.loading ? 'Loading startup entries...' : 'No startup entries match the filters'}
-                </p>
-              </div>
-            </Card>
+            <ModuleEmptyState
+              title="No startup entries match the filters"
+              message={state.loading ? 'Loading startup entries…' : 'Try adjusting your search or filter criteria.'}
+              testId="startup-empty"
+            />
           ) : (
             <div className="space-y-3" role="list">
               {filteredEntries.map((entry, index) => (

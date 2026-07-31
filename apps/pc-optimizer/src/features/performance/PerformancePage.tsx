@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, Button } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
+import { ModuleErrorState, ModuleLoadingState, ModuleEmptyState } from '../../components/ModuleStates';
+import { HelpButton } from '../../components/HelpButton';
 import { PerformanceViewModel } from './PerformanceViewModel';
 import { performanceService } from './performance.service';
 import { BoltIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
@@ -54,23 +56,22 @@ export default function PerformancePage() {
       <PageHeader
         title="Performance Monitor"
         description="Real-time system performance monitoring and analysis"
+        actions={<HelpButton text="Monitor CPU, memory, disk, and network activity in real time. Use Optimize to free up memory and improve system responsiveness. Alerts appear when resource usage exceeds safe thresholds." />}
       />
 
       {state.bootstrap === 'loading' && (
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-text-secondary">Loading performance metrics...</p>
-          </div>
-        </Card>
+        <ModuleLoadingState
+          message="Loading performance metrics…"
+          testId="performance-loading"
+        />
       )}
 
       {state.bootstrap === 'error' && (
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-red-500 mb-4">{state.bootstrapError}</p>
-            <Button onClick={() => vm.bootstrap()}>Retry</Button>
-          </div>
-        </Card>
+        <ModuleErrorState
+          message={state.bootstrapError ?? 'Unknown error'}
+          onRetry={() => vm.bootstrap()}
+          testId="performance-error"
+        />
       )}
 
       {state.bootstrap === 'ready' && (
@@ -199,7 +200,11 @@ export default function PerformancePage() {
 
           <Card title="Alerts" className="mb-6">
             {state.alerts.length === 0 ? (
-              <p className="text-text-secondary">No alerts</p>
+              <ModuleEmptyState
+                title="No alerts"
+                message="All system resources are within normal operating range."
+                testId="performance-alerts-empty"
+              />
             ) : (
               <div className="space-y-2">
                 {state.alerts.map((alert, index) => (
@@ -242,8 +247,12 @@ export default function PerformancePage() {
             </div>
 
             {state.topProcesses.length === 0 ? (
-              <p className="text-text-secondary">No processes loaded</p>
-            ) : (
+                <ModuleEmptyState
+                  title="No processes loaded"
+                  message="Click Load to fetch the top processes by CPU or memory usage."
+                  testId="performance-processes-empty"
+                />
+              ) : (
               <div className="space-y-2">
                 {state.topProcesses.map((process) => (
                   <div key={process.pid} className="flex items-center justify-between p-2 border border-border rounded">

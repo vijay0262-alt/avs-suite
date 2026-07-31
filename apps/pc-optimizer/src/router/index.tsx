@@ -6,6 +6,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { AuthBootstrap } from '../features/auth/AuthBootstrap';
 import { EditionManagerProvider } from '../config/EditionManager';
 import { UpgradeDialogProvider } from '../components/UpgradeDialog';
+import { OnboardingProvider } from '../features/onboarding/OnboardingProvider';
 
 // Lazy load all pages
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
@@ -65,7 +66,9 @@ export const router = createHashRouter([
           <UpgradeDialogProvider>
             <>
               <ModulePreloader />
-              <AppLayout />
+              <OnboardingProvider>
+                <AppLayout />
+              </OnboardingProvider>
             </>
           </UpgradeDialogProvider>
         </EditionManagerProvider>

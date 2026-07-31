@@ -5,6 +5,7 @@
  * the existing ExecutionReportBuilder service.
  */
 import { PageHeader } from '../../components/PageHeader';
+import { HelpButton } from '../../components/HelpButton';
 import { ReportsView } from '../maintenance-ui/components/ReportsView';
 
 export default function ReportsPage() {
@@ -13,6 +14,7 @@ export default function ReportsPage() {
       <PageHeader
         title="Reports"
         description="Generate detailed maintenance reports with analytics and insights."
+        actions={<HelpButton text="Reports aggregate data from all maintenance operations — junk cleaning, registry fixes, startup changes, and more. Use them to track system health improvements over time." />}
       />
       <ReportsView />
     </div>

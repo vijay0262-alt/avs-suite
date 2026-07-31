@@ -34,6 +34,12 @@ export const en = {
     tagline: 'Keep your Windows PC fast, clean, and secure.',
   },
   nav: {
+    section: {
+      overview: 'Overview',
+      optimization: 'Optimization',
+      reports: 'Reports & History',
+      account: 'Account',
+    },
     dashboard: 'Dashboard',
     junkCleaner: 'Junk Cleaner',
     registryCleaner: 'Registry Cleaner',

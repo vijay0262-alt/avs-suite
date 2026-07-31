@@ -6,6 +6,8 @@ import { useEffect, useMemo } from 'react';
 import { Card, Button } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
+import { ModuleErrorState, ModuleLoadingState } from '../../components/ModuleStates';
+import { HelpButton } from '../../components/HelpButton';
 import { SystemInfoViewModel } from './SystemInfoViewModel';
 import { systemInfoService } from './system-info.service';
 import { SystemInfoTabs } from './components/SystemInfoTabs';
@@ -28,23 +30,22 @@ export default function SystemInfoPage() {
       <PageHeader
         title="System Information"
         description="A comprehensive report of CPU, RAM, disks, GPU, network, and OS build"
+        actions={<HelpButton text="View detailed hardware and software information about your system. Use the Refresh button to capture the latest state. Information is organized into tabs for easy navigation." />}
       />
 
       {state.bootstrap === 'loading' && (
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-text-secondary">Loading system information...</p>
-          </div>
-        </Card>
+        <ModuleLoadingState
+          message="Loading system information…"
+          testId="system-info-loading"
+        />
       )}
 
       {state.bootstrap === 'error' && (
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-red-500 mb-4">{state.bootstrapError}</p>
-            <Button onClick={() => vm.bootstrap()}>Retry</Button>
-          </div>
-        </Card>
+        <ModuleErrorState
+          message={state.bootstrapError ?? 'Unknown error'}
+          onRetry={() => vm.bootstrap()}
+          testId="system-info-error"
+        />
       )}
 
       {state.bootstrap === 'ready' && (

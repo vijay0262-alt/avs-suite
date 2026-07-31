@@ -5,6 +5,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, Button } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
+import { ModuleErrorState, ModuleEmptyState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
+import { SharedConfirmDialog } from '../../components/SharedConfirmDialog';
+import { HelpButton } from '../../components/HelpButton';
 import { UpdaterViewModel } from './UpdaterViewModel';
 import { updaterService } from './updater.service';
 import { useFeatureGuard } from '../licensing/useFeatureGuard';
@@ -25,15 +28,15 @@ export default function UpdaterPage() {
       <PageHeader
         title="Software Updater"
         description="Keep your applications up to date with the Windows Package Manager (winget)."
+        actions={<HelpButton text="The Software Updater uses winget to check for and install available updates for your installed applications. Update individual apps or use Update All to apply everything at once." />}
       />
 
       {state.bootstrap === 'error' && (
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-red-500 mb-4">{state.bootstrapError}</p>
-            <Button onClick={() => vm.bootstrap()}>Retry</Button>
-          </div>
-        </Card>
+        <ModuleErrorState
+          message={state.bootstrapError ?? 'Unknown error'}
+          onRetry={() => vm.bootstrap()}
+          testId="updater-error"
+        />
       )}
 
       {state.bootstrap === 'ready' && (
@@ -62,20 +65,24 @@ export default function UpdaterPage() {
           </div>
 
           {state.actionMessage && (
-            <Card>
-              <p className="text-green-500 py-2">{state.actionMessage}</p>
-            </Card>
+            <ModuleSuccessBanner
+              title={state.actionMessage}
+              testId="updater-action-success"
+            />
           )}
           {state.actionError && (
-            <Card>
-              <p className="text-red-500 py-2">{state.actionError}</p>
-            </Card>
+            <ModuleErrorBanner
+              message={state.actionError}
+              testId="updater-action-error"
+            />
           )}
 
           {state.available && state.upgrades.length === 0 && !state.loading && (
-            <Card>
-              <p className="text-center text-text-secondary py-8">All checked applications are up to date.</p>
-            </Card>
+            <ModuleEmptyState
+              title="All applications are up to date"
+              message="No updates are currently available for your installed applications."
+              testId="updater-empty"
+            />
           )}
 
           {state.upgrades.length > 0 && (
@@ -106,30 +113,18 @@ export default function UpdaterPage() {
         </>
       )}
 
-      {confirmAll && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-surface p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-text-primary mb-2">Update all packages?</h3>
-            <p className="text-sm text-text-secondary mb-6">
-              This will start winget updating all {state.upgrades.length} available packages in the background.
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setConfirmAll(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setConfirmAll(false);
-                  void vm.upgradeAll();
-                }}
-              >
-                Update All
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SharedConfirmDialog
+        open={confirmAll}
+        title="Update all packages?"
+        message={`This will start winget updating all ${state.upgrades.length} available packages in the background.`}
+        confirmLabel="Update All"
+        onConfirm={() => {
+          setConfirmAll(false);
+          void vm.upgradeAll();
+        }}
+        onCancel={() => setConfirmAll(false)}
+        testId="updater-confirm-all"
+      />
       {dialogElement}
     </div>
   );

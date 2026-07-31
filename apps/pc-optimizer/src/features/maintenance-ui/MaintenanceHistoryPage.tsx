@@ -13,6 +13,7 @@
 import { useState, useMemo } from 'react';
 import { PageHeader } from '../../components/PageHeader';
 import { Card } from '@avs/ui';
+import { HelpButton } from '../../components/HelpButton';
 import { useMaintenanceHistory, useChartData, useTaskFrequency } from '../maintenance-ui/useMaintenanceHistory';
 import { AnalyticsCards } from '../maintenance-ui/components/AnalyticsCards';
 import { MaintenanceCharts } from '../maintenance-ui/components/MaintenanceCharts';
@@ -34,6 +35,7 @@ export default function MaintenanceHistoryPage() {
       <PageHeader
         title="Maintenance History"
         description="View detailed records of every maintenance execution, analytics, and trends."
+        actions={<HelpButton text="Every maintenance operation is logged here with full details. Click any row to see the complete execution record including items processed, space recovered, and duration." />}
       />
 
       {error && (

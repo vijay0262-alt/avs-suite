@@ -1,0 +1,3 @@
+﻿yarn run v1.22.22
+$ eslint "{apps,packages}/**/*.{ts,tsx}" --max-warnings=0
+Done in 41.27s.

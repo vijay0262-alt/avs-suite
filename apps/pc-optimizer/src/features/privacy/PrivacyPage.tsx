@@ -6,6 +6,8 @@ import { useEffect, useMemo } from 'react';
 import { Card, Button } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
+import { ModuleErrorState, ModuleLoadingState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
+import { HelpButton } from '../../components/HelpButton';
 import { PrivacyViewModel } from './PrivacyViewModel';
 import { privacyService } from './privacy.service';
 import { useFeatureGuard } from '../licensing/useFeatureGuard';
@@ -110,23 +112,22 @@ export default function PrivacyPage() {
       <PageHeader
         title="Privacy Cleaner"
         description="Clear browser traces and Windows components that record activity"
+        actions={<HelpButton text="The privacy cleaner removes browsing history, cache, cookies, and other traces from your browsers and Windows. Detected browsers are highlighted. A backup is created before cleaning." />}
       />
 
       {state.bootstrap === 'loading' && (
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-text-secondary">Loading...</p>
-          </div>
-        </Card>
+        <ModuleLoadingState
+          message="Loading…"
+          testId="privacy-loading"
+        />
       )}
 
       {state.bootstrap === 'error' && (
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-red-500 mb-4">{state.bootstrapError}</p>
-            <Button onClick={() => vm.bootstrap()}>Retry</Button>
-          </div>
-        </Card>
+        <ModuleErrorState
+          message={state.bootstrapError ?? 'Unknown error'}
+          onRetry={() => vm.bootstrap()}
+          testId="privacy-error"
+        />
       )}
 
       {state.bootstrap === 'ready' && (
@@ -252,45 +253,18 @@ export default function PrivacyPage() {
           )}
 
           {state.cleanResult && (
-            <Card title="Clean Results">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <p className="text-2xl font-bold text-green-500">{state.cleanResult.itemsCleaned}</p>
-                  <p className="text-sm text-text-secondary">Items Cleaned</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-green-500">{vm.formatBytes(state.cleanResult.spaceFreed)}</p>
-                  <p className="text-sm text-text-secondary">Space Freed</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-text-primary">{(state.cleanResult.durationMs / 1000).toFixed(2)}s</p>
-                  <p className="text-sm text-text-secondary">Duration</p>
-                </div>
-              </div>
+            <ModuleSuccessBanner
+              title={`Cleaned ${state.cleanResult.itemsCleaned} items, freed ${vm.formatBytes(state.cleanResult.spaceFreed)}`}
+              message={`Duration: ${(state.cleanResult.durationMs / 1000).toFixed(2)}s · Categories: ${state.cleanResult.categoriesCleaned.join(', ')}`}
+              testId="privacy-clean-result"
+            />
+          )}
 
-              {state.cleanResult.backupCreated && (
-                <div className="mb-4 p-3 bg-bg-secondary rounded">
-                  <p className="text-sm text-text-secondary">
-                    Backup created at: {state.cleanResult.backupPath}
-                  </p>
-                </div>
-              )}
-
-              {state.cleanResult.errors.length > 0 && (
-                <div className="mb-4">
-                  <h3 className="font-semibold text-red-500 mb-2">Errors</h3>
-                  <ul className="list-disc list-inside space-y-1">
-                    {state.cleanResult.errors.map((error, index) => (
-                      <li key={index} className="text-sm text-text-secondary">{error}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <div className="text-sm text-text-secondary">
-                <p>Categories cleaned: {state.cleanResult.categoriesCleaned.join(', ')}</p>
-              </div>
-            </Card>
+          {state.cleanResult && state.cleanResult.errors.length > 0 && (
+            <ModuleErrorBanner
+              message={`${state.cleanResult.errors.length} error(s) occurred during cleaning.`}
+              testId="privacy-clean-errors"
+            />
           )}
         </>
       )}

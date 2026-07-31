@@ -5,6 +5,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, Button } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
+import { ModuleErrorState, ModuleEmptyState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
+import { SharedConfirmDialog } from '../../components/SharedConfirmDialog';
+import { HelpButton } from '../../components/HelpButton';
 import { UninstallerViewModel, type SortKey } from './UninstallerViewModel';
 import { uninstallerService } from './uninstaller.service';
 import type { Program } from './uninstaller.types';
@@ -38,15 +41,15 @@ export default function UninstallerPage() {
       <PageHeader
         title="Uninstaller"
         description="Review installed programs and remove the ones you no longer need."
+        actions={<HelpButton text="Browse installed programs and launch their uninstallers. Search by name or publisher, sort by size or install date. The program's own uninstaller will guide you through removal." />}
       />
 
       {state.bootstrap === 'error' && (
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-red-500 mb-4">{state.bootstrapError}</p>
-            <Button onClick={() => vm.load()}>Retry</Button>
-          </div>
-        </Card>
+        <ModuleErrorState
+          message={state.bootstrapError ?? 'Unknown error'}
+          onRetry={() => vm.load()}
+          testId="uninstaller-error"
+        />
       )}
 
       {state.bootstrap === 'ready' && (
@@ -85,14 +88,16 @@ export default function UninstallerPage() {
           </div>
 
           {state.actionMessage && (
-            <Card>
-              <p className="text-green-500 py-2">{state.actionMessage}</p>
-            </Card>
+            <ModuleSuccessBanner
+              title={state.actionMessage}
+              testId="uninstaller-action-success"
+            />
           )}
           {state.actionError && (
-            <Card>
-              <p className="text-red-500 py-2">{state.actionError}</p>
-            </Card>
+            <ModuleErrorBanner
+              message={state.actionError}
+              testId="uninstaller-action-error"
+            />
           )}
 
           <Card>
@@ -121,38 +126,30 @@ export default function UninstallerPage() {
                 </div>
               ))}
               {programs.length === 0 && (
-                <p className="text-center text-text-secondary py-8">No programs match your search.</p>
+                <ModuleEmptyState
+                  title="No programs match your search"
+                  message="Try adjusting your search terms or clear the search to see all installed programs."
+                  testId="uninstaller-empty"
+                />
               )}
             </div>
           </Card>
         </>
       )}
 
-      {confirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-surface p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-text-primary mb-2">Uninstall {confirm.name}?</h3>
-            <p className="text-sm text-text-secondary mb-6">
-              This will launch the program&apos;s uninstaller. Follow its prompts to complete removal.
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setConfirm(null)}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  const target = confirm;
-                  setConfirm(null);
-                  void vm.uninstall(target);
-                }}
-              >
-                Uninstall
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SharedConfirmDialog
+        open={confirm !== null}
+        title={`Uninstall ${confirm?.name ?? ''}?`}
+        message="This will launch the program's uninstaller. Follow its prompts to complete removal."
+        confirmLabel="Uninstall"
+        onConfirm={() => {
+          const target = confirm;
+          setConfirm(null);
+          if (target) void vm.uninstall(target);
+        }}
+        onCancel={() => setConfirm(null)}
+        testId="uninstaller-confirm"
+      />
     </div>
   );
 }

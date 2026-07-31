@@ -5,9 +5,12 @@ import { useEffect, useMemo } from 'react';
 import { Card, Button } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
+import { ModuleErrorState, ModuleSuccessBanner, ModuleErrorBanner, ModuleEmptyState } from '../../components/ModuleStates';
+import { HelpButton } from '../../components/HelpButton';
 import { RegistryCleanerViewModel } from './RegistryCleanerViewModel';
 import { registryService } from './registry.service';
 import { CATEGORY_LABELS } from './registry.types';
+import { WrenchScrewdriverIcon } from '@heroicons/react/24/outline';
 
 export default function RegistryCleanerPage() {
   const vm = useMemo(() => new RegistryCleanerViewModel(registryService), []);
@@ -25,15 +28,15 @@ export default function RegistryCleanerPage() {
       <PageHeader
         title="Registry Cleaner"
         description="Find and safely remove invalid Windows registry entries. Every change is backed up first."
+        actions={<HelpButton text="The registry scanner checks for invalid file references, broken shortcuts, missing shared DLLs, and obsolete COM objects. Every fix is backed up and can be restored." />}
       />
 
       {state.bootstrap === 'error' && (
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-red-500 mb-4">{state.bootstrapError}</p>
-            <Button onClick={() => vm.bootstrap()}>Retry</Button>
-          </div>
-        </Card>
+        <ModuleErrorState
+          message={state.bootstrapError ?? 'Unknown error'}
+          onRetry={() => vm.bootstrap()}
+          testId="registry-bootstrap-error"
+        />
       )}
 
       {state.bootstrap === 'ready' && (
@@ -62,29 +65,26 @@ export default function RegistryCleanerPage() {
           </div>
 
           {state.scanError && (
-            <Card>
-              <p className="text-red-500 py-4">{state.scanError}</p>
-            </Card>
+            <ModuleErrorBanner
+              message={state.scanError}
+              onRetry={() => vm.scan()}
+              testId="registry-scan-error"
+            />
           )}
 
           {state.cleanResult && (
-            <Card>
-              <div className="py-2">
-                <p className="text-green-500 font-medium">
-                  Fixed {state.cleanResult.fixed} of {state.cleanResult.fixed + state.cleanResult.failed} selected entries.
-                </p>
-                {state.cleanResult.backupId && (
-                  <p className="text-sm text-text-muted">
-                    Backup created: {state.cleanResult.backupId}
-                  </p>
-                )}
-                {state.cleanResult.errors.length > 0 && (
-                  <p className="text-sm text-red-400">
-                    {state.cleanResult.errors.length} error(s) occurred.
-                  </p>
-                )}
-              </div>
-            </Card>
+            <ModuleSuccessBanner
+              title={`Fixed ${state.cleanResult.fixed} of ${state.cleanResult.fixed + state.cleanResult.failed} selected entries.`}
+              message={state.cleanResult.backupId ? `Backup created: ${state.cleanResult.backupId}` : undefined}
+              testId="registry-clean-result"
+            />
+          )}
+
+          {state.cleanResult && state.cleanResult.errors.length > 0 && (
+            <ModuleErrorBanner
+              message={`${state.cleanResult.errors.length} error(s) occurred during fixing.`}
+              testId="registry-clean-errors"
+            />
           )}
 
           {/* Category summary */}
@@ -96,6 +96,16 @@ export default function RegistryCleanerPage() {
                 </Card>
               ))}
             </div>
+          )}
+
+          {/* Empty state */}
+          {state.issues.length === 0 && !state.scanning && !state.scanError && (
+            <ModuleEmptyState
+              icon={WrenchScrewdriverIcon}
+              title="No registry issues found"
+              message="Run a scan to check for invalid entries, broken shortcuts, and obsolete references."
+              testId="registry-empty"
+            />
           )}
 
           {/* Issue list */}

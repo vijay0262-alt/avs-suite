@@ -4,6 +4,7 @@ import { Button } from '@avs/ui';
 import { ArrowPathIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
+import { HelpButton } from '../../components/HelpButton';
 import { DashboardViewModel } from './DashboardViewModel';
 import { dashboardService } from './dashboard.service';
 import { generateRecommendations } from './dashboard.utils';
@@ -43,6 +44,7 @@ export default function DashboardPage() {
       <PageHeader
         title="Dashboard"
         description="Real-time system health monitoring and optimization"
+        actions={<HelpButton text="The Dashboard provides an at-a-glance view of your system's health. Run a Health Scan to get personalized recommendations, or use Quick Actions to jump into common maintenance tasks." />}
       />
 
       {state.bootstrap === 'loading' && (
