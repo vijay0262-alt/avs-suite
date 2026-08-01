@@ -18,6 +18,7 @@ export default defineConfig({
       '@avs/updater': path.resolve(__dirname, 'packages/updater/src'),
       '@avs/analytics': path.resolve(__dirname, 'packages/analytics/src'),
     },
+    dedupe: ['react', 'react-dom'],
   },
   test: {
     // Default env — node. Component-heavy tests opt in via
