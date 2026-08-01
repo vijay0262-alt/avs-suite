@@ -84,7 +84,7 @@ export class QualityMetricsCollector {
     let securityDeduction = 0;
 
     for (const issue of issues) {
-      const weight = severityWeights[issue.severity];
+      const weight = severityWeights[issue.severity] ?? 0;
       switch (issue.dimension) {
         case 'stability':
           stabilityDeduction += weight;
@@ -172,7 +172,7 @@ export class QualityMetricsCollector {
       avgScores[dim] = sum / modules.length;
     }
 
-    const overallReadiness = dims.reduce((acc, dim) => acc + avgScores[dim], 0) / dims.length;
+    const overallReadiness = dims.reduce((acc, dim) => acc + (avgScores[dim] ?? 0), 0) / dims.length;
 
     let totalIssues = 0;
     let healthyModules = 0;
@@ -182,13 +182,13 @@ export class QualityMetricsCollector {
     }
 
     return {
-      stabilityScore: roundScore(avgScores.stability),
-      performanceScore: roundScore(avgScores.performance),
-      reliabilityScore: roundScore(avgScores.reliability),
-      maintainabilityScore: roundScore(avgScores.maintainability),
-      uxScore: roundScore(avgScores.ux),
-      accessibilityScore: roundScore(avgScores.accessibility),
-      securityScore: roundScore(avgScores.security),
+      stabilityScore: roundScore(avgScores.stability ?? 0),
+      performanceScore: roundScore(avgScores.performance ?? 0),
+      reliabilityScore: roundScore(avgScores.reliability ?? 0),
+      maintainabilityScore: roundScore(avgScores.maintainability ?? 0),
+      uxScore: roundScore(avgScores.ux ?? 0),
+      accessibilityScore: roundScore(avgScores.accessibility ?? 0),
+      securityScore: roundScore(avgScores.security ?? 0),
       overallReadinessScore: roundScore(overallReadiness),
       totalIssues,
       criticalIssues: 0,
@@ -259,7 +259,13 @@ export class QualityMetricsCollector {
     result.metrics.totalModules = overall.totalModules;
     result.metrics.healthyModules = overall.healthyModules;
 
-    const severityCounts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+    const severityCounts: Record<QualitySeverity, number> = {
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+      info: 0,
+    };
     for (const issue of result.issues) {
       severityCounts[issue.severity]++;
     }

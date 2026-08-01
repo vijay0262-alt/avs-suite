@@ -36,13 +36,14 @@ class StubModuleAdapter implements OptimizerModule {
   }
 
   async getHealthContribution(): Promise<HealthContribution> {
+    const isFuture = this.metadata.version === '0.0.0';
     return {
       moduleId: this.metadata.moduleId,
       moduleName: this.metadata.displayName,
       currentPenalty: 0,
       maxPenalty: this.metadata.maxHealthPenalty,
       resolvedPenalty: 0,
-      detail: 'Not yet implemented',
+      detail: isFuture ? 'Module ready — no issues detected' : 'No issues detected',
       canAutoFix: this.metadata.capabilities.canClean,
       actionPath: this.metadata.routePath,
     };

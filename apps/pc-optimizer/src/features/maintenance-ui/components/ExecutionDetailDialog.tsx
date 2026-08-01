@@ -5,23 +5,67 @@
  *   Execution Summary, Timeline, Task Results, Recovered Space Breakdown,
  *   Warnings, Errors, Application Version, Execution Metadata
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Card, Button } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import { StatusBadge, SourceBadge } from './StatusBadge';
 import type { ExecutionRecord } from '../../maintenance-history';
+import { undoService, type BackupEntry } from '../../undo';
 
 export interface ExecutionDetailDialogProps {
   record: ExecutionRecord | null;
   onClose: () => void;
+  onRestored?: () => void;
 }
 
 export const ExecutionDetailDialog = React.memo(function ExecutionDetailDialog({
   record,
   onClose,
+  onRestored,
 }: ExecutionDetailDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const [backups, setBackups] = useState<BackupEntry[]>([]);
+  const [backupsLoading, setBackupsLoading] = useState(false);
+  const [restoreStatus, setRestoreStatus] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
+  const loadBackups = useCallback(async () => {
+    setBackupsLoading(true);
+    setRestoreError(null);
+    try {
+      const result = await undoService.listBackups();
+      const filtered = record
+        ? result.backups.filter((b) => b.operation === record.source || b.module === record.source)
+        : result.backups;
+      setBackups(filtered);
+    } catch {
+      setBackups([]);
+    } finally {
+      setBackupsLoading(false);
+    }
+  }, [record]);
+
+  useEffect(() => {
+    if (!record) return;
+    void loadBackups();
+  }, [record, loadBackups]);
+
+  const handleRestore = useCallback(async (backupId: string) => {
+    setRestoringId(backupId);
+    setRestoreError(null);
+    setRestoreStatus(null);
+    try {
+      const result = await undoService.restore(backupId);
+      setRestoreStatus(result.message || 'Restore completed successfully');
+      onRestored?.();
+    } catch (err) {
+      setRestoreError(err instanceof Error ? err.message : 'Restore failed');
+    } finally {
+      setRestoringId(null);
+    }
+  }, [onRestored]);
 
   useEffect(() => {
     if (!record) return;
@@ -142,6 +186,50 @@ export const ExecutionDetailDialog = React.memo(function ExecutionDetailDialog({
             </div>
           </Card>
         )}
+
+        {/* Restore / Rollback */}
+        <Card title="Restore & Rollback" className="mb-4" data-testid="detail-restore">
+          {backupsLoading ? (
+            <p className="text-sm text-[var(--avs-text-muted)]">Loading available backups…</p>
+          ) : backups.length === 0 ? (
+            <p className="text-sm text-[var(--avs-text-muted)]">No backups available for this execution. Backups are created automatically before cleaning operations.</p>
+          ) : (
+            <div className="space-y-2">
+              {backups.map((backup) => (
+                <div key={backup.id} className="flex items-center justify-between rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] p-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-[var(--avs-text-primary)] truncate">
+                      {backup.backupType === 'restore_point' ? 'System Restore Point' : backup.originalPath}
+                    </div>
+                    <div className="text-xs text-[var(--avs-text-muted)]">
+                      {new Date(backup.timestamp).toLocaleString()} · {formatBytes(backup.size)}
+                    </div>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void handleRestore(backup.id)}
+                    loading={restoringId === backup.id}
+                    leftIcon={<ArrowUturnLeftIcon className="h-4 w-4" />}
+                    data-testid={`restore-button-${backup.id}`}
+                  >
+                    Restore
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+          {restoreStatus && (
+            <div className="mt-3 rounded-md bg-[var(--avs-success-bg,rgba(34,197,94,0.1))] border border-[var(--avs-success-border,rgba(34,197,94,0.3))] px-3 py-2">
+              <p className="text-sm text-semantic-success" data-testid="restore-success">{restoreStatus}</p>
+            </div>
+          )}
+          {restoreError && (
+            <div className="mt-3 rounded-md bg-semantic-danger/10 border border-semantic-danger/30 px-3 py-2">
+              <p className="text-sm text-semantic-danger" data-testid="restore-error">{restoreError}</p>
+            </div>
+          )}
+        </Card>
 
         {/* Metadata */}
         <div className="text-xs text-[var(--avs-text-muted)]" data-testid="detail-metadata">

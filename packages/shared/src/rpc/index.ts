@@ -109,6 +109,16 @@ export const RPC_METHODS = {
   SYSTEM_STATIC: 'system.static',
   SYSTEM_DYNAMIC: 'system.dynamic',
   SYSTEM_REFRESH_CACHE: 'system.refreshCache',
+
+  // Undo & Restore
+  UNDO_BACKUP_FILE: 'undo.backup.file',
+  UNDO_BACKUP_DIRECTORY: 'undo.backup.directory',
+  UNDO_BACKUP_REGISTRY: 'undo.backup.registry',
+  UNDO_BACKUP_RESTORE_POINT: 'undo.backup.restorePoint',
+  UNDO_RESTORE: 'undo.restore',
+  UNDO_CHECK: 'undo.check',
+  UNDO_LIST: 'undo.list',
+  UNDO_DELETE: 'undo.delete',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

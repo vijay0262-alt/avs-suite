@@ -496,6 +496,94 @@ export function scoreToReadinessLevel(score: number): ReadinessLevel {
   return 'not_ready';
 }
 
+// ── Quality Metrics (Collector) ─────────────────────────────
+
+export type QualitySeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
+
+export type QualityDimension =
+  | 'stability'
+  | 'performance'
+  | 'reliability'
+  | 'maintainability'
+  | 'ux'
+  | 'accessibility'
+  | 'security';
+
+export interface QualityIssue {
+  id: string;
+  moduleId: string;
+  moduleName: string;
+  dimension: QualityDimension;
+  severity: QualitySeverity;
+  issue: string;
+  description: string;
+  rootCause: string;
+  recommendedFix: string;
+  detectedAt: string;
+  futureMetadata: Record<string, unknown>;
+}
+
+export interface ModuleMetrics {
+  moduleId: string;
+  stabilityScore: number;
+  performanceScore: number;
+  reliabilityScore: number;
+  maintainabilityScore: number;
+  uxScore: number;
+  accessibilityScore: number;
+  securityScore: number;
+  testCoveragePercent: number;
+  cyclomaticComplexity: number;
+  codeLines: number;
+  dependencyCount: number;
+  issueCount: number;
+  futureMetadata: Record<string, unknown>;
+}
+
+export interface QualityMetrics {
+  stabilityScore: number;
+  performanceScore: number;
+  reliabilityScore: number;
+  maintainabilityScore: number;
+  uxScore: number;
+  accessibilityScore: number;
+  securityScore: number;
+  overallReadinessScore: number;
+  totalIssues: number;
+  criticalIssues: number;
+  highIssues: number;
+  mediumIssues: number;
+  lowIssues: number;
+  infoIssues: number;
+  totalModules: number;
+  healthyModules: number;
+  futureMetadata: Record<string, unknown>;
+}
+
+export interface QualityScore {
+  dimension: QualityDimension;
+  label: string;
+  score: number;
+  weight: number;
+  weightedScore: number;
+  status: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+}
+
+export interface QualityAuditResult {
+  id: string;
+  issues: QualityIssue[];
+  metrics: QualityMetrics;
+  startedAt: string;
+  completedAt: string;
+  futureMetadata: Record<string, unknown>;
+}
+
+// ── Aliases for QualityEvents ───────────────────────────────
+
+export type PerformanceBaselineResult = PerformanceBaselineReport;
+export type RegressionResult = RegressionEntry;
+export type ModuleHealthResult = ModuleHealthReport;
+
 // ── Events ───────────────────────────────────────────────────
 
 export type QualityEventType =
@@ -504,7 +592,14 @@ export type QualityEventType =
   | 'issue_detected'
   | 'performance_measured'
   | 'audit_completed'
-  | 'quality_score_updated';
+  | 'quality_score_updated'
+  | 'quality:audit:started'
+  | 'quality:audit:progress'
+  | 'quality:audit:completed'
+  | 'quality:issue:detected'
+  | 'quality:baseline:updated'
+  | 'quality:regression:detected'
+  | 'quality:module:health_changed';
 
 export function getQualityEventTypeLabel(type: QualityEventType): string {
   const labels: Record<QualityEventType, string> = {
@@ -514,6 +609,13 @@ export function getQualityEventTypeLabel(type: QualityEventType): string {
     performance_measured: 'Performance Measured',
     audit_completed: 'Audit Completed',
     quality_score_updated: 'Quality Score Updated',
+    'quality:audit:started': 'Audit Started',
+    'quality:audit:progress': 'Audit Progress',
+    'quality:audit:completed': 'Audit Completed',
+    'quality:issue:detected': 'Issue Detected',
+    'quality:baseline:updated': 'Baseline Updated',
+    'quality:regression:detected': 'Regression Detected',
+    'quality:module:health_changed': 'Module Health Changed',
   };
   return labels[type] ?? 'Unknown';
 }
@@ -522,6 +624,7 @@ export interface QualityEvent {
   type: QualityEventType;
   timestamp: string;
   data: QualityEventData;
+  auditId?: string;
 }
 
 export type QualityEventData =
@@ -530,7 +633,14 @@ export type QualityEventData =
   | { auditId: string; finding: AuditFinding }
   | { auditId: string; measurement: PerformanceMeasurement }
   | { auditId: string; report: AuditReportData }
-  | { moduleId: string; score: ModuleQualityScore };
+  | { moduleId: string; score: ModuleQualityScore }
+  | { auditId: string }
+  | { phase: string; progress: number }
+  | { result: QualityAuditResult }
+  | { issue: QualityIssue }
+  | { baseline: PerformanceBaselineReport }
+  | { regression: RegressionEntry }
+  | { health: ModuleHealthReport };
 
 export type QualityEventListener = (event: QualityEvent) => void;
 

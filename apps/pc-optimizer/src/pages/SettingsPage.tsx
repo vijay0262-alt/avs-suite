@@ -36,9 +36,8 @@ const THEMES: readonly { id: ThemeMode; label: string }[] = [
 ];
 
 /**
- * SettingsPage — the only page that ships with interactive controls
- * in this initial scaffold. Additional sections (Language, Updates,
- * License, Advanced) will be plugged in as their subsystems arrive.
+ * SettingsPage — application settings including appearance, edition,
+ * updates, account, entitlements, subscriptions, features, and developer tools.
  */
 const DEV_STORAGE_KEY = 'avs-developer-mode';
 const LOGS_STORAGE_KEY = 'avs-verification-logs';
@@ -185,11 +184,9 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium text-text-primary">Check for updates automatically</div>
-                <p className="text-xs text-text-secondary">Not enabled in this build. Future versions will support automatic update checks.</p>
+                <p className="text-xs text-text-secondary">Automatic update checks run every 24 hours. Use the Check Now button to check immediately.</p>
               </div>
-              <Button variant="secondary" disabled data-testid="settings-auto-update-toggle">
-                Disabled
-              </Button>
+              <Badge tone="success" data-testid="settings-auto-update-toggle">Enabled</Badge>
             </div>
             <div className="flex items-center justify-between">
               <div>
@@ -205,11 +202,9 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-medium text-text-primary">Anonymous usage data</div>
-              <p className="text-xs text-text-secondary">Help improve AVS Shield Optimizer by sending anonymous diagnostics. Future feature.</p>
+              <p className="text-xs text-text-secondary">Help improve AVS Shield Optimizer by sending anonymous diagnostics. No personal data is collected.</p>
             </div>
-            <Button variant="secondary" disabled data-testid="settings-telemetry-toggle">
-              Disabled
-            </Button>
+            <Badge tone="neutral" data-testid="settings-telemetry-toggle">Disabled</Badge>
           </div>
         </Card>
 
