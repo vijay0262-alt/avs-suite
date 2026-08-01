@@ -36,7 +36,7 @@ import type {
   PowerSupplyComponent,
   ProviderHealthStatus,
 } from '../types';
-import { DEFAULT_HARDWARE_CONFIG } from '../types';
+import { DEFAULT_HARDWARE_CONFIG, mkSensor } from '../types';
 import { HardwareScanner } from '../HardwareScanner';
 import { HardwareMonitor } from '../HardwareMonitor';
 import { HardwareCache } from '../HardwareCache';
@@ -67,18 +67,18 @@ function makeCPU(overrides?: Partial<CPUComponent>): CPUComponent {
       threads: 20,
       baseFrequencyMHz: 3600,
       boostFrequencyMHz: 5000,
-      currentFrequencyMHz: 4200,
-      perCoreUtilization: [45, 52, 38, 61, 44, 50, 33, 55, 41, 48, 39, 60],
-      packageUtilization: 47,
+      currentFrequencyMHz: mkSensor(4200, 'MHz'),
+      perCoreUtilization: [45, 52, 38, 61, 44, 50, 33, 55, 41, 48, 39, 60].map((v) => mkSensor(v, '%')),
+      packageUtilization: mkSensor(47, '%'),
       cacheSizes: { l1KB: 480, l2KB: 2048, l3KB: 25600 },
       instructionSets: ['AVX', 'AVX2', 'AVX-512'],
       virtualization: { supported: true, enabled: true },
     },
     sensors: {
-      temperatureC: 55,
-      powerDrawW: 65,
-      voltageV: 1.2,
-      thermalThrottling: false,
+      temperatureC: mkSensor(55, '°C'),
+      powerDrawW: mkSensor(65, 'W'),
+      voltageV: mkSensor(1.2, 'V'),
+      thermalThrottling: mkSensor(false, 'bool'),
     },
     sensorStatus: { availability: 'available' },
     ...overrides,
@@ -94,21 +94,21 @@ function makeGPU(overrides?: Partial<GPUComponent>): GPUComponent {
       driver: '536.40',
       driverDate: '2024-01-15',
       vramMB: 8192,
-      dedicatedMemoryMB: 8192,
-      sharedMemoryMB: 0,
+      dedicatedMemoryMB: mkSensor(8192, 'MB'),
+      sharedMemoryMB: mkSensor(0, 'MB'),
       pcieGeneration: '4.0',
       pcieLaneWidth: 'x16',
     },
     sensors: {
-      gpuUtilization: 35,
-      memoryUtilization: 28,
-      temperatureC: 58,
-      fanSpeedRPM: 1800,
-      coreClockMHz: 1500,
-      memoryClockMHz: 6750,
-      powerDrawW: 120,
-      encoderUsage: 0,
-      decoderUsage: 0,
+      gpuUtilization: mkSensor(35, '%'),
+      memoryUtilization: mkSensor(28, '%'),
+      temperatureC: mkSensor(58, '°C'),
+      fanSpeedRPM: mkSensor(1800, 'RPM'),
+      coreClockMHz: mkSensor(1500, 'MHz'),
+      memoryClockMHz: mkSensor(6750, 'MHz'),
+      powerDrawW: mkSensor(120, 'W'),
+      encoderUsage: mkSensor(0, '%'),
+      decoderUsage: mkSensor(0, '%'),
     },
     sensorStatus: { availability: 'available' },
     ...overrides,
@@ -120,8 +120,10 @@ function makeRAM(overrides?: Partial<RAMComponent>): RAMComponent {
     category: 'ram',
     info: {
       installedMB: 32768,
-      availableMB: 16384,
-      usedMB: 16384,
+      availableMB: mkSensor(16384, 'MB'),
+      usedMB: mkSensor(16384, 'MB'),
+      cachedMB: mkSensor(2048, 'MB'),
+      memoryPressure: mkSensor(50, '%'),
       speedMTs: 3200,
       channels: 2,
       slotsUsed: 2,
@@ -146,18 +148,18 @@ function makeStorage(overrides?: Partial<StorageComponent>): StorageComponent {
       serial: 'S5GZNX0R123456',
       firmware: '5B2QGXA7',
       capacityBytes: 1024000000000,
-      usedBytes: 400000000000,
-      freeBytes: 624000000000,
+      usedBytes: mkSensor(400000000000, 'B'),
+      freeBytes: mkSensor(624000000000, 'B'),
       filesystem: 'NTFS',
       interface: 'NVMe',
       smartSupported: true,
     },
     sensors: {
-      temperatureC: 42,
-      healthPercent: 95,
-      lifetimeRemainingPercent: 92,
-      readSpeedMBps: 6800,
-      writeSpeedMBps: 5100,
+      temperatureC: mkSensor(42, '°C'),
+      healthPercent: mkSensor(95, '%'),
+      lifetimeRemainingPercent: mkSensor(92, '%'),
+      readSpeedMBps: mkSensor(6800, 'MB/s'),
+      writeSpeedMBps: mkSensor(5100, 'MB/s'),
     },
     sensorStatus: { availability: 'available' },
     ...overrides,
@@ -171,10 +173,10 @@ function makeBattery(overrides?: Partial<BatteryComponent>): BatteryComponent {
       designCapacityWH: 60,
       fullChargeCapacityWH: 55,
       chargeCycles: 120,
-      currentChargePercent: 85,
-      wearLevelPercent: 8,
-      chargingStatus: 'discharging',
-      estimatedRuntimeMinutes: 240,
+      currentChargePercent: mkSensor(85, '%'),
+      wearLevelPercent: mkSensor(8, '%'),
+      chargingStatus: mkSensor('discharging' as const, 'status'),
+      estimatedRuntimeMinutes: mkSensor(240, 'min'),
     },
     sensorStatus: { availability: 'available' },
     ...overrides,
@@ -186,9 +188,9 @@ function makeCooling(overrides?: Partial<CoolingComponent>): CoolingComponent {
     category: 'cooling',
     info: {
       fans: [
-        { name: 'CPU Fan', type: 'cpu_fan', rpm: 1800 },
-        { name: 'Case Fan 1', type: 'case_fan', rpm: 1200 },
-        { name: 'Case Fan 2', type: 'case_fan', rpm: 1100 },
+        { name: 'CPU Fan', type: 'cpu_fan', rpm: mkSensor(1800, 'RPM') },
+        { name: 'Case Fan 1', type: 'case_fan', rpm: mkSensor(1200, 'RPM') },
+        { name: 'Case Fan 2', type: 'case_fan', rpm: mkSensor(1100, 'RPM') },
       ],
     },
     sensorStatus: { availability: 'available' },
@@ -223,7 +225,7 @@ function makeOS(overrides?: Partial<OSComponent>): OSComponent {
       architecture: 'x86_64',
       installDate: '2023-06-15',
       lastBootTime: '2024-08-01T08:00:00Z',
-      uptimeSeconds: 3600,
+      uptimeSeconds: mkSensor(3600, 's'),
     },
     sensorStatus: { availability: 'available' },
     ...overrides,
@@ -240,12 +242,12 @@ function makeNetwork(overrides?: Partial<NetworkComponent>): NetworkComponent {
       ipv6: ['fe80::1234:5678:9abc:def0'],
       linkSpeedMbps: 866,
       type: 'wifi',
-      signalStrengthPercent: 75,
+      signalStrengthPercent: mkSensor(75, '%'),
     },
     sensors: {
-      usagePercent: 12,
-      downloadMbps: 45,
-      uploadMbps: 10,
+      usagePercent: mkSensor(12, '%'),
+      downloadMbps: mkSensor(45, 'Mbps'),
+      uploadMbps: mkSensor(10, 'Mbps'),
     },
     sensorStatus: { availability: 'available' },
     ...overrides,
@@ -621,38 +623,38 @@ describe('HardwareHealthEvaluator', () => {
 
   it('returns critical for high CPU temperature', () => {
     const evaluator = new HardwareHealthEvaluator();
-    const health = evaluator.evaluate([makeCPU({ sensors: { ...makeCPU().sensors, temperatureC: 95 } })]);
+    const health = evaluator.evaluate([makeCPU({ sensors: { ...makeCPU().sensors, temperatureC: mkSensor(95, '°C') } })]);
     expect(health.components.cpu!.level).toBe('critical');
     expect(health.components.cpu!.issues.length).toBeGreaterThan(0);
   });
 
   it('returns poor for CPU thermal throttling', () => {
     const evaluator = new HardwareHealthEvaluator();
-    const health = evaluator.evaluate([makeCPU({ sensors: { ...makeCPU().sensors, thermalThrottling: true } })]);
+    const health = evaluator.evaluate([makeCPU({ sensors: { ...makeCPU().sensors, thermalThrottling: mkSensor(true, 'bool') } })]);
     expect(health.components.cpu!.level).toBe('poor');
   });
 
   it('returns critical for high GPU temperature', () => {
     const evaluator = new HardwareHealthEvaluator();
-    const health = evaluator.evaluate([makeGPU({ sensors: { ...makeGPU().sensors, temperatureC: 90 } })]);
+    const health = evaluator.evaluate([makeGPU({ sensors: { ...makeGPU().sensors, temperatureC: mkSensor(90, '°C') } })]);
     expect(health.components.gpu!.level).toBe('critical');
   });
 
   it('returns critical for low storage health', () => {
     const evaluator = new HardwareHealthEvaluator();
-    const health = evaluator.evaluate([makeStorage({ sensors: { ...makeStorage().sensors, healthPercent: 10 } })]);
+    const health = evaluator.evaluate([makeStorage({ sensors: { ...makeStorage().sensors, healthPercent: mkSensor(10, '%') } })]);
     expect(health.components.storage!.level).toBe('critical');
   });
 
   it('returns critical for high battery wear', () => {
     const evaluator = new HardwareHealthEvaluator();
-    const health = evaluator.evaluate([makeBattery({ info: { ...makeBattery().info, wearLevelPercent: 60 } })]);
+    const health = evaluator.evaluate([makeBattery({ info: { ...makeBattery().info, wearLevelPercent: mkSensor(60, '%') } })]);
     expect(health.components.battery!.level).toBe('critical');
   });
 
   it('returns critical for non-spinning fan', () => {
     const evaluator = new HardwareHealthEvaluator();
-    const health = evaluator.evaluate([makeCooling({ info: { fans: [{ name: 'Dead Fan', type: 'cpu_fan', rpm: 0 }] } })]);
+    const health = evaluator.evaluate([makeCooling({ info: { fans: [{ name: 'Dead Fan', type: 'cpu_fan', rpm: mkSensor(0, 'RPM') }] } })]);
     expect(health.components.cooling!.level).toBe('critical');
   });
 
@@ -689,7 +691,7 @@ describe('HardwareCapabilitiesDetector', () => {
 
   it('detects missing sensors as false', () => {
     const detector = new HardwareCapabilitiesDetector();
-    const caps = detector.detect([makeCPU({ sensors: { thermalThrottling: false } })]);
+    const caps = detector.detect([makeCPU({ sensors: { thermalThrottling: mkSensor(false, 'bool') } })]);
     expect(caps.cpu.temperature).toBe(false);
     expect(caps.cpu.powerDraw).toBe(false);
     expect(caps.cpu.thermalThrottling).toBe(true);
@@ -1039,7 +1041,7 @@ describe('Provider Switching', () => {
 describe('Unsupported Hardware', () => {
   it('handles unsupported CPU sensors gracefully', () => {
     const cpu = makeCPU({
-      sensors: { thermalThrottling: false },
+      sensors: { thermalThrottling: mkSensor(false, 'bool') },
       sensorStatus: { availability: 'unsupported', message: 'Temperature sensor not available' },
     });
     expect(cpu.sensorStatus.availability).toBe('unsupported');

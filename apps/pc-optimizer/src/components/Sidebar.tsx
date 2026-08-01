@@ -12,6 +12,7 @@ import {
   ChartBarIcon,
   BoltIcon,
   CpuChipIcon,
+  ComputerDesktopIcon,
   Cog6ToothIcon,
   InformationCircleIcon,
   WrenchScrewdriverIcon,
@@ -49,6 +50,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
     entries: [
       { id: 'dashboard', to: '/dashboard', labelKey: 'nav.dashboard', Icon: Squares2X2Icon },
       { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
+      { id: 'hardware-center', to: '/hardware-center', labelKey: 'nav.hardwareCenter', Icon: ComputerDesktopIcon },
       { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon, feature: 'disk.analyzer' },
     ],
   },

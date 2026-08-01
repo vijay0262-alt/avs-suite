@@ -51,15 +51,15 @@ export class HardwareDashboardProvider {
           highlights.push({
             category: 'cpu',
             label: 'CPU Temperature',
-            value: temp !== undefined ? `${temp.toFixed(0)}°C` : 'N/A',
-            level: this.tempLevel(temp, 75, 90),
+            value: temp?.supported && temp.value !== undefined ? `${temp.value.toFixed(0)}°C` : 'N/A',
+            level: this.tempLevel(temp?.supported ? temp.value : undefined, 75, 90),
           });
-          if (util !== undefined) {
+          if (util?.supported && util.value !== undefined) {
             highlights.push({
               category: 'cpu',
               label: 'CPU Utilization',
-              value: `${util.toFixed(0)}%`,
-              level: this.utilLevel(util),
+              value: `${util.value.toFixed(0)}%`,
+              level: this.utilLevel(util.value),
             });
           }
           break;
@@ -71,15 +71,15 @@ export class HardwareDashboardProvider {
           highlights.push({
             category: 'gpu',
             label: 'GPU Temperature',
-            value: temp !== undefined ? `${temp.toFixed(0)}°C` : 'N/A',
-            level: this.tempLevel(temp, 70, 85),
+            value: temp?.supported && temp.value !== undefined ? `${temp.value.toFixed(0)}°C` : 'N/A',
+            level: this.tempLevel(temp?.supported ? temp.value : undefined, 70, 85),
           });
-          if (util !== undefined) {
+          if (util?.supported && util.value !== undefined) {
             highlights.push({
               category: 'gpu',
               label: 'GPU Utilization',
-              value: `${util.toFixed(0)}%`,
-              level: this.utilLevel(util),
+              value: `${util.value.toFixed(0)}%`,
+              level: this.utilLevel(util.value),
             });
           }
           break;
@@ -88,12 +88,12 @@ export class HardwareDashboardProvider {
           const ram = component as RAMComponent;
           const used = ram.info.usedMB;
           const total = ram.info.installedMB;
-          if (used !== undefined && total > 0) {
-            const pct = (used / total) * 100;
+          if (used?.supported && used.value !== undefined && total > 0) {
+            const pct = (used.value / total) * 100;
             highlights.push({
               category: 'ram',
               label: 'Memory Usage',
-              value: `${(used / 1024).toFixed(1)} / ${(total / 1024).toFixed(0)} GB`,
+              value: `${(used.value / 1024).toFixed(1)} / ${(total / 1024).toFixed(0)} GB`,
               level: this.utilLevel(pct),
             });
           }
@@ -101,30 +101,35 @@ export class HardwareDashboardProvider {
         }
         case 'storage': {
           const storage = component as StorageComponent;
-          if (storage.sensors.healthPercent !== undefined) {
+          const health = storage.sensors.healthPercent;
+          if (health?.supported && health.value !== undefined) {
             highlights.push({
               category: 'storage',
               label: `${storage.info.model} Health`,
-              value: `${storage.sensors.healthPercent}%`,
-              level: this.storageHealthLevel(storage.sensors.healthPercent),
+              value: `${health.value}%`,
+              level: this.storageHealthLevel(health.value),
             });
           }
           break;
         }
         case 'battery': {
           const battery = component as BatteryComponent;
-          highlights.push({
-            category: 'battery',
-            label: 'Battery Charge',
-            value: `${battery.info.currentChargePercent}%`,
-            level: battery.info.currentChargePercent < 20 ? 'poor' : 'good',
-          });
-          if (battery.info.wearLevelPercent !== undefined) {
+          const charge = battery.info.currentChargePercent;
+          if (charge?.supported && charge.value !== undefined) {
+            highlights.push({
+              category: 'battery',
+              label: 'Battery Charge',
+              value: `${charge.value}%`,
+              level: charge.value < 20 ? 'poor' : 'good',
+            });
+          }
+          const wear = battery.info.wearLevelPercent;
+          if (wear?.supported && wear.value !== undefined) {
             highlights.push({
               category: 'battery',
               label: 'Battery Wear',
-              value: `${battery.info.wearLevelPercent}%`,
-              level: this.batteryWearLevel(battery.info.wearLevelPercent),
+              value: `${wear.value}%`,
+              level: this.batteryWearLevel(wear.value),
             });
           }
           break;

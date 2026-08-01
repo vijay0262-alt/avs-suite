@@ -16,6 +16,7 @@ export type NavItemId =
   | 'software-updater'
   | 'performance'
   | 'system-information'
+  | 'hardware-center'
   | 'maintenance-history'
   | 'reports'
   | 'license'

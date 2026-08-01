@@ -20,6 +20,7 @@ const UninstallerPage = lazy(() => import('../pages/UninstallerPage'));
 const UpdaterPage = lazy(() => import('../pages/UpdaterPage'));
 const PerformancePage = lazy(() => import('../pages/PerformancePage'));
 const SystemInformationPage = lazy(() => import('../pages/SystemInformationPage'));
+const HardwareCenterPage = lazy(() => import('../pages/HardwareCenterPage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 const AboutPage = lazy(() => import('../pages/AboutPage'));
 const DiagnosticsPage = lazy(() => import('../features/diagnostics/DiagnosticsPage'));
@@ -92,6 +93,7 @@ export const router = createHashRouter([
       { path: 'performance', element: wrap(PerformancePage) },
       { path: 'security', element: wrap(SecurityPage) },
       { path: 'system-information', element: wrap(SystemInformationPage) },
+      { path: 'hardware-center', element: wrap(HardwareCenterPage) },
       { path: 'maintenance-history', element: wrap(MaintenanceHistoryPage) },
       { path: 'reports', element: wrap(ReportsPage) },
       { path: 'settings', element: wrap(SettingsPage) },

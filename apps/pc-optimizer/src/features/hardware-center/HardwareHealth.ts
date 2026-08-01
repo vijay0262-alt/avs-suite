@@ -65,17 +65,19 @@ export class HardwareHealthEvaluator {
     const issues: string[] = [];
     let level: HealthLevel = 'good';
 
-    if (cpu.sensors.temperatureC !== undefined) {
-      if (cpu.sensors.temperatureC >= 90) {
+    const temp = cpu.sensors.temperatureC;
+    if (temp?.supported && temp.value !== undefined) {
+      if (temp.value >= 90) {
         level = 'critical';
-        issues.push(`CPU temperature critical: ${cpu.sensors.temperatureC}°C`);
-      } else if (cpu.sensors.temperatureC >= 75) {
+        issues.push(`CPU temperature critical: ${temp.value}°C`);
+      } else if (temp.value >= 75) {
         level = level === 'good' ? 'poor' : level;
-        issues.push(`CPU temperature high: ${cpu.sensors.temperatureC}°C`);
+        issues.push(`CPU temperature high: ${temp.value}°C`);
       }
     }
 
-    if (cpu.sensors.thermalThrottling) {
+    const throttling = cpu.sensors.thermalThrottling;
+    if (throttling?.supported && throttling.value) {
       level = 'poor';
       issues.push('CPU is thermal throttling');
     }
@@ -92,13 +94,14 @@ export class HardwareHealthEvaluator {
     const issues: string[] = [];
     let level: HealthLevel = 'good';
 
-    if (gpu.sensors.temperatureC !== undefined) {
-      if (gpu.sensors.temperatureC >= 85) {
+    const temp = gpu.sensors.temperatureC;
+    if (temp?.supported && temp.value !== undefined) {
+      if (temp.value >= 85) {
         level = 'critical';
-        issues.push(`GPU temperature critical: ${gpu.sensors.temperatureC}°C`);
-      } else if (gpu.sensors.temperatureC >= 70) {
+        issues.push(`GPU temperature critical: ${temp.value}°C`);
+      } else if (temp.value >= 70) {
         level = level === 'good' ? 'poor' : level;
-        issues.push(`GPU temperature high: ${gpu.sensors.temperatureC}°C`);
+        issues.push(`GPU temperature high: ${temp.value}°C`);
       }
     }
 
@@ -114,26 +117,29 @@ export class HardwareHealthEvaluator {
     const issues: string[] = [];
     let level: HealthLevel = 'good';
 
-    if (storage.sensors.healthPercent !== undefined) {
-      if (storage.sensors.healthPercent < 20) {
+    const health = storage.sensors.healthPercent;
+    if (health?.supported && health.value !== undefined) {
+      if (health.value < 20) {
         level = 'critical';
-        issues.push(`Storage health critical: ${storage.sensors.healthPercent}%`);
-      } else if (storage.sensors.healthPercent < 50) {
+        issues.push(`Storage health critical: ${health.value}%`);
+      } else if (health.value < 50) {
         level = 'poor';
-        issues.push(`Storage health degraded: ${storage.sensors.healthPercent}%`);
+        issues.push(`Storage health degraded: ${health.value}%`);
       }
     }
 
-    if (storage.sensors.lifetimeRemainingPercent !== undefined) {
-      if (storage.sensors.lifetimeRemainingPercent < 10) {
+    const lifetime = storage.sensors.lifetimeRemainingPercent;
+    if (lifetime?.supported && lifetime.value !== undefined) {
+      if (lifetime.value < 10) {
         level = 'critical';
-        issues.push(`Storage lifetime nearly exhausted: ${storage.sensors.lifetimeRemainingPercent}%`);
+        issues.push(`Storage lifetime nearly exhausted: ${lifetime.value}%`);
       }
     }
 
-    if (storage.sensors.temperatureC !== undefined && storage.sensors.temperatureC >= 60) {
+    const temp = storage.sensors.temperatureC;
+    if (temp?.supported && temp.value !== undefined && temp.value >= 60) {
       level = level === 'good' ? 'poor' : level;
-      issues.push(`Storage temperature high: ${storage.sensors.temperatureC}°C`);
+      issues.push(`Storage temperature high: ${temp.value}°C`);
     }
 
     return { level, issues };
@@ -143,16 +149,17 @@ export class HardwareHealthEvaluator {
     const issues: string[] = [];
     let level: HealthLevel = 'good';
 
-    if (battery.info.wearLevelPercent !== undefined) {
-      if (battery.info.wearLevelPercent >= 50) {
+    const wear = battery.info.wearLevelPercent;
+    if (wear?.supported && wear.value !== undefined) {
+      if (wear.value >= 50) {
         level = 'critical';
-        issues.push(`Battery wear severe: ${battery.info.wearLevelPercent}%`);
-      } else if (battery.info.wearLevelPercent >= 30) {
+        issues.push(`Battery wear severe: ${wear.value}%`);
+      } else if (wear.value >= 30) {
         level = 'poor';
-        issues.push(`Battery wear significant: ${battery.info.wearLevelPercent}%`);
-      } else if (battery.info.wearLevelPercent >= 15) {
+        issues.push(`Battery wear significant: ${wear.value}%`);
+      } else if (wear.value >= 15) {
         level = 'fair';
-        issues.push(`Battery wear moderate: ${battery.info.wearLevelPercent}%`);
+        issues.push(`Battery wear moderate: ${wear.value}%`);
       }
     }
 
@@ -164,7 +171,8 @@ export class HardwareHealthEvaluator {
     let level: HealthLevel = 'good';
 
     for (const fan of cooling.info.fans) {
-      if (fan.rpm !== undefined && fan.rpm === 0) {
+      const rpm = fan.rpm;
+      if (rpm?.supported && rpm.value !== undefined && rpm.value === 0) {
         level = 'critical';
         issues.push(`Fan "${fan.name}" not spinning (0 RPM)`);
       }

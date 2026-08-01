@@ -46,46 +46,46 @@ export class HardwareCapabilitiesDetector {
     for (const component of components) {
       if (component.category === 'cpu') {
         const s = component.sensors;
-        caps.cpu.temperature = s.temperatureC !== undefined;
-        caps.cpu.powerDraw = s.powerDrawW !== undefined;
-        caps.cpu.voltage = s.voltageV !== undefined;
+        caps.cpu.temperature = s.temperatureC?.supported ?? false;
+        caps.cpu.powerDraw = s.powerDrawW?.supported ?? false;
+        caps.cpu.voltage = s.voltageV?.supported ?? false;
         caps.cpu.perCoreUtilization =
           component.info.perCoreUtilization !== undefined &&
           component.info.perCoreUtilization.length > 0;
-        caps.cpu.frequency = component.info.currentFrequencyMHz !== undefined;
-        caps.cpu.thermalThrottling = true;
+        caps.cpu.frequency = component.info.currentFrequencyMHz?.supported ?? false;
+        caps.cpu.thermalThrottling = s.thermalThrottling?.supported ?? false;
       }
 
       if (component.category === 'gpu') {
         const s = component.sensors;
-        caps.gpu.utilization = s.gpuUtilization !== undefined;
-        caps.gpu.temperature = s.temperatureC !== undefined;
-        caps.gpu.fanSpeed = s.fanSpeedRPM !== undefined;
-        caps.gpu.powerDraw = s.powerDrawW !== undefined;
-        caps.gpu.encoderDecoder = s.encoderUsage !== undefined || s.decoderUsage !== undefined;
+        caps.gpu.utilization = s.gpuUtilization?.supported ?? false;
+        caps.gpu.temperature = s.temperatureC?.supported ?? false;
+        caps.gpu.fanSpeed = s.fanSpeedRPM?.supported ?? false;
+        caps.gpu.powerDraw = s.powerDrawW?.supported ?? false;
+        caps.gpu.encoderDecoder = (s.encoderUsage?.supported ?? false) || (s.decoderUsage?.supported ?? false);
       }
 
       if (component.category === 'storage') {
         const s = component.sensors;
-        caps.storage.temperature = s.temperatureC !== undefined;
+        caps.storage.temperature = s.temperatureC?.supported ?? false;
         caps.storage.smart = component.info.smartSupported;
-        caps.storage.lifetimeRemaining = s.lifetimeRemainingPercent !== undefined;
-        caps.storage.readWriteSpeed = s.readSpeedMBps !== undefined || s.writeSpeedMBps !== undefined;
+        caps.storage.lifetimeRemaining = s.lifetimeRemainingPercent?.supported ?? false;
+        caps.storage.readWriteSpeed = (s.readSpeedMBps?.supported ?? false) || (s.writeSpeedMBps?.supported ?? false);
       }
 
       if (component.category === 'network') {
-        caps.network.signalStrength = component.info.signalStrengthPercent !== undefined;
-        caps.network.usage = component.sensors.usagePercent !== undefined;
+        caps.network.signalStrength = component.info.signalStrengthPercent?.supported ?? false;
+        caps.network.usage = component.sensors.usagePercent?.supported ?? false;
       }
 
       if (component.category === 'battery') {
-        caps.battery.wearLevel = component.info.wearLevelPercent !== undefined;
+        caps.battery.wearLevel = component.info.wearLevelPercent?.supported ?? false;
         caps.battery.chargeCycles = component.info.chargeCycles !== undefined;
-        caps.battery.estimatedRuntime = component.info.estimatedRuntimeMinutes !== undefined;
+        caps.battery.estimatedRuntime = component.info.estimatedRuntimeMinutes?.supported ?? false;
       }
 
       if (component.category === 'cooling') {
-        caps.cooling.fanRPM = component.info.fans.some((f) => f.rpm !== undefined);
+        caps.cooling.fanRPM = component.info.fans.some((f) => f.rpm?.supported ?? false);
       }
     }
 

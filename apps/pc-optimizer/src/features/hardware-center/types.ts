@@ -53,6 +53,60 @@ export interface SensorStatus {
   message?: string;
 }
 
+// ── Sensor Reading ───────────────────────────────────────────────────
+
+/**
+ * Every sensor value is wrapped with provenance metadata.
+ * This enables multi-provider attribution, confidence scoring,
+ * staleness detection, and future AI explainability.
+ */
+export interface SensorReading<T> {
+  value: T;
+  unit: string;
+  source: ProviderSource;
+  timestamp: number;
+  confidence: number; // 0.0 – 1.0
+  supported: boolean;
+  estimated: boolean;
+  stale: boolean;
+}
+
+/** Convenience factory for creating sensor readings with defaults. */
+export function mkSensor<T>(
+  value: T,
+  unit: string,
+  source: ProviderSource = 'mock',
+  confidence = 1.0,
+): SensorReading<T> {
+  return {
+    value,
+    unit,
+    source,
+    timestamp: Date.now(),
+    confidence,
+    supported: true,
+    estimated: false,
+    stale: false,
+  };
+}
+
+/** Factory for an unsupported/missing sensor reading. */
+export function unsupportedSensor<T>(
+  unit: string,
+  source: ProviderSource = 'unknown',
+): SensorReading<T> {
+  return {
+    value: undefined as unknown as T,
+    unit,
+    source,
+    timestamp: Date.now(),
+    confidence: 0,
+    supported: false,
+    estimated: false,
+    stale: false,
+  };
+}
+
 // ── CPU ──────────────────────────────────────────────────────────────
 
 export interface CPUInfo {
@@ -66,9 +120,9 @@ export interface CPUInfo {
   threads: number;
   baseFrequencyMHz: number;
   boostFrequencyMHz?: number;
-  currentFrequencyMHz?: number;
-  perCoreUtilization?: number[];
-  packageUtilization?: number;
+  currentFrequencyMHz?: SensorReading<number>;
+  perCoreUtilization?: SensorReading<number>[];
+  packageUtilization?: SensorReading<number>;
   cacheSizes?: {
     l1KB?: number;
     l2KB?: number;
@@ -82,10 +136,10 @@ export interface CPUInfo {
 }
 
 export interface CPUSensors {
-  temperatureC?: number;
-  powerDrawW?: number;
-  voltageV?: number;
-  thermalThrottling: boolean;
+  temperatureC?: SensorReading<number>;
+  powerDrawW?: SensorReading<number>;
+  voltageV?: SensorReading<number>;
+  thermalThrottling: SensorReading<boolean>;
 }
 
 export interface CPUComponent {
@@ -103,22 +157,22 @@ export interface GPUInfo {
   driver: string;
   driverDate?: string;
   vramMB: number;
-  dedicatedMemoryMB?: number;
-  sharedMemoryMB?: number;
+  dedicatedMemoryMB?: SensorReading<number>;
+  sharedMemoryMB?: SensorReading<number>;
   pcieGeneration?: string;
   pcieLaneWidth?: string;
 }
 
 export interface GPUSensors {
-  gpuUtilization?: number;
-  memoryUtilization?: number;
-  temperatureC?: number;
-  fanSpeedRPM?: number;
-  coreClockMHz?: number;
-  memoryClockMHz?: number;
-  powerDrawW?: number;
-  encoderUsage?: number;
-  decoderUsage?: number;
+  gpuUtilization?: SensorReading<number>;
+  memoryUtilization?: SensorReading<number>;
+  temperatureC?: SensorReading<number>;
+  fanSpeedRPM?: SensorReading<number>;
+  coreClockMHz?: SensorReading<number>;
+  memoryClockMHz?: SensorReading<number>;
+  powerDrawW?: SensorReading<number>;
+  encoderUsage?: SensorReading<number>;
+  decoderUsage?: SensorReading<number>;
 }
 
 export interface GPUComponent {
@@ -142,8 +196,10 @@ export interface RAMModule {
 
 export interface RAMInfo {
   installedMB: number;
-  availableMB?: number;
-  usedMB?: number;
+  availableMB?: SensorReading<number>;
+  usedMB?: SensorReading<number>;
+  cachedMB?: SensorReading<number>;
+  memoryPressure?: SensorReading<number>;
   speedMTs?: number;
   channels?: number;
   slotsUsed?: number;
@@ -185,19 +241,19 @@ export interface StorageInfo {
   serial?: string;
   firmware?: string;
   capacityBytes: number;
-  usedBytes?: number;
-  freeBytes?: number;
+  usedBytes?: SensorReading<number>;
+  freeBytes?: SensorReading<number>;
   filesystem?: string;
   interface?: string;
   smartSupported: boolean;
 }
 
 export interface StorageSensors {
-  temperatureC?: number;
-  healthPercent?: number;
-  lifetimeRemainingPercent?: number;
-  readSpeedMBps?: number;
-  writeSpeedMBps?: number;
+  temperatureC?: SensorReading<number>;
+  healthPercent?: SensorReading<number>;
+  lifetimeRemainingPercent?: SensorReading<number>;
+  readSpeedMBps?: SensorReading<number>;
+  writeSpeedMBps?: SensorReading<number>;
 }
 
 export interface StorageComponent {
@@ -216,13 +272,13 @@ export interface NetworkInfo {
   ipv6?: string[];
   linkSpeedMbps?: number;
   type: 'wifi' | 'ethernet' | 'bluetooth' | 'virtual' | 'unknown';
-  signalStrengthPercent?: number;
+  signalStrengthPercent?: SensorReading<number>;
 }
 
 export interface NetworkSensors {
-  usagePercent?: number;
-  downloadMbps?: number;
-  uploadMbps?: number;
+  usagePercent?: SensorReading<number>;
+  downloadMbps?: SensorReading<number>;
+  uploadMbps?: SensorReading<number>;
 }
 
 export interface NetworkComponent {
@@ -238,10 +294,10 @@ export interface BatteryInfo {
   designCapacityWH?: number;
   fullChargeCapacityWH?: number;
   chargeCycles?: number;
-  currentChargePercent: number;
-  wearLevelPercent?: number;
-  chargingStatus: 'charging' | 'discharging' | 'idle' | 'unknown';
-  estimatedRuntimeMinutes?: number;
+  currentChargePercent: SensorReading<number>;
+  wearLevelPercent?: SensorReading<number>;
+  chargingStatus: SensorReading<'charging' | 'discharging' | 'idle' | 'unknown'>;
+  estimatedRuntimeMinutes?: SensorReading<number>;
 }
 
 export interface BatteryComponent {
@@ -270,7 +326,7 @@ export interface PowerSupplyComponent {
 export interface FanInfo {
   name: string;
   type: 'cpu_fan' | 'case_fan' | 'pump' | 'gpu_fan' | 'unknown';
-  rpm?: number;
+  rpm?: SensorReading<number>;
 }
 
 export interface CoolingInfo {
@@ -292,7 +348,7 @@ export interface OSInfo {
   architecture: string;
   installDate?: string;
   lastBootTime?: string;
-  uptimeSeconds?: number;
+  uptimeSeconds?: SensorReading<number>;
 }
 
 export interface OSComponent {
@@ -610,3 +666,59 @@ export interface HardwareDiagnosticIssue {
   severity: 'warning' | 'error';
   message: string;
 }
+
+// ── Dashboard UI Types ───────────────────────────────────────────────
+
+export type TrendDirection = 'up' | 'down' | 'stable' | 'unknown';
+
+export interface MetricDisplay {
+  label: string;
+  value: string;
+  unit: string;
+  trend: TrendDirection;
+  normalRange?: string;
+  timestamp: number;
+  provider: ProviderSource;
+  level: HealthLevel;
+  supported: boolean;
+}
+
+export interface GraphSeries {
+  name: string;
+  color: string;
+  points: { t: number; v: number }[];
+}
+
+export interface HardwareGraphData {
+  title: string;
+  unit: string;
+  series: GraphSeries[];
+  windowSeconds: number;
+}
+
+export type HardwareAlertSeverity = 'info' | 'warning' | 'critical';
+
+export interface HardwareAlert {
+  id: string;
+  severity: HardwareAlertSeverity;
+  category: HardwareCategory;
+  title: string;
+  message: string;
+  timestamp: number;
+  acknowledged: boolean;
+}
+
+export interface HardwareOverview {
+  healthScore: number;
+  healthLevel: HealthLevel;
+  overallTempC: number | null;
+  overallTempLevel: HealthLevel;
+  powerStatus: 'ok' | 'warning' | 'critical' | 'unknown';
+  coolingStatus: 'ok' | 'warning' | 'critical' | 'unknown';
+  systemUptimeSeconds: number | null;
+  lastScanAt: number;
+  providerStatuses: { id: string; state: ProviderHealthState; source: ProviderSource }[];
+  sensorAvailability: { total: number; available: number; unsupported: number };
+}
+
+export type ExportFormat = 'json' | 'csv' | 'pdf';
