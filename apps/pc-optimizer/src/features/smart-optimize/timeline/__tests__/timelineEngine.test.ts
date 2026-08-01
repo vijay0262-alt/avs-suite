@@ -516,9 +516,10 @@ describe('Unified Timeline & Activity Center', () => {
       expect(result.length).toBe(1);
     });
     it('filters by date range', () => {
-      const now = new Date().toISOString();
+      const start = new Date(Date.now() - 60000).toISOString();
+      const end = new Date(Date.now() + 60000).toISOString();
       const result = filterEngine.filter(items, {
-        dateRange: { start: now, end: now },
+        dateRange: { start, end },
       });
       expect(result.length).toBe(3);
     });
