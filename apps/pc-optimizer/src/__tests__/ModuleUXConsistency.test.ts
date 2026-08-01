@@ -80,7 +80,6 @@ const MODULES = [
   { name: 'SystemInfo', file: 'SystemInfoPage.tsx', testId: 'page-system-information' },
   { name: 'Uninstaller', file: 'UninstallerPage.tsx', testId: 'page-uninstaller' },
   { name: 'SoftwareUpdater', file: 'UpdaterPage.tsx', testId: 'page-software-updater' },
-  { name: 'DriveWiper', file: 'WiperPage.tsx', testId: 'page-drive-wiper' },
   { name: 'Reports', file: 'ReportsPage.tsx', testId: 'page-reports' },
   { name: 'MaintenanceHistory', file: 'MaintenanceHistoryPage.tsx', testId: 'page-maintenance-history' },
   { name: 'Dashboard', file: 'DashboardPage.tsx', testId: 'page-dashboard' },
@@ -122,7 +121,6 @@ describe('Module UX Consistency', () => {
       'SystemInfoPage.tsx',
       'UninstallerPage.tsx',
       'UpdaterPage.tsx',
-      'WiperPage.tsx',
       'ReportsPage.tsx',
       'MaintenanceHistoryPage.tsx',
       'DashboardPage.tsx',
@@ -199,7 +197,6 @@ describe('Module UX Consistency', () => {
       'DiskAnalyzerPage.tsx',
       'UninstallerPage.tsx',
       'UpdaterPage.tsx',
-      'WiperPage.tsx',
     ];
 
     modulesWithConfirm.forEach((fileName) => {

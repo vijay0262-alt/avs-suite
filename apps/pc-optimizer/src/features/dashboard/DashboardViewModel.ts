@@ -1333,7 +1333,6 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   }
 
   async startQuickScan(navigate: NavigateFunction): Promise<void> {
-    console.log('[DashboardViewModel] startQuickScan called');
     // Navigate to junk cleaner with auto-scan flag
     // This will be handled by the router and Junk Cleaner page
     navigate('/junk-cleaner?autoScan=true');

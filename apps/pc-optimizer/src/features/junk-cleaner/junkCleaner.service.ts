@@ -18,22 +18,6 @@ function client() {
   return window.avs.rpc;
 }
 
-// Add logging wrapper
-function withLogging<T>(methodName: string, fn: () => Promise<T>): Promise<T> {
-  console.log(`[JunkCleanerService] ${methodName} called`);
-  const start = performance.now();
-  return fn().then(
-    (result) => {
-      console.log(`[JunkCleanerService] ${methodName} completed in ${(performance.now() - start).toFixed(2)}ms`, result);
-      return result;
-    },
-    (error) => {
-      console.error(`[JunkCleanerService] ${methodName} failed after ${(performance.now() - start).toFixed(2)}ms`, error);
-      throw error;
-    }
-  );
-}
-
 export interface JunkCleanerService {
   // Scan
   list(): Promise<CleanerInfo[]>;
@@ -59,36 +43,31 @@ export interface JunkCleanerService {
 
 export const junkCleanerService: JunkCleanerService = {
   // Scan
-  list: () => withLogging('list', () => client().call(RPC_METHODS.CLEANER_LIST)),
-  startScan: (only) => withLogging('startScan', () => 
-    client().call(RPC_METHODS.CLEANER_SCAN_START, only ? { only } : undefined)),
-  refreshCache: () => withLogging('refreshCache', () =>
-    client().call('cleaner.scan.refreshCache')),
-  getStatus: (taskId) => withLogging('getStatus', () => 
-    client().call(RPC_METHODS.CLEANER_SCAN_STATUS, taskId ? { taskId } : undefined)),
-  cancel: (taskId) => withLogging('cancel', () => 
-    client().call(RPC_METHODS.CLEANER_SCAN_CANCEL, { taskId })),
+  list: () => client().call(RPC_METHODS.CLEANER_LIST),
+  startScan: (only) =>
+    client().call(RPC_METHODS.CLEANER_SCAN_START, only ? { only } : undefined),
+  refreshCache: () =>
+    client().call('cleaner.scan.refreshCache'),
+  getStatus: (taskId) =>
+    client().call(RPC_METHODS.CLEANER_SCAN_STATUS, taskId ? { taskId } : undefined),
+  cancel: (taskId) =>
+    client().call(RPC_METHODS.CLEANER_SCAN_CANCEL, { taskId }),
   getResults: (taskId, cleanerId, offset, limit) =>
-    withLogging('getResults', () =>
-      client().call(RPC_METHODS.CLEANER_SCAN_RESULTS, { taskId, cleanerId, offset, limit })),
+    client().call(RPC_METHODS.CLEANER_SCAN_RESULTS, { taskId, cleanerId, offset, limit }),
   // Clean
   previewClean: (taskId, only) =>
-    withLogging('previewClean', () =>
-      client().call(RPC_METHODS.CLEANER_CLEAN_PREVIEW, only ? { taskId, only } : { taskId })),
+    client().call(RPC_METHODS.CLEANER_CLEAN_PREVIEW, only ? { taskId, only } : { taskId }),
   executeClean: (taskId, only) =>
-    withLogging('executeClean', () =>
-      client().call(RPC_METHODS.CLEANER_CLEAN_EXECUTE, only ? { taskId, only } : { taskId })),
+    client().call(RPC_METHODS.CLEANER_CLEAN_EXECUTE, only ? { taskId, only } : { taskId }),
   getCleaningStatus: (cleaningTaskId) =>
-    withLogging('getCleaningStatus', () =>
-      client().call(
-        RPC_METHODS.CLEANER_CLEAN_STATUS,
-        cleaningTaskId ? { cleaningTaskId } : undefined,
-      )),
+    client().call(
+      RPC_METHODS.CLEANER_CLEAN_STATUS,
+      cleaningTaskId ? { cleaningTaskId } : undefined,
+    ),
   cancelClean: (cleaningTaskId) =>
-    withLogging('cancelClean', () =>
-      client().call(RPC_METHODS.CLEANER_CLEAN_CANCEL, { cleaningTaskId })),
-  getLogs: (params) => withLogging('getLogs', () => 
-    client().call(RPC_METHODS.CLEANER_CLEAN_LOGS, params)),
-  undoClean: () => withLogging('undoClean', () => 
-    client().call(RPC_METHODS.CLEANER_CLEAN_UNDO)),
+    client().call(RPC_METHODS.CLEANER_CLEAN_CANCEL, { cleaningTaskId }),
+  getLogs: (params) =>
+    client().call(RPC_METHODS.CLEANER_CLEAN_LOGS, params),
+  undoClean: () =>
+    client().call(RPC_METHODS.CLEANER_CLEAN_UNDO),
 };

@@ -35,7 +35,6 @@ class PerformanceMonitor {
     };
 
     this.metrics.push(metric);
-    console.log(`[Performance] ${name}: ${duration.toFixed(2)}ms`, metadata || '');
 
     return duration;
   }

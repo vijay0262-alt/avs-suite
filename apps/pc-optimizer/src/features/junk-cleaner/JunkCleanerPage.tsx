@@ -51,14 +51,12 @@ export default function JunkCleanerPage() {
   useEffect(() => {
     if (autoScan) {
       autoScanIntentRef.current = true;
-      console.log('[JunkCleanerPage] Auto-scan intent detected');
     }
   }, [autoScan]);
 
   // Auto-start scan when bootstrap is ready and auto-scan was requested
   useEffect(() => {
     if (autoScanIntentRef.current && !scanIssuedOnce && state.bootstrap === 'ready') {
-      console.log('[JunkCleanerPage] Auto-starting scan');
       void vm.startScan();
       setScanIssuedOnce(true);
       autoScanIntentRef.current = false; // Clear intent after starting

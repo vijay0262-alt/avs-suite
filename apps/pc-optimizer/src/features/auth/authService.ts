@@ -7,7 +7,7 @@
  *   POST /api/customer/auth/refresh — refresh access token
  *   GET  /api/customer/profile      — validate token + get customer info
  */
-import { apiClient, ApiError, NetworkError, AuthError, configureApiClient, getBaseUrl } from './apiClient';
+import { apiClient, ApiError, NetworkError, AuthError, configureApiClient } from './apiClient';
 import { tokenStorage, type StoredSession } from './tokenStorage';
 
 export interface LoginResponse {
@@ -226,46 +226,28 @@ export const authService = {
    * On failure, throws AuthResultError with a classified code.
    */
   async login(identifier: string, password: string): Promise<StoredSession> {
-    const baseUrl = getBaseUrl();
     const endpoint = '/api/customer/auth/login';
-    const fullUrl = `${baseUrl}${endpoint}`;
     try {
-      console.log(
-        `[AVS] Login attempt:\n` +
-        `  API Base URL: ${baseUrl}\n` +
-        `  POST: ${endpoint}\n` +
-        `  Full URL: ${fullUrl}\n` +
-        `  Identifier: ${identifier}`,
-      );
       const resp = await apiClient.post<LoginResponse>(
         endpoint,
         { identifier, password },
         { noAuth: true },
       );
-      console.log(`[AVS] Login successful for: ${identifier}`);
       const session = sessionFromLogin(resp);
       tokenStorage.save(session);
       return session;
     } catch (err) {
-      // Log structured error details
       if (err instanceof ApiError) {
         console.error(
-          `[AVS] Login failed:\n` +
-          `  POST: ${fullUrl}\n` +
-          `  HTTP Status: ${err.statusCode}\n` +
-          `  Response: ${JSON.stringify({ detail: err.detail })}`,
+          `[AVS] Login failed: HTTP ${err.statusCode} for ${endpoint}`,
         );
       } else if (err instanceof NetworkError) {
         console.error(
-          `[AVS] Login failed [${err.kind}]:\n` +
-          `  POST: ${fullUrl}\n` +
-          `  Error: ${err.message}`,
+          `[AVS] Login failed [${err.kind}]: ${err.message}`,
         );
       } else {
         console.error(
-          `[AVS] Login failed:\n` +
-          `  POST: ${fullUrl}\n` +
-          `  Error: ${err instanceof Error ? `${err.name}: ${err.message}` : String(err)}`,
+          `[AVS] Login failed: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
       throw classifyError(err);

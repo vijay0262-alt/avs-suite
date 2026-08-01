@@ -39,10 +39,6 @@ export function getBaseUrl(): string {
   return getDefaultBaseUrl();
 }
 
-// Log the API base URL on module load for debugging connectivity issues
-const _baseUrl = getBaseUrl();
-console.log(`[AVS] API base URL: ${_baseUrl}`);
-
 export class ApiError extends Error {
   constructor(
     message: string,
