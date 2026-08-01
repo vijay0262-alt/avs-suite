@@ -19,7 +19,6 @@ import { hardwareRegistry } from '../HardwareRegistry';
 import { hardwareEventBus } from '../HardwareEvents';
 import { mkSensor } from '../types';
 import type {
-  HardwareSnapshot,
   HardwareComponent,
   CPUComponent,
   GPUComponent,
@@ -219,17 +218,6 @@ function makeMotherboard(overrides?: Partial<MotherboardComponent>): Motherboard
 
 function makeAllComponents(): HardwareComponent[] {
   return [makeCPU(), makeGPU(), makeRAM(), makeStorage(), makeNetwork(), makeBattery(), makeCooling(), makeOS(), makeMotherboard()];
-}
-
-function makeSnapshot(components?: HardwareComponent[]): HardwareSnapshot {
-  return {
-    id: `hw-snap-${Date.now()}`,
-    timestamp: Date.now(),
-    scanDurationMs: 100,
-    components: components ?? makeAllComponents(),
-    providerHealth: {},
-    metadata: { source: 'mock', version: '1.1.0', partial: false },
-  };
 }
 
 // ── Mock Provider ────────────────────────────────────────────────────

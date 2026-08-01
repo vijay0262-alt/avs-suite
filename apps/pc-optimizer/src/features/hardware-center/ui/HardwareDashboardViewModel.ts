@@ -19,9 +19,7 @@ import type {
   CPUComponent,
   GPUComponent,
   RAMComponent,
-  StorageComponent,
   NetworkComponent,
-  BatteryComponent,
   CoolingComponent,
   OSComponent,
   ExportFormat,
@@ -377,7 +375,7 @@ export class HardwareDashboardViewModel extends ViewModel<HardwareDashboardState
         const model = info?.model ?? c.category;
         const sensors = (c as { sensors?: Record<string, SensorReading<unknown>> }).sensors;
         if (sensors) {
-          for (const [key, reading] of Object.entries(sensors)) {
+          for (const [, reading] of Object.entries(sensors)) {
             if (reading && typeof reading === 'object' && 'value' in reading) {
               rows.push(`${c.category},${model},${reading.value},${reading.unit},${reading.source},${reading.supported}`);
             }

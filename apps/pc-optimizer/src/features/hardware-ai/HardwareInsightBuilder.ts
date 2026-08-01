@@ -8,7 +8,6 @@
 import type {
   ComponentAnalysis,
   AIInsight,
-  AIEvidence,
   AISeverity,
   HardwareAIConfiguration,
 } from './types';
@@ -25,7 +24,6 @@ import type {
   StorageComponent,
   NetworkComponent,
   BatteryComponent,
-  CoolingComponent,
 } from '../hardware-center/types';
 import { HardwareExplanationEngine } from './HardwareExplanationEngine';
 

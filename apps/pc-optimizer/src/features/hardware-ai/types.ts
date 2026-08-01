@@ -10,8 +10,6 @@
  */
 
 import type {
-  HardwareSnapshot,
-  HardwareComponent,
   HardwareCategory,
   HealthLevel,
   SensorReading,

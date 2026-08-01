@@ -22,15 +22,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { HardwareAIEngine } from '../HardwareAIEngine';
 import { HardwareTrendHistory } from '../HardwareTrendHistory';
 import { HealthScoringEngine } from '../HealthScoringEngine';
-import { TrendAnalyzer } from '../TrendAnalyzer';
 import { HardwareRiskAssessmentEngine } from '../HardwareRiskAssessment';
-import { HardwareRecommendationEngine } from '../HardwareRecommendationEngine';
-import { HardwareInsightBuilder } from '../HardwareInsightBuilder';
 import { HardwareExplanationEngine } from '../HardwareExplanationEngine';
-import { ThermalAnalyzer, CPUAnalyzer, GPUAnalyzer, MemoryAnalyzer, StorageAnalyzer, BatteryAnalyzer, NetworkAnalyzer, CoolingAnalyzer } from '../HardwareAnalyzers';
-import { HardwareAnalyzer } from '../HardwareAnalyzer';
 import { DEFAULT_AI_CONFIG } from '../types';
-import type { HardwareAIConfiguration } from '../types';
 import type {
   HardwareSnapshot,
   HardwareComponent,
@@ -43,7 +37,6 @@ import type {
   CoolingComponent,
   OSComponent,
   MotherboardComponent,
-  ProviderHealthStatus,
 } from '../../hardware-center/types';
 import { mkSensor } from '../../hardware-center/types';
 import { hardwareAIEventBus } from '../HardwareAIEvents';

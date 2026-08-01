@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Card, Badge, Button, ProgressBar, StatTile } from '@avs/ui';
+import { Card, Badge, Button, ProgressBar } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../../components/PageHeader';
 import { HelpButton } from '../../../components/HelpButton';
@@ -19,7 +19,6 @@ import { LiveGraph } from './LiveGraph';
 import { AlertsPanel } from './AlertsPanel';
 import { ExportMenu } from './ExportMenu';
 import type {
-  HardwareComponent,
   CPUComponent,
   GPUComponent,
   RAMComponent,
@@ -87,7 +86,6 @@ export default function HardwareCenterPage() {
   const cooling = components.find((c) => c.category === 'cooling') as CoolingComponent | undefined;
 
   const searchResults = state.searchResults;
-  const displayedComponents = searchResults ?? components;
 
   return (
     <div data-testid="page-hardware-center" className="space-y-6">
@@ -278,11 +276,6 @@ export default function HardwareCenterPage() {
 }
 
 // ── Card Components ───────────────────────────────────────────────────
-
-function sensorValue<T>(reading: SensorReading<T> | undefined, fallback: string = 'N/A'): string {
-  if (!reading?.supported || reading.value === undefined) return fallback;
-  return String(reading.value);
-}
 
 function sensorNum(reading: SensorReading<number> | undefined, decimals = 0): string {
   if (!reading?.supported || reading.value === undefined) return 'N/A';

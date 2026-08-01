@@ -3,7 +3,7 @@
  *
  * Uses a simple pub/sub pattern matching the hardware-center event bus.
  */
-import type { HardwareAIEvent, HardwareAIEventTypeName } from './types';
+import type { HardwareAIEvent } from './types';
 
 type AIEventListener = (event: HardwareAIEvent) => void;
 

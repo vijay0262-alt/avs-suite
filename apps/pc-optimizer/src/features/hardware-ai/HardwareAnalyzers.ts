@@ -13,9 +13,10 @@ import type {
   AISeverity,
   HardwareAIConfiguration,
   TrendDirection,
+  ThermalAnalysisResult,
+  ThermalAnomaly,
 } from './types';
 import {
-  confidenceToLabel,
   severityToRisk,
   severityToUrgency,
   makeEvidence,
@@ -31,11 +32,9 @@ import type {
   NetworkComponent,
   BatteryComponent,
   CoolingComponent,
-  OSComponent,
-  MotherboardComponent,
   HardwareComponent,
 } from '../hardware-center/types';
-import { HardwareTrendHistory } from './HardwareTrendHistory';
+import type { HardwareTrendHistory } from './HardwareTrendHistory';
 
 export abstract class BaseAnalyzer<T extends HardwareComponent> {
   constructor(
@@ -590,7 +589,6 @@ export class CoolingAnalyzer extends BaseAnalyzer<CoolingComponent> {
     const strengths: string[] = [];
     const metrics: ComponentMetric[] = [];
     let score = 100;
-    const evidence: AIEvidence[] = [];
 
     for (const fan of cooling.info.fans) {
       if (fan.rpm?.supported && fan.rpm.value !== undefined) {
@@ -640,8 +638,8 @@ export class CoolingAnalyzer extends BaseAnalyzer<CoolingComponent> {
 export class ThermalAnalyzer {
   constructor(private config: HardwareAIConfiguration) {}
 
-  analyze(components: HardwareComponent[]): import('./types').ThermalAnalysisResult[] {
-    const results: import('./types').ThermalAnalysisResult[] = [];
+  analyze(components: HardwareComponent[]): ThermalAnalysisResult[] {
+    const results: ThermalAnalysisResult[] = [];
 
     for (const component of components) {
       switch (component.category) {
@@ -670,8 +668,8 @@ export class ThermalAnalyzer {
     category: HardwareCategory,
     tempReading: SensorReading<number> | undefined,
     throttlingReading?: SensorReading<boolean>,
-  ): import('./types').ThermalAnalysisResult {
-    const anomalies: import('./types').ThermalAnomaly[] = [];
+  ): ThermalAnalysisResult {
+    const anomalies: ThermalAnomaly[] = [];
     let currentTemp: number | null = null;
     let throttling = false;
     let confidence = 0.5;

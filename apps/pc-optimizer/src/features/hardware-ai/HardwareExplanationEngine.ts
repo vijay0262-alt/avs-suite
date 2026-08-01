@@ -14,7 +14,6 @@ import type {
   StorageComponent,
   NetworkComponent,
   BatteryComponent,
-  CoolingComponent,
 } from '../hardware-center/types';
 
 export class HardwareExplanationEngine {

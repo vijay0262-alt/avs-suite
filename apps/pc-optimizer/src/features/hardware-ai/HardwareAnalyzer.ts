@@ -13,7 +13,7 @@ import {
   NetworkAnalyzer,
   CoolingAnalyzer,
 } from './HardwareAnalyzers';
-import { HardwareTrendHistory } from './HardwareTrendHistory';
+import type { HardwareTrendHistory } from './HardwareTrendHistory';
 
 export class HardwareAnalyzer {
   private cpuAnalyzer: CPUAnalyzer;
