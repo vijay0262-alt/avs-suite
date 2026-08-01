@@ -33,7 +33,6 @@ import type {
   MotherboardComponent,
   OSComponent,
   NetworkComponent,
-  PowerSupplyComponent,
   ProviderHealthStatus,
 } from '../types';
 import { DEFAULT_HARDWARE_CONFIG, mkSensor } from '../types';
