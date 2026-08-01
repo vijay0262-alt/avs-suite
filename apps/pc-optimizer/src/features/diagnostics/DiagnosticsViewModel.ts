@@ -3,7 +3,12 @@ import type { DiagnosticsState } from './diagnostics.types';
 import type { DiagnosticsService } from './diagnostics.service';
 
 export class DiagnosticsViewModel extends ViewModel<DiagnosticsState> {
-  private refreshTimer: ReturnType<typeof setInterval> | null = null;
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private pollActive = false;
+  private visibilityHandler: (() => void) | null = null;
+
+  private static readonly POLL_INTERVAL_MS = 5000;
+  private static readonly POLL_HIDDEN_INTERVAL_MS = 30000;
 
   constructor(private readonly service: DiagnosticsService) {
     super({
@@ -31,10 +36,7 @@ export class DiagnosticsViewModel extends ViewModel<DiagnosticsState> {
   }
 
   override dispose(): void {
-    if (this.refreshTimer) {
-      clearInterval(this.refreshTimer);
-      this.refreshTimer = null;
-    }
+    this.stopPolling();
   }
 
   async bootstrap(): Promise<void> {
@@ -42,8 +44,7 @@ export class DiagnosticsViewModel extends ViewModel<DiagnosticsState> {
     try {
       await this.refresh();
       this.setState({ bootstrap: 'ready' });
-      // Auto-refresh every 5 seconds
-      this.refreshTimer = setInterval(() => void this.refresh(), 5000);
+      this.startPolling();
     } catch (error) {
       this.setState({
         bootstrap: 'error',
@@ -54,11 +55,13 @@ export class DiagnosticsViewModel extends ViewModel<DiagnosticsState> {
 
   async refresh(): Promise<void> {
     try {
-      const systemInfo = await this.service.getSystemInfo();
-      const backendStatus = await this.service.getBackendStatus();
-      const scanState = await this.service.getScanState();
-      const cleaningState = await this.service.getCleaningState();
-      const logs = await this.service.getRecentLogs();
+      const [systemInfo, backendStatus, scanState, cleaningState, logs] = await Promise.all([
+        this.service.getSystemInfo(),
+        this.service.getBackendStatus(),
+        this.service.getScanState(),
+        this.service.getCleaningState(),
+        this.service.getRecentLogs(),
+      ]);
 
       this.setState({
         electronVersion: systemInfo.electronVersion,
@@ -136,6 +139,52 @@ export class DiagnosticsViewModel extends ViewModel<DiagnosticsState> {
       this.setState({
         lastRpcTest: `Execute failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       });
+    }
+  }
+
+  private getPollInterval(): number {
+    if (typeof document !== 'undefined' && document.hidden) {
+      return DiagnosticsViewModel.POLL_HIDDEN_INTERVAL_MS;
+    }
+    return DiagnosticsViewModel.POLL_INTERVAL_MS;
+  }
+
+  private startPolling(): void {
+    this.pollActive = true;
+    const scheduleNext = () => {
+      if (!this.pollActive) return;
+      const interval = this.getPollInterval();
+      this.refreshTimer = setTimeout(() => {
+        void this.refresh().finally(() => scheduleNext());
+      }, interval);
+    };
+    scheduleNext();
+
+    if (typeof document !== 'undefined') {
+      this.visibilityHandler = () => {
+        if (!this.pollActive) return;
+        if (this.refreshTimer) {
+          clearTimeout(this.refreshTimer);
+          this.refreshTimer = null;
+        }
+        if (!document.hidden) {
+          void this.refresh();
+        }
+        scheduleNext();
+      };
+      document.addEventListener('visibilitychange', this.visibilityHandler);
+    }
+  }
+
+  private stopPolling(): void {
+    this.pollActive = false;
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+    if (this.visibilityHandler && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
     }
   }
 }

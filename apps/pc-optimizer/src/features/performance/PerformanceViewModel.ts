@@ -20,10 +20,13 @@ export interface PerformanceState {
   optimizeError: string | null;
 }
 
-const REFRESH_INTERVAL_MS = 3000; // Increased from 2000ms to reduce CPU usage
+const REFRESH_INTERVAL_MS = 3000;
+const REFRESH_HIDDEN_INTERVAL_MS = 30000;
 
 export class PerformanceViewModel extends ViewModel<PerformanceState> {
-  private refreshTimer: ReturnType<typeof setInterval> | null = null;
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private pollActive = false;
+  private visibilityHandler: (() => void) | null = null;
 
   constructor(private service: IPerformanceService = performanceService) {
     super({
@@ -134,22 +137,48 @@ export class PerformanceViewModel extends ViewModel<PerformanceState> {
   }
 
   private startAutoRefresh() {
-    if (this.refreshTimer) {
-      clearInterval(this.refreshTimer);
+    this.pollActive = true;
+    const scheduleNext = () => {
+      if (!this.pollActive) return;
+      const interval = (typeof document !== 'undefined' && document.hidden)
+        ? REFRESH_HIDDEN_INTERVAL_MS
+        : REFRESH_INTERVAL_MS;
+      this.refreshTimer = setTimeout(() => {
+        if (this.state.bootstrap === 'ready') {
+          void this.loadMetrics(true);
+          void this.loadAlerts();
+        }
+        scheduleNext();
+      }, interval);
+    };
+    scheduleNext();
+
+    if (typeof document !== 'undefined') {
+      this.visibilityHandler = () => {
+        if (!this.pollActive) return;
+        if (this.refreshTimer) {
+          clearTimeout(this.refreshTimer);
+          this.refreshTimer = null;
+        }
+        if (!document.hidden && this.state.bootstrap === 'ready') {
+          void this.loadMetrics(true);
+          void this.loadAlerts();
+        }
+        scheduleNext();
+      };
+      document.addEventListener('visibilitychange', this.visibilityHandler);
     }
-    
-    this.refreshTimer = setInterval(() => {
-      if (this.state.bootstrap === 'ready') {
-        void this.loadMetrics(true);
-        void this.loadAlerts();
-      }
-    }, REFRESH_INTERVAL_MS);
   }
 
   private stopAutoRefresh() {
+    this.pollActive = false;
     if (this.refreshTimer) {
-      clearInterval(this.refreshTimer);
+      clearTimeout(this.refreshTimer);
       this.refreshTimer = null;
+    }
+    if (this.visibilityHandler && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
     }
   }
 
