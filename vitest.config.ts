@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
 /**
@@ -9,6 +10,7 @@ import path from 'node:path';
  * source paths, exactly as the renderer does at runtime.
  */
 export default defineConfig({
+  plugins: [react()],
   resolve: {
     alias: {
       '@avs/ui': path.resolve(__dirname, 'packages/ui/src'),
@@ -18,7 +20,7 @@ export default defineConfig({
       '@avs/updater': path.resolve(__dirname, 'packages/updater/src'),
       '@avs/analytics': path.resolve(__dirname, 'packages/analytics/src'),
     },
-    dedupe: ['react', 'react-dom'],
+    dedupe: ['react', 'react-dom', 'react/jsx-runtime'],
   },
   test: {
     // Default env — node. Component-heavy tests opt in via
@@ -27,6 +29,7 @@ export default defineConfig({
     globals: false,
     passWithNoTests: true,
     include: ['apps/**/*.test.{ts,tsx}', 'packages/**/*.test.{ts,tsx}'],
+    setupFiles: ['./vitest.setup.ts'],
     coverage: {
       reporter: ['text', 'html', 'lcov'],
       include: ['apps/**/src/**', 'packages/**/src/**'],

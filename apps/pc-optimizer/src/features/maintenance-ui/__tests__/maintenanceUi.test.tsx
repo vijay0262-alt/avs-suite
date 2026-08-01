@@ -16,9 +16,8 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import React from 'react';
+import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { act } from 'react-dom/test-utils';
 
 // ── Mock @avs/ui to avoid React instance mismatch ─────────────
 
