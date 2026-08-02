@@ -19,6 +19,8 @@ export interface PrivacyState {
   browsersLoading: boolean;
   browsersError: string | null;
   cleanResult: PrivacyCleanResult | null;
+  scanError: string | null;
+  cleanError: string | null;
 }
 
 const ALL_CATEGORIES = [
