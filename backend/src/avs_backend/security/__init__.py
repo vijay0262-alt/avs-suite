@@ -474,6 +474,80 @@ $results | ConvertTo-Json -Depth 3 -Compress
 
 
 # =====================================================================
+# Network Connections
+# =====================================================================
+
+@register("security.networkConnections")
+def get_network_connections(_params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Collect active network connections with process info.
+
+    Returns connections with: processName, pid, localAddress, remoteAddress,
+    remotePort, protocol, state. Also returns listening ports.
+
+    Used by the frontend NetworkBehaviorProvider for beacon detection,
+    suspicious port analysis, and C2 communication detection.
+    """
+    try:
+        connections: list[dict[str, Any]] = []
+        listening_ports: list[dict[str, Any]] = []
+
+        for conn in psutil.net_connections(kind="inet"):
+            try:
+                proc_name = ""
+                proc_pid = conn.pid or 0
+                if conn.pid:
+                    try:
+                        p = psutil.Process(conn.pid)
+                        proc_name = p.name()
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        pass
+
+                laddr = f"{conn.laddr.ip}:{conn.laddr.port}" if conn.laddr else ""
+                raddr = f"{conn.raddr.ip}:{conn.raddr.port}" if conn.raddr else ""
+
+                connections.append({
+                    "processName": proc_name,
+                    "pid": proc_pid,
+                    "localAddress": laddr,
+                    "remoteAddress": raddr,
+                    "remotePort": conn.raddr.port if conn.raddr else 0,
+                    "protocol": "tcp" if conn.type == 1 else "udp",
+                    "state": conn.status,
+                    "timestamp": time.time(),
+                })
+
+                # Collect listening ports
+                if conn.status == "LISTEN" and conn.laddr:
+                    listening_ports.append({
+                        "processName": proc_name,
+                        "pid": proc_pid,
+                        "port": conn.laddr.port,
+                        "protocol": "tcp" if conn.type == 1 else "udp",
+                        "address": conn.laddr.ip,
+                    })
+            except Exception:
+                continue
+
+        return {
+            "connections": connections,
+            "listeningPorts": listening_ports,
+            "connectionCount": len(connections),
+            "listeningPortCount": len(listening_ports),
+            "capturedAt": _now_iso(),
+        }
+    except Exception as e:
+        log.warning("Failed to collect network connections: %s", e)
+        return {
+            "connections": [],
+            "listeningPorts": [],
+            "connectionCount": 0,
+            "listeningPortCount": 0,
+            "error": str(e),
+            "capturedAt": _now_iso(),
+        }
+
+
+# =====================================================================
 # Combined Snapshot
 # =====================================================================
 
@@ -497,6 +571,7 @@ def get_security_snapshot(_params: dict[str, Any] | None = None) -> dict[str, An
         ("services", get_services),
         ("browserExtensions", get_browser_extensions),
         ("unsignedExecutables", get_unsigned_executables),
+        ("networkConnections", get_network_connections),
     ]
 
     results: dict[str, Any] = {}

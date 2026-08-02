@@ -72,6 +72,8 @@ export interface EditionLimits {
   securityScheduledScans: EditionLimit;
   securityAutoQuarantine: EditionLimit;
   securityAutoRemediation: EditionLimit;
+  securityManualQuarantine: EditionLimit;
+  securityManualRemediation: EditionLimit;
 
   // Reports
   reportsHistoryDays: EditionLimit;
@@ -229,6 +231,18 @@ export const EDITION_LIMITS: EditionLimits = {
     professional: 1,
     freeLabel: 'Manual remediation',
     proLabel: 'Automatic remediation',
+  },
+  securityManualQuarantine: {
+    free: 0,
+    professional: 1,
+    freeLabel: 'View threats only — upgrade to quarantine',
+    proLabel: 'Quarantine detected threats',
+  },
+  securityManualRemediation: {
+    free: 0,
+    professional: 1,
+    freeLabel: 'View threats only — upgrade to remove',
+    proLabel: 'Remove threats and execute remediation plans',
   },
 
   // Reports

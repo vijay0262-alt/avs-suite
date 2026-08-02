@@ -62,6 +62,7 @@ import type {
 } from '../security-remediation/types';
 
 import { securityBackendService, type SecuritySnapshotData } from './securityBackendService';
+import { securityDataAdapter } from './securityDataAdapter';
 
 export interface ScanProgress {
   scanId: string;
@@ -136,42 +137,28 @@ export class SecurityCenterService {
     }
 
     // ── Build scan options from real backend data ───────────
-    // These option keys match what the frontend providers expect
-    // (see PersistenceDetectionProvider, SpywareDetectionProvider, etc.)
+    // The adapter transforms raw backend data (processes, startup entries,
+    // tasks, services, extensions, unsigned executables) into the typed
+    // indicator objects that each frontend SecurityProvider expects:
+    //   - spywareInput → SpywareIndicator[] for SpywareDetectionProvider
+    //   - adwareInput → AdwareIndicator[] for AdwareDetectionProvider
+    //   - pupInput → PUPIndicator[] for PUPDetectionProvider
+    //   - cryptoMinerInput → CryptoMinerInput for CryptoMinerDetectionProvider
+    //   - processBehaviors → ProcessBehaviorInfo[] for SuspiciousProcessProvider
+    //   - persistenceAnalysis → PersistenceAnalysisInput for PersistenceDetectionProvider
+    //   - startupEntries → StartupEntryDetail[] for StartupAbuseProvider
+    //   - scheduledTasks → ScheduledTaskDetail[] for ScheduledTaskProvider
+    //   - services → ServiceDetail[] for ServiceAnalysisProvider
+    //   - browserAnalysis → BrowserAnalysisInput for BrowserHijackerProvider
+    //   - reputationAnalysis → { files, publishers } for Unsigned/FileReputation/PublisherTrust
+    //   - scripts → ScriptDetail[] for PowerShell/Script/Macro providers
     const scanOptions: Record<string, unknown> = {
       ...options,
     };
 
     if (backendData) {
-      // Process list for SuspiciousProcessProvider, NetworkBehaviorProvider, etc.
-      if (backendData.processes?.processes) {
-        scanOptions['processList'] = backendData.processes.processes;
-      }
-
-      // Startup entries for PersistenceDetectionProvider, StartupAbuseProvider
-      if (backendData.startupAnalysis?.entries) {
-        scanOptions['startupEntries'] = backendData.startupAnalysis.entries;
-      }
-
-      // Scheduled tasks for ScheduledTaskProvider
-      if (backendData.scheduledTasks?.tasks) {
-        scanOptions['scheduledTasks'] = backendData.scheduledTasks.tasks;
-      }
-
-      // Services for ServiceAnalysisProvider
-      if (backendData.services?.services) {
-        scanOptions['runningServices'] = backendData.services.services;
-      }
-
-      // Browser extensions for BrowserHijackerProvider, BrowserProtectionProvider
-      if (backendData.browserExtensions?.extensions) {
-        scanOptions['browserExtensions'] = backendData.browserExtensions.extensions;
-      }
-
-      // Unsigned executables for UnsignedExecutableProvider
-      if (backendData.unsignedExecutables?.executables) {
-        scanOptions['unsignedExecutables'] = backendData.unsignedExecutables.executables;
-      }
+      const adapterOptions = securityDataAdapter.transform(backendData);
+      Object.assign(scanOptions, adapterOptions);
     }
 
     // ── Run frontend security providers on real data ────────

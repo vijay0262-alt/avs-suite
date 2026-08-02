@@ -130,6 +130,7 @@ export const RPC_METHODS = {
   SECURITY_SERVICES: 'security.services',
   SECURITY_BROWSER_EXTENSIONS: 'security.browserExtensions',
   SECURITY_UNSIGNED_EXECUTABLES: 'security.unsignedExecutables',
+  SECURITY_NETWORK_CONNECTIONS: 'security.networkConnections',
   SECURITY_SNAPSHOT: 'security.snapshot',
 
   // Security Investigation

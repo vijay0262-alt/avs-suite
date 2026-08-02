@@ -79,6 +79,25 @@ export interface BackendUnsignedExecutable {
   lastModified: string;
 }
 
+export interface BackendNetworkConnection {
+  processName: string;
+  pid: number;
+  localAddress: string;
+  remoteAddress: string;
+  remotePort: number;
+  protocol: string;
+  state: string;
+  timestamp: number;
+}
+
+export interface BackendListeningPort {
+  processName: string;
+  pid: number;
+  port: number;
+  protocol: string;
+  address: string;
+}
+
 export interface SecuritySnapshotData {
   processes: { processes: BackendProcess[]; count: number; capturedAt: string };
   startupAnalysis: { entries: BackendStartupEntry[]; count: number; capturedAt: string };
@@ -86,6 +105,7 @@ export interface SecuritySnapshotData {
   services: { services: BackendService[]; count: number; capturedAt: string };
   browserExtensions: { extensions: BackendBrowserExtension[]; count: number; capturedAt: string };
   unsignedExecutables: { executables: BackendUnsignedExecutable[]; count: number; capturedAt: string };
+  networkConnections?: { connections: BackendNetworkConnection[]; listeningPorts: BackendListeningPort[]; connectionCount: number; listeningPortCount: number; capturedAt: string };
   capturedAt: string;
   supported: boolean;
 }
@@ -153,6 +173,10 @@ export const securityBackendService = {
 
   async getUnsignedExecutables(): Promise<{ executables: BackendUnsignedExecutable[]; count: number; capturedAt: string }> {
     return rpc.raw(RPC_METHODS.SECURITY_UNSIGNED_EXECUTABLES);
+  },
+
+  async getNetworkConnections(): Promise<{ connections: BackendNetworkConnection[]; listeningPorts: BackendListeningPort[]; connectionCount: number; listeningPortCount: number; capturedAt: string }> {
+    return rpc.raw(RPC_METHODS.SECURITY_NETWORK_CONNECTIONS);
   },
 
   // ── Scan lifecycle ─────────────────────────────────────────

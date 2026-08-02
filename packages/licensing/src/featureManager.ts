@@ -74,6 +74,10 @@ export type ManagedFeature =
   | 'driver.update'
   // Antivirus
   | 'antivirus.scan'
+  // Security Center — scanning (free), quarantine/remediation (pro)
+  | 'security.scan'
+  | 'security.quarantine'
+  | 'security.remediate'
   // AI Smart Optimization
   | 'ai.smart_optimization'
   // Browser Protection
@@ -143,6 +147,10 @@ export const FEATURE_MAP: Record<ManagedFeature, string> = {
   'driver.update': 'DRIVER_UPDATER',
   // Antivirus
   'antivirus.scan': 'ANTIVIRUS',
+  // Security Center
+  'security.scan': 'SECURITY_SCAN',
+  'security.quarantine': 'SECURITY_QUARANTINE',
+  'security.remediate': 'SECURITY_REMEDIATE',
   // AI Smart Optimization
   'ai.smart_optimization': 'AI_SMART_OPTIMIZATION',
   // Browser Protection
@@ -210,6 +218,7 @@ function isFreeFeature(featureKey: string): boolean {
     'JUNK_CLEANER_BASIC', 'REGISTRY_SCAN', 'STARTUP_VIEW',
     'PRIVACY_SCAN', 'DUPLICATE_SCAN', 'UNINSTALLER_VIEW',
     'UNINSTALLER_STANDARD', 'SOFTWARE_UPDATE_SCAN',
+    'SECURITY_SCAN',
   ]);
   return freeFeatures.has(featureKey);
 }

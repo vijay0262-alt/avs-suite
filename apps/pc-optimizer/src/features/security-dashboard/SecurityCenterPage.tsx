@@ -12,6 +12,9 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleLoadingState, ModuleEmptyState } from '../../components/ModuleStates';
 import { ProStatusBanner, ProStatusPill, ProFeatureIndicator, ProOnlySection } from '../licensing/ProStatusBadge';
+import { useFeatureGuard } from '../licensing/useFeatureGuard';
+import { canUse } from '../licensing/FeatureGate';
+import { LockClosedIcon as LockIconSmall } from '@heroicons/react/24/solid';
 import {
   SecurityCenterViewModel,
   type SecurityCenterTab,
@@ -620,6 +623,8 @@ function ThreatsTab({ vm }: { vm: SecurityCenterViewModel }) {
 
 function ThreatCard({ threat, vm }: { threat: Threat; vm: SecurityCenterViewModel }) {
   const [expanded, setExpanded] = useState(false);
+  const { guard, dialogElement } = useFeatureGuard();
+  const canRemediate = canUse('security.remediate');
 
   return (
     <Card variant="glass" className="overflow-hidden">
@@ -712,14 +717,32 @@ function ThreatCard({ threat, vm }: { threat: Threat; vm: SecurityCenterViewMode
               Investigate
             </Button>
             {threat.canRemediate && (
-              <Button size="sm" variant="danger" onClick={() => {
-                const inv = vm.state.investigations.find(i => i.threatIds.includes(threat.id));
-                if (inv) { vm.createRemediationPlan(inv.id); vm.setActiveTab('remediation'); }
-              }} leftIcon={<WrenchScrewdriverIcon className="h-4 w-4" />}>
-                Remediate
-              </Button>
+              canRemediate ? (
+                <Button size="sm" variant="danger" onClick={() => {
+                  const inv = vm.state.investigations.find(i => i.threatIds.includes(threat.id));
+                  if (inv) { vm.createRemediationPlan(inv.id); vm.setActiveTab('remediation'); }
+                }} leftIcon={<WrenchScrewdriverIcon className="h-4 w-4" />}>
+                  Remediate
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() => guard('security.remediate', 'Security Center', () => {
+                    const inv = vm.state.investigations.find(i => i.threatIds.includes(threat.id));
+                    if (inv) { vm.createRemediationPlan(inv.id); vm.setActiveTab('remediation'); }
+                  }, {
+                    limitDescription: 'Threats are detected but cannot be removed in the Free edition.',
+                    proBenefit: 'Quarantine and remove detected threats automatically with AVS Shield Pro.',
+                  })}
+                  leftIcon={<LockIconSmall className="h-4 w-4" />}
+                >
+                  Remediate (Pro)
+                </Button>
+              )
             )}
           </div>
+          {dialogElement}
         </div>
       )}
     </Card>
@@ -787,6 +810,9 @@ function InvestigationTab({ vm }: { vm: SecurityCenterViewModel }) {
 }
 
 function InvestigationDetail({ inv, vm }: { inv: ThreatInvestigation; vm: SecurityCenterViewModel }) {
+  const { guard, dialogElement } = useFeatureGuard();
+  const canRemediate = canUse('security.remediate');
+
   return (
     <div className="space-y-4">
       {/* Summary */}
@@ -954,9 +980,22 @@ function InvestigationDetail({ inv, vm }: { inv: ThreatInvestigation; vm: Securi
       {/* Actions */}
       <Card variant="glass">
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => vm.createRemediationPlan(inv.id)} leftIcon={<WrenchScrewdriverIcon className="h-4 w-4" />}>
-            Create Remediation Plan
-          </Button>
+          {canRemediate ? (
+            <Button size="sm" onClick={() => vm.createRemediationPlan(inv.id)} leftIcon={<WrenchScrewdriverIcon className="h-4 w-4" />}>
+              Create Remediation Plan
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => guard('security.remediate', 'Security Center', () => vm.createRemediationPlan(inv.id), {
+                limitDescription: 'Remediation plans are not available in the Free edition.',
+                proBenefit: 'Create and execute remediation plans to quarantine or remove threats with AVS Shield Pro.',
+              })}
+              leftIcon={<LockIconSmall className="h-4 w-4" />}
+            >
+              Create Remediation Plan (Pro)
+            </Button>
+          )}
           <Button size="sm" variant="secondary" onClick={() => vm.updateInvestigationStatus(inv.id, 'resolved')} leftIcon={<CheckIcon className="h-4 w-4" />}>
             Mark Resolved
           </Button>
@@ -968,6 +1007,7 @@ function InvestigationDetail({ inv, vm }: { inv: ThreatInvestigation; vm: Securi
           </Button>
         </div>
       </Card>
+      {dialogElement}
     </div>
   );
 }
@@ -977,9 +1017,25 @@ function InvestigationDetail({ inv, vm }: { inv: ThreatInvestigation; vm: Securi
 function RemediationTab({ vm }: { vm: SecurityCenterViewModel }) {
   const s = vm.state;
   const qs = s.quarantineSummary;
+  const canRemediate = canUse('security.remediate');
 
   return (
     <div className="space-y-6">
+      {/* Free edition notice */}
+      {!canRemediate && (
+        <Card variant="glass" className="border-[var(--avs-brand-primary)]/30 bg-[var(--avs-brand-primary)]/5">
+          <div className="flex items-center gap-3">
+            <LockIconSmall className="h-5 w-5 shrink-0 text-[var(--avs-brand-primary)]" />
+            <div>
+              <p className="text-sm font-semibold text-[var(--avs-text-primary)]">Quarantine & Remediation are Pro features</p>
+              <p className="text-xs text-[var(--avs-text-secondary)]">
+                You can view detected threats and investigations for free. Upgrade to AVS Shield Pro to quarantine, remove, and remediate threats.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Card variant="glass" className="p-4">
@@ -1051,6 +1107,9 @@ function RemediationTab({ vm }: { vm: SecurityCenterViewModel }) {
 }
 
 function PlanCard({ plan, vm }: { plan: RemediationPlan; vm: SecurityCenterViewModel }) {
+  const { guard, dialogElement } = useFeatureGuard();
+  const canRemediate = canUse('security.remediate');
+
   return (
     <div className="rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-4">
       <div className="flex items-center justify-between">
@@ -1081,9 +1140,23 @@ function PlanCard({ plan, vm }: { plan: RemediationPlan; vm: SecurityCenterViewM
             <div className="flex items-center gap-2">
               <span className="text-xs text-[var(--avs-text-muted)]">{action.riskLevel}</span>
               {action.status === 'completed' && action.reversible && action.rollbackId && (
-                <Button size="sm" variant="ghost" onClick={() => vm.rollbackAction(action.id)} leftIcon={<ArrowUturnLeftIcon className="h-3 w-3" />}>
-                  Undo
-                </Button>
+                canRemediate ? (
+                  <Button size="sm" variant="ghost" onClick={() => vm.rollbackAction(action.id)} leftIcon={<ArrowUturnLeftIcon className="h-3 w-3" />}>
+                    Undo
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => guard('security.remediate', 'Security Center', () => vm.rollbackAction(action.id), {
+                      limitDescription: 'Rollback of remediation actions is not available in the Free edition.',
+                      proBenefit: 'Undo remediation actions with AVS Shield Pro.',
+                    })}
+                    leftIcon={<LockIconSmall className="h-3 w-3" />}
+                  >
+                    Undo (Pro)
+                  </Button>
+                )
               )}
             </div>
           </div>
@@ -1093,16 +1166,56 @@ function PlanCard({ plan, vm }: { plan: RemediationPlan; vm: SecurityCenterViewM
       {/* Plan Actions */}
       <div className="mt-3 flex gap-2">
         {plan.status === 'pending_approval' && (
-          <>
-            <Button size="sm" onClick={() => vm.approvePlan(plan.id)} leftIcon={<CheckIcon className="h-4 w-4" />}>Approve</Button>
-            <Button size="sm" variant="secondary" onClick={() => vm.rejectPlan(plan.id)} leftIcon={<XMarkIcon className="h-4 w-4" />}>Reject</Button>
-          </>
+          canRemediate ? (
+            <>
+              <Button size="sm" onClick={() => vm.approvePlan(plan.id)} leftIcon={<CheckIcon className="h-4 w-4" />}>Approve</Button>
+              <Button size="sm" variant="secondary" onClick={() => vm.rejectPlan(plan.id)} leftIcon={<XMarkIcon className="h-4 w-4" />}>Reject</Button>
+            </>
+          ) : (
+            <>
+              <Button
+                size="sm"
+                onClick={() => guard('security.remediate', 'Security Center', () => vm.approvePlan(plan.id), {
+                  limitDescription: 'Approving remediation plans is not available in the Free edition.',
+                  proBenefit: 'Approve and execute remediation plans with AVS Shield Pro.',
+                })}
+                leftIcon={<LockIconSmall className="h-4 w-4" />}
+              >
+                Approve (Pro)
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => guard('security.remediate', 'Security Center', () => vm.rejectPlan(plan.id), {
+                  limitDescription: 'Managing remediation plans is not available in the Free edition.',
+                  proBenefit: 'Full remediation management with AVS Shield Pro.',
+                })}
+                leftIcon={<LockIconSmall className="h-4 w-4" />}
+              >
+                Reject (Pro)
+              </Button>
+            </>
+          )
         )}
         {plan.status === 'approved' && (
-          <Button size="sm" onClick={() => vm.executePlan(plan.id)} leftIcon={<WrenchScrewdriverIcon className="h-4 w-4" />}>Execute</Button>
+          canRemediate ? (
+            <Button size="sm" onClick={() => vm.executePlan(plan.id)} leftIcon={<WrenchScrewdriverIcon className="h-4 w-4" />}>Execute</Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => guard('security.remediate', 'Security Center', () => vm.executePlan(plan.id), {
+                limitDescription: 'Executing remediation plans is not available in the Free edition.',
+                proBenefit: 'Execute remediation plans to remove threats with AVS Shield Pro.',
+              })}
+              leftIcon={<LockIconSmall className="h-4 w-4" />}
+            >
+              Execute (Pro)
+            </Button>
+          )
         )}
         <Button size="sm" variant="ghost" onClick={() => vm.generateRemediationReport(plan.id)} leftIcon={<DocumentTextIcon className="h-4 w-4" />}>Report</Button>
       </div>
+      {dialogElement}
     </div>
   );
 }

@@ -261,6 +261,23 @@ export const FEATURES = {
     editions: ['professional'] as const,
   },
 
+  // ── Security Center ──────────────────────────────────────────
+  SECURITY_SCAN: {
+    key: 'security-scan',
+    description: 'AI-powered security scanning — detect spyware, adware, malware, and other threats.',
+    editions: ['free', 'professional'] as const,
+  },
+  SECURITY_QUARANTINE: {
+    key: 'security-quarantine',
+    description: 'Quarantine detected threats — isolate infected files safely.',
+    editions: ['professional'] as const,
+  },
+  SECURITY_REMEDIATE: {
+    key: 'security-remediate',
+    description: 'Remove threats and execute remediation plans — delete, rollback, and restore.',
+    editions: ['professional'] as const,
+  },
+
   // ── AI Smart Optimization ────────────────────────────────────
   AI_SMART_OPTIMIZATION: {
     key: 'ai-smart-optimization',
