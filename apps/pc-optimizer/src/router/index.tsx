@@ -56,6 +56,10 @@ import {
   KeyloggerProtectionPage,
   RootkitProtectionPage,
   BackdoorProtectionPage,
+  PersistenceDetectionPage,
+  NetworkBehaviorAnalysisPage,
+  FileReputationAnalysisPage,
+  PublisherTrustAnalysisPage,
 } from '../pages/SecuritySubPages';
 import {
   AIDailyBriefingPage,
@@ -162,6 +166,10 @@ export const router = createHashRouter([
       { path: 'keylogger-protection', element: <KeyloggerProtectionPage /> },
       { path: 'rootkit-protection', element: <RootkitProtectionPage /> },
       { path: 'backdoor-protection', element: <BackdoorProtectionPage /> },
+      { path: 'persistence-detection', element: <PersistenceDetectionPage /> },
+      { path: 'network-behavior-analysis', element: <NetworkBehaviorAnalysisPage /> },
+      { path: 'file-reputation-analysis', element: <FileReputationAnalysisPage /> },
+      { path: 'publisher-trust-analysis', element: <PublisherTrustAnalysisPage /> },
       { path: 'threat-investigation', element: <ThreatInvestigationPage /> },
       { path: 'quarantine', element: <QuarantinePage /> },
       { path: 'security-reports', element: <SecurityReportsPage /> },

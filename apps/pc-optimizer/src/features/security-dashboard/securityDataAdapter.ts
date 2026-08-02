@@ -44,6 +44,14 @@ import type {
   BrowserAnalysisInput,
   BrowserExtensionDetail,
   ScriptDetail,
+  RansomwareIndicator,
+  RansomwareSignal,
+  TrojanIndicator,
+  TrojanSignal,
+  KeyloggerIndicator,
+  KeyloggerSignal,
+  RootkitIndicator,
+  RootkitSignal,
 } from '../security-center/types';
 import type { SecuritySnapshotData, BackendNetworkConnection, BackendListeningPort } from './securityBackendService';
 
@@ -92,6 +100,20 @@ const SUSPICIOUS_PERMISSIONS = [
   'nativeMessaging', 'clipboardRead', 'clipboardWrite',
   'cookies', 'history', 'browsingData',
 ];
+
+const RANSOMWARE_PROCESS_NAMES = ['locky', 'cryptolocker', 'wannacry', 'wcry', 'ryuk', 'conti', 'maze', 'sodinokibi', 'gandcrab', 'cerber', 'globeimposter', 'dharma', 'phobos'];
+const RANSOM_NOTE_PATTERNS = ['how_to_decrypt', 'readme', 'restore_files', 'ransom', 'recover', 'how_to_recover', 'decryption_instructions', '!restore', 'help_help', 'all_your_files'];
+const SHADOW_DELETE_CMDS = ['vssadmin delete shadows', 'vssadmin delete shadowcopies', 'wmic shadowcopy delete'];
+const RECOVERY_DISABLE_CMDS = ['bcdedit', 'recoveryenabled no'];
+const BACKUP_DELETE_CMDS = ['wbadmin delete catalog', 'wbadmin delete systemstatebackup'];
+
+const TROJAN_PROCESS_NAMES = ['emotet', 'trickbot', 'zeus', 'azorult', 'lokibot', 'formbook', 'redline', 'vidar', 'racoon', 'dridex', 'qakbot', 'icedid', 'bazarloader', 'hancitor'];
+const SYSTEM_PROCESS_NAMES = ['explorer.exe', 'svchost.exe', 'lsass.exe', 'csrss.exe', 'winlogon.exe', 'wininit.exe', 'smss.exe', 'services.exe', 'spoolsv.exe', 'dwm.exe'];
+
+const KEYLOGGER_PROCESS_NAMES = ['keylog', 'keylogger', 'keystroke', 'keycapture', 'keyspy', 'keytrap', 'spytector', 'refog', 'ardamax', 'actualspy', 'revealer'];
+const KEYLOGGER_API_PATTERNS = ['setwindowshookex', 'getasynckeystate', 'getkeyboardstate', 'getkeynametext', 'toasciiex', 'getrawinputdata'];
+
+const ROOTKIT_PROCESS_NAMES = ['rootkit', 'necurs', 'tdss', 'alureon', 'rustock', 'bagle', 'haxdoor', 'agobot', 'rxbot', 'spambot', 'cutwail', 'sirefef', 'zeroaccess'];
 
 // ── Helper functions ────────────────────────────────────────────
 
@@ -190,6 +212,22 @@ export const securityDataAdapter = {
     // ── Scripts (from process command lines) ─────────────────
     const scripts = this.transformScripts(processes);
     if (scripts.length > 0) options['scripts'] = scripts;
+
+    // ── Ransomware indicators ────────────────────────────────
+    const ransomwareIndicators = this.transformRansomware(processes);
+    if (ransomwareIndicators.length > 0) options['ransomwareInput'] = ransomwareIndicators;
+
+    // ── Trojan indicators ────────────────────────────────────
+    const trojanIndicators = this.transformTrojans(processes);
+    if (trojanIndicators.length > 0) options['trojanInput'] = trojanIndicators;
+
+    // ── Keylogger indicators ─────────────────────────────────
+    const keyloggerIndicators = this.transformKeyloggers(processes);
+    if (keyloggerIndicators.length > 0) options['keyloggerInput'] = keyloggerIndicators;
+
+    // ── Rootkit indicators ───────────────────────────────────
+    const rootkitIndicators = this.transformRootkits(processes, services);
+    if (rootkitIndicators.length > 0) options['rootkitInput'] = rootkitIndicators;
 
     return options;
   },
@@ -791,5 +829,304 @@ export const securityDataAdapter = {
     }
 
     return scripts;
+  },
+
+  // ── Ransomware indicators ────────────────────────────────────
+
+  transformRansomware(
+    processes: Array<{ pid: number; name: string; exe: string; cmdline: string }>,
+  ): RansomwareIndicator[] {
+    const indicators: RansomwareIndicator[] = [];
+    const now = Date.now();
+
+    for (const proc of processes) {
+      const signals: RansomwareSignal[] = [];
+      const nameLower = (proc.name || '').toLowerCase();
+      const cmdLower = (proc.cmdline || '').toLowerCase();
+
+      // Known ransomware process name
+      if (matchPatterns(nameLower, RANSOMWARE_PROCESS_NAMES)) {
+        signals.push({ type: 'known_ransomware_name', description: `Process name matches known ransomware: ${proc.name}`, value: proc.name, timestamp: now });
+      }
+
+      // Shadow copy deletion
+      for (const cmd of SHADOW_DELETE_CMDS) {
+        if (cmdLower.includes(cmd)) {
+          signals.push({ type: 'shadow_copy_deletion', description: `Shadow copy deletion command: ${cmd}`, value: cmd, timestamp: now });
+          break;
+        }
+      }
+
+      // Recovery disable
+      for (const cmd of RECOVERY_DISABLE_CMDS) {
+        if (cmdLower.includes(cmd)) {
+          signals.push({ type: 'recovery_disabled', description: `Recovery disabled: ${cmd}`, value: cmd, timestamp: now });
+          break;
+        }
+      }
+
+      // Backup deletion
+      for (const cmd of BACKUP_DELETE_CMDS) {
+        if (cmdLower.includes(cmd)) {
+          signals.push({ type: 'backup_deletion', description: `Backup deletion command: ${cmd}`, value: cmd, timestamp: now });
+          break;
+        }
+      }
+
+      // Ransom note creation patterns in command line
+      for (const pattern of RANSOM_NOTE_PATTERNS) {
+        if (cmdLower.includes(pattern)) {
+          signals.push({ type: 'ransom_note', description: `Ransom note pattern in command line: ${pattern}`, value: pattern, timestamp: now });
+          break;
+        }
+      }
+
+      // Disk encryption commands
+      if (cmdLower.includes('cipher /w') || cmdLower.includes('manage-bde -on') || cmdLower.includes('bitlocker')) {
+        signals.push({ type: 'disk_encryption_command', description: `Disk encryption command detected: ${proc.cmdline}`, value: proc.cmdline, timestamp: now });
+      }
+
+      // Volume shadow enumeration
+      if (cmdLower.includes('vssadmin list shadows') || cmdLower.includes('wmic shadowcopy list')) {
+        signals.push({ type: 'volume_shadow_enumeration', description: `Volume shadow enumeration: ${proc.cmdline}`, value: proc.cmdline, timestamp: now });
+      }
+
+      // Mass encryption: process accessing many file extensions rapidly (heuristic from command line)
+      if (cmdLower.includes('*.doc') || cmdLower.includes('*.xls') || cmdLower.includes('*.pdf') || cmdLower.includes('*.jpg')) {
+        if (isSuspiciousPath(proc.exe || '') || cmdLower.includes('encrypt') || cmdLower.includes('cipher')) {
+          signals.push({ type: 'mass_encryption', description: `Mass file access pattern with encryption indicators: ${proc.cmdline}`, value: proc.cmdline, timestamp: now });
+        }
+      }
+
+      if (signals.length >= 2) {
+        indicators.push({
+          processName: proc.name,
+          pid: proc.pid,
+          path: proc.exe || '',
+          indicators: signals,
+        });
+      }
+    }
+
+    return indicators;
+  },
+
+  // ── Trojan indicators ────────────────────────────────────────
+
+  transformTrojans(
+    processes: Array<{ pid: number; name: string; exe: string; cmdline: string; username: string }>,
+  ): TrojanIndicator[] {
+    const indicators: TrojanIndicator[] = [];
+    const now = Date.now();
+
+    for (const proc of processes) {
+      const signals: TrojanSignal[] = [];
+      const nameLower = (proc.name || '').toLowerCase();
+      const cmdLower = (proc.cmdline || '').toLowerCase();
+      const exeLower = (proc.exe || '').toLowerCase();
+
+      // Known trojan process name
+      if (matchPatterns(nameLower, TROJAN_PROCESS_NAMES)) {
+        signals.push({ type: 'known_trojan_name', description: `Process name matches known trojan: ${proc.name}`, value: proc.name, timestamp: now });
+      }
+
+      // System process impersonation: running from non-system path with system process name
+      if (SYSTEM_PROCESS_NAMES.includes(nameLower) && !exeLower.includes('\\windows\\') && !exeLower.includes('\\system32\\')) {
+        signals.push({ type: 'system_process_impersonation', description: `System process name running from non-system path: ${proc.exe}`, value: proc.exe, timestamp: now });
+      }
+
+      // Dropper behavior: downloading and executing
+      if ((cmdLower.includes('downloadstring') || cmdLower.includes('downloadfile') || cmdLower.includes('urldownloadtofile'))
+        && (cmdLower.includes('exec') || cmdLower.includes('invoke') || cmdLower.includes('start-process') || cmdLower.includes('cmd /c'))) {
+        signals.push({ type: 'dropper_behavior', description: `Dropper behavior: download and execute in command line`, value: proc.cmdline, timestamp: now });
+      }
+
+      // Suspicious network from system process
+      if (SYSTEM_PROCESS_NAMES.includes(nameLower) && (cmdLower.includes('net.webclient') || cmdLower.includes('invoke-webrequest') || cmdLower.includes('curl') || cmdLower.includes('wget'))) {
+        signals.push({ type: 'suspicious_network_from_system', description: `System process making network requests: ${proc.cmdline}`, value: proc.cmdline, timestamp: now });
+      }
+
+      // Hidden window from system process
+      if (SYSTEM_PROCESS_NAMES.includes(nameLower) && (cmdLower.includes('-w hidden') || cmdLower.includes('windowstyle hidden'))) {
+        signals.push({ type: 'hidden_window_system', description: `System process with hidden window: ${proc.cmdline}`, value: proc.cmdline, timestamp: now });
+      }
+
+      // Registry persistence from suspicious process
+      if ((cmdLower.includes('reg add') && (cmdLower.includes('run') || cmdLower.includes('runonce')))
+        && isSuspiciousPath(proc.exe || '')) {
+        signals.push({ type: 'registry_persistence_trojan', description: `Registry persistence from suspicious path: ${proc.cmdline}`, value: proc.cmdline, timestamp: now });
+      }
+
+      // DLL injection indicators
+      if (cmdLower.includes('createremotethread') || cmdLower.includes('writeprocessmemory') || cmdLower.includes('virtualallocex')) {
+        signals.push({ type: 'dll_injection', description: `DLL injection APIs in command line: ${proc.cmdline}`, value: proc.cmdline, timestamp: now });
+      }
+
+      // Process hollowing indicators
+      if (cmdLower.includes('createprocess') && cmdLower.includes('suspend') && (cmdLower.includes('ntunmapviewofsection') || cmdLower.includes('zwunmapviewofsection'))) {
+        signals.push({ type: 'process_hollowing', description: `Process hollowing indicators: ${proc.cmdline}`, value: proc.cmdline, timestamp: now });
+      }
+
+      if (signals.length >= 2) {
+        indicators.push({
+          processName: proc.name,
+          pid: proc.pid,
+          path: proc.exe || '',
+          indicators: signals,
+        });
+      }
+    }
+
+    return indicators;
+  },
+
+  // ── Keylogger indicators ─────────────────────────────────────
+
+  transformKeyloggers(
+    processes: Array<{ pid: number; name: string; exe: string; cmdline: string }>,
+  ): KeyloggerIndicator[] {
+    const indicators: KeyloggerIndicator[] = [];
+    const now = Date.now();
+
+    for (const proc of processes) {
+      const signals: KeyloggerSignal[] = [];
+      const nameLower = (proc.name || '').toLowerCase();
+      const cmdLower = (proc.cmdline || '').toLowerCase();
+
+      // Known keylogger process name
+      if (matchPatterns(nameLower, KEYLOGGER_PROCESS_NAMES)) {
+        signals.push({ type: 'known_keylogger_name', description: `Process name matches known keylogger: ${proc.name}`, value: proc.name, timestamp: now });
+      }
+
+      // Keyboard hook APIs
+      for (const api of KEYLOGGER_API_PATTERNS) {
+        if (cmdLower.includes(api)) {
+          signals.push({ type: 'keyboard_hook', description: `Keyboard hook API detected: ${api}`, value: api, timestamp: now });
+          break;
+        }
+      }
+
+      // Clipboard monitoring
+      if (cmdLower.includes('clipboard') || cmdLower.includes('getclipboarddata') || cmdLower.includes('openclipboard')) {
+        signals.push({ type: 'clipboard_monitoring', description: `Clipboard monitoring detected: ${proc.cmdline}`, value: proc.cmdline, timestamp: now });
+      }
+
+      // Log file creation in suspicious locations
+      if (isSuspiciousPath(proc.exe || '') && (cmdLower.includes('.log') || cmdLower.includes('.txt') || cmdLower.includes('.dat'))) {
+        signals.push({ type: 'log_file_creation', description: `Log file creation from suspicious location: ${proc.exe}`, value: proc.exe, timestamp: now });
+      }
+
+      // Input capture API (GetAsyncKeyState in non-system process)
+      if (cmdLower.includes('getasynckeystate') && !nameLower.includes('windows') && !nameLower.includes('microsoft')) {
+        signals.push({ type: 'input_capture_api', description: `Input capture API in non-system process: ${proc.name}`, value: proc.name, timestamp: now });
+      }
+
+      // Suspicious DLL injection into input processes
+      if ((nameLower.includes('explorer') || nameLower.includes('winlogon')) && cmdLower.includes('loadlibrary')) {
+        signals.push({ type: 'suspicious_dll_injection_input', description: `DLL injection into input-handling process: ${proc.name}`, value: proc.cmdline, timestamp: now });
+      }
+
+      if (signals.length >= 2) {
+        indicators.push({
+          processName: proc.name,
+          pid: proc.pid,
+          path: proc.exe || '',
+          indicators: signals,
+        });
+      }
+    }
+
+    return indicators;
+  },
+
+  // ── Rootkit indicators ───────────────────────────────────────
+
+  transformRootkits(
+    processes: Array<{ pid: number; name: string; exe: string; cmdline: string }>,
+    services: Array<{ name: string; displayName: string; pathName: string; startMode: string; serviceType: string }>,
+  ): RootkitIndicator[] {
+    const indicators: RootkitIndicator[] = [];
+    const now = Date.now();
+
+    for (const proc of processes) {
+      const signals: RootkitSignal[] = [];
+      const nameLower = (proc.name || '').toLowerCase();
+      const cmdLower = (proc.cmdline || '').toLowerCase();
+      const exeLower = (proc.exe || '').toLowerCase();
+
+      // Known rootkit process name
+      if (matchPatterns(nameLower, ROOTKIT_PROCESS_NAMES)) {
+        signals.push({ type: 'known_rootkit_name', description: `Process name matches known rootkit: ${proc.name}`, value: proc.name, timestamp: now });
+      }
+
+      // Suspicious driver load from non-system path
+      if ((exeLower.endsWith('.sys') || cmdLower.includes('driver') || cmdLower.includes('ntloaddriver'))
+        && isSuspiciousPath(proc.exe || '')) {
+        signals.push({ type: 'suspicious_driver_load', description: `Driver loaded from suspicious path: ${proc.exe}`, value: proc.exe, timestamp: now });
+      }
+
+      // SSDT hook indicators
+      if (cmdLower.includes('ntsetsysteminformation') || cmdLower.includes('keaddsystemserviceTable') || cmdLower.includes('ssdt')) {
+        signals.push({ type: 'ssdt_hook', description: `SSDT hooking indicators: ${proc.cmdline}`, value: proc.cmdline, timestamp: now });
+      }
+
+      // IRP hook indicators
+      if (cmdLower.includes('iocalldriver') && cmdLower.includes('majorfunction')) {
+        signals.push({ type: 'irp_hook', description: `IRP hooking indicators: ${proc.cmdline}`, value: proc.cmdline, timestamp: now });
+      }
+
+      // Hidden process: process with no visible window from suspicious path
+      if (isSuspiciousPath(proc.exe || '') && cmdLower.includes('-w hidden') && !nameLower.includes('powershell')) {
+        signals.push({ type: 'hidden_process', description: `Hidden process from suspicious path: ${proc.exe}`, value: proc.exe, timestamp: now });
+      }
+
+      // Registry concealment
+      if (cmdLower.includes('reg add') && (cmdLower.includes('hidden') || cmdLower.includes('conceal') || cmdLower.includes('services\\') && cmdLower.includes('description'))) {
+        signals.push({ type: 'registry_concealment', description: `Registry concealment activity: ${proc.cmdline}`, value: proc.cmdline, timestamp: now });
+      }
+
+      if (signals.length >= 2) {
+        indicators.push({
+          processName: proc.name,
+          pid: proc.pid,
+          path: proc.exe || '',
+          indicators: signals,
+        });
+      }
+    }
+
+    // Check services for rootkit indicators
+    for (const svc of services) {
+      const signals: RootkitSignal[] = [];
+      const svcNameLower = (svc.name || '').toLowerCase();
+      const svcPathLower = (svc.pathName || '').toLowerCase();
+      const svcTypeLower = (svc.serviceType || '').toLowerCase();
+
+      // Kernel driver service from suspicious path
+      if (svcTypeLower.includes('kernel') && isSuspiciousPath(svc.pathName || '')) {
+        signals.push({ type: 'suspicious_driver_load', description: `Kernel driver service from suspicious path: ${svc.pathName}`, value: svc.pathName, timestamp: now });
+      }
+
+      // Known rootkit service name
+      if (matchPatterns(svcNameLower, ROOTKIT_PROCESS_NAMES)) {
+        signals.push({ type: 'known_rootkit_name', description: `Service name matches known rootkit: ${svc.name}`, value: svc.name, timestamp: now });
+      }
+
+      // Hidden service: service with no description from suspicious path
+      if (isSuspiciousPath(svcPathLower) && svcTypeLower.includes('kernel') && !svc.displayName) {
+        signals.push({ type: 'hidden_service', description: `Hidden kernel driver service: ${svc.name}`, value: svc.name, timestamp: now });
+      }
+
+      if (signals.length >= 2) {
+        indicators.push({
+          processName: svc.name,
+          pid: 0,
+          path: svc.pathName || '',
+          indicators: signals,
+        });
+      }
+    }
+
+    return indicators;
   },
 };

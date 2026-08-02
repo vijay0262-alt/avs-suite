@@ -29,6 +29,10 @@ import { UnsignedExecutableProvider } from './UnsignedExecutableProvider';
 import { NetworkBehaviorProvider } from './NetworkBehaviorProvider';
 import { FileReputationProvider } from './FileReputationProvider';
 import { PublisherTrustProvider } from './PublisherTrustProvider';
+import { RansomwareDetectionProvider } from './RansomwareDetectionProvider';
+import { TrojanDetectionProvider } from './TrojanDetectionProvider';
+import { KeyloggerDetectionProvider } from './KeyloggerDetectionProvider';
+import { RootkitDetectionProvider } from './RootkitDetectionProvider';
 import type { SecurityRegistry } from './SecurityRegistry';
 
 export class SecurityFactory {
@@ -65,6 +69,10 @@ export class SecurityFactory {
       providers.push(new NetworkBehaviorProvider());
       providers.push(new AdwareDetectionProvider());
       providers.push(new PUPDetectionProvider());
+      providers.push(new RansomwareDetectionProvider());
+      providers.push(new TrojanDetectionProvider());
+      providers.push(new KeyloggerDetectionProvider());
+      providers.push(new RootkitDetectionProvider());
     }
     if (config.enablePersistenceDetection) {
       providers.push(new PersistenceDetectionProvider());

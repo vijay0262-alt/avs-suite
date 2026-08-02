@@ -179,8 +179,8 @@ describe('AI Security Center', () => {
   describe('SecurityFactory', () => {
     it('creates all default providers when enabled', () => {
       const providers = SecurityFactory.createDefaultProviders(DEFAULT_SECURITY_CONFIG);
-      // 6 base + 17 detection = 23
-      expect(providers.length).toBe(23);
+      // 6 base + 21 detection = 27
+      expect(providers.length).toBe(27);
     });
 
     it('respects configuration flags', () => {
@@ -189,7 +189,7 @@ describe('AI Security Center', () => {
         enableSignatureDetection: false,
       };
       const providers = SecurityFactory.createDefaultProviders({ ...DEFAULT_SECURITY_CONFIG, ...config });
-      // No behavior (1 base + 9 detection) or signature (1 base) = 23 - 11 = 12
+      // No behavior (1 base + 13 detection) or signature (1 base) = 27 - 15 = 12
       expect(providers.length).toBe(12);
       expect(providers.find((p) => p.getType() === 'behavior')).toBeUndefined();
       expect(providers.find((p) => p.getType() === 'signature')).toBeUndefined();
@@ -198,7 +198,7 @@ describe('AI Security Center', () => {
     it('creates and registers all providers', () => {
       const registry = new SecurityRegistry();
       SecurityFactory.createAndRegisterAll(registry, DEFAULT_SECURITY_CONFIG);
-      expect(registry.count()).toBe(23);
+      expect(registry.count()).toBe(27);
     });
   });
 

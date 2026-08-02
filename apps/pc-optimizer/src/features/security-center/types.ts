@@ -719,6 +719,100 @@ export interface CryptoMinerProcessDetail {
   timestamp: number;
 }
 
+// ── Ransomware Detection Input ───────────────────────────────────────
+
+export interface RansomwareIndicator {
+  processName: string;
+  pid: number;
+  path: string;
+  indicators: RansomwareSignal[];
+}
+
+export interface RansomwareSignal {
+  type:
+    | 'shadow_copy_deletion'
+    | 'recovery_disabled'
+    | 'backup_deletion'
+    | 'mass_encryption'
+    | 'ransom_note'
+    | 'known_ransomware_name'
+    | 'volume_shadow_enumeration'
+    | 'disk_encryption_command';
+  description: string;
+  value?: string;
+  timestamp: number;
+}
+
+// ── Trojan Detection Input ───────────────────────────────────────────
+
+export interface TrojanIndicator {
+  processName: string;
+  pid: number;
+  path: string;
+  indicators: TrojanSignal[];
+}
+
+export interface TrojanSignal {
+  type:
+    | 'process_hollowing'
+    | 'dll_injection'
+    | 'system_process_impersonation'
+    | 'known_trojan_name'
+    | 'dropper_behavior'
+    | 'suspicious_network_from_system'
+    | 'hidden_window_system'
+    | 'registry_persistence_trojan';
+  description: string;
+  value?: string;
+  timestamp: number;
+}
+
+// ── Keylogger Detection Input ────────────────────────────────────────
+
+export interface KeyloggerIndicator {
+  processName: string;
+  pid: number;
+  path: string;
+  indicators: KeyloggerSignal[];
+}
+
+export interface KeyloggerSignal {
+  type:
+    | 'keyboard_hook'
+    | 'clipboard_monitoring'
+    | 'log_file_creation'
+    | 'known_keylogger_name'
+    | 'input_capture_api'
+    | 'suspicious_dll_injection_input';
+  description: string;
+  value?: string;
+  timestamp: number;
+}
+
+// ── Rootkit Detection Input ──────────────────────────────────────────
+
+export interface RootkitIndicator {
+  processName: string;
+  pid: number;
+  path: string;
+  indicators: RootkitSignal[];
+}
+
+export interface RootkitSignal {
+  type:
+    | 'ssdt_hook'
+    | 'irp_hook'
+    | 'hidden_process'
+    | 'suspicious_driver_load'
+    | 'dkom_indicator'
+    | 'known_rootkit_name'
+    | 'hidden_service'
+    | 'registry_concealment';
+  description: string;
+  value?: string;
+  timestamp: number;
+}
+
 // ── Confidence helper ────────────────────────────────────────────────
 
 export function confidenceToLabel(confidence: number): ConfidenceLabel {

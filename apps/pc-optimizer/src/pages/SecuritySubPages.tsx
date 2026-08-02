@@ -82,3 +82,19 @@ export function RootkitProtectionPage() {
 export function BackdoorProtectionPage() {
   return <Navigate to="/security-center" replace state={{ tab: 'threats', category: 'backdoor' }} />;
 }
+
+export function PersistenceDetectionPage() {
+  return <Navigate to="/security-center" replace state={{ tab: 'threats', category: 'suspicious_startup_entry' }} />;
+}
+
+export function NetworkBehaviorAnalysisPage() {
+  return <Navigate to="/security-center" replace state={{ tab: 'threats', category: 'unknown' }} />;
+}
+
+export function FileReputationAnalysisPage() {
+  return <Navigate to="/security-center" replace state={{ tab: 'threats', category: 'unknown' }} />;
+}
+
+export function PublisherTrustAnalysisPage() {
+  return <Navigate to="/security-center" replace state={{ tab: 'threats', category: 'unknown' }} />;
+}
