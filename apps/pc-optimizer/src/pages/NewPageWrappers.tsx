@@ -6,11 +6,18 @@
  */
 import { Navigate } from 'react-router-dom';
 import { RecoveryCenterPage as RecoveryCenterPageImpl } from '../features/recovery/RecoveryCenterPage';
+import AIDailyBriefingPageImpl from '../features/ai-assistant/AIDailyBriefingPage';
+import SystemHealthOverviewPage from '../features/system-health-dashboard/SystemHealthOverviewPage';
+import PerformanceAnalyticsPageImpl from '../features/performance/PerformanceAnalyticsPage';
+import ExportCenterPage from '../features/export-center/ExportCenterPage';
+import NotificationsPage from '../features/notifications/NotificationsPage';
+import HelpCenterPage from '../features/help-center/HelpCenterPage';
+import UpgradePageImpl from '../features/licensing/UpgradePage';
 
 // ── HOME ──────────────────────────────────────────────────────
 
 export function AIDailyBriefingPage() {
-  return <Navigate to="/ai-copilot" replace state={{ view: 'briefing' }} />;
+  return <AIDailyBriefingPageImpl />;
 }
 
 export function AISmartOptimizePage() {
@@ -20,11 +27,11 @@ export function AISmartOptimizePage() {
 // ── SYSTEM HEALTH ─────────────────────────────────────────────
 
 export function SystemHealthPage() {
-  return <Navigate to="/dashboard" replace />;
+  return <SystemHealthOverviewPage />;
 }
 
 export function PerformanceAnalyticsPage() {
-  return <Navigate to="/performance" replace />;
+  return <PerformanceAnalyticsPageImpl />;
 }
 
 // ── OPTIMIZATION ──────────────────────────────────────────────
@@ -57,12 +64,22 @@ export function RecoveryCenterPage() {
   return <RecoveryCenterPageImpl />;
 }
 
+// ── REPORTS ───────────────────────────────────────────────────
+
+export function ExportCenterPageWrapper() {
+  return <ExportCenterPage />;
+}
+
 // ── ACCOUNT ───────────────────────────────────────────────────
 
 export function UpgradePage() {
-  return <Navigate to="/license" replace />;
+  return <UpgradePageImpl />;
 }
 
 export function HelpPage() {
-  return <Navigate to="/about" replace />;
+  return <HelpCenterPage />;
+}
+
+export function NotificationsPageWrapper() {
+  return <NotificationsPage />;
 }

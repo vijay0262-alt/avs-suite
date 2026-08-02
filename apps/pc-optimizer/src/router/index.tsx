@@ -49,6 +49,13 @@ import {
   ThreatInvestigationPage,
   QuarantinePage,
   SecurityReportsPage,
+  TrojanProtectionPage,
+  PUPProtectionPage,
+  CryptoMinerProtectionPage,
+  ScriptProtectionPage,
+  KeyloggerProtectionPage,
+  RootkitProtectionPage,
+  BackdoorProtectionPage,
 } from '../pages/SecuritySubPages';
 import {
   AIDailyBriefingPage,
@@ -62,6 +69,8 @@ import {
   RecoveryCenterPage,
   UpgradePage,
   HelpPage,
+  ExportCenterPageWrapper,
+  NotificationsPageWrapper,
 } from '../pages/NewPageWrappers';
 
 // Module preloader - preloads frequently used modules in background
@@ -140,6 +149,13 @@ export const router = createHashRouter([
       { path: 'adware-protection', element: <AdwareProtectionPage /> },
       { path: 'ransomware-protection', element: <RansomwareProtectionPage /> },
       { path: 'browser-protection', element: <BrowserProtectionPage /> },
+      { path: 'trojan-protection', element: <TrojanProtectionPage /> },
+      { path: 'pup-protection', element: <PUPProtectionPage /> },
+      { path: 'crypto-miner-protection', element: <CryptoMinerProtectionPage /> },
+      { path: 'script-protection', element: <ScriptProtectionPage /> },
+      { path: 'keylogger-protection', element: <KeyloggerProtectionPage /> },
+      { path: 'rootkit-protection', element: <RootkitProtectionPage /> },
+      { path: 'backdoor-protection', element: <BackdoorProtectionPage /> },
       { path: 'threat-investigation', element: <ThreatInvestigationPage /> },
       { path: 'quarantine', element: <QuarantinePage /> },
       { path: 'security-reports', element: <SecurityReportsPage /> },
@@ -158,6 +174,7 @@ export const router = createHashRouter([
       { path: 'optimization-reports', element: wrap(OptimizationReportsPage) },
       { path: 'reports-timeline', element: <ReportsTimelinePage /> },
       { path: 'analytics', element: <AnalyticsPage /> },
+      { path: 'export-center', element: <ExportCenterPageWrapper /> },
       // TOOLS
       { path: 'system-information', element: wrap(SystemInformationPage) },
       { path: 'disk-analyzer', element: wrap(DiskAnalyzerPage) },
@@ -167,6 +184,7 @@ export const router = createHashRouter([
       { path: 'license', element: wrap(ActivationPage) },
       { path: 'upgrade', element: <UpgradePage /> },
       { path: 'settings', element: wrap(SettingsPage) },
+      { path: 'notifications', element: <NotificationsPageWrapper /> },
       { path: 'help', element: <HelpPage /> },
       { path: 'about', element: wrap(AboutPage) },
       // LEGACY REDIRECTS

@@ -38,6 +38,12 @@ import {
   ArrowTrendingUpIcon,
   ArrowUpTrayIcon,
   FolderOpenIcon,
+  BellIcon,
+  DocumentArrowDownIcon,
+  CommandLineIcon,
+  CodeBracketIcon,
+  FingerPrintIcon,
+  ServerStackIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import { canUse } from '../features/licensing/FeatureGate';
@@ -68,6 +74,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'ai-copilot', to: '/ai-copilot', labelKey: 'nav.aiCopilot', Icon: SparklesIcon },
       { id: 'ai-daily-briefing', to: '/ai-daily-briefing', labelKey: 'nav.aiDailyBriefing', Icon: LightBulbIcon },
       { id: 'ai-smart-optimize', to: '/ai-smart-optimize', labelKey: 'nav.aiSmartOptimize', Icon: BoltIcon },
+      { id: 'ai-workspace', to: '/ai-workspace', labelKey: 'nav.aiWorkspace', Icon: CommandLineIcon },
     ],
   },
   // ── SYSTEM HEALTH ─────────────────────────────────────────────
@@ -97,6 +104,13 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'adware-protection', to: '/adware-protection', labelKey: 'nav.adwareProtection', Icon: TrashIcon },
       { id: 'ransomware-protection', to: '/ransomware-protection', labelKey: 'nav.ransomwareProtection', Icon: LockClosedIcon },
       { id: 'browser-protection', to: '/browser-protection', labelKey: 'nav.browserProtection', Icon: GlobeAltIcon },
+      { id: 'trojan-protection', to: '/trojan-protection', labelKey: 'nav.trojanProtection', Icon: BugAntIcon },
+      { id: 'pup-protection', to: '/pup-protection', labelKey: 'nav.pupProtection', Icon: CircleStackIcon },
+      { id: 'crypto-miner-protection', to: '/crypto-miner-protection', labelKey: 'nav.cryptoMinerProtection', Icon: CpuChipIcon },
+      { id: 'script-protection', to: '/script-protection', labelKey: 'nav.scriptProtection', Icon: CodeBracketIcon },
+      { id: 'keylogger-protection', to: '/keylogger-protection', labelKey: 'nav.keyloggerProtection', Icon: FingerPrintIcon },
+      { id: 'rootkit-protection', to: '/rootkit-protection', labelKey: 'nav.rootkitProtection', Icon: ServerStackIcon },
+      { id: 'backdoor-protection', to: '/backdoor-protection', labelKey: 'nav.backdoorProtection', Icon: KeyIcon },
       { id: 'threat-investigation', to: '/threat-investigation', labelKey: 'nav.threatInvestigation', Icon: BeakerIcon },
       { id: 'quarantine', to: '/quarantine', labelKey: 'nav.quarantine', Icon: ArchiveBoxXMarkIcon },
       { id: 'security-reports', to: '/security-reports', labelKey: 'nav.securityReports', Icon: DocumentChartBarIcon },
@@ -126,6 +140,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'reports', to: '/reports', labelKey: 'nav.reports', Icon: DocumentChartBarIcon },
       { id: 'reports-timeline', to: '/reports-timeline', labelKey: 'nav.reportsTimeline', Icon: ClockIcon },
       { id: 'analytics', to: '/analytics', labelKey: 'nav.analytics', Icon: ChartBarIcon },
+      { id: 'export-center', to: '/export-center', labelKey: 'nav.exportCenter', Icon: DocumentArrowDownIcon },
     ],
   },
   // ── TOOLS ─────────────────────────────────────────────────────
@@ -147,6 +162,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'license', to: '/license', labelKey: 'nav.license', Icon: KeyIcon },
       { id: 'upgrade', to: '/upgrade', labelKey: 'nav.upgrade', Icon: ArrowUpTrayIcon },
       { id: 'settings', to: '/settings', labelKey: 'nav.settings', Icon: Cog6ToothIcon },
+      { id: 'notifications', to: '/notifications', labelKey: 'nav.notifications', Icon: BellIcon },
       { id: 'help', to: '/help', labelKey: 'nav.help', Icon: LifebuoyIcon },
       { id: 'about', to: '/about', labelKey: 'nav.about', Icon: InformationCircleIcon },
     ],

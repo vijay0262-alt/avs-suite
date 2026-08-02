@@ -54,3 +54,31 @@ export function QuarantinePage() {
 export function SecurityReportsPage() {
   return <Navigate to="/security-center" replace state={{ tab: 'reports' }} />;
 }
+
+export function TrojanProtectionPage() {
+  return <Navigate to="/security-center" replace state={{ tab: 'threats', category: 'trojans' }} />;
+}
+
+export function PUPProtectionPage() {
+  return <Navigate to="/security-center" replace state={{ tab: 'threats', category: 'pup' }} />;
+}
+
+export function CryptoMinerProtectionPage() {
+  return <Navigate to="/security-center" replace state={{ tab: 'threats', category: 'crypto_miner' }} />;
+}
+
+export function ScriptProtectionPage() {
+  return <Navigate to="/security-center" replace state={{ tab: 'threats', category: 'unsafe_script' }} />;
+}
+
+export function KeyloggerProtectionPage() {
+  return <Navigate to="/security-center" replace state={{ tab: 'threats', category: 'keylogger' }} />;
+}
+
+export function RootkitProtectionPage() {
+  return <Navigate to="/security-center" replace state={{ tab: 'threats', category: 'rootkit' }} />;
+}
+
+export function BackdoorProtectionPage() {
+  return <Navigate to="/security-center" replace state={{ tab: 'threats', category: 'backdoor' }} />;
+}
