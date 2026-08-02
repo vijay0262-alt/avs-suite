@@ -7,6 +7,7 @@
  * Connects SecurityCenterViewModel to the UI.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Card, Button, Badge } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
@@ -143,11 +144,25 @@ function formatTimeAgo(ts: number): string {
 export function SecurityCenterPage() {
   const vm = useMemo(() => new SecurityCenterViewModel(), []);
   const state = useViewModel(vm);
+  const location = useLocation();
 
   useEffect(() => {
     vm.bootstrap();
     return () => vm.dispose();
   }, [vm]);
+
+  useEffect(() => {
+    const navState = location.state as { tab?: SecurityCenterTab; mode?: ScanMode; category?: string } | null;
+    if (navState?.tab) {
+      vm.setActiveTab(navState.tab);
+      if (navState.mode) {
+        vm.setScanMode(navState.mode);
+      }
+      if (navState.category && navState.tab === 'threats') {
+        vm.setThreatFilter({ category: navState.category as ThreatCategory | 'all' });
+      }
+    }
+  }, [location.state, vm]);
 
   if (state.bootstrap === 'loading') {
     return (
