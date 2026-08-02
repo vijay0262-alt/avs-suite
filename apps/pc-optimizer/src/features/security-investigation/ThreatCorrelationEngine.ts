@@ -167,10 +167,43 @@ export class ThreatCorrelationEngine {
     if (a.category === 'spyware' && b.category === 'keylogger') {
       return { fromThreatId: a.id, toThreatId: b.id, type: 'related_to', description: 'Spyware and keylogger detected together — likely same campaign', strength: 0.7 };
     }
+    if (a.category === 'keylogger' && b.category === 'spyware') {
+      return { fromThreatId: a.id, toThreatId: b.id, type: 'related_to', description: 'Keylogger and spyware detected together — likely same campaign', strength: 0.7 };
+    }
 
     // Browser hijacker → adware
     if (a.category === 'browser_hijacker' && b.category === 'adware') {
       return { fromThreatId: a.id, toThreatId: b.id, type: 'related_to', description: 'Browser hijacker and adware detected together — common bundling pattern', strength: 0.65 };
+    }
+
+    // Trojan → backdoor
+    if (a.category === 'trojans' && b.category === 'backdoor') {
+      return { fromThreatId: a.id, toThreatId: b.id, type: 'creates', description: 'Trojan created backdoor for remote access', strength: 0.85 };
+    }
+
+    // Ransomware → persistence
+    if (a.category === 'ransomware' && (b.category === 'suspicious_scheduled_task' || b.category === 'suspicious_startup_entry' || b.category === 'suspicious_service')) {
+      return { fromThreatId: b.id, toThreatId: a.id, type: 'persists_via', description: 'Ransomware uses persistence mechanism for execution', strength: 0.8 };
+    }
+
+    // Dropper/downloader → ransomware
+    if ((a.category === 'dropper' || a.category === 'downloader') && b.category === 'ransomware') {
+      return { fromThreatId: a.id, toThreatId: b.id, type: 'downloads', description: 'Dropper/downloader delivered ransomware payload', strength: 0.9 };
+    }
+
+    // Dropper/downloader → trojans
+    if ((a.category === 'dropper' || a.category === 'downloader') && b.category === 'trojans') {
+      return { fromThreatId: a.id, toThreatId: b.id, type: 'downloads', description: 'Dropper/downloader delivered trojan payload', strength: 0.85 };
+    }
+
+    // Rootkit → backdoor
+    if (a.category === 'rootkit' && b.category === 'backdoor') {
+      return { fromThreatId: a.id, toThreatId: b.id, type: 'enables', description: 'Rootkit hides backdoor process from detection', strength: 0.85 };
+    }
+
+    // Rootkit → any other malware (rootkits hide other malware)
+    if (a.category === 'rootkit' && ['spyware', 'ransomware', 'keylogger', 'trojans'].includes(b.category)) {
+      return { fromThreatId: a.id, toThreatId: b.id, type: 'enables', description: `Rootkit conceals ${b.category} from system monitoring`, strength: 0.8 };
     }
 
     return null;

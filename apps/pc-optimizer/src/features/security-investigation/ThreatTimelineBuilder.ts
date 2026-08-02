@@ -62,6 +62,39 @@ const EVIDENCE_TYPE_TO_TIMELINE: Record<string, TimelineEventType> = {
   net_user: 'system_change',
   net_localgroup: 'system_change',
 
+  // Ransomware indicators
+  shadow_copy_deletion: 'system_change',
+  recovery_disable: 'system_change',
+  backup_deletion: 'system_change',
+  mass_encryption: 'system_change',
+  ransom_note_creation: 'system_change',
+  known_ransomware_name: 'detection',
+  disk_encryption_command: 'execution',
+
+  // Trojan indicators
+  dll_injection: 'detection',
+  system_process_impersonation: 'detection',
+  dropper_behavior: 'execution',
+  known_trojan_name: 'detection',
+  suspicious_network_connection: 'network',
+
+  // Keylogger indicators
+  keyboard_hook: 'detection',
+  keylogger_process_name: 'detection',
+  log_file_creation: 'system_change',
+  clipboard_monitoring: 'detection',
+  known_keylogger_name: 'detection',
+  input_capture_api: 'detection',
+
+  // Rootkit indicators
+  ssdt_hook: 'privilege_change',
+  irp_hook: 'privilege_change',
+  hidden_process: 'persistence',
+  dkom_indicator: 'privilege_change',
+  suspicious_driver_load: 'persistence',
+  known_rootkit_name: 'detection',
+  hidden_service: 'persistence',
+
   // Detection
   known_bad: 'detection',
   known_miner_name: 'detection',

@@ -95,6 +95,14 @@ export class ThreatRelationshipGraphBuilder {
       suspicious_startup_entry: 'Startup Entry Group',
       backdoor: 'Backdoor Group',
       keylogger: 'Keylogger Group',
+      ransomware: 'Ransomware Group',
+      trojans: 'Trojan Group',
+      rootkit: 'Rootkit Group',
+      bootkit: 'Bootkit Group',
+      dropper: 'Dropper Group',
+      downloader: 'Downloader Group',
+      pua: 'PUA Group',
+      unknown: 'Unknown Threat Group',
     };
     return labels[category] ?? `${category.replace(/_/g, ' ')} Group`;
   }
