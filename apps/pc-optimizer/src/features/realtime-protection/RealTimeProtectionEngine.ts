@@ -44,6 +44,7 @@ import type {
 
 import { ProtectionFactory, type ProtectionComponents } from './ProtectionFactory';
 import { protectionEventBus } from './ProtectionEvents';
+import { realtimeBackendService } from './realtimeBackendService';
 
 export class RealTimeProtectionEngine {
   private components: ProtectionComponents;
@@ -83,6 +84,13 @@ export class RealTimeProtectionEngine {
     // Complete state transition
     stateMachine.completeStart();
 
+    // ── Start backend process monitoring ───────────────────
+    // The Python backend polls psutil for new processes and
+    // checks for suspicious locations / unsigned executables.
+    void realtimeBackendService.start().catch((err) => {
+      console.warn('[RealTimeProtection] Backend start failed:', err);
+    });
+
     protectionEventBus.emitProtectionStarted(config.mode);
     return true;
   }
@@ -97,6 +105,12 @@ export class RealTimeProtectionEngine {
     telemetry.stop();
 
     stateMachine.stop();
+
+    // ── Stop backend process monitoring ────────────────────
+    void realtimeBackendService.stop().catch((err) => {
+      console.warn('[RealTimeProtection] Backend stop failed:', err);
+    });
+
     protectionEventBus.emitProtectionStopped();
     return true;
   }
@@ -431,6 +445,60 @@ export class RealTimeProtectionEngine {
 
   getRecentEvents(): SystemEvent[] {
     return [...this.recentEvents];
+  }
+
+  /**
+   * Fetch real events and alerts from the Python backend and inject
+   * them into the frontend event pipeline. This bridges the backend's
+   * psutil-based process monitoring with the frontend's rule engine
+   * and notification system.
+   *
+   * Should be called periodically (e.g. every 5 seconds) when protection
+   * is running.
+   */
+  async syncBackendEvents(): Promise<void> {
+    if (!this.components.stateMachine.isRunning()) return;
+
+    try {
+      // Fetch recent backend alerts
+      const { alerts } = await realtimeBackendService.getAlerts(50);
+
+      for (const alert of alerts) {
+        // Convert backend alert to frontend SystemEvent
+        const event = {
+          id: `backend-${alert.pid}-${alert.timestamp}`,
+          type: 'process_started' as SystemEventType,
+          target: {
+            name: alert.name,
+            path: alert.exe,
+            pid: alert.pid,
+          },
+          metadata: {
+            reason: alert.reason,
+            severity: alert.severity,
+            source: 'backend',
+          },
+          severity: alert.severity === 'high' ? 'critical' : alert.severity === 'medium' ? 'warning' : 'info',
+          timestamp: new Date(alert.timestamp).getTime(),
+          category: 'process',
+          status: 'pending',
+          normalized: false,
+          classified: false,
+          filtered: false,
+          processed: false,
+          source: 'backend',
+          processingTime: 0,
+        } as unknown as SystemEvent;
+
+        // Inject into the pipeline if not already seen
+        const exists = this.recentEvents.some(e => e.id === event.id);
+        if (!exists) {
+          this.processEvent(event);
+        }
+      }
+    } catch (err) {
+      // Backend unavailable — silently skip
+    }
   }
 
   getHistory() {

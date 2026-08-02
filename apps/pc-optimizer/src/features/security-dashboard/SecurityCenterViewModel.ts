@@ -370,14 +370,23 @@ export class SecurityCenterViewModel extends ViewModel<SecurityCenterState> {
     this.refresh();
   }
 
-  restoreFromQuarantine(quarantineId: string): void {
-    this.service.restoreFromQuarantine(quarantineId);
-    this.refresh();
+  async restoreFromQuarantine(quarantineId: string): Promise<void> {
+    await this.service.restoreFromQuarantine(quarantineId);
+    await this.loadQuarantineSummary();
   }
 
-  deleteFromQuarantine(quarantineId: string): void {
-    this.service.deleteFromQuarantine(quarantineId, true);
-    this.refresh();
+  async deleteFromQuarantine(quarantineId: string): Promise<void> {
+    await this.service.deleteFromQuarantine(quarantineId, true);
+    await this.loadQuarantineSummary();
+  }
+
+  async loadQuarantineSummary(): Promise<void> {
+    try {
+      const summary = await this.service.getQuarantineSummary();
+      this.setState({ quarantineSummary: summary });
+    } catch {
+      // Fallback — keep existing state
+    }
   }
 
   markFalsePositive(
@@ -415,7 +424,7 @@ export class SecurityCenterViewModel extends ViewModel<SecurityCenterState> {
       investigations: this.service.getInvestigations(),
       activeInvestigations: this.service.getActiveInvestigations(),
       plans: this.service.getAllPlans(),
-      quarantineSummary: this.service.getQuarantineSummary(),
+      quarantineSummary: this.state.quarantineSummary,
       providers: this.service.getProviders(),
       capabilities: this.service.getCapabilities(),
       scoreTrend: this.service.getScoreTrend(),

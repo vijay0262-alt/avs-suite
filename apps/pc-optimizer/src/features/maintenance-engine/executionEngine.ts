@@ -44,6 +44,7 @@ import { executionEvents } from './executionEvents';
 import { evaluatePauseConditions } from './pauseConditions';
 import { jobBuilder, scheduleHasValidTasks } from './jobBuilder';
 import { configManager } from '../config-sync/configManager';
+import { schedulerBackendService } from './schedulerBackendService';
 
 // ── Crash recovery persistence ────────────────────────────────
 
@@ -207,6 +208,9 @@ class ExecutionEngineImpl {
     this._initialized = true;
     this._startScheduler();
     console.info('[ExecutionEngine] Initialized, scheduler started');
+
+    // Sync with Windows Task Scheduler backend
+    void this.syncWithBackend();
   }
 
   /**
@@ -478,6 +482,62 @@ class ExecutionEngineImpl {
   }
 
   // ── Manual triggers ─────────────────────────────────────────
+
+  /**
+   * Sync frontend schedule configuration with the Windows Task Scheduler
+   * backend. For each enabled frontend schedule, creates or updates a
+   * corresponding Windows Task Scheduler task via the Python backend.
+   *
+   * This ensures maintenance tasks run even when the app is closed.
+   */
+  async syncWithBackend(): Promise<void> {
+    try {
+      const status = await schedulerBackendService.getStatus();
+      if (!status.available || !status.serviceRunning) {
+        console.info('[ExecutionEngine] Windows Task Scheduler not available, skipping sync');
+        return;
+      }
+
+      const config = configManager.get_config();
+      const schedules = config.maintenance_scheduler.schedules;
+
+      for (const schedule of schedules) {
+        if (!schedule.enabled) continue;
+
+        // Map frontend schedule to backend action
+        const taskIds = schedule.tasks;
+        let action = 'full_optimize';
+        if (taskIds.length === 1) {
+          const taskId = taskIds[0] ?? '';
+          if (taskId.includes('junk')) action = 'junk_clean';
+          else if (taskId.includes('registry')) action = 'registry_clean';
+          else if (taskId.includes('privacy') || taskId.includes('browser')) action = 'privacy_clean';
+        }
+
+        // Map frontend schedule frequency to backend schedule type
+        const backendSchedule = schedule.frequency === 'weekly' ? 'weekly' :
+          schedule.frequency === 'daily' ? 'daily' : 'daily';
+
+        const timeParts = schedule.schedule_time.split(':');
+        const backendTime = `${timeParts[0] || '03'}:${timeParts[1] || '00'}`;
+
+        try {
+          await schedulerBackendService.createTask({
+            action,
+            schedule: backendSchedule,
+            time: backendTime,
+            day: schedule.day_of_week !== null ? ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][schedule.day_of_week] : undefined,
+          });
+        } catch (err) {
+          console.warn(`[ExecutionEngine] Failed to sync schedule "${schedule.name}" with backend:`, err);
+        }
+      }
+
+      console.info('[ExecutionEngine] Backend sync complete');
+    } catch (err) {
+      console.warn('[ExecutionEngine] Backend sync failed:', err);
+    }
+  }
 
   /**
    * Trigger a quick scan (junk cleaner only).

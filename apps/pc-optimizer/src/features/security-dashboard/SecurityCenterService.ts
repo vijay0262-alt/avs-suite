@@ -61,6 +61,8 @@ import type {
   RemediationEventListener,
 } from '../security-remediation/types';
 
+import { securityBackendService, type SecuritySnapshotData } from './securityBackendService';
+
 export interface ScanProgress {
   scanId: string;
   scanType: ScanType;
@@ -100,7 +102,7 @@ export class SecurityCenterService {
       scanId: `scan-${Date.now()}`,
       scanType,
       status: 'running',
-      currentPhase: 'Initializing providers…',
+      currentPhase: 'Collecting system data from backend…',
       providersCompleted: 0,
       providersTotal: providerCount,
       threatsFound: 0,
@@ -110,7 +112,70 @@ export class SecurityCenterService {
       aiObservations: [],
     };
 
-    const result = await this.securityEngine.scan(scanType, targets, options);
+    // ── Fetch real system data from the Python backend ───────
+    // The backend collects processes, startup entries, scheduled tasks,
+    // services, browser extensions, and unsigned executables via
+    // psutil, WMI, PowerShell, and filesystem scanning.
+    let backendData: SecuritySnapshotData | null = null;
+    try {
+      backendData = await securityBackendService.getSnapshot();
+      this.scanProgress = {
+        ...this.scanProgress,
+        currentPhase: 'Analyzing collected data with security providers…',
+        itemsScanned: (backendData.processes?.count ?? 0)
+          + (backendData.startupAnalysis?.count ?? 0)
+          + (backendData.scheduledTasks?.count ?? 0)
+          + (backendData.services?.count ?? 0)
+          + (backendData.browserExtensions?.count ?? 0)
+          + (backendData.unsignedExecutables?.count ?? 0),
+      };
+    } catch (err) {
+      // If backend is unavailable (non-Electron), continue with empty data.
+      // Frontend providers will still run but with no real input.
+      console.warn('[SecurityCenter] Backend snapshot failed, continuing with no real data:', err);
+    }
+
+    // ── Build scan options from real backend data ───────────
+    // These option keys match what the frontend providers expect
+    // (see PersistenceDetectionProvider, SpywareDetectionProvider, etc.)
+    const scanOptions: Record<string, unknown> = {
+      ...options,
+    };
+
+    if (backendData) {
+      // Process list for SuspiciousProcessProvider, NetworkBehaviorProvider, etc.
+      if (backendData.processes?.processes) {
+        scanOptions['processList'] = backendData.processes.processes;
+      }
+
+      // Startup entries for PersistenceDetectionProvider, StartupAbuseProvider
+      if (backendData.startupAnalysis?.entries) {
+        scanOptions['startupEntries'] = backendData.startupAnalysis.entries;
+      }
+
+      // Scheduled tasks for ScheduledTaskProvider
+      if (backendData.scheduledTasks?.tasks) {
+        scanOptions['scheduledTasks'] = backendData.scheduledTasks.tasks;
+      }
+
+      // Services for ServiceAnalysisProvider
+      if (backendData.services?.services) {
+        scanOptions['runningServices'] = backendData.services.services;
+      }
+
+      // Browser extensions for BrowserHijackerProvider, BrowserProtectionProvider
+      if (backendData.browserExtensions?.extensions) {
+        scanOptions['browserExtensions'] = backendData.browserExtensions.extensions;
+      }
+
+      // Unsigned executables for UnsignedExecutableProvider
+      if (backendData.unsignedExecutables?.executables) {
+        scanOptions['unsignedExecutables'] = backendData.unsignedExecutables.executables;
+      }
+    }
+
+    // ── Run frontend security providers on real data ────────
+    const result = await this.securityEngine.scan(scanType, targets, scanOptions);
     this.currentScan = result;
 
     this.scanProgress = {
@@ -272,16 +337,51 @@ export class SecurityCenterService {
     return this.remediationEngine.getQuarantineEntry(id);
   }
 
-  getQuarantineSummary(): QuarantineSummary {
-    return this.remediationEngine.getQuarantineSummary();
+  async getQuarantineSummary(): Promise<QuarantineSummary> {
+    // Try backend first for real quarantined items
+    try {
+      const backendList = await securityBackendService.listQuarantined();
+      return {
+        totalItems: backendList.totalItems,
+        activeQuarantine: backendList.count,
+        restored: backendList.totalItems - backendList.count,
+        deleted: 0,
+        totalSize: backendList.items.reduce((sum, item) => sum + (item.fileSize || 0), 0),
+        oldestQuarantine: null,
+        newestQuarantine: null,
+      } as QuarantineSummary;
+    } catch {
+      // Fallback to frontend-only quarantine
+      return this.remediationEngine.getQuarantineSummary();
+    }
   }
 
-  restoreFromQuarantine(quarantineId: string) {
-    return this.remediationEngine.restoreFromQuarantine(quarantineId);
+  async restoreFromQuarantine(quarantineId: string) {
+    // Try backend first for real file restore
+    try {
+      const result = await securityBackendService.restoreQuarantined(quarantineId);
+      if (result.restored) {
+        this.remediationEngine.restoreFromQuarantine(quarantineId);
+        return result;
+      }
+      return this.remediationEngine.restoreFromQuarantine(quarantineId);
+    } catch {
+      return this.remediationEngine.restoreFromQuarantine(quarantineId);
+    }
   }
 
-  deleteFromQuarantine(quarantineId: string, userConfirmed: boolean) {
-    return this.remediationEngine.deleteFromQuarantine(quarantineId, userConfirmed);
+  async deleteFromQuarantine(quarantineId: string, userConfirmed: boolean) {
+    // Try backend first for real file deletion
+    try {
+      const result = await securityBackendService.deleteQuarantined(quarantineId);
+      if (result.deleted) {
+        this.remediationEngine.deleteFromQuarantine(quarantineId, userConfirmed);
+        return result;
+      }
+      return this.remediationEngine.deleteFromQuarantine(quarantineId, userConfirmed);
+    } catch {
+      return this.remediationEngine.deleteFromQuarantine(quarantineId, userConfirmed);
+    }
   }
 
   // ── False Positives ───────────────────────────────────────────
