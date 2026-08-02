@@ -24,6 +24,7 @@ import {
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
+import { healthTimelineService, type HealthTimelineEntry } from '../health/HealthTimelineService';
 
 const insightIcons: Record<string, typeof LightBulbIcon> = {
   storage_increase: ChartBarIcon,
@@ -44,6 +45,7 @@ export default function AIDailyBriefingPage() {
   const [insights, setInsights] = useState<AssistantInsight[]>([]);
   const [loading, setLoading] = useState(true);
   const [briefingTab, setBriefingTab] = useState<'today' | 'yesterday' | 'weekly' | 'monthly'>('today');
+  const [timelineData, setTimelineData] = useState<HealthTimelineEntry[]>([]);
 
   const init = useCallback(() => {
     setLoading(true);
@@ -52,6 +54,15 @@ export default function AIDailyBriefingPage() {
     setInsights(conversationEngine.getTopInsights(10));
     setLoading(false);
   }, []);
+
+  useEffect(() => {
+    if (briefingTab === 'today') {
+      setTimelineData([]);
+      return;
+    }
+    const days = briefingTab === 'yesterday' ? 2 : briefingTab === 'weekly' ? 7 : 30;
+    setTimelineData(healthTimelineService.getDailySummary(days));
+  }, [briefingTab]);
 
   useEffect(() => {
     init();
@@ -163,8 +174,8 @@ export default function AIDailyBriefingPage() {
             </div>
           )}
 
-          {/* Recommendations */}
-          {dashboardData && dashboardData.recommendedActions.length > 0 && (
+          {/* Recommendations — only for today tab */}
+          {briefingTab === 'today' && dashboardData && dashboardData.recommendedActions.length > 0 && (
             <Card title="Today's Recommendations" variant="glass">
               <div className="space-y-2">
                 {dashboardData.recommendedActions.map((rec, i) => (
@@ -177,7 +188,48 @@ export default function AIDailyBriefingPage() {
             </Card>
           )}
 
-          {/* Insights */}
+          {/* Historical Timeline — for non-today tabs */}
+          {briefingTab !== 'today' && (
+            <Card title="Health Score History" variant="glass">
+              {timelineData.length === 0 ? (
+                <ModuleEmptyState
+                  icon={ChartBarIcon}
+                  title="No historical data yet"
+                  message="Health score history is recorded during your session. Keep the app running to build up timeline data for this period."
+                />
+              ) : (
+                <div className="space-y-2">
+                  {timelineData.map((entry, i) => (
+                    <div key={i} className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="h-2 w-2 rounded-full"
+                          style={{
+                            background:
+                              entry.score >= 90 ? 'var(--avs-success)' :
+                              entry.score >= 70 ? 'var(--avs-warning)' :
+                              'var(--avs-danger)',
+                          }}
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-[var(--avs-text-primary)]">
+                            {new Date(entry.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          </p>
+                          <p className="text-xs text-[var(--avs-text-muted)]">
+                            {entry.issueCount} issues · {entry.scoreZone}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-lg font-bold text-[var(--avs-text-primary)]">{entry.score}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* Insights — only for today tab */}
+          {briefingTab === 'today' && (
           <Card title="System Highlights" variant="glass">
             {insights.length === 0 ? (
               <ModuleEmptyState icon={LightBulbIcon} title="No insights yet" message="Insights are generated from your system health data. Run a health scan to get personalized insights." />
@@ -217,6 +269,7 @@ export default function AIDailyBriefingPage() {
               </div>
             )}
           </Card>
+          )}
 
           {/* Quick Questions */}
           <Card title="Ask AI" variant="glass">

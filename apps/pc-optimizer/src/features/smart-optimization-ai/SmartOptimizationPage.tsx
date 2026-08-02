@@ -32,6 +32,8 @@ import {
   type OptimizationImpactTier,
   type SourceFinding,
 } from '../smart-optimization-ai';
+import { gatherFindings } from '../smart-optimization-ai/findingsGatherer';
+import { createExecutionHandler } from '../smart-optimization-ai/executionHandler';
 import {
   BoltIcon,
   ChartBarIcon,
@@ -85,6 +87,7 @@ class SmartOptViewModel extends ViewModel<SmartOptState> {
       error: null,
     });
     this.engine = new SmartOptimizationEngine();
+    this.engine.setExecutionHandler(createExecutionHandler());
   }
 
   bootstrap() {
@@ -100,10 +103,17 @@ class SmartOptViewModel extends ViewModel<SmartOptState> {
     }
   }
 
-  generatePlan(findings: SourceFinding[], healthScore: number) {
+  async generatePlan(findings?: SourceFinding[], healthScore?: number) {
     this.setState({ isGenerating: true, error: null });
     try {
-      const plan = this.engine.generatePlan(findings, healthScore);
+      let f = findings;
+      let score = healthScore;
+      if (!f || f.length === 0) {
+        const gathered = await gatherFindings();
+        f = gathered.findings;
+        score = gathered.healthScore;
+      }
+      const plan = this.engine.generatePlan(f, score ?? 75);
       const preview = this.engine.preview(plan);
       const insights = this.engine.generateInsights(plan);
       this.setState({ plan, preview, insights, isGenerating: false });
@@ -228,7 +238,7 @@ export default function SmartOptimizationPage() {
           <div className="flex items-center gap-2">
             <ProStatusPill />
             <Button
-              onClick={() => vm.generatePlan([], 75)}
+              onClick={() => vm.generatePlan()}
               loading={s.isGenerating}
               leftIcon={<BoltIcon className="h-4 w-4" />}
             >

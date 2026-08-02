@@ -53,3 +53,8 @@ export { OptimizationDashboardProvider } from './OptimizationDashboardProvider';
 // History & Learning
 export { OptimizationHistory } from './OptimizationHistory';
 export { OptimizationLearning } from './OptimizationLearning';
+
+// Findings & Execution
+export { gatherFindings } from './findingsGatherer';
+export type { GatheredFindings } from './findingsGatherer';
+export { createExecutionHandler } from './executionHandler';

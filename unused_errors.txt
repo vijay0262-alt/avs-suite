@@ -1,0 +1,180 @@
+﻿apps/pc-optimizer/src/features/ai-assistant/AICopilotPage.tsx(29,8): error TS6133: 'ConversationMessage' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-assistant/explanationEngine.ts(29,11): error TS6133: '_templates' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-intelligence/device-profile/deviceClassifier.ts(34,5): error TS6133: 'context' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-intelligence/device-profile/deviceClassifier.ts(35,5): error TS6133: 'knowledge' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-intelligence/device-profile/hardwareAnalyzer.ts(140,51): error TS6133: 'storageType' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-intelligence/device-profile/profileScorer.ts(99,5): error TS6133: 'scores' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-intelligence/device-profile/workloadAnalyzer.ts(24,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-intelligence/device-profile/workloadAnalyzer.ts(35,5): error TS6133: 'context' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-intelligence/device-profile/workloadAnalyzer.ts(36,5): error TS6133: 'knowledge' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-intelligence/device-profile/workloadAnalyzer.ts(149,26): error TS6133: 'hardware' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-intelligence/knowledge/insightClassifier.ts(20,11): error TS6133: '_evidenceBuilder' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-intelligence/orchestration/explanationBuilder.ts(102,31): error TS6133: 'intent' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-intelligence/orchestration/explanationBuilder.ts(148,26): error TS6133: 'intent' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-intelligence/orchestration/explanationBuilder.ts(161,30): error TS6133: 'intent' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-intelligence/orchestration/explanationBuilder.ts(172,29): error TS6133: 'intent' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-intelligence/orchestration/responseComposer.ts(76,25): error TS6133: 'intent' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-intelligence/orchestration/responseComposer.ts(87,5): error TS6133: 'intent' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-intelligence/orchestration/responseComposer.ts(88,5): error TS6133: 'ctx' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/AIWorkspacePage.tsx(729,38): error TS6133: 'vm' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/AIWorkspacePage.tsx(787,10): error TS6133: 'PrefRow' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/command-center/commandCenterManager.ts(45,11): error TS6133: '_aggregator' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/command-center/commandCenterStateManager.ts(18,11): error TS6133: '_widgetManager' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/copilot/copilotActionPlanner.ts(22,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/copilot/copilotResponseEngine.ts(27,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/multimodal/__tests__/multimodal.test.ts(306,21): error TS6133: 'image' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/multimodal/__tests__/multimodal.test.ts(322,19): error TS6133: 'logData' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/multimodal/__tests__/multimodal.test.ts(341,21): error TS6133: 'document' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/multimodal/contextEnricher.ts(28,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/multimodal/sessionSynchronizer.ts(19,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/personalization/interactionPreferenceEngine.ts(21,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/personalization/layoutPersonalizer.ts(21,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/personalization/quickActionPersonalizer.ts(20,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/personalization/recommendationPersonalizer.ts(26,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/report-studio/reportBuilder.ts(148,24): error TS6133: 'type' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/report-studio/reportBuilder.ts(186,24): error TS6133: 'type' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/report-studio/reportStudioManager.ts(66,11): error TS6133: '_filterEngine' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/report-studio/reportValidator.ts(11,11): error TS6133: '_permissionOrder' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/report-studio/reportValidator.ts(16,5): error TS6133: 'userPermission' is declared but its value is never read.
+apps/pc-optimizer/src/features/backup-restore/BackupRestorePage.tsx(10,30): error TS6133: 'useState' is declared but its value is never read.
+apps/pc-optimizer/src/features/browser-health/browserAnalyzer.ts(228,5): error TS6133: 'browsers' is declared but its value is never read.
+apps/pc-optimizer/src/features/browser-health/browserAnalyzer.ts(229,5): error TS6133: 'profiles' is declared but its value is never read.
+apps/pc-optimizer/src/features/browser-health/privacyAnalyzer.ts(106,5): error TS6133: 'profiles' is declared but its value is never read.
+apps/pc-optimizer/src/features/dashboard-intelligence/actions/actionDispatcher.ts(24,11): error TS6133: '_routingRules' is declared but its value is never read.
+apps/pc-optimizer/src/features/dashboard/__tests__/SmartOptimization.test.ts(609,38): error TS6133: 'health' is declared but its value is never read.
+apps/pc-optimizer/src/features/dashboard/__tests__/SmartOptimization.test.ts(625,38): error TS6133: 'health' is declared but its value is never read.
+apps/pc-optimizer/src/features/dashboard/__tests__/SmartOptimization.test.ts(640,38): error TS6133: 'health' is declared but its value is never read.
+apps/pc-optimizer/src/features/dashboard/__tests__/SmartOptimization.test.ts(655,38): error TS6133: 'health' is declared but its value is never read.
+apps/pc-optimizer/src/features/dashboard/__tests__/SmartOptimization.test.ts(670,38): error TS6133: 'health' is declared but its value is never read.
+apps/pc-optimizer/src/features/dashboard/__tests__/SmartOptimization.test.ts(684,38): error TS6133: 'health' is declared but its value is never read.
+apps/pc-optimizer/src/features/dashboard/__tests__/SmartOptimization.test.ts(698,38): error TS6133: 'health' is declared but its value is never read.
+apps/pc-optimizer/src/features/dashboard/components/HealthScanModal.tsx(826,10): error TS6133: 'ModuleReportCard' is declared but its value is never read.
+apps/pc-optimizer/src/features/dashboard/DashboardPageV2.tsx(24,15): error TS6196: 'HealthSnapshot' is declared but never used.
+apps/pc-optimizer/src/features/dashboard/DashboardViewModel.ts(1030,35): error TS6133: 'moduleId' is declared but its value is never read.
+apps/pc-optimizer/src/features/drivers/DriverInformationPage.tsx(10,30): error TS6133: 'useState' is declared but its value is never read.
+apps/pc-optimizer/src/features/drivers/DriverInformationPage.tsx(18,3): error TS6133: 'CheckCircleIcon' is declared but its value is never read.
+apps/pc-optimizer/src/features/drivers/DriverInformationPage.tsx(226,9): error TS6133: 'colorClass' is declared but its value is never read.
+apps/pc-optimizer/src/features/duplicate-engine/duplicateHistory.ts(56,30): error TS6133: 'wastedSpace' is declared but its value is never read.
+apps/pc-optimizer/src/features/duplicate-engine/duplicateScanner.ts(366,44): error TS6133: 'sum' is declared but its value is never read.
+apps/pc-optimizer/src/features/execution-pipeline/executionPipelineBuilder.ts(15,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/execution-pipeline/executionProgressManager.ts(40,5): error TS6133: 'step' is declared but its value is never read.
+apps/pc-optimizer/src/features/execution-pipeline/executionRecoveryManager.ts(57,5): error TS6133: 'executionId' is declared but its value is never read.
+apps/pc-optimizer/src/features/execution-pipeline/executionVerificationManager.ts(30,5): error TS6133: 'plan' is declared but its value is never read.
+apps/pc-optimizer/src/features/experience/experienceResolver.ts(19,11): error TS6133: '_resolver' is declared but its value is never read.
+apps/pc-optimizer/src/features/experience/experienceResolver.ts(20,11): error TS6133: '_quotaManager' is declared but its value is never read.
+apps/pc-optimizer/src/features/experience/experienceResolver.ts(22,11): error TS6133: '_visibilityService' is declared but its value is never read.
+apps/pc-optimizer/src/features/export-center/ExportCenterPage.tsx(11,30): error TS6133: 'useState' is declared but its value is never read.
+apps/pc-optimizer/src/features/hardware-ai/HardwareExplanationEngine.ts(50,28): error TS6133: 'cpu' is declared but its value is never read.
+apps/pc-optimizer/src/features/hardware-ai/HardwareExplanationEngine.ts(77,29): error TS6133: 'gpu' is declared but its value is never read.
+apps/pc-optimizer/src/features/hardware-ai/HardwareExplanationEngine.ts(86,26): error TS6133: 'ram' is declared but its value is never read.
+apps/pc-optimizer/src/features/hardware-ai/HardwareExplanationEngine.ts(96,25): error TS6133: 'ram' is declared but its value is never read.
+apps/pc-optimizer/src/features/hardware-ai/HardwareInsightBuilder.ts(262,31): error TS6133: 'issueId' is declared but its value is never read.
+apps/pc-optimizer/src/features/hardware-ai/HardwareRecommendationEngine.ts(47,5): error TS6133: 'title' is declared but its value is never read.
+apps/pc-optimizer/src/features/help-center/HelpCenterPage.tsx(11,16): error TS6133: 'Button' is declared but its value is never read.
+apps/pc-optimizer/src/features/help-center/HelpCenterPage.tsx(11,24): error TS6133: 'Badge' is declared but its value is never read.
+apps/pc-optimizer/src/features/help-center/HelpCenterPage.tsx(16,3): error TS6133: 'DocumentTextIcon' is declared but its value is never read.
+apps/pc-optimizer/src/features/help-center/HelpCenterPage.tsx(19,3): error TS6133: 'KeyIcon' is declared but its value is never read.
+apps/pc-optimizer/src/features/licensing/SdkActivationService.ts(89,31): error TS6133: 'deviceId' is declared but its value is never read.
+apps/pc-optimizer/src/features/maintenance-engine/executionEngine.ts(153,11): error TS6133: '_currentJob' is declared but its value is never read.
+apps/pc-optimizer/src/features/network-info/NetworkInformationPage.tsx(11,30): error TS6133: 'useState' is declared but its value is never read.
+apps/pc-optimizer/src/features/notifications/NotificationsPage.tsx(9,30): error TS6133: 'useState' is declared but its value is never read.
+apps/pc-optimizer/src/features/notifications/NotificationsPage.tsx(21,3): error TS6133: 'CheckCircleIcon' is declared but its value is never read.
+apps/pc-optimizer/src/features/optimization-planner/optimizationPriorityEngine.ts(79,3): error TS6133: 'category' is declared but its value is never read.
+apps/pc-optimizer/src/features/optimization-planner/planScorer.ts(19,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/optimization-report/reportBuilder.ts(29,11): error TS6133: '_healthDelta' is declared but its value is never read.
+apps/pc-optimizer/src/features/optimization-report/reportStoryGenerator.ts(104,5): error TS6133: 'plan' is declared but its value is never read.
+apps/pc-optimizer/src/features/optimization-reports/OptimizationReportsPage.tsx(12,30): error TS6133: 'useState' is declared but its value is never read.
+apps/pc-optimizer/src/features/optimization-reports/OptimizationReportsPage.tsx(12,40): error TS6133: 'useCallback' is declared but its value is never read.
+apps/pc-optimizer/src/features/optimization-reports/OptimizationReportsPage.tsx(32,3): error TS6196: 'OptimizationStory' is declared but never used.
+apps/pc-optimizer/src/features/optimization-reports/OptimizationReportsPage.tsx(38,3): error TS6133: 'ArrowTrendingDownIcon' is declared but its value is never read.
+apps/pc-optimizer/src/features/optimization-reports/OptimizationReportsPage.tsx(452,3): error TS6133: 'id' is declared but its value is never read.
+apps/pc-optimizer/src/features/optimization-reports/reportAnalyzer.ts(29,11): error TS6133: '_performanceAnalyzer' is declared but its value is never read.
+apps/pc-optimizer/src/features/optimization-reports/reportAnalyzer.ts(30,11): error TS6133: '_storageAnalyzer' is declared but its value is never read.
+apps/pc-optimizer/src/features/optimization-reports/reportAnalyzer.ts(31,11): error TS6133: '_privacyAnalyzer' is declared but its value is never read.
+apps/pc-optimizer/src/features/optimization-reports/reportBuilder.ts(124,5): error TS6133: 'execution' is declared but its value is never read.
+apps/pc-optimizer/src/features/optimization-reports/reportBuilder.ts(125,5): error TS6133: 'plan' is declared but its value is never read.
+apps/pc-optimizer/src/features/predictive-health/PerformanceForecast.ts(18,23): error TS6138: Property 'config' is declared but its value is never read.
+apps/pc-optimizer/src/features/predictive-health/PredictionDashboardProvider.ts(30,5): error TS6133: 'history' is declared but its value is never read.
+apps/pc-optimizer/src/features/predictive-health/PredictionModel.ts(80,5): error TS6133: 'trend' is declared but its value is never read.
+apps/pc-optimizer/src/features/predictive-health/PredictionModel.ts(185,23): error TS6133: 'domain' is declared but its value is never read.
+apps/pc-optimizer/src/features/predictive-health/PredictiveHealthEngine.ts(53,11): error TS6133: 'forecastEngine' is declared but its value is never read.
+apps/pc-optimizer/src/features/predictive-health/ReliabilityForecast.ts(23,23): error TS6138: Property 'config' is declared but its value is never read.
+apps/pc-optimizer/src/features/process-ai/ProcessAnalyzer.ts(329,29): error TS6133: 'impact' is declared but its value is never read.
+apps/pc-optimizer/src/features/process-ai/ProcessAnalyzer.ts(379,31): error TS6133: 'entry' is declared but its value is never read.
+apps/pc-optimizer/src/features/process-ai/ProcessAnalyzer.ts(395,32): error TS6133: 'entry' is declared but its value is never read.
+apps/pc-optimizer/src/features/process-ai/ProcessRecommendationEngine.ts(47,5): error TS6133: 'title' is declared but its value is never read.
+apps/pc-optimizer/src/features/process-ai/ui/ProcessIntelligenceViewModel.ts(54,25): error TS6133: 'priority' is declared but its value is never read.
+apps/pc-optimizer/src/features/realtime-protection/ProtectionHealth.ts(17,5): error TS6133: 'statistics' is declared but its value is never read.
+apps/pc-optimizer/src/features/security-center/SecurityProvider.ts(127,5): error TS6133: 'context' is declared but its value is never read.
+apps/pc-optimizer/src/features/security-center/SecurityProvider.ts(146,5): error TS6133: 'context' is declared but its value is never read.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterPage.tsx(25,32): error TS6196: 'QuarantineSummary' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterService.ts(34,3): error TS6196: 'TimelineEvent' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterService.ts(35,3): error TS6196: 'CollectedEvidence' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterService.ts(36,3): error TS6196: 'ThreatRelationshipGraph' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterService.ts(37,3): error TS6196: 'AffectedComponent' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterService.ts(38,3): error TS6196: 'RecommendedAction' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterService.ts(39,3): error TS6196: 'FalsePositiveAnalysis' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterService.ts(40,3): error TS6196: 'InvestigationEvent' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterService.ts(48,3): error TS6196: 'RemediationAction' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterService.ts(52,3): error TS6196: 'RollbackEntry' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterService.ts(53,3): error TS6196: 'ApprovalRequest' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterService.ts(60,3): error TS6196: 'RemediationEvent' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterViewModel.ts(31,3): error TS6196: 'TimelineEvent' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterViewModel.ts(32,3): error TS6196: 'CollectedEvidence' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterViewModel.ts(33,3): error TS6196: 'AffectedComponent' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterViewModel.ts(34,3): error TS6196: 'RecommendedAction' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterViewModel.ts(35,3): error TS6196: 'FalsePositiveAnalysis' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterViewModel.ts(39,3): error TS6196: 'RemediationAction' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/SecurityCenterViewModel.ts(43,3): error TS6196: 'ApprovalRequest' is declared but never used.
+apps/pc-optimizer/src/features/security-dashboard/securityDataAdapter.ts(466,13): error TS6133: 'cmdLower' is declared but its value is never read.
+apps/pc-optimizer/src/features/security-dashboard/securityDataAdapter.ts(623,11): error TS6133: 'now' is declared but its value is never read.
+apps/pc-optimizer/src/features/security-history/SecurityHistoryPage.tsx(9,30): error TS6133: 'useState' is declared but its value is never read.
+apps/pc-optimizer/src/features/security-remediation/ThreatRemediationReport.ts(27,23): error TS6138: Property 'rollbackManager' is declared but its value is never read.
+apps/pc-optimizer/src/features/security-remediation/types.ts(544,3): error TS6133: 'action' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimization-ai/OptimizationExecutionCoordinator.ts(34,11): error TS6133: 'rollbackPlanner' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimization-ai/OptimizationExecutionCoordinator.ts(35,11): error TS6133: 'currentExecution' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimization-ai/OptimizationExecutionCoordinator.ts(38,13): error TS6138: Property 'config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimization-ai/OptimizationPlanner.ts(33,11): error TS6133: 'scorer' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimization-ai/OptimizationScorer.ts(15,13): error TS6138: Property 'config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimization-ai/SmartOptimizationPage.tsx(173,7): error TS6133: 'IMPACT_COLORS' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/adaptive/adaptiveConditionEvaluator.ts(21,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/adaptive/adaptiveDecisionEngine.ts(20,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/adaptive/adaptivePlanner.ts(29,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/adaptive/adaptivePolicyEngine.ts(19,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/automation/automationApprovalEngine.ts(77,31): error TS6133: 'rule' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/automation/automationRuleRegistry.ts(11,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/goals/goalAnalytics.ts(20,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/goals/goalMeasurementEngine.ts(22,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/goals/goalPlanner.ts(31,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/goals/goalRecommendationEngine.ts(19,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/goals/goalStrategyEngine.ts(177,31): error TS6133: 'goal' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/goals/goalStrategyEngine.ts(190,29): error TS6133: 'goal' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/goals/goalStrategyEngine.ts(201,30): error TS6133: 'goal' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/goals/orchestration/goalPriorityEngine.ts(143,40): error TS6133: 'goal' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/goals/orchestration/goalPriorityEngine.ts(160,37): error TS6133: 'goal' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/goals/orchestration/goalStrategyCoordinator.ts(141,28): error TS6133: 'goal' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/intelligence/automationInsights.ts(29,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/intelligence/automationInsights.ts(145,31): error TS6133: 'input' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/intelligence/automationInsights.ts(163,36): error TS6133: 'input' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/intelligence/automationInsights.ts(201,36): error TS6133: 'input' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/intelligence/automationInsights.ts(225,31): error TS6133: 'input' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/intelligence/automationInsights.ts(284,30): error TS6133: 'input' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/intelligence/automationInsights.ts(309,24): error TS6133: 'input' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/intelligence/automationIntelligenceManager.ts(46,11): error TS6133: '_validator' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/intelligence/automationRecommendationEngine.ts(38,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/maintenance/maintenancePlanner.ts(42,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/maintenance/maintenancePlanner.ts(218,5): error TS6133: 'state' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/planner/optimizationPlanner.ts(263,5): error TS6133: 'goal' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/planner/optimizationProfileResolver.ts(92,14): error TS6133: 'profile' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/recovery/recoveryCenter.ts(32,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/recovery/recoveryExporter.ts(19,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/simulation/simulationComparisonEngine.ts(144,61): error TS6133: 'deltas' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/simulation/simulationValidator.ts(125,57): error TS6133: 'errors' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/timeline/timelineAnalytics.ts(20,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/timeline/timelineCollector.ts(14,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/smart-optimize/timeline/timelineSearchEngine.ts(15,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/startup-optimizer/startupAnalyzer.ts(243,5): error TS6133: 'entries' is declared but its value is never read.
+apps/pc-optimizer/src/features/storage-intelligence/storageHealthIntegration.ts(173,5): error TS6133: 'analysis' is declared but its value is never read.
+apps/pc-optimizer/src/features/system-health-dashboard/healthDashboardService.ts(61,11): error TS6133: '_lastReport' is declared but its value is never read.
+apps/pc-optimizer/src/features/system-health-dashboard/healthDashboardService.ts(62,11): error TS6133: '_lastMetrics' is declared but its value is never read.
+apps/pc-optimizer/src/services/rpcCache.ts(32,11): error TS6133: 'makeKey' is declared but its value is never read.
