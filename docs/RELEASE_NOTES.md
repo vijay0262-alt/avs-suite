@@ -74,5 +74,5 @@ SHA-256: [To be generated at release time]
 
 ## Support
 
-- Website: https://www.avs.example.com
-- Email: support@avs.example.com
+- Website: https://www.avsshield.com
+- Email: help@avsshield.com

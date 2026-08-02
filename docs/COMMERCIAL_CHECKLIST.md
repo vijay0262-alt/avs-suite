@@ -2,6 +2,8 @@
 
 **Version 1.0.0** | Build 1001 | Date: 2026-07-23
 
+> **Note**: V1.1 additions (AI Hardware Intelligence, AI Active Protection Dashboard, AI Platform) are tracked in [PROJECT_STATUS.md](./PROJECT_STATUS.md) and [FEATURE_MATRIX.md](./FEATURE_MATRIX.md). This checklist covers the V1.0 commercial foundation. Current test count: 7,957 across 118 files.
+
 ---
 
 ## Version & Branding

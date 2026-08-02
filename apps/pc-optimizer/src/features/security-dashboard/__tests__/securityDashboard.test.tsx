@@ -18,7 +18,7 @@
  * - Accessibility (ARIA roles, keyboard navigation)
  * - Regression tests
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 
 // Global cleanup before and after every test to prevent DOM leakage
@@ -26,10 +26,8 @@ beforeEach(() => cleanup());
 afterEach(() => cleanup());
 
 import { SecurityDashboardViewModel } from '../SecurityDashboardViewModel';
-import type { SecurityDashboardState } from '../SecurityDashboardViewModel';
 import { RealTimeProtectionEngine } from '../../realtime-protection';
 import { ProtectionFactory } from '../../realtime-protection';
-import type { ProtectionConfiguration } from '../../realtime-protection';
 
 // ── Test Helpers ─────────────────────────────────────────────────────
 

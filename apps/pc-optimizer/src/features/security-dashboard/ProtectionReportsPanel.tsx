@@ -2,14 +2,13 @@
  * ProtectionReportsPanel — generate, view, and export security reports.
  */
 import { useState } from 'react';
-import { Card, Button, Badge } from '@avs/ui';
+import { Card, Button } from '@avs/ui';
 import {
   DocumentTextIcon,
   CalendarDaysIcon,
   ExclamationTriangleIcon,
   MagnifyingGlassIcon,
   ArrowPathIcon,
-  ArchiveBoxIcon,
   ClockIcon,
   DocumentArrowDownIcon,
 } from '@heroicons/react/24/outline';

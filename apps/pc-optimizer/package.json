@@ -5,7 +5,7 @@
   "description": "AVS PC Optimizer — Windows performance, cleanup, and privacy utility.",
   "author": {
     "name": "Advanced Vision Software LLC",
-    "email": "info@avs.example.com"
+    "email": "help@avsshield.com"
   },
   "publisherName": "Advanced Vision Software LLC",
   "main": "dist-electron/main/index.js",

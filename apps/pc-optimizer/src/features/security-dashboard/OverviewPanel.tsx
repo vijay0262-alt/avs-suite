@@ -2,7 +2,7 @@
  * OverviewPanel — dashboard overview with security score, protection status,
  * live monitoring counts, and key metrics.
  */
-import { Card, Badge, ProgressBar, StatTile } from '@avs/ui';
+import { Card, Badge, ProgressBar } from '@avs/ui';
 import type { BadgeTone } from '@avs/ui';
 import {
   ShieldCheckIcon,
@@ -64,7 +64,6 @@ export function OverviewPanel({
   overview,
   liveCounts,
   health,
-  statistics,
   telemetry,
   session,
   lastUpdated,
@@ -78,9 +77,6 @@ export function OverviewPanel({
       </Card>
     );
   }
-
-  const todayStart = new Date().setHours(0, 0, 0, 0);
-  const isToday = (ts: number | null) => ts !== null && ts >= todayStart;
 
   return (
     <div className="space-y-6" data-testid="overview-panel">

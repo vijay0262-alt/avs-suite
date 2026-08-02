@@ -1,5 +1,9 @@
 # AVS Suite — Product Requirements & Progress
 
+> **⚠️ This PRD reflects the original V1.0 scope (Junk Cleaner MVP, Safe Cleaning Engine) and is outdated.**
+> **For current project state, see [docs/PROJECT_STATUS.md](../docs/PROJECT_STATUS.md), [docs/FEATURE_MATRIX.md](../docs/FEATURE_MATRIX.md), and [docs/ARCHITECTURE_OVERVIEW.md](../docs/ARCHITECTURE_OVERVIEW.md).**
+> **V1.1 added: AI Hardware Intelligence, AI Active Protection Dashboard, AI Platform (Context, Insights, Recommendations, Predictions, Process Intelligence, Smart Optimization, Workspace), Customer Portal.**
+
 ## Original problem statement
 
 Build **AVS PC Optimizer**, a commercial Windows desktop application

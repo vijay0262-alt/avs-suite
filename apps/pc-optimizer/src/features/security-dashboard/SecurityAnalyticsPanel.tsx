@@ -41,7 +41,7 @@ export function SecurityAnalyticsPanel({
   statistics,
   telemetry,
   history,
-  insights,
+  insights: _insights,
 }: SecurityAnalyticsPanelProps) {
   // Build event distribution by category
   const categoryData = useMemo(() => {

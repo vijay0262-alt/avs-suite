@@ -3,7 +3,7 @@
  * investigations, quarantine, reports, and AI Copilot.
  */
 import { useEffect, useRef } from 'react';
-import { Card, Button, Badge } from '@avs/ui';
+import { Button, Badge } from '@avs/ui';
 import {
   XMarkIcon,
   RocketLaunchIcon,

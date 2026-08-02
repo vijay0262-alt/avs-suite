@@ -1,5 +1,8 @@
 # Feature Completion Report
 
+> **⚠️ This report covers V1.0 (Phase 4) only and is superseded by [PROJECT_STATUS.md](./PROJECT_STATUS.md) and [FEATURE_MATRIX.md](./FEATURE_MATRIX.md) for current project state.**
+> Test count referenced below (7,199) is outdated — current count is 7,957 across 118 files.
+
 ## AVS Shield PC Optimizer — PCP Phase 4
 
 **Date:** August 1, 2026  

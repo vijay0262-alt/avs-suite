@@ -10,7 +10,6 @@ import {
   MagnifyingGlassIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
-  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import type { ThreatTimelineEntry } from './SecurityDashboardViewModel';
 import type { ProtectionHistoryEntry } from '../realtime-protection';
@@ -146,7 +145,7 @@ export function ThreatTimelinePanel({ timeline, history }: ThreatTimelinePanelPr
                   {/* Vertical line */}
                   <div className="absolute left-2 top-0 bottom-0 w-px bg-border" aria-hidden />
 
-                  {entries.map((entry, idx) => (
+                  {entries.map((entry, _idx) => (
                     <div
                       key={entry.id}
                       className="relative pb-4 last:pb-0"

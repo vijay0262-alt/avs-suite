@@ -12,7 +12,7 @@
  *   - Search: unified search across threats, processes, investigations, etc.
  */
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Card, Badge, Button, ProgressBar, StatTile } from '@avs/ui';
+import { Badge, Button, StatTile } from '@avs/ui';
 import type { BadgeTone } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
