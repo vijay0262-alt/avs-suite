@@ -8,7 +8,6 @@
  */
 import type { SystemLiveMetrics } from './types';
 import { dashboardService } from '../dashboard/dashboard.service';
-import type { DashboardMetrics } from '../dashboard/dashboard.types';
 import { extractLiveMetrics } from './types';
 
 export class SystemMonitor {

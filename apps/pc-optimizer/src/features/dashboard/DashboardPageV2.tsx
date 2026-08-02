@@ -21,7 +21,7 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { DashboardViewModel } from './DashboardViewModel';
 import { dashboardService } from './dashboard.service';
 import { generateRecommendations } from './dashboard.utils';
-import type { HealthSnapshot, DashboardMetrics, LiveMetrics } from './dashboard.types';
+import type { DashboardMetrics, LiveMetrics } from './dashboard.types';
 import { HealthScanModal } from './components/HealthScanModal';
 import { useIsPro } from '../sync/syncStore';
 import { useEditionLimits } from '../licensing/editionLimits';
@@ -169,7 +169,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-text-primary">{getGreeting()}</h1>
           <p className="mt-1 text-sm text-text-secondary">
-            Here's your AI-powered system overview for today.
+            Here&apos;s your AI-powered system overview for today.
           </p>
         </div>
         <div className="flex items-center gap-3">

@@ -26,7 +26,6 @@ import {
   type ConversationResponse,
   type AssistantDashboardData,
   type AssistantInsight,
-  type ConversationMessage,
 } from '../ai-assistant';
 import { QUICK_QUESTIONS } from '../ai-assistant/types';
 import {

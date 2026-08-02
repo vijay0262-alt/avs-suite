@@ -55,7 +55,7 @@ export default function UpgradePage() {
           </div>
           <h2 className="mt-4 text-2xl font-bold text-[var(--avs-text-primary)]">AVS Shield Professional</h2>
           <p className="mt-2 text-sm text-[var(--avs-text-secondary)] max-w-md">
-            "AVS Shield doesn't just monitor your PC—it understands it."
+            &ldquo;AVS Shield doesn&apos;t just monitor your PC&mdash;it understands it.&rdquo;
           </p>
           <div className="mt-6 flex items-baseline gap-2">
             <span className="text-4xl font-bold text-[var(--avs-text-primary)]">$49.99</span>

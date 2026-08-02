@@ -24,7 +24,7 @@ import type {
 } from './types';
 import { confidenceToLabel } from './types';
 
-const KNOWN_KEYLOGGER_NAMES = ['keylog', 'keylogger', 'keystroke', 'keycapture', 'keyspy', 'keytrap', 'spytector', 'refog', 'ardamax', 'actualspy', 'spytector', 'revealer'];
+const _KNOWN_KEYLOGGER_NAMES = ['keylog', 'keylogger', 'keystroke', 'keycapture', 'keyspy', 'keytrap', 'spytector', 'refog', 'ardamax', 'actualspy', 'spytector', 'revealer'];
 
 export class KeyloggerDetectionProvider extends SecurityProvider {
   constructor() {

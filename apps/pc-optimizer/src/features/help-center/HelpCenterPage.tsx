@@ -8,15 +8,13 @@
  *   - Documentation links
  *   - Keyboard shortcuts
  */
-import { Card, Button, Badge } from '@avs/ui';
+import { Card } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
 import {
   QuestionMarkCircleIcon,
   LifebuoyIcon,
-  DocumentTextIcon,
   EnvelopeIcon,
   GlobeAltIcon,
-  KeyIcon,
   ArrowRightIcon,
   ChatBubbleLeftRightIcon,
   ShieldCheckIcon,

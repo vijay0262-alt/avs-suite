@@ -180,7 +180,7 @@ const RISK_COLORS: Record<RiskLevel, string> = {
   severe: 'text-[var(--avs-danger)]',
 };
 
-const IMPACT_COLORS: Record<OptimizationImpactTier, string> = {
+const _IMPACT_COLORS: Record<OptimizationImpactTier, string> = {
   high: 'text-[var(--avs-success)]',
   medium: 'text-[var(--avs-warning)]',
   low: 'text-[var(--avs-text-muted)]',

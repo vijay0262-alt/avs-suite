@@ -26,8 +26,8 @@ import type {
 } from './types';
 import { confidenceToLabel } from './types';
 
-const KNOWN_TROJAN_NAMES = ['emotet', 'trickbot', 'zeus', 'azorult', 'lokibot', 'formbook', 'redline', 'vidar', 'racoon', 'dridex', 'qakbot', 'icedid', 'bazarloader', 'hancitor'];
-const SYSTEM_PROCESSES = ['explorer.exe', 'svchost.exe', 'lsass.exe', 'csrss.exe', 'winlogon.exe', 'wininit.exe', 'smss.exe', 'services.exe', 'spoolsv.exe', 'dwm.exe'];
+const _KNOWN_TROJAN_NAMES = ['emotet', 'trickbot', 'zeus', 'azorult', 'lokibot', 'formbook', 'redline', 'vidar', 'racoon', 'dridex', 'qakbot', 'icedid', 'bazarloader', 'hancitor'];
+const _SYSTEM_PROCESSES = ['explorer.exe', 'svchost.exe', 'lsass.exe', 'csrss.exe', 'winlogon.exe', 'wininit.exe', 'smss.exe', 'services.exe', 'spoolsv.exe', 'dwm.exe'];
 
 export class TrojanDetectionProvider extends SecurityProvider {
   constructor() {

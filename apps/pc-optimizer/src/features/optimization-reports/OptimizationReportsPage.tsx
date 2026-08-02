@@ -9,7 +9,8 @@
  *   - Export to PDF/HTML/Markdown/JSON/CSV
  *   - Report history timeline
  */
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo } from 'react';
+import type { ComponentType, SVGProps } from 'react';
 import { Card, Button, Badge } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
@@ -29,13 +30,11 @@ import { ReportManager } from '../optimization-report';
 import type {
   IntelligenceReport as V1IntelligenceReport,
   ReportStatistics as V1Statistics,
-  OptimizationStory,
 } from '../optimization-report';
 import {
   DocumentChartBarIcon,
   ArrowDownTrayIcon,
   ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
   ClockIcon,
   CircleStackIcon,
   CheckCircleIcon,
@@ -44,7 +43,6 @@ import {
   ArrowPathIcon,
   EyeIcon,
   ArchiveBoxIcon,
-  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 
 // ── ViewModel ──────────────────────────────────────────────────
@@ -434,7 +432,7 @@ export default function OptimizationReportsPage() {
 
 // ── Sub-components ─────────────────────────────────────────────
 
-function StatCard({ label, value, icon: Icon }: { label: string; value: string | number; icon: typeof ChartBarIcon }) {
+function StatCard({ label, value, icon: Icon }: { label: string; value: string | number; icon: ComponentType<SVGProps<SVGSVGElement>> }) {
   return (
     <Card variant="glass" className="p-3">
       <div className="flex items-center gap-2">
@@ -449,7 +447,7 @@ function StatCard({ label, value, icon: Icon }: { label: string; value: string |
 }
 
 function ReportListItem({
-  id, title, summary, overallResult, healthDelta, storageRecovered, confidence, generatedAt, isSelected, onSelect,
+  id: _id, title, summary, overallResult, healthDelta, storageRecovered, confidence, generatedAt, isSelected, onSelect,
 }: {
   id: string; title: string; summary: string; overallResult: OverallResult;
   healthDelta: number | null; storageRecovered: number; confidence: number;
@@ -662,7 +660,7 @@ function V1ReportDetail({ report }: { report: V1IntelligenceReport }) {
   );
 }
 
-function MetricBox({ label, value, icon: Icon }: { label: string; value: string; icon: typeof ChartBarIcon }) {
+function MetricBox({ label, value, icon: Icon }: { label: string; value: string; icon: ComponentType<SVGProps<SVGSVGElement>> }) {
   return (
     <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
       <div className="flex items-center gap-2">

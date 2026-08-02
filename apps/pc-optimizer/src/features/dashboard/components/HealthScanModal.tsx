@@ -823,7 +823,7 @@ function StatusBadge({ status }: { status: HealthScanModuleResult['status'] }) {
   return <span className="text-sm text-text-muted">Pending</span>;
 }
 
-function ModuleReportCard({ module }: { module: HealthScanModuleResult }) {
+function _ModuleReportCard({ module }: { module: HealthScanModuleResult }) {
   return (
     <div className="p-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)]">
       <div className="flex items-center justify-between mb-2">

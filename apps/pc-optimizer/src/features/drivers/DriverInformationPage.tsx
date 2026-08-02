@@ -7,7 +7,7 @@
  *   - Device class filter
  *   - Driver signing status
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Card, Button, Badge } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
@@ -15,7 +15,6 @@ import { PageHeader } from '../../components/PageHeader';
 import { ModuleEmptyState, ModuleLoadingState, ModuleErrorState } from '../../components/ModuleStates';
 import {
   CpuChipIcon,
-  CheckCircleIcon,
   ExclamationTriangleIcon,
   ArrowPathIcon,
   ShieldCheckIcon,
@@ -231,7 +230,7 @@ function SummaryCard({ label, value, icon: Icon, tone = 'neutral' }: { label: st
           <Icon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
         </div>
         <div>
-          <p className="text-2xl font-bold {colorClass}">{value}</p>
+          <p className={`text-2xl font-bold ${colorClass}`}>{value}</p>
           <p className="text-xs text-[var(--avs-text-muted)]">{label}</p>
         </div>
       </div>

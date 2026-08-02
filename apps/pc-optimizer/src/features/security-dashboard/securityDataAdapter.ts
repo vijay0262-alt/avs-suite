@@ -501,7 +501,7 @@ export const securityDataAdapter = {
 
     for (const proc of processes) {
       const indicators: BehaviorIndicator[] = [];
-      const cmdLower = (proc.cmdline || '').toLowerCase();
+      const _cmdLower = (proc.cmdline || '').toLowerCase();
       const exeLower = (proc.exe || '').toLowerCase();
       const nameLower = (proc.name || '').toLowerCase();
 
@@ -658,7 +658,6 @@ export const securityDataAdapter = {
     unsignedExecs: Array<{ path: string; name: string; size: number; signatureStatus: string; signer: string; lastModified: string }>,
     processes: Array<{ name: string; exe: string }>,
   ): { files: Array<Record<string, unknown>>; publishers: Array<Record<string, unknown>> } {
-    const now = Date.now();
 
     const files = unsignedExecs.map(exe => {
       const pathLower = (exe.path || '').toLowerCase();

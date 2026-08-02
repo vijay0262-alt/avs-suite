@@ -31,13 +31,6 @@ import type {
   InvestigationInput,
   InvestigationStatus,
   ThreatReport,
-  TimelineEvent,
-  CollectedEvidence,
-  ThreatRelationshipGraph,
-  AffectedComponent,
-  RecommendedAction,
-  FalsePositiveAnalysis,
-  InvestigationEvent,
   InvestigationEventListener,
 } from '../security-investigation/types';
 
@@ -45,19 +38,15 @@ import { ThreatRemediationEngine } from '../security-remediation/ThreatRemediati
 import { remediationEventBus } from '../security-remediation/ThreatRemediationEvents';
 import type {
   RemediationPlan,
-  RemediationAction,
   RemediationReport,
   QuarantineEntry,
   QuarantineSummary,
-  RollbackEntry,
-  ApprovalRequest,
   RemediationHistoryData,
   RemediationDashboardData,
   RemediationConfiguration,
   RemediationPolicy,
   RemediationTier,
   FalsePositiveExclusionType,
-  RemediationEvent,
   RemediationEventListener,
 } from '../security-remediation/types';
 

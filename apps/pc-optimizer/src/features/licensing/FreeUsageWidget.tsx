@@ -97,7 +97,7 @@ export function FreeUsageWidget() {
     <Card title="Today's Usage" variant="glass" data-testid="free-usage-widget">
       <div className="space-y-4">
         <p className="text-xs text-text-muted">
-          You're using the Free edition. Here's what's remaining today.
+          You&apos;re using the Free edition. Here&apos;s what&apos;s remaining today.
         </p>
 
         <UsageRow

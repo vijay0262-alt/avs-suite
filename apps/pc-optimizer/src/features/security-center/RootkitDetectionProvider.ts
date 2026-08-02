@@ -26,7 +26,7 @@ import type {
 } from './types';
 import { confidenceToLabel } from './types';
 
-const KNOWN_ROOTKIT_NAMES = ['rootkit', 'necurs', 'tdss', 'alureon', 'rustock', 'bagle', 'haxdoor', 'agobot', 'rxbot', 'spambot', 'cutwail', 'sirefef', 'zeroaccess', 'max++'];
+const _KNOWN_ROOTKIT_NAMES = ['rootkit', 'necurs', 'tdss', 'alureon', 'rustock', 'bagle', 'haxdoor', 'agobot', 'rxbot', 'spambot', 'cutwail', 'sirefef', 'zeroaccess', 'max++'];
 
 export class RootkitDetectionProvider extends SecurityProvider {
   constructor() {

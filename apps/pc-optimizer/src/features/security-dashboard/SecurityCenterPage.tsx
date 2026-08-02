@@ -23,7 +23,7 @@ import {
 } from './SecurityCenterViewModel';
 import type { Threat, ThreatCategory, ThreatSeverity } from '../security-center/types';
 import type { ThreatInvestigation } from '../security-investigation/types';
-import type { RemediationPlan, QuarantineSummary } from '../security-remediation/types';
+import type { RemediationPlan } from '../security-remediation/types';
 import {
   ShieldCheckIcon,
   MagnifyingGlassIcon,

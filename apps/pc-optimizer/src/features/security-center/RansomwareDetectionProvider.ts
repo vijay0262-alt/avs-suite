@@ -26,12 +26,12 @@ import type {
 } from './types';
 import { confidenceToLabel } from './types';
 
-const RANSOMWARE_PROCESS_NAMES = ['locky', 'cryptolocker', 'wannacry', 'wcry', 'ryuk', 'conti', 'maze', 'sodinokibi', 'gandcrab', 'revelocky', 'cerber', 'globeimposter', 'dharma', 'phobos'];
-const RANSOM_NOTE_PATTERNS = ['how_to_decrypt', 'readme', 'restore_files', 'ransom', 'recover', 'how_to_recover', 'decryption_instructions', '!restore', 'help_help', 'all_your_files'];
-const SHADOW_DELETE_CMDS = ['vssadmin delete shadows', 'vssadmin delete shadowcopies', 'wmic shadowcopy delete'];
-const RECOVERY_DISABLE_CMDS = ['bcdedit', 'recoveryenabled', 'recoveryenabled no'];
-const BACKUP_DELETE_CMDS = ['wbadmin delete catalog', 'wbadmin delete systemstatebackup'];
-const MASS_ENCRYPTION_EXTENSIONS = ['.encrypted', '.locked', '.crypt', '.crypted', '.locky', '.wcry', '.ryk', '.maze', '.conti', '.phobos', '.dharma'];
+const _RANSOMWARE_PROCESS_NAMES = ['locky', 'cryptolocker', 'wannacry', 'wcry', 'ryuk', 'conti', 'maze', 'sodinokibi', 'gandcrab', 'revelocky', 'cerber', 'globeimposter', 'dharma', 'phobos'];
+const _RANSOM_NOTE_PATTERNS = ['how_to_decrypt', 'readme', 'restore_files', 'ransom', 'recover', 'how_to_recover', 'decryption_instructions', '!restore', 'help_help', 'all_your_files'];
+const _SHADOW_DELETE_CMDS = ['vssadmin delete shadows', 'vssadmin delete shadowcopies', 'wmic shadowcopy delete'];
+const _RECOVERY_DISABLE_CMDS = ['bcdedit', 'recoveryenabled', 'recoveryenabled no'];
+const _BACKUP_DELETE_CMDS = ['wbadmin delete catalog', 'wbadmin delete systemstatebackup'];
+const _MASS_ENCRYPTION_EXTENSIONS = ['.encrypted', '.locked', '.crypt', '.crypted', '.locky', '.wcry', '.ryk', '.maze', '.conti', '.phobos', '.dharma'];
 
 export class RansomwareDetectionProvider extends SecurityProvider {
   constructor() {

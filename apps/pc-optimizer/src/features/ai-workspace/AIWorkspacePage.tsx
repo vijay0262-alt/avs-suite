@@ -726,7 +726,7 @@ function ActionsTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorkspaceVie
 
 // ── Personalization Tab ────────────────────────────────────────
 
-function PersonalizationTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorkspaceViewModel }) {
+function PersonalizationTab({ state }: { state: AIWorkspaceState; vm: AIWorkspaceViewModel }) {
   const s = state;
 
   return (
@@ -784,7 +784,7 @@ function StatBox({ label, value, icon: Icon }: { label: string; value: string | 
   );
 }
 
-function PrefRow({ label, value }: { label: string; value: string }) {
+function _PrefRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
       <span className="text-xs font-medium text-[var(--avs-text-muted)]">{label}</span>

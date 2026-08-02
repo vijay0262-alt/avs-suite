@@ -6,7 +6,7 @@
  *   - View recent notifications
  *   - Configure notification frequency
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Card, Button, Badge } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
@@ -18,7 +18,6 @@ import {
   HeartIcon,
   BoltIcon,
   WrenchScrewdriverIcon,
-  CheckCircleIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
 } from '@heroicons/react/24/outline';
