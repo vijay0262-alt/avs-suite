@@ -25,6 +25,8 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
       scope: 'entire',
       estimate: null,
       estimateLoading: false,
+      scanError: null,
+      deleteError: null,
     });
   }
 
@@ -67,14 +69,13 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
 
   async scan(excludeDirs?: string[], minFileSize?: number) {
     const directories = this.getScanDirectories();
-    this.setState({ scanning: true, scanResult: null, selectedFiles: new Set(), deleteResult: null });
+    this.setState({ scanning: true, scanResult: null, selectedFiles: new Set(), deleteResult: null, scanError: null });
     try {
       const result = await this.service.scan(this.state.scope, directories, excludeDirs, minFileSize);
       this.setState({ scanResult: result, directories: result.scannedDirectories, scanning: false });
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to scan for duplicates';
-      this.setState({ bootstrap: 'error', bootstrapError: error, scanning: false });
-      throw err;
+      this.setState({ scanError: error, scanning: false });
     }
   }
 
@@ -83,7 +84,7 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
       return;
     }
 
-    this.setState({ deleting: true, deleteResult: null });
+    this.setState({ deleting: true, deleteResult: null, deleteError: null });
     try {
       const filesToDelete = this.getFilesToDelete();
       const result = await this.service.delete(filesToDelete);
@@ -106,9 +107,16 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
       }
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to delete files';
-      this.setState({ bootstrap: 'error', bootstrapError: error, deleting: false });
-      throw err;
+      this.setState({ deleteError: error, deleting: false });
     }
+  }
+
+  clearScanError() {
+    this.setState({ scanError: null });
+  }
+
+  clearDeleteError() {
+    this.setState({ deleteError: null });
   }
 
   toggleFileSelection(filePath: string) {

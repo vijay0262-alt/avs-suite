@@ -81,6 +81,8 @@ export class PrivacyViewModel extends ViewModel<PrivacyState> {
       browsersLoading: false,
       browsersError: null,
       cleanResult: null,
+      scanError: null,
+      cleanError: null,
     });
   }
 
@@ -106,15 +108,14 @@ export class PrivacyViewModel extends ViewModel<PrivacyState> {
   }
 
   async scan() {
-    this.setState({ scanning: true, scanResult: null });
+    this.setState({ scanning: true, scanResult: null, scanError: null });
     try {
       const categories = Array.from(this.state.selectedCategories);
       const result = await this.service.scan(categories);
       this.setState({ scanResult: result, scanning: false });
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to scan';
-      this.setState({ bootstrap: 'error', bootstrapError: error, scanning: false });
-      throw err;
+      this.setState({ scanError: error, scanning: false });
     }
   }
 
@@ -123,7 +124,7 @@ export class PrivacyViewModel extends ViewModel<PrivacyState> {
       return;
     }
 
-    this.setState({ cleaning: true, cleanResult: null });
+    this.setState({ cleaning: true, cleanResult: null, cleanError: null });
     try {
       const result = await this.service.clean(this.state.scanResult.items);
       this.setState({ cleanResult: result, cleaning: false });
@@ -138,8 +139,7 @@ export class PrivacyViewModel extends ViewModel<PrivacyState> {
       });
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to clean';
-      this.setState({ bootstrap: 'error', bootstrapError: error, cleaning: false });
-      throw err;
+      this.setState({ cleanError: error, cleaning: false });
     }
   }
 
@@ -159,6 +159,14 @@ export class PrivacyViewModel extends ViewModel<PrivacyState> {
 
   deselectAllCategories() {
     this.setState({ selectedCategories: new Set() });
+  }
+
+  clearScanError() {
+    this.setState({ scanError: null });
+  }
+
+  clearCleanError() {
+    this.setState({ cleanError: null });
   }
 
   formatBytes(bytes: number): string {

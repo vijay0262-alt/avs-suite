@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, Button } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
-import { ModuleErrorState, ModuleLoadingState } from '../../components/ModuleStates';
+import { ModuleErrorState, ModuleLoadingState, ModuleErrorBanner } from '../../components/ModuleStates';
 import { SharedConfirmDialog } from '../../components/SharedConfirmDialog';
 import { HelpButton } from '../../components/HelpButton';
 import { DiskAnalyzerViewModel } from './DiskAnalyzerViewModel';
@@ -68,6 +68,21 @@ export default function DiskAnalyzerPage() {
 
       {state.bootstrap === 'ready' && (
         <>
+          {state.analyzeError && (
+            <ModuleErrorBanner
+              message={state.analyzeError}
+              onRetry={() => vm.analyze(maxDepth)}
+              onDismiss={() => vm.clearAnalyzeError()}
+              testId="disk-analyzer-analyze-error"
+            />
+          )}
+          {state.deleteError && (
+            <ModuleErrorBanner
+              message={state.deleteError}
+              onDismiss={() => vm.clearDeleteError()}
+              testId="disk-analyzer-delete-error"
+            />
+          )}
           <Card title="Select Drives or Folder to Analyze" className="mb-4">
             <div className="space-y-4">
               {state.drives.length === 0 ? (

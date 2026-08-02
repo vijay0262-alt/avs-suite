@@ -6,7 +6,7 @@ import { useEffect, useMemo } from 'react';
 import { Card, Button } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
-import { ModuleErrorState, ModuleLoadingState, ModuleEmptyState, ModuleSuccessBanner } from '../../components/ModuleStates';
+import { ModuleErrorState, ModuleLoadingState, ModuleEmptyState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
 import { HelpButton } from '../../components/HelpButton';
 import { DuplicateFinderViewModel } from './DuplicateFinderViewModel';
 import { duplicateFinderService } from './duplicate-finder.service';
@@ -72,6 +72,21 @@ export default function DuplicateFinderPage() {
 
       {state.bootstrap === 'ready' && (
         <>
+          {state.scanError && (
+            <ModuleErrorBanner
+              message={state.scanError}
+              onRetry={() => vm.scan()}
+              onDismiss={() => vm.clearScanError()}
+              testId="duplicate-finder-scan-error"
+            />
+          )}
+          {state.deleteError && (
+            <ModuleErrorBanner
+              message={state.deleteError}
+              onDismiss={() => vm.clearDeleteError()}
+              testId="duplicate-finder-delete-error"
+            />
+          )}
           <Card title="Select Scan Scope" className="mb-4">
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">

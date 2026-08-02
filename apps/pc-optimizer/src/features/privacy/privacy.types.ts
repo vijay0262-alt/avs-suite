@@ -45,4 +45,6 @@ export interface PrivacyState {
   selectedCategories: Set<string>;
   browsersDetected: string[];
   cleanResult: PrivacyCleanResult | null;
+  scanError: string | null;
+  cleanError: string | null;
 }

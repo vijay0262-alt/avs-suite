@@ -6,6 +6,7 @@ import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import type { DiskAnalyzerState } from './disk-analyzer.types';
 import type { IDiskAnalyzerService } from './disk-analyzer.service';
 import { diskAnalyzerService } from './disk-analyzer.service';
+import { optimizationEventBus, OptimizationEventType } from '../health';
 
 export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
   constructor(private service: IDiskAnalyzerService = diskAnalyzerService) {
@@ -23,6 +24,8 @@ export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
       expandedCategory: null,
       deleting: false,
       deleteResult: null,
+      analyzeError: null,
+      deleteError: null,
     });
   }
 
@@ -51,7 +54,7 @@ export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
 
   async analyze(maxDepth?: number) {
     const directory = this.state.customDirectory || this.state.selectedDrives[0] || undefined;
-    this.setState({ analyzing: true, analysisResult: null, selectedFiles: new Set(), deleteResult: null });
+    this.setState({ analyzing: true, analysisResult: null, selectedFiles: new Set(), deleteResult: null, analyzeError: null });
     try {
       const result = await this.service.analyze(directory, maxDepth);
       this.setState({ 
@@ -62,25 +65,35 @@ export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
       });
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to analyze disk';
-      this.setState({ bootstrap: 'error', bootstrapError: error, analyzing: false });
-      throw err;
+      this.setState({ analyzeError: error, analyzing: false });
     }
   }
 
   async deleteSelectedFiles() {
     const files = Array.from(this.state.selectedFiles);
     if (files.length === 0) return;
-    this.setState({ deleting: true, deleteResult: null });
+    this.setState({ deleting: true, deleteResult: null, deleteError: null });
     try {
       const result = await this.service.deleteFiles(files);
       this.setState({ deleting: false, deleteResult: result });
       // Clear selection after deletion
       this.setState({ selectedFiles: new Set() });
+      // Emit optimization event so Dashboard refreshes health score
+      if (result.deleted > 0) {
+        optimizationEventBus.emit({
+          type: OptimizationEventType.ScanCompleted,
+          moduleId: 'disk',
+          action: 'delete',
+          bytesRecovered: result.bytesFreed,
+          itemsProcessed: result.deleted,
+          timestamp: Date.now(),
+        });
+      }
       // Re-analyze to refresh the file list
       await this.analyze(this.state.maxDepth);
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to delete files';
-      this.setState({ deleting: false, bootstrapError: error });
+      this.setState({ deleting: false, deleteError: error });
     }
   }
 
@@ -127,6 +140,14 @@ export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
       }
     }
     this.setState({ selectedFiles: selected });
+  }
+
+  clearAnalyzeError() {
+    this.setState({ analyzeError: null });
+  }
+
+  clearDeleteError() {
+    this.setState({ deleteError: null });
   }
 
   clearSelection() {

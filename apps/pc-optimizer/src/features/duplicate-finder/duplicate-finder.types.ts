@@ -64,4 +64,6 @@ export interface DuplicateFinderState {
   scope: DuplicateScope;
   estimate: DuplicateEstimateResult | null;
   estimateLoading: boolean;
+  scanError: string | null;
+  deleteError: string | null;
 }

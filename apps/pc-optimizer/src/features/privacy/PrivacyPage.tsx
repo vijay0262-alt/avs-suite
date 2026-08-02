@@ -132,6 +132,21 @@ export default function PrivacyPage() {
 
       {state.bootstrap === 'ready' && (
         <>
+          {state.scanError && (
+            <ModuleErrorBanner
+              message={state.scanError}
+              onRetry={() => vm.scan()}
+              onDismiss={() => vm.clearScanError()}
+              testId="privacy-scan-error"
+            />
+          )}
+          {state.cleanError && (
+            <ModuleErrorBanner
+              message={state.cleanError}
+              onDismiss={() => vm.clearCleanError()}
+              testId="privacy-clean-error"
+            />
+          )}
           <Card title="Detected Browsers" className="mb-4">
             {state.browsersLoading ? (
               <p className="text-text-secondary">Detecting browsers...</p>

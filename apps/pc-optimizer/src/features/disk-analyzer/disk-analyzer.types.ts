@@ -80,4 +80,6 @@ export interface DiskAnalyzerState {
   expandedCategory: string | null;
   deleting: boolean;
   deleteResult: DeleteFilesResult | null;
+  analyzeError: string | null;
+  deleteError: string | null;
 }
