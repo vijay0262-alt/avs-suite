@@ -185,7 +185,7 @@ export default function PerformancePage() {
                 {state.metrics?.cpu.perCoreUsage.slice(0, 8).map((usage, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <span className="text-xs text-text-secondary w-8">Core {i}</span>
-                    <div className="flex-1 h-2 bg-bg-secondary rounded overflow-hidden">
+                    <div className="flex-1 h-2 bg-[var(--avs-surface-muted)] rounded overflow-hidden">
                       <div 
                         className="h-full bg-brand-primary transition-all"
                         style={{ width: `${usage}%` }}
@@ -229,7 +229,7 @@ export default function PerformancePage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 bg-bg-secondary border border-[var(--avs-border)] rounded text-sm text-text-primary"
+                className="px-3 py-2 bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded text-sm text-text-primary"
               >
                 <option value="cpu">Sort by CPU</option>
                 <option value="memory">Sort by Memory</option>
@@ -239,7 +239,7 @@ export default function PerformancePage() {
                 placeholder="Search processes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 px-3 py-2 bg-bg-secondary border border-[var(--avs-border)] rounded text-sm text-text-primary"
+                className="flex-1 px-3 py-2 bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded text-sm text-text-primary"
               />
               <Button variant="secondary" onClick={handleLoadProcesses}>
                 Load

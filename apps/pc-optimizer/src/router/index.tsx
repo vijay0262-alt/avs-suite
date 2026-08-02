@@ -10,6 +10,8 @@ import { OnboardingProvider } from '../features/onboarding/OnboardingProvider';
 
 // Lazy load all pages
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
+const AICopilotPage = lazy(() => import('../pages/AICopilotPage'));
+const SecurityCenterPage = lazy(() => import('../pages/SecurityCenterPage'));
 const JunkCleanerPage = lazy(() => import('../pages/JunkCleanerPage'));
 const RegistryCleanerPage = lazy(() => import('../pages/RegistryCleanerPage'));
 const StartupManagerPage = lazy(() => import('../pages/StartupManagerPage'));
@@ -24,12 +26,43 @@ const HardwareCenterPage = lazy(() => import('../pages/HardwareCenterPage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 const AboutPage = lazy(() => import('../pages/AboutPage'));
 const DiagnosticsPage = lazy(() => import('../features/diagnostics/DiagnosticsPage'));
-const SecurityDashboardPage = lazy(() => import('../pages/SecurityDashboardPage'));
 const ProcessIntelligencePage = lazy(() => import('../pages/ProcessIntelligencePage'));
 const PredictiveHealthPage = lazy(() => import('../pages/PredictiveHealthPage'));
 const ActivationPage = lazy(() => import('../features/licensing/ActivationPage'));
 const MaintenanceHistoryPage = lazy(() => import('../pages/MaintenanceHistoryPage'));
 const ReportsPage = lazy(() => import('../pages/ReportsPage'));
+const OptimizationReportsPage = lazy(() => import('../pages/OptimizationReportsPage'));
+const SmartOptimizationPage = lazy(() => import('../pages/SmartOptimizationPage'));
+const AIWorkspacePage = lazy(() => import('../pages/AIWorkspacePage'));
+
+// v2.0 security sub-pages and new route wrappers
+import {
+  QuickScanPage,
+  FullScanPage,
+  CustomScanPage,
+  AIActiveProtectionPage,
+  SpywareProtectionPage,
+  MalwareProtectionPage,
+  AdwareProtectionPage,
+  RansomwareProtectionPage,
+  BrowserProtectionPage,
+  ThreatInvestigationPage,
+  QuarantinePage,
+  SecurityReportsPage,
+} from '../pages/SecuritySubPages';
+import {
+  AIDailyBriefingPage,
+  SystemHealthPage,
+  PerformanceAnalyticsPage,
+  BrowserCleanerPage,
+  LargeFilesPage,
+  ReportsTimelinePage,
+  AnalyticsPage,
+  NetworkInformationPage,
+  RecoveryCenterPage,
+  UpgradePage,
+  HelpPage,
+} from '../pages/NewPageWrappers';
 
 // Module preloader - preloads frequently used modules in background
 const ModulePreloader = () => {
@@ -39,7 +72,7 @@ const ModulePreloader = () => {
       void import('../pages/JunkCleanerPage');
       void import('../pages/StartupManagerPage');
       void import('../pages/PerformancePage');
-      void import('../pages/SecurityDashboardPage');
+      void import('../pages/SecurityCenterPage');
       void import('../pages/ProcessIntelligencePage');
     };
 
@@ -84,27 +117,63 @@ export const router = createHashRouter([
     errorElement: <ErrorBoundary standalone />,
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
+      // HOME
       { path: 'dashboard', element: wrap(DashboardPage) },
-      { path: 'junk-cleaner', element: wrap(JunkCleanerPage) },
-      { path: 'registry-cleaner', element: wrap(RegistryCleanerPage) },
-      { path: 'startup-manager', element: wrap(StartupManagerPage) },
-      { path: 'privacy-cleaner', element: wrap(PrivacyCleanerPage) },
-      { path: 'duplicate-finder', element: wrap(DuplicateFinderPage) },
-      { path: 'disk-analyzer', element: wrap(DiskAnalyzerPage) },
-      { path: 'uninstaller', element: wrap(UninstallerPage) },
-      { path: 'software-updater', element: wrap(UpdaterPage) },
-      { path: 'performance', element: wrap(PerformancePage) },
-      { path: 'security', element: <Navigate to="/security-dashboard" replace /> },
-      { path: 'security-dashboard', element: wrap(SecurityDashboardPage) },
+      { path: 'ai-copilot', element: wrap(AICopilotPage) },
+      { path: 'ai-daily-briefing', element: <AIDailyBriefingPage /> },
+      { path: 'ai-smart-optimize', element: wrap(SmartOptimizationPage) },
+      { path: 'ai-workspace', element: wrap(AIWorkspacePage) },
+      // SYSTEM HEALTH
+      { path: 'system-health', element: <SystemHealthPage /> },
+      { path: 'hardware-center', element: wrap(HardwareCenterPage) },
       { path: 'process-intelligence', element: wrap(ProcessIntelligencePage) },
       { path: 'predictive-health', element: wrap(PredictiveHealthPage) },
-      { path: 'system-information', element: wrap(SystemInformationPage) },
-      { path: 'hardware-center', element: wrap(HardwareCenterPage) },
+      { path: 'performance-analytics', element: <PerformanceAnalyticsPage /> },
+      // SECURITY
+      { path: 'security-center', element: wrap(SecurityCenterPage) },
+      { path: 'quick-scan', element: <QuickScanPage /> },
+      { path: 'full-scan', element: <FullScanPage /> },
+      { path: 'custom-scan', element: <CustomScanPage /> },
+      { path: 'ai-active-protection', element: <AIActiveProtectionPage /> },
+      { path: 'spyware-protection', element: <SpywareProtectionPage /> },
+      { path: 'malware-protection', element: <MalwareProtectionPage /> },
+      { path: 'adware-protection', element: <AdwareProtectionPage /> },
+      { path: 'ransomware-protection', element: <RansomwareProtectionPage /> },
+      { path: 'browser-protection', element: <BrowserProtectionPage /> },
+      { path: 'threat-investigation', element: <ThreatInvestigationPage /> },
+      { path: 'quarantine', element: <QuarantinePage /> },
+      { path: 'security-reports', element: <SecurityReportsPage /> },
+      // OPTIMIZATION
+      { path: 'junk-cleaner', element: wrap(JunkCleanerPage) },
+      { path: 'startup-manager', element: wrap(StartupManagerPage) },
+      { path: 'browser-cleaner', element: <BrowserCleanerPage /> },
+      { path: 'registry-cleaner', element: wrap(RegistryCleanerPage) },
+      { path: 'duplicate-finder', element: wrap(DuplicateFinderPage) },
+      { path: 'large-files', element: <LargeFilesPage /> },
+      { path: 'uninstaller', element: wrap(UninstallerPage) },
+      { path: 'software-updater', element: wrap(UpdaterPage) },
       { path: 'maintenance-history', element: wrap(MaintenanceHistoryPage) },
+      // REPORTS
       { path: 'reports', element: wrap(ReportsPage) },
-      { path: 'settings', element: wrap(SettingsPage) },
-      { path: 'about', element: wrap(AboutPage) },
+      { path: 'optimization-reports', element: wrap(OptimizationReportsPage) },
+      { path: 'reports-timeline', element: <ReportsTimelinePage /> },
+      { path: 'analytics', element: <AnalyticsPage /> },
+      // TOOLS
+      { path: 'system-information', element: wrap(SystemInformationPage) },
+      { path: 'disk-analyzer', element: wrap(DiskAnalyzerPage) },
+      { path: 'network-information', element: <NetworkInformationPage /> },
+      { path: 'recovery-center', element: <RecoveryCenterPage /> },
+      // ACCOUNT
       { path: 'license', element: wrap(ActivationPage) },
+      { path: 'upgrade', element: <UpgradePage /> },
+      { path: 'settings', element: wrap(SettingsPage) },
+      { path: 'help', element: <HelpPage /> },
+      { path: 'about', element: wrap(AboutPage) },
+      // LEGACY REDIRECTS
+      { path: 'security', element: <Navigate to="/security-center" replace /> },
+      { path: 'security-dashboard', element: <Navigate to="/security-center" replace /> },
+      { path: 'privacy-cleaner', element: wrap(PrivacyCleanerPage) },
+      { path: 'performance', element: wrap(PerformancePage) },
       { path: 'diagnostics', element: wrap(DiagnosticsPage) },
       { path: '*', element: <Navigate to="/dashboard" replace /> },
     ],

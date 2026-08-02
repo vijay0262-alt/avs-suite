@@ -63,9 +63,9 @@ export default function SystemInfoPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
               {[...Array(6)].map((_, i) => (
                 <Card key={i}>
-                  <div className="h-3 bg-bg-secondary rounded w-1/3 mb-3" />
-                  <div className="h-5 bg-bg-secondary rounded w-2/3 mb-2" />
-                  <div className="h-3 bg-bg-secondary rounded w-1/2" />
+                  <div className="h-3 bg-[var(--avs-surface-muted)] rounded w-1/3 mb-3" />
+                  <div className="h-5 bg-[var(--avs-surface-muted)] rounded w-2/3 mb-2" />
+                  <div className="h-3 bg-[var(--avs-surface-muted)] rounded w-1/2" />
                 </Card>
               ))}
             </div>

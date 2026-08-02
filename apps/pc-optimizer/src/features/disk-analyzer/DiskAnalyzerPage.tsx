@@ -82,7 +82,7 @@ export default function DiskAnalyzerPage() {
                         key={drive.device}
                         className={`relative p-4 border rounded cursor-pointer transition-colors ${
                           selected
-                            ? 'border-brand-primary bg-bg-secondary'
+                            ? 'border-brand-primary bg-[var(--avs-surface-muted)]'
                             : 'border-[var(--avs-border)] hover:border-brand-primary'
                         }`}
                       >
@@ -117,7 +117,7 @@ export default function DiskAnalyzerPage() {
                             <span className="text-text-secondary">Free:</span>
                             <span className="text-text-primary">{vm.formatBytes(drive.free)}</span>
                           </div>
-                          <div className="w-full h-2 bg-bg-secondary rounded overflow-hidden mt-2">
+                          <div className="w-full h-2 bg-[var(--avs-surface-muted)] rounded overflow-hidden mt-2">
                             <div
                               className={`h-full ${drive.percent > 80 ? 'bg-semantic-danger' : drive.percent > 60 ? 'bg-semantic-warning' : 'bg-semantic-success'}`}
                               style={{ width: `${drive.percent}%` }}
@@ -143,7 +143,7 @@ export default function DiskAnalyzerPage() {
                     placeholder="C:\\Users\\YourName\\Documents"
                     value={state.customDirectory}
                     onChange={(e) => vm.setCustomDirectory(e.target.value)}
-                    className="w-full px-3 py-2 bg-bg-secondary border border-[var(--avs-border)] rounded text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                    className="w-full px-3 py-2 bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                   />
                 </div>
                 <div className="mt-4">
@@ -256,7 +256,7 @@ export default function DiskAnalyzerPage() {
                         <div key={cat.category} className="border border-[var(--avs-border)] rounded-lg overflow-hidden">
                           {/* Category header */}
                           <div
-                            className="flex items-center gap-3 p-3 bg-bg-secondary cursor-pointer hover:bg-bg-secondary/80 transition-colors"
+                            className="flex items-center gap-3 p-3 bg-[var(--avs-surface-muted)] cursor-pointer hover:bg-[var(--avs-surface-muted)]/80 transition-colors"
                             onClick={() => vm.toggleCategory(cat.category)}
                           >
                             <input
@@ -302,7 +302,7 @@ export default function DiskAnalyzerPage() {
                                     <label
                                       key={file.path}
                                       className={`flex items-center gap-3 px-3 py-2 border-b border-[var(--avs-border)]/50 cursor-pointer transition-colors ${
-                                        isSelected ? 'bg-brand-primary/5' : 'hover:bg-bg-secondary/50'
+                                        isSelected ? 'bg-brand-primary/5' : 'hover:bg-[var(--avs-surface-muted)]/50'
                                       }`}
                                     >
                                       <input

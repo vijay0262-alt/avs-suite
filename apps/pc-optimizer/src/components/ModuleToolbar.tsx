@@ -42,7 +42,7 @@ export function ModuleToolbar({
           placeholder={searchPlaceholder}
           value={search.value}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-bg-secondary px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+          className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
         />
       )}
       {selects?.map((sel) => (
@@ -51,7 +51,7 @@ export function ModuleToolbar({
           aria-label={sel.ariaLabel}
           value={sel.value}
           onChange={(e) => sel.onChange(e.target.value)}
-          className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-bg-secondary px-3 py-1.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+          className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] px-3 py-1.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
         >
           {sel.options.map((opt) => (
             <option key={opt.value} value={opt.value}>

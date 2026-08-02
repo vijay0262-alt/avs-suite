@@ -113,7 +113,7 @@ export function HealthScanModal({
           <p className="text-sm text-text-secondary">
             Analyzing your system to find the best optimization actions.
           </p>
-          <div className="w-full h-3 bg-bg-secondary rounded-full overflow-hidden">
+          <div className="w-full h-3 bg-[var(--avs-surface-muted)] rounded-full overflow-hidden">
             <div className="h-full bg-brand-primary transition-all duration-500" style={{ width: '5%' }} />
           </div>
           <div className="flex justify-center">
@@ -137,7 +137,7 @@ export function HealthScanModal({
             <div className="text-sm text-text-secondary">{progress}% complete</div>
           </div>
 
-          <div className="w-full h-3 bg-bg-secondary rounded-full overflow-hidden">
+          <div className="w-full h-3 bg-[var(--avs-surface-muted)] rounded-full overflow-hidden">
             <div
               className="h-full bg-brand-primary transition-all duration-300"
               style={{ width: `${progress}%` }}
@@ -249,7 +249,7 @@ export function HealthScanModal({
             {execution?.currentModule || 'Optimizing...'}
           </div>
 
-          <div className="w-full h-3 bg-bg-secondary rounded-full overflow-hidden">
+          <div className="w-full h-3 bg-[var(--avs-surface-muted)] rounded-full overflow-hidden">
             <div
               className="h-full bg-brand-primary transition-all duration-300"
               style={{ width: `${execution?.progress || 0}%` }}
@@ -316,7 +316,7 @@ export function HealthScanModal({
         <div className="space-y-6 text-center">
           <div className="text-lg font-medium text-text-primary">{execution?.currentModule || 'Verifying...'}</div>
           <p className="text-sm text-text-secondary">Running a fresh health scan to measure real changes. Do not close this window.</p>
-          <div className="w-full h-3 bg-bg-secondary rounded-full overflow-hidden">
+          <div className="w-full h-3 bg-[var(--avs-surface-muted)] rounded-full overflow-hidden">
             <div className="h-full bg-brand-primary transition-all duration-300" style={{ width: `${execution?.progress || 0}%` }} />
           </div>
           <div className="flex justify-center">
@@ -342,7 +342,7 @@ export function HealthScanModal({
           <p className="text-sm text-text-secondary">
             Refreshing health score, issues, and dashboard cards with verified post-optimization data.
           </p>
-          <div className="w-full h-3 bg-bg-secondary rounded-full overflow-hidden">
+          <div className="w-full h-3 bg-[var(--avs-surface-muted)] rounded-full overflow-hidden">
             <div
               className="h-full bg-brand-primary transition-all duration-300"
               style={{ width: `${execution?.progress || 95}%` }}

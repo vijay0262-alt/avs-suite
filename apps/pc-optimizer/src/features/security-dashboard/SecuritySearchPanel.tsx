@@ -81,7 +81,7 @@ export function SecuritySearchPanel({ query, results, onSearchChange }: Security
           placeholder="Search threats, processes, investigations, evidence, timeline, reports, providers…"
           value={query}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="flex-1 rounded-md border border-border bg-bg-secondary px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+          className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
           aria-label="Search security data"
           autoFocus
           data-testid="security-search-input"

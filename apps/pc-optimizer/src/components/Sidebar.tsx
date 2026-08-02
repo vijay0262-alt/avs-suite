@@ -13,6 +13,7 @@ import {
   BoltIcon,
   CpuChipIcon,
   ComputerDesktopIcon,
+  ShieldCheckIcon,
   ShieldExclamationIcon,
   Cog6ToothIcon,
   InformationCircleIcon,
@@ -24,6 +25,19 @@ import {
   DocumentChartBarIcon,
   CircleStackIcon,
   HeartIcon,
+  SparklesIcon,
+  LightBulbIcon,
+  MagnifyingGlassIcon,
+  BugAntIcon,
+  EyeIcon,
+  GlobeAltIcon,
+  BeakerIcon,
+  ClockIcon,
+  WifiIcon,
+  LifebuoyIcon,
+  ArrowTrendingUpIcon,
+  ArrowUpTrayIcon,
+  FolderOpenIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import { canUse } from '../features/licensing/FeatureGate';
@@ -45,47 +59,95 @@ interface NavSection {
 }
 
 const NAV_SECTIONS: readonly NavSection[] = [
+  // ── HOME ──────────────────────────────────────────────────────
   {
-    id: 'overview',
-    labelKey: 'nav.section.overview',
+    id: 'home',
+    labelKey: 'nav.section.home',
     entries: [
       { id: 'dashboard', to: '/dashboard', labelKey: 'nav.dashboard', Icon: Squares2X2Icon },
-      { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
-      { id: 'hardware-center', to: '/hardware-center', labelKey: 'nav.hardwareCenter', Icon: ComputerDesktopIcon },
-      { id: 'security-dashboard', to: '/security-dashboard', labelKey: 'nav.securityDashboard', Icon: ShieldExclamationIcon },
-      { id: 'process-intelligence', to: '/process-intelligence', labelKey: 'nav.processIntelligence', Icon: CircleStackIcon },
-      { id: 'predictive-health', to: '/predictive-health', labelKey: 'nav.predictiveHealth', Icon: HeartIcon },
-      { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon, feature: 'disk.analyzer' },
+      { id: 'ai-copilot', to: '/ai-copilot', labelKey: 'nav.aiCopilot', Icon: SparklesIcon },
+      { id: 'ai-daily-briefing', to: '/ai-daily-briefing', labelKey: 'nav.aiDailyBriefing', Icon: LightBulbIcon },
+      { id: 'ai-smart-optimize', to: '/ai-smart-optimize', labelKey: 'nav.aiSmartOptimize', Icon: BoltIcon },
     ],
   },
+  // ── SYSTEM HEALTH ─────────────────────────────────────────────
+  {
+    id: 'system-health',
+    labelKey: 'nav.section.systemHealth',
+    entries: [
+      { id: 'system-health', to: '/system-health', labelKey: 'nav.systemHealth', Icon: HeartIcon },
+      { id: 'hardware-center', to: '/hardware-center', labelKey: 'nav.hardwareCenter', Icon: ComputerDesktopIcon },
+      { id: 'process-intelligence', to: '/process-intelligence', labelKey: 'nav.processIntelligence', Icon: CpuChipIcon },
+      { id: 'predictive-health', to: '/predictive-health', labelKey: 'nav.predictiveHealth', Icon: ArrowTrendingUpIcon },
+      { id: 'performance-analytics', to: '/performance-analytics', labelKey: 'nav.performanceAnalytics', Icon: ChartBarIcon },
+    ],
+  },
+  // ── SECURITY ──────────────────────────────────────────────────
+  {
+    id: 'security',
+    labelKey: 'nav.section.security',
+    entries: [
+      { id: 'security-center', to: '/security-center', labelKey: 'nav.securityCenter', Icon: ShieldCheckIcon },
+      { id: 'quick-scan', to: '/quick-scan', labelKey: 'nav.quickScan', Icon: MagnifyingGlassIcon },
+      { id: 'full-scan', to: '/full-scan', labelKey: 'nav.fullScan', Icon: ShieldCheckIcon },
+      { id: 'custom-scan', to: '/custom-scan', labelKey: 'nav.customScan', Icon: FolderOpenIcon },
+      { id: 'ai-active-protection', to: '/ai-active-protection', labelKey: 'nav.aiActiveProtection', Icon: ShieldExclamationIcon },
+      { id: 'spyware-protection', to: '/spyware-protection', labelKey: 'nav.spywareProtection', Icon: EyeIcon },
+      { id: 'malware-protection', to: '/malware-protection', labelKey: 'nav.malwareProtection', Icon: BugAntIcon },
+      { id: 'adware-protection', to: '/adware-protection', labelKey: 'nav.adwareProtection', Icon: TrashIcon },
+      { id: 'ransomware-protection', to: '/ransomware-protection', labelKey: 'nav.ransomwareProtection', Icon: LockClosedIcon },
+      { id: 'browser-protection', to: '/browser-protection', labelKey: 'nav.browserProtection', Icon: GlobeAltIcon },
+      { id: 'threat-investigation', to: '/threat-investigation', labelKey: 'nav.threatInvestigation', Icon: BeakerIcon },
+      { id: 'quarantine', to: '/quarantine', labelKey: 'nav.quarantine', Icon: ArchiveBoxXMarkIcon },
+      { id: 'security-reports', to: '/security-reports', labelKey: 'nav.securityReports', Icon: DocumentChartBarIcon },
+    ],
+  },
+  // ── OPTIMIZATION ──────────────────────────────────────────────
   {
     id: 'optimization',
     labelKey: 'nav.section.optimization',
     entries: [
       { id: 'junk-cleaner', to: '/junk-cleaner', labelKey: 'nav.junkCleaner', Icon: TrashIcon },
-      { id: 'registry-cleaner', to: '/registry-cleaner', labelKey: 'nav.registryCleaner', Icon: WrenchScrewdriverIcon },
       { id: 'startup-manager', to: '/startup-manager', labelKey: 'nav.startupManager', Icon: RocketLaunchIcon },
-      { id: 'privacy-cleaner', to: '/privacy-cleaner', labelKey: 'nav.privacyCleaner', Icon: LockClosedIcon, feature: 'privacy.scan' },
+      { id: 'browser-cleaner', to: '/browser-cleaner', labelKey: 'nav.browserCleaner', Icon: GlobeAltIcon },
+      { id: 'registry-cleaner', to: '/registry-cleaner', labelKey: 'nav.registryCleaner', Icon: WrenchScrewdriverIcon },
       { id: 'duplicate-finder', to: '/duplicate-finder', labelKey: 'nav.duplicateFinder', Icon: DocumentDuplicateIcon, feature: 'duplicate.scan' },
+      { id: 'large-files', to: '/large-files', labelKey: 'nav.largeFiles', Icon: CircleStackIcon },
       { id: 'uninstaller', to: '/uninstaller', labelKey: 'nav.uninstaller', Icon: ArchiveBoxXMarkIcon, feature: 'uninstaller.view' },
       { id: 'software-updater', to: '/software-updater', labelKey: 'nav.softwareUpdater', Icon: ArrowPathIcon, feature: 'software.update_scan' },
-      { id: 'performance', to: '/performance', labelKey: 'nav.performance', Icon: BoltIcon, feature: 'performance.optimize' },
+      { id: 'maintenance-history', to: '/maintenance-history', labelKey: 'nav.maintenanceHistory', Icon: ClipboardDocumentListIcon },
     ],
   },
+  // ── REPORTS ───────────────────────────────────────────────────
   {
     id: 'reports',
     labelKey: 'nav.section.reports',
     entries: [
-      { id: 'maintenance-history', to: '/maintenance-history', labelKey: 'nav.maintenanceHistory', Icon: ClipboardDocumentListIcon },
       { id: 'reports', to: '/reports', labelKey: 'nav.reports', Icon: DocumentChartBarIcon },
+      { id: 'reports-timeline', to: '/reports-timeline', labelKey: 'nav.reportsTimeline', Icon: ClockIcon },
+      { id: 'analytics', to: '/analytics', labelKey: 'nav.analytics', Icon: ChartBarIcon },
     ],
   },
+  // ── TOOLS ─────────────────────────────────────────────────────
+  {
+    id: 'tools',
+    labelKey: 'nav.section.tools',
+    entries: [
+      { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
+      { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon, feature: 'disk.analyzer' },
+      { id: 'network-information', to: '/network-information', labelKey: 'nav.networkInformation', Icon: WifiIcon },
+      { id: 'recovery-center', to: '/recovery-center', labelKey: 'nav.recoveryCenter', Icon: LifebuoyIcon },
+    ],
+  },
+  // ── ACCOUNT ───────────────────────────────────────────────────
   {
     id: 'account',
     labelKey: 'nav.section.account',
     entries: [
       { id: 'license', to: '/license', labelKey: 'nav.license', Icon: KeyIcon },
+      { id: 'upgrade', to: '/upgrade', labelKey: 'nav.upgrade', Icon: ArrowUpTrayIcon },
       { id: 'settings', to: '/settings', labelKey: 'nav.settings', Icon: Cog6ToothIcon },
+      { id: 'help', to: '/help', labelKey: 'nav.help', Icon: LifebuoyIcon },
       { id: 'about', to: '/about', labelKey: 'nav.about', Icon: InformationCircleIcon },
     ],
   },
@@ -179,6 +241,8 @@ function NavSectionView({
 
 /**
  * Persistent sidebar navigation with grouped sections.
+ * v2.0 navigation with Home, System Health, Security, Optimization,
+ * Reports, Tools, and Account sections.
  * Modules with a `feature` prop are gated by the license edition —
  * locked modules show a lock icon and trigger the UpgradeDialog on click.
  */

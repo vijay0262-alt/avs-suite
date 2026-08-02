@@ -132,7 +132,7 @@ export function SystemInfoTabs({ info, vm }: SystemInfoTabsProps) {
                     <span className="text-text-secondary">File system</span>
                     <span className="text-text-primary">{disk.fstype}</span>
                   </div>
-                  <div className="w-full h-2 bg-bg-secondary rounded overflow-hidden">
+                  <div className="w-full h-2 bg-[var(--avs-surface-muted)] rounded overflow-hidden">
                     <div className="h-full bg-brand-primary" style={{ width: `${disk.percent}%` }} />
                   </div>
                   <div className="flex justify-between text-sm">
@@ -187,7 +187,7 @@ export function SystemInfoTabs({ info, vm }: SystemInfoTabsProps) {
               className={`px-3 py-1.5 text-sm rounded-[var(--avs-radius-md)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
                 activeTab === tab.id
                   ? 'bg-brand-primary text-white'
-                  : 'bg-[var(--avs-surface-muted)] text-text-secondary hover:bg-bg-secondary'
+                  : 'bg-[var(--avs-surface-muted)] text-text-secondary hover:bg-[var(--avs-surface-muted)]'
               }`}
             >
               {tab.label}
