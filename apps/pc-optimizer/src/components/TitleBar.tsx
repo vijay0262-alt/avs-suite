@@ -4,8 +4,16 @@
  * Electron is configured with `titleBarStyle: 'hidden'` and a
  * `titleBarOverlay` (see main/index.ts). This component fills the space
  * left of the native window controls with the brand mark + app name.
+ *
+ * In Professional edition, shows "AVS Shield Pro" with a star badge
+ * to reinforce ownership every time the application is open.
  */
+import { useIsPro } from '../features/sync/syncStore';
+import { StarIcon } from '@heroicons/react/24/outline';
+
 export function TitleBar() {
+  const isPro = useIsPro();
+
   return (
     <header
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
@@ -23,9 +31,20 @@ export function TitleBar() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
           </svg>
         </div>
-        <span className="text-xs font-semibold tracking-wide text-text-primary">
-          AVS Shield Optimizer
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-semibold tracking-wide text-text-primary">
+            AVS Shield{isPro ? ' Pro' : ' Optimizer'}
+          </span>
+          {isPro && (
+            <span
+              className="inline-flex items-center gap-0.5 rounded-full bg-brand-primary/15 border border-brand-primary/30 px-1.5 py-0.5 text-[10px] font-bold text-brand-primary"
+              data-testid="titlebar-pro-badge"
+            >
+              <StarIcon className="h-2.5 w-2.5" />
+              PRO
+            </span>
+          )}
+        </div>
       </div>
       <div className="text-[11px] text-text-muted">Windows 10 / 11 · x64</div>
     </header>

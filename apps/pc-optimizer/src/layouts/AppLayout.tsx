@@ -3,6 +3,7 @@ import { Sidebar } from '../components/Sidebar';
 import { TitleBar } from '../components/TitleBar';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { useKeyboardShortcuts } from '../components/useKeyboardShortcuts';
+import { ProSplashOverlay } from '../features/licensing/ProSplashOverlay';
 
 /**
  * AppLayout — the persistent shell for every page.
@@ -26,6 +27,7 @@ export function AppLayout() {
 
   return (
     <div className="flex h-full flex-col bg-[var(--avs-bg)] text-text-primary">
+      <ProSplashOverlay />
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:rounded-md focus:bg-brand-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-white"

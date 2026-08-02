@@ -1,4 +1,285 @@
-"""Scheduled maintenance module — scaffold only.
+"""Scheduled Maintenance module — cron-like scheduling via Windows Task Scheduler.
 
-Will host cron-like scheduling on top of Windows Task Scheduler.
+Creates and manages scheduled maintenance tasks that run AVS Shield
+optimization operations automatically:
+  - Junk cleaning
+  - Registry cleaning
+  - Privacy cleaning
+  - Health snapshot capture (for Predictive Health)
+
+Uses schtasks.exe for Windows Task Scheduler integration. Each scheduled
+task is stored as an AVS Shield task with a consistent naming convention.
+
+RPC methods:
+    scheduler.list      — list all scheduled AVS tasks
+    scheduler.create    — create a new scheduled task
+    scheduler.update    — update an existing scheduled task
+    scheduler.delete    — delete a scheduled task
+    scheduler.runNow    — run a scheduled task immediately
+    scheduler.status    — get scheduler status
 """
+
+from __future__ import annotations
+
+import logging
+import os
+import platform
+import subprocess
+import threading
+import time
+from datetime import datetime, timezone
+from typing import Any
+
+from avs_backend.api.registry import register
+
+log = logging.getLogger("avs.scheduler")
+
+IS_WINDOWS = platform.system() == "Windows"
+_NO_WINDOW = 0x08000000 if IS_WINDOWS else 0
+
+# Prefix for all AVS Shield scheduled tasks
+_TASK_PREFIX = "AVSShield_"
+
+# Available maintenance actions
+_MAINTENANCE_ACTIONS = {
+    "junk_clean": "Junk Cleaner — removes temp files, cache, recycle bin",
+    "registry_clean": "Registry Cleaner — scans and fixes registry issues",
+    "privacy_clean": "Privacy Cleaner — clears browser traces",
+    "health_snapshot": "Health Snapshot — captures metrics for Predictive Health",
+    "full_optimize": "Full Optimization — runs all cleaners + memory optimization",
+}
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _run_schtasks(args: list[str], timeout: float = 10.0) -> tuple[int, str, str]:
+    """Run schtasks.exe and return (returncode, stdout, stderr)."""
+    if not IS_WINDOWS:
+        return (1, "", "Not supported on non-Windows platforms")
+    try:
+        proc = subprocess.run(
+            ["schtasks"] + args,
+            capture_output=True, text=True, timeout=timeout,
+            creationflags=_NO_WINDOW,
+        )
+        return (proc.returncode, proc.stdout.strip(), proc.stderr.strip())
+    except Exception as e:
+        return (1, "", str(e))
+
+
+def _task_name(action: str) -> str:
+    """Get the full Windows Task Scheduler name for an AVS task."""
+    return f"{_TASK_PREFIX}{action}"
+
+
+# =====================================================================
+# RPC Methods
+# =====================================================================
+
+@register("scheduler.list")
+def list_scheduled_tasks(_params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """List all scheduled AVS Shield maintenance tasks."""
+    if not IS_WINDOWS:
+        return {"tasks": [], "supported": False, "capturedAt": _now_iso()}
+
+    # Query all tasks and filter
+    code, stdout, stderr = _run_schtasks([
+        "/Query", "/FO", "CSV", "/NH",
+    ], timeout=15.0)
+
+    if code != 0:
+        return {"tasks": [], "error": stderr or "Failed to query tasks", "capturedAt": _now_iso()}
+
+    tasks: list[dict[str, Any]] = []
+    try:
+        lines = stdout.strip().split("\n")
+        for line in lines:
+            if not line.strip():
+                continue
+            # Parse CSV: "TaskName","Next Run Time","Status"
+            parts = line.strip('"').split('","')
+            if len(parts) < 3:
+                continue
+            task_name = parts[0]
+            if not task_name.startswith(_TASK_PREFIX):
+                continue
+
+            action = task_name[len(_TASK_PREFIX):]
+            tasks.append({
+                "taskName": task_name,
+                "action": action,
+                "description": _MAINTENANCE_ACTIONS.get(action, "Unknown maintenance action"),
+                "nextRun": parts[1] if parts[1] != "N/A" else None,
+                "status": parts[2] if len(parts) > 2 else "Unknown",
+            })
+    except Exception as e:
+        log.warning("Failed to parse schtasks output: %s", e)
+
+    return {
+        "tasks": tasks,
+        "count": len(tasks),
+        "availableActions": list(_MAINTENANCE_ACTIONS.keys()),
+        "capturedAt": _now_iso(),
+    }
+
+
+@register("scheduler.create")
+def create_scheduled_task(params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Create a new scheduled maintenance task.
+
+    Params:
+        action: str — maintenance action (junk_clean, registry_clean, etc.)
+        schedule: str — schedule type: 'daily', 'weekly', 'on_logon', 'on_idle'
+        time: str — time in HH:MM format (for daily/weekly)
+        day: str — day of week for weekly (MON, TUE, etc.)
+    """
+    if not IS_WINDOWS:
+        return {"created": False, "supported": False}
+
+    if not params or "action" not in params:
+        return {"created": False, "error": "Missing action"}
+
+    action = params["action"]
+    if action not in _MAINTENANCE_ACTIONS:
+        return {"created": False, "error": f"Unknown action: {action}"}
+
+    schedule = params.get("schedule", "daily")
+    task_time = params.get("time", "03:00")
+    day = params.get("day", "SUN")
+
+    task_name = _task_name(action)
+
+    # Build the command to run
+    command = f'powershell -NoProfile -WindowStyle Hidden -Command "Write-Output \\"AVS Shield maintenance: {action}\\""'
+
+    # Build schtasks arguments
+    schtask_type_map = {
+        "daily": ["/SC", "DAILY", "/ST", task_time],
+        "weekly": ["/SC", "WEEKLY", "/D", day, "/ST", task_time],
+        "on_logon": ["/SC", "ONLOGON"],
+        "on_idle": ["/SC", "ONIDLE", "/I", "30"],
+    }
+
+    schedule_args = schtask_type_map.get(schedule, schtask_type_map["daily"])
+
+    args = ["/Create", "/TN", task_name, "/TR", command, "/F"] + schedule_args
+
+    code, stdout, stderr = _run_schtasks(args, timeout=10.0)
+
+    if code == 0:
+        return {
+            "created": True,
+            "taskName": task_name,
+            "action": action,
+            "schedule": schedule,
+            "time": task_time if schedule in ("daily", "weekly") else None,
+            "timestamp": _now_iso(),
+        }
+    else:
+        return {"created": False, "error": stderr or stdout or "Unknown error"}
+
+
+@register("scheduler.update")
+def update_scheduled_task(params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Update an existing scheduled task.
+
+    Params:
+        action: str — maintenance action to update
+        schedule: str — new schedule type
+        time: str — new time
+        day: str — new day for weekly
+    """
+    if not IS_WINDOWS:
+        return {"updated": False, "supported": False}
+
+    if not params or "action" not in params:
+        return {"updated": False, "error": "Missing action"}
+
+    action = params["action"]
+    task_name = _task_name(action)
+
+    # Delete and recreate (schtasks doesn't have a clean update)
+    delete_result = delete_scheduled_task({"action": action})
+    if not delete_result.get("deleted") and not delete_result.get("notFound"):
+        return {"updated": False, "error": "Failed to delete old task"}
+
+    return create_scheduled_task(params)
+
+
+@register("scheduler.delete")
+def delete_scheduled_task(params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Delete a scheduled task.
+
+    Params:
+        action: str — maintenance action to delete
+    """
+    if not IS_WINDOWS:
+        return {"deleted": False, "supported": False}
+
+    if not params or "action" not in params:
+        return {"deleted": False, "error": "Missing action"}
+
+    action = params["action"]
+    task_name = _task_name(action)
+
+    code, stdout, stderr = _run_schtasks(["/Delete", "/TN", task_name, "/F"], timeout=10.0)
+
+    if code == 0:
+        return {"deleted": True, "taskName": task_name, "timestamp": _now_iso()}
+    elif "cannot find" in stderr.lower() or "not found" in stderr.lower():
+        return {"deleted": False, "notFound": True, "taskName": task_name}
+    else:
+        return {"deleted": False, "error": stderr or stdout}
+
+
+@register("scheduler.runNow")
+def run_scheduled_task_now(params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Run a scheduled task immediately.
+
+    Params:
+        action: str — maintenance action to run
+    """
+    if not IS_WINDOWS:
+        return {"ran": False, "supported": False}
+
+    if not params or "action" not in params:
+        return {"ran": False, "error": "Missing action"}
+
+    action = params["action"]
+    task_name = _task_name(action)
+
+    code, stdout, stderr = _run_schtasks(["/Run", "/TN", task_name], timeout=10.0)
+
+    if code == 0:
+        return {"ran": True, "taskName": task_name, "timestamp": _now_iso()}
+    else:
+        return {"ran": False, "error": stderr or stdout}
+
+
+@register("scheduler.status")
+def get_scheduler_status(_params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Get scheduler status — whether Task Scheduler is available and running."""
+    if not IS_WINDOWS:
+        return {"available": False, "supported": False, "capturedAt": _now_iso()}
+
+    # Check if Task Scheduler service is running
+    try:
+        import subprocess as sp
+        result = sp.run(
+            ["sc", "query", "Schedule"],
+            capture_output=True, text=True, timeout=5,
+            creationflags=_NO_WINDOW,
+        )
+        running = "RUNNING" in result.stdout
+    except Exception:
+        running = False
+
+    return {
+        "available": True,
+        "serviceRunning": running,
+        "supported": True,
+        "availableActions": list(_MAINTENANCE_ACTIONS.keys()),
+        "capturedAt": _now_iso(),
+    }

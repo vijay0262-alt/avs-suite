@@ -178,10 +178,25 @@ export function HealthScanModal({
 
   if (step === 'report' && report) {
     const duration = report.finishedAt - report.startedAt;
+    const zone = scoreToZone(report.overallScore);
+    const zoneConfig = SCORE_ZONE_CONFIG[zone];
+    const hasOptimizable = report.modules.some((m) => m.status === 'complete' && m.canAutoFix && (m.recoverableSpace > 0 || m.issuesFound > 0));
+
+    // Categorize findings
+    const findings = report.modules.filter((m) => m.status === 'complete' && m.issuesFound > 0);
+    const cleanModules = report.modules.filter((m) => m.status === 'complete' && m.issuesFound === 0);
+    const totalRecoveryMB = (report.recoverableSpace / (1024 * 1024)).toFixed(1);
+    const estSpeedImprovement = Math.min(25, Math.round(report.issuesFound * 3 + report.recoverableSpace / (500 * 1024 * 1024) * 5));
+
+    // Score breakdown from modules
+    const perfScore = report.modules.find((m) => m.moduleId === 'performance')?.score ?? report.overallScore;
+    const securityScore = report.modules.find((m) => m.moduleId === 'security')?.score ?? report.overallScore;
+    const healthScore = report.overallScore;
+
     return (
       <Modal
         open
-        title="Health Scan Report"
+        title="AI Scan Summary"
         onClose={onClose}
         size="lg"
         actions={
@@ -189,47 +204,106 @@ export function HealthScanModal({
             <Button variant="secondary" onClick={onClose}>
               Close
             </Button>
-            {report.modules.some((m) => m.status === 'complete' && m.canAutoFix && (m.recoverableSpace > 0 || m.issuesFound > 0)) && (
-              <Button onClick={onOptimize} leftIcon={<SparklesIcon className="h-4 w-4" />}>
+            {hasOptimizable && (
+              <Button onClick={onOptimize} leftIcon={<SparklesIcon className="h-4 w-4" />} data-testid="scan-summary-optimize">
                 Optimize Now
               </Button>
             )}
           </div>
         }
       >
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <div className="text-3xl font-bold text-text-primary tabular-nums">
-                {report.overallScore}
-              </div>
-              <div className="text-sm text-text-secondary">Overall Health</div>
-            </Card>
-            <Card>
-              <div className="text-3xl font-bold text-semantic-danger tabular-nums">
-                {report.issuesFound}
-              </div>
-              <div className="text-sm text-text-secondary">Issues Found</div>
-            </Card>
-            <Card>
-              <div className="text-3xl font-bold text-semantic-success tabular-nums">
-                {formatBytes(report.recoverableSpace)}
-              </div>
-              <div className="text-sm text-text-secondary">Recoverable Space</div>
-            </Card>
+        <div className="space-y-6" data-testid="health-scan-report">
+          {/* Verdict */}
+          <div className="text-center">
+            <div className={`text-4xl font-bold ${zoneConfig.textColor}`}>
+              {zoneConfig.label}
+            </div>
+            <p className="mt-1 text-sm text-text-secondary">{zoneConfig.message}</p>
           </div>
 
-          <div>
-            <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">
-              Detected Issues by Category
+          {/* Score Breakdown */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-4 text-center">
+              <div className={`text-2xl font-bold ${scoreToColor(perfScore)}`}>{perfScore}</div>
+              <div className="text-xs text-text-muted mt-1">Performance</div>
             </div>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {report.modules.map((m) => (
-                <ModuleReportCard key={m.moduleId} module={m} />
-              ))}
+            <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-4 text-center">
+              <div className={`text-2xl font-bold ${scoreToColor(securityScore)}`}>{securityScore}</div>
+              <div className="text-xs text-text-muted mt-1">Security</div>
+            </div>
+            <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-4 text-center">
+              <div className={`text-2xl font-bold ${scoreToColor(healthScore)}`}>{healthScore}</div>
+              <div className="text-xs text-text-muted mt-1">Health</div>
             </div>
           </div>
 
+          {/* Findings */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Found</h4>
+            {findings.length === 0 && cleanModules.length > 0 && (
+              <div className="rounded-[var(--avs-radius-md)] bg-semantic-success/10 border border-semantic-success/20 p-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircleIcon className="h-5 w-5 text-semantic-success" />
+                  <span className="text-sm font-medium text-semantic-success">No issues found — your PC is clean!</span>
+                </div>
+              </div>
+            )}
+            {findings.map((m) => (
+              <div key={m.moduleId} className="flex items-center gap-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
+                <ExclamationTriangleIcon className={`h-4 w-4 ${SEVERITY_COLORS[m.severity] ?? 'text-text-muted'}`} />
+                <span className="text-sm text-text-secondary flex-1">{m.measuredDetail || m.moduleName}</span>
+                <span className="text-xs text-text-muted tabular-nums">
+                  {m.issuesFound} issue{m.issuesFound > 1 ? 's' : ''}
+                  {m.recoverableSpace > 0 && ` · ${formatBytes(m.recoverableSpace)}`}
+                </span>
+              </div>
+            ))}
+            {/* Clean modules as checkmarks */}
+            {cleanModules.map((m) => (
+              <div key={m.moduleId} className="flex items-center gap-3 rounded-[var(--avs-radius-md)] bg-semantic-success/5 px-3 py-2">
+                <CheckCircleIcon className="h-4 w-4 text-semantic-success" />
+                <span className="text-sm text-text-secondary flex-1">{m.moduleName}</span>
+                <span className="text-xs text-semantic-success">Clean</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Estimated Recovery + Speed */}
+          {hasOptimizable && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-[var(--avs-radius-md)] border border-brand-primary/20 bg-brand-primary/5 p-4">
+                <div className="flex items-center gap-2">
+                  <CircleStackIcon className="h-4 w-4 text-brand-primary" />
+                  <span className="text-xs text-text-muted">Estimated Recovery</span>
+                </div>
+                <div className="text-2xl font-bold text-text-primary mt-1">{totalRecoveryMB} MB</div>
+              </div>
+              <div className="rounded-[var(--avs-radius-md)] border border-semantic-success/20 bg-semantic-success/5 p-4">
+                <div className="flex items-center gap-2">
+                  <CpuChipIcon className="h-4 w-4 text-semantic-success" />
+                  <span className="text-xs text-text-muted">Est. Speed Improvement</span>
+                </div>
+                <div className="text-2xl font-bold text-text-primary mt-1">~{estSpeedImprovement}%</div>
+              </div>
+            </div>
+          )}
+
+          {/* Recommended Action */}
+          {hasOptimizable && (
+            <div className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <SparklesIcon className="h-5 w-5 text-brand-primary" />
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">Recommended: AI Smart Optimize</p>
+                    <p className="text-xs text-text-muted">Safe, evidence-based optimization with rollback</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Scan duration */}
           <div className="flex items-center justify-between text-sm text-text-secondary">
             <span>Scan completed in {formatDuration(duration)}</span>
             {error && (

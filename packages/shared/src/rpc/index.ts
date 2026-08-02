@@ -119,6 +119,54 @@ export const RPC_METHODS = {
   UNDO_CHECK: 'undo.check',
   UNDO_LIST: 'undo.list',
   UNDO_DELETE: 'undo.delete',
+
+  // Security Center — scanning and data collection
+  SECURITY_SCAN: 'security.scan',
+  SECURITY_SCAN_STATUS: 'security.scan.status',
+  SECURITY_SCAN_CANCEL: 'security.scan.cancel',
+  SECURITY_PROCESSES: 'security.processes',
+  SECURITY_STARTUP_ANALYSIS: 'security.startupAnalysis',
+  SECURITY_SCHEDULED_TASKS: 'security.scheduledTasks',
+  SECURITY_SERVICES: 'security.services',
+  SECURITY_BROWSER_EXTENSIONS: 'security.browserExtensions',
+  SECURITY_UNSIGNED_EXECUTABLES: 'security.unsignedExecutables',
+  SECURITY_SNAPSHOT: 'security.snapshot',
+
+  // Security Investigation
+  SECURITY_INVESTIGATE: 'security.investigate',
+  SECURITY_INVESTIGATION_TIMELINE: 'security.investigation.timeline',
+  SECURITY_INVESTIGATION_EVIDENCE: 'security.investigation.evidence',
+  SECURITY_INVESTIGATION_CORRELATION: 'security.investigation.correlation',
+
+  // Security Remediation
+  SECURITY_QUARANTINE: 'security.quarantine',
+  SECURITY_QUARANTINE_RESTORE: 'security.quarantine.restore',
+  SECURITY_QUARANTINE_LIST: 'security.quarantine.list',
+  SECURITY_QUARANTINE_DELETE: 'security.quarantine.delete',
+  SECURITY_REMEDIATION_PLAN: 'security.remediation.plan',
+  SECURITY_REMEDIATION_EXECUTE: 'security.remediation.execute',
+  SECURITY_REMEDIATION_ROLLBACK: 'security.remediation.rollback',
+
+  // Predictive Health
+  PREDICTIVE_HEALTH_SNAPSHOT: 'predictive.snapshot',
+  PREDICTIVE_HEALTH_TRENDS: 'predictive.trends',
+  PREDICTIVE_HEALTH_FORECAST: 'predictive.forecast',
+  PREDICTIVE_HEALTH_HISTORY: 'predictive.history',
+
+  // Real-Time Protection
+  REALTIME_PROTECTION_STATUS: 'realtime.status',
+  REALTIME_PROTECTION_START: 'realtime.start',
+  REALTIME_PROTECTION_STOP: 'realtime.stop',
+  REALTIME_PROTECTION_EVENTS: 'realtime.events',
+  REALTIME_PROTECTION_ALERTS: 'realtime.alerts',
+
+  // Scheduled Maintenance
+  SCHEDULER_LIST: 'scheduler.list',
+  SCHEDULER_CREATE: 'scheduler.create',
+  SCHEDULER_UPDATE: 'scheduler.update',
+  SCHEDULER_DELETE: 'scheduler.delete',
+  SCHEDULER_RUN_NOW: 'scheduler.runNow',
+  SCHEDULER_STATUS: 'scheduler.status',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

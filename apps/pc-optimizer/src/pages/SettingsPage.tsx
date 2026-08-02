@@ -141,28 +141,83 @@ export default function SettingsPage() {
 
         <Card title="Edition" variant="glass">
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-text-primary">{getEditionString()}</span>
-                  <Badge tone={edition === 'free' ? 'neutral' : 'brand'}>
-                    {edition.toUpperCase()}
-                  </Badge>
+            {edition === 'professional' ? (
+              /* Premium License Card for Professional users */
+              <div className="rounded-[var(--avs-radius-lg)] border border-brand-primary/30 bg-gradient-to-br from-brand-primary/10 to-transparent p-6" data-testid="pro-license-card">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <div className="flex items-center gap-1 mb-2">
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <StarIcon key={i} className="h-4 w-4 text-brand-primary" />
+                      ))}
+                    </div>
+                    <h3 className="text-lg font-bold text-text-primary">AVS Shield Professional</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-semantic-success/15 border border-semantic-success/30 px-2 py-0.5 text-xs font-medium text-semantic-success">
+                        <CheckCircleIcon className="h-3 w-3" />
+                        Active
+                      </span>
+                      {subscription && subscription.expires_at && (
+                        <span className="text-xs text-text-muted">
+                          Expires: {new Date(subscription.expires_at).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </span>
+                      )}
+                      {subscription && !subscription.expires_at && (
+                        <span className="text-xs text-text-muted">Lifetime License</span>
+                      )}
+                    </div>
+                  </div>
+                  <div
+                    className="h-12 w-12 rounded-[var(--avs-radius-md)] flex items-center justify-center shrink-0"
+                    style={{ background: 'var(--avs-gradient-brand)' }}
+                  >
+                    <svg viewBox="0 0 24 24" className="h-7 w-7 text-white" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15L15 9.75" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
+                    </svg>
+                  </div>
                 </div>
-                <p className="mt-1 text-xs text-text-secondary">
-                  {edition === 'free'
-                    ? 'Free edition: Understand your PC. Analyze, inspect, and manually improve your system.'
-                    : 'Professional edition: Let AVS Shield take care of your PC. Automation, continuous protection, and unlimited operations.'}
-                </p>
+
+                <div className="border-t border-brand-primary/20 pt-4">
+                  <p className="text-xs font-medium text-text-muted mb-3">Included with your subscription</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {[
+                      { label: 'AI Copilot Unlimited', icon: SparklesIcon },
+                      { label: 'AI Active Protection', icon: CheckCircleIcon },
+                      { label: 'Unlimited Optimization', icon: RocketLaunchIcon },
+                      { label: 'Predictive Health', icon: ArrowPathIcon },
+                      { label: 'Priority Updates', icon: CloudArrowDownIcon },
+                      { label: 'Background Monitoring', icon: CheckCircleIcon },
+                    ].map((feat) => (
+                      <div key={feat.label} className="flex items-center gap-2">
+                        <feat.icon className="h-4 w-4 text-brand-primary shrink-0" />
+                        <span className="text-sm text-text-secondary">{feat.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-              {edition === 'free' && (
+            ) : (
+              /* Standard Edition display for Free users */
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-text-primary">{getEditionString()}</span>
+                    <Badge tone={edition === 'free' ? 'neutral' : 'brand'}>
+                      {edition.toUpperCase()}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-text-secondary">
+                    Free edition: Understand your PC. Analyze, inspect, and manually improve your system.
+                  </p>
+                </div>
                 <Button variant="primary" onClick={() => showUpgrade('Settings')} data-testid="settings-upgrade" leftIcon={<StarIcon className="h-4 w-4" />}>
                   Upgrade to Professional
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
 
-            {subscription && (
+            {subscription && edition === 'free' && (
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm border-t border-[var(--avs-border)] pt-3">
                 <span className="text-text-muted">Activated License</span>
                 <span className="text-text-primary">{subscription.plan}</span>

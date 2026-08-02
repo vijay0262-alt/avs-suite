@@ -26,6 +26,7 @@ import { HealthScanModal } from './components/HealthScanModal';
 import { useIsPro } from '../sync/syncStore';
 import { useEditionLimits } from '../licensing/editionLimits';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
+import { FreeUsageWidget } from '../licensing/FreeUsageWidget';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -332,6 +333,15 @@ export default function DashboardPage() {
           ))}
         </div>
       </DashboardSection>
+
+      {/* Free Edition Usage Tracker */}
+      {!isPro && (
+        <DashboardSection title="Today's Usage" icon={<ChartBarIcon className="h-5 w-5" />}>
+          <div className="max-w-sm">
+            <FreeUsageWidget />
+          </div>
+        </DashboardSection>
+      )}
 
       {/* Live Charts */}
       <DashboardSection title="Live System Monitor" icon={<ChartBarIcon className="h-5 w-5" />}>
