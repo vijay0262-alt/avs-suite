@@ -77,6 +77,11 @@ class SystemHealthViewModel extends ViewModel<SystemHealthState> {
     this.setState({ dashboardState: this.service.getState() });
   }
 
+  setTimelineRange(range: 'today' | '7days' | '30days') {
+    this.service.setTimelineRange(range);
+    this.setState({ dashboardState: this.service.getState() });
+  }
+
   override dispose() {
     this.service.shutdown();
     super.dispose();
@@ -87,12 +92,16 @@ export default function SystemHealthOverviewPage() {
   const vm = useMemo(() => new SystemHealthViewModel(), []);
   const state = useViewModel(vm);
   const navigate = useNavigate();
-  const [range, setRange] = useState<'24h' | '7days' | '30days'>('7days');
+  const [range, setRange] = useState<'today' | '7days' | '30days'>('7days');
 
   useEffect(() => {
     vm.bootstrap();
     return () => vm.dispose();
   }, [vm]);
+
+  useEffect(() => {
+    vm.setTimelineRange(range);
+  }, [range, vm]);
 
   const ds = state.dashboardState;
 
@@ -272,13 +281,13 @@ export default function SystemHealthOverviewPage() {
       {ds?.timeline && ds.timeline.length > 0 && (
         <Card title="Health Timeline" variant="glass">
           <div className="flex gap-2 mb-3">
-            {(['24h', '7days', '30days'] as const).map((r) => (
+            {(['today', '7days', '30days'] as const).map((r) => (
               <button
                 key={r}
                 onClick={() => setRange(r)}
                 className={`rounded-[var(--avs-radius-sm)] px-3 py-1 text-xs font-medium ${range === r ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)]' : 'text-[var(--avs-text-secondary)]'}`}
               >
-                {r === '24h' ? '24 Hours' : r === '7days' ? '7 Days' : '30 Days'}
+                {r === 'today' ? '24 Hours' : r === '7days' ? '7 Days' : '30 Days'}
               </button>
             ))}
           </div>

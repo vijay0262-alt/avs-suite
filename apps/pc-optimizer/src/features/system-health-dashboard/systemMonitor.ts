@@ -109,16 +109,9 @@ export class SystemMonitor {
     this._lastFetchAt = now;
 
     try {
-      // Try live metrics first (lighter), fall back to full metrics
-      let metrics: DashboardMetrics;
-      try {
-        await dashboardService.getLiveMetrics();
-        // LiveMetrics doesn't have performance/windows data, so we need full metrics
-        // for startupPrograms, backgroundServices, etc.
-        metrics = await dashboardService.getMetrics();
-      } catch {
-        metrics = await dashboardService.getMetrics();
-      }
+      // LiveMetrics doesn't have performance/windows data, so we need full metrics
+      // for startupPrograms, backgroundServices, etc.
+      const metrics = await dashboardService.getMetrics();
 
       const liveMetrics = extractLiveMetrics(metrics);
       this._lastMetrics = liveMetrics;
