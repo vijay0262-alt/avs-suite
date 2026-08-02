@@ -17,6 +17,7 @@ export type NavItemId =
   | 'performance'
   | 'system-information'
   | 'hardware-center'
+  | 'security-dashboard'
   | 'maintenance-history'
   | 'reports'
   | 'license'
