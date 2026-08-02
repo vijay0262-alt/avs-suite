@@ -11,6 +11,7 @@ import { Card, Button, Badge } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleLoadingState, ModuleEmptyState } from '../../components/ModuleStates';
+import { ProStatusBanner, ProStatusPill, ProFeatureIndicator, ProOnlySection } from '../licensing/ProStatusBadge';
 import {
   SecurityCenterViewModel,
   type SecurityCenterTab,
@@ -174,11 +175,13 @@ export function SecurityCenterPage() {
 
   return (
     <div className="px-6 py-6">
+      <ProStatusBanner compact />
       <PageHeader
         title="AI Security Center"
         description="Unified AI-powered security protection, investigation, and remediation."
         actions={
           <div className="flex items-center gap-3">
+            <ProStatusPill />
             <div className="flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-1.5">
               <div className={`h-2 w-2 rounded-full ${state.securityScore >= 80 ? 'bg-[var(--avs-success)]' : state.securityScore >= 60 ? 'bg-[var(--avs-warning)]' : 'bg-[var(--avs-danger)]'}`} />
               <span className="text-sm font-semibold text-[var(--avs-text-primary)]">{state.securityScore}</span>
@@ -286,6 +289,16 @@ function OverviewTab({ vm }: { vm: SecurityCenterViewModel }) {
             <StatusRow label="Overall Protected" value={snapshot?.protectionStatus.overallProtected ? 'Yes' : 'No'} ok={snapshot?.protectionStatus.overallProtected ?? false} />
             <StatusRow label="Definitions Version" value={snapshot?.definitionsVersion ?? '1.0.0'} ok={true} />
             <StatusRow label="Last Scan" value={snapshot?.lastScan ? formatTimeAgo(snapshot.lastScan) : 'Never'} ok={!!snapshot?.lastScan} />
+
+            {/* Pro-only security features */}
+            <ProOnlySection>
+              <div className="pt-3 border-t border-[var(--avs-border)] space-y-2">
+                <ProFeatureIndicator icon={ShieldCheckIcon} label="Real-Time Protection Active" />
+                <ProFeatureIndicator icon={ClockIcon} label="Scheduled Scans Enabled" />
+                <ProFeatureIndicator icon={ArrowPathIcon} label="Automatic Quarantine" />
+                <ProFeatureIndicator icon={WrenchScrewdriverIcon} label="Automatic Remediation" />
+              </div>
+            </ProOnlySection>
           </div>
         </Card>
 

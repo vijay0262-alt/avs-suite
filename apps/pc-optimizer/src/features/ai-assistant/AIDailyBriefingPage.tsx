@@ -11,6 +11,7 @@ import { ModuleEmptyState } from '../../components/ModuleStates';
 import { conversationEngine } from '../ai-assistant';
 import type { AssistantDashboardData, AssistantInsight } from '../ai-assistant';
 import { QUICK_QUESTIONS } from '../ai-assistant/types';
+import { ProStatusBanner, ProStatusPill, ProOnlySection } from '../licensing/ProStatusBadge';
 import {
   SparklesIcon,
   LightBulbIcon,
@@ -42,6 +43,7 @@ export default function AIDailyBriefingPage() {
   const [dashboardData, setDashboardData] = useState<AssistantDashboardData | null>(null);
   const [insights, setInsights] = useState<AssistantInsight[]>([]);
   const [loading, setLoading] = useState(true);
+  const [briefingTab, setBriefingTab] = useState<'today' | 'yesterday' | 'weekly' | 'monthly'>('today');
 
   const init = useCallback(() => {
     setLoading(true);
@@ -57,11 +59,13 @@ export default function AIDailyBriefingPage() {
 
   return (
     <div className="space-y-6">
+      <ProStatusBanner compact />
       <PageHeader
         title="AI Daily Briefing"
         description="Your daily AI-powered system health summary with insights and recommendations"
         actions={
           <div className="flex items-center gap-2">
+            <ProStatusPill />
             <Button size="sm" variant="secondary" onClick={init} leftIcon={<ArrowPathIcon className="h-4 w-4" />}>
               Refresh
             </Button>
@@ -71,6 +75,36 @@ export default function AIDailyBriefingPage() {
           </div>
         }
       />
+
+      {/* Briefing Tabs — Pro gets Yesterday, Weekly Summary, Monthly Trends */}
+      <div className="flex gap-1 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-1 w-fit">
+        <button
+          onClick={() => setBriefingTab('today')}
+          className={`rounded-[var(--avs-radius-sm)] px-3 py-1.5 text-sm font-medium transition-all ${briefingTab === 'today' ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)] shadow-[var(--avs-shadow-sm)]' : 'text-[var(--avs-text-secondary)]'}`}
+        >
+          Today
+        </button>
+        <ProOnlySection>
+          <button
+            onClick={() => setBriefingTab('yesterday')}
+            className={`rounded-[var(--avs-radius-sm)] px-3 py-1.5 text-sm font-medium transition-all ${briefingTab === 'yesterday' ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)] shadow-[var(--avs-shadow-sm)]' : 'text-[var(--avs-text-secondary)]'}`}
+          >
+            Yesterday
+          </button>
+          <button
+            onClick={() => setBriefingTab('weekly')}
+            className={`rounded-[var(--avs-radius-sm)] px-3 py-1.5 text-sm font-medium transition-all ${briefingTab === 'weekly' ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)] shadow-[var(--avs-shadow-sm)]' : 'text-[var(--avs-text-secondary)]'}`}
+          >
+            Weekly Summary
+          </button>
+          <button
+            onClick={() => setBriefingTab('monthly')}
+            className={`rounded-[var(--avs-radius-sm)] px-3 py-1.5 text-sm font-medium transition-all ${briefingTab === 'monthly' ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)] shadow-[var(--avs-shadow-sm)]' : 'text-[var(--avs-text-secondary)]'}`}
+          >
+            Monthly Trends
+          </button>
+        </ProOnlySection>
+      </div>
 
       {loading ? (
         <Card variant="glass">
@@ -88,7 +122,12 @@ export default function AIDailyBriefingPage() {
                 <SparklesIcon className="h-8 w-8 text-white" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-[var(--avs-text-primary)]">Today's Briefing</h2>
+                <h2 className="text-lg font-bold text-[var(--avs-text-primary)]">
+                  {briefingTab === 'today' ? "Today's Briefing"
+                    : briefingTab === 'yesterday' ? "Yesterday's Briefing"
+                    : briefingTab === 'weekly' ? "Weekly Summary"
+                    : "Monthly Trends"}
+                </h2>
                 <p className="text-sm text-[var(--avs-text-secondary)]">
                   {insights.length > 0
                     ? `${insights.length} insights generated from your system data`

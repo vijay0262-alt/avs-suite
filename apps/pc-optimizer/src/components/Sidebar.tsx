@@ -44,21 +44,20 @@ import {
   CodeBracketIcon,
   FingerPrintIcon,
   ServerStackIcon,
-  CpuChipIcon as ChipIcon,
   ArrowPathRoundedSquareIcon,
-  ClockIcon as HistoryIcon,
+  ChatBubbleLeftRightIcon,
+  StarIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
-import { canUse } from '../features/licensing/FeatureGate';
-import type { ManagedFeature } from '@avs/licensing';
-import { useFeatureGuard } from '../features/licensing/useFeatureGuard';
+import { useIsPro } from '../features/sync/syncStore';
 
 interface NavEntry {
   id: NavItemId;
   to: string;
   labelKey: string;
   Icon: ComponentType<{ className?: string }>;
-  feature?: ManagedFeature;
+  /** If true, shows a subtle star badge for Pro-enhanced capabilities. Navigation is never blocked. */
+  proEnhanced?: boolean;
 }
 
 interface NavSection {
@@ -76,7 +75,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'dashboard', to: '/dashboard', labelKey: 'nav.dashboard', Icon: Squares2X2Icon },
       { id: 'ai-copilot', to: '/ai-copilot', labelKey: 'nav.aiCopilot', Icon: SparklesIcon },
       { id: 'ai-daily-briefing', to: '/ai-daily-briefing', labelKey: 'nav.aiDailyBriefing', Icon: LightBulbIcon },
-      { id: 'ai-smart-optimize', to: '/ai-smart-optimize', labelKey: 'nav.aiSmartOptimize', Icon: BoltIcon },
+      { id: 'ai-smart-optimize', to: '/ai-smart-optimize', labelKey: 'nav.aiSmartOptimize', Icon: BoltIcon, proEnhanced: true },
       { id: 'ai-workspace', to: '/ai-workspace', labelKey: 'nav.aiWorkspace', Icon: CommandLineIcon },
     ],
   },
@@ -89,7 +88,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'hardware-center', to: '/hardware-center', labelKey: 'nav.hardwareCenter', Icon: ComputerDesktopIcon },
       { id: 'process-intelligence', to: '/process-intelligence', labelKey: 'nav.processIntelligence', Icon: CpuChipIcon },
       { id: 'predictive-health', to: '/predictive-health', labelKey: 'nav.predictiveHealth', Icon: ArrowTrendingUpIcon },
-      { id: 'performance-analytics', to: '/performance-analytics', labelKey: 'nav.performanceAnalytics', Icon: ChartBarIcon },
+      { id: 'performance-analytics', to: '/performance-analytics', labelKey: 'nav.performanceAnalytics', Icon: ChartBarIcon, proEnhanced: true },
     ],
   },
   // ── SECURITY ──────────────────────────────────────────────────
@@ -117,7 +116,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'threat-investigation', to: '/threat-investigation', labelKey: 'nav.threatInvestigation', Icon: BeakerIcon },
       { id: 'quarantine', to: '/quarantine', labelKey: 'nav.quarantine', Icon: ArchiveBoxXMarkIcon },
       { id: 'security-reports', to: '/security-reports', labelKey: 'nav.securityReports', Icon: DocumentChartBarIcon },
-      { id: 'security-history', to: '/security-history', labelKey: 'nav.securityHistory', Icon: HistoryIcon },
+      { id: 'antispyware-malware-removal', to: '/antispyware-malware-removal', labelKey: 'nav.antispywareMalwareRemoval', Icon: BugAntIcon },
     ],
   },
   // ── OPTIMIZATION ──────────────────────────────────────────────
@@ -127,13 +126,13 @@ const NAV_SECTIONS: readonly NavSection[] = [
     entries: [
       { id: 'junk-cleaner', to: '/junk-cleaner', labelKey: 'nav.junkCleaner', Icon: TrashIcon },
       { id: 'startup-manager', to: '/startup-manager', labelKey: 'nav.startupManager', Icon: RocketLaunchIcon },
-      { id: 'browser-cleaner', to: '/browser-cleaner', labelKey: 'nav.browserCleaner', Icon: GlobeAltIcon },
+      { id: 'browser-cleaner', to: '/browser-cleaner', labelKey: 'nav.browserCleaner', Icon: GlobeAltIcon, proEnhanced: true },
       { id: 'registry-cleaner', to: '/registry-cleaner', labelKey: 'nav.registryCleaner', Icon: WrenchScrewdriverIcon },
-      { id: 'duplicate-finder', to: '/duplicate-finder', labelKey: 'nav.duplicateFinder', Icon: DocumentDuplicateIcon, feature: 'duplicate.scan' },
+      { id: 'duplicate-finder', to: '/duplicate-finder', labelKey: 'nav.duplicateFinder', Icon: DocumentDuplicateIcon, proEnhanced: true },
       { id: 'large-files', to: '/large-files', labelKey: 'nav.largeFiles', Icon: CircleStackIcon },
-      { id: 'uninstaller', to: '/uninstaller', labelKey: 'nav.uninstaller', Icon: ArchiveBoxXMarkIcon, feature: 'uninstaller.view' },
-      { id: 'software-updater', to: '/software-updater', labelKey: 'nav.softwareUpdater', Icon: ArrowPathIcon, feature: 'software.update_scan' },
-      { id: 'maintenance-history', to: '/maintenance-history', labelKey: 'nav.maintenanceHistory', Icon: ClipboardDocumentListIcon },
+      { id: 'uninstaller', to: '/uninstaller', labelKey: 'nav.uninstaller', Icon: ArchiveBoxXMarkIcon, proEnhanced: true },
+      { id: 'software-updater', to: '/software-updater', labelKey: 'nav.softwareUpdater', Icon: ArrowPathIcon, proEnhanced: true },
+      { id: 'maintenance-history', to: '/maintenance-history', labelKey: 'nav.maintenanceHistory', Icon: ClipboardDocumentListIcon, proEnhanced: true },
     ],
   },
   // ── REPORTS ───────────────────────────────────────────────────
@@ -153,11 +152,10 @@ const NAV_SECTIONS: readonly NavSection[] = [
     labelKey: 'nav.section.tools',
     entries: [
       { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
-      { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon, feature: 'disk.analyzer' },
+      { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon, proEnhanced: true },
       { id: 'network-information', to: '/network-information', labelKey: 'nav.networkInformation', Icon: WifiIcon },
-      { id: 'driver-information', to: '/driver-information', labelKey: 'nav.driverInformation', Icon: ChipIcon },
-      { id: 'backup-restore', to: '/backup-restore', labelKey: 'nav.backupRestore', Icon: ArrowPathRoundedSquareIcon },
       { id: 'recovery-center', to: '/recovery-center', labelKey: 'nav.recoveryCenter', Icon: LifebuoyIcon },
+      { id: 'restoration', to: '/restoration', labelKey: 'nav.restoration', Icon: ArrowPathRoundedSquareIcon },
     ],
   },
   // ── ACCOUNT ───────────────────────────────────────────────────
@@ -170,6 +168,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'settings', to: '/settings', labelKey: 'nav.settings', Icon: Cog6ToothIcon },
       { id: 'notifications', to: '/notifications', labelKey: 'nav.notifications', Icon: BellIcon },
       { id: 'help', to: '/help', labelKey: 'nav.help', Icon: LifebuoyIcon },
+      { id: 'help-support', to: '/help-support', labelKey: 'nav.helpSupport', Icon: ChatBubbleLeftRightIcon },
       { id: 'about', to: '/about', labelKey: 'nav.about', Icon: InformationCircleIcon },
     ],
   },
@@ -178,11 +177,11 @@ const NAV_SECTIONS: readonly NavSection[] = [
 
 function NavSectionView({
   section,
-  guard,
+  isPro,
   t,
 }: {
   section: NavSection;
-  guard: ReturnType<typeof useFeatureGuard>['guard'];
+  isPro: boolean;
   t: (key: string) => string;
 }) {
   return (
@@ -191,71 +190,55 @@ function NavSectionView({
         {t(section.labelKey)}
       </span>
       <div className="flex flex-col gap-0.5">
-        {section.entries.map(({ id, to, labelKey, Icon, feature }) => {
-          const locked = feature ? !canUse(feature) : false;
-
-          if (locked) {
-            return (
-              <button
-                key={id}
-                data-testid={`sidebar-link-${id}`}
-                onClick={() => feature && guard(feature, t(labelKey), () => {})}
-                className={clsx(
-                  'group relative flex w-full items-center gap-3 rounded-[var(--avs-radius-md)] px-3 py-2 text-[13px] font-medium',
-                  'transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]',
-                  'text-text-muted hover:bg-[var(--avs-surface-muted)] hover:text-text-secondary',
+        {section.entries.map(({ id, to, labelKey, Icon, proEnhanced }) => (
+          <NavLink
+            key={id}
+            to={to}
+            data-testid={`sidebar-link-${id}`}
+            className={({ isActive }) =>
+              clsx(
+                'group relative flex items-center gap-3 rounded-[var(--avs-radius-md)] px-3 py-2 text-[13px] font-medium',
+                'transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]',
+                'outline-none focus-visible:shadow-[var(--avs-focus-ring)]',
+                isActive
+                  ? 'text-text-primary'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-[var(--avs-surface-muted)]',
+              )
+            }
+          >
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <span
+                    className="absolute inset-0 rounded-[var(--avs-radius-md)] bg-[var(--avs-glass-bg)] border border-[var(--avs-glass-border)] shadow-[var(--avs-shadow-glow)]"
+                    aria-hidden
+                  />
                 )}
-              >
-                <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
-                <span className="truncate flex-1 text-left">{t(labelKey)}</span>
-                <LockClosedIcon className="h-3.5 w-3.5 shrink-0 text-text-muted/60" aria-hidden />
-              </button>
-            );
-          }
-
-          return (
-              <NavLink
-                key={id}
-                to={to}
-                data-testid={`sidebar-link-${id}`}
-                className={({ isActive }) =>
-                  clsx(
-                    'group relative flex items-center gap-3 rounded-[var(--avs-radius-md)] px-3 py-2 text-[13px] font-medium',
-                    'transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]',
-                    'outline-none focus-visible:shadow-[var(--avs-focus-ring)]',
-                    isActive
-                      ? 'text-text-primary'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-[var(--avs-surface-muted)]',
-                  )
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    {isActive && (
-                      <span
-                        className="absolute inset-0 rounded-[var(--avs-radius-md)] bg-[var(--avs-glass-bg)] border border-[var(--avs-glass-border)] shadow-[var(--avs-shadow-glow)]"
-                        aria-hidden
-                      />
-                    )}
-                    {isActive && (
-                      <span
-                        className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-gradient-to-b from-brand-primary to-brand-secondary"
-                        aria-hidden
-                      />
-                    )}
-                    <Icon
-                      className={clsx(
-                        'relative h-[18px] w-[18px] shrink-0 transition-colors',
-                        isActive ? 'text-brand-primary' : 'text-text-muted group-hover:text-text-secondary',
-                      )}
-                      aria-hidden
-                    />
-                    <span className="relative truncate">{t(labelKey)}</span>
-                  </>
+                {isActive && (
+                  <span
+                    className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-gradient-to-b from-brand-primary to-brand-secondary"
+                    aria-hidden
+                  />
                 )}
-              </NavLink>
-            );
-          })}
+                <Icon
+                  className={clsx(
+                    'relative h-[18px] w-[18px] shrink-0 transition-colors',
+                    isActive ? 'text-brand-primary' : 'text-text-muted group-hover:text-text-secondary',
+                  )}
+                  aria-hidden
+                />
+                <span className="relative truncate flex-1">{t(labelKey)}</span>
+                {proEnhanced && !isPro && (
+                  <StarIcon
+                    className="relative h-3 w-3 shrink-0 text-semantic-warning/70"
+                    aria-label="Professional feature"
+                    data-testid={`sidebar-pro-badge-${id}`}
+                  />
+                )}
+              </>
+            )}
+          </NavLink>
+        ))}
       </div>
     </div>
   );
@@ -265,12 +248,12 @@ function NavSectionView({
  * Persistent sidebar navigation with grouped sections.
  * v2.0 navigation with Home, System Health, Security, Optimization,
  * Reports, Tools, and Account sections.
- * Modules with a `feature` prop are gated by the license edition —
- * locked modules show a lock icon and trigger the UpgradeDialog on click.
+ * Pro-enhanced items show a subtle star badge in Free edition.
+ * All items are navigable in all editions — no locks, no hidden pages.
  */
 export function Sidebar() {
   const { t } = useTranslation();
-  const { guard, dialogElement } = useFeatureGuard();
+  const isPro = useIsPro();
 
   const allEntries = useMemo(
     () => NAV_SECTIONS.flatMap((s) => s.entries).map((e) => ({
@@ -296,12 +279,11 @@ export function Sidebar() {
           <NavSectionView
             key={section.id}
             section={section}
-            guard={guard}
+            isPro={isPro}
             t={t}
           />
         ))}
       </nav>
-      {dialogElement}
     </aside>
   );
 }

@@ -18,6 +18,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Card, Button, Badge } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleEmptyState } from '../../components/ModuleStates';
+import { useEditionLimits } from '../licensing/editionLimits';
+import { useFeatureGuard } from '../licensing/useFeatureGuard';
+import { ProStatusPill } from '../licensing/ProStatusBadge';
 import {
   conversationEngine,
   type ConversationResponse,
@@ -63,6 +66,39 @@ export function AICopilotPage() {
   const [insights, setInsights] = useState<AssistantInsight[]>([]);
   const [activeView, setActiveView] = useState<'chat' | 'briefing'>('chat');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const limits = useEditionLimits();
+  const { guard, dialogElement } = useFeatureGuard();
+
+  // Track daily question count for Free edition limit enforcement
+  const COPILOT_COUNT_KEY = 'avs-copilot-questions';
+  const getTodayCount = useCallback((): number => {
+    try {
+      const raw = localStorage.getItem(COPILOT_COUNT_KEY);
+      if (!raw) return 0;
+      const data = JSON.parse(raw) as { date: string; count: number };
+      const today = new Date().toISOString().split('T')[0];
+      if (data.date !== today) return 0;
+      return data.count;
+    } catch {
+      return 0;
+    }
+  }, []);
+  const [questionsToday, setQuestionsToday] = useState(getTodayCount());
+
+  const incrementQuestionCount = useCallback(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const next = questionsToday + 1;
+    setQuestionsToday(next);
+    try {
+      localStorage.setItem(COPILOT_COUNT_KEY, JSON.stringify({ date: today, count: next }));
+    } catch {
+      // localStorage may not be available
+    }
+  }, [questionsToday]);
+
+  const maxQuestions = limits.getLimit('aiCopilotQuestionsPerDay');
+  const questionsRemaining = maxQuestions === null ? null : Math.max(0, maxQuestions - questionsToday);
+  const isLimitReached = maxQuestions !== null && questionsToday >= maxQuestions;
 
   const initSession = useCallback(() => {
     const id = conversationEngine.startSession();
@@ -83,6 +119,17 @@ export function AICopilotPage() {
 
   const handleAsk = useCallback((question: string) => {
     if (!question.trim() || isThinking) return;
+
+    // Enforce daily question limit for Free edition
+    if (isLimitReached) {
+      guard('ai.smart_optimization', 'AI Copilot', () => {}, {
+        limitDescription: `You've used all ${maxQuestions} AI questions for today. The limit resets at midnight.`,
+        proBenefit: 'Unlimited AI questions with conversation history and cross-module reasoning.',
+      });
+      return;
+    }
+
+    incrementQuestionCount();
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -129,7 +176,7 @@ export function AICopilotPage() {
         setIsThinking(false);
       }
     }, 100);
-  }, [sessionId, isThinking]);
+  }, [sessionId, isThinking, isLimitReached, maxQuestions, guard, incrementQuestionCount]);
 
   const handleReset = () => {
     setMessages([]);
@@ -143,6 +190,12 @@ export function AICopilotPage() {
         description="Your AI-powered PC health assistant. Ask questions, get explanations, and receive evidence-based recommendations."
         actions={
           <div className="flex items-center gap-2">
+            <ProStatusPill />
+            {!limits.isPro && maxQuestions !== null && (
+              <Badge tone={questionsRemaining !== null && questionsRemaining <= 5 ? 'warning' : 'neutral'} data-testid="copilot-question-counter">
+                {questionsRemaining} / {maxQuestions} questions left today
+              </Badge>
+            )}
             <div className="flex rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-1">
               <button
                 onClick={() => setActiveView('chat')}
@@ -234,7 +287,7 @@ export function AICopilotPage() {
               />
               <Button
                 onClick={() => handleAsk(input)}
-                disabled={!input.trim() || isThinking}
+                disabled={!input.trim() || isThinking || isLimitReached}
                 leftIcon={<PaperAirplaneIcon className="h-4 w-4" />}
               >
                 Send
@@ -283,6 +336,8 @@ export function AICopilotPage() {
           </div>
         </div>
       )}
+
+      {dialogElement}
     </div>
   );
 }

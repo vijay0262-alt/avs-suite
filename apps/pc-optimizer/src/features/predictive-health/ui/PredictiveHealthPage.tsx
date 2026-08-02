@@ -5,6 +5,8 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../../components/PageHeader';
 import { HelpButton } from '../../../components/HelpButton';
 import { ModuleErrorState, ModuleLoadingState } from '../../../components/ModuleStates';
+import { useEditionLimits } from '../../licensing/editionLimits';
+import { ProStatusBanner, ProStatusPill, ProFeatureIndicator, ProOnlySection } from '../../licensing/ProStatusBadge';
 import { PredictiveHealthViewModel } from './PredictiveHealthViewModel';
 import type { Prediction, PredictionNotification } from '../types';
 import {
@@ -20,6 +22,7 @@ import {
 export default function PredictiveHealthPage() {
   const vm = useMemo(() => new PredictiveHealthViewModel(), []);
   const state = useViewModel(vm);
+  const limits = useEditionLimits();
 
   useEffect(() => {
     void vm.bootstrap();
@@ -64,11 +67,13 @@ export default function PredictiveHealthPage() {
 
   return (
     <div data-testid="page-predictive-health" className="space-y-6">
+      <ProStatusBanner compact />
       <PageHeader
         title="Predictive Health"
         description="AI-powered forecasting of future system health"
         actions={
           <div className="flex items-center gap-2">
+            <ProStatusPill />
             <Button
               variant="secondary"
               size="sm"
@@ -82,6 +87,20 @@ export default function PredictiveHealthPage() {
           </div>
         }
       />
+
+      {/* Forecast Horizon Indicator */}
+      <div className="flex items-center gap-3">
+        <Badge tone={limits.isPro ? 'brand' : 'neutral'} data-testid="forecast-horizon-indicator">
+          {limits.getLabel('predictiveHealthForecastDays')}
+        </Badge>
+        <ProOnlySection>
+          <div className="flex flex-wrap gap-2">
+            <ProFeatureIndicator icon={ChartBarIcon} label="Historical Accuracy" />
+            <ProFeatureIndicator icon={ArrowPathIcon} label="Trend Reports" />
+            <ProFeatureIndicator icon={CheckCircleIcon} label="All Predictions" />
+          </div>
+        </ProOnlySection>
+      </div>
 
       {dashboard && (
         <>

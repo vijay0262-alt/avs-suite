@@ -69,6 +69,9 @@ import {
   DriverInformationPage,
   BackupRestorePage,
   SecurityHistoryPage,
+  AntispywareMalwareRemovalPage,
+  RestorationPage,
+  HelpSupportPage,
   RecoveryCenterPage,
   UpgradePage,
   HelpPage,
@@ -163,6 +166,7 @@ export const router = createHashRouter([
       { path: 'quarantine', element: <QuarantinePage /> },
       { path: 'security-reports', element: <SecurityReportsPage /> },
       { path: 'security-history', element: <SecurityHistoryPage /> },
+      { path: 'antispyware-malware-removal', element: <AntispywareMalwareRemovalPage /> },
       // OPTIMIZATION
       { path: 'junk-cleaner', element: wrap(JunkCleanerPage) },
       { path: 'startup-manager', element: wrap(StartupManagerPage) },
@@ -186,12 +190,14 @@ export const router = createHashRouter([
       { path: 'driver-information', element: <DriverInformationPage /> },
       { path: 'backup-restore', element: <BackupRestorePage /> },
       { path: 'recovery-center', element: <RecoveryCenterPage /> },
+      { path: 'restoration', element: <RestorationPage /> },
       // ACCOUNT
       { path: 'license', element: wrap(ActivationPage) },
       { path: 'upgrade', element: <UpgradePage /> },
       { path: 'settings', element: wrap(SettingsPage) },
       { path: 'notifications', element: <NotificationsPageWrapper /> },
       { path: 'help', element: <HelpPage /> },
+      { path: 'help-support', element: <HelpSupportPage /> },
       { path: 'about', element: wrap(AboutPage) },
       // LEGACY REDIRECTS
       { path: 'security', element: <Navigate to="/security-center" replace /> },

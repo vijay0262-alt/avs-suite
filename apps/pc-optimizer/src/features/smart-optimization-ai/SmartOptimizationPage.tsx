@@ -16,6 +16,9 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleEmptyState, ModuleLoadingState } from '../../components/ModuleStates';
+import { useEditionLimits } from '../licensing/editionLimits';
+import { useFeatureGuard } from '../licensing/useFeatureGuard';
+import { ProStatusBanner, ProStatusPill, ProOnlySection, ProFeatureIndicator } from '../licensing/ProStatusBadge';
 import {
   SmartOptimizationEngine,
   type OptimizationPlan,
@@ -42,6 +45,8 @@ import {
   ArrowTrendingUpIcon,
   LightBulbIcon,
   BeakerIcon,
+  CalendarDaysIcon,
+  EyeIcon,
 } from '@heroicons/react/24/outline';
 
 // ── ViewModel ──────────────────────────────────────────────────
@@ -190,6 +195,8 @@ function formatDuration(seconds: number): string {
 export default function SmartOptimizationPage() {
   const vm = useMemo(() => new SmartOptViewModel(), []);
   const state = useViewModel(vm);
+  const limits = useEditionLimits();
+  const { guard, dialogElement } = useFeatureGuard();
 
   useEffect(() => {
     vm.bootstrap();
@@ -207,20 +214,27 @@ export default function SmartOptimizationPage() {
 
   const s = state;
   const dash = s.dashboard;
+  const maxOptimizations = limits.getLimit('aiSmartOptimizePerRun');
+  const visibleActions = s.preview ? s.preview.actionsPreview.slice(0, maxOptimizations ?? undefined) : [];
+  const hiddenCount = s.preview && maxOptimizations !== null ? Math.max(0, s.preview.actionsPreview.length - maxOptimizations) : 0;
 
   return (
     <div className="px-6 py-6 space-y-6">
+      <ProStatusBanner compact />
       <PageHeader
         title="AI Smart Optimization"
         description="Evidence-based optimization plans with risk analysis, simulation, and rollback."
         actions={
-          <Button
-            onClick={() => vm.generatePlan([], 75)}
-            loading={s.isGenerating}
-            leftIcon={<BoltIcon className="h-4 w-4" />}
-          >
-            Generate Plan
-          </Button>
+          <div className="flex items-center gap-2">
+            <ProStatusPill />
+            <Button
+              onClick={() => vm.generatePlan([], 75)}
+              loading={s.isGenerating}
+              leftIcon={<BoltIcon className="h-4 w-4" />}
+            >
+              Generate Plan
+            </Button>
+          </div>
         }
       />
 
@@ -291,8 +305,10 @@ export default function SmartOptimizationPage() {
 
             {/* Actions Preview */}
             <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--avs-text-muted)]">Actions ({s.preview.actionsPreview.length})</h4>
-              {s.preview.actionsPreview.map((action) => (
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--avs-text-muted)]">
+                Actions ({visibleActions.length}{s.preview && maxOptimizations !== null && s.preview.actionsPreview.length > maxOptimizations ? ` of ${s.preview.actionsPreview.length}` : ''})
+              </h4>
+              {visibleActions.map((action) => (
                 <div
                   key={action.id}
                   className={`rounded-[var(--avs-radius-md)] border p-3 cursor-pointer transition-all ${
@@ -324,13 +340,43 @@ export default function SmartOptimizationPage() {
                 Simulate
               </Button>
               <Button
-                onClick={() => vm.executePlan()}
+                onClick={() => {
+                  if (limits.isPro) {
+                    vm.executePlan();
+                  } else if (maxOptimizations !== null && s.preview && s.preview.actionsPreview.length > maxOptimizations) {
+                    guard('ai.smart_optimization', 'AI Smart Optimize', () => vm.executePlan(), {
+                      limitDescription: `Free edition allows up to ${maxOptimizations} optimizations per run. This plan has ${s.preview!.actionsPreview.length} actions.`,
+                      proBenefit: 'Unlimited optimizations with automatic scheduling and background execution.',
+                    });
+                  } else {
+                    vm.executePlan();
+                  }
+                }}
                 loading={s.isExecuting}
                 leftIcon={<BoltIcon className="h-4 w-4" />}
               >
-                Execute Plan
+                {limits.isPro ? 'Auto Optimize' : 'Execute Plan'}
               </Button>
             </div>
+
+            {/* Hidden actions notice for Free */}
+            {hiddenCount > 0 && (
+              <div className="rounded-[var(--avs-radius-md)] bg-semantic-warning/10 border border-semantic-warning/20 px-3 py-2" data-testid="smart-opt-limit-notice">
+                <p className="text-xs text-text-secondary">
+                  {hiddenCount} more optimization{hiddenCount > 1 ? 's' : ''} available with Professional. Showing top {maxOptimizations} of {s.preview!.actionsPreview.length} actions.
+                </p>
+              </div>
+            )}
+
+            {/* Pro-only automation controls */}
+            <ProOnlySection>
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--avs-border)]">
+                <ProFeatureIndicator icon={CalendarDaysIcon} label="Schedule Weekly" />
+                <ProFeatureIndicator icon={ArrowPathIcon} label="Optimize in Background" />
+                <ProFeatureIndicator icon={EyeIcon} label="Rollback Available" />
+                <ProFeatureIndicator icon={ClockIcon} label="Optimization History" />
+              </div>
+            </ProOnlySection>
           </div>
         </Card>
       )}
@@ -473,6 +519,8 @@ export default function SmartOptimizationPage() {
           </div>
         </div>
       )}
+
+      {dialogElement}
     </div>
   );
 }

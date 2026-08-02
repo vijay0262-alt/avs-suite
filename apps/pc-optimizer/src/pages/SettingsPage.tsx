@@ -12,7 +12,7 @@ import { useEntitlementStore } from '../features/entitlement/entitlementStore';
 import { useFeatureStore, FEATURE_LABELS } from '../features/feature-engine';
 import { useUpdateStore } from '../features/update';
 import { useSubscriptionStore } from '../features/subscription/subscriptionStore';
-import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, LockClosedIcon, CheckCircleIcon, CloudArrowDownIcon, ArrowDownTrayIcon, XCircleIcon, RocketLaunchIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, StarIcon, CheckCircleIcon, CloudArrowDownIcon, ArrowDownTrayIcon, XCircleIcon, RocketLaunchIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { onboardingService } from '../features/onboarding/OnboardingProvider';
 import { KEYBOARD_SHORTCUTS } from '../components/useKeyboardShortcuts';
 
@@ -139,26 +139,100 @@ export default function SettingsPage() {
           </p>
         </Card>
 
-        <Card title="Application Edition" variant="glass">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-text-primary">{getEditionString()}</span>
-                <Badge tone={edition === 'free' ? 'neutral' : 'brand'}>
-                  {edition.toUpperCase()}
-                </Badge>
+        <Card title="Edition" variant="glass">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-text-primary">{getEditionString()}</span>
+                  <Badge tone={edition === 'free' ? 'neutral' : 'brand'}>
+                    {edition.toUpperCase()}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-xs text-text-secondary">
+                  {edition === 'free'
+                    ? 'Free edition: Understand your PC. Analyze, inspect, and manually improve your system.'
+                    : 'Professional edition: Let AVS Shield take care of your PC. Automation, continuous protection, and unlimited operations.'}
+                </p>
               </div>
-              <p className="mt-1 text-xs text-text-secondary">
-                {edition === 'free'
-                  ? 'Free edition includes basic junk cleaning, startup management, privacy cleaning, and disk analysis.'
-                  : 'Professional edition includes all features with priority support.'}
-              </p>
+              {edition === 'free' && (
+                <Button variant="primary" onClick={() => showUpgrade('Settings')} data-testid="settings-upgrade" leftIcon={<StarIcon className="h-4 w-4" />}>
+                  Upgrade to Professional
+                </Button>
+              )}
             </div>
-            {edition === 'free' && (
-              <Button variant="primary" onClick={() => showUpgrade('Settings')} data-testid="settings-upgrade">
-                Upgrade to Professional
-              </Button>
+
+            {subscription && (
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm border-t border-[var(--avs-border)] pt-3">
+                <span className="text-text-muted">Activated License</span>
+                <span className="text-text-primary">{subscription.plan}</span>
+                <span className="text-text-muted">Status</span>
+                <span className="text-text-primary">{subscription.status}</span>
+                <span className="text-text-muted">Started</span>
+                <span className="text-text-primary">{subscription.started_at ? new Date(subscription.started_at).toLocaleDateString() : '\u2014'}</span>
+                <span className="text-text-muted">Expires</span>
+                <span className="text-text-primary">{subscription.expires_at ? new Date(subscription.expires_at).toLocaleDateString() : 'Lifetime'}</span>
+              </div>
             )}
+
+            <div className="border-t border-[var(--avs-border)] pt-3">
+              <div className="text-xs font-medium text-text-muted mb-2">Feature Comparison</div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="text-text-muted">
+                    <tr>
+                      <th className="p-2">Capability</th>
+                      <th className="p-2 text-center">Free</th>
+                      <th className="p-2 text-center">Professional</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { label: 'AI Dashboard & Health Scores', free: true, pro: true },
+                      { label: 'AI Daily Briefing', free: '1/day', pro: 'Unlimited' },
+                      { label: 'AI Smart Optimize', free: '5/run', pro: 'Unlimited' },
+                      { label: 'AI Copilot Questions', free: '20/day', pro: 'Unlimited' },
+                      { label: 'Junk Cleaner', free: '500 MB/run', pro: 'Unlimited' },
+                      { label: 'Registry Cleaner', free: '50 issues', pro: 'Unlimited' },
+                      { label: 'Startup Manager', free: '3 entries', pro: 'Unlimited' },
+                      { label: 'Browser Cleaner', free: '1 browser', pro: 'All browsers' },
+                      { label: 'Duplicate Finder', free: '20 files', pro: 'Unlimited' },
+                      { label: 'Large File Analyzer', free: '10 files', pro: 'Unlimited' },
+                      { label: 'Software Uninstaller', free: 'Manual', pro: 'Batch + cleanup' },
+                      { label: 'Process Intelligence', free: 'Top 10', pro: 'Unlimited' },
+                      { label: 'Hardware Center History', free: '24 hours', pro: 'Unlimited' },
+                      { label: 'Predictive Health', free: '7-day', pro: 'Unlimited' },
+                      { label: 'Real-Time Protection', free: false, pro: true },
+                      { label: 'Scheduled Scans', free: false, pro: true },
+                      { label: 'Automatic Optimization', free: false, pro: true },
+                      { label: 'Background Monitoring', free: false, pro: true },
+                      { label: 'Export Formats', free: 'PDF', pro: 'PDF, CSV, JSON, Excel' },
+                      { label: 'Priority Support', free: false, pro: true },
+                    ].map((row) => (
+                      <tr key={row.label} className="border-t border-[var(--avs-border)]">
+                        <td className="p-2 text-text-secondary">{row.label}</td>
+                        <td className="p-2 text-center">
+                          {row.free === true ? (
+                            <CheckCircleIcon className="inline h-3.5 w-3.5 text-semantic-success" />
+                          ) : row.free === false ? (
+                            <span className="text-text-muted">\u2014</span>
+                          ) : (
+                            <span className="text-text-secondary">{row.free}</span>
+                          )}
+                        </td>
+                        <td className="p-2 text-center">
+                          {row.pro === true ? (
+                            <CheckCircleIcon className="inline h-3.5 w-3.5 text-semantic-success" />
+                          ) : (
+                            <span className="text-text-primary font-medium">{row.pro}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </Card>
 
@@ -427,7 +501,7 @@ export default function SettingsPage() {
                 <div className="flex flex-wrap gap-1">
                   {disabledFeatures.map((f) => (
                     <span key={f} className="inline-flex items-center gap-1 rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface-muted)] px-2 py-0.5 text-xs text-text-muted">
-                      <LockClosedIcon className="h-3 w-3 text-text-muted" />
+                      <StarIcon className="h-3 w-3 text-semantic-warning/60" />
                       {FEATURE_LABELS[f]}
                     </span>
                   ))}

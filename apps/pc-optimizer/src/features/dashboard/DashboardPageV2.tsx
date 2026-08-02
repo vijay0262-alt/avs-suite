@@ -15,6 +15,7 @@ import {
   ChartBarIcon,
   DocumentTextIcon,
   ArrowRightIcon,
+  StarIcon,
 } from '@heroicons/react/24/outline';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { DashboardViewModel } from './DashboardViewModel';
@@ -22,6 +23,9 @@ import { dashboardService } from './dashboard.service';
 import { generateRecommendations } from './dashboard.utils';
 import type { HealthSnapshot, DashboardMetrics, LiveMetrics } from './dashboard.types';
 import { HealthScanModal } from './components/HealthScanModal';
+import { useIsPro } from '../sync/syncStore';
+import { useEditionLimits } from '../licensing/editionLimits';
+import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -92,6 +96,8 @@ export default function DashboardPage() {
   const vm = useMemo(() => new DashboardViewModel(dashboardService), []);
   const state = useViewModel(vm);
   const navigate = useNavigate();
+  const isPro = useIsPro();
+  const limits = useEditionLimits();
 
   useEffect(() => {
     void vm.bootstrap();
@@ -149,9 +155,14 @@ export default function DashboardPage() {
   const recommendations = state.healthScore
     ? generateRecommendations(state.healthScore, state.metrics)
     : [];
+  const maxRecommendations = limits.getLimit('dashboardRecommendations') ?? recommendations.length;
+  const visibleRecommendations = recommendations.slice(0, maxRecommendations);
 
   return (
     <div className="space-y-8" data-testid="page-dashboard">
+      {/* Pro Status Banner */}
+      <ProStatusBanner />
+
       {/* Greeting */}
       <div className="flex items-center justify-between">
         <div>
@@ -160,15 +171,18 @@ export default function DashboardPage() {
             Here's your AI-powered system overview for today.
           </p>
         </div>
-        <Button
-          onClick={() => vm.startHealthScan()}
-          disabled={isScanning}
-          size="lg"
-          leftIcon={isScanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <SparklesIcon className="h-5 w-5" />}
-          data-testid="improve-health-button"
-        >
-          {buttonLabel}
-        </Button>
+        <div className="flex items-center gap-3">
+          <ProStatusPill />
+          <Button
+            onClick={() => vm.startHealthScan()}
+            disabled={isScanning}
+            size="lg"
+            leftIcon={isScanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <SparklesIcon className="h-5 w-5" />}
+            data-testid="improve-health-button"
+          >
+            {buttonLabel}
+          </Button>
+        </div>
       </div>
 
       {/* AI Score Cards Row */}
@@ -272,10 +286,10 @@ export default function DashboardPage() {
       </DashboardSection>
 
       {/* AI Recommendations */}
-      {recommendations.length > 0 && (
-        <DashboardSection title="AI Recommendations" icon={<ChartBarIcon className="h-5 w-5" />}>
+      {visibleRecommendations.length > 0 && (
+        <DashboardSection title={`AI Recommendations${!isPro && recommendations.length > maxRecommendations ? ` (Top ${maxRecommendations})` : ''}`} icon={<ChartBarIcon className="h-5 w-5" />}>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {recommendations.slice(0, 6).map((rec) => (
+            {visibleRecommendations.map((rec) => (
               <RecommendationCard
                 key={rec.id}
                 icon={<SparklesIcon className="h-5 w-5" />}
@@ -294,12 +308,12 @@ export default function DashboardPage() {
       <DashboardSection title="Quick Actions" icon={<BoltIcon className="h-5 w-5" />}>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {[
-            { id: 'junk-cleaner', name: 'Junk Cleaner', icon: CircleStackIcon, color: 'text-brand-primary', path: '/junk-cleaner' },
-            { id: 'startup-manager', name: 'Startup Manager', icon: BoltIcon, color: 'text-semantic-success', path: '/startup-manager' },
-            { id: 'privacy-cleaner', name: 'Privacy Cleaner', icon: ShieldExclamationIcon, color: 'text-semantic-warning', path: '/privacy-cleaner' },
-            { id: 'disk-analyzer', name: 'Disk Analyzer', icon: ChartBarIcon, color: 'text-semantic-danger', path: '/disk-analyzer' },
-            { id: 'duplicate-finder', name: 'Duplicate Finder', icon: DocumentTextIcon, color: 'text-semantic-info', path: '/duplicate-finder' },
-            { id: 'process-intelligence', name: 'Process AI', icon: CpuChipIcon, color: 'text-brand-primary', path: '/process-intelligence' },
+            { id: 'junk-cleaner', name: 'Junk Cleaner', icon: CircleStackIcon, color: 'text-brand-primary', path: '/junk-cleaner', proEnhanced: false },
+            { id: 'startup-manager', name: 'Startup Manager', icon: BoltIcon, color: 'text-semantic-success', path: '/startup-manager', proEnhanced: false },
+            { id: 'privacy-cleaner', name: 'Privacy Cleaner', icon: ShieldExclamationIcon, color: 'text-semantic-warning', path: '/privacy-cleaner', proEnhanced: true },
+            { id: 'disk-analyzer', name: 'Disk Analyzer', icon: ChartBarIcon, color: 'text-semantic-danger', path: '/disk-analyzer', proEnhanced: true },
+            { id: 'duplicate-finder', name: 'Duplicate Finder', icon: DocumentTextIcon, color: 'text-semantic-info', path: '/duplicate-finder', proEnhanced: true },
+            { id: 'process-intelligence', name: 'Process AI', icon: CpuChipIcon, color: 'text-brand-primary', path: '/process-intelligence', proEnhanced: false },
           ].map((action) => (
             <button
               key={action.id}
@@ -307,8 +321,11 @@ export default function DashboardPage() {
               className="group flex flex-col items-center gap-3 p-4 rounded-[var(--avs-radius-xl)] bg-gradient-surface border border-[var(--avs-border)] hover:border-[var(--avs-border-hover)] hover:shadow-glow transition-all duration-[var(--avs-duration-normal)] ease-[var(--avs-easing)]"
               data-testid={`quick-action-${action.id}`}
             >
-              <div className="p-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] group-hover:bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)] transition-colors">
+              <div className="p-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] group-hover:bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)] transition-colors relative">
                 <action.icon className={`h-6 w-6 ${action.color}`} />
+                {action.proEnhanced && !isPro && (
+                  <StarIcon className="absolute -top-1 -right-1 h-3.5 w-3.5 text-semantic-warning/70" data-testid={`quick-action-pro-badge-${action.id}`} />
+                )}
               </div>
               <span className="text-sm font-medium text-text-primary">{action.name}</span>
             </button>
@@ -419,6 +436,7 @@ export default function DashboardPage() {
           onCancelExecute={() => vm.cancelHealthScanOptimizations()}
         />
       )}
+
     </div>
   );
 }

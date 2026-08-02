@@ -12,6 +12,9 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../../components/PageHeader';
 import { HelpButton } from '../../../components/HelpButton';
 import { ModuleErrorState, ModuleLoadingState } from '../../../components/ModuleStates';
+import { useEditionLimits } from '../../licensing/editionLimits';
+import { ProStatusBanner, ProStatusPill, ProFeatureIndicator, ProOnlySection } from '../../licensing/ProStatusBadge';
+import { ChartBarIcon, FireIcon, BellIcon } from '@heroicons/react/24/outline';
 import { HardwareDashboardViewModel } from './HardwareDashboardViewModel';
 import { OverviewSection } from './OverviewSection';
 import { HardwareCard } from './HardwareCard';
@@ -34,6 +37,7 @@ export default function HardwareCenterPage() {
   const vm = useMemo(() => new HardwareDashboardViewModel(), []);
   const state = useViewModel(vm);
   const [showHistory, setShowHistory] = useState(false);
+  const limits = useEditionLimits();
 
   useEffect(() => {
     void vm.bootstrap();
@@ -89,16 +93,32 @@ export default function HardwareCenterPage() {
 
   return (
     <div data-testid="page-hardware-center" className="space-y-6">
+      <ProStatusBanner compact />
       <PageHeader
         title="Hardware Center"
         description="Real-time monitoring of your computer's hardware components"
         actions={
           <div className="flex items-center gap-2">
+            <ProStatusPill />
             <HelpButton text="View real-time hardware metrics including CPU, GPU, RAM, storage, network, battery, and cooling. Use the controls to pause/resume monitoring, take snapshots, or export data." />
             <ExportMenu onExport={handleExport} />
           </div>
         }
       />
+
+      {/* Edition History Indicator */}
+      <div className="flex items-center gap-3">
+        <Badge tone={limits.isPro ? 'brand' : 'neutral'} data-testid="hardware-history-indicator">
+          {limits.getLabel('hardwareCenterHistoryHours')}
+        </Badge>
+        <ProOnlySection>
+          <div className="flex flex-wrap gap-2">
+            <ProFeatureIndicator icon={ChartBarIcon} label="Long-term Trends" />
+            <ProFeatureIndicator icon={FireIcon} label="Thermal Analytics" />
+            <ProFeatureIndicator icon={BellIcon} label="Health Alerts" />
+          </div>
+        </ProOnlySection>
+      </div>
 
       {/* Monitoring Controls */}
       <div className="flex items-center gap-3 flex-wrap" data-testid="monitoring-controls">

@@ -76,6 +76,18 @@ export function SecurityHistoryPage() {
   return <SecurityHistoryPageImpl />;
 }
 
+export function AntispywareMalwareRemovalPage() {
+  return <Navigate to="/security-center" replace state={{ filter: 'malware' }} />;
+}
+
+export function RestorationPage() {
+  return <Navigate to="/recovery-center" replace />;
+}
+
+export function HelpSupportPage() {
+  return <Navigate to="/help" replace />;
+}
+
 export function RecoveryCenterPage() {
   return <RecoveryCenterPageImpl />;
 }
