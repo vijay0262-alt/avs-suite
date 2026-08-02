@@ -15,6 +15,8 @@ import { LiveStatus } from './components/LiveStatus';
 import { QuickActions } from './components/QuickActions';
 import { Recommendations } from './components/Recommendations';
 import { HealthScanModal } from './components/HealthScanModal';
+import { AIOverview } from './components/AIOverview';
+import { DailyBriefing } from './components/DailyBriefing';
 import { ModuleCards } from '../module-registry';
 
 export default function DashboardPage() {
@@ -35,7 +37,7 @@ export default function DashboardPage() {
       case 'optimizing': return 'Optimizing...';
       case 'verifying': return 'Verifying...';
       case 'updating_dashboard': return 'Updating Dashboard...';
-      default: return 'Improve PC Health';
+      default: return '✨ AI Smart Optimize';
     }
   })();
 
@@ -43,7 +45,7 @@ export default function DashboardPage() {
     <div data-testid="page-dashboard">
       <PageHeader
         title="Dashboard"
-        description="Real-time system health monitoring and optimization"
+        description="AI-powered system health, security, and performance monitoring"
         actions={<HelpButton text="The Dashboard provides an at-a-glance view of your system's health. Run a Health Scan to get personalized recommendations, or use Quick Actions to jump into common maintenance tasks." />}
       />
 
@@ -61,6 +63,13 @@ export default function DashboardPage() {
 
       {state.bootstrap === 'ready' && (
         <div className="space-y-6">
+          <AIOverview
+            healthScore={state.healthScore?.overallScore ?? null}
+            securityStatus={state.metrics?.security?.realTimeProtection ? 'Protected' : 'At Risk'}
+            processCount={null}
+            predictionCount={null}
+          />
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1">
               <HealthScoreCard
@@ -95,6 +104,14 @@ export default function DashboardPage() {
               {buttonLabel}
             </Button>
           </div>
+
+          <DailyBriefing
+            healthScore={state.healthScore?.overallScore ?? null}
+            issuesCount={state.healthScore?.issues.length ?? 0}
+            securityStatus={state.metrics?.security?.realTimeProtection ? 'Active' : 'Inactive'}
+            processCount={null}
+            predictionRisk={null}
+          />
 
           <IssuesList
             issues={state.healthScore?.issues}

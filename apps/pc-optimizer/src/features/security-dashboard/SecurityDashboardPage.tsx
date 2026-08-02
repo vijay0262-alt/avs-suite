@@ -250,8 +250,8 @@ export default function SecurityDashboardPage() {
           onRunFullScan={() => vm.refresh()}
           onRunCustomScan={() => vm.refresh()}
           onViewInvestigations={() => handleTabChange('timeline')}
-          onReviewQuarantine={() => handleTabChange('reports')}
-          onReviewFalsePositives={() => handleTabChange('reports')}
+          onReviewQuarantine={() => handleTabChange('timeline')}
+          onReviewFalsePositives={() => handleTabChange('search')}
           onReviewRecommendations={() => handleTabChange('overview')}
           onExportReports={() => handleTabChange('reports')}
         />

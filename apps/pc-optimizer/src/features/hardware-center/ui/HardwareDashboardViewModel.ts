@@ -28,6 +28,7 @@ import type {
 import { HardwareManager } from '../HardwareManager';
 import { hardwareRegistry } from '../HardwareRegistry';
 import { hardwareEventBus } from '../HardwareEvents';
+import { createMockHardwareProvider } from '../MockHardwareProvider';
 
 export interface HardwareDashboardState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
@@ -53,6 +54,7 @@ export class HardwareDashboardViewModel extends ViewModel<HardwareDashboardState
   private manager: HardwareManager;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private eventUnsub: (() => void) | null = null;
+  private readonly ownsManager: boolean;
 
   constructor(manager?: HardwareManager) {
     super({
@@ -72,12 +74,15 @@ export class HardwareDashboardViewModel extends ViewModel<HardwareDashboardState
       lastScanDurationMs: 0,
     });
     this.manager = manager ?? new HardwareManager({ pollIntervalMs: DEFAULT_POLL_MS, enablePolling: false });
+    this.ownsManager = manager === undefined;
   }
 
   async bootstrap(): Promise<void> {
     this.setState({ bootstrap: 'loading', bootstrapError: null });
     try {
-      this.registerMockProviders();
+      if (this.ownsManager) {
+        this.registerMockProviders();
+      }
       await this.manager.initialize();
       const snapshot = await this.manager.scan();
       this.updateFromSnapshot(snapshot);
@@ -92,19 +97,7 @@ export class HardwareDashboardViewModel extends ViewModel<HardwareDashboardState
 
   private registerMockProviders(): void {
     if (hardwareRegistry.getAllProviders().length > 0) return;
-    hardwareRegistry.register({
-      id: 'mock-wmi',
-      source: 'wmi',
-      categories: ['cpu', 'gpu', 'ram', 'storage', 'network', 'battery', 'cooling', 'operating_system', 'motherboard'],
-      async initialize() {},
-      dispose() {},
-      async scan() { return []; },
-      async poll() { return []; },
-      isAvailable() { return true; },
-      getHealth() {
-        return { state: 'healthy', consecutiveFailures: 0, consecutiveSuccesses: 1 };
-      },
-    });
+    hardwareRegistry.register(createMockHardwareProvider());
   }
 
   private subscribeToEvents(): void {

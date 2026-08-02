@@ -62,15 +62,10 @@ function ModuleCard({ entry, onNavigate }: { entry: ModuleRegistryEntry; onNavig
 
       <div className="text-sm text-text-secondary mb-3">{metadata.description}</div>
 
-      <div className="flex items-center gap-2 mb-4">
-        <span className="text-xs text-text-muted">v{metadata.version}</span>
-        <span className="text-xs text-text-muted">·</span>
-        <span className="text-xs text-text-muted capitalize">{metadata.category}</span>
-      </div>
-
       {locked && (
-        <div className="mb-3 text-xs text-text-muted" data-testid={`module-upgrade-${metadata.moduleId}`}>
-          Upgrade to unlock this feature
+        <div className="mb-3 flex items-center gap-2 text-xs text-brand-primary" data-testid={`module-upgrade-${metadata.moduleId}`}>
+          <LockClosedIcon className="h-3.5 w-3.5" aria-hidden />
+          <span>Available with Professional</span>
         </div>
       )}
 
@@ -79,10 +74,9 @@ function ModuleCard({ entry, onNavigate }: { entry: ModuleRegistryEntry; onNavig
         size="sm"
         onClick={() => onNavigate(metadata.routePath)}
         rightIcon={locked ? <LockClosedIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-        disabled={locked}
         className="w-full justify-between"
       >
-        {locked ? 'Locked' : 'Open'}
+        {locked ? 'Learn More' : 'Open'}
       </Button>
     </Card>
   );

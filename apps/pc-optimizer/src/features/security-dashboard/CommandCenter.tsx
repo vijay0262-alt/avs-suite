@@ -1,9 +1,9 @@
 /**
  * CommandCenter — modal overlay with quick actions for scans,
- * investigations, quarantine, reports, and AI Copilot.
+ * investigations, quarantine, and reports.
  */
 import { useEffect, useRef } from 'react';
-import { Button, Badge } from '@avs/ui';
+import { Badge } from '@avs/ui';
 import {
   XMarkIcon,
   RocketLaunchIcon,
@@ -14,7 +14,6 @@ import {
   EyeSlashIcon,
   LightBulbIcon,
   DocumentArrowDownIcon,
-  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import type { SecurityOverview } from './SecurityDashboardViewModel';
 
@@ -139,20 +138,6 @@ export function CommandCenter({
           ))}
         </div>
 
-        {/* AI Copilot button */}
-        <div className="border-t border-border px-6 py-4">
-          <Button
-            variant="primary"
-            className="w-full"
-            leftIcon={<ChatBubbleLeftRightIcon className="h-5 w-5" />}
-            onClick={() => {
-              onClose();
-            }}
-            data-testid="cmd-ai-copilot"
-          >
-            Open AI Copilot
-          </Button>
-        </div>
       </div>
     </div>
   );

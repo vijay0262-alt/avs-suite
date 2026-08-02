@@ -564,7 +564,6 @@ describe('SecurityDashboardPage Rendering', () => {
     expect(screen.getByTestId('cmd-false-positives')).toBeDefined();
     expect(screen.getByTestId('cmd-recommendations')).toBeDefined();
     expect(screen.getByTestId('cmd-export-reports')).toBeDefined();
-    expect(screen.getByTestId('cmd-ai-copilot')).toBeDefined();
   });
 });
 

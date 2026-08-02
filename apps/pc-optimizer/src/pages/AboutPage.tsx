@@ -9,8 +9,9 @@ import {
   getEditionString,
   getArchitectureString,
 } from '../config/version';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSyncStore, planToEdition } from '../features/sync/syncStore';
+import { UpdateManager } from '../features/licensing/UpdateManager';
 
 const { APP_METADATA } = constants;
 
@@ -48,15 +49,29 @@ export default function AboutPage() {
     }).catch(() => {});
   }, []);
 
-  const handleCheckUpdates = () => {
+  const handleCheckUpdates = useCallback(async () => {
     setUpdateStatus({ status: 'checking' });
-    setTimeout(() => {
+    try {
+      const result = await UpdateManager.checkForUpdates();
+      if (result?.update_available) {
+        setUpdateStatus({
+          status: 'available',
+          latestVersion: result.latest_version ?? undefined,
+          message: `Update ${result.latest_version} is available.`,
+        });
+      } else {
+        setUpdateStatus({
+          status: 'up-to-date',
+          message: `You're running the latest version (${versionInfo.version}).`,
+        });
+      }
+    } catch (err) {
       setUpdateStatus({
-        status: 'up-to-date',
-        message: `You're running the latest version (${versionInfo.version}).`,
+        status: 'error',
+        message: err instanceof Error ? err.message : 'Failed to check for updates.',
       });
-    }, 1500);
-  };
+    }
+  }, [versionInfo.version]);
 
   const openExternal = (url: string) => {
     window.open(url, '_blank');

@@ -47,7 +47,7 @@ export const Recommendations = React.memo(function Recommendations({ recommendat
   if (recommendations.length === 0) return null;
 
   return (
-    <Card title="Recommendations">
+    <Card title="AI Recommendations">
       <div className="space-y-3" data-testid="recommendations-list">
         {recommendations.map((rec) => {
           const CategoryIcon = CATEGORY_ICONS[rec.category] ?? SparklesIcon;

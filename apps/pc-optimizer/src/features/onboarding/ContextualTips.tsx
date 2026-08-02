@@ -23,7 +23,7 @@ const TIPS: readonly Tip[] = [
     id: 'tip-dashboard-health-score',
     route: '/dashboard',
     title: 'Health Score',
-    body: 'The Health Score summarizes your PC\'s overall condition. Click "Improve PC Health" to run a full optimization scan.',
+    body: 'The Health Score summarizes your PC\'s overall condition. Click "AI Smart Optimize" to run a full optimization scan.',
   },
   {
     id: 'tip-dashboard-quick-actions',
