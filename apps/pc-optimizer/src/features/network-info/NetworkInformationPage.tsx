@@ -13,7 +13,7 @@ import { Card, Button, Badge } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import { PageHeader } from '../../components/PageHeader';
-import { ModuleEmptyState, ModuleLoadingState, ModuleErrorState } from '../../components/ModuleStates';
+import { ModuleEmptyState, ModuleLoadingState, ModuleErrorState, ModuleErrorBanner } from '../../components/ModuleStates';
 import {
   WifiIcon,
   ArrowPathIcon,
@@ -110,11 +110,18 @@ class NetworkViewModel extends ViewModel<NetworkState> {
     this.setState({ pingHost: host });
   }
 
+  clearError() {
+    this.setState({ error: null });
+  }
+
   async ping() {
     if (!this.state.pingHost.trim()) return;
     this.setState({ pinging: true });
     try {
-      if (typeof window === 'undefined' || !window.avs) return;
+      if (typeof window === 'undefined' || !window.avs) {
+        this.setState({ pinging: false });
+        return;
+      }
       const result = await window.avs.rpc.call('network.ping', { host: this.state.pingHost }) as NetworkState['pingResult'];
       this.setState({ pinging: false, pingResult: result });
     } catch (e) {
@@ -168,6 +175,14 @@ export default function NetworkInformationPage() {
           </Button>
         }
       />
+
+      {state.error && state.adapters.length > 0 && (
+        <ModuleErrorBanner
+          message={state.error}
+          onDismiss={() => vm.clearError()}
+          testId="network-info-error-banner"
+        />
+      )}
 
       {/* Tab Bar */}
       <div className="flex items-center gap-1 border-b border-[var(--avs-glass-border)] pb-px">

@@ -6,7 +6,7 @@ import { useEffect, useMemo } from 'react';
 import { Card, Button } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
-import { ModuleErrorState, ModuleLoadingState } from '../../components/ModuleStates';
+import { ModuleErrorState, ModuleErrorBanner, ModuleLoadingState } from '../../components/ModuleStates';
 import { HelpButton } from '../../components/HelpButton';
 import { SystemInfoViewModel } from './SystemInfoViewModel';
 import { systemInfoService } from './system-info.service';
@@ -50,6 +50,14 @@ export default function SystemInfoPage() {
 
       {state.bootstrap === 'ready' && (
         <>
+          {state.refreshError && (
+            <ModuleErrorBanner
+              message={state.refreshError}
+              onRetry={() => vm.loadSystemInfo()}
+              onDismiss={() => vm.clearRefreshError()}
+              testId="system-info-refresh-error"
+            />
+          )}
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-text-secondary">
               {state.systemInfo && `Captured at ${new Date(state.systemInfo.capturedAt).toLocaleString()}`}

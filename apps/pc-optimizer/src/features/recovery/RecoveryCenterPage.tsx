@@ -13,7 +13,7 @@ import { Card, Button, Badge } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import { PageHeader } from '../../components/PageHeader';
-import { ModuleEmptyState, ModuleLoadingState } from '../../components/ModuleStates';
+import { ModuleEmptyState, ModuleLoadingState, ModuleErrorState } from '../../components/ModuleStates';
 import { undoService, type BackupEntry, type RestoreResult } from '../undo';
 import {
   ArrowPathIcon,
@@ -52,7 +52,7 @@ class RecoveryViewModel extends ViewModel<RecoveryState> {
   }
 
   async loadBackups() {
-    this.setState({ loading: true, error: null });
+    this.setState({ loading: true, error: null, bootstrap: 'loading' });
     try {
       const result = await this.undoService.listBackups();
       this.setState({ backups: result.backups, loading: false, bootstrap: 'ready' });
@@ -120,6 +120,15 @@ export function RecoveryCenterPage() {
       <div className="p-6">
         <PageHeader title="Recovery Center" description="Manage backups and restore points" />
         <ModuleLoadingState message="Loading backups..." />
+      </div>
+    );
+  }
+
+  if (state.bootstrap === 'error' && state.backups.length === 0) {
+    return (
+      <div className="p-6">
+        <PageHeader title="Recovery Center" description="Manage backups and restore points" />
+        <ModuleErrorState message={state.error ?? 'Failed to load backups'} onRetry={() => vm.loadBackups()} />
       </div>
     );
   }

@@ -79,6 +79,26 @@ class BackupViewModel extends ViewModel<BackupState> {
     }
   }
 
+  async reload() {
+    this.setState({ error: null });
+    try {
+      if (typeof window === 'undefined' || !window.avs) return;
+      const [rpResult, backupResult, imageResult] = await Promise.all([
+        window.avs.rpc.call('backup.listRestorePoints') as Promise<{ restorePoints: RestorePoint[]; total: number }>,
+        window.avs.rpc.call('backup.listBackups') as Promise<{ backups: BackupEntry[] } | { entries: BackupEntry[] }>,
+        window.avs.rpc.call('backup.systemImage') as Promise<{ Available?: boolean; available?: boolean }>,
+      ]);
+      const backups = 'backups' in backupResult ? backupResult.backups : ('entries' in backupResult ? backupResult.entries : []);
+      this.setState({
+        restorePoints: rpResult.restorePoints,
+        backups,
+        systemImageAvailable: imageResult.Available ?? imageResult.available ?? false,
+      });
+    } catch (e) {
+      this.setState({ error: e instanceof Error ? e.message : 'Failed to reload backup information' });
+    }
+  }
+
   setDescription(desc: string) {
     this.setState({ description: desc });
   }
@@ -92,7 +112,7 @@ class BackupViewModel extends ViewModel<BackupState> {
       const result = await window.avs.rpc.call('backup.createRestorePoint', { description: this.state.description || 'AVS Shield Restore Point' }) as { success: boolean; error?: string };
       if (result.success) {
         this.setState({ creating: false, successMsg: 'Restore point created successfully', description: '' });
-        await this.bootstrap();
+        await this.reload();
       } else {
         this.setState({ creating: false, error: result.error || 'Failed to create restore point' });
       }
@@ -106,7 +126,7 @@ class BackupViewModel extends ViewModel<BackupState> {
       if (typeof window === 'undefined' || !window.avs) return;
       await window.avs.rpc.call('backup.restore', { backupId });
       this.setState({ successMsg: 'Backup restored successfully' });
-      await this.bootstrap();
+      await this.reload();
     } catch (e) {
       this.setState({ error: e instanceof Error ? e.message : 'Restore failed' });
     }
@@ -117,7 +137,7 @@ class BackupViewModel extends ViewModel<BackupState> {
       if (typeof window === 'undefined' || !window.avs) return;
       await window.avs.rpc.call('backup.delete', { backupId });
       this.setState({ successMsg: 'Backup deleted' });
-      await this.bootstrap();
+      await this.reload();
     } catch (e) {
       this.setState({ error: e instanceof Error ? e.message : 'Delete failed' });
     }

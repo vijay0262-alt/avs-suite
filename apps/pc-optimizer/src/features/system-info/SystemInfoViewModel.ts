@@ -12,6 +12,7 @@ export interface SystemInfoState {
   bootstrapError: string | null;
   systemInfo: ComprehensiveSystemInfo | null;
   loading: boolean;
+  refreshError: string | null;
 }
 
 const DYNAMIC_POLL_MS = 5000;
@@ -25,6 +26,7 @@ export class SystemInfoViewModel extends ViewModel<SystemInfoState> {
       bootstrapError: null,
       systemInfo: null,
       loading: false,
+      refreshError: null,
     });
   }
 
@@ -83,15 +85,18 @@ export class SystemInfoViewModel extends ViewModel<SystemInfoState> {
   }
 
   async loadSystemInfo() {
-    this.setState({ loading: true });
+    this.setState({ loading: true, refreshError: null });
     try {
       const info = await this.service.getComprehensiveInfo();
       this.setState({ systemInfo: info, loading: false });
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to load system information';
-      this.setState({ bootstrap: 'error', bootstrapError: error, loading: false });
-      throw err;
+      this.setState({ loading: false, refreshError: error });
     }
+  }
+
+  clearRefreshError() {
+    this.setState({ refreshError: null });
   }
 
   override dispose() {
