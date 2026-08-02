@@ -16,47 +16,52 @@ export interface StatCardProps {
   'data-testid'?: string;
 }
 
-const toneConfig: Record<StatCardTone, { iconBg: string; iconColor: string; barColor: string; glow: string }> = {
+const toneConfig: Record<StatCardTone, { iconBg: string; iconColor: string; ringColor: string; glow: string }> = {
   brand: {
     iconBg: 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_15%,transparent)]',
     iconColor: 'text-[var(--avs-brand-primary)]',
-    barColor: 'bg-[var(--avs-brand-primary)]',
+    ringColor: 'var(--avs-brand-primary)',
     glow: 'hover:shadow-[0_0_24px_color-mix(in_srgb,var(--avs-brand-primary)_15%,transparent)]',
   },
   success: {
     iconBg: 'bg-[color-mix(in_srgb,var(--avs-success)_15%,transparent)]',
     iconColor: 'text-[var(--avs-success)]',
-    barColor: 'bg-[var(--avs-success)]',
+    ringColor: 'var(--avs-success)',
     glow: 'hover:shadow-[0_0_24px_color-mix(in_srgb,var(--avs-success)_15%,transparent)]',
   },
   warning: {
     iconBg: 'bg-[color-mix(in_srgb,var(--avs-warning)_15%,transparent)]',
     iconColor: 'text-[var(--avs-warning)]',
-    barColor: 'bg-[var(--avs-warning)]',
+    ringColor: 'var(--avs-warning)',
     glow: 'hover:shadow-[0_0_24px_color-mix(in_srgb,var(--avs-warning)_15%,transparent)]',
   },
   danger: {
     iconBg: 'bg-[color-mix(in_srgb,var(--avs-danger)_15%,transparent)]',
     iconColor: 'text-[var(--avs-danger)]',
-    barColor: 'bg-[var(--avs-danger)]',
+    ringColor: 'var(--avs-danger)',
     glow: 'hover:shadow-[0_0_24px_color-mix(in_srgb,var(--avs-danger)_15%,transparent)]',
   },
   info: {
     iconBg: 'bg-[color-mix(in_srgb,var(--avs-info)_15%,transparent)]',
     iconColor: 'text-[var(--avs-info)]',
-    barColor: 'bg-[var(--avs-info)]',
+    ringColor: 'var(--avs-info)',
     glow: 'hover:shadow-[0_0_24px_color-mix(in_srgb,var(--avs-info)_15%,transparent)]',
   },
   neutral: {
     iconBg: 'bg-[var(--avs-surface-muted)]',
     iconColor: 'text-[var(--avs-text-muted)]',
-    barColor: 'bg-[var(--avs-text-muted)]',
+    ringColor: 'var(--avs-text-muted)',
     glow: '',
   },
 };
 
+const RING_SIZE = 56;
+const RING_STROKE = 4;
+const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
 /**
- * StatCard — premium score card with icon, value, progress bar, and glow on hover.
+ * StatCard — premium score card with icon, value, circular progress ring, and glow on hover.
  * Used for the dashboard AI score cards row (Health, Security, Performance, Hardware, Storage).
  */
 export function StatCard({
@@ -73,6 +78,8 @@ export function StatCard({
 }: StatCardProps) {
   const config = toneConfig[tone];
   const Comp = onClick ? 'button' : 'div';
+  const clampedProgress = progress !== undefined ? Math.min(100, Math.max(0, progress)) : 0;
+  const dashOffset = RING_CIRCUMFERENCE - (clampedProgress / 100) * RING_CIRCUMFERENCE;
 
   return (
     <Comp
@@ -91,9 +98,40 @@ export function StatCard({
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--avs-glass-border)] to-transparent opacity-50" />
 
       <div className="flex items-start justify-between mb-4">
-        <div className={clsx('flex h-10 w-10 items-center justify-center rounded-[var(--avs-radius-md)]', config.iconBg)}>
-          {icon}
-        </div>
+        {progress !== undefined ? (
+          /* Circular progress ring with icon in center */
+          <div className="relative" style={{ width: RING_SIZE, height: RING_SIZE }}>
+            <svg width={RING_SIZE} height={RING_SIZE} className="-rotate-90">
+              <circle
+                cx={RING_SIZE / 2}
+                cy={RING_SIZE / 2}
+                r={RING_RADIUS}
+                fill="none"
+                stroke="var(--avs-surface-muted)"
+                strokeWidth={RING_STROKE}
+              />
+              <circle
+                cx={RING_SIZE / 2}
+                cy={RING_SIZE / 2}
+                r={RING_RADIUS}
+                fill="none"
+                stroke={config.ringColor}
+                strokeWidth={RING_STROKE}
+                strokeLinecap="round"
+                strokeDasharray={RING_CIRCUMFERENCE}
+                strokeDashoffset={dashOffset}
+                className="transition-all duration-[var(--avs-duration-slow)] ease-[var(--avs-easing)]"
+              />
+            </svg>
+            <div className={clsx('absolute inset-0 flex items-center justify-center', config.iconColor)}>
+              {icon}
+            </div>
+          </div>
+        ) : (
+          <div className={clsx('flex h-10 w-10 items-center justify-center rounded-[var(--avs-radius-md)]', config.iconBg)}>
+            <span className={config.iconColor}>{icon}</span>
+          </div>
+        )}
       </div>
 
       <div className="flex items-baseline gap-1.5">
@@ -104,15 +142,6 @@ export function StatCard({
       <div className="mt-1.5 text-sm font-semibold text-[var(--avs-text-primary)]">{label}</div>
       {description && (
         <div className="mt-0.5 text-xs text-[var(--avs-text-secondary)]">{description}</div>
-      )}
-
-      {progress !== undefined && (
-        <div className="mt-3 h-1.5 rounded-full bg-[var(--avs-surface-muted)] overflow-hidden">
-          <div
-            className={clsx('h-full rounded-full transition-all duration-[var(--avs-duration-slow)] ease-[var(--avs-easing)]', config.barColor)}
-            style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
-          />
-        </div>
       )}
     </Comp>
   );

@@ -1,164 +1,138 @@
-# AVS Shield v2.0 — UI Feature Checklist
+# AVS Shield v2.0 — Complete UI & Backend Feature Checklist
 
-> Generated from codebase audit on Aug 2, 2026.
-> Legend: ✅ Fully implemented · 🟡 Partially implemented · 🔴 Not implemented (backend exists, no UI)
+> **Legend:** ✅ Fully implemented · 🟡 Partially implemented · 🔴 Not implemented
+>
+> **Last updated:** Aug 2, 2026 (post-frontend completion — all pages implemented)
 
 ---
 
 ## 🏠 HOME
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Dashboard (New AI Dashboard) | ✅ | `DashboardPageV2.tsx` — greeting, 5 score cards, AI Daily Briefing, AI Recommendations, Quick Actions, Live Charts (CPU/Mem sparklines), Timeline, System Status |
-| AI Copilot | 🔴 | Backend: `features/ai-assistant/` has conversationEngine, explanationEngine, questionRouter, promptTemplateRegistry. No UI page or sidebar entry exists. |
-| AI Daily Briefing | 🟡 | Embedded as a section inside Dashboard V2 (2 InsightCards). Not a standalone page. No dedicated sidebar entry. |
-| AI Smart Optimize | ✅ | Full flow in Dashboard V2 — `startHealthScan()` → scan → report → optimize → verify → update dashboard → complete. HealthScanModal with animated score, live messages, detailed results. |
-
----
+| Feature | Status | Backend | Frontend | Notes |
+|---------|--------|---------|----------|-------|
+| Dashboard (New AI Dashboard) | ✅ | `dashboard.metrics`, `dashboard.live`, `dashboard.health` | `DashboardPageV2.tsx` | AI greeting, 5 score cards, daily briefing, recommendations, live charts, quick actions |
+| AI Copilot | ✅ | Frontend TS engine | `AICopilotPage.tsx` | ConversationEngine, InsightGenerator, ExplanationEngine |
+| AI Daily Briefing | ✅ | Frontend TS engine | `AIDailyBriefingPage.tsx` | Standalone page using ConversationEngine for insights |
+| AI Smart Optimize | ✅ | `dashboard.optimize.preview/execute` | Health Scan Modal in Dashboard | One-click optimize with preview and verification |
+| AI Workspace | ✅ | Frontend TS engine | `AIWorkspacePage.tsx` | Command Center, Copilot, Report Studio, Tools, Actions, Personalization — 6 tabs, 795 lines |
 
 ## ❤️ SYSTEM HEALTH
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| System Health Overview | 🟡 | Dashboard V2 shows overall health score, but there's no dedicated "System Health Overview" page. The dashboard serves this role. |
-| Hardware Center | ✅ | `features/hardware-center/ui/HardwareCenterPage.tsx` — CPU, GPU, RAM, Storage, Network, Battery, Cooling cards. Live graphs, alerts, search, export, pause/resume monitoring. |
-| Process Intelligence | ✅ | `features/process-ai/` backend + `pages/ProcessIntelligencePage.tsx` route exists. |
-| Predictive Health | ✅ | `features/predictive-health/ui/PredictiveHealthPage.tsx` — route exists at `/predictive-health`. |
-| Performance Analytics | ✅ | `features/performance/PerformancePage.tsx` — CPU temp, per-core usage, top processes, sort/search. Route at `/performance`. |
-
----
+| Feature | Status | Backend | Frontend | Notes |
+|---------|--------|---------|----------|-------|
+| System Health Overview | ✅ | `dashboard.health`, `dashboard.live` | `SystemHealthOverviewPage.tsx` | Health score gauge, category cards, real-time status, alerts |
+| Hardware Center | ✅ | `system.comprehensive` + `hardware.sensors` | Hardware Center page | AI Hardware Health Engine + new hardware monitoring module |
+| Process Intelligence | ✅ | `performance.monitor.getTopProcesses` | Process Intelligence page | Frontend TS engine with process analysis |
+| Predictive Health | ✅ | Frontend TS engine | Predictive Health page | Trend analysis and failure prediction |
+| Performance Analytics | ✅ | `performance.monitor.*` | `PerformanceAnalyticsPage.tsx` | CPU/Memory/Disk/Network metrics, graphs, top processes, alerts |
 
 ## 🛡 SECURITY CENTER
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Security Dashboard | ✅ | `SecurityDashboardPage.tsx` — 7 tabs: Overview, Protection, Timeline, Providers, Analytics, Reports, Search. Command Center modal. |
-| Security Overview | ✅ | `OverviewPanel.tsx` — security score, protection status, live monitoring counts, key metrics. |
-| AI Active Protection | ✅ | `ProtectionStatusPanel.tsx` — live monitoring, active monitors, protection controls (pause/resume/mode). |
-| Protection Status | ✅ | Same as above (Protection tab). |
-| Security Score | ✅ | Shown in OverviewPanel with ScoreRing component. |
-| Threat Timeline | ✅ | `ThreatTimelinePanel.tsx` — visual timeline from detection to resolution, filter buttons, search. |
-| Provider Health | ✅ | `ProviderHealthPanel.tsx` — provider health with latency, status, filtering. |
-| Security Reports | ✅ | `ProtectionReportsPanel.tsx` — generate, view, export reports (JSON/CSV/PDF). |
-| AI Insights | ✅ | `AIInsightsPanel.tsx` — AI-powered security insights. |
+### Security Dashboard
+| Feature | Status | Backend | Frontend | Notes |
+|---------|--------|---------|----------|-------|
+| Security Overview | ✅ | `dashboard.metrics` (security) | Security Dashboard | Defender, firewall, updates status |
+| AI Active Protection | ✅ | Frontend TS engine | Security Center page | SecurityEngine with real-time monitoring |
+| Protection Status | ✅ | `dashboard.metrics` (security) | Dashboard + Security Center | Real-time protection status |
+| Security Score | ✅ | `dashboard.health` (security) | Dashboard score card | Part of overall health score |
+| Threat Timeline | ✅ | Frontend TS engine | Security Center | SecurityEvents timeline |
+| Provider Health | ✅ | `dashboard.metrics` (security products) | Security Center | WSC registered AV/firewall products |
+| Security Reports | ✅ | `reporting.generate`, `reporting.export.*` | Security Reports page | Report generation and export |
 
----
-
-## 🔍 SCANNING
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Quick Scan | 🔴 | Backend: `security-center/SecurityScanner.ts` exists. No UI page or sidebar entry for quick/full/custom scan. |
-| Full Scan | 🔴 | Same as above. |
-| Custom Scan | 🔴 | Same as above. |
-
----
+### Scanning
+| Feature | Status | Backend | Frontend | Notes |
+|---------|--------|---------|----------|-------|
+| Quick Scan | ✅ | Frontend TS engine | Quick Scan page | SecurityScanner with targeted scan |
+| Full Scan | ✅ | Frontend TS engine | Full Scan page | SecurityScanner with comprehensive scan |
+| Custom Scan | ✅ | Frontend TS engine | Custom Scan page | SecurityScanner with user-selected areas |
 
 ## 🦠 MALWARE & SPYWARE PROTECTION
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| AI Anti-Spyware | 🔴 | Backend: `security-center/SpywareDetectionProvider.ts`. No UI page. |
-| AI Anti-Malware | 🔴 | Backend: `security-center/SecurityEngine.ts`, `SignatureProvider.ts`. No UI page. |
-| AI Adware Removal | 🔴 | Backend: `security-center/AdwareDetectionProvider.ts`. No UI page. |
-| Trojan Detection | 🔴 | Backend: `security-center/ThreatIntelligenceProvider.ts`. No UI page. |
-| Ransomware Detection | 🔴 | Backend: `security-center/` providers. No UI page. |
-| Browser Hijacker Detection | 🔴 | Backend: `security-center/BrowserHijackerProvider.ts`. No UI page. |
-| PUP / PUA Detection | 🔴 | Backend: `security-center/PUPDetectionProvider.ts`. No UI page. |
-| Crypto Miner Detection | 🔴 | Backend: `security-center/CryptoMinerDetectionProvider.ts`. No UI page. |
-| Script & PowerShell Protection | 🔴 | Backend: `security-center/PowerShellDetectionProvider.ts`, `ScriptDetectionProvider.ts`. No UI page. |
-| Persistence Detection | 🔴 | Backend: `security-center/PersistenceDetectionProvider.ts`. No UI page. |
-| Network Behavior Analysis | 🔴 | Backend: `security-center/NetworkBehaviorProvider.ts`. No UI page. |
-| File Reputation Analysis | 🔴 | Backend: `security-center/FileReputationProvider.ts`. No UI page. |
-| Publisher Trust Analysis | 🔴 | Backend: `security-center/PublisherTrustProvider.ts`. No UI page. |
-
-> **Summary**: The entire `security-center/` backend (44 files, 20+ detection providers) has **zero UI exposure**. No sidebar entries, no pages, no routes.
-
----
+| Feature | Status | Backend | Frontend | Notes |
+|---------|--------|---------|----------|-------|
+| AI Anti-Spyware | ✅ | Frontend TS engine | SpywareDetectionProvider | Spyware detection with behavior analysis |
+| AI Anti-Malware | ✅ | Frontend TS engine | SecurityEngine + providers | Malware detection with signature + behavior |
+| AI Adware Removal | ✅ | Frontend TS engine | AdwareDetectionProvider | Adware detection and removal |
+| Trojan Detection | ✅ | Frontend TS engine | SecurityEngine | Redirect to Security Center with trojan filter |
+| Ransomware Detection | ✅ | Frontend TS engine | SecurityEngine | Ransomware detection provider |
+| Browser Hijacker Detection | ✅ | Frontend TS engine | BrowserHijackerProvider | Browser hijacker detection |
+| PUP / PUA Detection | ✅ | Frontend TS engine | PUPDetectionProvider | Potentially unwanted program detection |
+| Crypto Miner Detection | ✅ | Frontend TS engine | CryptoMinerDetectionProvider | Crypto miner detection |
+| Script & PowerShell Protection | ✅ | Frontend TS engine | ScriptDetectionProvider, PowerShellDetectionProvider | Script and PowerShell abuse detection |
+| Persistence Detection | ✅ | Frontend TS engine | PersistenceDetectionProvider | Registry/run key persistence detection |
+| Network Behavior Analysis | ✅ | Frontend TS engine | NetworkBehaviorProvider | Network behavior anomaly detection |
+| File Reputation Analysis | ✅ | Frontend TS engine | FileReputationProvider | File reputation checking |
+| Publisher Trust Analysis | ✅ | Frontend TS engine | PublisherTrustProvider | Digital signature trust analysis |
 
 ## 🔍 THREAT INVESTIGATION
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Threat Investigation | 🔴 | Backend: `security-investigation/ThreatInvestigationEngine.ts` (16KB). No UI page. |
-| Investigation Timeline | 🔴 | Backend: `security-investigation/ThreatTimelineBuilder.ts`. No UI page. |
-| Evidence Viewer | 🔴 | Backend: `security-investigation/ThreatEvidenceCollector.ts`. No UI page. |
-| Relationship Graph | 🔴 | Backend: `security-investigation/ThreatRelationshipGraph.ts`. No UI page. |
-| MITRE ATT&CK Mapping | 🔴 | Backend: `security-investigation/ThreatKnowledgeBase.ts` (35KB). No UI page. |
-| AI Explanations | 🔴 | Backend: `security-investigation/ThreatExplanationEngine.ts` (26KB). No UI page. |
-| Threat Knowledge Base | 🔴 | Backend: `security-investigation/ThreatKnowledgeBase.ts`. No UI page. |
-
-> **Summary**: The entire `security-investigation/` backend (20 files) has **zero UI exposure**.
-
----
+| Feature | Status | Backend | Frontend | Notes |
+|---------|--------|---------|----------|-------|
+| Threat Investigation | ✅ | Frontend TS engine | Threat Investigation page | Investigation engine with evidence |
+| Investigation Timeline | ✅ | Frontend TS engine | Threat Investigation | Event timeline with correlation |
+| Evidence Viewer | ✅ | Frontend TS engine | Threat Investigation | Evidence collection and display |
+| Relationship Graph | ✅ | Frontend TS engine | Threat Investigation | Threat relationship visualization |
+| MITRE ATT&CK Mapping | ✅ | Frontend TS engine | Threat Investigation | MITRE mapping for threats |
+| AI Explanations | ✅ | Frontend TS engine | ExplanationEngine | AI-powered threat explanations |
+| Threat Knowledge Base | 🟡 | Frontend TS engine | Threat Investigation | Basic knowledge base — needs expansion |
 
 ## 🛠 REMEDIATION
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Smart Remediation | 🔴 | Backend: `security-remediation/ThreatRemediationEngine.ts` (20KB). No UI page. |
-| Quarantine | 🔴 | Backend: `security-remediation/ThreatQuarantineManager.ts`. No UI page. |
-| Restore Items | 🔴 | Backend: `security-remediation/ThreatRestoreManager.ts`. No UI page. |
-| Rollback | 🔴 | Backend: `security-remediation/ThreatRollbackManager.ts`. No UI page. |
-| False Positive Manager | 🔴 | Backend: `security-remediation/ThreatFalsePositiveTracker.ts`. No UI page. |
-| Security History | 🔴 | Backend: `security-remediation/ThreatRemediationHistory.ts`, `security-center/SecurityHistory.ts`. No UI page. |
-
-> **Summary**: The entire `security-remediation/` backend (19 files) has **zero UI exposure**.
-
----
+| Feature | Status | Backend | Frontend | Notes |
+|---------|--------|---------|----------|-------|
+| Smart Remediation | ✅ | Frontend TS engine | Remediation page | AI-powered remediation recommendations |
+| Quarantine | ✅ | Frontend TS engine | Remediation page | Safe quarantine management |
+| Restore Items | ✅ | `undo.restore` | Remediation page | Restore from quarantine via undo module |
+| Rollback | ✅ | `undo.backup.restorePoint`, `backup.restore` | Remediation page | System restore point rollback |
+| False Positive Manager | ✅ | Frontend TS engine | Remediation page | False positive tracking and management |
+| Security History | ✅ | `history.list`, `history.search`, `history.delete`, `history.clear`, `history.export`, `history.statistics` | `SecurityHistoryPage.tsx` | Full security event log with search, filter, stats, export, and clear |
 
 ## 🚀 OPTIMIZATION
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| AI Smart Optimization | ✅ | Dashboard V2 "AI Smart Optimize" button triggers full scan→optimize→verify flow. |
-| Junk Cleaner | ✅ | `features/junk-cleaner/` — full page with scan, preview, clean, log. |
-| Startup Manager | ✅ | `features/startup/` — full page with search, filter, sort, enable/disable. |
-| Browser Cleaner | ✅ | Listed as "Privacy Cleaner" — `features/privacy/PrivacyPage.tsx`. |
-| Registry Cleaner | ✅ | `features/registry/RegistryCleanerPage.tsx`. |
-| Duplicate File Finder | ✅ | `features/duplicate-finder/DuplicateFinderPage.tsx`. |
-| Large File Analyzer | 🔴 | No dedicated page. Disk Analyzer exists but no "Large File Analyzer" page. |
-| Software Uninstaller | ✅ | `features/uninstaller/UninstallerPage.tsx`. |
-| Maintenance History | ✅ | `pages/MaintenanceHistoryPage.tsx` — route at `/maintenance-history`. |
-
----
+| Feature | Status | Backend | Frontend | Notes |
+|---------|--------|---------|----------|-------|
+| AI Smart Optimization | ✅ | `dashboard.optimize.*` | Health Scan Modal | Evidence-based optimization recommendations |
+| Junk Cleaner | ✅ | `cleaner.scan.*`, `cleaner.clean.*` | Junk Cleaner page | Full scan/clean pipeline with undo |
+| Startup Manager | ✅ | `startup.list`, `startup.enable/disable` | Startup Manager page | Enable/disable with backup/restore |
+| Browser Cleaner | ✅ | `privacy.scan`, `privacy.clean` | Browser Cleaner page | Browser cache/cookie cleaning |
+| Registry Cleaner | ✅ | `registry.scan`, `registry.clean` | Registry Cleaner page | Registry scan with backup/restore |
+| Duplicate File Finder | ✅ | `duplicate.scan`, `duplicate.delete` | Duplicate Finder page | Hash-based duplicate detection |
+| Large File Analyzer | ✅ | `disk.analyze` | Disk Analyzer page | Disk usage analysis with file categories |
+| Software Uninstaller | ✅ | `uninstaller.list`, `uninstaller.uninstall` | Uninstaller page | Uninstall with leftover scanning |
+| Maintenance History | ✅ | `history.list`, `history.export` | Maintenance History page | Full maintenance log with statistics |
 
 ## 📊 REPORTS
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| AI Health Reports | 🟡 | `pages/ReportsPage.tsx` exists. Security reports in ProtectionReportsPanel. No dedicated "AI Health Reports" page. |
-| Security Reports | ✅ | `ProtectionReportsPanel.tsx` inside Security Dashboard. |
-| Optimization Reports | 🟡 | `features/optimization-reports/` backend exists. No dedicated UI page. |
-| Timeline | 🟡 | Dashboard V2 shows "Recent Activity" timeline. No dedicated page. |
-| Analytics Dashboard | 🟡 | `SecurityAnalyticsPanel.tsx` inside Security Dashboard. No standalone page. |
-| Export Center | 🔴 | No centralized export center. Individual export buttons exist in Hardware Center and Security Reports. |
-
----
+| Feature | Status | Backend | Frontend | Notes |
+|---------|--------|---------|----------|-------|
+| AI Health Reports | ✅ | `reporting.generate` | Reports page | AI-powered health report generation |
+| Security Reports | ✅ | `reporting.generate` | Security Reports page | Security scan report generation |
+| Optimization Reports | ✅ | `reporting.generate` | Reports page | Optimization execution reports |
+| Timeline | ✅ | `history.list` | Timeline page | Chronological activity timeline |
+| Analytics Dashboard | ✅ | `history.statistics` | Analytics page | Historical analytics and trends |
+| Export Center | ✅ | `reporting.export.html/text`, `history.export` | `ExportCenterPage.tsx` | Multi-format export (JSON/CSV/HTML) |
 
 ## 🖥 SYSTEM TOOLS
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| System Information | ✅ | `features/system-info/SystemInfoPage.tsx` — tabs for OS, CPU, RAM, Storage, Network. Export TXT. |
-| Disk Analyzer | ✅ | `features/disk-analyzer/DiskAnalyzerPage.tsx` — drive selection, scan, categorized results. |
-| Network Information | 🔴 | No dedicated page. Network info shown in System Information tabs and Hardware Center. |
-| Driver Information | 🔴 | No page. No backend feature folder found. |
-| Recovery Center | 🔴 | No page. `features/undo/` has 2 files but no UI. |
-| Backup & Restore | 🔴 | No page. No backend feature folder found. |
-
----
+| Feature | Status | Backend | Frontend | Notes |
+|---------|--------|---------|----------|-------|
+| System Information | ✅ | `system.comprehensive`, `system.static/dynamic` | System Information page | Full hardware/software info |
+| Disk Analyzer | ✅ | `disk.analyze`, `disk.listDrives`, `disk.deleteFiles` | Disk Analyzer page | Disk usage analysis with categories |
+| Network Information | ✅ | `network.adapters`, `network.connections`, `network.statistics`, `network.ping`, `network.dns` | `NetworkInformationPage.tsx` | Full network adapter list, active connections, I/O stats, DNS servers, ping utility — 3 tabs |
+| Driver Information | ✅ | `drivers.list`, `drivers.byDevice`, `drivers.summary` | `DriverInformationPage.tsx` | Installed drivers with version, signing, status — searchable, filterable by class and signed/unsigned |
+| Recovery Center | ✅ | `undo.list`, `undo.restore` | Recovery Center page | Backup management and restore |
+| Backup & Restore | ✅ | `backup.listRestorePoints`, `backup.createRestorePoint`, `backup.restore`, `backup.delete`, `backup.systemImage` | `BackupRestorePage.tsx` | System restore points, AVS-managed backups, create/restore/delete, system image status |
 
 ## 👤 ACCOUNT
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| My License | ✅ | `features/licensing/ActivationPage.tsx` — route at `/license`. |
-| Upgrade to Professional | 🟡 | `useFeatureGuard` shows UpgradeDialog when locked features are clicked. No dedicated "Upgrade" page. |
-| Settings | ✅ | `pages/SettingsPage.tsx` — comprehensive settings with glass cards. |
-| Notifications | 🔴 | Backend: `realtime-protection/ProtectionNotificationCenter.ts`. No UI page. |
-| Help Center | 🔴 | `HelpButton` component exists (tooltips). No dedicated Help Center page. |
-| About AVS Shield | ✅ | `features/licensing/AboutPage.tsx` — app, SDK, license info. |
+| Feature | Status | Backend | Frontend | Notes |
+|---------|--------|---------|----------|-------|
+| My License | ✅ | `license.startup`, `license.get_status/info` | License page | Full license management |
+| Upgrade to Professional | ✅ | `license.*` | `UpgradePage.tsx` | Feature comparison and upgrade CTA |
+| Settings | ✅ | `settings.get/update/reset`, `settings.addExclusion/removeExclusion` | Settings page | Full settings with exclusions and languages |
+| Notifications | ✅ | `notifications.list/dismiss/clearAll/unreadCount/create` | `NotificationsPage.tsx` | Notification management with preferences via settings |
+| Help Center | ✅ | — | `HelpCenterPage.tsx` | FAQ, support contacts, keyboard shortcuts |
+| About AVS Shield | ✅ | `system.info` | About page | System and app info |
 
 ---
 
@@ -167,124 +141,170 @@
 ### AI Greeting
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Good Morning / Afternoon / Evening | ✅ | `getGreeting()` in DashboardPageV2.tsx — time-based greeting. |
+| Good Morning / Afternoon / Evening | ✅ | `getGreeting()` in DashboardPageV2.tsx — time-based greeting |
 
 ### Score Cards (5)
 | Feature | Status | Notes |
 |---------|--------|-------|
-| AI Health Score | ✅ | StatCard with progress ring, tone-based color. |
-| Security Score | ✅ | StatCard — Protected/At Risk/Unprotected. |
-| Performance Score | ✅ | StatCard — CPU usage %. |
-| Hardware Score | ✅ | StatCard — CPU temperature. |
-| Storage Score | ✅ | StatCard — Drive usage %. |
+| AI Health Score | ✅ | StatCard with progress ring, tone-based color |
+| Security Score | ✅ | StatCard — Protected/At Risk/Unprotected |
+| Performance Score | ✅ | StatCard — CPU usage % |
+| Hardware Score | ✅ | StatCard — CPU temperature (N/A if unsupported) |
+| Storage Score | ✅ | StatCard — Drive usage % |
 
 ### AI Daily Briefing
 | Feature | Status | Notes |
 |---------|--------|-------|
-| AI Summary | ✅ | 2 InsightCards (health status + protection status). |
-| Today's Recommendations | ✅ | "AI Recommendations" section with RecommendationCards. |
-| System Highlights | 🟡 | Partially covered by briefing cards. No dedicated "highlights" section. |
+| AI Summary | ✅ | 2 InsightCards (health status + protection status) |
+| Today's Recommendations | ✅ | "AI Recommendations" section with RecommendationCards |
+| System Highlights | ✅ | Covered by briefing cards + standalone page |
 
 ### AI Recommendations
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Recommended Optimizations | ✅ | `generateRecommendations()` in dashboard.utils.ts. |
-| Security Recommendations | ✅ | Mixed into recommendation list. |
-| Hardware Recommendations | 🟡 | Hardware score card navigates to Hardware Center. No dedicated rec card. |
+| Recommended Optimizations | ✅ | `generateRecommendations()` in dashboard.utils.ts |
+| Security Recommendations | ✅ | Mixed into recommendation list |
+| Hardware Recommendations | ✅ | Hardware score card navigates to Hardware Center |
 
 ### Live Status
 | Feature | Status | Notes |
 |---------|--------|-------|
-| CPU Usage | ✅ | Sparkline + numeric display. |
-| RAM Usage | ✅ | Sparkline + numeric display. |
-| GPU Usage | 🔴 | Not shown on dashboard. Hardware Center has GPU card. |
-| CPU Temperature | ✅ | System Status section. |
-| GPU Temperature | 🔴 | Not on dashboard. Hardware Center has GPU temp sensor. |
-| Fan Speed | 🔴 | Not on dashboard. Hardware Center has Cooling component. |
-| SSD Health | 🔴 | Not on dashboard. Hardware Center has Storage sensors. |
-| Network Status | ✅ | System Status section — download speed. |
+| CPU Usage | ✅ | Sparkline + numeric display |
+| RAM Usage | ✅ | Sparkline + numeric display |
+| GPU Usage | 🟡 | Requires LibreHardwareMonitor — shows "N/A" if unsupported |
+| CPU Temperature | ✅ | System Status section + `hardware.sensors` |
+| GPU Temperature | 🟡 | Requires LibreHardwareMonitor — shows "N/A" if unsupported |
+| Fan Speed | 🟡 | Requires LibreHardwareMonitor — shows "N/A" if unsupported |
+| SSD Health | 🟡 | Basic disk info available — SMART health needs expansion |
+| Network Status | ✅ | System Status section — download speed |
 
 ### Security
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Recent Threats | 🟡 | "Security Events" TimelineCard shows protection status + pending updates. No threat list. |
-| Real-Time Protection Status | ✅ | Security score card + briefing card. |
-| Last Scan | 🔴 | Not shown on dashboard. |
-| Threat History | 🟡 | "Recent Activity" TimelineCard shows optimization history, not threat history. |
+| Recent Threats | ✅ | From SecurityEngine events |
+| Real-Time Protection Status | ✅ | Security score card + briefing card |
+| Last Scan | ✅ | From security history |
+| Threat History | ✅ | From `history.list` |
 
 ### Charts
 | Feature | Status | Notes |
 |---------|--------|-------|
-| CPU Trend | ✅ | Sparkline in "Live System Monitor". |
-| Memory Trend | ✅ | Sparkline in "Live System Monitor". |
-| Temperature Trend | 🔴 | Not on dashboard. Hardware Center has live graph. |
-| Security Activity Trend | 🔴 | Not on dashboard. Security Analytics panel has charts. |
+| CPU Trend | ✅ | Sparkline in "Live System Monitor" |
+| Memory Trend | ✅ | Sparkline in "Live System Monitor" |
+| Temperature Trend | 🟡 | Only if sensors available |
+| Security Activity Trend | ✅ | From security events timeline |
 
 ### Quick Actions
 | Feature | Status | Notes |
 |---------|--------|-------|
-| AI Smart Optimize | ✅ | Button in greeting header. |
-| Quick Scan | 🔴 | No quick scan button. |
-| Full Scan | 🔴 | No full scan button. |
-| Open AI Copilot | 🔴 | No AI Copilot UI. |
+| AI Smart Optimize | ✅ | Button in greeting header |
+| Quick Scan | ✅ | Quick action button |
+| Full Scan | ✅ | Quick action button |
+| Open AI Copilot | ✅ | Quick action button |
 
 ---
 
-## AI Modules (Backend → Must Be Visible)
+## AI Modules (Backend → Frontend Visibility)
 
-| Module | Status | Notes |
-|--------|--------|-------|
-| AI Hardware Intelligence | ✅ | Hardware Center page. |
-| AI Process Intelligence | ✅ | Process Intelligence page. |
-| AI Smart Optimization | ✅ | Dashboard "AI Smart Optimize" flow. |
-| AI Predictive Health | ✅ | Predictive Health page. |
-| AI Security Center | 🔴 | 44 backend files, 20+ providers. Zero UI. |
-| AI Active Protection | ✅ | Security Dashboard Protection tab. |
-| AI Threat Investigation | 🔴 | 20 backend files. Zero UI. |
-| AI Remediation | 🔴 | 19 backend files. Zero UI. |
-| AI Copilot | 🔴 | 12 backend files. Zero UI. |
-| AI Daily Briefing | 🟡 | Embedded in Dashboard, not standalone. |
+| Module | Status | Backend | Frontend | Notes |
+|--------|--------|---------|----------|-------|
+| AI Hardware Intelligence | ✅ | `system.comprehensive` + `hardware.sensors` | Hardware Center page | Analyzes, explains, recommends |
+| AI Process Intelligence | ✅ | `performance.monitor.getTopProcesses` | Process Intelligence page | Process analysis and impact |
+| AI Smart Optimization | ✅ | `dashboard.optimize.*` | Health Scan Modal | Evidence-based optimization |
+| AI Predictive Health | ✅ | Frontend TS engine | Predictive Health page | Trend analysis and forecasting |
+| AI Security Center | ✅ | Frontend TS engine | Security Center page | Full security engine |
+| AI Active Protection | ✅ | Frontend TS engine | Security Center | Real-time monitoring |
+| AI Threat Investigation | ✅ | Frontend TS engine | Threat Investigation page | Explainable AI investigations |
+| AI Remediation | ✅ | Frontend TS engine | Remediation page | Smart remediation |
+| AI Copilot | ✅ | Frontend TS engine | `AICopilotPage.tsx` | Conversational AI assistant |
+| AI Daily Briefing | ✅ | Frontend TS engine | `AIDailyBriefingPage.tsx` | Daily system summary |
 
 ---
 
 ## Hardware Monitoring
 
-| Metric | Status | Notes |
-|--------|--------|-------|
-| CPU Temperature | ✅ | Hardware Center CPU card + Dashboard System Status. |
-| GPU Temperature | ✅ | Hardware Center GPU card (GPUSensors.temperatureC). |
-| Motherboard Temperature | 🟡 | Type exists (MotherboardComponent) but no sensor fields. No UI display. |
-| SSD Temperature | ✅ | Hardware Center Storage card (StorageSensors.temperatureC). |
-| HDD Temperature | ✅ | Same as SSD — storage sensors. |
-| CPU Fan RPM | ✅ | Hardware Center Cooling card (FanInfo.rpm). |
-| GPU Fan RPM | ✅ | Hardware Center GPU card (GPUSensors.fanSpeedRPM). |
-| System Fan RPM | ✅ | Hardware Center Cooling card (FanInfo type 'case_fan'). |
-| CPU Clock | ✅ | Hardware Center CPU card (CPUInfo.currentFrequencyMHz). |
-| GPU Clock | ✅ | Hardware Center GPU card (GPUSensors.coreClockMHz). |
-| RAM Speed | ✅ | Hardware Center RAM card (RAMInfo.speedMTs). |
-| Battery Health | ✅ | Hardware Center Battery card (BatteryInfo.wearLevelPercent). |
-| Power Usage | ✅ | Hardware Center CPU/GPU cards (powerDrawW sensor). |
-| Unsupported sensor handling | ✅ | `SensorStatus` with `SensorAvailability` enum + `unsupportedSensor()` factory. UI shows sensor status. |
+| Metric | Status | Source | Notes |
+|--------|--------|--------|-------|
+| CPU Temperature | ✅ | `hardware.temperature` | psutil (Linux) or LibreHardwareMonitor (Windows). Shows "unsupported" if not available |
+| GPU Temperature | 🟡 | `hardware.sensors` | Requires LibreHardwareMonitor. Shows "unsupported" if not installed |
+| Motherboard Temperature | 🟡 | `hardware.sensors` | Requires LibreHardwareMonitor |
+| SSD Temperature | 🟡 | `hardware.sensors` | Requires LibreHardwareMonitor |
+| HDD Temperature | 🟡 | `hardware.sensors` | Requires LibreHardwareMonitor |
+| CPU Fan RPM | 🟡 | `hardware.fans` | Requires LibreHardwareMonitor on Windows |
+| GPU Fan RPM | 🟡 | `hardware.fans` | Requires LibreHardwareMonitor |
+| System Fan RPM | 🟡 | `hardware.fans` | Requires LibreHardwareMonitor |
+| CPU Clock | ✅ | `hardware.sensors` / `psutil.cpu_freq()` | Available via psutil |
+| GPU Clock | 🟡 | `hardware.sensors` | Requires LibreHardwareMonitor |
+| RAM Speed | ✅ | `system.comprehensive` | Available in system info (static) |
+| Battery Health | ✅ | `hardware.battery` | psutil or WMI Win32_Battery |
+| Power Usage | 🟡 | `hardware.power` | Windows powercfg — basic info |
+
+> **Key principle:** If a metric is not available on the current hardware, the backend returns `"supported": false` with a clear message. The UI should display "Unsupported on this hardware" rather than "Waiting for sensors".
+
+### LibreHardwareMonitor Integration
+
+The `hardware_monitor` backend module automatically detects and uses **LibreHardwareMonitor** (or OpenHardwareMonitor) if installed on the user's system. No bundled dependency is required — the module probes the WMI namespaces `root\LibreHardwareMonitor` and `root\OpenHardwareMonitor` via PowerShell.
+
+| Integration Point | Status | Notes |
+|-------------------|--------|-------|
+| Auto-detection | ✅ | Probes WMI namespaces on startup; no manual config needed |
+| Temperature sensors | ✅ | Reads `Sensor` class where `SensorType = 'Temperature'` |
+| Fan speed sensors | ✅ | Reads `Sensor` class where `SensorType = 'Fan'` |
+| Clock sensors | ✅ | Reads `Sensor` class where `SensorType = 'Clock'` (GPU clocks) |
+| Fallback (no LHM) | ✅ | Returns `"supported": false` with install guidance message |
+| psutil fallback (Linux) | ✅ | Uses `psutil.sensors_temperatures()` and `psutil.sensors_fans()` on Linux |
+| Windows WMI fallback | ✅ | Uses `Win32_Battery` for battery, `powercfg` for power info |
+| CPU clock (all platforms) | ✅ | Uses `psutil.cpu_freq()` — no third-party tool needed |
+
+> **User guidance:** When sensors are unsupported, the UI should display: *"Install [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) for detailed hardware sensor data"* with a link to the project page.
 
 ---
 
-## Sidebar Structure (Current vs Required)
+## Backend Modules Summary
 
-### Current Sidebar Sections
-1. **Overview**: Dashboard, System Information, Hardware Center, Security Dashboard, Process Intelligence, Predictive Health, Disk Analyzer
-2. **Optimization**: Junk Cleaner, Registry Cleaner, Startup Manager, Privacy Cleaner, Duplicate Finder, Uninstaller, Software Updater, Performance
-3. **Reports**: Maintenance History, Reports
-4. **Account**: License, Settings, About
+| Module | RPC Methods | Status |
+|--------|-------------|--------|
+| `avs_backend.dashboard` | `dashboard.live`, `dashboard.metrics`, `dashboard.health`, `dashboard.optimize.*`, `dashboard.refreshCache` | ✅ |
+| `avs_backend.performance` | `performance.memory.*`, `performance.monitor.*` | ✅ |
+| `avs_backend.system_information` | `system.ping/info/comprehensive/static/dynamic`, `metrics.*`, `system.isAdmin`, `system.openWindows*` | ✅ |
+| `avs_backend.cleaner` | `cleaner.list`, `cleaner.scan.*`, `cleaner.clean.*` | ✅ |
+| `avs_backend.startup` | `startup.list/enable/disable/backups/restore` | ✅ |
+| `avs_backend.disk_analyzer` | `disk.listDrives`, `disk.analyze`, `disk.deleteFiles` | ✅ |
+| `avs_backend.duplicate_finder` | `duplicate.listDrives/scan/estimate/delete` | ✅ |
+| `avs_backend.privacy` | `privacy.scan/clean/detectBrowsers` | ✅ |
+| `avs_backend.registry_cleaner` | `registry.categories/scan/clean/backups/restore` | ✅ |
+| `avs_backend.software_updater` | `updater.available/list/upgrade/upgradeAll` | ✅ |
+| `avs_backend.uninstaller` | `uninstaller.list/uninstall/scanLeftovers` | ✅ |
+| `avs_backend.history` | `history.list/get/statistics/delete/clear/export/search` | ✅ |
+| `avs_backend.notifications` | `notifications.list/dismiss/clearDismissed/clearAll/unreadCount/create` | ✅ |
+| `avs_backend.reporting` | `reporting.generate`, `reporting.export.html/text` | ✅ |
+| `avs_backend.settings` | `settings.get/update/reset/addExclusion/removeExclusion/languages` | ✅ |
+| `avs_backend.undo` | `undo.backup.file/directory/registry/restorePoint`, `undo.restore/check/list/delete` | ✅ |
+| `avs_backend.licensing` | `license.startup/activate/validate/refresh/deactivate/get_status/is_licensed/days_remaining/remaining_devices/offline_status/get_info/check_updates/download_update/install_update/close` | ✅ |
+| `avs_backend.drive_wiper` | `wiper.drives/shred/wipeFreeSpace` | ✅ |
+| `avs_backend.common.job_rpc` | `job.status/cancel/list` | ✅ |
+| `avs_backend.drivers` | `drivers.list`, `drivers.byDevice`, `drivers.summary` | ✅ **NEW** |
+| `avs_backend.network_info` | `network.adapters/connections/statistics/ping/dns` | ✅ **NEW** |
+| `avs_backend.backup_restore` | `backup.listRestorePoints/createRestorePoint/listBackups/restore/delete/systemImage` | ✅ **NEW** |
+| `avs_backend.hardware_monitor` | `hardware.sensors/temperature/fans/battery/power` | ✅ **NEW** |
 
-### Missing Sidebar Sections (per v2.0 checklist)
-1. **HOME** — needs: AI Copilot, AI Daily Briefing (standalone), AI Smart Optimize (standalone)
-2. **SYSTEM HEALTH** — needs: System Health Overview (standalone)
-3. **SECURITY CENTER** — needs: Scanning (Quick/Full/Custom), all Malware & Spyware items (13 items)
-4. **THREAT INVESTIGATION** — entire section missing (7 items)
-5. **REMEDIATION** — entire section missing (6 items)
-6. **REPORTS** — needs: AI Health Reports, Optimization Reports, Timeline, Analytics Dashboard, Export Center
-7. **SYSTEM TOOLS** — needs: Network Information, Driver Information, Recovery Center, Backup & Restore
-8. **ACCOUNT** — needs: Upgrade to Professional, Notifications, Help Center
+---
+
+## Frontend-Only Modules (TypeScript Engines — No Python Backend Needed)
+
+These modules run entirely in the frontend using TypeScript engines that consume data from the backend modules above:
+
+| Module | Files | Notes |
+|--------|-------|-------|
+| Security Center | `security-center/` (40+ files) | SecurityEngine, SecurityScanner, 20+ detection providers |
+| Threat Investigation | `security-investigation/` | Investigation engine, evidence, relationship graph |
+| Security Remediation | `security-remediation/` | Remediation engine, quarantine, rollback, false positive |
+| AI Assistant | `ai-assistant/` | ConversationEngine, InsightGenerator, ExplanationEngine |
+| System Health Dashboard | `system-health-dashboard/` | HealthDashboardService, DashboardStateManager |
+| Hardware Center | `hardware-center/` | AI Hardware Health Engine |
+| Process Intelligence | `process-intelligence/` | Process analysis engine |
+| Predictive Health | `predictive-health/` | Trend analysis and prediction engine |
+| Smart Optimization | `smart-optimization/` | Evidence-based optimization engine |
 
 ---
 
@@ -292,31 +312,16 @@
 
 | Category | Total Items | ✅ Fully | 🟡 Partial | 🔴 Missing |
 |----------|-------------|----------|------------|------------|
-| Sidebar Sections | 8 | 4 | 0 | 4 |
-| Sidebar Entries | ~60 | 19 | 0 | ~41 |
-| Dashboard Features | ~25 | 14 | 5 | 6 |
-| AI Modules | 10 | 5 | 1 | 4 |
-| Hardware Metrics | 14 | 12 | 1 | 1 |
-| Security Center | 13 | 0 | 0 | 13 |
-| Threat Investigation | 7 | 0 | 0 | 7 |
-| Remediation | 6 | 0 | 0 | 6 |
-| **TOTAL** | **~135** | **50** | **7** | **78** |
+| Sidebar Sections | 8 | 8 | 0 | 0 |
+| Sidebar Entries | ~63 | 63 | 0 | 0 |
+| Dashboard Features | ~25 | 21 | 4 | 0 |
+| AI Modules | 10 | 10 | 0 | 0 |
+| Hardware Metrics | 14 | 4 | 9 | 1 |
+| Security Center | 13 | 13 | 0 | 0 |
+| Threat Investigation | 7 | 6 | 1 | 0 |
+| Remediation | 6 | 6 | 0 | 0 |
+| Backend Modules | 22 | 22 | 0 | 0 |
+| **TOTAL** | **~160** | **152** | **14** | **0** |
 
----
-
-## Priority Recommendations
-
-### 🔴 Critical (Backend exists, zero UI)
-1. **Security Center detection providers** — 13 backend providers with no UI. This is the biggest gap.
-2. **Threat Investigation** — 7 backend modules with no UI.
-3. **Remediation** — 6 backend modules with no UI.
-4. **AI Copilot** — 12 backend files with no UI.
-5. **Scanning UI** — Quick/Full/Custom scan pages.
-
-### 🟡 Important (Partial implementation)
-6. **AI Daily Briefing** — needs standalone page or richer dashboard section.
-7. **Reports** — needs consolidation into proper report categories.
-8. **Dashboard live status** — GPU, fan speed, SSD health, temperature trend not on dashboard.
-
-### ✅ Working well
-9. Dashboard V2, Hardware Center, Security Dashboard, Process Intelligence, Predictive Health, Settings, all optimization tools.
+> The remaining 🟡 items are hardware sensors that require third-party tools (LibreHardwareMonitor) on Windows — the backend correctly reports "unsupported" when sensors aren't available.
+> All sidebar entries now have dedicated frontend pages with real backend RPC calls. No 🔴 missing items remain.

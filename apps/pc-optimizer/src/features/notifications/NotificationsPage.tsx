@@ -72,9 +72,22 @@ class NotificationViewModel extends ViewModel<NotificationState> {
     this.setState({ loading: true });
     try {
       if (typeof window !== 'undefined' && window.avs) {
-        const prefs = await window.avs.rpc.call('notifications.getPreferences') as NotificationPrefs;
-        const notifs = await window.avs.rpc.call('notifications.getRecent') as NotificationItem[];
-        this.setState({ prefs, notifications: notifs, loading: false });
+        const notifs = await window.avs.rpc.call('notifications.list', { limit: 50 }) as { notifications: NotificationItem[] };
+        const settings = await window.avs.rpc.call('settings.get') as Record<string, unknown>;
+        const notifPrefs = (settings.notifications ?? {}) as Partial<NotificationPrefs>;
+        this.setState({
+          prefs: {
+            security: notifPrefs.security ?? true,
+            health: notifPrefs.health ?? true,
+            performance: notifPrefs.performance ?? true,
+            maintenance: notifPrefs.maintenance ?? true,
+            soundEnabled: notifPrefs.soundEnabled ?? true,
+            desktopNotifications: notifPrefs.desktopNotifications ?? true,
+            frequency: notifPrefs.frequency ?? 'instant',
+          },
+          notifications: notifs.notifications ?? [],
+          loading: false,
+        });
       } else {
         this.setState({ loading: false });
       }
@@ -88,7 +101,7 @@ class NotificationViewModel extends ViewModel<NotificationState> {
     this.setState({ prefs: newPrefs });
     try {
       if (typeof window !== 'undefined' && window.avs) {
-        await window.avs.rpc.call('notifications.updatePreferences', newPrefs);
+        await window.avs.rpc.call('settings.update', { notifications: newPrefs });
       }
     } catch {
       // Best-effort
@@ -99,12 +112,26 @@ class NotificationViewModel extends ViewModel<NotificationState> {
     this.setState({
       notifications: this.state.notifications.map((n) => n.id === id ? { ...n, read: true } : n),
     });
+    try {
+      if (typeof window !== 'undefined' && window.avs) {
+        await window.avs.rpc.call('notifications.dismiss', { id });
+      }
+    } catch {
+      // Best-effort
+    }
   }
 
   async markAllRead() {
     this.setState({
       notifications: this.state.notifications.map((n) => ({ ...n, read: true })),
     });
+    try {
+      if (typeof window !== 'undefined' && window.avs) {
+        await window.avs.rpc.call('notifications.clearAll');
+      }
+    } catch {
+      // Best-effort
+    }
   }
 
   override dispose() {

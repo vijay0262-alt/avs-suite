@@ -44,6 +44,9 @@ import {
   CodeBracketIcon,
   FingerPrintIcon,
   ServerStackIcon,
+  CpuChipIcon as ChipIcon,
+  ArrowPathRoundedSquareIcon,
+  ClockIcon as HistoryIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import { canUse } from '../features/licensing/FeatureGate';
@@ -114,6 +117,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'threat-investigation', to: '/threat-investigation', labelKey: 'nav.threatInvestigation', Icon: BeakerIcon },
       { id: 'quarantine', to: '/quarantine', labelKey: 'nav.quarantine', Icon: ArchiveBoxXMarkIcon },
       { id: 'security-reports', to: '/security-reports', labelKey: 'nav.securityReports', Icon: DocumentChartBarIcon },
+      { id: 'security-history', to: '/security-history', labelKey: 'nav.securityHistory', Icon: HistoryIcon },
     ],
   },
   // ── OPTIMIZATION ──────────────────────────────────────────────
@@ -151,6 +155,8 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
       { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon, feature: 'disk.analyzer' },
       { id: 'network-information', to: '/network-information', labelKey: 'nav.networkInformation', Icon: WifiIcon },
+      { id: 'driver-information', to: '/driver-information', labelKey: 'nav.driverInformation', Icon: ChipIcon },
+      { id: 'backup-restore', to: '/backup-restore', labelKey: 'nav.backupRestore', Icon: ArrowPathRoundedSquareIcon },
       { id: 'recovery-center', to: '/recovery-center', labelKey: 'nav.recoveryCenter', Icon: LifebuoyIcon },
     ],
   },

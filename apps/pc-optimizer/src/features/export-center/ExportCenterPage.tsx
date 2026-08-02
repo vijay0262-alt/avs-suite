@@ -40,18 +40,29 @@ class ExportViewModel extends ViewModel<ExportState> {
   }
 
   async exportReport(type: ExportType, format: ExportFormat) {
-    const id = `export-${Date.now()}`;
+    const id = `export-${type}-${format}`;
     this.setState({ exporting: id, error: null });
     try {
-      let result: { filename: string; content: string };
-      if (typeof window !== 'undefined' && window.avs) {
-        result = await window.avs.rpc.call('report.export', { type, format }) as { filename: string; content: string };
-      } else {
+      if (typeof window === 'undefined' || !window.avs) {
         throw new Error('AVS RPC bridge is unavailable');
       }
 
+      let result: { filename: string; content: string };
+
+      if (type === 'maintenance') {
+        result = await window.avs.rpc.call('history.export', { format }) as { filename: string; content: string };
+      } else if (format === 'html') {
+        result = await window.avs.rpc.call('reporting.export.html', { type }) as { filename: string; content: string };
+      } else if (format === 'csv') {
+        result = await window.avs.rpc.call('reporting.export.text', { type }) as { filename: string; content: string };
+      } else {
+        const report = await window.avs.rpc.call('reporting.generate', { type }) as Record<string, unknown>;
+        const content = JSON.stringify(report, null, 2);
+        result = { filename: `${type}-report-${Date.now()}.json`, content };
+      }
+
       const entry = {
-        id,
+        id: `export-${Date.now()}`,
         type,
         format,
         filename: result.filename,

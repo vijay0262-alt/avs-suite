@@ -66,6 +66,9 @@ import {
   ReportsTimelinePage,
   AnalyticsPage,
   NetworkInformationPage,
+  DriverInformationPage,
+  BackupRestorePage,
+  SecurityHistoryPage,
   RecoveryCenterPage,
   UpgradePage,
   HelpPage,
@@ -159,6 +162,7 @@ export const router = createHashRouter([
       { path: 'threat-investigation', element: <ThreatInvestigationPage /> },
       { path: 'quarantine', element: <QuarantinePage /> },
       { path: 'security-reports', element: <SecurityReportsPage /> },
+      { path: 'security-history', element: <SecurityHistoryPage /> },
       // OPTIMIZATION
       { path: 'junk-cleaner', element: wrap(JunkCleanerPage) },
       { path: 'startup-manager', element: wrap(StartupManagerPage) },
@@ -179,6 +183,8 @@ export const router = createHashRouter([
       { path: 'system-information', element: wrap(SystemInformationPage) },
       { path: 'disk-analyzer', element: wrap(DiskAnalyzerPage) },
       { path: 'network-information', element: <NetworkInformationPage /> },
+      { path: 'driver-information', element: <DriverInformationPage /> },
+      { path: 'backup-restore', element: <BackupRestorePage /> },
       { path: 'recovery-center', element: <RecoveryCenterPage /> },
       // ACCOUNT
       { path: 'license', element: wrap(ActivationPage) },

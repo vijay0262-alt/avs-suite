@@ -13,6 +13,10 @@ import ExportCenterPage from '../features/export-center/ExportCenterPage';
 import NotificationsPage from '../features/notifications/NotificationsPage';
 import HelpCenterPage from '../features/help-center/HelpCenterPage';
 import UpgradePageImpl from '../features/licensing/UpgradePage';
+import NetworkInformationPageImpl from '../features/network-info/NetworkInformationPage';
+import DriverInformationPageImpl from '../features/drivers/DriverInformationPage';
+import BackupRestorePageImpl from '../features/backup-restore/BackupRestorePage';
+import SecurityHistoryPageImpl from '../features/security-history/SecurityHistoryPage';
 
 // ── HOME ──────────────────────────────────────────────────────
 
@@ -57,7 +61,19 @@ export function AnalyticsPage() {
 // ── TOOLS ─────────────────────────────────────────────────────
 
 export function NetworkInformationPage() {
-  return <Navigate to="/system-information" replace />;
+  return <NetworkInformationPageImpl />;
+}
+
+export function DriverInformationPage() {
+  return <DriverInformationPageImpl />;
+}
+
+export function BackupRestorePage() {
+  return <BackupRestorePageImpl />;
+}
+
+export function SecurityHistoryPage() {
+  return <SecurityHistoryPageImpl />;
 }
 
 export function RecoveryCenterPage() {

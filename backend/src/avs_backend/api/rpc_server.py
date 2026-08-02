@@ -59,6 +59,10 @@ _FEATURE_MODULES = [
     "avs_backend.settings",
     "avs_backend.undo",
     "avs_backend.licensing",
+    "avs_backend.drivers",
+    "avs_backend.network_info",
+    "avs_backend.backup_restore",
+    "avs_backend.hardware_monitor",
 ]
 
 # Track which modules have finished importing (success or failure)
@@ -85,6 +89,10 @@ def _build_method_to_module_map() -> None:
         "job": "avs_backend.common.job_rpc",
         "updater": "avs_backend.software_updater",
         "license": "avs_backend.licensing",
+        "drivers": "avs_backend.drivers",
+        "network": "avs_backend.network_info",
+        "backup": "avs_backend.backup_restore",
+        "hardware": "avs_backend.hardware_monitor",
     }
     _METHOD_TO_MODULE.update(_explicit)
 
