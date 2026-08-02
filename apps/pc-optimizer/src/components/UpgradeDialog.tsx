@@ -157,7 +157,7 @@ export function UpgradeDialog({ open, onClose, onUpgrade, onActivate, onLearnMor
       data-testid="upgrade-dialog-overlay"
     >
       <div
-        className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-lg border border-border bg-bg p-6 shadow-xl"
+        className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-lg border border-[var(--avs-border)] bg-bg p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
         data-testid="upgrade-dialog"
       >
@@ -218,7 +218,7 @@ export function UpgradeDialog({ open, onClose, onUpgrade, onActivate, onLearnMor
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-[var(--avs-border)]">
                   <th className="py-2 text-left text-text-muted">Feature</th>
                   <th className="py-2 text-center text-text-muted">Free</th>
                   <th className="py-2 text-center text-brand-primary">Professional</th>
@@ -227,7 +227,7 @@ export function UpgradeDialog({ open, onClose, onUpgrade, onActivate, onLearnMor
               </thead>
               <tbody>
                 {COMPARISON.map((row) => (
-                  <tr key={row.feature} className="border-b border-border/50">
+                  <tr key={row.feature} className="border-b border-[var(--avs-border)]/50">
                     <td className="py-2 text-text-primary">{row.feature}</td>
                     <td className="py-2 text-center">{renderCell(row.free)}</td>
                     <td className="py-2 text-center">{renderCell(row.professional)}</td>

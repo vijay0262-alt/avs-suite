@@ -40,7 +40,7 @@ function ModuleCard({ entry, onNavigate }: { entry: ModuleRegistryEntry; onNavig
 
   return (
     <Card
-      className={`hover:border-border-hover transition-colors ${locked ? 'opacity-60' : ''}`}
+      className={`hover:border-[var(--avs-border)]-hover transition-colors ${locked ? 'opacity-60' : ''}`}
       data-testid={`module-card-${metadata.moduleId}`}
     >
       <div className="flex items-center justify-between mb-2">

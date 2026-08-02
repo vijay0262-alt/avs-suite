@@ -229,7 +229,7 @@ export default function PerformancePage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 bg-bg-secondary border border-border rounded text-sm text-text-primary"
+                className="px-3 py-2 bg-bg-secondary border border-[var(--avs-border)] rounded text-sm text-text-primary"
               >
                 <option value="cpu">Sort by CPU</option>
                 <option value="memory">Sort by Memory</option>
@@ -239,7 +239,7 @@ export default function PerformancePage() {
                 placeholder="Search processes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 px-3 py-2 bg-bg-secondary border border-border rounded text-sm text-text-primary"
+                className="flex-1 px-3 py-2 bg-bg-secondary border border-[var(--avs-border)] rounded text-sm text-text-primary"
               />
               <Button variant="secondary" onClick={handleLoadProcesses}>
                 Load
@@ -255,7 +255,7 @@ export default function PerformancePage() {
               ) : (
               <div className="space-y-2">
                 {state.topProcesses.map((process) => (
-                  <div key={process.pid} className="flex items-center justify-between p-2 border border-border rounded">
+                  <div key={process.pid} className="flex items-center justify-between p-2 border border-[var(--avs-border)] rounded">
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-text-primary truncate">{process.name}</p>
                       <p className="text-xs text-text-muted">PID: {process.pid}</p>
@@ -325,7 +325,7 @@ export default function PerformancePage() {
                   </div>
                 </div>
                 {state.optimizeResult.beforeMemory && state.optimizeResult.afterMemory && (
-                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-[var(--avs-border)]">
                     <div>
                       <p className="text-xs text-text-muted">Memory Before</p>
                       <p className="text-sm text-text-primary mt-1">

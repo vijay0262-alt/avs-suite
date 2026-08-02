@@ -83,11 +83,11 @@ export function CommandCenter({
     >
       <div
         ref={ref}
-        className="w-full max-w-2xl rounded-lg border border-border bg-surface shadow-xl"
+        className="w-full max-w-2xl rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-[var(--avs-surface)] shadow-[var(--avs-shadow-xl,var(--avs-shadow-lg))]"
         data-testid="command-center"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+        <div className="flex items-center justify-between border-b border-[var(--avs-border)] px-6 py-4">
           <div className="flex items-center gap-3">
             <ShieldCheckIcon className="h-6 w-6 text-brand-primary" aria-hidden />
             <div>
@@ -97,7 +97,7 @@ export function CommandCenter({
           </div>
           <button
             onClick={onClose}
-            className="rounded-md p-1 text-text-muted hover:text-text-primary hover:bg-surface-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+            className="rounded-[var(--avs-radius-md)] p-1 text-text-muted hover:text-text-primary hover:bg-[var(--avs-surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
             aria-label="Close command center"
             data-testid="cmd-close"
           >
@@ -107,7 +107,7 @@ export function CommandCenter({
 
         {/* Status summary */}
         {overview && (
-          <div className="border-b border-border px-6 py-3">
+          <div className="border-b border-[var(--avs-border)] px-6 py-3">
             <div className="flex items-center gap-4 text-sm">
               <span className="text-text-secondary">Score: <span className="font-medium text-text-primary">{overview.securityScore}</span></span>
               <Badge tone={overview.protectionStatus === 'running' ? 'success' : 'warning'}>{overview.protectionStatus}</Badge>
@@ -126,7 +126,7 @@ export function CommandCenter({
                 action.onClick();
                 onClose();
               }}
-              className="flex items-start gap-3 rounded-md border border-border p-4 text-left hover:border-brand-primary hover:bg-brand-primary/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              className="flex items-start gap-3 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] p-4 text-left hover:border-brand-primary hover:bg-brand-primary/5 transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
               data-testid={action.testId}
             >
               <action.icon className="h-5 w-5 shrink-0 text-brand-primary" aria-hidden />

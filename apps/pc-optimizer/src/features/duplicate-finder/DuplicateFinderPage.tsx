@@ -88,10 +88,10 @@ export default function DuplicateFinderPage() {
                   <button
                     key={s.id}
                     onClick={() => vm.setScope(s.id as DuplicateScope)}
-                    className={`px-3 py-1.5 text-sm rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
+                    className={`px-3 py-1.5 text-sm rounded-[var(--avs-radius-md)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
                       state.scope === s.id
                         ? 'bg-brand-primary text-white'
-                        : 'bg-bg-secondary text-text-secondary hover:bg-surface-muted'
+                        : 'bg-bg-secondary text-text-secondary hover:bg-[var(--avs-surface-muted)]'
                     }`}
                   >
                     {s.label}
@@ -111,7 +111,7 @@ export default function DuplicateFinderPage() {
                           className={`p-4 border rounded cursor-pointer transition-colors ${
                             state.selectedDrive === drive.mountpoint
                               ? 'border-brand-primary bg-bg-secondary'
-                              : 'border-border hover:border-brand-primary'
+                              : 'border-[var(--avs-border)] hover:border-brand-primary'
                           }`}
                           onClick={() => vm.selectDrive(drive.mountpoint)}
                         >
@@ -146,7 +146,7 @@ export default function DuplicateFinderPage() {
                     placeholder="C:\\Users\\YourName\\Documents, C:\\Users\\YourName\\Downloads"
                     value={state.customDirectories}
                     onChange={(e) => vm.setCustomDirectories(e.target.value)}
-                    className="w-full px-3 py-2 bg-bg-secondary border border-border rounded text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                    className="w-full px-3 py-2 bg-bg-secondary border border-[var(--avs-border)] rounded text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                   />
                 </div>
               )}
@@ -241,7 +241,7 @@ export default function DuplicateFinderPage() {
                             className={`flex items-center justify-between p-2 rounded border ${
                               state.selectedFiles.has(file.path)
                                 ? 'border-brand-primary bg-bg-secondary'
-                                : 'border-border'
+                                : 'border-[var(--avs-border)]'
                             }`}
                           >
                             <div className="flex-1 min-w-0">

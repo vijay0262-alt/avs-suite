@@ -41,7 +41,7 @@ export function SharedConfirmDialog({
       aria-labelledby={`${testId}-title`}
       data-testid={testId}
     >
-      <div className="w-full max-w-md rounded-lg bg-surface p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-[var(--avs-radius-lg)] bg-[var(--avs-surface)] p-6 shadow-[var(--avs-shadow-xl,var(--avs-shadow-lg))]">
         <div className="flex items-start gap-3 mb-4">
           {variant === 'danger' && (
             <ExclamationTriangleIcon className="h-6 w-6 shrink-0 text-semantic-danger" aria-hidden />

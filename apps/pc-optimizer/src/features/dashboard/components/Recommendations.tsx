@@ -56,7 +56,7 @@ export const Recommendations = React.memo(function Recommendations({ recommendat
           return (
             <div
               key={rec.id}
-              className="flex items-start gap-3 p-3 rounded-md bg-surface-muted hover:bg-surface-muted/80 transition-colors"
+              className="flex items-start gap-3 p-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] hover:bg-[var(--avs-surface-muted)]/80 transition-colors"
               data-testid={`recommendation-${rec.id}`}
             >
               <div className={`shrink-0 ${severityColor}`}>

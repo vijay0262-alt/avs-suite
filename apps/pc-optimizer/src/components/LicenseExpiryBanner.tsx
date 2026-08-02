@@ -26,7 +26,7 @@ export function LicenseExpiryBanner() {
   if (licenseStatus === 'EXPIRED') {
     return (
       <div
-        className="flex items-center justify-between rounded-md bg-semantic-danger/10 px-4 py-3"
+        className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-semantic-danger/10 px-4 py-3"
         data-testid="license-expiry-banner"
       >
         <div className="flex items-center gap-3">
@@ -45,7 +45,7 @@ export function LicenseExpiryBanner() {
   if (licenseStatus === 'REVOKED' || licenseStatus === 'INVALID') {
     return (
       <div
-        className="flex items-center justify-between rounded-md bg-semantic-danger/10 px-4 py-3"
+        className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-semantic-danger/10 px-4 py-3"
         data-testid="license-invalid-banner"
       >
         <div className="flex items-center gap-3">
@@ -67,7 +67,7 @@ export function LicenseExpiryBanner() {
     if (expiry < now) {
       return (
         <div
-          className="flex items-center justify-between rounded-md bg-semantic-warning/10 px-4 py-3"
+          className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-semantic-warning/10 px-4 py-3"
           data-testid="license-grace-banner"
         >
           <div className="flex items-center gap-3">

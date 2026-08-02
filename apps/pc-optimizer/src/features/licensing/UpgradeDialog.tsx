@@ -83,7 +83,7 @@ export function UpgradeDialog({ open, moduleName, features, onClose, onUpgrade }
         </div>
 
         {features.length > 0 && (
-          <Card className="bg-surface-muted">
+          <Card className="bg-[var(--avs-surface-muted)]">
             <div className="text-xs text-text-secondary">
               This action ({features.join(', ')}) is not available in the Free edition.
               Upgrade now to unlock all features.

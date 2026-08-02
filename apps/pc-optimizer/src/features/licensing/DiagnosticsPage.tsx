@@ -192,7 +192,7 @@ export default function DiagnosticsPage() {
             and application logs. This can be shared with AVS Support for troubleshooting.
           </p>
           {exportResult && (
-            <div className={`rounded-md px-3 py-2 text-sm ${
+            <div className={`rounded-[var(--avs-radius-md)] px-3 py-2 text-sm ${
               exportResult.success
                 ? 'bg-semantic-success/10 text-semantic-success'
                 : 'bg-semantic-danger/10 text-semantic-danger'

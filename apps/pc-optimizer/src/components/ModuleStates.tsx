@@ -32,7 +32,7 @@ export function ModuleLoadingState({
         role="status"
         aria-live="polite"
       >
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-brand-primary" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--avs-border)] border-t-brand-primary" />
         <p className="mt-3 text-sm text-text-secondary">{message}</p>
       </div>
     </Card>
@@ -141,7 +141,7 @@ export function ModuleSuccessBanner({
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="text-text-muted hover:text-text-primary transition-colors"
+            className="text-text-muted hover:text-text-primary transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
             aria-label="Dismiss"
             data-testid={(testId ?? 'module-success') + '-dismiss'}
           >
@@ -192,7 +192,7 @@ export function ModuleErrorBanner({
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="text-text-muted hover:text-text-primary transition-colors"
+            className="text-text-muted hover:text-text-primary transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
             aria-label="Dismiss"
           >
             ✕
@@ -228,7 +228,7 @@ export function ModuleInfoBanner({
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="text-text-muted hover:text-text-primary transition-colors"
+            className="text-text-muted hover:text-text-primary transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
             aria-label="Dismiss"
           >
             ✕

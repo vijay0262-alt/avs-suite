@@ -33,10 +33,10 @@ export function DetailsTable({ items, loading, error, cleanerName, onClose }: De
 
   return (
     <div
-      className="mt-4 rounded-lg border border-border bg-surface"
+      className="mt-4 rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-[var(--avs-surface)]"
       data-testid="junk-details-table"
     >
-      <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+      <div className="flex items-center justify-between border-b border-[var(--avs-border)] px-4 py-2.5">
         <div>
           <div className="text-sm font-semibold text-text-primary">{cleanerName} — details</div>
           <div className="text-xs text-text-muted">
@@ -48,7 +48,7 @@ export function DetailsTable({ items, loading, error, cleanerName, onClose }: De
         <button
           type="button"
           onClick={onClose}
-          className="rounded-md px-3 py-1 text-xs font-medium text-text-secondary hover:bg-surface-muted"
+          className="rounded-[var(--avs-radius-md)] px-3 py-1 text-xs font-medium text-text-secondary hover:bg-[var(--avs-surface-muted)]"
           data-testid="junk-details-close"
         >
           Close
@@ -58,7 +58,7 @@ export function DetailsTable({ items, loading, error, cleanerName, onClose }: De
       {error && (
         <div
           role="alert"
-          className="border-b border-border bg-[color-mix(in_srgb,var(--avs-danger)_10%,transparent)] px-4 py-2 text-xs text-semantic-danger"
+          className="border-b border-[var(--avs-border)] bg-[color-mix(in_srgb,var(--avs-danger)_10%,transparent)] px-4 py-2 text-xs text-semantic-danger"
         >
           {error}
         </div>
@@ -66,7 +66,7 @@ export function DetailsTable({ items, loading, error, cleanerName, onClose }: De
 
       {/* Column header — kept outside the virtualised list so it never scrolls out. */}
       <div
-        className="grid items-center gap-3 border-b border-border bg-surface-muted px-4 text-xs font-medium uppercase tracking-wide text-text-muted"
+        className="grid items-center gap-3 border-b border-[var(--avs-border)] bg-[var(--avs-surface-muted)] px-4 text-xs font-medium uppercase tracking-wide text-text-muted"
         style={{ height: HEADER_HEIGHT, gridTemplateColumns: '2fr 1.3fr 60px 90px 130px' }}
       >
         <span>Path</span>
@@ -94,7 +94,7 @@ export function DetailsTable({ items, loading, error, cleanerName, onClose }: De
             return (
               <div
                 style={style}
-                className="grid items-center gap-3 border-b border-border/60 px-4 text-xs text-text-secondary hover:bg-surface-muted"
+                className="grid items-center gap-3 border-b border-[var(--avs-border)]/60 px-4 text-xs text-text-secondary hover:bg-[var(--avs-surface-muted)]"
                 data-testid={`junk-details-row-${index}`}
               >
                 <span

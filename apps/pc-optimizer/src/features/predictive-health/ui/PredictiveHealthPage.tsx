@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useCallback } from 'react';
-import { Card, Badge, Button, StatTile } from '@avs/ui';
+import { Card, Badge, Button, StatCard, DashboardSection } from '@avs/ui';
 import type { BadgeTone } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../../components/PageHeader';
@@ -11,6 +11,10 @@ import {
   ArrowPathIcon,
   ExclamationTriangleIcon,
   ClockIcon,
+  HeartIcon,
+  ChartBarIcon,
+  CheckCircleIcon,
+  BoltIcon,
 } from '@heroicons/react/24/outline';
 
 export default function PredictiveHealthPage() {
@@ -81,39 +85,49 @@ export default function PredictiveHealthPage() {
 
       {dashboard && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="predictive-summary-bar">
-            <StatTile
-              label="Total Predictions"
-              value={dashboard.summary.totalPredictions}
-              hint={`${dashboard.summary.highRiskPredictions} high-risk`}
-              data-testid="stat-total-predictions"
-            />
-            <StatTile
-              label="Average Confidence"
-              value={`${(dashboard.summary.averageConfidence * 100).toFixed(0)}%`}
-              hint="Based on evidence strength"
-              data-testid="stat-avg-confidence"
-            />
-            <StatTile
-              label="System Trajectory"
-              value={
-                <Badge tone={trajectoryTone(dashboard.summary.systemTrajectory)}>
-                  {dashboard.summary.systemTrajectory.replace(/_/g, ' ')}
-                </Badge>
-              }
-              hint={`${dashboard.summary.degradingTrendCount} degrading · ${dashboard.summary.improvingTrendCount} improving`}
-              data-testid="stat-trajectory"
-            />
-            <StatTile
-              label="Next Action"
-              value={dashboard.summary.nextActionNeeded ?? 'None'}
-              hint="Recommended preventive action"
-              data-testid="stat-next-action"
-            />
-          </div>
+          <DashboardSection>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="predictive-summary-bar">
+              <StatCard
+                label="Total Predictions"
+                value={dashboard.summary.totalPredictions}
+                icon={<ChartBarIcon className="h-5 w-5" />}
+                tone="brand"
+                description={`${dashboard.summary.highRiskPredictions} high-risk`}
+                progress={Math.min(dashboard.summary.totalPredictions / 20 * 100, 100)}
+                data-testid="stat-total-predictions"
+              />
+              <StatCard
+                label="Average Confidence"
+                value={`${(dashboard.summary.averageConfidence * 100).toFixed(0)}%`}
+                icon={<CheckCircleIcon className="h-5 w-5" />}
+                tone={dashboard.summary.averageConfidence >= 0.8 ? 'success' : dashboard.summary.averageConfidence >= 0.5 ? 'warning' : 'danger'}
+                description="Based on evidence strength"
+                progress={dashboard.summary.averageConfidence * 100}
+                data-testid="stat-avg-confidence"
+              />
+              <StatCard
+                label="System Trajectory"
+                value={dashboard.summary.systemTrajectory.replace(/_/g, ' ')}
+                icon={<HeartIcon className="h-5 w-5" />}
+                tone={trajectoryTone(dashboard.summary.systemTrajectory) as 'success' | 'warning' | 'danger' | 'neutral' | 'brand'}
+                description={`${dashboard.summary.degradingTrendCount} degrading · ${dashboard.summary.improvingTrendCount} improving`}
+                progress={dashboard.summary.improvingTrendCount > 0 ? 75 : 40}
+                data-testid="stat-trajectory"
+              />
+              <StatCard
+                label="Next Action"
+                value={dashboard.summary.nextActionNeeded ?? 'None'}
+                icon={<BoltIcon className="h-5 w-5" />}
+                tone="warning"
+                description="Recommended preventive action"
+                progress={50}
+                data-testid="stat-next-action"
+              />
+            </div>
+          </DashboardSection>
 
           {notifications.length > 0 && (
-            <Card title="Active Notifications" data-testid="predictive-notifications">
+            <Card title="Active Notifications" variant="glass" data-testid="predictive-notifications">
               <div className="space-y-3">
                 {notifications.map((notif) => (
                   <NotificationRow
@@ -128,7 +142,7 @@ export default function PredictiveHealthPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {dashboard.upcomingRisks.length > 0 && (
-              <Card title="Upcoming Risks" data-testid="predictive-upcoming-risks">
+              <Card title="Upcoming Risks" variant="glass" data-testid="predictive-upcoming-risks">
                 <div className="space-y-4">
                   {dashboard.upcomingRisks.slice(0, 8).map((entry) => (
                     <div key={entry.id} className="border-l-2 border-semantic-danger pl-4 py-1">
@@ -154,7 +168,7 @@ export default function PredictiveHealthPage() {
             )}
 
             {dashboard.improvingTrends.length > 0 && (
-              <Card title="Improving Trends" data-testid="predictive-improving-trends">
+              <Card title="Improving Trends" variant="glass" data-testid="predictive-improving-trends">
                 <div className="space-y-4">
                   {dashboard.improvingTrends.slice(0, 8).map((entry) => (
                     <div key={entry.id} className="border-l-2 border-semantic-success pl-4 py-1">
@@ -175,7 +189,7 @@ export default function PredictiveHealthPage() {
           </div>
 
           {predictions.length > 0 && (
-            <Card title="All Predictions" data-testid="predictive-all-predictions">
+            <Card title="All Predictions" variant="glass" data-testid="predictive-all-predictions">
               <div className="space-y-4">
                 {predictions.slice(0, 15).map((pred) => (
                   <PredictionRow key={pred.id} prediction={pred} />
@@ -185,7 +199,7 @@ export default function PredictiveHealthPage() {
           )}
 
           {dashboard.healthForecast && (
-            <Card title="Health Score Forecast" data-testid="predictive-health-forecast">
+            <Card title="Health Score Forecast" variant="glass" data-testid="predictive-health-forecast">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <p className="text-xs text-text-muted">Projected Health Score</p>
@@ -212,7 +226,7 @@ export default function PredictiveHealthPage() {
           )}
 
           {dashboard.storageForecast && (
-            <Card title="Storage Forecast" data-testid="predictive-storage-forecast">
+            <Card title="Storage Forecast" variant="glass" data-testid="predictive-storage-forecast">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <p className="text-xs text-text-muted">Projected Free Space</p>
@@ -241,7 +255,7 @@ export default function PredictiveHealthPage() {
       )}
 
       {!dashboard && (
-        <Card>
+        <Card variant="glass">
           <div className="py-8 text-center text-sm text-text-secondary">
             No predictions available. Click &quot;Refresh&quot; to generate forecasts.
           </div>
@@ -277,7 +291,7 @@ function NotificationRow({ notification, onDismiss }: { notification: Prediction
 
 function PredictionRow({ prediction }: { prediction: Prediction }) {
   return (
-    <div className="border-l-2 border-border pl-4 py-1">
+    <div className="border-l-2 border-[var(--avs-border)] pl-4 py-1">
       <div className="flex items-center justify-between gap-2 mb-1">
         <span className="text-sm font-semibold text-text-primary">{prediction.title}</span>
         <div className="flex items-center gap-2">

@@ -99,7 +99,7 @@ export function LoginDialog() {
               onChange={(e) => handleIdentifierChange(e.target.value)}
               placeholder="you@example.com"
               disabled={loading}
-              className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-50"
+              className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-50"
               data-testid="login-identifier"
             />
           </div>
@@ -121,7 +121,7 @@ export function LoginDialog() {
                 onChange={(e) => handlePasswordChange(e.target.value)}
                 placeholder="••••••••"
                 disabled={loading}
-                className="w-full rounded-md border border-border bg-surface px-3 py-2 pr-10 text-sm text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-50"
+                className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-surface px-3 py-2 pr-10 text-sm text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-50"
                 data-testid="login-password"
               />
               <button
@@ -147,7 +147,7 @@ export function LoginDialog() {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-border accent-brand-primary"
+                className="h-3.5 w-3.5 rounded border-[var(--avs-border)] accent-brand-primary"
                 data-testid="login-remember-me"
               />
               Remember me
@@ -165,7 +165,7 @@ export function LoginDialog() {
           {/* Error */}
           {error && (
             <div
-              className="flex items-start gap-2 rounded-md bg-semantic-danger/10 px-3 py-2 text-xs text-semantic-danger"
+              className="flex items-start gap-2 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 px-3 py-2 text-xs text-semantic-danger"
               data-testid="login-error"
               role="alert"
             >

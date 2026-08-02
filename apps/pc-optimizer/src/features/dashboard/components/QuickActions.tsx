@@ -62,7 +62,7 @@ export const QuickActions = React.memo(function QuickActions({ onNavigate }: Qui
       description: 'View detailed system specifications',
       icon: DocumentTextIcon,
       color: 'text-text-secondary',
-      bgColor: 'bg-surface-muted',
+      bgColor: 'bg-[var(--avs-surface-muted)]',
       path: '/system-information',
     },
   ];
@@ -83,12 +83,12 @@ export const QuickActions = React.memo(function QuickActions({ onNavigate }: Qui
           <button
             key={action.id}
             onClick={() => handleActionClick(action.path)}
-            className="flex flex-col items-start gap-2 p-4 rounded-lg border border-border hover:border-border-hover hover:bg-surface-hover transition-colors text-left focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 focus:ring-offset-surface"
+            className="flex flex-col items-start gap-2 p-4 rounded-lg border border-[var(--avs-border)] hover:border-[var(--avs-border)]-hover hover:bg-surface-hover transition-colors text-left focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 focus:ring-offset-surface"
             data-testid={`quick-action-${action.id}`}
             role="listitem"
             aria-label={`${action.name}: ${action.description}`}
           >
-            <div className={`p-2 rounded-md ${action.bgColor}`}>
+            <div className={`p-2 rounded-[var(--avs-radius-md)] ${action.bgColor}`}>
               <action.icon className={`h-5 w-5 ${action.color}`} aria-hidden="true" />
             </div>
             <div>

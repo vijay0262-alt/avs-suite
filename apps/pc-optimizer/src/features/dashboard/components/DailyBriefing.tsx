@@ -127,7 +127,7 @@ export const DailyBriefing = React.memo(function DailyBriefing({
         {items.map((item, i) => (
           <div
             key={i}
-            className="flex items-start gap-3 p-3 rounded-lg bg-surface-muted/50 hover:bg-surface-muted transition-colors"
+            className="flex items-start gap-3 p-3 rounded-lg bg-[var(--avs-surface-muted)]/50 hover:bg-[var(--avs-surface-muted)] transition-colors"
             data-testid={`briefing-item-${i}`}
           >
             <div className="shrink-0">

@@ -120,7 +120,7 @@ export default function RegistryCleanerPage() {
                 </Button>
               </div>
               <Card>
-                <div className="divide-y divide-border">
+                <div className="divide-y divide-[var(--avs-border)]">
                   {state.issues.map((issue) => (
                     <label
                       key={issue.id}
@@ -169,7 +169,7 @@ export default function RegistryCleanerPage() {
                   {state.backups.map((b) => (
                     <div
                       key={b.backupId}
-                      className="flex items-center justify-between py-2 border-b border-border last:border-0"
+                      className="flex items-center justify-between py-2 border-b border-[var(--avs-border)] last:border-0"
                     >
                       <div>
                         <p className="text-sm text-text-primary">{b.backupId}</p>

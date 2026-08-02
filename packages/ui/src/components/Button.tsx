@@ -14,18 +14,18 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const base =
   'inline-flex items-center justify-center gap-2 font-medium rounded-[var(--avs-radius-md)] ' +
-  'transition-[background-color,color,box-shadow,transform] duration-[var(--avs-duration-fast)] ' +
-  'ease-[var(--avs-easing)] outline-none focus-visible:shadow-[var(--avs-focus-ring)] ' +
+  'transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)] ' +
+  'outline-none focus-visible:shadow-[var(--avs-focus-ring)] ' +
   'disabled:opacity-50 disabled:cursor-not-allowed select-none';
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    'bg-[var(--avs-brand-primary)] text-white hover:bg-[var(--avs-brand-secondary)] active:scale-[0.98]',
+    'bg-gradient-brand text-white hover:shadow-glow hover:brightness-110 active:scale-[0.98]',
   secondary:
-    'bg-[var(--avs-surface-muted)] text-[var(--avs-text-primary)] hover:bg-[var(--avs-border)]',
+    'bg-[var(--avs-surface-muted)] text-[var(--avs-text-primary)] border border-[var(--avs-border)] hover:border-[var(--avs-border-hover)] hover:bg-[var(--avs-surface-elevated)]',
   ghost:
     'bg-transparent text-[var(--avs-text-primary)] hover:bg-[var(--avs-surface-muted)]',
-  danger: 'bg-[var(--avs-danger)] text-white hover:brightness-110 active:scale-[0.98]',
+  danger: 'bg-[var(--avs-danger)] text-white hover:brightness-110 active:scale-[0.98] hover:shadow-glow',
 };
 
 const sizes: Record<ButtonSize, string> = {

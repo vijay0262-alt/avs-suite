@@ -79,7 +79,7 @@ export const ImprovementSummaryCard = React.memo(function ImprovementSummaryCard
         </div>
 
         {/* Health Score before → after */}
-        <div className="flex items-center justify-center gap-6 py-4 rounded-lg bg-surface-muted">
+        <div className="flex items-center justify-center gap-6 py-4 rounded-lg bg-[var(--avs-surface-muted)]">
           <div className="text-center">
             <div className="text-xs uppercase tracking-wide text-text-muted">Before</div>
             <div className="text-3xl font-bold text-text-secondary tabular-nums">{summary.healthBefore}</div>
@@ -101,7 +101,7 @@ export const ImprovementSummaryCard = React.memo(function ImprovementSummaryCard
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className="flex items-center gap-3 p-4 rounded-md bg-surface-muted"
+              className="flex items-center gap-3 p-4 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)]"
               data-testid={`summary-stat-${stat.label.toLowerCase().replace(/\s+/g, '-')}`}
             >
               <stat.icon className="h-5 w-5 text-semantic-primary" aria-hidden />

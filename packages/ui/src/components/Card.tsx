@@ -5,16 +5,39 @@ export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'>
   title?: ReactNode;
   actions?: ReactNode;
   padded?: boolean;
+  variant?: 'default' | 'glass' | 'gradient' | 'elevated';
 }
 
+const variants: Record<NonNullable<CardProps['variant']>, string> = {
+  default:
+    'bg-[var(--avs-surface)] border border-[var(--avs-border)] ' +
+    'shadow-[var(--avs-shadow-sm)] hover:shadow-[var(--avs-shadow-md)]',
+  glass:
+    'bg-[var(--avs-glass-bg)] backdrop-blur-[var(--avs-glass-blur)] ' +
+    'border border-[var(--avs-glass-border)] shadow-[var(--avs-shadow-md)] ' +
+    'hover:shadow-[var(--avs-shadow-lg)]',
+  gradient:
+    'bg-gradient-surface border border-[var(--avs-border)] ' +
+    'shadow-[var(--avs-shadow-sm)] hover:shadow-[var(--avs-shadow-glow)]',
+  elevated:
+    'bg-[var(--avs-surface-elevated)] border border-[var(--avs-border)] ' +
+    'shadow-[var(--avs-shadow-md)] hover:shadow-[var(--avs-shadow-lg)]',
+};
+
 /**
- * Card — the primary containment surface. Uses a Mica-inspired soft
- * elevation with a 1-px border so it reads well in both themes.
+ * Card — the primary containment surface.
+ *
+ * Variants:
+ *   default  — solid surface with subtle shadow
+ *   glass    — frosted glass with backdrop blur (premium)
+ *   gradient — subtle gradient with glow on hover
+ *   elevated— raised surface for emphasis
  */
 export function Card({
   title,
   actions,
   padded = true,
+  variant = 'glass',
   className,
   children,
   ...rest
@@ -22,9 +45,9 @@ export function Card({
   return (
     <div
       className={clsx(
-        'bg-[var(--avs-surface)] border border-[var(--avs-border)] rounded-[var(--avs-radius-lg)]',
-        'shadow-[var(--avs-shadow-sm)] transition-shadow duration-[var(--avs-duration-normal)]',
-        'hover:shadow-[var(--avs-shadow-md)]',
+        'rounded-[var(--avs-radius-xl)]',
+        'transition-all duration-[var(--avs-duration-normal)] ease-[var(--avs-easing)]',
+        variants[variant],
         className,
       )}
       {...rest}

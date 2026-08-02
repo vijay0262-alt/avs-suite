@@ -9,10 +9,10 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 
 const tones: Record<BadgeTone, string> = {
   neutral: 'bg-[var(--avs-surface-muted)] text-[var(--avs-text-secondary)]',
-  brand: 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_15%,transparent)] text-[var(--avs-brand-primary)]',
+  brand: 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_15%,transparent)] text-[var(--avs-brand-primary)] shadow-[0_0_8px_color-mix(in_srgb,var(--avs-brand-primary)_20%,transparent)]',
   success: 'bg-[color-mix(in_srgb,var(--avs-success)_15%,transparent)] text-[var(--avs-success)]',
-  warning: 'bg-[color-mix(in_srgb,var(--avs-warning)_18%,transparent)] text-[color-mix(in_srgb,var(--avs-warning)_85%,black)]',
-  danger: 'bg-[color-mix(in_srgb,var(--avs-danger)_15%,transparent)] text-[var(--avs-danger)]',
+  warning: 'bg-[color-mix(in_srgb,var(--avs-warning)_18%,transparent)] text-[var(--avs-warning)]',
+  danger: 'bg-[color-mix(in_srgb,var(--avs-danger)_15%,transparent)] text-[var(--avs-danger)] shadow-[0_0_8px_color-mix(in_srgb,var(--avs-danger)_20%,transparent)]',
 };
 
 /** Small pill-shaped label. */

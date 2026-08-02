@@ -235,7 +235,7 @@ export default function AboutPage() {
       <Card title="Legal & Privacy">
         <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
           <button
-            className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-text-primary hover:bg-surface-muted"
+            className="flex items-center justify-between rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] px-3 py-2 text-text-primary hover:bg-[var(--avs-surface-muted)]"
             onClick={() => openExternal(`${APP_METADATA.websiteUrl}/privacy`)}
             data-testid="about-privacy-policy"
           >
@@ -245,7 +245,7 @@ export default function AboutPage() {
             </svg>
           </button>
           <button
-            className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-text-primary hover:bg-surface-muted"
+            className="flex items-center justify-between rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] px-3 py-2 text-text-primary hover:bg-[var(--avs-surface-muted)]"
             onClick={() => openExternal(`${APP_METADATA.websiteUrl}/terms`)}
             data-testid="about-terms"
           >
@@ -255,7 +255,7 @@ export default function AboutPage() {
             </svg>
           </button>
           <button
-            className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-text-primary hover:bg-surface-muted"
+            className="flex items-center justify-between rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] px-3 py-2 text-text-primary hover:bg-[var(--avs-surface-muted)]"
             onClick={() => openExternal(`${APP_METADATA.websiteUrl}/eula`)}
             data-testid="about-eula"
           >
@@ -265,7 +265,7 @@ export default function AboutPage() {
             </svg>
           </button>
           <button
-            className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-text-primary hover:bg-surface-muted"
+            className="flex items-center justify-between rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] px-3 py-2 text-text-primary hover:bg-[var(--avs-surface-muted)]"
             onClick={() => openExternal(`${APP_METADATA.websiteUrl}/open-source`)}
             data-testid="about-open-source"
           >

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useCallback } from 'react';
-import { Card, Badge, Button, StatTile } from '@avs/ui';
+import { Card, Badge, Button, StatCard, DashboardSection, InsightCard } from '@avs/ui';
 import type { BadgeTone } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../../components/PageHeader';
@@ -14,6 +14,8 @@ import {
   ExclamationTriangleIcon,
   InformationCircleIcon,
   CheckCircleIcon,
+  BoltIcon,
+  ShieldExclamationIcon,
 } from '@heroicons/react/24/outline';
 
 export default function ProcessIntelligencePage() {
@@ -87,52 +89,63 @@ export default function ProcessIntelligencePage() {
 
       {dashboard && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="process-summary-bar">
-            <StatTile
-              label="Total Processes"
-              value={dashboard.summary.totalProcesses}
-              hint={`${dashboard.summary.userProcessCount} user · ${dashboard.summary.systemProcessCount} system`}
-              data-testid="stat-total-processes"
-            />
-            <StatTile
-              label="CPU Usage"
-              value={`${dashboard.summary.totalCpuUsagePercent.toFixed(1)}%`}
-              hint={`${dashboard.summary.highImpactCount} high-impact processes`}
-              data-testid="stat-cpu-usage"
-            />
-            <StatTile
-              label="Memory Usage"
-              value={`${(dashboard.summary.totalMemoryMB / 1024).toFixed(1)} GB`}
-              hint={`${dashboard.summary.backgroundProcessCount} background`}
-              data-testid="stat-memory-usage"
-            />
-            <StatTile
-              label="Risk Level"
-              value={
-                <Badge tone={riskTone(risk?.overallRisk)}>
-                  {risk?.overallRisk ?? 'none'}
-                </Badge>
-              }
-              hint={risk?.overallUrgency ? `Urgency: ${risk.overallUrgency}` : undefined}
-              data-testid="stat-risk-level"
-            />
-          </div>
+          <DashboardSection>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="process-summary-bar">
+              <StatCard
+                label="Total Processes"
+                value={dashboard.summary.totalProcesses}
+                icon={<CpuChipIcon className="h-5 w-5" />}
+                tone="brand"
+                description={`${dashboard.summary.userProcessCount} user · ${dashboard.summary.systemProcessCount} system`}
+                progress={Math.min(dashboard.summary.totalProcesses / 200 * 100, 100)}
+                data-testid="stat-total-processes"
+              />
+              <StatCard
+                label="CPU Usage"
+                value={`${dashboard.summary.totalCpuUsagePercent.toFixed(1)}%`}
+                icon={<BoltIcon className="h-5 w-5" />}
+                tone={dashboard.summary.totalCpuUsagePercent > 80 ? 'danger' : dashboard.summary.totalCpuUsagePercent > 60 ? 'warning' : 'success'}
+                description={`${dashboard.summary.highImpactCount} high-impact processes`}
+                progress={dashboard.summary.totalCpuUsagePercent}
+                data-testid="stat-cpu-usage"
+              />
+              <StatCard
+                label="Memory Usage"
+                value={`${(dashboard.summary.totalMemoryMB / 1024).toFixed(1)} GB`}
+                icon={<CircleStackIcon className="h-5 w-5" />}
+                tone="brand"
+                description={`${dashboard.summary.backgroundProcessCount} background`}
+                progress={Math.min(dashboard.summary.totalMemoryMB / 16384 * 100, 100)}
+                data-testid="stat-memory-usage"
+              />
+              <StatCard
+                label="Risk Level"
+                value={risk?.overallRisk ?? 'none'}
+                icon={<ShieldExclamationIcon className="h-5 w-5" />}
+                tone={riskTone(risk?.overallRisk) as 'success' | 'warning' | 'danger' | 'neutral' | 'brand'}
+                description={risk?.overallUrgency ? `Urgency: ${risk.overallUrgency}` : 'No urgency data'}
+                progress={risk?.overallRisk === 'severe' ? 100 : risk?.overallRisk === 'high' ? 75 : risk?.overallRisk === 'moderate' ? 50 : risk?.overallRisk === 'low' ? 25 : 10}
+                data-testid="stat-risk-level"
+              />
+            </div>
+          </DashboardSection>
 
           {report.systemExplanation && (
-            <Card data-testid="process-system-summary">
-              <div className="flex items-start gap-3">
-                <InformationCircleIcon className="h-5 w-5 text-brand-primary shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="text-sm font-semibold text-text-primary mb-1">System Summary</h3>
-                  <p className="text-sm text-text-secondary">{report.systemExplanation}</p>
-                </div>
-              </div>
-            </Card>
+            <DashboardSection title="System Summary" icon={<InformationCircleIcon className="h-5 w-5" />}>
+              <InsightCard
+                icon={<InformationCircleIcon className="h-5 w-5" />}
+                iconColor="text-brand-primary"
+                title="AI System Analysis"
+                description={report.systemExplanation}
+                severity="info"
+                data-testid="process-system-summary"
+              />
+            </DashboardSection>
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {dashboard.topConsumers.length > 0 && (
-              <Card title="Top Resource Consumers" data-testid="process-top-consumers">
+              <Card title="Top Resource Consumers" variant="glass" data-testid="process-top-consumers">
                 <div className="space-y-3">
                   {dashboard.topConsumers.slice(0, 8).map((entry) => (
                     <div key={entry.pid} className="flex items-center gap-3">
@@ -153,7 +166,7 @@ export default function ProcessIntelligencePage() {
             )}
 
             {dashboard.alerts.length > 0 && (
-              <Card title="Active Alerts" data-testid="process-alerts">
+              <Card title="Active Alerts" variant="glass" data-testid="process-alerts">
                 <div className="space-y-3">
                   {dashboard.alerts.map((alert, i) => (
                     <div key={i} className="flex items-start gap-3">
@@ -173,7 +186,7 @@ export default function ProcessIntelligencePage() {
           </div>
 
           {insights.length > 0 && (
-            <Card title="AI Insights" data-testid="process-insights">
+            <Card title="AI Insights" variant="glass" data-testid="process-insights">
               <div className="space-y-4">
                 {insights.slice(0, 10).map((insight) => (
                   <ProcessInsightRow key={insight.id} insight={insight} />
@@ -183,7 +196,7 @@ export default function ProcessIntelligencePage() {
           )}
 
           {recommendations.length > 0 && (
-            <Card title="AI Recommendations" data-testid="process-recommendations">
+            <Card title="AI Recommendations" variant="glass" data-testid="process-recommendations">
               <div className="space-y-4">
                 {recommendations.slice(0, 8).map((rec, i) => (
                   <ProcessRecommendationRow key={i} rec={rec} />
@@ -193,7 +206,7 @@ export default function ProcessIntelligencePage() {
           )}
 
           {risk && risk.systemRiskFactors.length > 0 && (
-            <Card title="Risk Assessment" data-testid="process-risk-assessment">
+            <Card title="Risk Assessment" variant="glass" data-testid="process-risk-assessment">
               <div className="space-y-3">
                 <div>
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">System Risk Factors</h4>
@@ -226,7 +239,7 @@ export default function ProcessIntelligencePage() {
       )}
 
       {!dashboard && (
-        <Card>
+        <Card variant="glass">
           <div className="py-8 text-center text-sm text-text-secondary">
             No process data available. Click &quot;Scan Now&quot; to analyze running processes.
           </div>
@@ -238,7 +251,7 @@ export default function ProcessIntelligencePage() {
 
 function ProcessInsightRow({ insight }: { insight: ProcessInsight }) {
   return (
-    <div className="border-l-2 border-border pl-4 py-1">
+    <div className="border-l-2 border-[var(--avs-border)] pl-4 py-1">
       <div className="flex items-center justify-between gap-2 mb-1">
         <span className="text-sm font-semibold text-text-primary">{insight.title}</span>
         <div className="flex items-center gap-2">

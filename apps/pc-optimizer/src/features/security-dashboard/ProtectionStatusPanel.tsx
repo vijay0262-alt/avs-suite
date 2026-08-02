@@ -103,8 +103,8 @@ export function ProtectionStatusPanel({
                   onClick={() => onSetMode(mode)}
                   className={
                     overview?.protectionMode === mode
-                      ? 'rounded-md border border-brand-primary bg-brand-primary/10 px-3 py-1.5 text-sm font-medium text-brand-primary capitalize'
-                      : 'rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-text-secondary hover:border-border-hover capitalize'
+                      ? 'rounded-[var(--avs-radius-md)] border border-brand-primary bg-brand-primary/10 px-3 py-1.5 text-sm font-medium text-brand-primary capitalize'
+                      : 'rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-1.5 text-sm text-text-secondary hover:border-[var(--avs-border-hover)] capitalize'
                   }
                   data-testid={`mode-btn-${mode}`}
                 >
@@ -140,7 +140,7 @@ export function ProtectionStatusPanel({
           {monitors.map((monitor) => (
             <div
               key={monitor.type}
-              className="flex items-center justify-between rounded-md border border-border p-3 hover:border-border-hover transition-colors"
+              className="flex items-center justify-between rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] p-3 hover:border-[var(--avs-border-hover)] transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
               data-testid={`monitor-${monitor.type}`}
             >
               <div className="flex items-center gap-3">

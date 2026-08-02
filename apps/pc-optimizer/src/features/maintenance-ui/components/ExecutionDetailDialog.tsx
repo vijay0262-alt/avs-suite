@@ -220,12 +220,12 @@ export const ExecutionDetailDialog = React.memo(function ExecutionDetailDialog({
             </div>
           )}
           {restoreStatus && (
-            <div className="mt-3 rounded-md bg-[var(--avs-success-bg,rgba(34,197,94,0.1))] border border-[var(--avs-success-border,rgba(34,197,94,0.3))] px-3 py-2">
+            <div className="mt-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-success-bg,rgba(34,197,94,0.1))] border border-[var(--avs-success-border,rgba(34,197,94,0.3))] px-3 py-2">
               <p className="text-sm text-semantic-success" data-testid="restore-success">{restoreStatus}</p>
             </div>
           )}
           {restoreError && (
-            <div className="mt-3 rounded-md bg-semantic-danger/10 border border-semantic-danger/30 px-3 py-2">
+            <div className="mt-3 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 border border-semantic-danger/30 px-3 py-2">
               <p className="text-sm text-semantic-danger" data-testid="restore-error">{restoreError}</p>
             </div>
           )}

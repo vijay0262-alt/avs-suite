@@ -108,7 +108,7 @@ export function CleaningProgress({ open, snapshot, onCancel }: CleaningProgressP
 
         {/* Skipped/Failed warning */}
         {(snapshot.totalFilesSkipped ?? 0) > 0 || (snapshot.totalFilesFailed ?? 0) > 0 ? (
-          <div className="rounded-md border border-border bg-surface-muted p-3 text-xs text-text-secondary">
+          <div className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-3 text-xs text-text-secondary">
             Skipped: {(snapshot.totalFilesSkipped ?? 0).toLocaleString()} ·
             Failed: {(snapshot.totalFilesFailed ?? 0).toLocaleString()} · These files were
             excluded for safety (locks, permissions, or protected paths).

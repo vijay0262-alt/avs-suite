@@ -12,8 +12,14 @@
  *   - Search: unified search across threats, processes, investigations, etc.
  */
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Badge, Button, StatTile } from '@avs/ui';
+import { Button, StatCard, DashboardSection } from '@avs/ui';
 import type { BadgeTone } from '@avs/ui';
+import {
+  ShieldCheckIcon,
+  ShieldExclamationIcon,
+  CpuChipIcon,
+  EyeIcon,
+} from '@heroicons/react/24/outline';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { HelpButton } from '../../components/HelpButton';
@@ -107,41 +113,51 @@ export default function SecurityDashboardPage() {
 
       {/* Status bar — always visible */}
       {overview && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="security-status-bar">
-          <StatTile
-            label="Security Score"
-            value={overview.securityScore}
-            hint={overview.threatLevel !== 'none' ? `Threat level: ${overview.threatLevel}` : 'No active threats'}
-            data-testid="stat-security-score"
-          />
-          <StatTile
-            label="Protection Status"
-            value={
-              <Badge tone={protectionStatusTone(overview.protectionStatus)}>
-                {overview.protectionStatus}
-              </Badge>
-            }
-            hint={`Mode: ${overview.protectionMode}`}
-          />
-          <StatTile
-            label="AI Confidence"
-            value={`${(overview.aiConfidenceScore * 100).toFixed(0)}%`}
-            hint="Based on evidence and provider health"
-          />
-          <StatTile
-            label="Real-Time Status"
-            value={
-              <Badge tone={realTimeStatusTone(overview.realTimeStatus)}>
-                {overview.realTimeStatus}
-              </Badge>
-            }
-            hint={`${overview.activeMonitors}/${overview.totalMonitors} monitors active`}
-          />
-        </div>
+        <DashboardSection>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="security-status-bar">
+            <StatCard
+              label="Security Score"
+              value={overview.securityScore}
+              unit="/ 100"
+              icon={<ShieldCheckIcon className="h-5 w-5" />}
+              tone={overview.securityScore >= 80 ? 'success' : overview.securityScore >= 60 ? 'warning' : 'danger'}
+              description={overview.threatLevel !== 'none' ? `Threat level: ${overview.threatLevel}` : 'No active threats'}
+              progress={overview.securityScore}
+              data-testid="stat-security-score"
+            />
+            <StatCard
+              label="Protection Status"
+              value={overview.protectionStatus}
+              icon={<ShieldExclamationIcon className="h-5 w-5" />}
+              tone={protectionStatusTone(overview.protectionStatus) as 'success' | 'warning' | 'danger' | 'neutral'}
+              description={`Mode: ${overview.protectionMode}`}
+              progress={overview.protectionStatus === 'running' ? 100 : overview.protectionStatus === 'paused' ? 50 : 20}
+              data-testid="stat-protection-status"
+            />
+            <StatCard
+              label="AI Confidence"
+              value={`${(overview.aiConfidenceScore * 100).toFixed(0)}%`}
+              icon={<CpuChipIcon className="h-5 w-5" />}
+              tone={overview.aiConfidenceScore >= 0.8 ? 'success' : overview.aiConfidenceScore >= 0.5 ? 'warning' : 'danger'}
+              description="Based on evidence and provider health"
+              progress={overview.aiConfidenceScore * 100}
+              data-testid="stat-ai-confidence"
+            />
+            <StatCard
+              label="Real-Time Status"
+              value={overview.realTimeStatus}
+              icon={<EyeIcon className="h-5 w-5" />}
+              tone={realTimeStatusTone(overview.realTimeStatus) as 'success' | 'warning' | 'danger' | 'neutral'}
+              description={`${overview.activeMonitors}/${overview.totalMonitors} monitors active`}
+              progress={overview.totalMonitors > 0 ? (overview.activeMonitors / overview.totalMonitors) * 100 : 0}
+              data-testid="stat-realtime-status"
+            />
+          </div>
+        </DashboardSection>
       )}
 
       {/* Tab navigation */}
-      <div className="flex flex-wrap gap-1 border-b border-border" role="tablist" aria-label="Security dashboard sections">
+      <div className="flex flex-wrap gap-1 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] p-1" role="tablist" aria-label="Security dashboard sections">
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -152,9 +168,10 @@ export default function SecurityDashboardPage() {
             onClick={() => handleTabChange(tab.id)}
             className={
               state.activeTab === tab.id
-                ? 'px-4 py-2 text-sm font-medium text-brand-primary border-b-2 border-brand-primary -mb-px focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary rounded-t-md'
-                : 'px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary border-b-2 border-transparent -mb-px focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary rounded-t-md'
+                ? 'px-4 py-2 text-sm font-medium text-white rounded-[var(--avs-radius-sm)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]'
+                : 'px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary rounded-[var(--avs-radius-sm)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]'
             }
+            style={state.activeTab === tab.id ? { background: 'var(--avs-gradient-brand)' } : undefined}
             data-testid={`tab-btn-${tab.id}`}
           >
             {tab.label}

@@ -1,61 +1,114 @@
 /**
- * Runtime CSS variables mirroring the design tokens in @avs/shared/tokens.
- * Import once at app entry (see `apps/pc-optimizer/src/styles/index.css`).
+ * AVS Shield v1.2 Design Tokens
+ *
+ * Premium dark-first design system with glassmorphism,
+ * deep navy backgrounds, and vibrant blue/cyan accents.
  *
  * Every colour class in Tailwind (`bg-brand-primary`, `text-surface`, ...)
- * ultimately reads from these variables so runtime theme switches (light
- * ⇄ dark, high-contrast) work without a re-render.
+ * reads from these variables so runtime theme switches work without a re-render.
  */
 
 :root {
   color-scheme: light;
 
-  --avs-brand-primary: #0078D4;
-  --avs-brand-secondary: #005A9E;
-  --avs-brand-accent: #2B88D8;
+  /* Brand — vibrant blue/cyan */
+  --avs-brand-primary: #0EA5E9;
+  --avs-brand-secondary: #0284C7;
+  --avs-brand-accent: #38BDF8;
+  --avs-brand-glow: rgba(14, 165, 233, 0.15);
 
-  --avs-success: #107C10;
-  --avs-warning: #FFB900;
-  --avs-danger: #D13438;
-  --avs-info: #0078D4;
+  /* Semantic */
+  --avs-success: #22C55E;
+  --avs-warning: #F59E0B;
+  --avs-danger: #EF4444;
+  --avs-info: #0EA5E9;
 
-  --avs-bg: #F5F7FA;
+  /* Surfaces — light theme */
+  --avs-bg: #F0F4F8;
   --avs-surface: #FFFFFF;
-  --avs-surface-muted: #EEF2F6;
-  --avs-border: #D6DDE5;
+  --avs-surface-muted: #F1F5F9;
+  --avs-surface-elevated: #FFFFFF;
+  --avs-border: #E2E8F0;
+  --avs-border-hover: #CBD5E1;
   --avs-text-primary: #0F172A;
   --avs-text-secondary: #475569;
-  --avs-text-muted: #64748B;
+  --avs-text-muted: #94A3B8;
 
-  --avs-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --avs-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
-  --avs-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
-  --avs-focus-ring: 0 0 0 3px rgba(0, 120, 212, 0.35);
+  /* Glass */
+  --avs-glass-bg: rgba(255, 255, 255, 0.7);
+  --avs-glass-border: rgba(255, 255, 255, 0.2);
+  --avs-glass-blur: 12px;
 
-  --avs-radius-sm: 4px;
-  --avs-radius-md: 8px;
-  --avs-radius-lg: 12px;
-  --avs-radius-xl: 16px;
+  /* Shadows */
+  --avs-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --avs-shadow-md: 0 4px 16px rgba(15, 23, 42, 0.10);
+  --avs-shadow-lg: 0 16px 48px rgba(15, 23, 42, 0.14);
+  --avs-shadow-glow: 0 0 24px var(--avs-brand-glow);
+  --avs-focus-ring: 0 0 0 3px rgba(14, 165, 233, 0.35);
 
+  /* Radius */
+  --avs-radius-sm: 6px;
+  --avs-radius-md: 10px;
+  --avs-radius-lg: 14px;
+  --avs-radius-xl: 20px;
+  --avs-radius-2xl: 24px;
+
+  /* Gradients */
+  --avs-gradient-brand: linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%);
+  --avs-gradient-surface: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+  --avs-gradient-glow: radial-gradient(circle at 50% 0%, var(--avs-brand-glow) 0%, transparent 70%);
+
+  /* Animation */
   --avs-duration-fast: 150ms;
-  --avs-duration-normal: 220ms;
-  --avs-easing: cubic-bezier(0.2, 0, 0, 1);
+  --avs-duration-normal: 250ms;
+  --avs-duration-slow: 400ms;
+  --avs-easing: cubic-bezier(0.22, 1, 0.36, 1);
+  --avs-easing-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Spacing scale */
+  --avs-space-section: 1.75rem;
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --avs-bg: #0F172A;
-  --avs-surface: #111C36;
-  --avs-surface-muted: #17223F;
-  --avs-border: #22304F;
+  /* Brand — brighter for dark bg */
+  --avs-brand-primary: #38BDF8;
+  --avs-brand-secondary: #0EA5E9;
+  --avs-brand-accent: #7DD3FC;
+  --avs-brand-glow: rgba(56, 189, 248, 0.18);
+
+  /* Semantic — brighter for dark bg */
+  --avs-success: #4ADE80;
+  --avs-warning: #FBBF24;
+  --avs-danger: #F87171;
+  --avs-info: #38BDF8;
+
+  /* Deep navy surfaces */
+  --avs-bg: #0B1120;
+  --avs-surface: #111827;
+  --avs-surface-muted: #1E293B;
+  --avs-surface-elevated: #1E293B;
+  --avs-border: #1E293B;
+  --avs-border-hover: #334155;
   --avs-text-primary: #F1F5F9;
   --avs-text-secondary: #CBD5E1;
-  --avs-text-muted: #94A3B8;
+  --avs-text-muted: #64748B;
 
-  --avs-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --avs-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
-  --avs-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+  /* Glass — dark mode */
+  --avs-glass-bg: rgba(17, 24, 39, 0.6);
+  --avs-glass-border: rgba(56, 189, 248, 0.12);
+  --avs-glass-blur: 16px;
+
+  /* Shadows — deeper for dark */
+  --avs-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --avs-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --avs-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --avs-shadow-glow: 0 0 32px var(--avs-brand-glow);
+
+  /* Gradients */
+  --avs-gradient-surface: linear-gradient(145deg, rgba(56,189,248,0.04) 0%, rgba(255,255,255,0.01) 100%);
+  --avs-gradient-glow: radial-gradient(circle at 50% 0%, var(--avs-brand-glow) 0%, transparent 70%);
 }
 
 /* High-contrast mode — Windows narrator / a11y support. */
@@ -71,5 +124,6 @@
   :root {
     --avs-duration-fast: 0ms;
     --avs-duration-normal: 0ms;
+    --avs-duration-slow: 0ms;
   }
 }

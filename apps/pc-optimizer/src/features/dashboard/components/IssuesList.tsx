@@ -66,7 +66,7 @@ export const IssuesList = React.memo(function IssuesList({ issues, onIssueClick 
                   <li key={issue.id}>
                     <button
                       onClick={() => onIssueClick?.(issue)}
-                      className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-surface-muted text-left transition-colors"
+                      className="w-full flex items-center gap-3 p-2 rounded-[var(--avs-radius-md)] hover:bg-[var(--avs-surface-muted)] text-left transition-colors"
                     >
                       <span className="shrink-0">{iconForSeverity(issue.severity)}</span>
                       <div className="flex-1 min-w-0">

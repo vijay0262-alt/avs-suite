@@ -33,17 +33,17 @@ export function Modal({ open, title, onClose, actions, children, testId, size = 
       data-testid={testId}
     >
       <div
-        className={`${SIZE[size]} w-full mx-4 rounded-[var(--avs-radius-xl)] border border-border bg-surface shadow-[var(--avs-shadow-xl,var(--avs-shadow-lg))]`}
+        className={`${SIZE[size]} w-full mx-4 rounded-[var(--avs-radius-xl)] border border-[var(--avs-border)] bg-[var(--avs-surface)] shadow-[var(--avs-shadow-xl,var(--avs-shadow-lg))]`}
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-center justify-between border-b border-border px-6 py-4">
+        <header className="flex items-center justify-between border-b border-[var(--avs-border)] px-6 py-4">
           <h2 id="modal-title" className="text-lg font-semibold text-text-primary">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-text-muted hover:bg-surface-muted hover:text-text-primary"
+            className="rounded-[var(--avs-radius-md)] p-1 text-text-muted hover:bg-[var(--avs-surface-muted)] hover:text-text-primary"
             aria-label="Close"
             data-testid={testId ? `${testId}-close` : undefined}
           >
@@ -52,7 +52,7 @@ export function Modal({ open, title, onClose, actions, children, testId, size = 
         </header>
         <div className="max-h-[70vh] overflow-y-auto px-6 py-4">{children}</div>
         {actions && (
-          <footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-3">
+          <footer className="flex items-center justify-end gap-2 border-t border-[var(--avs-border)] px-6 py-3">
             {actions}
           </footer>
         )}

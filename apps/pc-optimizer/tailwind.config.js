@@ -21,9 +21,13 @@ module.exports = {
         surface: {
           DEFAULT: 'var(--avs-surface)',
           muted: 'var(--avs-surface-muted)',
+          elevated: 'var(--avs-surface-elevated)',
         },
         bg: 'var(--avs-bg)',
-        border: 'var(--avs-border)',
+        border: {
+          DEFAULT: 'var(--avs-border)',
+          hover: 'var(--avs-border-hover)',
+        },
         text: {
           primary: 'var(--avs-text-primary)',
           secondary: 'var(--avs-text-secondary)',
@@ -52,6 +56,24 @@ module.exports = {
         md: 'var(--avs-radius-md)',
         lg: 'var(--avs-radius-lg)',
         xl: 'var(--avs-radius-xl)',
+        '2xl': 'var(--avs-radius-2xl)',
+      },
+      boxShadow: {
+        sm: 'var(--avs-shadow-sm)',
+        md: 'var(--avs-shadow-md)',
+        lg: 'var(--avs-shadow-lg)',
+        glow: 'var(--avs-shadow-glow)',
+      },
+      backgroundImage: {
+        'gradient-brand': 'var(--avs-gradient-brand)',
+        'gradient-surface': 'var(--avs-gradient-surface)',
+        'gradient-glow': 'var(--avs-gradient-glow)',
+      },
+      transitionTimingFunction: {
+        bounce: 'var(--avs-easing-bounce)',
+      },
+      transitionDuration: {
+        slow: 'var(--avs-duration-slow)',
       },
     },
   },

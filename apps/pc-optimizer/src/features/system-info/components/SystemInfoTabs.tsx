@@ -92,7 +92,7 @@ export function SystemInfoTabs({ info, vm }: SystemInfoTabsProps) {
     <Card>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {pairs.map((p) => (
-          <div key={p.label} className="flex justify-between border-b border-border pb-2 last:border-0">
+          <div key={p.label} className="flex justify-between border-b border-[var(--avs-border)] pb-2 last:border-0">
             <span className="text-sm text-text-secondary">{p.label}</span>
             <span className="text-sm font-medium text-text-primary text-right">{p.value}</span>
           </div>
@@ -184,10 +184,10 @@ export function SystemInfoTabs({ info, vm }: SystemInfoTabsProps) {
               role="tab"
               aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
+              className={`px-3 py-1.5 text-sm rounded-[var(--avs-radius-md)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
                 activeTab === tab.id
                   ? 'bg-brand-primary text-white'
-                  : 'bg-surface-muted text-text-secondary hover:bg-bg-secondary'
+                  : 'bg-[var(--avs-surface-muted)] text-text-secondary hover:bg-bg-secondary'
               }`}
             >
               {tab.label}

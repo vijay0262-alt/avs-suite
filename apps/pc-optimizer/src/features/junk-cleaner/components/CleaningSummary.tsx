@@ -133,7 +133,7 @@ export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSum
           <div className="mb-2 text-xs uppercase tracking-wide text-text-muted">Per category</div>
           <table className="w-full text-sm" data-testid="cleaning-summary-table">
             <thead>
-              <tr className="border-b border-border text-xs uppercase text-text-muted">
+              <tr className="border-b border-[var(--avs-border)] text-xs uppercase text-text-muted">
                 <th className="py-2 text-left font-medium">Category</th>
                 <th className="py-2 text-right font-medium">Removed</th>
                 <th className="py-2 text-right font-medium">Recovered</th>
@@ -144,7 +144,7 @@ export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSum
             </thead>
             <tbody>
               {(snapshot.cleaners ?? []).map((c) => (
-                <tr key={c.id} className="border-b border-border/60">
+                <tr key={c.id} className="border-b border-[var(--avs-border)]/60">
                   <td className="py-2 text-text-primary">{c.name}</td>
                   <td className="py-2 text-right tabular-nums">{c.filesRemoved.toLocaleString()}</td>
                   <td className="py-2 text-right tabular-nums">{formatBytes(c.bytesRecovered)}</td>
@@ -161,7 +161,7 @@ export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSum
         
         {/* Errors/warnings if any */}
         {(snapshot.totalFilesFailed ?? 0) > 0 && (
-          <div className="rounded-md border border-border bg-surface-muted p-3 text-xs text-text-secondary">
+          <div className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-3 text-xs text-text-secondary">
             Some files could not be cleaned due to locks, permissions, or other errors. 
             These files were skipped for safety.
           </div>
@@ -173,7 +173,7 @@ export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSum
 
 function StatCard({ label, value, testId }: { label: string; value: number | string; testId: string }) {
   return (
-    <div className="rounded-md border border-border bg-surface-muted p-3">
+    <div className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-3">
       <div className="text-xs uppercase text-text-muted">{label}</div>
       <div
         className="mt-1 text-xl font-semibold text-text-primary tabular-nums"

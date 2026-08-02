@@ -54,7 +54,7 @@ export function PreviewDialog({ open, loading, error, preview, onCancel, onProce
       {error && (
         <div
           role="alert"
-          className="flex items-start gap-3 rounded-md border border-semantic-danger/40 bg-[color-mix(in_srgb,var(--avs-danger)_10%,transparent)] p-3 text-sm text-semantic-danger"
+          className="flex items-start gap-3 rounded-[var(--avs-radius-md)] border border-semantic-danger/40 bg-[color-mix(in_srgb,var(--avs-danger)_10%,transparent)] p-3 text-sm text-semantic-danger"
         >
           <ExclamationTriangleIcon className="h-5 w-5 shrink-0" />
           <span>{error}</span>
@@ -63,7 +63,7 @@ export function PreviewDialog({ open, loading, error, preview, onCancel, onProce
 
       {preview && !loading && !error && (
         <>
-          <div className="mb-4 grid grid-cols-3 gap-4 rounded-lg border border-border bg-surface-muted p-4">
+          <div className="mb-4 grid grid-cols-3 gap-4 rounded-lg border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-4">
             <div>
               <div className="text-xs uppercase text-text-muted">Estimated recovery</div>
               <div className="mt-1 text-2xl font-semibold text-text-primary tabular-nums">
@@ -86,7 +86,7 @@ export function PreviewDialog({ open, loading, error, preview, onCancel, onProce
 
           <table className="w-full text-sm" data-testid="cleaning-preview-table">
             <thead>
-              <tr className="border-b border-border text-xs uppercase text-text-muted">
+              <tr className="border-b border-[var(--avs-border)] text-xs uppercase text-text-muted">
                 <th className="py-2 text-left font-medium">Category</th>
                 <th className="py-2 text-right font-medium">Files</th>
                 <th className="py-2 text-right font-medium">Size</th>
@@ -95,7 +95,7 @@ export function PreviewDialog({ open, loading, error, preview, onCancel, onProce
             </thead>
             <tbody>
               {preview.cleaners.map((c) => (
-                <tr key={c.id} className="border-b border-border/60" data-testid={`cleaning-preview-row-${c.id}`}>
+                <tr key={c.id} className="border-b border-[var(--avs-border)]/60" data-testid={`cleaning-preview-row-${c.id}`}>
                   <td className="py-2 text-text-primary">
                     <div className="flex items-center gap-2">
                       <span>{c.name}</span>

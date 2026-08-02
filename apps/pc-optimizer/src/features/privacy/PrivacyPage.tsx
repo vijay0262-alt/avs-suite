@@ -154,7 +154,7 @@ export default function PrivacyPage() {
                     }
                   };
                   return (
-                    <label key={browser} className="flex items-center gap-2 px-3 py-1.5 bg-bg-secondary rounded-lg cursor-pointer hover:bg-surface-muted">
+                    <label key={browser} className="flex items-center gap-2 px-3 py-1.5 bg-bg-secondary rounded-lg cursor-pointer hover:bg-[var(--avs-surface-muted)]">
                       <input
                         type="checkbox"
                         checked={allSelected}

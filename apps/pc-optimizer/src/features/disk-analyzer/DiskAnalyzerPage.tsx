@@ -83,7 +83,7 @@ export default function DiskAnalyzerPage() {
                         className={`relative p-4 border rounded cursor-pointer transition-colors ${
                           selected
                             ? 'border-brand-primary bg-bg-secondary'
-                            : 'border-border hover:border-brand-primary'
+                            : 'border-[var(--avs-border)] hover:border-brand-primary'
                         }`}
                       >
                         <input
@@ -133,7 +133,7 @@ export default function DiskAnalyzerPage() {
                 </div>
               )}
 
-              <div className="pt-4 border-t border-border">
+              <div className="pt-4 border-t border-[var(--avs-border)]">
                 <div>
                   <label className="block text-sm text-text-secondary mb-2">
                     Or enter a specific folder
@@ -143,7 +143,7 @@ export default function DiskAnalyzerPage() {
                     placeholder="C:\\Users\\YourName\\Documents"
                     value={state.customDirectory}
                     onChange={(e) => vm.setCustomDirectory(e.target.value)}
-                    className="w-full px-3 py-2 bg-bg-secondary border border-border rounded text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                    className="w-full px-3 py-2 bg-bg-secondary border border-[var(--avs-border)] rounded text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                   />
                 </div>
                 <div className="mt-4">
@@ -218,7 +218,7 @@ export default function DiskAnalyzerPage() {
               {state.analysisResult.categorySummary && state.analysisResult.categorySummary.length > 0 && (
                 <Card title="Files by Category — Select and Delete to Free Up Space" className="mb-4">
                   {/* Selection toolbar */}
-                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-[var(--avs-border)]">
                     <div className="flex items-center gap-4">
                       <span className="text-sm text-text-secondary">
                         {selectedCount > 0
@@ -253,7 +253,7 @@ export default function DiskAnalyzerPage() {
                       const icon = CATEGORY_ICONS[cat.category] || '📋';
 
                       return (
-                        <div key={cat.category} className="border border-border rounded-lg overflow-hidden">
+                        <div key={cat.category} className="border border-[var(--avs-border)] rounded-lg overflow-hidden">
                           {/* Category header */}
                           <div
                             className="flex items-center gap-3 p-3 bg-bg-secondary cursor-pointer hover:bg-bg-secondary/80 transition-colors"
@@ -301,7 +301,7 @@ export default function DiskAnalyzerPage() {
                                   return (
                                     <label
                                       key={file.path}
-                                      className={`flex items-center gap-3 px-3 py-2 border-b border-border/50 cursor-pointer transition-colors ${
+                                      className={`flex items-center gap-3 px-3 py-2 border-b border-[var(--avs-border)]/50 cursor-pointer transition-colors ${
                                         isSelected ? 'bg-brand-primary/5' : 'hover:bg-bg-secondary/50'
                                       }`}
                                     >
@@ -369,7 +369,7 @@ export default function DiskAnalyzerPage() {
                   ) : (
                     <div className="space-y-2">
                       {state.analysisResult.analysis.largestFiles.map((file, index) => (
-                        <div key={index} className="p-2 border border-border rounded">
+                        <div key={index} className="p-2 border border-[var(--avs-border)] rounded">
                           <div className="flex justify-between items-start">
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold text-text-primary truncate">{file.name}</p>
@@ -411,7 +411,7 @@ export default function DiskAnalyzerPage() {
                 ) : (
                   <div className="space-y-2">
                     {state.analysisResult.analysis.subdirectories.map((subdir, index) => (
-                      <div key={index} className="p-3 border border-border rounded">
+                      <div key={index} className="p-3 border border-[var(--avs-border)] rounded">
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-text-primary truncate">{subdir.path}</p>

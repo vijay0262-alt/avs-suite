@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, DashboardSection, StatCard, InsightCard, RecommendationCard, ChartCard, TimelineCard, Sparkline, EmptyState, LoadingState } from '@avs/ui';
+import { Button, Card, DashboardSection, StatCard, InsightCard, RecommendationCard, ChartCard, TimelineCard, Sparkline, EmptyState, LoadingState } from '@avs/ui';
 import {
   SparklesIcon,
   ShieldExclamationIcon,
@@ -20,7 +20,7 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { DashboardViewModel } from './DashboardViewModel';
 import { dashboardService } from './dashboard.service';
 import { generateRecommendations } from './dashboard.utils';
-import type { DashboardMetrics, LiveMetrics } from './dashboard.types';
+import type { HealthSnapshot, DashboardMetrics, LiveMetrics } from './dashboard.types';
 import { HealthScanModal } from './components/HealthScanModal';
 
 function getGreeting(): string {
@@ -210,7 +210,7 @@ export default function DashboardPage() {
             value={hardwareValue}
             icon={<CpuChipIcon className="h-5 w-5" />}
             tone={hardwareTone}
-            description={`CPU ${state.liveMetrics ? (state.liveMetrics.cpu.temperature !== null ? Math.round(state.liveMetrics.cpu.temperature) + '°C' : 'N/A') : '—'}`}
+            description={`CPU ${state.liveMetrics ? state.liveMetrics.cpu.temperature !== null ? Math.round(state.liveMetrics.cpu.temperature) + '°C' : 'N/A' : '—'}`}
             progress={hardwareTone === 'success' ? 85 : hardwareTone === 'warning' ? 50 : 20}
             onClick={() => navigate('/hardware-center')}
             data-testid="stat-hardware"
@@ -391,7 +391,7 @@ export default function DashboardPage() {
             { label: 'Disk', value: state.metrics?.storage?.[0] ? `${Math.round(state.metrics.storage[0].usage)}%` : '—', icon: CircleStackIcon },
             { label: 'Network', value: state.liveMetrics?.network ? `${(state.liveMetrics.network.downloadSpeed / 1_000_000).toFixed(1)} MB/s` : '—', icon: ArrowRightIcon },
           ].map((stat) => (
-            <div key={stat.label} className="flex items-center gap-3 rounded-[var(--avs-radius-xl)] bg-gradient-surface border border-[var(--avs-border)] p-4">
+            <Card key={stat.label} variant="gradient" className="flex items-center gap-3">
               <div className="p-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)]">
                 <stat.icon className="h-5 w-5 text-text-muted" />
               </div>
@@ -399,7 +399,7 @@ export default function DashboardPage() {
                 <div className="text-xs text-text-muted">{stat.label}</div>
                 <div className="text-lg font-bold text-text-primary tabular-nums">{stat.value}</div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       </DashboardSection>

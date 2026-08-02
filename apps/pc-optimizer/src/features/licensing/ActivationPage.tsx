@@ -199,7 +199,7 @@ export default function ActivationPage() {
                   {features.map((f) => (
                     <span
                       key={f}
-                      className="inline-flex items-center rounded-md bg-surface-muted px-2 py-0.5 text-xs text-text-secondary"
+                      className="inline-flex items-center rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-2 py-0.5 text-xs text-text-secondary"
                     >
                       {f}
                     </span>
@@ -277,12 +277,12 @@ export default function ActivationPage() {
               </div>
 
               {actionSuccess && (
-                <div className="rounded-md bg-semantic-success/10 px-3 py-2 text-sm text-semantic-success">
+                <div className="rounded-[var(--avs-radius-md)] bg-semantic-success/10 px-3 py-2 text-sm text-semantic-success">
                   {actionSuccess}
                 </div>
               )}
 
-              <div className="flex items-center gap-3 border-t border-border pt-4">
+              <div className="flex items-center gap-3 border-t border-[var(--avs-border)] pt-4">
                 <Button
                   variant="primary"
                   onClick={handleRefresh}
@@ -334,7 +334,7 @@ export default function ActivationPage() {
             </div>
 
             {/* License Key Activation */}
-            <div className="border-t border-border pt-4" data-testid="license-key-activation">
+            <div className="border-t border-[var(--avs-border)] pt-4" data-testid="license-key-activation">
               <div className="mb-2">
                 <h4 className="text-sm font-semibold text-text-primary">Have a License Key?</h4>
                 <p className="text-xs text-text-muted mt-0.5">
@@ -348,7 +348,7 @@ export default function ActivationPage() {
                   onChange={(e) => setLicenseKeyInput(e.target.value)}
                   placeholder="AVS-XXXX-XXXX-XXXX-XXXX"
                   disabled={activateLoading || !isConnected}
-                  className="flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm font-mono uppercase text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-50"
+                  className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-surface px-3 py-2 text-sm font-mono uppercase text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-50"
                   data-testid="license-key-input"
                 />
                 <Button
@@ -362,13 +362,13 @@ export default function ActivationPage() {
               </div>
 
               {activateError && (
-                <div className="mt-2 rounded-md bg-semantic-danger/10 px-3 py-2 text-sm text-semantic-danger" data-testid="activate-license-error">
+                <div className="mt-2 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 px-3 py-2 text-sm text-semantic-danger" data-testid="activate-license-error">
                   {activateError}
                 </div>
               )}
 
               {activateSuccess && (
-                <div className="mt-2 rounded-md bg-semantic-success/10 px-3 py-2 text-sm text-semantic-success" data-testid="activate-license-success">
+                <div className="mt-2 rounded-[var(--avs-radius-md)] bg-semantic-success/10 px-3 py-2 text-sm text-semantic-success" data-testid="activate-license-success">
                   {activateSuccess}
                 </div>
               )}
@@ -382,7 +382,7 @@ export default function ActivationPage() {
         <Card title="Registered Devices">
           <div className="space-y-3">
             {devices.map((dev) => (
-              <div key={dev.id} className="flex items-center justify-between text-sm border-b border-border pb-2 last:border-0">
+              <div key={dev.id} className="flex items-center justify-between text-sm border-b border-[var(--avs-border)] pb-2 last:border-0">
                 <div>
                   <div className="font-medium text-text-primary">{dev.device_name ?? 'Unnamed Device'}</div>
                   <div className="font-mono text-xs text-text-muted">{dev.device_fingerprint}</div>

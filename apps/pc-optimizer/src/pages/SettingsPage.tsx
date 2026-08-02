@@ -114,7 +114,7 @@ export default function SettingsPage() {
       />
 
       <div className="space-y-4">
-        <Card title="Appearance">
+        <Card title="Appearance" variant="glass">
           <div className="flex flex-wrap items-center gap-2">
             {THEMES.map((t) => (
               <Button
@@ -132,14 +132,14 @@ export default function SettingsPage() {
           </p>
         </Card>
 
-        <Card title="Language">
+        <Card title="Language" variant="glass">
           <p className="text-sm text-text-secondary">
             English is currently the default. Additional locales will be enabled once
             translations complete.
           </p>
         </Card>
 
-        <Card title="Application Edition">
+        <Card title="Application Edition" variant="glass">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
@@ -162,7 +162,7 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card title="Version">
+        <Card title="Version" variant="glass">
           <dl className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
             <div>
               <dt className="text-text-muted">Version</dt>
@@ -179,7 +179,7 @@ export default function SettingsPage() {
           </dl>
         </Card>
 
-        <Card title="Update Preferences">
+        <Card title="Update Preferences" variant="glass">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
@@ -198,7 +198,7 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card title="Telemetry">
+        <Card title="Telemetry" variant="glass">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-medium text-text-primary">Anonymous usage data</div>
@@ -208,7 +208,7 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card title="AVS Shield Account">
+        <Card title="AVS Shield Account" variant="glass">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <UserCircleIcon className="h-10 w-10 text-text-muted" aria-hidden />
@@ -244,6 +244,7 @@ export default function SettingsPage() {
 
         <Card
           title="Optimizer Entitlement"
+          variant="glass"
           actions={
             <Button
               variant="ghost"
@@ -307,6 +308,7 @@ export default function SettingsPage() {
 
         <Card
           title="Subscription"
+          variant="glass"
           actions={
             <Button
               variant="ghost"
@@ -354,7 +356,7 @@ export default function SettingsPage() {
                   <div className="text-xs font-medium text-text-muted mb-1">Features</div>
                   <div className="flex flex-wrap gap-1">
                     {subscription.features.map((f) => (
-                      <span key={f} className="inline-flex items-center gap-1 rounded-md bg-surface-muted px-2 py-0.5 text-xs text-text-secondary">
+                      <span key={f} className="inline-flex items-center gap-1 rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface-muted)] px-2 py-0.5 text-xs text-text-secondary">
                         <CheckCircleIcon className="h-3 w-3 text-semantic-success" />
                         {f}
                       </span>
@@ -388,6 +390,7 @@ export default function SettingsPage() {
 
         <Card
           title="Feature Engine"
+          variant="glass"
           actions={
             <Badge tone={featureEngineInitialized ? 'success' : 'neutral'}>
               {featureEngineInitialized ? 'Active' : 'Inactive'}
@@ -409,7 +412,7 @@ export default function SettingsPage() {
                 <div className="text-xs font-medium text-text-muted mb-1">Enabled</div>
                 <div className="flex flex-wrap gap-1">
                   {enabledFeatures.map((f) => (
-                    <span key={f} className="inline-flex items-center gap-1 rounded-md bg-surface-muted px-2 py-0.5 text-xs text-text-secondary">
+                    <span key={f} className="inline-flex items-center gap-1 rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface-muted)] px-2 py-0.5 text-xs text-text-secondary">
                       <CheckCircleIcon className="h-3 w-3 text-semantic-success" />
                       {FEATURE_LABELS[f]}
                     </span>
@@ -423,7 +426,7 @@ export default function SettingsPage() {
                 <div className="text-xs font-medium text-text-muted mb-1">Disabled</div>
                 <div className="flex flex-wrap gap-1">
                   {disabledFeatures.map((f) => (
-                    <span key={f} className="inline-flex items-center gap-1 rounded-md bg-surface-muted px-2 py-0.5 text-xs text-text-muted">
+                    <span key={f} className="inline-flex items-center gap-1 rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface-muted)] px-2 py-0.5 text-xs text-text-muted">
                       <LockClosedIcon className="h-3 w-3 text-text-muted" />
                       {FEATURE_LABELS[f]}
                     </span>
@@ -436,6 +439,7 @@ export default function SettingsPage() {
 
         <Card
           title="Updates"
+          variant="glass"
           actions={
             <div className="flex items-center gap-2">
               <Button
@@ -533,7 +537,7 @@ export default function SettingsPage() {
             </div>
 
             {updateForceUpdate && updateStatus === 'update-available' && (
-              <div className="rounded-md bg-semantic-danger/10 border border-semantic-danger/30 px-3 py-2" data-testid="settings-force-update-notice">
+              <div className="rounded-[var(--avs-radius-md)] bg-semantic-danger/10 border border-semantic-danger/30 px-3 py-2" data-testid="settings-force-update-notice">
                 <p className="text-sm text-semantic-danger">
                   A mandatory update is available. Premium features will be limited until the update is installed.
                 </p>
@@ -546,10 +550,10 @@ export default function SettingsPage() {
                   <span>Downloading… {downloadProgress.percent.toFixed(0)}%</span>
                   <span>{(downloadProgress.downloadedBytes / 1024 / 1024).toFixed(1)} / {(downloadProgress.totalBytes / 1024 / 1024).toFixed(1)} MB</span>
                 </div>
-                <div className="h-2 rounded-full bg-surface-muted overflow-hidden">
+                <div className="h-2 rounded-full bg-[var(--avs-surface-muted)] overflow-hidden">
                   <div
-                    className="h-full bg-brand-primary transition-all"
-                    style={{ width: `${downloadProgress.percent}%` }}
+                    className="h-full transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
+                    style={{ background: 'var(--avs-gradient-brand)', width: `${downloadProgress.percent}%` }}
                   />
                 </div>
               </div>
@@ -563,7 +567,7 @@ export default function SettingsPage() {
             )}
 
             {updateError && (
-              <div className="rounded-md bg-semantic-danger/10 border border-semantic-danger/30 px-3 py-2" data-testid="settings-update-error">
+              <div className="rounded-[var(--avs-radius-md)] bg-semantic-danger/10 border border-semantic-danger/30 px-3 py-2" data-testid="settings-update-error">
                 <p className="text-sm text-semantic-danger">{updateError}</p>
                 <Button
                   variant="ghost"
@@ -577,7 +581,7 @@ export default function SettingsPage() {
             )}
 
             {updateStatus === 'ready' && updateInstaller && (
-              <div className="rounded-md bg-semantic-success/10 border border-semantic-success/30 px-3 py-2" data-testid="settings-update-ready">
+              <div className="rounded-[var(--avs-radius-md)] bg-semantic-success/10 border border-semantic-success/30 px-3 py-2" data-testid="settings-update-ready">
                 <p className="text-sm text-semantic-success">
                   Update is ready to install. Click &quot;Install&quot; to launch the installer. The application will close during installation.
                 </p>
@@ -586,7 +590,7 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card title="Developer">
+        <Card title="Developer" variant="glass">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-medium text-text-primary">Developer Verification Mode</div>
@@ -600,14 +604,14 @@ export default function SettingsPage() {
           </div>
 
           {devMode && (
-            <div className="mt-4 border-t border-border pt-4">
+            <div className="mt-4 border-t border-[var(--avs-border)] pt-4">
               <div className="text-sm font-medium text-text-primary mb-2">Verification Log ({logs.length})</div>
               {logs.length === 0 ? (
                 <p className="text-sm text-text-secondary">No verification data yet. Run a Smart Health Scan optimization to populate this log.</p>
               ) : (
-                <div className="max-h-96 overflow-auto border border-border rounded-md">
+                <div className="max-h-96 overflow-auto border border-[var(--avs-border)] rounded-[var(--avs-radius-md)]">
                   <table className="w-full text-xs text-left">
-                    <thead className="bg-surface-muted text-text-secondary sticky top-0">
+                    <thead className="bg-[var(--avs-surface-muted)] text-text-secondary sticky top-0">
                       <tr>
                         <th className="p-2">Time</th>
                         <th className="p-2">Module</th>
@@ -621,7 +625,7 @@ export default function SettingsPage() {
                     </thead>
                     <tbody>
                       {logs.map((log) => (
-                        <tr key={log.id} className="border-t border-border">
+                        <tr key={log.id} className="border-t border-[var(--avs-border)]">
                           <td className="p-2 tabular-nums">{new Date(log.timestamp).toLocaleTimeString()}</td>
                           <td className="p-2">{log.moduleId}</td>
                           <td className="p-2">{log.action}</td>
@@ -642,7 +646,7 @@ export default function SettingsPage() {
           )}
         </Card>
 
-        <Card title="Onboarding & Help">
+        <Card title="Onboarding & Help" variant="glass">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
@@ -678,12 +682,12 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card title="Keyboard Shortcuts">
+        <Card title="Keyboard Shortcuts" variant="glass">
           <div className="space-y-1.5" data-testid="settings-keyboard-shortcuts">
             {KEYBOARD_SHORTCUTS.map((shortcut) => (
               <div key={shortcut.keys} className="flex items-center justify-between py-1">
                 <span className="text-sm text-text-secondary">{shortcut.description}</span>
-                <kbd className="rounded border border-border bg-bg-secondary px-2 py-0.5 text-xs font-mono text-text-primary">
+                <kbd className="rounded-[var(--avs-radius-sm)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] px-2 py-0.5 text-xs font-mono text-text-primary">
                   {shortcut.keys}
                 </kbd>
               </div>

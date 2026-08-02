@@ -92,7 +92,7 @@ export const HealthScoreCard = React.memo(function HealthScoreCard({ healthScore
               <div className={`text-2xl font-semibold ${zoneConfig.textColor}`}>{zoneConfig.label}</div>
               <HealthBadge badge={scoreToHealthBadge(displayScore)} size="sm" />
             </div>
-            <div className="mt-1 inline-flex items-center rounded-full bg-surface-muted px-3 py-1 text-sm font-medium text-text-secondary">
+            <div className="mt-1 inline-flex items-center rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-sm font-medium text-text-secondary">
               {issueCount > 0 ? `${issueCount} Issues Found` : 'No Issues Found'}
             </div>
             <div className="mt-2 text-sm text-text-secondary">
@@ -123,7 +123,7 @@ export const HealthScoreCard = React.memo(function HealthScoreCard({ healthScore
 
 const Stat = React.memo(function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-surface-muted p-3 text-center">
+    <div className="rounded-lg bg-[var(--avs-surface-muted)] p-3 text-center">
       <div className="text-lg font-bold text-text-primary tabular-nums">{value}</div>
       <div className="text-xs text-text-muted">{label}</div>
     </div>

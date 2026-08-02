@@ -88,7 +88,7 @@ export const CategoryRow = memo(function CategoryRow({
 
   return (
     <div
-      className="flex items-center gap-4 rounded-lg border border-border bg-surface px-4 py-3"
+      className="flex items-center gap-4 rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-4 py-3"
       data-testid={`junk-category-row-${id}`}
     >
       <input
@@ -101,7 +101,7 @@ export const CategoryRow = memo(function CategoryRow({
         data-testid={`junk-category-check-${id}`}
       />
 
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--avs-brand-primary)_12%,transparent)] text-brand-primary">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--avs-radius-md)] bg-[color-mix(in_srgb,var(--avs-brand-primary)_12%,transparent)] text-brand-primary">
         <Icon className="h-5 w-5" aria-hidden />
       </div>
 
@@ -116,7 +116,7 @@ export const CategoryRow = memo(function CategoryRow({
         <p className="mt-0.5 truncate text-xs text-text-secondary">{description}</p>
 
         {status === 'running' && (
-          <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-surface-muted">
+          <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[var(--avs-surface-muted)]">
             <div
               className="h-full bg-brand-primary transition-[width] duration-200"
               style={{ width: `${progress}%` }}
@@ -146,11 +146,11 @@ export const CategoryRow = memo(function CategoryRow({
         onClick={() => onViewDetails(id)}
         disabled={!detailsAvailable || files === 0}
         className={clsx(
-          'shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+          'shrink-0 rounded-[var(--avs-radius-md)] px-3 py-1.5 text-xs font-medium transition-colors',
           'outline-none focus-visible:shadow-[var(--avs-focus-ring)]',
           detailsAvailable && files > 0
-            ? 'bg-surface-muted text-text-primary hover:bg-border'
-            : 'cursor-not-allowed bg-surface-muted text-text-muted opacity-60',
+            ? 'bg-[var(--avs-surface-muted)] text-text-primary hover:bg-border'
+            : 'cursor-not-allowed bg-[var(--avs-surface-muted)] text-text-muted opacity-60',
         )}
         data-testid={`junk-category-details-${id}`}
       >

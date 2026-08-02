@@ -153,7 +153,7 @@ export function HealthScanModal({
             {modules.map((m) => (
               <div
                 key={m.moduleId}
-                className="flex items-center justify-between p-3 rounded-md bg-surface-muted"
+                className="flex items-center justify-between p-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)]"
               >
                 <div className="flex items-center gap-3">
                   <div className="text-text-muted">
@@ -535,7 +535,7 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
 
         {/* If nothing changed, say so honestly */}
         {totalBytesRecovered === 0 && totalItemsRemoved === 0 && totalEntriesDisabled === 0 && totalIssuesFixed === 0 && (
-          <div className="flex items-center gap-3 py-3 px-4 rounded-md bg-surface-muted text-sm text-text-secondary">
+          <div className="flex items-center gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] text-sm text-text-secondary">
             <InformationCircleIcon className="h-5 w-5 shrink-0" aria-hidden />
             <span>No measurable improvement detected. Your system may already be optimized.</span>
           </div>
@@ -543,7 +543,7 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
 
         {/* If score didn't change, explain why */}
         {!scoreChanged && (
-          <div className="flex items-center gap-3 py-3 px-4 rounded-md bg-surface-muted text-sm text-text-secondary">
+          <div className="flex items-center gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] text-sm text-text-secondary">
             <InformationCircleIcon className="h-5 w-5 shrink-0" aria-hidden />
             <span>Health score remained at {afterOverall}. This can happen when cleaned files were small relative to overall system state.</span>
           </div>
@@ -579,7 +579,7 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
               </div>
               <div className="space-y-2">
                 {needsAction.map((m) => (
-                  <div key={m.moduleId} className="p-3 rounded-md bg-semantic-warning/10 border border-semantic-warning/20">
+                  <div key={m.moduleId} className="p-3 rounded-[var(--avs-radius-md)] bg-semantic-warning/10 border border-semantic-warning/20">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm font-medium text-text-primary">{m.moduleName}</span>
                       <span className="text-xs font-medium text-semantic-warning">Manual action</span>
@@ -598,7 +598,7 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
         {/* Post-optimization recommendations */}
         <div className="space-y-2" data-testid="post-optimization-recommendations">
           {afterOverall >= 90 ? (
-            <div className="flex items-center gap-3 py-3 px-4 rounded-md bg-semantic-success/10">
+            <div className="flex items-center gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-semantic-success/10">
               <SparklesIcon className="h-5 w-5 text-semantic-success shrink-0" aria-hidden />
               <div>
                 <div className="text-sm font-medium text-text-primary">Your PC Health is Excellent.</div>
@@ -606,7 +606,7 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
               </div>
             </div>
           ) : afterOverall >= 75 ? (
-            <div className="flex items-center gap-3 py-3 px-4 rounded-md bg-surface-muted">
+            <div className="flex items-center gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)]">
               <SparklesIcon className="h-5 w-5 text-text-secondary shrink-0" aria-hidden />
               <div>
                 <div className="text-sm font-medium text-text-primary">Your PC Health is Good.</div>
@@ -614,7 +614,7 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-3 py-3 px-4 rounded-md bg-semantic-warning/10">
+            <div className="flex items-center gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-semantic-warning/10">
               <ExclamationTriangleIcon className="h-5 w-5 text-semantic-warning shrink-0" aria-hidden />
               <div>
                 <div className="text-sm font-medium text-text-primary">Further optimization recommended.</div>
@@ -625,7 +625,7 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
         </div>
 
         {error && (
-          <div className="flex items-start gap-3 py-3 px-4 rounded-md bg-semantic-danger/10 text-sm text-semantic-danger">
+          <div className="flex items-start gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 text-sm text-semantic-danger">
             <ExclamationTriangleIcon className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
             <span>{error}</span>
           </div>
@@ -649,9 +649,9 @@ function DetailedResultSection({ module: m }: { module: HealthScanModuleResult }
   const reason = actual?.reason || (m.canAutoFix ? 'Automatically optimized' : 'Requires manual action');
 
   return (
-    <div className="rounded-md bg-surface-muted overflow-hidden" data-testid={`detail-section-${m.moduleId}`}>
+    <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] overflow-hidden" data-testid={`detail-section-${m.moduleId}`}>
       <button
-        className="w-full flex items-center justify-between p-3 text-left hover:bg-surface-muted/80 transition-colors"
+        className="w-full flex items-center justify-between p-3 text-left hover:bg-[var(--avs-surface-muted)]/80 transition-colors"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
         data-testid={`detail-toggle-${m.moduleId}`}
@@ -682,7 +682,7 @@ function DetailedResultSection({ module: m }: { module: HealthScanModuleResult }
       </button>
 
       {expanded && (
-        <div className="px-3 pb-3 space-y-2 border-t border-border/50 pt-2" data-testid={`detail-content-${m.moduleId}`}>
+        <div className="px-3 pb-3 space-y-2 border-t border-[var(--avs-border)]/50 pt-2" data-testid={`detail-content-${m.moduleId}`}>
           {/* Scanned / Removed / Skipped / Reason */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
             <div>
@@ -751,7 +751,7 @@ function StatusBadge({ status }: { status: HealthScanModuleResult['status'] }) {
 
 function ModuleReportCard({ module }: { module: HealthScanModuleResult }) {
   return (
-    <div className="p-3 rounded-md bg-surface-muted">
+    <div className="p-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)]">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
           <div className="text-text-muted">

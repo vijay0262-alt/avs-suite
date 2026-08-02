@@ -87,7 +87,7 @@ export default function UpdaterPage() {
 
           {state.upgrades.length > 0 && (
             <Card>
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-[var(--avs-border)]">
                 {state.upgrades.map((u) => (
                   <div key={u.packageId} className="flex items-center gap-4 py-3">
                     <div className="min-w-0 flex-1">

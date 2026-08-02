@@ -34,20 +34,20 @@ export class ErrorBoundary extends Component<Props, State> {
       <div
         role="alert"
         data-testid="error-boundary"
-        className="mx-auto my-16 max-w-lg rounded-lg border border-semantic-danger/40 bg-surface p-6 shadow-md"
+        className="mx-auto my-16 max-w-lg rounded-[var(--avs-radius-lg)] border border-semantic-danger/40 bg-[var(--avs-surface)] p-6 shadow-[var(--avs-shadow-md)]"
       >
         <h2 className="text-lg font-semibold text-semantic-danger">Something went wrong.</h2>
         <p className="mt-2 text-sm text-text-secondary">
           The application encountered an unexpected error. You can try again below or restart the
           app if the problem persists.
         </p>
-        <pre className="mt-3 overflow-auto rounded bg-surface-muted p-3 text-xs text-text-muted">
+        <pre className="mt-3 overflow-auto rounded bg-[var(--avs-surface-muted)] p-3 text-xs text-text-muted">
           {this.state.error.message}
         </pre>
         <button
           type="button"
           onClick={this.reset}
-          className="mt-4 rounded-md bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-secondary"
+          className="mt-4 rounded-[var(--avs-radius-md)] bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-secondary"
         >
           Try again
         </button>

@@ -1,6 +1,6 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useState, useEffect, useMemo, type ComponentType } from 'react';
+import { useMemo, type ComponentType } from 'react';
 import clsx from 'clsx';
 import { GlobalSearch } from './GlobalSearch';
 import {
@@ -22,8 +22,6 @@ import {
   KeyIcon,
   ClipboardDocumentListIcon,
   DocumentChartBarIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
   CircleStackIcon,
   HeartIcon,
 } from '@heroicons/react/24/outline';
@@ -93,141 +91,100 @@ const NAV_SECTIONS: readonly NavSection[] = [
   },
 ];
 
-const COLLAPSED_KEY = 'avs-sidebar-collapsed-sections';
-
-function loadCollapsedSections(): Set<string> {
-  try {
-    const raw = localStorage.getItem(COLLAPSED_KEY);
-    if (raw) return new Set(JSON.parse(raw) as string[]);
-  } catch { /* ignore */ }
-  return new Set();
-}
-
-function saveCollapsedSections(set: Set<string>): void {
-  try {
-    localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...set]));
-  } catch { /* ignore */ }
-}
 
 function NavSectionView({
   section,
-  collapsed,
-  onToggle,
   guard,
   t,
 }: {
   section: NavSection;
-  collapsed: boolean;
-  onToggle: () => void;
   guard: ReturnType<typeof useFeatureGuard>['guard'];
   t: (key: string) => string;
 }) {
   return (
     <div data-testid={`sidebar-section-${section.id}`}>
-      <button
-        onClick={onToggle}
-        className="flex w-full items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted hover:text-text-secondary transition-colors"
-        aria-expanded={!collapsed}
-        aria-label={t(section.labelKey)}
-        data-testid={`sidebar-section-toggle-${section.id}`}
-      >
-        {collapsed ? (
-          <ChevronRightIcon className="h-3 w-3 shrink-0" aria-hidden />
-        ) : (
-          <ChevronDownIcon className="h-3 w-3 shrink-0" aria-hidden />
-        )}
-        <span>{t(section.labelKey)}</span>
-      </button>
-      {!collapsed && (
-        <div className="flex flex-col gap-0.5 mt-0.5">
-          {section.entries.map(({ id, to, labelKey, Icon, feature }) => {
-            const locked = feature ? !canUse(feature) : false;
+      <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted/70">
+        {t(section.labelKey)}
+      </span>
+      <div className="flex flex-col gap-0.5">
+        {section.entries.map(({ id, to, labelKey, Icon, feature }) => {
+          const locked = feature ? !canUse(feature) : false;
 
-            if (locked) {
-              return (
-                <button
-                  key={id}
-                  data-testid={`sidebar-link-${id}`}
-                  onClick={() => feature && guard(feature, t(labelKey), () => {})}
-                  className={clsx(
-                    'group flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium',
-                    'transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]',
-                    'text-text-muted hover:bg-surface-muted hover:text-text-secondary',
-                  )}
-                >
-                  <Icon className="h-5 w-5 shrink-0" aria-hidden />
-                  <span className="truncate flex-1 text-left">{t(labelKey)}</span>
-                  <LockClosedIcon className="h-4 w-4 shrink-0 text-text-muted" aria-hidden />
-                </button>
-              );
-            }
-
+          if (locked) {
             return (
+              <button
+                key={id}
+                data-testid={`sidebar-link-${id}`}
+                onClick={() => feature && guard(feature, t(labelKey), () => {})}
+                className={clsx(
+                  'group relative flex w-full items-center gap-3 rounded-[var(--avs-radius-md)] px-3 py-2 text-[13px] font-medium',
+                  'transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]',
+                  'text-text-muted hover:bg-[var(--avs-surface-muted)] hover:text-text-secondary',
+                )}
+              >
+                <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
+                <span className="truncate flex-1 text-left">{t(labelKey)}</span>
+                <LockClosedIcon className="h-3.5 w-3.5 shrink-0 text-text-muted/60" aria-hidden />
+              </button>
+            );
+          }
+
+          return (
               <NavLink
                 key={id}
                 to={to}
                 data-testid={`sidebar-link-${id}`}
                 className={({ isActive }) =>
                   clsx(
-                    'group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium',
-                    'transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]',
+                    'group relative flex items-center gap-3 rounded-[var(--avs-radius-md)] px-3 py-2 text-[13px] font-medium',
+                    'transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]',
                     'outline-none focus-visible:shadow-[var(--avs-focus-ring)]',
                     isActive
-                      ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_16%,transparent)] text-brand-primary'
-                      : 'text-text-secondary hover:bg-surface-muted hover:text-text-primary',
+                      ? 'text-text-primary'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-[var(--avs-surface-muted)]',
                   )
                 }
               >
-                <Icon className="h-5 w-5 shrink-0" aria-hidden />
-                <span className="truncate">{t(labelKey)}</span>
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <span
+                        className="absolute inset-0 rounded-[var(--avs-radius-md)] bg-[var(--avs-glass-bg)] border border-[var(--avs-glass-border)] shadow-[var(--avs-shadow-glow)]"
+                        aria-hidden
+                      />
+                    )}
+                    {isActive && (
+                      <span
+                        className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-gradient-to-b from-brand-primary to-brand-secondary"
+                        aria-hidden
+                      />
+                    )}
+                    <Icon
+                      className={clsx(
+                        'relative h-[18px] w-[18px] shrink-0 transition-colors',
+                        isActive ? 'text-brand-primary' : 'text-text-muted group-hover:text-text-secondary',
+                      )}
+                      aria-hidden
+                    />
+                    <span className="relative truncate">{t(labelKey)}</span>
+                  </>
+                )}
               </NavLink>
             );
           })}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
 
 /**
- * Persistent sidebar navigation with grouped, collapsible sections.
+ * Persistent sidebar navigation with grouped sections.
  * Modules with a `feature` prop are gated by the license edition —
  * locked modules show a lock icon and trigger the UpgradeDialog on click.
- * Section collapse state persists in localStorage.
  */
 export function Sidebar() {
   const { t } = useTranslation();
   const { guard, dialogElement } = useFeatureGuard();
-  const location = useLocation();
-
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(loadCollapsedSections);
-
-  useEffect(() => {
-    saveCollapsedSections(collapsedSections);
-  }, [collapsedSections]);
-
-  const toggleSection = (sectionId: string) => {
-    setCollapsedSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(sectionId)) next.delete(sectionId);
-      else next.add(sectionId);
-      return next;
-    });
-  };
-
-  // Auto-expand section containing the active route
-  useEffect(() => {
-    const activeSection = NAV_SECTIONS.find((s) =>
-      s.entries.some((e) => location.pathname.startsWith(e.to)),
-    );
-    if (activeSection && collapsedSections.has(activeSection.id)) {
-      setCollapsedSections((prev) => {
-        const next = new Set(prev);
-        next.delete(activeSection!.id);
-        return next;
-      });
-    }
-  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const allEntries = useMemo(
     () => NAV_SECTIONS.flatMap((s) => s.entries).map((e) => ({
@@ -241,20 +198,18 @@ export function Sidebar() {
 
   return (
     <aside
-      className="w-60 shrink-0 border-r border-border bg-surface px-3 py-4 overflow-y-auto"
+      className="w-60 shrink-0 border-r border-[var(--avs-glass-border)] bg-[var(--avs-glass-bg)] backdrop-blur-[var(--avs-glass-blur)] px-3 py-4 overflow-y-auto"
       data-testid="app-sidebar"
       aria-label="Sidebar navigation"
     >
       <div className="mb-4">
         <GlobalSearch entries={allEntries} />
       </div>
-      <nav aria-label="Primary navigation" className="flex flex-col gap-2">
+      <nav aria-label="Primary navigation" className="flex flex-col gap-3">
         {NAV_SECTIONS.map((section) => (
           <NavSectionView
             key={section.id}
             section={section}
-            collapsed={collapsedSections.has(section.id)}
-            onToggle={() => toggleSection(section.id)}
             guard={guard}
             t={t}
           />

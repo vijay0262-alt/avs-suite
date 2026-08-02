@@ -157,35 +157,35 @@ export default function DiagnosticsPage() {
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => vm.testPing()}
-                className="px-4 py-2 bg-surface hover:bg-surface-hover border border-border rounded-lg text-sm transition-colors"
+                className="px-4 py-2 bg-[var(--avs-surface)] hover:bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded-[var(--avs-radius-lg)] text-sm transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
                 data-testid="test-ping"
               >
                 Test system.ping
               </button>
               <button
                 onClick={() => vm.testScanStart()}
-                className="px-4 py-2 bg-surface hover:bg-surface-hover border border-border rounded-lg text-sm transition-colors"
+                className="px-4 py-2 bg-[var(--avs-surface)] hover:bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded-[var(--avs-radius-lg)] text-sm transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
                 data-testid="test-scan-start"
               >
                 Test scan.start
               </button>
               <button
                 onClick={() => vm.testPreview()}
-                className="px-4 py-2 bg-surface hover:bg-surface-hover border border-border rounded-lg text-sm transition-colors"
+                className="px-4 py-2 bg-[var(--avs-surface)] hover:bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded-[var(--avs-radius-lg)] text-sm transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
                 data-testid="test-preview"
               >
                 Test cleaner.delete.preview
               </button>
               <button
                 onClick={() => vm.testExecute()}
-                className="px-4 py-2 bg-surface hover:bg-surface-hover border border-border rounded-lg text-sm transition-colors"
+                className="px-4 py-2 bg-[var(--avs-surface)] hover:bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded-[var(--avs-radius-lg)] text-sm transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
                 data-testid="test-execute"
               >
                 Test cleaner.delete.execute
               </button>
             </div>
             {state.lastRpcTest && (
-              <div className="mt-4 p-3 bg-surface-muted rounded text-xs font-mono">
+              <div className="mt-4 p-3 bg-[var(--avs-surface-muted)] rounded text-xs font-mono">
                 <div className="text-text-secondary mb-1">Last RPC Test Result:</div>
                 <div className="text-text-primary">{state.lastRpcTest}</div>
               </div>
@@ -194,7 +194,7 @@ export default function DiagnosticsPage() {
 
           {/* Recent Logs */}
           <Card title="Recent Log Entries (Last 100)">
-            <div className="bg-surface-muted rounded p-3 max-h-96 overflow-y-auto">
+            <div className="bg-[var(--avs-surface-muted)] rounded p-3 max-h-96 overflow-y-auto">
               {state.logs.length === 0 ? (
                 <div className="text-sm text-text-muted">No logs available</div>
               ) : (

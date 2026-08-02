@@ -55,11 +55,11 @@ export function Modal({
         role="document"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--avs-border)]">
           <h2 id={`${testId}-title`} className="text-lg font-semibold text-text-primary">{title}</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-md hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary"
+            className="p-1 rounded-[var(--avs-radius-md)] hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary"
             aria-label="Close dialog"
           >
             <XMarkIcon className="h-5 w-5" aria-hidden="true" />
@@ -73,7 +73,7 @@ export function Modal({
 
         {/* Actions */}
         {actions && (
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border" role="toolbar">
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[var(--avs-border)]" role="toolbar">
             {actions}
           </div>
         )}

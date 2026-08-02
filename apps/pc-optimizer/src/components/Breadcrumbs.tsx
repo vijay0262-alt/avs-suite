@@ -60,7 +60,7 @@ export function Breadcrumbs() {
     <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-2" data-testid="breadcrumbs">
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-text-muted hover:text-text-primary hover:bg-surface-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+        className="flex items-center gap-1 rounded-[var(--avs-radius-sm)] px-2 py-1 text-xs text-text-muted hover:text-text-primary hover:bg-[var(--avs-surface-muted)] transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
         aria-label="Go back"
         data-testid="breadcrumb-back"
       >
@@ -74,7 +74,7 @@ export function Breadcrumbs() {
             {index < crumbs.length - 1 ? (
               <button
                 onClick={() => navigate(crumb.path)}
-                className="hover:text-text-primary transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary rounded px-0.5"
+                className="hover:text-text-primary transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)] focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary rounded px-0.5"
               >
                 {crumb.label}
               </button>

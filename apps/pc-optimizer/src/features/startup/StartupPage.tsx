@@ -176,13 +176,13 @@ export default function StartupPage() {
                 placeholder="Search name, publisher, or command"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="flex-1 rounded-md bg-bg-secondary border border-border px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                className="flex-1 rounded-[var(--avs-radius-md)] bg-bg-secondary border border-[var(--avs-border)] px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
               />
               <select
                 aria-label="Filter by status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as 'all' | 'enabled' | 'disabled')}
-                className="rounded-md bg-bg-secondary border border-border px-3 py-1.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                className="rounded-[var(--avs-radius-md)] bg-bg-secondary border border-[var(--avs-border)] px-3 py-1.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
               >
                 <option value="all">Include Disabled</option>
                 <option value="enabled">Enabled Only</option>
@@ -192,7 +192,7 @@ export default function StartupPage() {
                 aria-label="Filter by impact"
                 value={impactFilter}
                 onChange={(e) => setImpactFilter(e.target.value as typeof impactFilter)}
-                className="rounded-md bg-bg-secondary border border-border px-3 py-1.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                className="rounded-[var(--avs-radius-md)] bg-bg-secondary border border-[var(--avs-border)] px-3 py-1.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
               >
                 <option value="all">All impacts</option>
                 <option value="high">High</option>
@@ -204,7 +204,7 @@ export default function StartupPage() {
                 aria-label="Sort startup entries"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortBy)}
-                className="rounded-md bg-bg-secondary border border-border px-3 py-1.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                className="rounded-[var(--avs-radius-md)] bg-bg-secondary border border-[var(--avs-border)] px-3 py-1.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
               >
                 <option value="name">Sort by name</option>
                 <option value="impact">Sort by impact</option>
@@ -243,7 +243,7 @@ export default function StartupPage() {
               <Card>
                 <div className="space-y-2">
                   {state.backups.map((backup) => (
-                    <div key={backup.backupId} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                    <div key={backup.backupId} className="flex items-center justify-between py-2 border-b border-[var(--avs-border)] last:border-0">
                       <div>
                         <p className="text-sm text-text-primary">{backup.entryName}</p>
                         <p className="text-xs text-text-muted">{backup.timestamp}</p>

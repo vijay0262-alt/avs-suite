@@ -17,7 +17,7 @@ export const HealthBreakdown = React.memo(function HealthBreakdown({ categories,
         const status = getModuleStatus(category.score, category.severity === 'danger' ? 1 : 0);
         const statusConfig = MODULE_STATUS_CONFIG[status];
         return (
-          <Card key={category.id} className="hover:border-border-hover transition-colors">
+          <Card key={category.id} className="hover:border-[var(--avs-border)]-hover transition-colors">
             <div className="flex items-center justify-between mb-2">
               <div className="text-base font-semibold text-text-primary">{category.name}</div>
               <div className="flex items-center gap-2">
@@ -31,7 +31,7 @@ export const HealthBreakdown = React.memo(function HealthBreakdown({ categories,
             </div>
 
             <div className="mb-3">
-              <div className="h-2 bg-surface-muted rounded-full overflow-hidden">
+              <div className="h-2 bg-[var(--avs-surface-muted)] rounded-full overflow-hidden">
                 <div
                   className={`h-full ${severityBgColor(category.severity)} transition-all duration-500`}
                   style={{ width: `${category.score}%` }}

@@ -105,7 +105,7 @@ export const OneClickOptimize = React.memo(function OneClickOptimize({
                 {preview.actions.map((action) => (
                   <div
                     key={action.name}
-                    className="flex items-center justify-between py-2 px-3 rounded-md bg-surface-muted"
+                    className="flex items-center justify-between py-2 px-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)]"
                   >
                     <div className="flex items-center gap-3">
                       <CheckCircleIcon className="h-5 w-5 text-semantic-success" aria-hidden />
@@ -141,7 +141,7 @@ export const OneClickOptimize = React.memo(function OneClickOptimize({
       >
         <div className="flex flex-col items-center py-12">
           <div className="relative h-16 w-16 mb-4">
-            <div className="absolute inset-0 border-4 border-border rounded-full" />
+            <div className="absolute inset-0 border-4 border-[var(--avs-border)] rounded-full" />
             <div className="absolute inset-0 border-4 border-brand-primary rounded-full border-t-transparent animate-spin" />
           </div>
           <div className="text-lg font-medium text-text-primary mb-2">Optimizing your system...</div>
@@ -199,7 +199,7 @@ export const OneClickOptimize = React.memo(function OneClickOptimize({
           </div>
 
           {optimizeError && (
-            <div className="flex items-start gap-3 py-3 px-4 rounded-md bg-semantic-danger/10 text-sm text-semantic-danger">
+            <div className="flex items-start gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 text-sm text-semantic-danger">
               <ExclamationTriangleIcon className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
               <span>{optimizeError}</span>
             </div>
@@ -213,7 +213,7 @@ export const OneClickOptimize = React.memo(function OneClickOptimize({
               {Object.entries(result.results).map(([key, value]) => (
                 <div
                   key={key}
-                  className="flex items-center justify-between py-2 px-3 rounded-md bg-surface-muted"
+                  className="flex items-center justify-between py-2 px-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)]"
                 >
                   <div className="flex items-center gap-3">
                     {value.cleaned ? (
@@ -252,7 +252,7 @@ const StatCard = React.memo(function StatCard({
   icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="flex items-center gap-3 p-4 rounded-md bg-surface-muted">
+    <div className="flex items-center gap-3 p-4 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)]">
       <Icon className="h-5 w-5 text-semantic-primary" aria-hidden />
       <div>
         <div className="text-xs text-text-muted">{label}</div>

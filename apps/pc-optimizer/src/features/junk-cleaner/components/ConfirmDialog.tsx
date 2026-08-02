@@ -56,7 +56,7 @@ export function ConfirmDialog({ open, preview, onBack, onConfirm }: ConfirmDialo
       }
     >
       <div className="space-y-4">
-        <div className="flex items-start gap-3 rounded-md border border-[color-mix(in_srgb,var(--avs-warning)_35%,transparent)] bg-[color-mix(in_srgb,var(--avs-warning)_10%,transparent)] p-3">
+        <div className="flex items-start gap-3 rounded-[var(--avs-radius-md)] border border-[color-mix(in_srgb,var(--avs-warning)_35%,transparent)] bg-[color-mix(in_srgb,var(--avs-warning)_10%,transparent)] p-3">
           <ExclamationTriangleIcon className="h-5 w-5 shrink-0 text-[color-mix(in_srgb,var(--avs-warning)_85%,black)]" />
           <p className="text-sm text-text-primary" data-testid="cleaning-confirm-summary">
             You are about to remove <b>{formatBytes(cappedBytes)}</b>{exceedsLimit ? ` of ${formatBytes(preview.totalBytes)}` : ''} from{' '}
@@ -79,7 +79,7 @@ export function ConfirmDialog({ open, preview, onBack, onConfirm }: ConfirmDialo
             {categories.map((c) => (
               <li
                 key={c.id}
-                className="flex items-center justify-between rounded-md bg-surface-muted px-3 py-2 text-sm"
+                className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2 text-sm"
               >
                 <div className="flex items-center gap-2">
                   <span className="text-text-primary">{c.name}</span>
@@ -95,7 +95,7 @@ export function ConfirmDialog({ open, preview, onBack, onConfirm }: ConfirmDialo
           </ul>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 border-t border-border pt-3">
+        <div className="grid grid-cols-2 gap-3 border-t border-[var(--avs-border)] pt-3">
           <div>
             <div className="text-xs uppercase text-text-muted">Estimated time</div>
             <div className="mt-1 text-sm font-medium text-text-primary">

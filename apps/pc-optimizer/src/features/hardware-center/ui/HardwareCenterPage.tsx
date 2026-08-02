@@ -126,7 +126,7 @@ export default function HardwareCenterPage() {
           <label className="text-xs text-text-secondary" htmlFor="poll-interval">Refresh:</label>
           <select
             id="poll-interval"
-            className="rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
+            className="rounded-[var(--avs-radius-sm)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-2 py-1 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus:border-[var(--avs-border-hover)] transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
             value={state.pollIntervalMs}
             onChange={(e) => vm.setPollInterval(Number(e.target.value))}
             data-testid="poll-interval-select"
@@ -147,7 +147,7 @@ export default function HardwareCenterPage() {
         <input
           type="text"
           placeholder="Search hardware, sensors, drives, adapters…"
-          className="w-full max-w-md rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-brand-primary"
+          className="w-full max-w-md rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-brand-primary focus:border-[var(--avs-border-hover)] transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
           value={state.searchQuery}
           onChange={(e) => vm.setSearchQuery(e.target.value)}
           data-testid="hardware-search"
@@ -218,7 +218,7 @@ export default function HardwareCenterPage() {
 
       {/* History View */}
       {showHistory && (
-        <Card title="Scan History" data-testid="history-view">
+        <Card title="Scan History" variant="glass" data-testid="history-view">
           <div className="space-y-2">
             <p className="text-sm text-text-secondary">
               Last scan: {state.snapshot ? new Date(state.snapshot.timestamp).toLocaleString() : 'N/A'}
@@ -267,7 +267,7 @@ export default function HardwareCenterPage() {
 
       {/* No Results */}
       {searchResults && searchResults.length === 0 && (
-        <div className="text-center py-12 text-text-secondary" data-testid="no-search-results">
+        <div className="text-center py-12 text-text-secondary rounded-[var(--avs-radius-xl)] bg-gradient-surface border border-[var(--avs-border)]" data-testid="no-search-results">
           No hardware found matching &ldquo;{state.searchQuery}&rdquo;
         </div>
       )}
@@ -315,7 +315,7 @@ function CPUCard({ cpu, ...rest }: { cpu: CPUComponent } & React.HTMLAttributes<
             {cpu.info.perCoreUtilization.map((core, i) => (
               <span
                 key={i}
-                className="inline-flex items-center justify-center rounded text-xs font-medium px-1.5 py-0.5 bg-surface-muted text-text-primary"
+                className="inline-flex items-center justify-center rounded-[var(--avs-radius-sm)] text-xs font-medium px-1.5 py-0.5 bg-[var(--avs-surface-muted)] text-text-primary"
                 title={core.supported ? `Core ${i}: ${core.value}% via ${core.source}` : 'Unsupported'}
               >
                 {core.supported ? `${core.value.toFixed(0)}%` : '—'}

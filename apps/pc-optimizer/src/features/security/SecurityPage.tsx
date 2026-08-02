@@ -31,13 +31,13 @@ const SecurityItem = React.memo(function SecurityItem({ label, description, stat
     active: { color: 'text-semantic-success', bg: 'bg-semantic-success/10', icon: CheckCircleIcon, text: 'Active' },
     inactive: { color: 'text-semantic-danger', bg: 'bg-semantic-danger/10', icon: XCircleIcon, text: 'Inactive' },
     warning: { color: 'text-semantic-warning', bg: 'bg-semantic-warning/10', icon: ExclamationTriangleIcon, text: 'Attention needed' },
-    unknown: { color: 'text-text-muted', bg: 'bg-surface-muted', icon: ExclamationTriangleIcon, text: 'Unknown' },
+    unknown: { color: 'text-text-muted', bg: 'bg-[var(--avs-surface-muted)]', icon: ExclamationTriangleIcon, text: 'Unknown' },
   };
   const cfg = statusConfig[status];
   const StatusIcon = cfg.icon;
 
   return (
-    <div className="flex items-start gap-4 p-4 rounded-lg border border-border hover:border-border-hover transition-colors">
+    <div className="flex items-start gap-4 p-4 rounded-lg border border-[var(--avs-border)] hover:border-[var(--avs-border)]-hover transition-colors">
       <div className={`p-2.5 rounded-lg ${cfg.bg}`}>
         <Icon className={`h-6 w-6 ${cfg.color}`} aria-hidden="true" />
       </div>

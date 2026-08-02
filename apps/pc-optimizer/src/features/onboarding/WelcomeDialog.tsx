@@ -176,7 +176,7 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
                 { label: 'File System Access', desc: 'Scan and clean temporary files, cache, and duplicates' },
                 { label: 'Registry Access', desc: 'Scan and repair registry issues (read + write)' },
               ].map((perm) => (
-                <div key={perm.label} className="flex items-start gap-2 rounded-md border border-border p-2.5">
+                <div key={perm.label} className="flex items-start gap-2 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] p-2.5">
                   <CheckIcon className="h-4 w-4 text-semantic-success shrink-0 mt-0.5" aria-hidden />
                   <div>
                     <div className="text-sm font-medium text-text-primary">{perm.label}</div>
@@ -205,7 +205,7 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
                 { label: 'Quick Actions', desc: 'Shortcuts to commonly used optimization modules' },
                 { label: 'Live Status', desc: 'Real-time CPU, memory, and disk usage metrics' },
               ].map((item) => (
-                <div key={item.label} className="rounded-md border border-border p-2.5">
+                <div key={item.label} className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] p-2.5">
                   <div className="text-sm font-medium text-text-primary">{item.label}</div>
                   <div className="text-xs text-text-muted mt-0.5">{item.desc}</div>
                 </div>

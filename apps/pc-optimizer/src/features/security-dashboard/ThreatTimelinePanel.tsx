@@ -101,7 +101,7 @@ export function ThreatTimelinePanel({ timeline, history }: ThreatTimelinePanelPr
             placeholder="Search threats…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 rounded-md border border-border bg-bg-secondary px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+            className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
             aria-label="Search threats"
           />
         </div>
@@ -143,7 +143,7 @@ export function ThreatTimelinePanel({ timeline, history }: ThreatTimelinePanelPr
                 {/* Timeline visualization */}
                 <div className="relative pl-6" data-testid={`timeline-stages-${threatId}`}>
                   {/* Vertical line */}
-                  <div className="absolute left-2 top-0 bottom-0 w-px bg-border" aria-hidden />
+                  <div className="absolute left-2 top-0 bottom-0 w-px bg-[var(--avs-border)]" aria-hidden />
 
                   {entries.map((entry, _idx) => (
                     <div
@@ -152,7 +152,7 @@ export function ThreatTimelinePanel({ timeline, history }: ThreatTimelinePanelPr
                       data-testid={`timeline-stage-${entry.id}`}
                     >
                       {/* Stage dot */}
-                      <div className="absolute -left-4 top-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-border bg-surface">
+                      <div className="absolute -left-4 top-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[var(--avs-border)] bg-[var(--avs-surface)]">
                         <span className="text-[8px]">{STAGE_ICONS[entry.stage]}</span>
                       </div>
 
@@ -186,7 +186,7 @@ export function ThreatTimelinePanel({ timeline, history }: ThreatTimelinePanelPr
             {history.slice(-20).reverse().map((entry) => (
               <div
                 key={entry.id}
-                className="flex items-center justify-between rounded px-2 py-1 text-xs hover:bg-surface-muted"
+                className="flex items-center justify-between rounded px-2 py-1 text-xs hover:bg-[var(--avs-surface-muted)] transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
                 data-testid={`history-entry-${entry.id}`}
               >
                 <span className="text-text-secondary truncate">{entry.target}</span>
@@ -209,8 +209,8 @@ function FilterButton({ active, onClick, label }: { active: boolean; onClick: ()
       onClick={onClick}
       className={
         active
-          ? 'rounded-md bg-brand-primary/10 px-2.5 py-1 text-xs font-medium text-brand-primary'
-          : 'rounded-md px-2.5 py-1 text-xs text-text-secondary hover:bg-surface-muted'
+          ? 'rounded-[var(--avs-radius-md)] bg-brand-primary/10 px-2.5 py-1 text-xs font-medium text-brand-primary'
+          : 'rounded-[var(--avs-radius-md)] px-2.5 py-1 text-xs text-text-secondary hover:bg-[var(--avs-surface-muted)] transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]'
       }
       data-testid={`timeline-filter-${label.toLowerCase().replace(/\s+/g, '-')}`}
     >
