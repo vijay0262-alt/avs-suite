@@ -15,7 +15,7 @@ import { Card, Button, Badge } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import { PageHeader } from '../../components/PageHeader';
-import { ModuleEmptyState, ModuleLoadingState } from '../../components/ModuleStates';
+import { ModuleEmptyState, ModuleLoadingState, ModuleErrorState } from '../../components/ModuleStates';
 import {
   OptimizationReportManager,
   type OptimizationReport,
@@ -241,6 +241,19 @@ export default function OptimizationReportsPage() {
       <div className="px-6 py-6">
         <PageHeader title="Optimization Reports" description="AI-generated reports for every optimization with health deltas, benefits, and evidence." />
         <ModuleLoadingState />
+      </div>
+    );
+  }
+
+  if (state.bootstrap === 'error') {
+    return (
+      <div className="px-6 py-6">
+        <PageHeader title="Optimization Reports" description="AI-generated reports for every optimization with health deltas, benefits, and evidence." />
+        <ModuleErrorState
+          message={state.error ?? 'Failed to load reports'}
+          onRetry={() => vm.bootstrap()}
+          testId="optimization-reports-error"
+        />
       </div>
     );
   }
