@@ -40,6 +40,8 @@ export function Modal({
     xl: 'max-w-4xl',
   };
 
+  const titleId = testId ? `${testId}-title` : undefined;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
@@ -47,7 +49,7 @@ export function Modal({
       data-testid={testId}
       role="dialog"
       aria-modal="true"
-      aria-labelledby={`${testId}-title`}
+      aria-labelledby={titleId}
     >
       <div
         className={`bg-surface rounded-lg shadow-xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col`}
@@ -56,7 +58,7 @@ export function Modal({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--avs-border)]">
-          <h2 id={`${testId}-title`} className="text-lg font-semibold text-text-primary">{title}</h2>
+          <h2 id={titleId} className="text-lg font-semibold text-text-primary">{title}</h2>
           <button
             onClick={onClose}
             className="p-1 rounded-[var(--avs-radius-md)] hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary"

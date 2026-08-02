@@ -23,6 +23,7 @@ import type {
   HealthScanHistoryEntry,
   OptimizationDetails,
   VerificationLog,
+  HardwareSensors,
 } from './dashboard.types';
 import type { DashboardService } from './dashboard.service';
 import { privacyService as defaultPrivacyService } from '../privacy/privacy.service';
@@ -104,6 +105,11 @@ export interface DashboardState {
 
   // Quick actions
   quickActionsOpen: boolean;
+
+  // Hardware sensors
+  hardwareSensors: HardwareSensors | null;
+  hardwareSensorsLoading: boolean;
+  hardwareSensorsError: string | null;
 }
 
 const LIVE_METRICS_POLL_INTERVAL_MS = 2000;
@@ -162,6 +168,10 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
 
       quickActionsOpen: false,
       optimizationSummary: null,
+
+      hardwareSensors: null,
+      hardwareSensorsLoading: false,
+      hardwareSensorsError: null,
     });
   }
 
@@ -185,6 +195,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       metricsLoading: true,
       liveMetricsLoading: true,
       privacyRisksLoading: true,
+      hardwareSensorsLoading: true,
     });
     // Show a default health score immediately (all zeros / 'critical')
     this.recalculateHealth(null, null);
@@ -204,7 +215,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     this.startLiveMetricsPolling();
     this.loadDeveloperMode();
     try {
-      await Promise.all([this.loadMetrics(), this.loadPrivacyRisks()]);
+      await Promise.all([this.loadMetrics(), this.loadPrivacyRisks(), this.loadHardwareSensors()]);
     } catch (err) {
       console.error('Dashboard bootstrap failed:', err);
     }
@@ -318,6 +329,34 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       this.setState({
         metricsLoading: false,
         metricsError: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  clearMetricsError(): void {
+    this.setState({ metricsError: null });
+  }
+
+  clearLiveMetricsError(): void {
+    this.setState({ liveMetricsError: null });
+  }
+
+  clearHardwareSensorsError(): void {
+    this.setState({ hardwareSensorsError: null });
+  }
+
+  async loadHardwareSensors(): Promise<void> {
+    this.setState({ hardwareSensorsLoading: true, hardwareSensorsError: null });
+    try {
+      const sensors = await this.service.getHardwareSensors();
+      this.setState({
+        hardwareSensors: sensors,
+        hardwareSensorsLoading: false,
+      });
+    } catch (err) {
+      this.setState({
+        hardwareSensorsLoading: false,
+        hardwareSensorsError: err instanceof Error ? err.message : String(err),
       });
     }
   }
@@ -950,7 +989,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       } catch (err) {
         console.error('Failed to invalidate dashboard cache:', err);
       }
-      await Promise.all([this.loadMetrics(), this.loadPrivacyRisks()]);
+      await Promise.all([this.loadMetrics(), this.loadPrivacyRisks(), this.loadHardwareSensors()]);
 
       // Part 7: Build improvement summary from health scan results
       const healthAfter = this.state.healthScore?.overallScore ?? 100;

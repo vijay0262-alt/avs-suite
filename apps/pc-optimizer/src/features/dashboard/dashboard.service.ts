@@ -8,6 +8,7 @@ import type {
   HealthScore,
   OptimizePreview,
   OptimizeExecuteResponse,
+  HardwareSensors,
 } from './dashboard.types';
 
 function client() {
@@ -30,6 +31,7 @@ export interface DashboardService {
   refreshCache(): Promise<{ refreshed: boolean }>;
   getOptimizePreview(): Promise<OptimizePreview>;
   executeOptimize(): Promise<OptimizeExecuteResponse>;
+  getHardwareSensors(): Promise<HardwareSensors>;
 }
 
 export const dashboardService: DashboardService = {
@@ -39,4 +41,5 @@ export const dashboardService: DashboardService = {
   refreshCache: () => client().call(RPC_METHODS.DASHBOARD_REFRESH_CACHE),
   getOptimizePreview: () => client().call(RPC_METHODS.DASHBOARD_OPTIMIZE_PREVIEW),
   executeOptimize: () => client().call(RPC_METHODS.DASHBOARD_OPTIMIZE_EXECUTE),
+  getHardwareSensors: () => client().call(RPC_METHODS.HARDWARE_SENSORS),
 };

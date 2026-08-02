@@ -161,6 +161,13 @@ export const RPC_METHODS = {
   REALTIME_PROTECTION_EVENTS: 'realtime.events',
   REALTIME_PROTECTION_ALERTS: 'realtime.alerts',
 
+  // Hardware Monitoring
+  HARDWARE_SENSORS: 'hardware.sensors',
+  HARDWARE_TEMPERATURE: 'hardware.temperature',
+  HARDWARE_FANS: 'hardware.fans',
+  HARDWARE_BATTERY: 'hardware.battery',
+  HARDWARE_POWER: 'hardware.power',
+
   // Scheduled Maintenance
   SCHEDULER_LIST: 'scheduler.list',
   SCHEDULER_CREATE: 'scheduler.create',

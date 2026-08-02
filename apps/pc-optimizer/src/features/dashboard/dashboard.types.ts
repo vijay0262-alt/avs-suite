@@ -93,6 +93,66 @@ export interface LiveMetrics {
   capturedAt: string;
 }
 
+// =====================================================================
+// Hardware Sensors (from hardware.sensors RPC)
+// =====================================================================
+
+export interface HardwareSensorReading {
+  name: string;
+  value: number;
+  high?: number | null;
+  critical?: number | null;
+  unit: string;
+  source: string;
+  supported: boolean;
+}
+
+export interface HardwareSensorGroup {
+  sensors: HardwareSensorReading[];
+  supported: boolean;
+  source: string | null;
+  message?: string;
+}
+
+export interface HardwareClockReading {
+  name: string;
+  current: number;
+  min?: number | null;
+  max?: number | null;
+  unit: string;
+  source: string;
+  supported: boolean;
+}
+
+export interface HardwareClocks {
+  clocks: HardwareClockReading[];
+  supported: boolean;
+}
+
+export interface HardwareBattery {
+  present: boolean;
+  percent: number | null;
+  powerPlugged: boolean | null;
+  secsLeft: number | null;
+  secsLeftUnlimited?: boolean;
+  supported: boolean;
+  message?: string;
+}
+
+export interface HardwarePower {
+  supported: boolean;
+  source: string | null;
+  message?: string;
+}
+
+export interface HardwareSensors {
+  temperature: HardwareSensorGroup;
+  fans: HardwareSensorGroup;
+  clocks: HardwareClocks;
+  battery: HardwareBattery;
+  power: HardwarePower;
+}
+
 export interface DashboardMetrics extends LiveMetrics {
   windows: WindowsInfo;
   security: SecurityMetrics;
