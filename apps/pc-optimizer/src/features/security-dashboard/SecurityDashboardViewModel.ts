@@ -237,7 +237,7 @@ export class SecurityDashboardViewModel extends ViewModel<SecurityDashboardState
     }
   }
 
-  dispose(): void {
+  override dispose(): void {
     this.stopPolling();
     this.eventUnsub?.();
     this.eventUnsub = null;
@@ -392,6 +392,7 @@ export class SecurityDashboardViewModel extends ViewModel<SecurityDashboardState
 
     const report: SecurityReportData = {
       type,
+      title: '',
       generatedAt: now,
       period: { start: periodStart, end: now },
       summary: '',

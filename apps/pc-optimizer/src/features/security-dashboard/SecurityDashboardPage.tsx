@@ -246,9 +246,9 @@ export default function SecurityDashboardPage() {
         <CommandCenter
           overview={state.overview}
           onClose={handleToggleCommandCenter}
-          onRunQuickScan={() => {}}
-          onRunFullScan={() => {}}
-          onRunCustomScan={() => {}}
+          onRunQuickScan={() => vm.refresh()}
+          onRunFullScan={() => vm.refresh()}
+          onRunCustomScan={() => vm.refresh()}
           onViewInvestigations={() => handleTabChange('timeline')}
           onReviewQuarantine={() => handleTabChange('reports')}
           onReviewFalsePositives={() => handleTabChange('reports')}

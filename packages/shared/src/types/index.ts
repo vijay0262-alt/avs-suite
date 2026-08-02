@@ -18,6 +18,8 @@ export type NavItemId =
   | 'system-information'
   | 'hardware-center'
   | 'security-dashboard'
+  | 'process-intelligence'
+  | 'predictive-health'
   | 'maintenance-history'
   | 'reports'
   | 'license'

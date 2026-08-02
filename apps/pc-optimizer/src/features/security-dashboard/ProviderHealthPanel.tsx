@@ -166,7 +166,7 @@ export function ProviderHealthPanel({ providers, health, diagnostics }: Provider
             </div>
             {diagnostics.results.map((result, i) => (
               <div key={i} className="flex items-center justify-between text-xs">
-                <span className="text-text-secondary">{result.check}: {result.message}</span>
+                <span className="text-text-secondary">{result.component}: {result.message}</span>
                 <Badge tone={result.status === 'pass' ? 'success' : result.status === 'warn' ? 'warning' : 'danger'}>
                   {result.status}
                 </Badge>

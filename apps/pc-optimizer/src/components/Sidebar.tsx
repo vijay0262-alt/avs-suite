@@ -24,6 +24,8 @@ import {
   DocumentChartBarIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  CircleStackIcon,
+  HeartIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import { canUse } from '../features/licensing/FeatureGate';
@@ -53,6 +55,8 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
       { id: 'hardware-center', to: '/hardware-center', labelKey: 'nav.hardwareCenter', Icon: ComputerDesktopIcon },
       { id: 'security-dashboard', to: '/security-dashboard', labelKey: 'nav.securityDashboard', Icon: ShieldExclamationIcon },
+      { id: 'process-intelligence', to: '/process-intelligence', labelKey: 'nav.processIntelligence', Icon: CircleStackIcon },
+      { id: 'predictive-health', to: '/predictive-health', labelKey: 'nav.predictiveHealth', Icon: HeartIcon },
       { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon, feature: 'disk.analyzer' },
     ],
   },

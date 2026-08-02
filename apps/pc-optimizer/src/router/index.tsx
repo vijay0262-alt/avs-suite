@@ -24,8 +24,9 @@ const HardwareCenterPage = lazy(() => import('../pages/HardwareCenterPage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 const AboutPage = lazy(() => import('../pages/AboutPage'));
 const DiagnosticsPage = lazy(() => import('../features/diagnostics/DiagnosticsPage'));
-const SecurityPage = lazy(() => import('../features/security/SecurityPage'));
 const SecurityDashboardPage = lazy(() => import('../pages/SecurityDashboardPage'));
+const ProcessIntelligencePage = lazy(() => import('../pages/ProcessIntelligencePage'));
+const PredictiveHealthPage = lazy(() => import('../pages/PredictiveHealthPage'));
 const ActivationPage = lazy(() => import('../features/licensing/ActivationPage'));
 const MaintenanceHistoryPage = lazy(() => import('../pages/MaintenanceHistoryPage'));
 const ReportsPage = lazy(() => import('../pages/ReportsPage'));
@@ -38,7 +39,8 @@ const ModulePreloader = () => {
       void import('../pages/JunkCleanerPage');
       void import('../pages/StartupManagerPage');
       void import('../pages/PerformancePage');
-      void import('../features/security/SecurityPage');
+      void import('../pages/SecurityDashboardPage');
+      void import('../pages/ProcessIntelligencePage');
     };
 
     // Use requestIdleCallback if available (better than setTimeout)
@@ -92,8 +94,10 @@ export const router = createHashRouter([
       { path: 'uninstaller', element: wrap(UninstallerPage) },
       { path: 'software-updater', element: wrap(UpdaterPage) },
       { path: 'performance', element: wrap(PerformancePage) },
-      { path: 'security', element: wrap(SecurityPage) },
+      { path: 'security', element: <Navigate to="/security-dashboard" replace /> },
       { path: 'security-dashboard', element: wrap(SecurityDashboardPage) },
+      { path: 'process-intelligence', element: wrap(ProcessIntelligencePage) },
+      { path: 'predictive-health', element: wrap(PredictiveHealthPage) },
       { path: 'system-information', element: wrap(SystemInformationPage) },
       { path: 'hardware-center', element: wrap(HardwareCenterPage) },
       { path: 'maintenance-history', element: wrap(MaintenanceHistoryPage) },
