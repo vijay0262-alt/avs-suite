@@ -46,6 +46,7 @@ export default function SettingsPage() {
   const { mode, setMode } = useTheme();
   const [devMode, setDevMode] = useState(false);
   const [logs, setLogs] = useState<VerificationLog[]>([]);
+  const [learningMode, setLearningMode] = useState(false);
   const edition = useEdition();
   const { show: showUpgrade } = useUpgradeDialog();
   const { customer, session, logout } = useAuthStore();
@@ -74,6 +75,7 @@ export default function SettingsPage() {
   useEffect(() => {
     try {
       setDevMode(typeof window !== 'undefined' && window.localStorage.getItem(DEV_STORAGE_KEY) === 'true');
+      setLearningMode(onboardingService.isLearningMode());
       const raw = typeof window !== 'undefined' ? window.localStorage.getItem(LOGS_STORAGE_KEY) : null;
       setLogs(raw ? (JSON.parse(raw) as VerificationLog[]) : []);
     } catch {
@@ -801,11 +803,15 @@ export default function SettingsPage() {
                 </p>
               </div>
               <Button
-                variant={onboardingService.isLearningMode() ? 'primary' : 'secondary'}
-                onClick={() => onboardingService.setLearningMode(!onboardingService.isLearningMode())}
+                variant={learningMode ? 'primary' : 'secondary'}
+                onClick={() => {
+                  const next = !learningMode;
+                  onboardingService.setLearningMode(next);
+                  setLearningMode(next);
+                }}
                 data-testid="settings-learning-mode"
               >
-                {onboardingService.isLearningMode() ? 'Enabled' : 'Disabled'}
+                {learningMode ? 'Enabled' : 'Disabled'}
               </Button>
             </div>
           </div>

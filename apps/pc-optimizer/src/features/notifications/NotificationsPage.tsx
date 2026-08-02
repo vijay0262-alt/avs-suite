@@ -90,8 +90,8 @@ class NotificationViewModel extends ViewModel<NotificationState> {
       } else {
         this.setState({ loading: false });
       }
-    } catch {
-      this.setState({ loading: false });
+    } catch (e) {
+      this.setState({ loading: false, error: e instanceof Error ? e.message : 'Failed to load notifications' });
     }
   }
 
@@ -240,7 +240,12 @@ export default function NotificationsPage() {
 
       {/* Recent Notifications */}
       <Card title="Recent Notifications" variant="glass">
-        {state.notifications.length > 0 ? (
+        {state.error ? (
+          <div className="space-y-2">
+            <p className="text-sm text-semantic-danger">{state.error}</p>
+            <Button variant="secondary" size="sm" onClick={() => vm.bootstrap()} data-testid="notifications-retry">Retry</Button>
+          </div>
+        ) : state.notifications.length > 0 ? (
           <div className="space-y-2">
             {state.notifications.map((notif) => {
               const Icon = SEVERITY_ICONS[notif.severity] ?? InformationCircleIcon;

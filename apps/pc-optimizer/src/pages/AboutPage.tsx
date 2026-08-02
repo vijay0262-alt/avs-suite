@@ -44,6 +44,7 @@ export default function AboutPage() {
   const [sdkInfo, setSdkInfo] = useState<SdkInfo | null>(null);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !window.avs?.license?.getInfo) return;
     void window.avs.license.getInfo().then((info) => {
       if (info) setSdkInfo(info as SdkInfo);
     }).catch(() => {});
