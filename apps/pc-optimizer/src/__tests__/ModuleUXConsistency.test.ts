@@ -36,7 +36,7 @@ function findPageFiles(dir: string): { name: string; fullPath: string; content: 
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       results.push(...findPageFiles(fullPath));
-    } else if (entry.name.endsWith('Page.tsx') || entry.name.endsWith('Page.ts')) {
+    } else if (entry.name.endsWith('Page.tsx') || entry.name.endsWith('Page.ts') || entry.name.endsWith('PageV2.tsx')) {
       const content = readFile(fullPath);
       if (content) results.push({ name: entry.name, fullPath, content });
     }
@@ -82,13 +82,15 @@ const MODULES = [
   { name: 'SoftwareUpdater', file: 'UpdaterPage.tsx', testId: 'page-software-updater' },
   { name: 'Reports', file: 'ReportsPage.tsx', testId: 'page-reports' },
   { name: 'MaintenanceHistory', file: 'MaintenanceHistoryPage.tsx', testId: 'page-maintenance-history' },
-  { name: 'Dashboard', file: 'DashboardPage.tsx', testId: 'page-dashboard' },
+  { name: 'Dashboard', file: 'DashboardPageV2.tsx', testId: 'page-dashboard' },
   { name: 'Settings', file: 'SettingsPage.tsx', testId: 'page-settings' },
 ];
 
 describe('Module UX Consistency', () => {
   describe('PageHeader usage', () => {
-    MODULES.forEach((mod) => {
+    // Dashboard V2 uses a custom hero layout (greeting + stat cards) instead of PageHeader
+    const modulesWithPageHeader = MODULES.filter((m) => m.name !== 'Dashboard');
+    modulesWithPageHeader.forEach((mod) => {
       it(`${mod.name}: uses PageHeader with title and description`, () => {
         const page = allPages.find((p) => p.name === mod.file);
         expect(page, `File ${mod.file} not found`).toBeDefined();
@@ -96,6 +98,14 @@ describe('Module UX Consistency', () => {
         expect(page!.content).toMatch(/title=["']/);
         expect(page!.content).toMatch(/description=["']/);
       });
+    });
+
+    it('Dashboard: uses custom hero layout (greeting + stat cards) instead of PageHeader', () => {
+      const page = allPages.find((p) => p.name === 'DashboardPageV2.tsx');
+      expect(page, 'File DashboardPageV2.tsx not found').toBeDefined();
+      // Dashboard V2 has its own hero section with greeting and stat cards
+      expect(page!.content).toContain('getGreeting');
+      expect(page!.content).toContain('StatCard');
     });
   });
 
@@ -123,7 +133,6 @@ describe('Module UX Consistency', () => {
       'UpdaterPage.tsx',
       'ReportsPage.tsx',
       'MaintenanceHistoryPage.tsx',
-      'DashboardPage.tsx',
       'SettingsPage.tsx',
     ];
 

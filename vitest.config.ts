@@ -29,6 +29,7 @@ export default defineConfig({
     globals: false,
     passWithNoTests: true,
     include: ['apps/**/*.test.{ts,tsx}', 'packages/**/*.test.{ts,tsx}'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/dist-electron/**', '**/cjs/**'],
     setupFiles: ['./vitest.setup.ts'],
     coverage: {
       reporter: ['text', 'html', 'lcov'],
