@@ -15,6 +15,7 @@ import type { FalsePositiveEntry, FalsePositiveExclusionType, FalsePositiveSumma
 export class ThreatFalsePositiveTracker {
   private entries = new Map<string, FalsePositiveEntry>();
   private exclusions = new Map<string, FalsePositiveExclusionType>();
+  private entryExclusionKeys = new Map<string, string>();
   private whitelistHashes = new Set<string>();
   private excludePaths = new Set<string>();
   private whitelistPublishers = new Set<string>();
@@ -47,6 +48,7 @@ export class ThreatFalsePositiveTracker {
     // Apply exclusion
     const key = `${threat.category}:${threat.name}`;
     this.exclusions.set(key, exclusionType);
+    this.entryExclusionKeys.set(id, key);
 
     if (entry.hash && exclusionType === 'whitelist') {
       this.whitelistHashes.add(entry.hash);
@@ -99,9 +101,14 @@ export class ThreatFalsePositiveTracker {
     const entry = this.entries.get(id);
     if (!entry) return false;
 
-    // Remove from exclusion maps
-    const key = `${entry.threatId}`;
-    this.exclusions.delete(key);
+    // Remove from exclusion map using the stored key
+    const exclusionKey = this.entryExclusionKeys.get(id);
+    if (exclusionKey) {
+      this.exclusions.delete(exclusionKey);
+      this.entryExclusionKeys.delete(id);
+    }
+
+    // Remove from hash/path sets
     if (entry.hash) this.whitelistHashes.delete(entry.hash);
     if (entry.path) this.excludePaths.delete(entry.path);
 
@@ -124,6 +131,7 @@ export class ThreatFalsePositiveTracker {
   clear(): void {
     this.entries.clear();
     this.exclusions.clear();
+    this.entryExclusionKeys.clear();
     this.whitelistHashes.clear();
     this.excludePaths.clear();
     this.whitelistPublishers.clear();

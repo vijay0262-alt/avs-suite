@@ -363,11 +363,13 @@ export class SecurityCenterViewModel extends ViewModel<SecurityCenterState> {
   executePlan(planId: string): void {
     this.service.executePlan(planId);
     this.refresh();
+    void this.loadQuarantineSummary();
   }
 
   rollbackAction(actionId: string): void {
     this.service.rollbackAction(actionId);
     this.refresh();
+    void this.loadQuarantineSummary();
   }
 
   async restoreFromQuarantine(quarantineId: string): Promise<void> {

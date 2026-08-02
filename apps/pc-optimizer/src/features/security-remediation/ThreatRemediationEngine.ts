@@ -272,11 +272,32 @@ export class ThreatRemediationEngine {
       return { success: false, error: 'Quarantine is disabled' };
     }
 
-    // In a real implementation, this would move the file to encrypted quarantine
-    // For now, we simulate the action
+    // Create a quarantine entry in the quarantine manager
+    const threat: Threat = {
+      id: action.threatId,
+      name: action.target.name,
+      category: action.metadata.category,
+      severity: action.metadata.severity,
+      confidence: action.metadata.confidence,
+      detectionSource: action.metadata.detectionSource,
+      detectionTime: action.metadata.detectionTime,
+    } as Threat;
+
+    const quarantineEntry = this.quarantineManager.quarantine(
+      threat,
+      action.investigationId,
+      action.target.path,
+      action.target.name,
+      0,
+      '',
+      null,
+    );
+
+    remediationEventBus.emitQuarantineAdded(quarantineEntry.id, action.threatId, `Quarantined: ${action.target.name}`);
+
     const rollbackData: RollbackData = {
       originalPath: action.target.path,
-      backupPath: `${this.configManager.getQuarantinePath()}\\${action.id}`,
+      backupPath: quarantineEntry.quarantinePath,
       originalValue: null,
       registryKey: null,
       registryValueName: null,
@@ -291,16 +312,30 @@ export class ThreatRemediationEngine {
   }
 
   private performRestore(action: RemediationAction): { success: boolean; error?: string } {
-    const result = this.restoreManager.restore(action.target.path);
+    // Look up quarantine entry by threat ID to get the quarantine ID
+    const entry = this.quarantineManager.getByThreat(action.threatId);
+    if (!entry) {
+      return { success: false, error: 'No quarantined item found for this threat' };
+    }
+    const result = this.restoreManager.restore(entry.id);
     if (!result.success) {
       return { success: false, error: result.error ?? 'Restore failed' };
     }
+    remediationEventBus.emitQuarantineRestored(entry.id, `Restored: ${action.target.name}`);
     return { success: true };
   }
 
-  private performDelete(_action: RemediationAction): { success: boolean; error?: string } {
-    // Deletion requires explicit confirmation — checked at plan level
-    // This should only be called after observation period
+  private performDelete(action: RemediationAction): { success: boolean; error?: string } {
+    // Look up quarantine entry by threat ID
+    const entry = this.quarantineManager.getByThreat(action.threatId);
+    if (!entry) {
+      return { success: false, error: 'No quarantined item found for this threat' };
+    }
+    const result = this.deletionManager.delete(entry.id, true);
+    if (!result.success) {
+      return { success: false, error: result.error ?? 'Deletion failed' };
+    }
+    remediationEventBus.emitQuarantineDeleted(entry.id, `Deleted: ${action.target.name}`);
     return { success: true };
   }
 
