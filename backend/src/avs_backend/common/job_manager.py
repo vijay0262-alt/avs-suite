@@ -198,7 +198,10 @@ class JobManager:
                 for jid in to_remove:
                     del self._jobs[jid]
             if to_remove:
-                log.debug("Cleaned up %d completed jobs", len(to_remove))
+                try:
+                    log.debug("Cleaned up %d completed jobs", len(to_remove))
+                except Exception:
+                    pass
             self._cleanup_timer = threading.Timer(60.0, cleanup)
             self._cleanup_timer.daemon = True
             self._cleanup_timer.start()

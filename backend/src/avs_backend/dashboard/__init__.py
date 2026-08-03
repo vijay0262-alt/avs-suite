@@ -161,6 +161,7 @@ _LIVE_REFRESH_INTERVAL = 1.0  # seconds
 _live_metrics: dict[str, Any] = {}
 _live_metrics_lock = threading.Lock()
 _live_metrics_running = True
+_live_metrics_stop_event = threading.Event()
 _prev_live_net_io = None
 
 
@@ -269,16 +270,26 @@ def _refresh_live_metrics() -> None:
         with _live_metrics_lock:
             _live_metrics = snapshot
     except Exception as e:
-        log.debug("Live metrics refresh failed: %s", e)
+        try:
+            log.debug("Live metrics refresh failed: %s", e)
+        except Exception:
+            pass
 
 
 def _live_metrics_loop() -> None:
     """Background daemon that keeps _live_metrics fresh."""
-    while _live_metrics_running:
+    while _live_metrics_running and not _live_metrics_stop_event.is_set():
         start = time.monotonic()
-        _refresh_live_metrics()
+        try:
+            _refresh_live_metrics()
+        except Exception:
+            # Swallow exceptions in the daemon loop — logging may be
+            # torn down during process exit or test teardown.
+            pass
         elapsed = time.monotonic() - start
-        time.sleep(max(0.0, _LIVE_REFRESH_INTERVAL - elapsed))
+        # Use Event.wait instead of time.sleep so the thread exits
+        # quickly when shutdown_live_metrics() sets the event.
+        _live_metrics_stop_event.wait(max(0.0, _LIVE_REFRESH_INTERVAL - elapsed))
 
 
 # Live metrics background thread (started lazily on first dashboard.live call)
@@ -292,10 +303,27 @@ def _ensure_live_metrics_thread() -> None:
     if _live_metrics_thread is None or not _live_metrics_thread.is_alive():
         with _live_metrics_thread_lock:
             if _live_metrics_thread is None or not _live_metrics_thread.is_alive():
+                _live_metrics_stop_event.clear()
                 _live_metrics_thread = threading.Thread(
                     target=_live_metrics_loop, daemon=True, name="dashboard-live-metrics"
                 )
                 _live_metrics_thread.start()
+
+
+def shutdown_live_metrics() -> None:
+    """Stop the live metrics background thread and wait for it to join.
+
+    Called during test teardown and process exit to prevent the daemon
+    thread from logging after handlers are closed.
+    """
+    global _live_metrics_thread, _live_metrics_running
+    _live_metrics_running = False
+    _live_metrics_stop_event.set()
+    with _live_metrics_thread_lock:
+        t = _live_metrics_thread
+        if t is not None and t.is_alive():
+            t.join(timeout=5.0)
+        _live_metrics_thread = None
 
 
 @register("dashboard.live")
