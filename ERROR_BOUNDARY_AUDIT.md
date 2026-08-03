@@ -14,9 +14,9 @@ A comprehensive audit of the PC Optimizer Electron app identified **12 routed pa
 
 | Suite | Tests | Passed | Failed |
 |-------|-------|--------|--------|
-| `ErrorBoundary.test.tsx` | 15 | 15 | 0 |
+| `ErrorBoundary.test.tsx` | 24 | 24 | 0 |
 
-All 15 tests pass, including simulated runtime error tests for pages, dialogs, nested components, and sibling isolation.
+All 24 tests pass, including simulated runtime error tests for pages, dialogs, nested components, sibling isolation, professional UI verification, edition-aware actions, and error reporting.
 
 ---
 
@@ -24,11 +24,19 @@ All 15 tests pass, including simulated runtime error tests for pages, dialogs, n
 
 **File:** `apps/pc-optimizer/src/components/ErrorBoundary.tsx`
 
-A React class component implementing:
+A React class component with a functional `ErrorFallback` sub-component implementing:
 - `getDerivedStateFromError()` — captures error into state
-- `componentDidCatch()` — logs to `console.error` with component stack
-- Fallback UI with `data-testid="error-boundary"`, error message display, and "Try again" reset button
-- `standalone` prop for router-level `errorElement` usage
+- `componentDidCatch()` — logs to `console.error` with component stack, stores `ErrorInfo`
+- Professional brand-aligned fallback UI with `data-testid="error-boundary"`
+- **Try Again** — resets the boundary and re-renders children
+- **Return to Dashboard** — navigates to `/dashboard` and resets (hidden in `standalone` mode)
+- **View Error Details** — collapsible technical details (error message, stack trace, component stack)
+- **Export Error Report** — downloads a `.txt` file with timestamp, edition, error info, and stack traces
+- **Send Diagnostic Report** — Professional edition only; logs diagnostic data and shows "Report Sent" confirmation
+- **Support footer** — `help@avsshield.com` mailto link
+- `standalone` prop for router-level `errorElement` usage (hides Return to Dashboard)
+- Edition-aware actions via `useEdition()` hook (Free vs Professional)
+- Navigation via `useNavigate()` hook
 
 **No duplicate implementations were created.** All fixes use this single shared component.
 
@@ -204,7 +212,7 @@ main.tsx
 
 ## Test Coverage
 
-### `ErrorBoundary.test.tsx` — 15 tests
+### `ErrorBoundary.test.tsx` — 24 tests
 
 **ErrorBoundary component tests (7):**
 - ✅ Renders children when no error occurs
@@ -215,17 +223,28 @@ main.tsx
 - ✅ Handles special characters in error messages (XSS safety)
 - ✅ Supports `standalone` prop
 
-**Router coverage tests (3):**
-- ✅ All page-rendering routes use `wrap()` with ErrorBoundary
-- ✅ AppLayout wraps Outlet with ErrorBoundary
-- ✅ ErrorBoundary is exported from components
+**Professional UI tests (10):**
+- ✅ Shows Return to Dashboard button (non-standalone)
+- ✅ Hides Return to Dashboard button in standalone mode
+- ✅ Return to Dashboard calls navigate and resets boundary
+- ✅ View Error Details toggle shows and hides error info
+- ✅ Export Error Report button is present and clickable
+- ✅ Shows Export Error Report for Free edition
+- ✅ Hides Send Diagnostic Report for Free edition
+- ✅ Shows Send Diagnostic Report for Professional edition
+- ✅ Send Diagnostic Report logs and shows confirmation (Pro)
+- ✅ Shows support email link (help@avsshield.com) in footer
 
-**Simulated runtime error tests (5):**
+**Router coverage tests (1):**
+- ✅ ErrorBoundary is exported with `getDerivedStateFromError` static method
+
+**Simulated runtime error tests (6):**
 - ✅ Catches error when a page component throws during render
 - ✅ Catches error when a dialog component throws
 - ✅ Catches error in deeply nested component trees
 - ✅ One ErrorBoundary crashing does not affect siblings
 - ✅ Multiple ErrorBoundaries isolate errors independently
+- ✅ ErrorBoundary works with router context mocked
 
 ---
 

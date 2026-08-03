@@ -30,6 +30,18 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: true,
     target: 'chrome120',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-charts': ['recharts'],
+          'vendor-i18n': ['i18next', 'react-i18next'],
+          'vendor-icons': ['@heroicons/react'],
+          'vendor-state': ['zustand'],
+          'vendor-window': ['react-window'],
+        },
+      },
+    },
   },
   server: {
     port: 5173,

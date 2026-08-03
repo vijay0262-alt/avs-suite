@@ -1,28 +1,45 @@
 /**
  * NewPageWrappers — re-exports and redirects for v2.0 sidebar routes.
  *
- * Each wrapper either re-exports an existing feature page or
- * redirects to the most relevant existing page.
+ * Redirect-only wrappers are static (trivial size).
+ * Feature page implementations are lazy-loaded to keep them
+ * out of the main bundle.
  */
+import { lazy, Suspense } from 'react';
 import { Navigate } from 'react-router-dom';
-import { RecoveryCenterPage as RecoveryCenterPageImpl } from '../features/recovery/RecoveryCenterPage';
-import AIDailyBriefingPageImpl from '../features/ai-assistant/AIDailyBriefingPage';
-import SystemHealthOverviewPage from '../features/system-health-dashboard/SystemHealthOverviewPage';
-import PerformanceAnalyticsPageImpl from '../features/performance/PerformanceAnalyticsPage';
-import ExportCenterPage from '../features/export-center/ExportCenterPage';
-import NotificationsPage from '../features/notifications/NotificationsPage';
-import HelpCenterPage from '../features/help-center/HelpCenterPage';
-import UpgradePageImpl from '../features/licensing/UpgradePage';
-import NetworkInformationPageImpl from '../features/network-info/NetworkInformationPage';
-import DriverInformationPageImpl from '../features/drivers/DriverInformationPage';
-import BackupRestorePageImpl from '../features/backup-restore/BackupRestorePage';
-import SecurityHistoryPageImpl from '../features/security-history/SecurityHistoryPage';
+import { LoadingFallback } from '../components/LoadingFallback';
+
+// Lazy-load feature page implementations (code-split out of main bundle)
+// For named exports, we destructure and re-export as default for lazy()
+const RecoveryCenterPageImpl = lazy(() =>
+  import('../features/recovery/RecoveryCenterPage').then((m) => ({ default: m.RecoveryCenterPage })),
+);
+const AIDailyBriefingPageImpl = lazy(() => import('../features/ai-assistant/AIDailyBriefingPage'));
+const SystemHealthOverviewPage = lazy(() => import('../features/system-health-dashboard/SystemHealthOverviewPage'));
+const PerformanceAnalyticsPageImpl = lazy(() => import('../features/performance/PerformanceAnalyticsPage'));
+const ExportCenterPage = lazy(() => import('../features/export-center/ExportCenterPage'));
+const NotificationsPage = lazy(() => import('../features/notifications/NotificationsPage'));
+const HelpCenterPage = lazy(() => import('../features/help-center/HelpCenterPage'));
+const UpgradePageImpl = lazy(() => import('../features/licensing/UpgradePage'));
+const NetworkInformationPageImpl = lazy(() => import('../features/network-info/NetworkInformationPage'));
+const DriverInformationPageImpl = lazy(() => import('../features/drivers/DriverInformationPage'));
+const BackupRestorePageImpl = lazy(() => import('../features/backup-restore/BackupRestorePage'));
+const SecurityHistoryPageImpl = lazy(() => import('../features/security-history/SecurityHistoryPage'));
+
+// Helper to wrap lazy components in Suspense
+function withSuspense(Component: React.LazyExoticComponent<React.ComponentType>) {
+  return function SuspenseWrapper() {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <Component />
+      </Suspense>
+    );
+  };
+}
 
 // ── HOME ──────────────────────────────────────────────────────
 
-export function AIDailyBriefingPage() {
-  return <AIDailyBriefingPageImpl />;
-}
+export const AIDailyBriefingPage = withSuspense(AIDailyBriefingPageImpl);
 
 export function AISmartOptimizePage() {
   return <Navigate to="/dashboard" replace state={{ action: 'smart-optimize' }} />;
@@ -30,13 +47,9 @@ export function AISmartOptimizePage() {
 
 // ── SYSTEM HEALTH ─────────────────────────────────────────────
 
-export function SystemHealthPage() {
-  return <SystemHealthOverviewPage />;
-}
+export const SystemHealthPage = withSuspense(SystemHealthOverviewPage);
 
-export function PerformanceAnalyticsPage() {
-  return <PerformanceAnalyticsPageImpl />;
-}
+export const PerformanceAnalyticsPage = withSuspense(PerformanceAnalyticsPageImpl);
 
 // ── OPTIMIZATION ──────────────────────────────────────────────
 
@@ -60,21 +73,10 @@ export function AnalyticsPage() {
 
 // ── TOOLS ─────────────────────────────────────────────────────
 
-export function NetworkInformationPage() {
-  return <NetworkInformationPageImpl />;
-}
-
-export function DriverInformationPage() {
-  return <DriverInformationPageImpl />;
-}
-
-export function BackupRestorePage() {
-  return <BackupRestorePageImpl />;
-}
-
-export function SecurityHistoryPage() {
-  return <SecurityHistoryPageImpl />;
-}
+export const NetworkInformationPage = withSuspense(NetworkInformationPageImpl);
+export const DriverInformationPage = withSuspense(DriverInformationPageImpl);
+export const BackupRestorePage = withSuspense(BackupRestorePageImpl);
+export const SecurityHistoryPage = withSuspense(SecurityHistoryPageImpl);
 
 export function AntispywareMalwareRemovalPage() {
   return <Navigate to="/security-center" replace state={{ filter: 'malware' }} />;
@@ -88,26 +90,14 @@ export function HelpSupportPage() {
   return <Navigate to="/help" replace />;
 }
 
-export function RecoveryCenterPage() {
-  return <RecoveryCenterPageImpl />;
-}
+export const RecoveryCenterPage = withSuspense(RecoveryCenterPageImpl);
 
 // ── REPORTS ───────────────────────────────────────────────────
 
-export function ExportCenterPageWrapper() {
-  return <ExportCenterPage />;
-}
+export const ExportCenterPageWrapper = withSuspense(ExportCenterPage);
 
 // ── ACCOUNT ───────────────────────────────────────────────────
 
-export function UpgradePage() {
-  return <UpgradePageImpl />;
-}
-
-export function HelpPage() {
-  return <HelpCenterPage />;
-}
-
-export function NotificationsPageWrapper() {
-  return <NotificationsPage />;
-}
+export const UpgradePage = withSuspense(UpgradePageImpl);
+export const HelpPage = withSuspense(HelpCenterPage);
+export const NotificationsPageWrapper = withSuspense(NotificationsPage);
