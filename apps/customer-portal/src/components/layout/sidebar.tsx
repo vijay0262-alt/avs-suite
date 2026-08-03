@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  Home,
   LayoutDashboard,
   Package,
   Download,
@@ -14,9 +15,15 @@ import {
   Settings,
   LifeBuoy,
   ShieldCheck,
+  ShoppingCart,
+  FileText,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/lib/auth-store';
+import { Badge } from '@/components/ui/badge';
+
+const WEBSITE_URL = process.env.NEXT_PUBLIC_WEBSITE_URL ?? 'https://avsshield.com';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -24,7 +31,9 @@ const navItems = [
   { href: '/downloads', label: 'Downloads', icon: Download },
   { href: '/licenses', label: 'Licenses', icon: KeyRound },
   { href: '/devices', label: 'Devices', icon: Monitor },
-  { href: '/profile', label: 'Profile', icon: User },
+  { href: '/orders', label: 'Orders', icon: ShoppingCart },
+  { href: '/invoices', label: 'Invoices', icon: FileText },
+  { href: '/profile', label: 'Account', icon: User },
   { href: '/security', label: 'Security', icon: Shield },
   { href: '/notifications', label: 'Notifications', icon: Bell },
   { href: '/settings', label: 'Settings', icon: Settings },
@@ -33,7 +42,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { customer } = useAuthStore();
+  const { customer, logout } = useAuthStore();
 
   return (
     <aside
@@ -46,6 +55,23 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3">
+        {/* External links */}
+        <ul className="space-y-1 mb-2">
+          <li>
+            <a
+              href={WEBSITE_URL}
+              className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              data-testid="sidebar-link-home"
+            >
+              <Home className="h-4 w-4" />
+              Home
+            </a>
+          </li>
+        </ul>
+
+        <div className="my-2 border-t border-border" />
+
+        {/* Dashboard nav items */}
         <ul className="space-y-1">
           {navItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(item.href + '/');
@@ -72,7 +98,7 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t border-border p-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
             {customer?.first_name?.[0]?.toUpperCase() ?? 'U'}
           </div>
@@ -83,6 +109,24 @@ export function Sidebar() {
             <p className="truncate text-xs text-muted-foreground">{customer?.email}</p>
           </div>
         </div>
+        <div className="flex items-center gap-2 mb-3">
+          {customer?.email_verified ? (
+            <Badge variant="success" className="text-xs">Verified</Badge>
+          ) : (
+            <Badge variant="warning" className="text-xs">Email Pending</Badge>
+          )}
+          {customer?.account_status === 'ACTIVE' && (
+            <Badge variant="success" className="text-xs">Active</Badge>
+          )}
+        </div>
+        <button
+          onClick={() => void logout()}
+          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          data-testid="sidebar-logout"
+        >
+          <LogOut className="h-4 w-4" />
+          Logout
+        </button>
       </div>
     </aside>
   );

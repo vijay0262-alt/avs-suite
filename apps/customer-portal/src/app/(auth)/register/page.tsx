@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { useAuthStore } from '@/lib/auth-store';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, loading, error, clearError } = useAuthStore();
+  const { register, loading, error, clearError, phase } = useAuthStore();
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
@@ -20,6 +20,13 @@ export default function RegisterPage() {
     password: '',
   });
 
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (phase === 'authenticated') {
+      router.replace('/dashboard');
+    }
+  }, [phase, router]);
+
   const handleChange = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
   };
@@ -27,9 +34,15 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
-    const success = await register(form);
-    if (success) {
-      router.push('/dashboard');
+    const result = await register(form);
+    if (result.success) {
+      if (result.verificationRequired) {
+        // Redirect to verify-email page with email for resend
+        router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
+      } else {
+        // Legacy mode — no verification required
+        router.push('/dashboard');
+      }
     }
   };
 

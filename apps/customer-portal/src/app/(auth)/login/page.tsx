@@ -1,26 +1,37 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuthStore } from '@/lib/auth-store';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, loading, error, errorCode, clearError } = useAuthStore();
+  const searchParams = useSearchParams();
+  const { login, loading, error, errorCode, clearError, phase } = useAuthStore();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const returnUrl = searchParams.get('returnUrl');
+
+  // Redirect authenticated users to dashboard (or return URL)
+  useEffect(() => {
+    if (phase === 'authenticated') {
+      router.replace(returnUrl ?? '/dashboard');
+    }
+  }, [phase, router, returnUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
-    const success = await login(identifier, password);
+    const success = await login(identifier, password, rememberMe);
     if (success) {
-      router.push('/dashboard');
+      router.push(returnUrl ?? '/dashboard');
     }
   };
 
@@ -73,6 +84,18 @@ export default function LoginPage() {
               autoComplete="current-password"
               data-testid="login-password"
             />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="remember-me"
+              checked={rememberMe}
+              onCheckedChange={(checked: boolean | 'indeterminate') => setRememberMe(checked === true)}
+              data-testid="login-remember-me"
+            />
+            <Label htmlFor="remember-me" className="text-sm font-normal cursor-pointer">
+              Remember me for 30 days
+            </Label>
           </div>
 
           {error && (

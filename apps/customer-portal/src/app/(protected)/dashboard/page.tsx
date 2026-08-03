@@ -11,6 +11,11 @@ import {
   TrendingUp,
   ShieldCheck,
   AlertCircle,
+  Mail,
+  Clock,
+  CreditCard,
+  Cpu,
+  CheckCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -81,9 +86,13 @@ export default function DashboardPage() {
     },
   ];
 
+  // Determine license type from products
+  const hasProLicense = data.products.some((p) => p.edition?.toLowerCase().includes('pro'));
+  const licenseType = hasProLicense ? 'Professional License' : 'Free License';
+
   return (
     <div className="space-y-6" data-testid="dashboard-page">
-      {/* Welcome */}
+      {/* Welcome + Account Status */}
       <Card>
         <CardContent className="flex items-center justify-between p-6">
           <div>
@@ -94,16 +103,85 @@ export default function DashboardPage() {
               Manage your AVS Shield products, licenses, and devices.
             </p>
           </div>
-          <div className="hidden items-center gap-2 sm:flex">
+          <div className="hidden flex-wrap items-center gap-2 sm:flex">
+            {customer?.email_verified ? (
+              <Badge variant="success" data-testid="badge-verified">
+                <CheckCircle className="mr-1 h-3 w-3" /> Verified
+              </Badge>
+            ) : (
+              <Badge variant="warning" data-testid="badge-email-pending">
+                <Mail className="mr-1 h-3 w-3" /> Email Pending Verification
+              </Badge>
+            )}
             <Badge
               variant={customer?.account_status === 'ACTIVE' ? 'success' : 'warning'}
               data-testid="account-status-badge"
             >
               {customer?.account_status ?? 'UNKNOWN'}
             </Badge>
+            <Badge variant="secondary" data-testid="badge-license-type">
+              <KeyRound className="mr-1 h-3 w-3" /> {licenseType}
+            </Badge>
           </div>
         </CardContent>
       </Card>
+
+      {/* Email Verification Banner */}
+      {customer && !customer.email_verified && (
+        <Card className="border-warning/30 bg-warning/5" data-testid="verification-banner">
+          <CardContent className="flex items-center gap-3 p-4">
+            <Mail className="h-5 w-5 text-warning" />
+            <p className="text-sm font-medium text-foreground">
+              Please verify your email address to access all features.
+            </p>
+            <Link href="/verify-email" className="ml-auto">
+              <Button size="sm" variant="outline">Verify Now</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Account Status Details */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card data-testid="account-status-license">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+              <KeyRound className="h-4 w-4" /> License Type
+            </div>
+            <p className="text-lg font-bold text-foreground">{licenseType}</p>
+          </CardContent>
+        </Card>
+        <Card data-testid="account-status-devices">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+              <Monitor className="h-4 w-4" /> Devices
+            </div>
+            <p className="text-lg font-bold text-foreground">{data.devices.length} registered</p>
+          </CardContent>
+        </Card>
+        <Card data-testid="account-status-subscription">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+              <CreditCard className="h-4 w-4" /> Subscription
+            </div>
+            <p className="text-lg font-bold text-foreground">
+              {data.licenses.some((l) => l.status === 'active') ? 'Active' : 'None'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card data-testid="account-status-expiration">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+              <Clock className="h-4 w-4" /> Expiration
+            </div>
+            <p className="text-lg font-bold text-foreground">
+              {data.licenses.find((l) => l.status === 'active')?.expires_at
+                ? formatDate(data.licenses.find((l) => l.status === 'active')!.expires_at)
+                : '—'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Update Available Banner */}
       {data.update_available && (

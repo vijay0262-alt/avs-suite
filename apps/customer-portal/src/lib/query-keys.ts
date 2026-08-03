@@ -12,4 +12,7 @@ export const queryKeys = {
   sessions: ['sessions'] as const,
   notifications: ['notifications'] as const,
   activity: ['activity'] as const,
+  orders: ['orders'] as const,
+  invoices: ['invoices'] as const,
+  accountStatus: ['account-status'] as const,
 };

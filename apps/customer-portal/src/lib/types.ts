@@ -24,6 +24,7 @@ export interface LoginResponse {
   token_type: string;
   expires_in: number;
   customer: Customer;
+  email_verification_required?: boolean;
 }
 
 export interface RefreshResponse {
@@ -39,6 +40,63 @@ export interface RegisterRequest {
   email: string;
   phone_number: string;
   password: string;
+}
+
+export interface RegisterResponse {
+  customer: Customer;
+  verification_required: boolean;
+  verification_token?: string;
+}
+
+export interface VerifyEmailResponse {
+  success: boolean;
+  access_token?: string;
+  refresh_token?: string | null;
+  expires_in?: number;
+  customer?: Customer;
+  error?: string;
+}
+
+export interface ResendVerificationResponse {
+  success: boolean;
+  message?: string;
+}
+
+export interface Order {
+  id: string;
+  order_number: string;
+  product_code: string;
+  product_name: string;
+  edition: string;
+  status: string;
+  amount: number;
+  currency: string;
+  created_at: string;
+  invoice_url?: string | null;
+}
+
+export interface Invoice {
+  id: string;
+  invoice_number: string;
+  order_id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  created_at: string;
+  download_url: string;
+}
+
+export interface AccountStatus {
+  email_verified: boolean;
+  account_status: string;
+  edition: string;
+  license_status: string;
+  license_key?: string;
+  expires_at?: string | null;
+  device_count: number;
+  max_devices: number;
+  subscription_active: boolean;
+  subscription_renews_at?: string | null;
 }
 
 export interface Product {

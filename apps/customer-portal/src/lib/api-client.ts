@@ -86,14 +86,30 @@ const instance: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
-// Request interceptor — inject Bearer token
+// Request interceptor — inject Bearer token and CSRF header
 instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = getToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // Inject CSRF token on state-changing requests
+  const method = (config.method ?? 'get').toLowerCase();
+  if (method === 'post' || method === 'put' || method === 'delete' || method === 'patch') {
+    if (typeof document !== 'undefined') {
+      const csrfCookie = document.cookie
+        .split('; ')
+        .find((c) => c.startsWith('avs_csrf='));
+      if (csrfCookie) {
+        const csrfToken = csrfCookie.split('=')[1];
+        config.headers['X-CSRF-Token'] = csrfToken;
+      }
+    }
+  }
+
   return config;
 });
 

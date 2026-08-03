@@ -1,14 +1,23 @@
 'use client';
 
 import { useTheme } from 'next-themes';
-import { Moon, Sun, LogOut, Menu } from 'lucide-react';
+import { Moon, Sun, LogOut, Menu, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/lib/auth-store';
 import { Breadcrumbs } from './breadcrumbs';
+import { useRouter } from 'next/navigation';
+
+const WEBSITE_URL = process.env.NEXT_PUBLIC_WEBSITE_URL ?? 'https://avsshield.com';
 
 export function TopNav() {
   const { theme, setTheme } = useTheme();
   const { logout, customer } = useAuthStore();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('https://avsshield.com');
+  };
 
   return (
     <header
@@ -23,6 +32,13 @@ export function TopNav() {
       </div>
 
       <div className="flex items-center gap-2">
+        <a href={WEBSITE_URL} data-testid="top-nav-home">
+          <Button variant="ghost" size="sm" className="gap-2">
+            <Home className="h-4 w-4" />
+            <span className="hidden sm:inline">Home</span>
+          </Button>
+        </a>
+
         <Button
           variant="ghost"
           size="icon"
@@ -37,7 +53,7 @@ export function TopNav() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => void logout()}
+          onClick={() => void handleLogout()}
           className="gap-2"
           data-testid="logout-button"
         >

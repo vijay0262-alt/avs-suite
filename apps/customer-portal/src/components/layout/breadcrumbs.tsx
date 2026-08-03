@@ -11,11 +11,16 @@ const labelMap: Record<string, string> = {
   downloads: 'Downloads',
   licenses: 'Licenses',
   devices: 'Devices',
-  profile: 'Profile',
+  orders: 'Orders',
+  invoices: 'Invoices',
+  profile: 'Account',
   security: 'Security',
   notifications: 'Notifications',
   settings: 'Settings',
   support: 'Support',
+  'verify-email': 'Verify Email',
+  'forgot-password': 'Forgot Password',
+  'reset-password': 'Reset Password',
 };
 
 export function Breadcrumbs() {

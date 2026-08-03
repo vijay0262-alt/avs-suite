@@ -21,6 +21,7 @@
       "@/*": ["./src/*"]
     },
     "plugins": [{ "name": "next" }],
+    "types": ["vitest/globals", "node"],
     "incremental": true
   },
   "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts"],

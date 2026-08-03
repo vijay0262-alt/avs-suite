@@ -2,17 +2,16 @@
  * Auth service — login, register, refresh, validate against the
  * AVS License Server customer API.
  *
- * Endpoints:
- *   POST /api/customer/auth/login     — login
- *   POST /api/customer/auth/register  — create account
- *   POST /api/customer/auth/refresh   — refresh token
- *   POST /api/customer/auth/forgot    — forgot password
- *   GET  /api/customer/profile        — get profile
- *   PUT  /api/customer/profile        — update profile
- *   POST /api/customer/auth/logout    — logout
+ * All auth calls go through Next.js API routes (/api/auth/*) which:
+ *   - Proxy to the license server
+ *   - Set HTTPOnly cookies for SSO across avsshield.com subdomains
+ *   - Handle CSRF protection
+ *
+ * Client-side auth state is mirrored in localStorage (non-sensitive
+ * metadata only). Tokens are never accessible to JavaScript.
  */
 import { apiClient, AuthError, ApiError, NetworkError, configureApiClient } from './api-client';
-import { tokenStorage, type StoredSession } from './token-storage';
+import { tokenStorage, type StoredSession, type ClientMirror } from './token-storage';
 import type { Customer, LoginResponse, RefreshResponse } from './types';
 
 export type AuthErrorCode =
@@ -21,6 +20,7 @@ export type AuthErrorCode =
   | 'ACCOUNT_SUSPENDED'
   | 'ACCOUNT_DELETED'
   | 'EMAIL_EXISTS'
+  | 'EMAIL_NOT_VERIFIED'
   | 'TOKEN_EXPIRED'
   | 'NETWORK_ERROR'
   | 'SERVER_ERROR'
@@ -52,6 +52,7 @@ function classifyError(err: unknown): AuthResultError {
       if (detail.includes('locked')) return new AuthResultError('Your account is locked. Please contact support.', 'ACCOUNT_LOCKED');
       if (detail.includes('suspend')) return new AuthResultError('Your account is suspended. Please contact support.', 'ACCOUNT_SUSPENDED');
       if (detail.includes('deleted') || detail.includes('delet')) return new AuthResultError('This account has been deleted.', 'ACCOUNT_DELETED');
+      if (detail.includes('not verified') || detail.includes('unverified')) return new AuthResultError('Please verify your email address to continue.', 'EMAIL_NOT_VERIFIED');
       return new AuthResultError('Invalid email/phone or password.', 'INVALID_CREDENTIALS');
     }
     if (err.statusCode === 409) return new AuthResultError('An account with this email already exists.', 'EMAIL_EXISTS');
@@ -66,7 +67,7 @@ function buildDisplayName(c: Customer): string {
   return `${c.first_name} ${c.last_name}`.trim();
 }
 
-function sessionFromLogin(resp: LoginResponse): StoredSession {
+function sessionFromLogin(resp: LoginResponse, rememberMe: boolean): StoredSession {
   return {
     accessToken: resp.access_token,
     refreshToken: resp.refresh_token ?? null,
@@ -74,45 +75,63 @@ function sessionFromLogin(resp: LoginResponse): StoredSession {
     customerName: buildDisplayName(resp.customer),
     customerEmail: resp.customer.email,
     accountStatus: resp.customer.account_status,
+    emailVerified: resp.customer.email_verified,
     expiresAt: Date.now() + resp.expires_in * 1000,
+    rememberMe,
   };
 }
 
 let onExpiredCallback: (() => void) | null = null;
 
 configureApiClient({
-  getToken: () => tokenStorage.load()?.accessToken ?? null,
-  setToken: (token) => {
-    if (token === null) {
-      tokenStorage.clear();
-    }
+  getToken: () => {
+    // Tokens are now in HTTPOnly cookies — the API client doesn't need
+    // to inject them manually for same-origin requests. Cookies are
+    // sent automatically by the browser.
+    return null;
+  },
+  setToken: () => {
+    // No-op — cookies are managed by the API routes
   },
   refresh: async () => {
     try {
-      const session = await authService.refresh();
-      return session.accessToken;
+      const resp = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+      if (!resp.ok) return null;
+      const data = await resp.json() as RefreshResponse;
+      return data.access_token;
     } catch {
       return null;
     }
   },
   onExpired: () => {
-    tokenStorage.clear();
+    tokenStorage.clearMirror();
     onExpiredCallback?.();
   },
 });
 
 export const authService = {
-  async login(identifier: string, password: string): Promise<StoredSession> {
+  async login(identifier: string, password: string, rememberMe = false): Promise<StoredSession> {
     try {
-      const resp = await apiClient.post<LoginResponse>(
-        '/api/customer/auth/login',
-        { identifier, password },
-        { noAuth: true },
-      );
-      const session = sessionFromLogin(resp);
-      tokenStorage.save(session);
+      const resp = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier, password, remember_me: rememberMe }),
+        credentials: 'same-origin',
+      });
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({ detail: 'Login failed' }));
+        throw new ApiError(errData.detail ?? 'Login failed', resp.status, errData.detail);
+      }
+      const data = await resp.json() as LoginResponse;
+      const session = sessionFromLogin(data, rememberMe);
+      tokenStorage.saveMirror(session);
       return session;
     } catch (err) {
+      if (err instanceof ApiError) throw classifyError(err);
+      if (err instanceof NetworkError) throw classifyError(err);
       throw classifyError(err);
     }
   },
@@ -123,17 +142,71 @@ export const authService = {
     email: string;
     phone_number: string;
     password: string;
-  }): Promise<StoredSession> {
+  }): Promise<{ verificationRequired: boolean; customer: Customer }> {
     try {
-      const resp = await apiClient.post<LoginResponse>(
-        '/api/customer/auth/register',
-        data,
-        { noAuth: true },
-      );
-      const session = sessionFromLogin(resp);
-      tokenStorage.save(session);
-      return session;
+      const resp = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        credentials: 'same-origin',
+      });
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({ detail: 'Registration failed' }));
+        throw new ApiError(errData.detail ?? 'Registration failed', resp.status, errData.detail);
+      }
+      const result = await resp.json() as { customer: Customer; verification_required: boolean };
+      return {
+        verificationRequired: result.verification_required,
+        customer: result.customer,
+      };
     } catch (err) {
+      if (err instanceof ApiError) throw classifyError(err);
+      if (err instanceof NetworkError) throw classifyError(err);
+      throw classifyError(err);
+    }
+  },
+
+  async verifyEmail(token: string): Promise<StoredSession | null> {
+    try {
+      const resp = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+        credentials: 'same-origin',
+      });
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({ detail: 'Verification failed' }));
+        throw new ApiError(errData.detail ?? 'Verification failed', resp.status, errData.detail);
+      }
+      const data = await resp.json() as LoginResponse;
+      if (data.access_token) {
+        const session = sessionFromLogin(data, true);
+        tokenStorage.saveMirror(session);
+        return session;
+      }
+      return null;
+    } catch (err) {
+      if (err instanceof ApiError) throw classifyError(err);
+      if (err instanceof NetworkError) throw classifyError(err);
+      throw classifyError(err);
+    }
+  },
+
+  async resendVerification(email: string): Promise<void> {
+    try {
+      const resp = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+        credentials: 'same-origin',
+      });
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({ detail: 'Failed to resend verification email' }));
+        throw new ApiError(errData.detail ?? 'Failed to resend', resp.status, errData.detail);
+      }
+    } catch (err) {
+      if (err instanceof ApiError) throw classifyError(err);
+      if (err instanceof NetworkError) throw classifyError(err);
       throw classifyError(err);
     }
   },
@@ -147,26 +220,36 @@ export const authService = {
   },
 
   async refresh(): Promise<StoredSession> {
-    const existing = tokenStorage.load();
-    if (!existing?.refreshToken) {
-      throw new AuthResultError('No refresh token available.', 'TOKEN_EXPIRED');
-    }
     try {
-      const resp = await apiClient.post<RefreshResponse>(
-        '/api/customer/auth/refresh',
-        { refresh_token: existing.refreshToken },
-        { noAuth: true },
-      );
+      const resp = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+      if (!resp.ok) {
+        tokenStorage.clearMirror();
+        throw new AuthResultError('Session expired. Please log in again.', 'TOKEN_EXPIRED');
+      }
+      const data = await resp.json() as RefreshResponse;
+      const mirror = tokenStorage.loadMirror();
+      if (!mirror) {
+        throw new AuthResultError('No session found.', 'TOKEN_EXPIRED');
+      }
       const session: StoredSession = {
-        ...existing,
-        accessToken: resp.access_token,
-        refreshToken: resp.refresh_token ?? existing.refreshToken,
-        expiresAt: Date.now() + resp.expires_in * 1000,
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token ?? null,
+        customerId: mirror.customerId,
+        customerName: mirror.customerName,
+        customerEmail: mirror.customerEmail,
+        accountStatus: mirror.accountStatus,
+        emailVerified: mirror.emailVerified,
+        expiresAt: Date.now() + data.expires_in * 1000,
+        rememberMe: mirror.rememberMe,
       };
-      tokenStorage.save(session);
+      tokenStorage.saveMirror(session);
       return session;
     } catch (err) {
-      tokenStorage.clear();
+      tokenStorage.clearMirror();
+      if (err instanceof AuthResultError) throw err;
       throw classifyError(err);
     }
   },
@@ -186,21 +269,24 @@ export const authService = {
 
   async logout(): Promise<void> {
     try {
-      await apiClient.post('/api/customer/auth/logout');
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
     } catch {
       // Ignore errors — we're clearing locally regardless
     }
-    tokenStorage.clear();
+    tokenStorage.clearMirror();
     onExpiredCallback?.();
   },
 
   isAuthenticated(): boolean {
-    const session = tokenStorage.load();
-    return session !== null && !tokenStorage.isExpired(session);
+    const mirror = tokenStorage.loadMirror();
+    return mirror !== null && !tokenStorage.isExpired(mirror);
   },
 
-  getSession(): StoredSession | null {
-    return tokenStorage.load();
+  getSession(): ClientMirror | null {
+    return tokenStorage.loadMirror();
   },
 
   onExpired(cb: () => void): void {
