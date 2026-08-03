@@ -47,10 +47,10 @@ _singleton_lock = threading.Lock()
 def _ensure_singletons() -> None:
     """Create the scan/cleaning/history singletons on first call."""
     global _cleaners, _cleaner_by_id, _scan_manager, _history, _cleaning_manager
-    if _cleaners is not None:
+    if _cleaning_manager is not None:
         return
     with _singleton_lock:
-        if _cleaners is not None:
+        if _cleaning_manager is not None:
             return
         from .cleaners import all_cleaners
         from .cleaning_manager import CleaningManager
