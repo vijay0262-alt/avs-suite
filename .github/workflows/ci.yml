@@ -2,9 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'release/*']
+    tags: ['v*']
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   lint-typecheck-test:
@@ -35,7 +37,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -57,7 +59,13 @@ jobs:
     name: Build Windows Installer
     runs-on: windows-latest
     needs: [lint-typecheck-test, backend]
-    
+    # Only build the installer for release tags, manual dispatch, or release branches.
+    # Skip on regular push/PR to save runner minutes and artifact storage.
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.ref, 'refs/tags/v') ||
+      startsWith(github.ref, 'refs/heads/release/')
+
     steps:
       - uses: actions/checkout@v4
 
@@ -70,6 +78,18 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Free disk space
+        shell: pwsh
+        run: |
+          # Remove unnecessary tool caches and SDKs to reclaim ~10GB.
+          Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Temp\*" -ErrorAction SilentlyContinue
+          if (Test-Path "C:\Program Files\dotnet\sdk") {
+            Remove-Item -Recurse -Force "C:\Program Files\dotnet\sdk\*" -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "C:\Program Files (x86)\Android") {
+            Remove-Item -Recurse -Force "C:\Program Files (x86)\Android" -ErrorAction SilentlyContinue
+          }
+
       - name: Install
         run: |
           yarn install --frozen-lockfile
@@ -78,8 +98,21 @@ jobs:
       - name: Package PC Optimizer
         run: yarn package:pc-optimizer
 
-      - name: Upload installer
+      - name: Clean intermediate build outputs
+        shell: pwsh
+        run: |
+          # Remove win-unpacked (~300MB) and blockmap files — not needed as artifacts.
+          Remove-Item -Recurse -Force "apps/pc-optimizer/release/win-unpacked" -ErrorAction SilentlyContinue
+          Remove-Item -Force "apps/pc-optimizer/release/*.blockmap" -ErrorAction SilentlyContinue
+          Remove-Item -Force "apps/pc-optimizer/release/builder-debug.yml" -ErrorAction SilentlyContinue
+          Remove-Item -Force "apps/pc-optimizer/release/builder-effective-config.yaml" -ErrorAction SilentlyContinue
+
+      - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
           name: pc-optimizer-installer
-          path: apps/pc-optimizer/release/**
+          path: |
+            apps/pc-optimizer/release/*.exe
+            apps/pc-optimizer/release/latest.yml
+          retention-days: 5
+          if-no-files-found: error
