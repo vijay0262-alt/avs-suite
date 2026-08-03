@@ -2,8 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, 'release/*']
-    tags: ['v*']
+    branches: ['**']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -59,12 +58,6 @@ jobs:
     name: Build Windows Installer
     runs-on: windows-latest
     needs: [lint-typecheck-test, backend]
-    # Only build the installer for release tags, manual dispatch, or release branches.
-    # Skip on regular push/PR to save runner minutes and artifact storage.
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      startsWith(github.ref, 'refs/tags/v') ||
-      startsWith(github.ref, 'refs/heads/release/')
 
     steps:
       - uses: actions/checkout@v4
