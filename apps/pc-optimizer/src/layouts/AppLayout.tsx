@@ -4,6 +4,7 @@ import { TitleBar } from '../components/TitleBar';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { useKeyboardShortcuts } from '../components/useKeyboardShortcuts';
 import { ProSplashOverlay } from '../features/licensing/ProSplashOverlay';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 /**
  * AppLayout — the persistent shell for every page.
@@ -44,7 +45,9 @@ export function AppLayout() {
           data-testid="app-main-content"
         >
           <Breadcrumbs />
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>
