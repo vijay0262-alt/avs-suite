@@ -360,10 +360,17 @@ class BaseCleaner(ICleaner):
                 preview.warnings.append(ValidationIssue(path=raw, reason="forbidden", detail="Path is in a forbidden system root"))
                 continue
 
-            # 3. Single os.stat() replaces 4 separate syscalls:
+            # 3. Single os.lstat() replaces 4 separate syscalls:
             #    path.is_symlink() + path.exists() + path.is_file() + path.stat().st_size
+            #
+            # CRITICAL: os.lstat() (not os.stat) — os.stat follows symlinks
+            # and returns the target's stat, so S_ISLNK would never be True.
+            # os.lstat does NOT follow symlinks, so S_ISLNK correctly detects
+            # them. On Windows, junctions are reparse points that may not
+            # set S_ISLNK, so we additionally check st_file_attributes for
+            # the FILE_ATTRIBUTE_REPARSE_POINT flag (0x400).
             try:
-                st = os.stat(raw)
+                st = os.lstat(raw)
             except FileNotFoundError:
                 preview.warnings.append(ValidationIssue(path=raw, reason="missing", detail="File does not exist"))
                 continue
@@ -371,8 +378,14 @@ class BaseCleaner(ICleaner):
                 preview.warnings.append(ValidationIssue(path=raw, reason="inaccessible", detail="File is not accessible"))
                 continue
 
-            # Symlink check from stat mode
-            if stat.S_ISLNK(st.st_mode):
+            # Symlink check — must use lstat mode, not stat mode.
+            # Also check Windows reparse points (junctions) via st_file_attributes.
+            is_link = stat.S_ISLNK(st.st_mode)
+            if not is_link and os.name == "nt":
+                file_attrs = getattr(st, "st_file_attributes", 0)
+                if file_attrs & 0x400:  # FILE_ATTRIBUTE_REPARSE_POINT
+                    is_link = True
+            if is_link:
                 preview.warnings.append(ValidationIssue(path=raw, reason="symlink", detail="Symlinks are not cleaned"))
                 continue
 
@@ -648,11 +661,21 @@ class BaseCleaner(ICleaner):
                 return "skipped:not-a-file"
         else:
             try:
-                st = os.stat(raw)
+                st = os.lstat(raw)
             except FileNotFoundError:
                 return "skipped:missing"
             except (PermissionError, OSError):
                 return "skipped:permission-denied"
+            # Symlink / reparse-point check — os.lstat does not follow
+            # symlinks, so S_ISLNK correctly detects them. On Windows,
+            # also check st_file_attributes for reparse points (junctions).
+            is_link = stat.S_ISLNK(st.st_mode)
+            if not is_link and os.name == "nt":
+                file_attrs = getattr(st, "st_file_attributes", 0)
+                if file_attrs & 0x400:  # FILE_ATTRIBUTE_REPARSE_POINT
+                    is_link = True
+            if is_link:
+                return "skipped:symlink"
             if not stat.S_ISREG(st.st_mode):
                 return "skipped:not-a-file"
             size = int(st.st_size)

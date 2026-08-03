@@ -232,21 +232,29 @@ def delete_to_recycle_bin(paths: list[str]) -> tuple[int, int]:
     if not paths:
         return 0, 0
 
-    # Filter to only existing files
-    existing = [p for p in paths if os.path.exists(p)]
+    # Partition into existing and missing — missing paths are failures.
+    existing = []
+    missing_count = 0
+    for p in paths:
+        if os.path.exists(p):
+            existing.append(p)
+        else:
+            missing_count += 1
+
     if not existing:
-        return 0, len(paths)
+        return 0, missing_count
 
     # Try IFileOperation first (Vista+)
     try:
         success, failed = _delete_via_file_operation(existing)
         if success > 0 or failed == 0:
-            return success, failed
+            return success, failed + missing_count
     except Exception as e:
         log.debug("IFileOperation not available, trying SHFileOperation: %s", e)
 
     # Fallback to SHFileOperation
-    return _delete_via_shfileoperation(existing)
+    success, failed = _delete_via_shfileoperation(existing)
+    return success, failed + missing_count
 
 
 def delete_to_recycle_bin_single(

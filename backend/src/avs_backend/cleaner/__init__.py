@@ -45,27 +45,36 @@ _singleton_lock = threading.Lock()
 
 
 def _ensure_singletons() -> None:
-    """Create the scan/cleaning/history singletons on first call."""
+    """Create the scan/cleaning/history singletons on first call.
+
+    Each singleton is initialized only when it is ``None`` — injected
+    instances (e.g. monkeypatched by tests) are never overwritten.
+    """
     global _cleaners, _cleaner_by_id, _scan_manager, _history, _cleaning_manager
-    if _cleaning_manager is not None:
+    if _cleaning_manager is not None and _scan_manager is not None:
         return
     with _singleton_lock:
-        if _cleaning_manager is not None:
+        if _cleaning_manager is not None and _scan_manager is not None:
             return
         from .cleaners import all_cleaners
         from .cleaning_manager import CleaningManager
         from .history_store import HistoryStore, default_history_path
         from .scan_manager import ScanManager
 
-        _cleaners = all_cleaners()
-        _cleaner_by_id = {c.id: c for c in _cleaners}
-        _scan_manager = ScanManager(cleaners=_cleaners)
-        _history = HistoryStore(default_history_path())
-        _cleaning_manager = CleaningManager(
-            scan_manager=_scan_manager,
-            cleaner_by_id=_cleaner_by_id,
-            history_store=_history,
-        )
+        if _cleaners is None:
+            _cleaners = all_cleaners()
+        if _cleaner_by_id is None:
+            _cleaner_by_id = {c.id: c for c in _cleaners}
+        if _scan_manager is None:
+            _scan_manager = ScanManager(cleaners=_cleaners)
+        if _history is None:
+            _history = HistoryStore(default_history_path())
+        if _cleaning_manager is None:
+            _cleaning_manager = CleaningManager(
+                scan_manager=_scan_manager,
+                cleaner_by_id=_cleaner_by_id,
+                history_store=_history,
+            )
         log.info("Cleaner singletons created: %d cleaners", len(_cleaners))
 
 
