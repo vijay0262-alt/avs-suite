@@ -79,8 +79,8 @@ The Company may update these Terms from time to time. Changes will be posted on 
 
 ## 12. Contact
 
-- Website: https://www.avs.example.com/terms
-- Email: support@avs.example.com
+- Website: https://www.avsshield.com/terms
+- Email: help@avsshield.com
 
 ---
 

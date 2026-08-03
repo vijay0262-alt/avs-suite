@@ -88,8 +88,8 @@ This EULA constitutes the entire agreement between Licensor and Licensee regardi
 
 ## 13. Contact
 
-- Website: https://www.avs.example.com/eula
-- Email: support@avs.example.com
+- Website: https://www.avsshield.com/eula
+- Email: help@avsshield.com
 
 ---
 

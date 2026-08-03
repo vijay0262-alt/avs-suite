@@ -76,7 +76,7 @@ export default function RegisterPage() {
               id="email"
               type="email"
               required
-              placeholder="you@example.com"
+              placeholder="you@avsshield.com"
               value={form.email}
               onChange={handleChange('email')}
               data-testid="register-email"

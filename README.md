@@ -49,7 +49,7 @@ If the policy is `Restricted`, `Undefined`, or `AllSigned`, you need to change i
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/your-org/avs-suite.git
+git clone https://github.com/vijay0262-alt/avs-suite.git
 cd avs-suite
 ```
 

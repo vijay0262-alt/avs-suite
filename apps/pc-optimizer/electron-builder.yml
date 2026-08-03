@@ -17,7 +17,7 @@ extraMetadata:
   main: dist-electron/main/index.js
   author:
     name: Advanced Vision Software LLC
-    email: info@avs.example.com
+    email: help@avsshield.com
   publisherName: Advanced Vision Software LLC
 win:
   target:

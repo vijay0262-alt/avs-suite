@@ -97,7 +97,7 @@ export function LoginDialog() {
               autoComplete="username"
               value={identifier}
               onChange={(e) => handleIdentifierChange(e.target.value)}
-              placeholder="you@example.com"
+              placeholder="you@avsshield.com"
               disabled={loading}
               className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-50"
               data-testid="login-identifier"

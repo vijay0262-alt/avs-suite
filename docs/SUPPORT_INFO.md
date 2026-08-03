@@ -9,9 +9,9 @@
 
 | Channel | Details | Response Time |
 |---------|---------|---------------|
-| Email | support@avs.example.com | 24-48 hours |
-| Website | https://www.avs.example.com/support | — |
-| Pro Priority Support | priority@avs.example.com | 4-8 hours (Pro) |
+| Email | help@avsshield.com | 24-48 hours |
+| Website | https://www.avsshield.com/support | — |
+| Pro Priority Support | priority@avsshield.com | 4-8 hours (Pro) |
 
 ## Support Tiers
 
@@ -59,7 +59,7 @@ When reporting bugs, include:
 
 ## Feature Requests
 
-Feature requests can be submitted to support@avs.example.com with the subject "Feature Request: [Brief Description]".
+Feature requests can be submitted to help@avsshield.com with the subject "Feature Request: [Brief Description]".
 
 ## Privacy
 

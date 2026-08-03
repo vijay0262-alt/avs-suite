@@ -223,8 +223,8 @@ Last updated: 2026-08-02
 1. **TypeScript errors in security-dashboard** — 3 type errors to fix (see above)
 2. **ESLint warnings in security-dashboard** — 14 unused import/param warnings
 3. **API base URL** — Still `http://localhost:8000` in `apiClient.ts`, needs update to `https://api.avsshield.com`
-4. **Support email in package.json** — Still `info@avs.example.com`, should be `help@avsshield.com`
-5. **Release notes support URL** — Still `support@avs.example.com`, should be `help@avsshield.com`
+4. **Support email in package.json** — Fixed: now `help@avsshield.com`
+5. **Release notes support URL** — Fixed: now `help@avsshield.com` and `avsshield.com`
 6. **`frontend/` directory** — Legacy Create React App boilerplate, not integrated into monorepo. Appears to be the original AVS License Server admin portal. Should be migrated or removed.
 7. **Customer Portal** — Next.js app at `apps/customer-portal/`, version 0.1.0, not yet production-ready
 8. **Placeholder apps** — `apps/security/`, `apps/driver-updater/`, `apps/file-recovery/`, `apps/vpn/` are empty placeholders
@@ -331,7 +331,7 @@ Last updated: 2026-08-02
 |----------|-------|
 | `memory/PRD.md` | Still references "Safe Cleaning Engine" milestone (Jan 2026). Doesn't mention any V1.1 AI features, security dashboard, hardware center, or AI engines. Entire "What is NOT implemented" section is outdated. |
 | `docs/FEATURE_COMPLETION_REPORT.md` | References "7199 tests" — actual count is 7,957. Doesn't mention security dashboard, hardware center, or any V1.1 features. |
-| `docs/RELEASE_NOTES.md` | Support email is `support@avs.example.com` instead of `help@avsshield.com`. Website is `avs.example.com` instead of `avsshield.com`. |
+| `docs/RELEASE_NOTES.md` | Already correct: `help@avsshield.com` and `avsshield.com`. |
 | `docs/CHANGELOG.md` | Stops at V1.0.0 (2026-07-23). No entry for V1.1 AI features (hardware center, security dashboard, AI engines). |
 | `docs/COMMERCIAL_CHECKLIST.md` | References "7199 tests" and V1.0.0 scope only. Doesn't reflect V1.1 additions. |
 | `docs/architecture/overview.md` | Architecture diagram doesn't show AI Platform, Security Platform, or Hardware Platform layers. |

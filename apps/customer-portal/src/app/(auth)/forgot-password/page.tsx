@@ -66,7 +66,7 @@ export default function ForgotPasswordPage() {
                 id="email"
                 type="email"
                 required
-                placeholder="you@example.com"
+                placeholder="you@avsshield.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 data-testid="forgot-email"

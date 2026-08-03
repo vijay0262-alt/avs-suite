@@ -64,9 +64,9 @@ We may update this Privacy Policy from time to time. Changes will be posted on o
 
 ## Contact
 
-- Website: https://www.avs.example.com/privacy
-- Email: support@avs.example.com
-- Address: [To be provided]
+- Website: https://www.avsshield.com/privacy
+- Email: help@avsshield.com
+- Address: 30 N Gould St, Ste 4000, Sheridan, WY 82801
 
 ---
 

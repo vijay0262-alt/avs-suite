@@ -264,6 +264,6 @@ View application version, copyright, legal links, and check for updates.
 
 ## Support
 
-- Website: https://www.avs.example.com
-- Email: support@avs.example.com
+- Website: https://www.avsshield.com
+- Email: help@avsshield.com
 - Copyright © 2024-2026 Advanced Vision Software LLC. All rights reserved.

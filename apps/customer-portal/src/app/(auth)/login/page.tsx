@@ -44,7 +44,7 @@ export default function LoginPage() {
             <Input
               id="identifier"
               type="text"
-              placeholder="you@example.com"
+              placeholder="you@avsshield.com"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               required
