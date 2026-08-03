@@ -512,8 +512,6 @@ class CleaningManager:
                  time.monotonic() - start, cleaner_id, len(paths))
         return paths
 
-    _CLEANER_TIMEOUT_S = 120.0
-
     def _run_cleaner(self, task: _Task, rt: _CleanerRuntime) -> CleaningResult:
         def on_progress(pct: int) -> None:
             rt.progress = max(0, min(100, pct))
@@ -522,24 +520,9 @@ class CleaningManager:
             rt.current_file = p
 
         try:
-            # Run the cleaner's clean() in a sub-thread so we can enforce a timeout
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as sub_pool:
-                clean_future = sub_pool.submit(
-                    rt.cleaner.clean, rt.candidate_paths, task.cancel_event, on_progress, on_file
-                )
-                try:
-                    result = clean_future.result(timeout=self._CLEANER_TIMEOUT_S)
-                except concurrent.futures.TimeoutError:
-                    task.cancel_event.set()
-                    log.error("Cleaner %s timed out after %.0fs", rt.cleaner.id, self._CLEANER_TIMEOUT_S)
-                    result = CleaningResult(
-                        cleaner_id=rt.cleaner.id,
-                        name=rt.cleaner.name,
-                        category=rt.cleaner.category,
-                        result=CleaningActionResult.FAILED,
-                        errors=[f"Cleaner timed out after {self._CLEANER_TIMEOUT_S:.0f}s"],
-                    )
+            result = rt.cleaner.clean(
+                rt.candidate_paths, task.cancel_event, on_progress, on_file
+            )
         except Exception as e:  # noqa: BLE001 — engine safety net
             log.exception("Cleaner %s crashed while cleaning", rt.cleaner.id)
             result = CleaningResult(

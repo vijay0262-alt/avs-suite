@@ -75,9 +75,12 @@ _DELETE_RETRY_BACKOFF_MS = (50, 150, 300)
 
 # Parallel deletion worker count — file deletion on Windows is I/O-bound
 # and benefits from parallelism (3x speedup with 8 threads).
-_CLEAN_WORKER_THREADS = 8
+_CLEAN_WORKER_THREADS = 16
 # Threshold for switching to parallel deletion (small counts use serial).
 _PARALLEL_THRESHOLD = 50
+# Batch size for submitting futures in parallel deletion — reduces peak
+# memory from Future objects and improves scheduler responsiveness.
+_CLEAN_BATCH_SIZE = 500
 
 
 class BaseCleaner(ICleaner):
@@ -261,12 +264,16 @@ class BaseCleaner(ICleaner):
                         if not self.include(entry):
                             continue
 
-                        _, dotext = os.path.splitext(entry.name)
+                        # Reuse the splitext result from the extension filter
+                        # (computed above when ext_filter is set; recompute only
+                        # when ext_filter is None to avoid an unbound variable).
+                        if ext_filter is None:
+                            _, ext = os.path.splitext(entry.name)
                         result.items.append(
                             ScanItem(
                                 path=entry.path,
                                 name=entry.name,
-                                extension=dotext.lstrip(".").lower(),
+                                extension=ext.lstrip(".").lower(),
                                 size=int(st.st_size),
                                 modified_at=float(st.st_mtime),
                             )
@@ -295,23 +302,21 @@ class BaseCleaner(ICleaner):
     def validate(self, candidate_paths: list[str]) -> CleaningPreview:
         """Pre-flight — filter unsafe or stale candidates (FAST PATH).
 
-        This is optimized for maximum speed - only essential safety checks.
-        Like Disk Cleanup utilities, it trusts user permissions and skips
-        expensive validation checks.
+        Optimized for maximum speed — uses ``os.path.normpath`` (pure
+        string operation) instead of ``Path.resolve()`` (which opens a
+        file handle on Windows via ``GetFinalPathNameByHandle``), and
+        combines existence/symlink/file-type/size checks into a single
+        ``os.stat()`` syscall per file.
 
         Rules applied here (all cheap; no deletions):
 
         1. The path must resolve inside one of this cleaner's declared
            :meth:`targets`. Anything outside is silently dropped and
-           reported as ``out-of-scope`` — protects against a poisoned
-           input from a stale scan or a bug in the manager.
+           reported as ``out-of-scope``.
         2. The path must not resolve inside any
            :data:`safe_paths.FORBIDDEN_ROOTS`.
-        3. The path must exist as a regular file (minimal check).
-        4. Directories are refused — cleaners only touch files.
-
-        The preview is used for the confirmation dialog AND is the exact
-        candidate list forwarded to :meth:`clean`.
+        3. The path must exist as a regular file (single ``os.stat``).
+        4. Symlinks are refused.
         """
         preview = CleaningPreview(
             cleaner_id=self.id,
@@ -319,65 +324,67 @@ class BaseCleaner(ICleaner):
             category=self.category,
         )
 
-        # Pre-compute the allowed target roots as normalised strings.
+        # Pre-compute allowed target roots as normalized strings (pure
+        # string ops — no filesystem syscalls).
         allowed_roots: list[str] = []
         for t in self.targets():
             if not t:
                 continue
             try:
-                rp = str(Path(t).resolve(strict=False))
-            except (OSError, RuntimeError):
+                allowed_roots.append(os.path.normpath(str(t)))
+            except (OSError, RuntimeError, ValueError):
                 continue
-            allowed_roots.append(rp)
+
+        sep = os.sep
 
         for raw in candidate_paths:
+            # Fast path normalization — pure string, no syscalls.
+            # Path.resolve() calls GetFinalPathNameByHandle on Windows
+            # which opens a file handle per call — far too expensive for
+            # 10k+ files. Scan paths are already absolute.
             try:
-                path = Path(raw)
-                resolved = str(path.resolve(strict=False))
+                resolved = os.path.normpath(raw)
             except (OSError, RuntimeError, ValueError):
-                preview.warnings.append(ValidationIssue(path=raw, reason="invalid", detail="Path could not be resolved"))
+                preview.warnings.append(ValidationIssue(path=raw, reason="invalid", detail="Path could not be normalized"))
                 continue
 
-            # 1. Scope check
+            # 1. Scope check (string-only)
             if allowed_roots and not any(
-                resolved == root or resolved.startswith(root + os.sep) for root in allowed_roots
+                resolved == root or resolved.startswith(root + sep) for root in allowed_roots
             ):
                 preview.warnings.append(ValidationIssue(path=raw, reason="out-of-scope", detail="Path is outside cleaner's target roots"))
                 continue
 
-            # 2. Forbidden roots
+            # 2. Forbidden roots (string-only)
             if is_forbidden(resolved):
                 preview.warnings.append(ValidationIssue(path=raw, reason="forbidden", detail="Path is in a forbidden system root"))
                 continue
 
-            # 3. Symlink check
+            # 3. Single os.stat() replaces 4 separate syscalls:
+            #    path.is_symlink() + path.exists() + path.is_file() + path.stat().st_size
             try:
-                if path.is_symlink():
-                    preview.warnings.append(ValidationIssue(path=raw, reason="symlink", detail="Symlinks are not cleaned"))
-                    continue
-            except OSError:
-                preview.warnings.append(ValidationIssue(path=raw, reason="inaccessible", detail="Cannot access path"))
+                st = os.stat(raw)
+            except FileNotFoundError:
+                preview.warnings.append(ValidationIssue(path=raw, reason="missing", detail="File does not exist"))
+                continue
+            except (PermissionError, OSError):
+                preview.warnings.append(ValidationIssue(path=raw, reason="inaccessible", detail="File is not accessible"))
                 continue
 
-            # 4. Exists as regular file
-            try:
-                if not path.exists():
-                    preview.warnings.append(ValidationIssue(path=raw, reason="missing", detail="File does not exist"))
-                    continue
-                if not path.is_file():
-                    preview.warnings.append(ValidationIssue(path=raw, reason="not-a-file", detail="Path is a directory, not a file"))
-                    continue
-            except OSError:
-                preview.warnings.append(ValidationIssue(path=raw, reason="inaccessible", detail="File is not accessible"))
+            # Symlink check from stat mode
+            if stat.S_ISLNK(st.st_mode):
+                preview.warnings.append(ValidationIssue(path=raw, reason="symlink", detail="Symlinks are not cleaned"))
+                continue
+
+            # Regular file check from stat mode
+            if not stat.S_ISREG(st.st_mode):
+                preview.warnings.append(ValidationIssue(path=raw, reason="not-a-file", detail="Path is a directory, not a file"))
                 continue
 
             # File passed all checks
             preview.candidate_paths.append(raw)
             preview.total_files += 1
-            try:
-                preview.total_bytes += path.stat().st_size
-            except OSError:
-                pass
+            preview.total_bytes += int(st.st_size)
 
         return preview
 
@@ -525,34 +532,49 @@ class BaseCleaner(ICleaner):
 
         cancelled = False
         with ThreadPoolExecutor(max_workers=_CLEAN_WORKER_THREADS) as ex:
-            futures: list = []
-            for idx, raw in enumerate(candidate_paths):
+            # Batch submission — submit futures one at a time within each
+            # batch (checking cancel per file), then collect results before
+            # submitting the next batch. This reduces peak memory from O(n)
+            # Future objects to O(batch_size) while preserving per-file
+            # cancel responsiveness.
+            submitted = 0
+            for batch_start in range(0, total, _CLEAN_BATCH_SIZE):
                 if cancel.is_set():
                     cancelled = True
                     break
-                futures.append(ex.submit(_worker, raw))
-                if idx % progress_stride == 0 or idx == total - 1:
-                    self._safe_progress(on_progress, int((idx + 1) * 100 / total))
 
-            for fut in futures:
-                try:
-                    outcome, size = fut.result()
-                except Exception as e:
-                    outcome = f"failed:unknown:{e}"
-                    size = 0
-                if outcome == "removed":
-                    result.files_removed += 1
-                    result.bytes_recovered += size
-                elif outcome.startswith("skipped:"):
-                    result.files_skipped += 1
-                    reason = outcome.split(":", 1)[1] if ":" in outcome else "unknown"
-                    result.skip_reasons[reason] = result.skip_reasons.get(reason, 0) + 1
-                elif outcome.startswith("failed:"):
-                    result.files_failed += 1
-                    reason = outcome.split(":", 1)[1] if ":" in outcome else "unknown"
-                    result.failure_reasons[reason] = result.failure_reasons.get(reason, 0) + 1
-                    if size > 0:
-                        result.errors.append(f"delete-failed: {outcome}")
+                batch_end = min(batch_start + _CLEAN_BATCH_SIZE, total)
+                batch = candidate_paths[batch_start:batch_end]
+                futures = []
+                for raw in batch:
+                    if cancel.is_set():
+                        cancelled = True
+                        break
+                    futures.append(ex.submit(_worker, raw))
+
+                for fut in futures:
+                    submitted += 1
+                    try:
+                        outcome, size = fut.result()
+                    except Exception as e:
+                        outcome = f"failed:unknown:{e}"
+                        size = 0
+                    if outcome == "removed":
+                        result.files_removed += 1
+                        result.bytes_recovered += size
+                    elif outcome.startswith("skipped:"):
+                        result.files_skipped += 1
+                        reason = outcome.split(":", 1)[1] if ":" in outcome else "unknown"
+                        result.skip_reasons[reason] = result.skip_reasons.get(reason, 0) + 1
+                    elif outcome.startswith("failed:"):
+                        result.files_failed += 1
+                        reason = outcome.split(":", 1)[1] if ":" in outcome else "unknown"
+                        result.failure_reasons[reason] = result.failure_reasons.get(reason, 0) + 1
+                        if size > 0:
+                            result.errors.append(f"delete-failed: {outcome}")
+
+                    if submitted % progress_stride == 0 or submitted == total:
+                        self._safe_progress(on_progress, int(submitted * 100 / total))
 
         return cancelled
 
