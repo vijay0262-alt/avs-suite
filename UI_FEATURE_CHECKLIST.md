@@ -11,10 +11,10 @@
 | Feature | Status | Backend | Frontend | Notes |
 |---------|--------|---------|----------|-------|
 | Dashboard (New AI Dashboard) | ✅ | `dashboard.metrics`, `dashboard.live`, `dashboard.health` | `DashboardPageV2.tsx` | AI greeting, 5 score cards, daily briefing, recommendations, live charts, quick actions |
-| AI Copilot | ✅ | Frontend TS engine | `AICopilotPage.tsx` | ConversationEngine, InsightGenerator, ExplanationEngine |
+| AVS AI Assistant | ✅ | Frontend TS engine | `AIAssistantPage.tsx` | ConversationEngine, InsightGenerator, ExplanationEngine |
 | AI Daily Briefing | ✅ | Frontend TS engine | `AIDailyBriefingPage.tsx` | Standalone page using ConversationEngine for insights |
 | AI Smart Optimize | ✅ | `dashboard.optimize.preview/execute` | Health Scan Modal in Dashboard | One-click optimize with preview and verification |
-| AI Workspace | ✅ | Frontend TS engine | `AIWorkspacePage.tsx` | Command Center, Copilot, Report Studio, Tools, Actions, Personalization — 6 tabs, 795 lines |
+| AI Workspace | ✅ | Frontend TS engine | `AIWorkspacePage.tsx` | Command Center, AVS AI Assistant, Report Studio, Tools, Actions, Personalization — 6 tabs, 795 lines |
 
 ## ❤️ SYSTEM HEALTH
 
@@ -200,7 +200,7 @@
 | AI Smart Optimize | ✅ | Button in greeting header |
 | Quick Scan | ✅ | Quick action button |
 | Full Scan | ✅ | Quick action button |
-| Open AI Copilot | ✅ | Quick action button |
+| Open AVS AI Assistant | ✅ | Quick action button |
 
 ---
 
@@ -216,7 +216,7 @@
 | AI Active Protection | ✅ | Frontend TS engine | Security Center | Real-time monitoring |
 | AI Threat Investigation | ✅ | Frontend TS engine | Threat Investigation page | Explainable AI investigations |
 | AI Remediation | ✅ | Frontend TS engine | Remediation page | Smart remediation |
-| AI Copilot | ✅ | Frontend TS engine | `AICopilotPage.tsx` | Conversational AI assistant |
+| AVS AI Assistant | ✅ | Frontend TS engine | `AIAssistantPage.tsx` | Conversational AI assistant |
 | AI Daily Briefing | ✅ | Frontend TS engine | `AIDailyBriefingPage.tsx` | Daily system summary |
 
 ---

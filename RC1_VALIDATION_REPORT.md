@@ -87,7 +87,7 @@ The production build (`AVS Shield Optimizer-Setup.exe`) must be installed and la
 
 All 47 routes are registered in `router/index.tsx`:
 
-**HOME (4):** Dashboard, AI Copilot, AI Daily Briefing, AI Smart Optimize, AI Workspace  
+**HOME (4):** Dashboard, AVS AI Assistant, AI Daily Briefing, AI Smart Optimize, AI Workspace  
 **SYSTEM HEALTH (5):** System Health, Hardware Center, Process Intelligence, Predictive Health, Performance Analytics  
 **SECURITY (20):** Security Center, Quick Scan, Full Scan, Custom Scan, AI Active Protection, Spyware/Malware/Adware/Ransomware/Browser/Trojan/PUP/CryptoMiner/Script/Keylogger/Rootkit/Backdoor Protection, Persistence Detection, Network Behavior Analysis, File Reputation Analysis, Publisher Trust Analysis, Threat Investigation, Quarantine, Security Reports, Security History, Antispyware Malware Removal  
 **OPTIMIZATION (8):** Junk Cleaner, Startup Manager, Browser Cleaner, Registry Cleaner, Duplicate Finder, Large Files, Uninstaller, Software Updater, Maintenance History  
@@ -220,7 +220,7 @@ Unsupported hardware returns `None`/empty with explanation, not "Waiting forever
 
 | Module | Backend Source | Mock Data? | Status |
 |---|---|---|---|
-| AI Copilot | Frontend conversation engine | No — uses real system context | **PASS** |
+| AVS AI Assistant | Frontend conversation engine | No — uses real system context | **PASS** |
 | Daily Briefing | `dashboard.health` + frontend | No — based on real metrics | **PASS** |
 | Process Intelligence | `security.processes` | No — real psutil process data | **PASS** |
 | Predictive Health | `predictive_health` module | No — based on real historical data | **PASS** |
@@ -252,7 +252,7 @@ No mock production data, fabricated sensor readings, fabricated threats, or fabr
 | Limit | Free Value | Pro Value |
 |---|---|---|
 | Dashboard recommendations | 3 | Unlimited |
-| AI Copilot questions/day | 20 | Unlimited |
+| AVS AI Assistant questions/day | 20 | Unlimited |
 | AI Smart Optimize/run | 5 | Unlimited |
 | Junk Cleaner bytes/run | 500 MB | Unlimited |
 | Registry Cleaner issues/run | 50 | Unlimited |

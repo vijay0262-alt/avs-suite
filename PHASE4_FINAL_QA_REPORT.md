@@ -36,7 +36,7 @@
 | Feature | Module | Tests | Status |
 |---------|--------|-------|--------|
 | Dashboard | `features/dashboard` | ✅ | Complete — health score, breakdown, issues, recommendations, quick actions, live status, module cards, health scan modal |
-| AI Copilot | `features/ai-assistant` | ✅ | Complete — conversation engine, insight generator, explanation engine, prompt templates, question router |
+| AVS AI Assistant | `features/ai-assistant` | ✅ | Complete — conversation engine, insight generator, explanation engine, prompt templates, question router |
 | AI Health Engine | `features/ai-health-engine` | ✅ | Complete — AI-powered health analysis with provenance and confidence scores |
 | AI Intelligence | `features/ai-intelligence` | ✅ | Complete — context engine, traceability, evidence tracking |
 | AI Workspace | `features/ai-workspace` | ✅ | Complete — multimodal input, conversation history, context builder |

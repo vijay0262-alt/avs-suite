@@ -171,7 +171,7 @@ Last updated: 2026-08-02
 | AI Smart Optimization | Complete | Pro | `features/smart-optimize/` | `recommendations/` | No | Yes | Yes |
 | AI Smart Optimization (AI) | Complete | Pro | `features/smart-optimization-ai/` | `smart-optimize/` | No | Yes | Yes |
 | AI Workspace — Command Center | Complete | Pro | `features/ai-workspace/command-center/` | None | No | Yes | Yes |
-| AI Workspace — Copilot | Complete | Pro | `features/ai-workspace/copilot/` | `ai-assistant/` | No | Yes | Yes |
+| AI Workspace — AVS AI Assistant | Complete | Pro | `features/ai-workspace/AVS AI Assistant/` | `ai-assistant/` | No | Yes | Yes |
 | AI Workspace — Report Studio | Complete | Pro | `features/ai-workspace/report-studio/` | None | No | Yes | Yes |
 | AI Workspace — Actions | Complete | Pro | `features/ai-workspace/actions/` | None | No | Yes | Yes |
 | AI Workspace — Tools | Complete | Pro | `features/ai-workspace/tools/` | None | No | Yes | Yes |

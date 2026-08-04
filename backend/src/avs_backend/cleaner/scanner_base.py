@@ -34,7 +34,7 @@ import stat
 import platform
 import time
 from collections import deque
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from threading import Event
 from typing import Callable, Iterable
@@ -512,34 +512,66 @@ class BaseCleaner(ICleaner):
         total: int,
         progress_stride: int,
     ) -> bool:
-        """Parallel deletion using ThreadPoolExecutor. Returns True if cancelled."""
+        """Parallel deletion using ThreadPoolExecutor. Returns True if cancelled.
+
+        Uses ``ex.map`` instead of ``ex.submit`` to avoid creating O(n)
+        Future objects — ``map`` internally batches work items and yields
+        results in order with far less allocation overhead.
+
+        Uses ``os.lstat`` (not ``os.stat``) to avoid following symlinks,
+        matching the serial path's security checks.
+        """
+        sep = os.sep
 
         def _worker(raw: str) -> tuple[str, int]:
-            """Validate + stat + delete a single file. Returns (outcome, size)."""
+            """Validate + lstat + delete a single file. Returns (outcome, size)."""
             resolved = os.path.normpath(raw)
             if allowed_roots and not any(
-                resolved == root or resolved.startswith(root + os.sep)
+                resolved == root or resolved.startswith(root + sep)
                 for root in allowed_roots
             ):
                 return ("skipped:out-of-scope", 0)
             if is_forbidden(resolved):
                 return ("skipped:forbidden", 0)
             try:
-                st = os.stat(raw)
+                st = os.lstat(raw)
             except FileNotFoundError:
                 return ("skipped:missing", 0)
             except (PermissionError, OSError):
                 return ("skipped:permission-denied", 0)
+
+            # Symlink / reparse-point check — must use lstat mode.
+            is_link = stat.S_ISLNK(st.st_mode)
+            if not is_link and os.name == "nt":
+                file_attrs = getattr(st, "st_file_attributes", 0)
+                if file_attrs & 0x400:  # FILE_ATTRIBUTE_REPARSE_POINT
+                    is_link = True
+            if is_link:
+                return ("skipped:symlink", 0)
+
             if not stat.S_ISREG(st.st_mode):
                 return ("skipped:not-a-file", 0)
             size = int(st.st_size)
 
+            # Check cancel event before deletion — workers run in parallel
+            # so we must check here to ensure cancellation takes effect
+            # even when many files are already submitted to the pool.
+            if cancel.is_set():
+                return ("skipped:cancelled", 0)
+
+            # Notify live file callback (called from worker thread so
+            # cancellation via on_file works in the parallel path).
             if on_file:
                 try:
                     on_file(raw)
                 except Exception:
                     pass
 
+            # Re-check after callback (callback may have set cancel).
+            if cancel.is_set():
+                return ("skipped:cancelled", 0)
+
+            # Delete with retry for transient failures.
             for attempt in range(_DELETE_RETRY_ATTEMPTS):
                 try:
                     os.remove(raw)
@@ -566,12 +598,10 @@ class BaseCleaner(ICleaner):
 
         cancelled = False
         with ThreadPoolExecutor(max_workers=_CLEAN_WORKER_THREADS) as ex:
-            # Batch submission — submit futures one at a time within each
-            # batch (checking cancel per file), then collect results before
-            # submitting the next batch. This reduces peak memory from O(n)
-            # Future objects to O(batch_size) while preserving per-file
-            # cancel responsiveness.
-            submitted = 0
+            # Chunked submit + as_completed — limits peak Future count
+            # to _CLEAN_BATCH_SIZE while allowing out-of-order result
+            # processing for maximum throughput.
+            processed = 0
             for batch_start in range(0, total, _CLEAN_BATCH_SIZE):
                 if cancel.is_set():
                     cancelled = True
@@ -579,15 +609,10 @@ class BaseCleaner(ICleaner):
 
                 batch_end = min(batch_start + _CLEAN_BATCH_SIZE, total)
                 batch = candidate_paths[batch_start:batch_end]
-                futures = []
-                for raw in batch:
-                    if cancel.is_set():
-                        cancelled = True
-                        break
-                    futures.append(ex.submit(_worker, raw))
 
-                for fut in futures:
-                    submitted += 1
+                futures = {ex.submit(_worker, raw): raw for raw in batch}
+                for fut in as_completed(futures):
+                    processed += 1
                     try:
                         outcome, size = fut.result()
                     except Exception as e:
@@ -607,8 +632,12 @@ class BaseCleaner(ICleaner):
                         if size > 0:
                             result.errors.append(f"delete-failed: {outcome}")
 
-                    if submitted % progress_stride == 0 or submitted == total:
-                        self._safe_progress(on_progress, int(submitted * 100 / total))
+                    if processed % progress_stride == 0 or processed == total:
+                        self._safe_progress(on_progress, int(processed * 100 / total))
+
+                    if cancel.is_set():
+                        cancelled = True
+                        break
 
         return cancelled
 
@@ -738,90 +767,6 @@ class BaseCleaner(ICleaner):
             result.errors.append(f"locked: {raw}: {last_error}")
             return "failed:locked"
         return "failed:unknown"
-
-    def _delete_one(
-        self,
-        raw: str,
-        allowed_roots: list[str],
-        on_file: "Callable[[str], None] | None",
-        result: CleaningResult,
-    ) -> str:
-        """Delete a single file with re-validation + retry.
-
-        Returns ``'removed' | 'skipped' | 'failed'``. Never raises.
-        """
-        import time
-
-        try:
-            path = Path(raw)
-            resolved = str(path.resolve(strict=False))
-        except (OSError, RuntimeError, ValueError) as e:
-            result.errors.append(f"resolve-failed: {raw}: {e}")
-            return "skipped"
-
-        # Fast safety re-check — belt & braces on top of ``validate()``.
-        if allowed_roots and not any(
-            resolved == root or resolved.startswith(root + os.sep) for root in allowed_roots
-        ):
-            result.errors.append(f"out-of-scope: {raw}")
-            return "skipped"
-        if is_forbidden(resolved):
-            result.errors.append(f"forbidden: {raw}")
-            return "skipped"
-        try:
-            if path.is_symlink():
-                result.errors.append(f"symlink: {raw}")
-                return "skipped"
-        except OSError as e:
-            result.errors.append(f"stat: {raw}: {e}")
-            return "skipped"
-
-        # Stat once to record the size we're about to recover.
-        try:
-            st = path.stat()
-            size = int(st.st_size)
-        except FileNotFoundError:
-            return "skipped"  # already gone — silent success is a lie, count as skipped
-        except OSError as e:
-            result.errors.append(f"stat: {raw}: {e}")
-            return "skipped"
-
-        if on_file is not None:
-            try:
-                on_file(raw)
-            except Exception:  # noqa: BLE001 — never trust callbacks
-                pass
-
-        # Retry loop for transient failures — file-in-use on Windows is
-        # the most common case; a short backoff usually clears it.
-        last_error: Exception | None = None
-        for attempt in range(_DELETE_RETRY_ATTEMPTS):
-            try:
-                # Use Recycle Bin for safe deletion
-                if delete_to_recycle_bin_single(raw, on_file):
-                    result.files_removed += 1
-                    result.bytes_recovered += size
-                    return "removed"
-            except FileNotFoundError:
-                # Vanished between stat and unlink — race with another
-                # process. Treat as a skip, not a failure.
-                return "skipped"
-            except PermissionError as e:
-                # On Windows this often means the file is locked; retry.
-                last_error = e
-            except OSError as e:
-                last_error = e
-
-            if attempt + 1 < _DELETE_RETRY_ATTEMPTS:
-                delay_ms = _DELETE_RETRY_BACKOFF_MS[
-                    min(attempt, len(_DELETE_RETRY_BACKOFF_MS) - 1)
-                ]
-                time.sleep(delay_ms / 1000.0)
-
-        # Exhausted retries.
-        log.warning("Failed to delete %s: %s", raw, last_error)
-        result.errors.append(f"delete-failed: {raw}: {last_error}")
-        return "failed"
 
     @staticmethod
     def _safe_progress(cb: ProgressCallback, value: int) -> None:

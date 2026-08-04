@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AI Process Intelligence engine (process analyzer, impact, risk, explanation, recommendations — no UI yet)
 - AI Predictive Health engine (forecast, trend, reliability, thermal, battery, memory, storage, health, performance)
 - AI Smart Optimization (planner, adaptive, automation, maintenance, profiles, goals, simulation, recovery, timeline, intelligence)
-- AI Workspace (command center, copilot, report studio, actions, tools, multimodal, personalization, quality)
+- AI Workspace (command center, AVS AI Assistant, report studio, actions, tools, multimodal, personalization, quality)
 - AI Health Engine, AI Assistant, AI Orchestration, AI Knowledge Base, AI Device Profile
 - Dashboard Intelligence (core widgets, actions, widget framework)
 

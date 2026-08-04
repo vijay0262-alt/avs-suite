@@ -67,7 +67,7 @@ Last updated: 2026-08-02
 - **AI Predictions Engine** — Forecast engine, trend collector, reliability/thermal/battery/memory/storage/health/performance forecasts
 - **AI Process Intelligence** — Process analyzer, impact analyzers, risk assessment, explanation engine, recommendation engine, trend analyzer (implemented, no UI yet)
 - **AI Smart Optimization** — Planner, adaptive optimization, automation, maintenance, profiles, goals, simulation, recovery, timeline
-- **AI Workspace** — Command center, copilot, report studio, actions, tools, multimodal, personalization, quality monitoring
+- **AI Workspace** — Command center, AVS AI Assistant, report studio, actions, tools, multimodal, personalization, quality monitoring
 - **AI Health Engine** — Analyzers, category scoring, health report generation
 - **AI Assistant** — Assistant, templates, context engine, provenance tracking
 - **Dashboard Intelligence** — Core widgets, actions, widget framework
@@ -288,7 +288,7 @@ Last updated: 2026-08-02
 | EPIC 2: AI Hardware Intelligence | Hardware Center dashboard + AI Hardware Health Engine | 100% |
 | EPIC 3: AI Active Protection | Security Dashboard, real-time protection, security center, investigation, remediation | 100% |
 | EPIC 4: AI Smart Optimization | Smart optimize planner, adaptive, automation, maintenance, profiles, goals | 100% |
-| EPIC 5: AI Workspace | Command center, copilot, report studio, actions, tools, multimodal | 100% |
+| EPIC 5: AI Workspace | Command center, AVS AI Assistant, report studio, actions, tools, multimodal | 100% |
 | EPIC 6: Commercial Foundation | Edition framework, licensing, update framework, branding, documentation | 100% |
 
 ### In Progress Epics

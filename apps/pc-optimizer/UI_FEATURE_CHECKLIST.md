@@ -11,10 +11,10 @@
 | Feature | Status | Route | Notes |
 |---------|--------|-------|-------|
 | Dashboard (AI Dashboard) | ✅ | `/dashboard` | `DashboardPageV2` with score cards, live metrics, AI greeting, recommendations, charts, quick actions |
-| AI Copilot | ✅ | `/ai-copilot` | `AICopilotPage` from `ai-assistant` feature |
-| AI Daily Briefing | 🟡 | `/ai-daily-briefing` | Redirect to `/ai-copilot` with `view: 'briefing'` state — no standalone page |
+| AVS AI Assistant | ✅ | `/ai-aiAssistant` | `AIAssistantPage` from `ai-assistant` feature |
+| AI Daily Briefing | 🟡 | `/ai-daily-briefing` | Redirect to `/ai-aiAssistant` with `view: 'briefing'` state — no standalone page |
 | AI Smart Optimize | ✅ | `/ai-smart-optimize` | `SmartOptimizationPage` with full ViewModel |
-| AI Workspace | ✅ | `/ai-workspace` | `AIWorkspacePage` with 6 tabs (Command Center, Copilot, Report Studio, Tools, Actions, Personalization) |
+| AI Workspace | ✅ | `/ai-workspace` | `AIWorkspacePage` with 6 tabs (Command Center, AVS AI Assistant, Report Studio, Tools, Actions, Personalization) |
 
 ### Dashboard Sub-features
 
@@ -22,12 +22,12 @@
 |---------|--------|-------|
 | AI Greeting (Good Morning/Afternoon/Evening) | ✅ | `getGreeting()` in `DashboardPageV2` |
 | Score Cards (AI Health, Security, Performance, Hardware, Storage) | ✅ | `StatCard` components in dashboard |
-| AI Daily Briefing section | 🟡 | Redirects to Copilot — not embedded in dashboard |
+| AI Daily Briefing section | 🟡 | Redirects to AVS AI Assistant — not embedded in dashboard |
 | AI Recommendations (Optimization, Security, Hardware) | ✅ | `RecommendationCard` components |
 | Live Status (CPU, RAM, GPU, Temp, SSD, Network) | ✅ | `LiveMetrics` in dashboard |
 | Security (Recent Threats, Protection Status, Last Scan) | ✅ | Security section in dashboard |
 | Charts (CPU Trend, Memory Trend, Temp Trend, Security Activity) | ✅ | `ChartCard` / `Sparkline` components |
-| Quick Actions (Smart Optimize, Quick Scan, Full Scan, Copilot) | ✅ | Quick Actions section |
+| Quick Actions (Smart Optimize, Quick Scan, Full Scan, AVS AI Assistant) | ✅ | Quick Actions section |
 
 ### AI Modules Visibility
 
@@ -41,7 +41,7 @@
 | AI Active Protection | ✅ | `/ai-active-protection` | Redirects to Security Center overview tab |
 | AI Threat Investigation | ✅ | `/threat-investigation` | Redirects to Security Center investigation tab |
 | AI Remediation | ✅ | `/quarantine` | Redirects to Security Center remediation tab |
-| AI Copilot | ✅ | `/ai-copilot` | Full Copilot page |
+| AVS AI Assistant | ✅ | `/ai-aiAssistant` | Full AVS AI Assistant page |
 | AI Daily Briefing | 🟡 | `/ai-daily-briefing` | Redirect only — no standalone page |
 
 ---

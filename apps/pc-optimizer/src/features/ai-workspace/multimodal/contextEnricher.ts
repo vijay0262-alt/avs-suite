@@ -12,8 +12,8 @@ import type {
   MultimodalInput,
   MultimodalConfiguration,
 } from './types';
-import type { AIAssistantContextResolverInput } from '../aiAssistant/AIAssistantContextResolver';
-import { AIAssistantContextResolver } from '../aiAssistant/AIAssistantContextResolver';
+import type { AIAssistantContextResolverInput } from '../aiAssistant/aiAssistantContextResolver';
+import { AIAssistantContextResolver } from '../aiAssistant/aiAssistantContextResolver';
 
 export interface ContextEnricherInput {
   input: MultimodalInput;

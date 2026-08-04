@@ -30,20 +30,20 @@ import type {
   AIAssistantAnalytics,
   AIAssistantValidationResult,
 } from './types';
-import { DEFAULT_AI_ASSISTANT_CONFIGURATION, createAIAssistantConfiguration, validateConfiguration } from './AIAssistantConfiguration';
-import { AIAssistantEvents } from './AIAssistantEvents';
-import { AIAssistantIntentEngine } from './AIAssistantIntentEngine';
-import { AIAssistantContextResolver, type AIAssistantContextResolverInput } from './AIAssistantContextResolver';
-import { AIAssistantResponseEngine } from './AIAssistantResponseEngine';
-import { AIAssistantSuggestionEngine } from './AIAssistantSuggestionEngine';
-import { AIAssistantExplanationEngine } from './AIAssistantExplanationEngine';
-import { AIAssistantActionPlanner } from './AIAssistantActionPlanner';
-import { AIAssistantPermissionEngine } from './AIAssistantPermissionEngine';
-import { AIAssistantMemory } from './AIAssistantMemory';
-import { AIAssistantSessionManager } from './AIAssistantSessionManager';
-import { AIAssistantConversationEngine } from './AIAssistantConversationEngine';
-import { AIAssistantAnalyticsEngine } from './AIAssistantAnalytics';
-import { AIAssistantValidator } from './AIAssistantValidator';
+import { DEFAULT_AI_ASSISTANT_CONFIGURATION, createAIAssistantConfiguration, validateConfiguration } from './aiAssistantConfiguration';
+import { AIAssistantEvents } from './aiAssistantEvents';
+import { AIAssistantIntentEngine } from './aiAssistantIntentEngine';
+import { AIAssistantContextResolver, type AIAssistantContextResolverInput } from './aiAssistantContextResolver';
+import { AIAssistantResponseEngine } from './aiAssistantResponseEngine';
+import { AIAssistantSuggestionEngine } from './aiAssistantSuggestionEngine';
+import { AIAssistantExplanationEngine } from './aiAssistantExplanationEngine';
+import { AIAssistantActionPlanner } from './aiAssistantActionPlanner';
+import { AIAssistantPermissionEngine } from './aiAssistantPermissionEngine';
+import { AIAssistantMemory } from './aiAssistantMemory';
+import { AIAssistantSessionManager } from './aiAssistantSessionManager';
+import { AIAssistantConversationEngine } from './aiAssistantConversationEngine';
+import { AIAssistantAnalyticsEngine } from './aiAssistantAnalytics';
+import { AIAssistantValidator } from './aiAssistantValidator';
 
 export class AIAssistantManager {
   private _config: AIAssistantConfiguration;
@@ -295,5 +295,3 @@ export class AIAssistantManager {
     this._events.removeAllListeners();
   }
 }
-
-export { AIAssistantEvents };

@@ -16,7 +16,7 @@ import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleEmptyState, ModuleLoadingState } from '../../components/ModuleStates';
 import { CommandCenterManager } from './command-center/commandCenterManager';
-import { AIAssistantManager } from './aiAssistant/AIAssistantManager';
+import { AIAssistantManager } from './aiAssistant/aiAssistantManager';
 import { ReportStudioManager } from './report-studio/reportStudioManager';
 import { ToolManager } from './tools/toolManager';
 import { NaturalLanguageActionManager } from './actions/naturalLanguageActionManager';

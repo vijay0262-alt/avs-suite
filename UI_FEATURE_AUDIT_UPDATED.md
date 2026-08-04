@@ -8,7 +8,7 @@
 ## What Changed Since Previous Audit
 
 ### ✅ Now Fully Implemented (was 🔴)
-1. **AI Copilot** — `AICopilotPage.tsx` with chat UI, daily briefing, evidence/reasoning, confidence scores, follow-up suggestions, quick questions. Route: `/ai-copilot`.
+1. **AVS AI Assistant** — `AIAssistantPage.tsx` with chat UI, daily briefing, evidence/reasoning, confidence scores, follow-up suggestions, quick questions. Route: `/ai-aiAssistant`.
 2. **Security Center** — `SecurityCenterPage.tsx` with 7 tabs (Overview, Scan, Threats, Investigation, Remediation, Reports, Settings). Route: `/security-center`.
 3. **Scanning UI** — 9 scan modes (quick/full/custom/memory/startup/browser/spyware/malware/adware) with live progress, AI observations, provider results.
 4. **Threat Investigation** — Full investigation detail view with timeline, evidence cards, MITRE ATT&CK mapping, AI explanations, relationship graph, recommended actions.
@@ -22,8 +22,8 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Dashboard | ✅ | `DashboardPageV2.tsx` — greeting, 5 score cards, AI Daily Briefing, AI Recommendations, Quick Actions, Live Charts, Timeline, System Status |
-| AI Copilot | ✅ | `AICopilotPage.tsx` — full chat UI connecting `conversationEngine`, `explanationEngine`, `questionRouter`, `insightGenerator`. Route: `/ai-copilot` |
-| AI Daily Briefing | 🟡 | Available as a view tab inside AI Copilot page. Sidebar entry redirects to `/ai-copilot` with `view=briefing` state. |
+| AVS AI Assistant | ✅ | `AIAssistantPage.tsx` — full chat UI connecting `conversationEngine`, `explanationEngine`, `questionRouter`, `insightGenerator`. Route: `/ai-aiAssistant` |
+| AI Daily Briefing | 🟡 | Available as a view tab inside AVS AI Assistant page. Sidebar entry redirects to `/ai-aiAssistant` with `view=briefing` state. |
 | AI Smart Optimize | ✅ | Full flow in Dashboard V2. Sidebar entry redirects to `/dashboard`. |
 
 ---
@@ -170,8 +170,8 @@
 | AI Active Protection | ✅ | Security Center → Overview tab + old SecurityDashboard Protection tab |
 | AI Threat Investigation | ✅ | Security Center → Investigation tab |
 | AI Remediation | ✅ | Security Center → Remediation tab |
-| AI Copilot | ✅ | AI Copilot page (chat + daily briefing) |
-| AI Daily Briefing | 🟡 | Available as view inside AI Copilot page |
+| AVS AI Assistant | ✅ | AVS AI Assistant page (chat + daily briefing) |
+| AI Daily Briefing | 🟡 | Available as view inside AVS AI Assistant page |
 
 ---
 
@@ -184,7 +184,7 @@
 | `features/undo/` | 2 files | Undo service for rollback operations | Wire into Recovery Center or Remediation |
 | `features/smart-optimization-ai/` | 23 files | SmartOptimizationEngine, planner, risk analyzer, simulation, learning, insights | Expose via AI Smart Optimize page or Dashboard |
 | `features/smart-optimize/` | 182 files | Adaptive, automation, goals, intelligence, maintenance, planner, profiles, recovery, simulation, timeline | Major backend — needs dedicated UI or dashboard integration |
-| `features/ai-workspace/` | 123 files | Copilot, command-center, report-studio, multimodal, personalization, tools, actions | Advanced AI workspace — needs dedicated UI |
+| `features/ai-workspace/` | 123 files | AVS AI Assistant, command-center, report-studio, multimodal, personalization, tools, actions | Advanced AI workspace — needs dedicated UI |
 | `features/ai-intelligence/` | 102 files | Context, device-profile, insights, knowledge, orchestration, predictions, recommendations | AI intelligence layer — needs UI exposure |
 | `features/dashboard-intelligence/` | 57 files | Dashboard engine, widgets, layout manager, refresh manager, state manager | Dashboard intelligence — needs UI exposure |
 | `features/system-health-dashboard/` | 8 files | Health dashboard service, timeline, widget registry, system monitor | System health dashboard — needs UI exposure |
@@ -214,16 +214,16 @@
 ### 🔴 High Priority — Backend exists, zero UI
 1. **`optimization-reports/` + `optimization-report/`** (32 files total) — Full report generation backend with no UI. Should be exposed in the Reports section.
 2. **`smart-optimization-ai/` + `smart-optimize/`** (205 files total) — Massive optimization backend. Should have a dedicated "AI Smart Optimization" page showing plans, previews, risk analysis, simulation results.
-3. **`ai-workspace/`** (123 files) — Advanced AI workspace with copilot, command center, report studio. The copilot could enhance the existing AI Copilot page. Command center could be a dashboard widget.
-4. **`ai-intelligence/`** (102 files) — AI context, predictions, recommendations, knowledge base. Could enhance existing AI Copilot and Dashboard.
+3. **`ai-workspace/`** (123 files) — Advanced AI workspace with aiAssistant, command center, report studio. The aiAssistant could enhance the existing AVS AI Assistant page. Command center could be a dashboard widget.
+4. **`ai-intelligence/`** (102 files) — AI context, predictions, recommendations, knowledge base. Could enhance existing AVS AI Assistant and Dashboard.
 5. **`dashboard-intelligence/`** (57 files) — Dashboard engine and widgets. Could enhance the existing Dashboard.
 6. **`system-health-dashboard/`** (8 files) — Health dashboard service. Could be a dedicated System Health page.
 7. **`undo/`** (2 files) — Simple undo service. Wire into Recovery Center or Remediation.
 
 ### 🟡 Medium Priority — Partial implementation
-8. **AI Daily Briefing** — Currently a view inside AI Copilot. Could be enhanced with more proactive insights.
+8. **AI Daily Briefing** — Currently a view inside AVS AI Assistant. Could be enhanced with more proactive insights.
 9. **Notifications** — `ProtectionNotificationCenter` exists but no dedicated UI. Could add a notification bell icon in the header.
 10. **Export Center** — Individual export buttons scattered. Could centralize.
 
 ### ✅ Working Well
-11. Dashboard V2, Hardware Center, Security Center (7 tabs), AI Copilot, Process Intelligence, Predictive Health, Settings, all optimization tools, sidebar navigation.
+11. Dashboard V2, Hardware Center, Security Center (7 tabs), AVS AI Assistant, Process Intelligence, Predictive Health, Settings, all optimization tools, sidebar navigation.

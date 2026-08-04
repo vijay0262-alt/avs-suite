@@ -125,11 +125,11 @@ Last updated: 2026-08-02
 **Connections**:
 - AI Context Engine → feeds all other AI engines (insights, recommendations, predictions)
 - AI Insights → consumed by Dashboard, Security Dashboard, Hardware Center
-- AI Recommendations → consumed by Smart Optimize, Dashboard, Copilot
+- AI Recommendations → consumed by Smart Optimize, Dashboard, AVS AI Assistant
 - AI Predictions → consumed by Dashboard Intelligence, Hardware Center (planned)
 - AI Process Intelligence → engine complete, UI not yet built
 - AI Health Engine → consumed by Dashboard health score
-- AI Workspace → Copilot uses AI Assistant + Context Engine + Insights
+- AI Workspace → AVS AI Assistant uses AI Assistant + Context Engine + Insights
 
 ---
 
@@ -381,11 +381,11 @@ Last updated: 2026-08-02
 
 ---
 
-### Copilot
+### AVS AI Assistant
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                  AI Copilot                          │
+│                  AVS AI Assistant                          │
 │                                                      │
 │  ┌──────────────────────────────────────────────┐   │
 │  │  AI Assistant                                 │   │
@@ -418,13 +418,13 @@ Last updated: 2026-08-02
 ```
 
 **Connections**:
-- Copilot → AI Context Engine (collects context from all providers)
-- Copilot → AI Insights (generates insights from context)
-- Copilot → AI Recommendations (generates actionable recommendations)
-- Copilot → AI Knowledge Base (lookup knowledge for explanations)
-- Copilot → AI Predictions (forecast data for proactive suggestions)
-- Copilot → All feature modules (via context providers)
-- AI Workspace → Copilot (workspace provides UI shell for copilot)
+- AVS AI Assistant → AI Context Engine (collects context from all providers)
+- AVS AI Assistant → AI Insights (generates insights from context)
+- AVS AI Assistant → AI Recommendations (generates actionable recommendations)
+- AVS AI Assistant → AI Knowledge Base (lookup knowledge for explanations)
+- AVS AI Assistant → AI Predictions (forecast data for proactive suggestions)
+- AVS AI Assistant → All feature modules (via context providers)
+- AI Workspace → AVS AI Assistant (workspace provides UI shell for AVS AI Assistant)
 - AI Workspace → Report Studio (generates reports from AI analysis)
 - AI Workspace → Actions (executes AI-recommended actions)
 - AI Workspace → Tools (provides tools for AI to use)
@@ -683,7 +683,7 @@ Context Providers (Hardware, Security, Process, Performance, etc.)
     → AI Insights Engine (generates insights with confidence scores)
     → AI Recommendations Engine (creates evidence-based recommendations)
     → AI Predictions Engine (forecasts with confidence intervals)
-    → Consumed by: Dashboard, Copilot, Smart Optimize, Security Dashboard
+    → Consumed by: Dashboard, AVS AI Assistant, Smart Optimize, Security Dashboard
 ```
 
 ## Security Data Flow

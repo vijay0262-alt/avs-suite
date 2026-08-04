@@ -51,7 +51,7 @@ import { SessionSynchronizer } from './sessionSynchronizer';
 import { MultimodalAnalytics } from './multimodalAnalytics';
 import { MultimodalValidator } from './multimodalValidator';
 import { generateResponseId } from './types';
-import type { AIAssistantContextResolverInput } from '../aiAssistant/AIAssistantContextResolver';
+import type { AIAssistantContextResolverInput } from '../aiAssistant/aiAssistantContextResolver';
 
 export interface ProcessInputOptions {
   aiAssistantContextInput: AIAssistantContextResolverInput;

@@ -2,8 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "types": ["vite/client"],
+    "typeRoots": ["./node_modules/@types", "../../node_modules/@types"],
     "noEmit": true
   },
-  "include": ["src/**/*", "src/**/*.tsx"]
+  "include": ["src/**/*", "src/**/*.tsx"],
+  "exclude": ["src/**/__tests__/**", "src/**/*.test.*", "src/**/*.spec.*"]
 }

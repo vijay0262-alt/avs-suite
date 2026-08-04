@@ -19,7 +19,7 @@
  */
 
 // Manager
-export { AIAssistantManager, AIAssistantEvents } from './AIAssistantManager';
+export { AIAssistantManager } from './aiAssistantManager';
 
 // Configuration
 export {
@@ -28,26 +28,26 @@ export {
   validateConfiguration,
   getDefaultProviders,
   getDefaultFeatureFlags,
-} from './AIAssistantConfiguration';
-export type { DeepPartial as AIAssistantDeepPartial } from './AIAssistantConfiguration';
+} from './aiAssistantConfiguration';
+export type { DeepPartial as AIAssistantDeepPartial } from './aiAssistantConfiguration';
 
 // Events
-export { AIAssistantEvents } from './AIAssistantEvents';
+export { AIAssistantEvents } from './aiAssistantEvents';
 
 // Engines
-export { AIAssistantIntentEngine } from './AIAssistantIntentEngine';
-export { AIAssistantContextResolver } from './AIAssistantContextResolver';
-export type { AIAssistantContextResolverInput } from './AIAssistantContextResolver';
-export { AIAssistantResponseEngine } from './AIAssistantResponseEngine';
-export { AIAssistantSuggestionEngine } from './AIAssistantSuggestionEngine';
-export { AIAssistantExplanationEngine } from './AIAssistantExplanationEngine';
-export { AIAssistantActionPlanner } from './AIAssistantActionPlanner';
-export { AIAssistantPermissionEngine } from './AIAssistantPermissionEngine';
-export { AIAssistantMemory } from './AIAssistantMemory';
-export { AIAssistantSessionManager } from './AIAssistantSessionManager';
-export { AIAssistantConversationEngine } from './AIAssistantConversationEngine';
-export { AIAssistantAnalyticsEngine } from './AIAssistantAnalytics';
-export { AIAssistantValidator } from './AIAssistantValidator';
+export { AIAssistantIntentEngine } from './aiAssistantIntentEngine';
+export { AIAssistantContextResolver } from './aiAssistantContextResolver';
+export type { AIAssistantContextResolverInput } from './aiAssistantContextResolver';
+export { AIAssistantResponseEngine } from './aiAssistantResponseEngine';
+export { AIAssistantSuggestionEngine } from './aiAssistantSuggestionEngine';
+export { AIAssistantExplanationEngine } from './aiAssistantExplanationEngine';
+export { AIAssistantActionPlanner } from './aiAssistantActionPlanner';
+export { AIAssistantPermissionEngine } from './aiAssistantPermissionEngine';
+export { AIAssistantMemory } from './aiAssistantMemory';
+export { AIAssistantSessionManager } from './aiAssistantSessionManager';
+export { AIAssistantConversationEngine } from './aiAssistantConversationEngine';
+export { AIAssistantAnalyticsEngine } from './aiAssistantAnalytics';
+export { AIAssistantValidator } from './aiAssistantValidator';
 
 // Types
 export type {

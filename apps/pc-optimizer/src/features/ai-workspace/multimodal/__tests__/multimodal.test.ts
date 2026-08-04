@@ -56,7 +56,7 @@ import type {
   LogProvider,
   DocumentProvider,
 } from '../types';
-import type { AIAssistantContextResolverInput } from '../../aiAssistant/AIAssistantContextResolver';
+import type { AIAssistantContextResolverInput } from '../../aiAssistant/aiAssistantContextResolver';
 
 // ── Mock Helpers ─────────────────────────────────────────────
 

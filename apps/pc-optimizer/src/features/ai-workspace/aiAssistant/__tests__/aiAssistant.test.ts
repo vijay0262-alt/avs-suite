@@ -9,27 +9,27 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { AIAssistantManager } from '../AIAssistantManager';
-import { AIAssistantIntentEngine } from '../AIAssistantIntentEngine';
-import { AIAssistantContextResolver } from '../AIAssistantContextResolver';
-import { AIAssistantResponseEngine } from '../AIAssistantResponseEngine';
-import { AIAssistantSuggestionEngine } from '../AIAssistantSuggestionEngine';
-import { AIAssistantExplanationEngine } from '../AIAssistantExplanationEngine';
-import { AIAssistantActionPlanner } from '../AIAssistantActionPlanner';
-import { AIAssistantPermissionEngine } from '../AIAssistantPermissionEngine';
-import { AIAssistantMemory } from '../AIAssistantMemory';
-import { AIAssistantSessionManager } from '../AIAssistantSessionManager';
-import { AIAssistantAnalyticsEngine } from '../AIAssistantAnalytics';
-import { AIAssistantValidator } from '../AIAssistantValidator';
-import { AIAssistantEvents } from '../AIAssistantEvents';
-import { DEFAULT_AI_ASSISTANT_CONFIGURATION, createAIAssistantConfiguration, validateConfiguration } from '../AIAssistantConfiguration';
+import { AIAssistantManager } from '../aiAssistantManager';
+import { AIAssistantIntentEngine } from '../aiAssistantIntentEngine';
+import { AIAssistantContextResolver } from '../aiAssistantContextResolver';
+import { AIAssistantResponseEngine } from '../aiAssistantResponseEngine';
+import { AIAssistantSuggestionEngine } from '../aiAssistantSuggestionEngine';
+import { AIAssistantExplanationEngine } from '../aiAssistantExplanationEngine';
+import { AIAssistantActionPlanner } from '../aiAssistantActionPlanner';
+import { AIAssistantPermissionEngine } from '../aiAssistantPermissionEngine';
+import { AIAssistantMemory } from '../aiAssistantMemory';
+import { AIAssistantSessionManager } from '../aiAssistantSessionManager';
+import { AIAssistantAnalyticsEngine } from '../aiAssistantAnalytics';
+import { AIAssistantValidator } from '../aiAssistantValidator';
+import { AIAssistantEvents } from '../aiAssistantEvents';
+import { DEFAULT_AI_ASSISTANT_CONFIGURATION, createAIAssistantConfiguration, validateConfiguration } from '../aiAssistantConfiguration';
 import {
   generateAIAssistantId,
   clampConfidence,
   getIntentLabel,
   createDefaultIntentDefinitions,
 } from '../types';
-import type { AIAssistantContextResolverInput } from '../AIAssistantContextResolver';
+import type { AIAssistantContextResolverInput } from '../aiAssistantContextResolver';
 import type { AIAssistantPromptInput } from '../types';
 
 function createMockContextInput(): AIAssistantContextResolverInput {

@@ -25,7 +25,7 @@ The application is functionally complete with all modules, routes, and AI engine
 | Routing | WARNING | 82/100 |
 | UI Review | PASS | 90/100 |
 | Dashboard | PASS | 92/100 |
-| AI Copilot | PASS | 90/100 |
+| AVS AI Assistant | PASS | 90/100 |
 | Hardware Center | PASS | 88/100 |
 | Process Intelligence | PASS | 90/100 |
 | Predictive Health | PASS | 88/100 |
@@ -137,7 +137,7 @@ All 45 sidebar items across 7 sections map to valid routes. No broken navigation
 | Hardware Score | PASS | Based on sensor data |
 | Storage Score | PASS | Based on disk usage |
 | AI Recommendations | PASS | Evidence-based, edition-aware (3 for Free, unlimited for Pro) |
-| Quick Actions | PASS | Smart Optimize, Quick Scan, Full Scan, AI Copilot |
+| Quick Actions | PASS | Smart Optimize, Quick Scan, Full Scan, AVS AI Assistant |
 | Live Charts | PASS | Adaptive polling with `DashboardViewModel` |
 | Recent Security Events | PASS | Limited to 5 for Free, unlimited for Pro |
 | Recent Activity | PASS | From maintenance history |
@@ -147,7 +147,7 @@ All 45 sidebar items across 7 sections map to valid routes. No broken navigation
 
 ---
 
-## 5. AI COPILOT — **PASS**
+## 5. AVS AI ASSISTANT — **PASS**
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -331,7 +331,7 @@ All 45 sidebar items across 7 sections map to valid routes. No broken navigation
 
 | Limit | Free | Professional | Enforced |
 |-------|------|-------------|----------|
-| AI Copilot questions/day | 20 | Unlimited | PASS |
+| AVS AI Assistant questions/day | 20 | Unlimited | PASS |
 | AI Smart Optimize/run | 5 | Unlimited | PASS |
 | AI Daily Briefing/day | 1 | Unlimited | PASS |
 | Dashboard recommendations | 3 | Unlimited | PASS |
@@ -539,7 +539,7 @@ All 45 sidebar items across 7 sections map to valid routes. No broken navigation
 ## MODULES FULLY COMPLETE
 
 - Dashboard (with AI Modules + Hardware Monitoring)
-- AI Copilot (with evidence, confidence, daily limits)
+- AVS AI Assistant (with evidence, confidence, daily limits)
 - AI Daily Briefing
 - AI Smart Optimization
 - Hardware Center (with unsupported sensor handling)

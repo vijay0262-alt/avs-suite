@@ -22,14 +22,14 @@ import type {
   AIAssistantMessage,
 } from './types';
 import { generateMessageId, generateAIAssistantId } from './types';
-import type { AIAssistantIntentEngine } from './AIAssistantIntentEngine';
-import type { AIAssistantContextResolver, AIAssistantContextResolverInput } from './AIAssistantContextResolver';
-import type { AIAssistantResponseEngine } from './AIAssistantResponseEngine';
-import type { AIAssistantSuggestionEngine } from './AIAssistantSuggestionEngine';
-import type { AIAssistantActionPlanner } from './AIAssistantActionPlanner';
-import type { AIAssistantMemory } from './AIAssistantMemory';
-import type { AIAssistantSessionManager } from './AIAssistantSessionManager';
-import type { AIAssistantEvents } from './AIAssistantEvents';
+import type { AIAssistantIntentEngine } from './aiAssistantIntentEngine';
+import type { AIAssistantContextResolver, AIAssistantContextResolverInput } from './aiAssistantContextResolver';
+import type { AIAssistantResponseEngine } from './aiAssistantResponseEngine';
+import type { AIAssistantSuggestionEngine } from './aiAssistantSuggestionEngine';
+import type { AIAssistantActionPlanner } from './aiAssistantActionPlanner';
+import type { AIAssistantMemory } from './aiAssistantMemory';
+import type { AIAssistantSessionManager } from './aiAssistantSessionManager';
+import type { AIAssistantEvents } from './aiAssistantEvents';
 
 export class AIAssistantConversationEngine {
   private _config: AIAssistantConfiguration;

@@ -16,7 +16,7 @@ import type {
   AIAssistantEvidence,
 } from './types';
 import { generateActionPlanId } from './types';
-import type { AIAssistantPermissionEngine } from './AIAssistantPermissionEngine';
+import type { AIAssistantPermissionEngine } from './aiAssistantPermissionEngine';
 
 export class AIAssistantActionPlanner {
   private _config: AIAssistantConfiguration;

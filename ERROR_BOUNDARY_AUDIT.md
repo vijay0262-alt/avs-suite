@@ -65,7 +65,7 @@ The `wrap()` helper wraps each page component with `<ErrorBoundary><Suspense><El
 | Route | Component |
 |-------|-----------|
 | `dashboard` | DashboardPage |
-| `ai-copilot` | AICopilotPage |
+| `ai-aiAssistant` | AIAssistantPage |
 | `ai-smart-optimize` | SmartOptimizationPage |
 | `ai-workspace` | AIWorkspacePage |
 | `hardware-center` | HardwareCenterPage |
@@ -280,7 +280,7 @@ Protected by `wrap(DashboardPage)` → ErrorBoundary + Suspense
 - `settings` → `wrap(SettingsPage)`
 
 ### AI ✅
-- `ai-copilot` → `wrap(AICopilotPage)`
+- `ai-aiAssistant` → `wrap(AIAssistantPage)`
 - `ai-daily-briefing` → `wrap(AIDailyBriefingPage)` (fixed)
 - `ai-smart-optimize` → `wrap(SmartOptimizationPage)`
 - `ai-workspace` → `wrap(AIWorkspacePage)`

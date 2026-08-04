@@ -1,4 +1,4 @@
-﻿apps/pc-optimizer/src/features/ai-assistant/AICopilotPage.tsx(29,8): error TS6133: 'ConversationMessage' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-assistant/AIAssistantPage.tsx(29,8): error TS6133: 'ConversationMessage' is declared but its value is never read.
 apps/pc-optimizer/src/features/ai-assistant/explanationEngine.ts(29,11): error TS6133: '_templates' is declared but its value is never read.
 apps/pc-optimizer/src/features/ai-intelligence/device-profile/deviceClassifier.ts(34,5): error TS6133: 'context' is declared but its value is never read.
 apps/pc-optimizer/src/features/ai-intelligence/device-profile/deviceClassifier.ts(35,5): error TS6133: 'knowledge' is declared but its value is never read.
@@ -20,8 +20,8 @@ apps/pc-optimizer/src/features/ai-workspace/AIWorkspacePage.tsx(729,38): error T
 apps/pc-optimizer/src/features/ai-workspace/AIWorkspacePage.tsx(787,10): error TS6133: 'PrefRow' is declared but its value is never read.
 apps/pc-optimizer/src/features/ai-workspace/command-center/commandCenterManager.ts(45,11): error TS6133: '_aggregator' is declared but its value is never read.
 apps/pc-optimizer/src/features/ai-workspace/command-center/commandCenterStateManager.ts(18,11): error TS6133: '_widgetManager' is declared but its value is never read.
-apps/pc-optimizer/src/features/ai-workspace/copilot/copilotActionPlanner.ts(22,11): error TS6133: '_config' is declared but its value is never read.
-apps/pc-optimizer/src/features/ai-workspace/copilot/copilotResponseEngine.ts(27,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/aiAssistant/aiAssistantActionPlanner.ts(22,11): error TS6133: '_config' is declared but its value is never read.
+apps/pc-optimizer/src/features/ai-workspace/aiAssistant/aiAssistantResponseEngine.ts(27,11): error TS6133: '_config' is declared but its value is never read.
 apps/pc-optimizer/src/features/ai-workspace/multimodal/__tests__/multimodal.test.ts(306,21): error TS6133: 'image' is declared but its value is never read.
 apps/pc-optimizer/src/features/ai-workspace/multimodal/__tests__/multimodal.test.ts(322,19): error TS6133: 'logData' is declared but its value is never read.
 apps/pc-optimizer/src/features/ai-workspace/multimodal/__tests__/multimodal.test.ts(341,21): error TS6133: 'document' is declared but its value is never read.

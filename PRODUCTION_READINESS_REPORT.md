@@ -57,7 +57,7 @@ These features do NOT have their own backend RPC handlers. Instead, they consume
 
 | Feature | Data Source | Analysis | Status |
 |---|---|---|---|
-| **AI Copilot** | Dashboard metrics, health score, cleaner results | `ConversationEngine` + `ExplanationEngine` + `AssistantContextBuilder` — builds context from real RPC data, generates explanations | ✅ Functional — answers are traceable to real system data with evidence and confidence scores |
+| **AVS AI Assistant** | Dashboard metrics, health score, cleaner results | `ConversationEngine` + `ExplanationEngine` + `AssistantContextBuilder` — builds context from real RPC data, generates explanations | ✅ Functional — answers are traceable to real system data with evidence and confidence scores |
 | **AI Daily Briefing** | Dashboard data, insights from `InsightGenerator` | `InsightGenerator` checks real score trends, storage growth, startup impact, browser cache, Windows update status, duplicate space, maintenance due, privacy concerns, performance bottlenecks | ✅ Functional — insights derived from real data, never fabricated |
 | **AI Smart Optimization** | Dashboard metrics, cleaner scan results | `SmartOptimizationEngine` generates optimization plans from real scan data; `SimulationEngine` simulates impact | ✅ Functional — plans based on real issues found |
 | **Dashboard Recommendations** | Dashboard metrics | `generateRecommendations()` in `dashboard.utils` — maps real metric thresholds to recommendation cards | ✅ Functional |
@@ -111,7 +111,7 @@ The `hardware_monitor` backend module attempts to collect sensor data using mult
 
 | AI Feature | Data Source | Analysis Method | Real? |
 |---|---|---|---|
-| **AI Copilot Responses** | `AssistantContextBuilder` pulls real data from Dashboard metrics, health score, cleaner results | `ExplanationEngine` generates explanations with evidence citations and confidence scores | ✅ Real — every answer is traceable to context provider data with provenance |
+| **AVS AI Assistant Responses** | `AssistantContextBuilder` pulls real data from Dashboard metrics, health score, cleaner results | `ExplanationEngine` generates explanations with evidence citations and confidence scores | ✅ Real — every answer is traceable to context provider data with provenance |
 | **AI Daily Briefing Insights** | `InsightGenerator` checks real Dashboard data: score trends, storage growth, startup count, browser cache size, Windows update status, duplicate file space, maintenance status, privacy concerns, performance bottlenecks | Rule-based analysis with severity classification and evidence | ✅ Real — insights derived from actual system metrics, never fabricated |
 | **AI Smart Optimization Plans** | `SmartOptimizationEngine` uses real cleaner scan results, dashboard metrics | Risk analysis, impact estimation, action prioritization | ✅ Real — plans based on actual issues found by backend scanners |
 | **AI Simulation** | `SimulationEngine` takes real optimization plan and simulates impact | Mathematical modeling based on action types and measured data | ✅ Real — simulation based on actual plan parameters |
@@ -128,7 +128,7 @@ The `hardware_monitor` backend module attempts to collect sensor data using mult
 |---|---|---|---|
 | `MockHardwareProvider.ts` | Fallback hardware data | Non-Electron environments (dev, tests, Storybook) | None in production — real WMI data used in Electron |
 | `__tests__/` (all test files) | Unit test fixtures | Test environment only | None in production |
-| `conversationEngine.ts` | AI Copilot session data | Generates context from real RPC data | No mock data — real system data only |
+| `conversationEngine.ts` | AVS AI Assistant session data | Generates context from real RPC data | No mock data — real system data only |
 
 **Key finding:** There is NO mock/demo data in the production code path. The `MockHardwareProvider` is only used as a fallback when the Electron RPC bridge is unavailable (development/testing). In production, all data comes from real system calls via the Python backend.
 
@@ -156,7 +156,7 @@ The `hardware_monitor` backend module attempts to collect sensor data using mult
 - Reporting (PDF/CSV export)
 - Licensing & Subscription
 - Auto-Update System
-- AI Copilot (context-based Q&A)
+- AVS AI Assistant (context-based Q&A)
 - AI Daily Briefing (insight generation)
 - AI Smart Optimization (plan + simulate + execute)
 - Hardware Center (monitoring + health evaluation)
