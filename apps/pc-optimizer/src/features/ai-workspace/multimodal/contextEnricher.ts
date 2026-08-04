@@ -12,12 +12,12 @@ import type {
   MultimodalInput,
   MultimodalConfiguration,
 } from './types';
-import type { AIAssistantContextResolverInput } from '../AIAssistant/AIAssistantContextResolver';
-import { AIAssistantContextResolver } from '../AIAssistant/AIAssistantContextResolver';
+import type { AIAssistantContextResolverInput } from '../aiAssistant/AIAssistantContextResolver';
+import { AIAssistantContextResolver } from '../aiAssistant/AIAssistantContextResolver';
 
 export interface ContextEnricherInput {
   input: MultimodalInput;
-  AIAssistantContextInput: AIAssistantContextResolverInput;
+  aiAssistantContextInput: AIAssistantContextResolverInput;
   previousInputs: MultimodalInput[];
   activeTopics: string[];
   sessionId: string | null;
@@ -49,7 +49,7 @@ export class ContextEnricher {
       return cached.context;
     }
 
-    const AIAssistantContext = this._resolver.resolve(input.AIAssistantContextInput);
+    const aiAssistantContext = this._resolver.resolve(input.aiAssistantContextInput);
 
     const conversationContext: ConversationContext = {
       sessionId: input.sessionId,
@@ -61,15 +61,15 @@ export class ContextEnricher {
 
     const enriched: EnrichedContext = {
       inputId: input.input.id,
-      AIAssistantContext,
-      healthScore: AIAssistantContext.healthScore,
-      timeline: AIAssistantContext.recentTimelineEvents,
-      goals: AIAssistantContext.activeGoals,
-      recommendations: AIAssistantContext.activeRecommendations,
-      predictions: AIAssistantContext.activePredictions,
-      optimizationHistory: AIAssistantContext.optimizationHistory,
-      recoveryHistory: AIAssistantContext.recoveryHistory,
-      deviceProfile: AIAssistantContext.deviceProfile,
+      aiAssistantContext,
+      healthScore: aiAssistantContext.healthScore,
+      timeline: aiAssistantContext.recentTimelineEvents,
+      goals: aiAssistantContext.activeGoals,
+      recommendations: aiAssistantContext.activeRecommendations,
+      predictions: aiAssistantContext.activePredictions,
+      optimizationHistory: aiAssistantContext.optimizationHistory,
+      recoveryHistory: aiAssistantContext.recoveryHistory,
+      deviceProfile: aiAssistantContext.deviceProfile,
       conversationContext,
       futureMetadata: { enrichmentTimeMs: Date.now() - start },
     };
@@ -81,10 +81,10 @@ export class ContextEnricher {
     return enriched;
   }
 
-  extractContext(input: MultimodalInput, AIAssistantContextInput: AIAssistantContextResolverInput): EnrichedContext {
+  extractContext(input: MultimodalInput, aiAssistantContextInput: AIAssistantContextResolverInput): EnrichedContext {
     return this.enrich({
       input,
-      AIAssistantContextInput,
+      aiAssistantContextInput,
       previousInputs: [],
       activeTopics: [],
       sessionId: input.context.sessionId,
@@ -105,7 +105,7 @@ export class ContextEnricher {
   }
 
   private _getCacheKey(input: ContextEnricherInput): string {
-    const ctx = input.AIAssistantContextInput;
+    const ctx = input.aiAssistantContextInput;
     return [
       input.input.id,
       ctx.healthScore ?? 'null',

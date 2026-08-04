@@ -51,10 +51,10 @@ import { SessionSynchronizer } from './sessionSynchronizer';
 import { MultimodalAnalytics } from './multimodalAnalytics';
 import { MultimodalValidator } from './multimodalValidator';
 import { generateResponseId } from './types';
-import type { AIAssistantContextResolverInput } from '../AIAssistant/AIAssistantContextResolver';
+import type { AIAssistantContextResolverInput } from '../aiAssistant/AIAssistantContextResolver';
 
 export interface ProcessInputOptions {
-  AIAssistantContextInput: AIAssistantContextResolverInput;
+  aiAssistantContextInput: AIAssistantContextResolverInput;
   sessionId?: string;
   previousInputs?: MultimodalInput[];
   activeTopics?: string[];
@@ -138,20 +138,20 @@ export class MultimodalManager {
     // Enrich context
     const enriched = this._contextEnricher.enrich({
       input,
-      AIAssistantContextInput: options.AIAssistantContextInput,
+      aiAssistantContextInput: options.aiAssistantContextInput,
       previousInputs: options.previousInputs ?? [],
       activeTopics: options.activeTopics ?? [],
       sessionId: options.sessionId ?? input.context.sessionId,
       conversationId: input.context.conversationId,
     });
-    this._emit('context_enriched', { inputId: input.id, sourceCount: enriched.AIAssistantContext.sources.length });
+    this._emit('context_enriched', { inputId: input.id, sourceCount: enriched.aiAssistantContext.sources.length });
 
     // Detect intent
     const intent = this._detectIntent(normalized, routing.modality);
 
     // Route to tools
     this._emit('processing_started', { inputId: input.id, intent: intent.type });
-    const toolRouting = this._routeToTools(intent, enriched.AIAssistantContext);
+    const toolRouting = this._routeToTools(intent, enriched.aiAssistantContext);
 
     // Generate response
     const response = this._generateResponse(normalized, enriched, intent, toolRouting);
@@ -189,8 +189,8 @@ export class MultimodalManager {
     return this._normalizer.normalize(input);
   }
 
-  extractContext(input: MultimodalInput, AIAssistantContextInput: AIAssistantContextResolverInput): EnrichedContext {
-    return this._contextEnricher.extractContext(input, AIAssistantContextInput);
+  extractContext(input: MultimodalInput, aiAssistantContextInput: AIAssistantContextResolverInput): EnrichedContext {
+    return this._contextEnricher.extractContext(input, aiAssistantContextInput);
   }
 
   routeToTools(intent: AIAssistantIntentType, context: AIAssistantContext): ToolRoutingResult {

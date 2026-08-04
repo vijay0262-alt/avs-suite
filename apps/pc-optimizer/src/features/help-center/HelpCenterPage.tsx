@@ -25,7 +25,7 @@ import { useNavigate } from 'react-router-dom';
 
 const QUICK_LINKS = [
   { label: 'Run a Health Scan', path: '/dashboard', icon: ShieldCheckIcon, description: 'Analyze your PC health with AI' },
-  { label: 'Open AVS AI Assistant', path: '/ai-AIAssistant', icon: ChatBubbleLeftRightIcon, description: 'Ask questions about your PC' },
+  { label: 'Open AVS AI Assistant', path: '/ai-assistant', icon: ChatBubbleLeftRightIcon, description: 'Ask questions about your PC' },
   { label: 'Run Smart Optimize', path: '/ai-smart-optimize', icon: BoltIcon, description: 'Optimize your PC with AI recommendations' },
   { label: 'View Hardware Info', path: '/hardware-center', icon: CpuChipIcon, description: 'Check hardware health and status' },
 ];

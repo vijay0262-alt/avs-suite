@@ -41,7 +41,7 @@ export type {
   OptimizationHistorySummary,
   RecoverySummary,
   ContextSourceType,
-} from '../AIAssistant/types';
+} from '../aiAssistant/types';
 
 import type {
   AIAssistantIntentType,
@@ -51,7 +51,7 @@ import type {
   PermissionLevel,
   AIAssistantValidationResult,
   ContextSourceType,
-} from '../AIAssistant/types';
+} from '../aiAssistant/types';
 
 // ── Tool Categories ───────────────────────────────────────────
 

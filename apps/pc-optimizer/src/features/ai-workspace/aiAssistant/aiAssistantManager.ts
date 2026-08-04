@@ -30,8 +30,8 @@ import type {
   AIAssistantAnalytics,
   AIAssistantValidationResult,
 } from './types';
-import { DEFAULT_AIAssistant_CONFIGURATION, createAIAssistantConfiguration, validateConfiguration } from './AIAssistantConfiguration';
-import { aiAssistantEvents, AIAssistantEvents } from './AIAssistantEvents';
+import { DEFAULT_AI_ASSISTANT_CONFIGURATION, createAIAssistantConfiguration, validateConfiguration } from './AIAssistantConfiguration';
+import { AIAssistantEvents } from './AIAssistantEvents';
 import { AIAssistantIntentEngine } from './AIAssistantIntentEngine';
 import { AIAssistantContextResolver, type AIAssistantContextResolverInput } from './AIAssistantContextResolver';
 import { AIAssistantResponseEngine } from './AIAssistantResponseEngine';
@@ -64,7 +64,7 @@ export class AIAssistantManager {
   constructor(config?: Partial<AIAssistantConfiguration>) {
     this._config = config
       ? createAIAssistantConfiguration(config as never)
-      : structuredClone(DEFAULT_AIAssistant_CONFIGURATION);
+      : structuredClone(DEFAULT_AI_ASSISTANT_CONFIGURATION);
 
     const validation = validateConfiguration(this._config);
     if (!validation.valid) {

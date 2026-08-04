@@ -7,7 +7,7 @@
  * view-specific helpers for the dashboard.
  */
 import type { CommandCenterViewModel, AIAssistantContext, WidgetCategory } from './types';
-import type { AIAssistantSuggestion, AIAssistantActionPlan } from '../AIAssistant/types';
+import type { AIAssistantSuggestion, AIAssistantActionPlan } from '../aiAssistant/types';
 import { CommandCenterDataAggregator } from './commandCenterDataAggregator';
 
 export class CommandCenterViewModelEngine {
@@ -65,7 +65,7 @@ export class CommandCenterViewModelEngine {
       case 'timeline': return vm.timeline;
       case 'recovery': return vm.recovery;
       case 'device_profile': return vm.deviceProfile;
-      case 'AIAssistant': return vm.AIAssistant;
+      case 'aiAssistant': return vm.aiAssistant;
       case 'optimization': return vm.optimization;
       default: return null;
     }

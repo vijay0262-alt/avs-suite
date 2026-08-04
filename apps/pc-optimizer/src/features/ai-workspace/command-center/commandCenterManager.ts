@@ -25,7 +25,7 @@ import type {
   CommandCenterViewModel,
   RefreshPolicy,
 } from './types';
-import type { AIAssistantSuggestion, AIAssistantActionPlan } from '../AIAssistant/types';
+import type { AIAssistantSuggestion, AIAssistantActionPlan } from '../aiAssistant/types';
 import { DEFAULT_COMMAND_CENTER_CONFIGURATION, createCommandCenterConfiguration, validateCommandCenterConfiguration } from './commandCenterConfiguration';
 import { CommandCenterEvents, commandCenterEvents } from './commandCenterEvents';
 import { CommandCenterWidgetRegistry } from './commandCenterWidgetRegistry';

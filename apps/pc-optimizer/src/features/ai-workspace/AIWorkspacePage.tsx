@@ -16,13 +16,13 @@ import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleEmptyState, ModuleLoadingState } from '../../components/ModuleStates';
 import { CommandCenterManager } from './command-center/commandCenterManager';
-import { AIAssistantManager } from './AIAssistant/AIAssistantManager';
+import { AIAssistantManager } from './aiAssistant/AIAssistantManager';
 import { ReportStudioManager } from './report-studio/reportStudioManager';
 import { ToolManager } from './tools/toolManager';
 import { NaturalLanguageActionManager } from './actions/naturalLanguageActionManager';
 import { WorkspacePersonalizationManager } from './personalization/workspacePersonalizationManager';
 import type { DashboardState, SearchResult, SearchQuery } from './command-center/types';
-import type { AIAssistantSuggestion, AIAssistantPromptResult } from './AIAssistant/types';
+import type { AIAssistantSuggestion, AIAssistantPromptResult } from './aiAssistant/types';
 import type { Report, ReportHistoryEntry, ReportSchedule } from './report-studio/types';
 import type { ToolDefinition } from './tools/types';
 import type { ParsedRequest } from './actions/types';
@@ -54,7 +54,7 @@ import {
   LightBulbIcon,
 } from '@heroicons/react/24/outline';
 
-type WorkspaceTab = 'command-center' | 'AIAssistant' | 'report-studio' | 'tools' | 'actions' | 'personalization';
+type WorkspaceTab = 'command-center' | 'aiAssistant' | 'report-studio' | 'tools' | 'actions' | 'personalization';
 
 interface AIWorkspaceState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
@@ -64,11 +64,11 @@ interface AIWorkspaceState {
   ccAnalytics: CCAnalytics | null;
   searchResults: SearchResult[];
   searchQuery: string;
-  // AIAssistant
-  AIAssistantAnalytics: AIAssistantAnalyticsData | null;
-  AIAssistantSuggestions: AIAssistantSuggestion[];
-  AIAssistantResult: AIAssistantPromptResult | null;
-  AIAssistantInput: string;
+  // AVS AI Assistant
+  aiAssistantAnalytics: AIAssistantAnalyticsData | null;
+  aiAssistantSuggestions: AIAssistantSuggestion[];
+  aiAssistantResult: AIAssistantPromptResult | null;
+  aiAssistantInput: string;
   isProcessingPrompt: boolean;
   // Report Studio
   reports: Report[];
@@ -91,7 +91,7 @@ interface AIWorkspaceState {
 
 class AIWorkspaceViewModel extends ViewModel<AIWorkspaceState> {
   private ccManager: CommandCenterManager;
-  private AIAssistantManager: AIAssistantManager;
+  private aiAssistantManager: AIAssistantManager;
   private reportStudio: ReportStudioManager;
   private toolManager: ToolManager;
   private actionManager: NaturalLanguageActionManager;
@@ -105,10 +105,10 @@ class AIWorkspaceViewModel extends ViewModel<AIWorkspaceState> {
       ccAnalytics: null,
       searchResults: [],
       searchQuery: '',
-      AIAssistantAnalytics: null,
-      AIAssistantSuggestions: [],
-      AIAssistantResult: null,
-      AIAssistantInput: '',
+      aiAssistantAnalytics: null,
+      aiAssistantSuggestions: [],
+      aiAssistantResult: null,
+      aiAssistantInput: '',
       isProcessingPrompt: false,
       reports: [],
       reportHistory: [],
@@ -125,7 +125,7 @@ class AIWorkspaceViewModel extends ViewModel<AIWorkspaceState> {
       error: null,
     });
     this.ccManager = new CommandCenterManager();
-    this.AIAssistantManager = new AIAssistantManager();
+    this.aiAssistantManager = new AIAssistantManager();
     this.reportStudio = new ReportStudioManager();
     this.toolManager = new ToolManager();
     this.actionManager = new NaturalLanguageActionManager();
@@ -137,7 +137,7 @@ class AIWorkspaceViewModel extends ViewModel<AIWorkspaceState> {
     try {
       this.setState({
         ccAnalytics: this.ccManager.getAnalytics(),
-        AIAssistantAnalytics: this.AIAssistantManager.getAnalytics(),
+        aiAssistantAnalytics: this.aiAssistantManager.getAnalytics(),
         reportAnalytics: this.reportStudio.getAnalytics(),
         reportHistory: this.reportStudio.getReportHistory(),
         scheduledReports: this.reportStudio.getScheduledReports(),
@@ -192,22 +192,22 @@ class AIWorkspaceViewModel extends ViewModel<AIWorkspaceState> {
   // ── AIAssistant ──────────────────────────────────────────────────
 
   setAIAssistantInput(text: string) {
-    this.setState({ AIAssistantInput: text });
+    this.setState({ aiAssistantInput: text });
   }
 
   processPrompt() {
-    const { AIAssistantInput } = this.state;
-    if (!AIAssistantInput.trim()) return;
+    const { aiAssistantInput } = this.state;
+    if (!aiAssistantInput.trim()) return;
     this.setState({ isProcessingPrompt: true, error: null });
     try {
-      const result = this.AIAssistantManager.processPrompt(
-        { prompt: AIAssistantInput, conversationId: 'ui-' + Date.now(), userPermissionLevel: 'free', userPreferences: {}, futureMetadata: {} },
+      const result = this.aiAssistantManager.processPrompt(
+        { prompt: aiAssistantInput, conversationId: 'ui-' + Date.now(), userPermissionLevel: 'free', userPreferences: {}, futureMetadata: {} },
         { healthScore: 75, sources: [], futureMetadata: {} } as never,
       );
       this.setState({
-        AIAssistantResult: result,
-        AIAssistantSuggestions: result.suggestions,
-        AIAssistantAnalytics: this.AIAssistantManager.getAnalytics(),
+        aiAssistantResult: result,
+        aiAssistantSuggestions: result.suggestions,
+        aiAssistantAnalytics: this.aiAssistantManager.getAnalytics(),
         isProcessingPrompt: false,
       });
     } catch (e) {
@@ -273,7 +273,7 @@ class AIWorkspaceViewModel extends ViewModel<AIWorkspaceState> {
   override dispose() {
     super.dispose();
     this.ccManager.clearAll();
-    this.AIAssistantManager.clearAll();
+    this.aiAssistantManager.clearAll();
     this.reportStudio.clearAll();
     this.toolManager.clearAll();
     this.actionManager.clearAll();
@@ -284,7 +284,7 @@ class AIWorkspaceViewModel extends ViewModel<AIWorkspaceState> {
 
 const TABS: { id: WorkspaceTab; label: string; icon: typeof Squares2X2Icon }[] = [
   { id: 'command-center', label: 'Command Center', icon: Squares2X2Icon },
-  { id: 'AIAssistant', label: 'AIAssistant', icon: ChatBubbleLeftRightIcon },
+  { id: 'aiAssistant', label: 'AVS AI Assistant', icon: ChatBubbleLeftRightIcon },
   { id: 'report-studio', label: 'Report Studio', icon: DocumentChartBarIcon },
   { id: 'tools', label: 'AI Tools', icon: WrenchScrewdriverIcon },
   { id: 'actions', label: 'Actions', icon: BoltIcon },
@@ -303,7 +303,7 @@ export default function AIWorkspacePage() {
   if (state.bootstrap === 'loading') {
     return (
       <div className="px-6 py-6">
-        <PageHeader title="AI Workspace" description="Unified AI platform: Command Center, AIAssistant, Report Studio, Tools, Actions, and Personalization." />
+        <PageHeader title="AI Workspace"        description="Unified AI platform: Command Center, AVS AI Assistant, Report Studio, Tools, Actions, and Personalization." />
         <ModuleLoadingState />
       </div>
     );
@@ -315,7 +315,7 @@ export default function AIWorkspacePage() {
     <div className="px-6 py-6 space-y-6">
       <PageHeader
         title="AI Workspace"
-        description="Unified AI platform: Command Center, AIAssistant, Report Studio, Tools, Actions, and Personalization."
+        description="Unified AI platform: Command Center, AVS AI Assistant, Report Studio, Tools, Actions, and Personalization."
         actions={
           <Button
             onClick={() => vm.loadDashboard()}
@@ -347,7 +347,7 @@ export default function AIWorkspacePage() {
 
       {/* Tab Content */}
       {s.activeTab === 'command-center' && <CommandCenterTab state={s} vm={vm} />}
-      {s.activeTab === 'AIAssistant' && <AIAssistantTab state={s} vm={vm} />}
+      {s.activeTab === 'aiAssistant' && <AIAssistantTab state={s} vm={vm} />}
       {s.activeTab === 'report-studio' && <ReportStudioTab state={s} vm={vm} />}
       {s.activeTab === 'tools' && <ToolsTab state={s} />}
       {s.activeTab === 'actions' && <ActionsTab state={s} vm={vm} />}
@@ -447,19 +447,19 @@ function AIAssistantTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorkspac
 
   return (
     <div className="space-y-4">
-      {s.AIAssistantAnalytics && (
+      {s.aiAssistantAnalytics && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <StatBox label="Conversations" value={s.AIAssistantAnalytics.totalConversations} icon={ChatBubbleLeftRightIcon} />
-          <StatBox label="Messages" value={s.AIAssistantAnalytics.totalMessages} icon={SparklesIcon} />
-          <StatBox label="Avg Confidence" value={`${(s.AIAssistantAnalytics.averageConfidence * 100).toFixed(0)}%`} icon={LightBulbIcon} />
-          <StatBox label="Action Plan Rate" value={`${(s.AIAssistantAnalytics.actionPlanRate * 100).toFixed(0)}%`} icon={BoltIcon} />
+          <StatBox label="Conversations" value={s.aiAssistantAnalytics.totalConversations} icon={ChatBubbleLeftRightIcon} />
+          <StatBox label="Messages" value={s.aiAssistantAnalytics.totalMessages} icon={SparklesIcon} />
+          <StatBox label="Avg Confidence" value={`${(s.aiAssistantAnalytics.averageConfidence * 100).toFixed(0)}%`} icon={LightBulbIcon} />
+          <StatBox label="Action Plan Rate" value={`${(s.aiAssistantAnalytics.actionPlanRate * 100).toFixed(0)}%`} icon={BoltIcon} />
         </div>
       )}
 
       <Card title="Process Prompt" variant="glass">
         <div className="flex items-center gap-2">
           <input
-            value={s.AIAssistantInput}
+            value={s.aiAssistantInput}
             onChange={(e) => vm.setAIAssistantInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && vm.processPrompt()}
             placeholder="Ask the AVS AI Assistant..."
@@ -471,23 +471,23 @@ function AIAssistantTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorkspac
         </div>
       </Card>
 
-      {s.AIAssistantResult && (
+      {s.aiAssistantResult && (
         <Card title="Last Response" variant="glass">
           <div className="space-y-3">
-            <p className="text-sm text-[var(--avs-text-primary)]">{s.AIAssistantResult.response.answer}</p>
+            <p className="text-sm text-[var(--avs-text-primary)]">{s.aiAssistantResult.response.answer}</p>
             <div className="flex items-center gap-2">
-              <Badge tone="brand">{s.AIAssistantResult.response.intent}</Badge>
+              <Badge tone="brand">{s.aiAssistantResult.response.intent}</Badge>
               <span className="text-xs text-[var(--avs-text-muted)]">
-                Confidence: {(s.AIAssistantResult.response.confidence * 100).toFixed(0)}%
+                Confidence: {(s.aiAssistantResult.response.confidence * 100).toFixed(0)}%
               </span>
               <span className="text-xs text-[var(--avs-text-muted)]">
-                {(s.AIAssistantResult.processingTimeMs / 1000).toFixed(2)}s
+                {(s.aiAssistantResult.processingTimeMs / 1000).toFixed(2)}s
               </span>
             </div>
-            {s.AIAssistantSuggestions.length > 0 && (
+            {s.aiAssistantSuggestions.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-1">Suggestions</h4>
-                {s.AIAssistantSuggestions.map((sug) => (
+                {s.aiAssistantSuggestions.map((sug) => (
                   <div key={sug.id} className="flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2 mt-1">
                     <LightBulbIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
                     <span className="text-xs text-[var(--avs-text-primary)]">{sug.title}</span>

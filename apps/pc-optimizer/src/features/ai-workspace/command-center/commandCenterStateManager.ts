@@ -7,7 +7,7 @@
  * widget instances, view model, loading state, and search.
  */
 import type { DashboardState, DashboardLayout, WidgetInstance, CommandCenterViewModel, SearchResult, SearchQuery, AIAssistantContext } from './types';
-import type { AIAssistantSuggestion, AIAssistantActionPlan } from '../AIAssistant/types';
+import type { AIAssistantSuggestion, AIAssistantActionPlan } from '../aiAssistant/types';
 import type { CommandCenterLayoutEngine } from './commandCenterLayoutEngine';
 import type { CommandCenterWidgetManager } from './commandCenterWidgetManager';
 import type { CommandCenterViewModelEngine } from './commandCenterViewModel';

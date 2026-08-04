@@ -118,11 +118,11 @@ export class MultimodalValidator {
     if (!enriched.inputId) {
       errors.push({ code: 'MISSING_INPUT_ID', message: 'Input id is required', field: 'inputId' });
     }
-    if (!enriched.AIAssistantContext) {
-      errors.push({ code: 'MISSING_AIAssistant_CONTEXT', message: 'AIAssistant context is required', field: 'AIAssistantContext' });
+    if (!enriched.aiAssistantContext) {
+      errors.push({ code: 'MISSING_AI_ASSISTANT_CONTEXT', message: 'AI Assistant context is required', field: 'aiAssistantContext' });
     }
-    if (enriched.AIAssistantContext.sources.length === 0) {
-      warnings.push({ code: 'NO_CONTEXT_SOURCES', message: 'No context sources available', field: 'AIAssistantContext.sources' });
+    if (enriched.aiAssistantContext.sources.length === 0) {
+      warnings.push({ code: 'NO_CONTEXT_SOURCES', message: 'No context sources available', field: 'aiAssistantContext.sources' });
     }
 
     return {

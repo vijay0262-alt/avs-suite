@@ -22,7 +22,7 @@ import { AIAssistantSessionManager } from '../AIAssistantSessionManager';
 import { AIAssistantAnalyticsEngine } from '../AIAssistantAnalytics';
 import { AIAssistantValidator } from '../AIAssistantValidator';
 import { AIAssistantEvents } from '../AIAssistantEvents';
-import { DEFAULT_AIAssistant_CONFIGURATION, createAIAssistantConfiguration, validateConfiguration } from '../AIAssistantConfiguration';
+import { DEFAULT_AI_ASSISTANT_CONFIGURATION, createAIAssistantConfiguration, validateConfiguration } from '../AIAssistantConfiguration';
 import {
   generateAIAssistantId,
   clampConfidence,
@@ -64,7 +64,7 @@ describe('AIAssistant Types & Helpers', () => {
     const id1 = generateAIAssistantId();
     const id2 = generateAIAssistantId();
     expect(id1).not.toBe(id2);
-    expect(id1).toMatch(/^AIAssistant_/);
+    expect(id1).toMatch(/^ai_assistant_/);
   });
 
   it('should clamp confidence between 0 and 1', () => {
@@ -90,8 +90,8 @@ describe('AIAssistant Types & Helpers', () => {
 
 describe('AIAssistant Configuration', () => {
   it('should provide default configuration', () => {
-    expect(DEFAULT_AIAssistant_CONFIGURATION.configVersion).toBe('1.0.0');
-    expect(DEFAULT_AIAssistant_CONFIGURATION.featureFlags.enableAIAssistant).toBe(true);
+    expect(DEFAULT_AI_ASSISTANT_CONFIGURATION.configVersion).toBe('1.0.0');
+    expect(DEFAULT_AI_ASSISTANT_CONFIGURATION.featureFlags.enableAIAssistant).toBe(true);
   });
 
   it('should create configuration with overrides', () => {
@@ -101,7 +101,7 @@ describe('AIAssistant Configuration', () => {
   });
 
   it('should validate configuration', () => {
-    const result = validateConfiguration(DEFAULT_AIAssistant_CONFIGURATION);
+    const result = validateConfiguration(DEFAULT_AI_ASSISTANT_CONFIGURATION);
     expect(result.valid).toBe(true);
     expect(result.errors.length).toBe(0);
   });
@@ -152,7 +152,7 @@ describe('AIAssistant Intent Engine', () => {
   let engine: AIAssistantIntentEngine;
 
   beforeEach(() => {
-    engine = new AIAssistantIntentEngine(DEFAULT_AIAssistant_CONFIGURATION);
+    engine = new AIAssistantIntentEngine(DEFAULT_AI_ASSISTANT_CONFIGURATION);
   });
 
   it('should resolve question intent', () => {
@@ -229,7 +229,7 @@ describe('AIAssistant Response Engine', () => {
   let resolver: AIAssistantContextResolver;
 
   beforeEach(() => {
-    engine = new AIAssistantResponseEngine(DEFAULT_AIAssistant_CONFIGURATION);
+    engine = new AIAssistantResponseEngine(DEFAULT_AI_ASSISTANT_CONFIGURATION);
     resolver = new AIAssistantContextResolver();
   });
 
@@ -256,7 +256,7 @@ describe('AIAssistant Suggestion Engine', () => {
   let resolver: AIAssistantContextResolver;
 
   beforeEach(() => {
-    engine = new AIAssistantSuggestionEngine(DEFAULT_AIAssistant_CONFIGURATION);
+    engine = new AIAssistantSuggestionEngine(DEFAULT_AI_ASSISTANT_CONFIGURATION);
     resolver = new AIAssistantContextResolver();
   });
 
@@ -270,7 +270,7 @@ describe('AIAssistant Suggestion Engine', () => {
   it('should respect max suggestions', () => {
     const ctx = resolver.resolve(createMockContextInput());
     const suggestions = engine.generate('question', ctx, 'conv1');
-    expect(suggestions.length).toBeLessThanOrEqual(DEFAULT_AIAssistant_CONFIGURATION.suggestionRules.maxSuggestions);
+    expect(suggestions.length).toBeLessThanOrEqual(DEFAULT_AI_ASSISTANT_CONFIGURATION.suggestionRules.maxSuggestions);
   });
 });
 
@@ -313,7 +313,7 @@ describe('AIAssistant Permission Engine', () => {
   let engine: AIAssistantPermissionEngine;
 
   beforeEach(() => {
-    engine = new AIAssistantPermissionEngine(DEFAULT_AIAssistant_CONFIGURATION);
+    engine = new AIAssistantPermissionEngine(DEFAULT_AI_ASSISTANT_CONFIGURATION);
   });
 
   it('should allow free actions for free users', () => {
@@ -340,8 +340,8 @@ describe('AIAssistant Action Planner', () => {
   let resolver: AIAssistantContextResolver;
 
   beforeEach(() => {
-    const permEngine = new AIAssistantPermissionEngine(DEFAULT_AIAssistant_CONFIGURATION);
-    planner = new AIAssistantActionPlanner(DEFAULT_AIAssistant_CONFIGURATION, permEngine);
+    const permEngine = new AIAssistantPermissionEngine(DEFAULT_AI_ASSISTANT_CONFIGURATION);
+    planner = new AIAssistantActionPlanner(DEFAULT_AI_ASSISTANT_CONFIGURATION, permEngine);
     resolver = new AIAssistantContextResolver();
   });
 
@@ -545,7 +545,7 @@ describe('AIAssistantManager', () => {
   });
 
   it('should throw when disabled', () => {
-    manager.updateConfig({ featureFlags: { ...DEFAULT_AIAssistant_CONFIGURATION.featureFlags, enableAIAssistant: false } });
+    manager.updateConfig({ featureFlags: { ...DEFAULT_AI_ASSISTANT_CONFIGURATION.featureFlags, enableAIAssistant: false } });
     expect(() => manager.processPrompt(createMockPrompt('Hello'), createMockContextInput())).toThrow();
   });
 });
@@ -554,11 +554,11 @@ describe('AIAssistantManager', () => {
 
 describe('AIAssistant Performance', () => {
   it('should resolve intent within target', () => {
-    const engine = new AIAssistantIntentEngine(DEFAULT_AIAssistant_CONFIGURATION);
+    const engine = new AIAssistantIntentEngine(DEFAULT_AI_ASSISTANT_CONFIGURATION);
     const start = Date.now();
     engine.resolve('What is my health score?');
     const elapsed = Date.now() - start;
-    expect(elapsed).toBeLessThan(DEFAULT_AIAssistant_CONFIGURATION.intentResolutionTargetMs + 50);
+    expect(elapsed).toBeLessThan(DEFAULT_AI_ASSISTANT_CONFIGURATION.intentResolutionTargetMs + 50);
   });
 
   it('should process prompt within target', () => {
@@ -566,7 +566,7 @@ describe('AIAssistant Performance', () => {
     const start = Date.now();
     manager.processPrompt(createMockPrompt('What is my health?'), createMockContextInput());
     const elapsed = Date.now() - start;
-    expect(elapsed).toBeLessThan(DEFAULT_AIAssistant_CONFIGURATION.performanceTargetMs + 200);
+    expect(elapsed).toBeLessThan(DEFAULT_AI_ASSISTANT_CONFIGURATION.performanceTargetMs + 200);
   });
 });
 

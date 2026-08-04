@@ -29,7 +29,7 @@ export interface EditionLimits {
   dashboardSecurityEvents: EditionLimit;
 
   // AVS AI Assistant
-  AIAssistantQuestionsPerDay: EditionLimit;
+  aiAssistantQuestionsPerDay: EditionLimit;
 
   // AI Smart Optimize
   aiSmartOptimizePerRun: EditionLimit;
@@ -104,7 +104,7 @@ export const EDITION_LIMITS: EditionLimits = {
   },
 
   // AVS AI Assistant
-  AIAssistantQuestionsPerDay: {
+  aiAssistantQuestionsPerDay: {
     free: 20,
     professional: null,
     freeLabel: '20 AI questions per day',

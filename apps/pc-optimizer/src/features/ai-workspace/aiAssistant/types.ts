@@ -608,7 +608,7 @@ export interface AIAssistantSuggestionInput {
 // ── Helper Functions ──────────────────────────────────────────
 
 export function generateAIAssistantId(): string {
-  return `AIAssistant_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+  return `ai_assistant_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
 export function generateConversationId(): string {

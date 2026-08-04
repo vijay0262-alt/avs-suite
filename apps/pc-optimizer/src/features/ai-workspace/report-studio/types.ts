@@ -18,12 +18,12 @@ export type {
   AIAssistantContext,
   AIAssistantEvidence,
   PermissionLevel,
-} from '../AIAssistant/types';
+} from '../aiAssistant/types';
 
 import type {
   AIAssistantEvidence,
   PermissionLevel,
-} from '../AIAssistant/types';
+} from '../aiAssistant/types';
 
 // ── Report Types ──────────────────────────────────────────────
 

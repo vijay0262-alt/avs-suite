@@ -21,7 +21,7 @@ export type {
   AIAssistantActionPlan,
   PermissionLevel,
   AIAssistantIntentType,
-} from '../AIAssistant/types';
+} from '../aiAssistant/types';
 
 import type {
   AIAssistantContext,
@@ -29,7 +29,7 @@ import type {
   AIAssistantSuggestion,
   AIAssistantActionPlan,
   PermissionLevel,
-} from '../AIAssistant/types';
+} from '../aiAssistant/types';
 
 // ── Widget Categories ─────────────────────────────────────────
 
@@ -44,7 +44,7 @@ export type WidgetCategory =
   | 'timeline'
   | 'recovery'
   | 'device_profile'
-  | 'AIAssistant'
+  | 'aiAssistant'
   | 'quick_actions'
   | 'future_category';
 
@@ -60,7 +60,7 @@ export function getWidgetCategoryLabel(category: WidgetCategory): string {
     timeline: 'Timeline Summary',
     recovery: 'Recovery Status',
     device_profile: 'Device Profile',
-    AIAssistant: 'AIAssistant Suggestions',
+    aiAssistant: 'AVS AI Assistant Suggestions',
     quick_actions: 'Quick Actions',
     future_category: 'Future Widget',
   };
@@ -243,7 +243,7 @@ export interface CommandCenterViewModel {
   timeline: TimelineViewModel | null;
   recovery: RecoveryViewModel | null;
   deviceProfile: DeviceProfileViewModel | null;
-  AIAssistant: AIAssistantViewModel | null;
+  aiAssistant: AIAssistantViewModel | null;
   optimization: OptimizationViewModel | null;
   generatedAt: string;
   futureMetadata: Record<string, unknown>;
@@ -523,7 +523,7 @@ export function createDefaultWidgetDefinitions(): WidgetDefinition[] {
     { cat: 'timeline', title: 'Timeline Summary', provider: 'timeline_provider', actions: [{ id: 'view_timeline', label: 'View Timeline', type: 'view_timeline', icon: null, description: 'View full timeline', futureMetadata: {} }] },
     { cat: 'recovery', title: 'Recovery Status', provider: 'recovery_provider', actions: [{ id: 'view_recovery', label: 'View Recovery', type: 'view_recovery', icon: null, description: 'View recovery options', futureMetadata: {} }] },
     { cat: 'device_profile', title: 'Device Profile', provider: 'device_profile_provider', actions: [] },
-    { cat: 'AIAssistant', title: 'AIAssistant Suggestions', provider: 'AIAssistant_provider', actions: [{ id: 'ask_ai', label: 'Ask AI', type: 'ask_ai', icon: null, description: 'Ask the AVS AI Assistant', futureMetadata: {} }] },
+    { cat: 'aiAssistant', title: 'AVS AI Assistant Suggestions', provider: 'aiAssistant_provider', actions: [{ id: 'ask_ai', label: 'Ask AI', type: 'ask_ai', icon: null, description: 'Ask the AVS AI Assistant', futureMetadata: {} }] },
     { cat: 'quick_actions', title: 'Quick Actions', provider: 'quick_actions_provider', actions: [
       { id: 'qa_gen_session', label: 'Optimize', type: 'generate_optimization_session', icon: null, description: 'Generate optimization session', futureMetadata: {} },
       { id: 'qa_ask_ai', label: 'Ask AI', type: 'ask_ai', icon: null, description: 'Ask the AVS AI Assistant', futureMetadata: {} },

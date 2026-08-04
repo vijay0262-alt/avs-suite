@@ -23,7 +23,7 @@ export { AIAssistantManager, AIAssistantEvents } from './AIAssistantManager';
 
 // Configuration
 export {
-  DEFAULT_AIAssistant_CONFIGURATION,
+  DEFAULT_AI_ASSISTANT_CONFIGURATION,
   createAIAssistantConfiguration,
   validateConfiguration,
   getDefaultProviders,

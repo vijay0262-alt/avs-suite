@@ -7,7 +7,7 @@
  * Supports registration, unregistration, querying, and discovery.
  */
 import type { Tool, ToolDefinition, ToolDiscoveryResult, ToolSearchQuery, ToolCategory, ToolPlugin } from './types';
-import type { AIAssistantIntentType, AIAssistantCapability } from '../AIAssistant/types';
+import type { AIAssistantIntentType, AIAssistantCapability } from '../aiAssistant/types';
 
 export class ToolRegistry {
   private _tools: Map<string, Tool> = new Map();

@@ -80,8 +80,8 @@ export default function AIDailyBriefingPage() {
             <Button size="sm" variant="secondary" onClick={init} leftIcon={<ArrowPathIcon className="h-4 w-4" />}>
               Refresh
             </Button>
-            <Button size="sm" onClick={() => navigate('/ai-AIAssistant')} leftIcon={<ChatBubbleLeftRightIcon className="h-4 w-4" />}>
-              Open AIAssistant
+            <Button size="sm" onClick={() => navigate('/ai-assistant')} leftIcon={<ChatBubbleLeftRightIcon className="h-4 w-4" />}>
+              Open AVS AI Assistant
             </Button>
           </div>
         }
@@ -277,7 +277,7 @@ export default function AIDailyBriefingPage() {
               {QUICK_QUESTIONS.map((q) => (
                 <button
                   key={q.type}
-                  onClick={() => navigate('/ai-AIAssistant')}
+                  onClick={() => navigate('/ai-assistant')}
                   className="rounded-full border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-1.5 text-xs font-medium text-[var(--avs-text-secondary)] transition-all hover:border-[var(--avs-brand-primary)] hover:text-[var(--avs-text-primary)]"
                 >
                   {q.label}

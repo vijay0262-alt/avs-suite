@@ -138,7 +138,7 @@ export const router = createHashRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       // HOME
       { path: 'dashboard', element: wrap(DashboardPage) },
-      { path: 'ai-AIAssistant', element: wrap(AIAssistantPage) },
+      { path: 'ai-assistant', element: wrap(AIAssistantPage) },
       { path: 'ai-daily-briefing', element: wrap(AIDailyBriefingPage) },
       { path: 'ai-smart-optimize', element: wrap(SmartOptimizationPage) },
       { path: 'ai-workspace', element: wrap(AIWorkspacePage) },

@@ -8,10 +8,10 @@
  * which is already resolved from existing AI modules.
  */
 import type { AIAssistantContext, AIAssistantEvidence, CommandCenterViewModel, HealthViewModel, GoalsViewModel, RecommendationsViewModel, PredictionsViewModel, MaintenanceViewModel, AutomationViewModel, TimelineViewModel, RecoveryViewModel, DeviceProfileViewModel, AIAssistantViewModel, OptimizationViewModel } from './types';
-import type { AIAssistantSuggestion, AIAssistantActionPlan } from '../AIAssistant/types';
+import type { AIAssistantSuggestion, AIAssistantActionPlan } from '../aiAssistant/types';
 
 export class CommandCenterDataAggregator {
-  aggregate(context: AIAssistantContext, AIAssistantSuggestions: AIAssistantSuggestion[] = [], AIAssistantActions: AIAssistantActionPlan[] = []): CommandCenterViewModel {
+  aggregate(context: AIAssistantContext, aiAssistantSuggestions: AIAssistantSuggestion[] = [], aiAssistantActions: AIAssistantActionPlan[] = []): CommandCenterViewModel {
     return {
       health: this._aggregateHealth(context),
       goals: this._aggregateGoals(context),
@@ -22,7 +22,7 @@ export class CommandCenterDataAggregator {
       timeline: this._aggregateTimeline(context),
       recovery: this._aggregateRecovery(context),
       deviceProfile: this._aggregateDeviceProfile(context),
-      AIAssistant: this._aggregateAIAssistant(AIAssistantSuggestions, AIAssistantActions),
+      aiAssistant: this._aggregateAIAssistant(aiAssistantSuggestions, aiAssistantActions),
       optimization: this._aggregateOptimization(context),
       generatedAt: new Date().toISOString(),
       futureMetadata: {},

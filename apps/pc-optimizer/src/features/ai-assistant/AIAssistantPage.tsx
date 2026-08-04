@@ -69,10 +69,10 @@ export function AIAssistantPage() {
   const { guard, dialogElement } = useFeatureGuard();
 
   // Track daily question count for Free edition limit enforcement
-  const AIAssistant_COUNT_KEY = 'avs-AIAssistant-questions';
+  const AI_ASSISTANT_COUNT_KEY = 'avs-ai-assistant-questions';
   const getTodayCount = useCallback((): number => {
     try {
-      const raw = localStorage.getItem(AIAssistant_COUNT_KEY);
+      const raw = localStorage.getItem(AI_ASSISTANT_COUNT_KEY);
       if (!raw) return 0;
       const data = JSON.parse(raw) as { date: string; count: number };
       const today = new Date().toISOString().split('T')[0];
@@ -89,13 +89,13 @@ export function AIAssistantPage() {
     const next = questionsToday + 1;
     setQuestionsToday(next);
     try {
-      localStorage.setItem(AIAssistant_COUNT_KEY, JSON.stringify({ date: today, count: next }));
+      localStorage.setItem(AI_ASSISTANT_COUNT_KEY, JSON.stringify({ date: today, count: next }));
     } catch {
       // localStorage may not be available
     }
   }, [questionsToday]);
 
-  const maxQuestions = limits.getLimit('AIAssistantQuestionsPerDay');
+  const maxQuestions = limits.getLimit('aiAssistantQuestionsPerDay');
   const questionsRemaining = maxQuestions === null ? null : Math.max(0, maxQuestions - questionsToday);
   const isLimitReached = maxQuestions !== null && questionsToday >= maxQuestions;
 

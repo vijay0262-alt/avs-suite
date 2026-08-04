@@ -38,14 +38,14 @@ export type {
   MaintenanceSummary,
   OptimizationHistorySummary,
   RecoverySummary,
-} from '../AIAssistant/types';
+} from '../aiAssistant/types';
 
 import type {
   AIAssistantContext,
   AIAssistantIntentType,
   AIAssistantEntity,
   AIAssistantEvidence,
-} from '../AIAssistant/types';
+} from '../aiAssistant/types';
 
 // ── Input Modalities ──────────────────────────────────────────
 
@@ -167,7 +167,7 @@ export interface NormalizationWarning {
 
 export interface EnrichedContext {
   inputId: string;
-  AIAssistantContext: AIAssistantContext;
+  aiAssistantContext: AIAssistantContext;
   healthScore: number | null;
   timeline: unknown[];
   goals: unknown[];

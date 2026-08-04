@@ -31,7 +31,7 @@ export type DeepPartial<T> = {
       : T[P];
 };
 
-export const DEFAULT_AIAssistant_CONFIGURATION: AIAssistantConfiguration = {
+export const DEFAULT_AI_ASSISTANT_CONFIGURATION: AIAssistantConfiguration = {
   configVersion: '1.0.0',
   intentDefinitions: createDefaultIntentDefinitions(),
   responseTemplates: createDefaultResponseTemplates(),
@@ -51,9 +51,9 @@ export const DEFAULT_AIAssistant_CONFIGURATION: AIAssistantConfiguration = {
 export function createAIAssistantConfiguration(
   overrides?: DeepPartial<AIAssistantConfiguration>,
 ): AIAssistantConfiguration {
-  if (!overrides) return structuredClone(DEFAULT_AIAssistant_CONFIGURATION);
+  if (!overrides) return structuredClone(DEFAULT_AI_ASSISTANT_CONFIGURATION);
 
-  return mergeConfiguration(DEFAULT_AIAssistant_CONFIGURATION, overrides);
+  return mergeConfiguration(DEFAULT_AI_ASSISTANT_CONFIGURATION, overrides);
 }
 
 function mergeConfiguration(

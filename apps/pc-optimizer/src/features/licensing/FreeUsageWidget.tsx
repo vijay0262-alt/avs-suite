@@ -81,8 +81,8 @@ export function FreeUsageWidget() {
     }
   };
 
-  const AIAssistantUsed = getAIAssistantUsage();
-  const AIAssistantMax = limits.getLimit('AIAssistantQuestionsPerDay') ?? 0;
+  const aiAssistantUsed = getAIAssistantUsage();
+  const aiAssistantMax = limits.getLimit('aiAssistantQuestionsPerDay') ?? 0;
 
   const smartOptMax = limits.getLimit('aiSmartOptimizePerRun') ?? 0;
 
@@ -103,8 +103,8 @@ export function FreeUsageWidget() {
         <UsageRow
           icon={SparklesIcon}
           label="AVS AI Assistant"
-          current={AIAssistantUsed}
-          max={AIAssistantMax}
+          current={aiAssistantUsed}
+          max={aiAssistantMax}
           unit="questions"
         />
 

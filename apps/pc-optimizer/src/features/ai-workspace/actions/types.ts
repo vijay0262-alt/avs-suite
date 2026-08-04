@@ -21,7 +21,7 @@ export type {
   PermissionLevel,
   AIAssistantCapability,
   AIAssistantIntentType,
-} from '../AIAssistant/types';
+} from '../aiAssistant/types';
 
 export type {
   ToolDefinition,
@@ -32,7 +32,7 @@ import type {
   AIAssistantEvidence,
   PermissionLevel,
   AIAssistantCapability,
-} from '../AIAssistant/types';
+} from '../aiAssistant/types';
 
 import type {
   ToolDefinition,

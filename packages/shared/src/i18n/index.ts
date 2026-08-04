@@ -46,7 +46,7 @@ export const en = {
       overview: 'Home',
     },
     dashboard: 'Dashboard',
-    AIAssistant: 'AVS AI Assistant',
+    aiAssistant: 'AVS AI Assistant',
     aiDailyBriefing: 'AI Daily Briefing',
     aiSmartOptimize: 'AI Smart Optimize',
     aiWorkspace: 'AI Workspace',

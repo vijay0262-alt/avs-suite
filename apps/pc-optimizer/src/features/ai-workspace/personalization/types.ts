@@ -24,12 +24,12 @@
 export type {
   AIAssistantIntentType,
   AIAssistantCapability,
-} from '../AIAssistant/types';
+} from '../aiAssistant/types';
 
 import type {
   AIAssistantIntentType,
   AIAssistantCapability,
-} from '../AIAssistant/types';
+} from '../aiAssistant/types';
 
 // ── Workspace Profiles ───────────────────────────────────────
 
