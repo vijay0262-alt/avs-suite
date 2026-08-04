@@ -150,6 +150,7 @@ export default function RegistryCleanerPage() {
                   <ClockIcon className="h-4 w-4 text-text-secondary shrink-0" />
                   <span className="text-xs text-text-secondary">
                     Free edition: <strong className="text-text-primary">{selectedCount} of {fixLimit}</strong> issues selected for repair
+                    {remainingFixes !== null && remainingFixes > 0 && ` (${remainingFixes} remaining)`}
                     {hasMoreIssues && ` (${issueCount - (fixLimit ?? 0)} more found)`}
                   </span>
                 </div>

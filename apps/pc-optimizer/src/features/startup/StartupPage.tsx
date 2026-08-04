@@ -12,6 +12,18 @@ import { StartupViewModel } from './StartupViewModel';
 import { startupService } from './startup.service';
 import { StartupEntryCard } from './components/StartupEntryCard';
 import type { StartupEntry } from './startup.types';
+import { useIsPro } from '../sync/syncStore';
+import { useFeatureGuard } from '../licensing/useFeatureGuard';
+import { useEditionLimits } from '../licensing/editionLimits';
+import { ProStatusPill, ProFeatureIndicator } from '../licensing/ProStatusBadge';
+import {
+  ClockIcon,
+  ChartBarIcon,
+  SparklesIcon,
+  ArrowPathIcon,
+  LockClosedIcon,
+  ShieldCheckIcon,
+} from '@heroicons/react/24/outline';
 
 type SortBy = 'name' | 'impact' | 'publisher' | 'status';
 
@@ -22,6 +34,12 @@ export default function StartupPage() {
   const [impactFilter, setImpactFilter] = useState<'all' | 'high' | 'medium' | 'low' | 'unknown'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'enabled' | 'disabled'>('enabled');
   const [sortBy, setSortBy] = useState<SortBy>('name');
+  const isPro = useIsPro();
+  const { guard, dialogElement } = useFeatureGuard();
+  const limits = useEditionLimits();
+  const disableLimit = limits.getLimit('startupManagerEntriesPerRun');
+  const remainingDisables = vm.remainingDisables();
+  const limitReached = vm.isDisableLimitReached();
 
   useEffect(() => {
     void vm.bootstrap();
@@ -32,6 +50,13 @@ export default function StartupPage() {
     /admin|permission|elevat|access.*denied/i.test(msg);
 
   const handleDisable = async (entry: StartupEntry) => {
+    if (limitReached) {
+      guard('startup.disable', 'Startup Manager', () => {}, {
+        limitDescription: `Free edition allows disabling up to ${disableLimit} startup entries.`,
+        proBenefit: 'Unlimited startup management + AI recommendations + auto-delay + startup history.',
+      });
+      return;
+    }
     try {
       const result = await vm.disableEntry(entry);
       if (!result.success) {
@@ -168,6 +193,40 @@ export default function StartupPage() {
             </Card>
           </div>
 
+          {/* Free edition limit banner */}
+          {!isPro && state.entries.length > 0 && (
+            <div
+              className={`mb-4 rounded-[var(--avs-radius-md)] border px-4 py-3 ${
+                limitReached
+                  ? 'border-semantic-warning/30 bg-semantic-warning/10'
+                  : 'border-[var(--avs-border)] bg-[var(--avs-surface-muted)]'
+              }`}
+              data-testid="startup-free-limit-banner"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ClockIcon className="h-4 w-4 text-text-secondary shrink-0" />
+                  <span className="text-xs text-text-secondary">
+                    Free edition: <strong className="text-text-primary">{state.sessionDisabledCount} of {disableLimit}</strong> entries disabled this session
+                    {remainingDisables !== null && remainingDisables > 0 && ` (${remainingDisables} remaining)`}
+                  </span>
+                </div>
+                {limitReached && (
+                  <button
+                    onClick={() => guard('startup.disable', 'Startup Manager', () => {}, {
+                      limitDescription: `Free edition allows disabling up to ${disableLimit} startup entries.`,
+                      proBenefit: 'Unlimited startup management + AI recommendations + auto-delay + startup history.',
+                    })}
+                    className="text-xs font-medium text-brand-primary hover:underline"
+                    data-testid="startup-upgrade-link"
+                  >
+                    Upgrade to Pro →
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <Card className="mb-4">
             <div className="flex flex-col md:flex-row md:items-center gap-3">
               <input
@@ -261,6 +320,183 @@ export default function StartupPage() {
               </Card>
             </div>
           )}
+
+          {/* Professional Features */}
+          <div className="mt-8">
+            <Card title="Professional Features" variant="glass">
+              <div className="space-y-4">
+                {/* AI Startup Recommendations */}
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
+                      <SparklesIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-text-primary">AI Startup Recommendations</span>
+                        {!isPro && <ProStatusPill />}
+                        {isPro && <ProFeatureIndicator icon={SparklesIcon} label="AI-Powered" />}
+                      </div>
+                      <p className="mt-0.5 text-xs text-text-secondary">
+                        AI analyzes your startup entries and recommends which to disable based on impact, safety, and usage patterns.
+                      </p>
+                    </div>
+                  </div>
+                  {isPro ? (
+                    <Button variant="secondary" size="sm" leftIcon={<SparklesIcon className="h-4 w-4" />}>
+                      Get Recommendations
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      leftIcon={<LockClosedIcon className="h-4 w-4" />}
+                      onClick={() => guard('auto.startup_optimization', 'Startup Manager', () => {}, {
+                        limitDescription: 'AI startup recommendations are a Professional feature.',
+                        proBenefit: 'AI-powered startup analysis with personalized recommendations.',
+                      })}
+                      data-testid="startup-ai-recommendations-upgrade"
+                    >
+                      Upgrade to Unlock
+                    </Button>
+                  )}
+                </div>
+
+                {/* Startup Impact Analysis */}
+                <div className="flex items-start justify-between border-t border-[var(--avs-border)] pt-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
+                      <ChartBarIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-text-primary">Startup Impact Analysis</span>
+                        {!isPro && <ProStatusPill />}
+                        {isPro && <ProFeatureIndicator icon={ChartBarIcon} label="Detailed" />}
+                      </div>
+                      <p className="mt-0.5 text-xs text-text-secondary">
+                        Detailed boot impact analysis with CPU, memory, and disk activity estimates for each startup entry.
+                      </p>
+                    </div>
+                  </div>
+                  {isPro ? (
+                    <Button variant="secondary" size="sm" leftIcon={<ChartBarIcon className="h-4 w-4" />}>
+                      View Analysis
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      leftIcon={<LockClosedIcon className="h-4 w-4" />}
+                      onClick={() => guard('auto.startup_optimization', 'Startup Manager', () => {}, {
+                        limitDescription: 'Startup impact analysis is a Professional feature.',
+                        proBenefit: 'Detailed boot impact analysis with CPU, memory, and disk estimates.',
+                      })}
+                      data-testid="startup-impact-analysis-upgrade"
+                    >
+                      Upgrade to Unlock
+                    </Button>
+                  )}
+                </div>
+
+                {/* Auto-Delay */}
+                <div className="flex items-start justify-between border-t border-[var(--avs-border)] pt-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
+                      <ArrowPathIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-text-primary">Auto-Delay</span>
+                        {!isPro && <ProStatusPill />}
+                        {isPro && <ProFeatureIndicator icon={ArrowPathIcon} label="Active" />}
+                      </div>
+                      <p className="mt-0.5 text-xs text-text-secondary">
+                        Automatically delay non-critical startup programs to speed up boot time. Launches them gradually after boot.
+                      </p>
+                    </div>
+                  </div>
+                  {isPro ? (
+                    <Button variant="secondary" size="sm" leftIcon={<ArrowPathIcon className="h-4 w-4" />}>
+                      Configure Delay
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      leftIcon={<LockClosedIcon className="h-4 w-4" />}
+                      onClick={() => guard('auto.startup_optimization', 'Startup Manager', () => {}, {
+                        limitDescription: 'Auto-delay is a Professional feature.',
+                        proBenefit: 'Automatically delay non-critical startup programs for faster boot.',
+                      })}
+                      data-testid="startup-auto-delay-upgrade"
+                    >
+                      Upgrade to Unlock
+                    </Button>
+                  )}
+                </div>
+
+                {/* Startup History */}
+                <div className="flex items-start justify-between border-t border-[var(--avs-border)] pt-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
+                      <ClockIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-text-primary">Startup History</span>
+                        {!isPro && <ProStatusPill />}
+                        {isPro && <ProFeatureIndicator icon={ClockIcon} label="Full Log" />}
+                      </div>
+                      <p className="mt-0.5 text-xs text-text-secondary">
+                        Complete audit trail of all startup changes — disable, enable, restore actions with timestamps and estimated boot improvement.
+                      </p>
+                    </div>
+                  </div>
+                  {isPro ? (
+                    <Button variant="secondary" size="sm" leftIcon={<ClockIcon className="h-4 w-4" />}>
+                      View History
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      leftIcon={<LockClosedIcon className="h-4 w-4" />}
+                      onClick={() => guard('auto.startup_optimization', 'Startup Manager', () => {}, {
+                        limitDescription: 'Startup history is a Professional feature.',
+                        proBenefit: 'Complete audit trail of all startup changes with timestamps.',
+                      })}
+                      data-testid="startup-history-upgrade"
+                    >
+                      Upgrade to Unlock
+                    </Button>
+                  )}
+                </div>
+
+                {/* Unlimited Management (Free benefit reminder) */}
+                <div className="flex items-start justify-between border-t border-[var(--avs-border)] pt-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
+                      <ShieldCheckIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-text-primary">Unlimited Management</span>
+                        {isPro && <ProFeatureIndicator icon={ShieldCheckIcon} label="Unlimited" />}
+                      </div>
+                      <p className="mt-0.5 text-xs text-text-secondary">
+                        {isPro
+                          ? 'Disable and enable unlimited startup entries with no session limits.'
+                          : `Free edition: disable up to ${disableLimit} entries per session. Upgrade for unlimited management.`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {dialogElement}
         </>
       )}
     </div>

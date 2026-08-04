@@ -32,6 +32,11 @@ _cache_lock = threading.Lock()
 _cache_timestamp: float = 0
 CACHE_TTL_SECONDS = 60  # Cache for 60 seconds
 
+# Track disables per session for Free edition limit enforcement
+_disable_count: int = 0
+_disable_count_lock = threading.Lock()
+FREE_DISABLE_LIMIT = 3
+
 
 def _is_cache_valid() -> bool:
     """Check if the cache is still valid."""
@@ -118,18 +123,43 @@ def startup_disable(params: dict[str, Any] | None) -> dict[str, Any]:
     if not params or "entry" not in params:
         raise ValueError("Missing 'entry' parameter")
 
+    # Enforce Free edition limit: max 3 disables per session
+    from avs_backend.licensing import get_edition_limit
+
+    limit = get_edition_limit("startup.entries_per_run")
+    global _disable_count
+    if limit is not None:
+        with _disable_count_lock:
+            if _disable_count >= limit:
+                logger.warning(
+                    "Startup disable blocked: %d disables exceed Free limit of %d",
+                    _disable_count, limit,
+                )
+                return {
+                    "success": False,
+                    "message": f"Free edition allows disabling up to {limit} startup entries. "
+                    f"Upgrade to Professional for unlimited management.",
+                    "limitExceeded": True,
+                    "limit": limit,
+                }
+
     try:
         entry_data = params["entry"]
         entry = _to_startup_entry(entry_data)
 
         result = disable_startup_entry(entry)
-        
+
+        # Increment disable counter on success
+        if isinstance(result, dict) and result.get("success", False):
+            with _disable_count_lock:
+                _disable_count += 1
+
         # Invalidate cache after modification
         global _startup_cache, _cache_timestamp
         with _cache_lock:
             _startup_cache = None
             _cache_timestamp = 0
-        
+
         return result
     except Exception as e:
         logger.error(f"Failed to disable startup entry: {e}")

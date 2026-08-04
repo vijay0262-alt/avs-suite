@@ -147,8 +147,8 @@ export const EDITION_LIMITS: EditionLimits = {
   startupManagerEntriesPerRun: {
     free: 3,
     professional: null,
-    freeLabel: 'Disable up to 3 entries',
-    proLabel: 'Unlimited management',
+    freeLabel: 'Disable up to 3 entries per session',
+    proLabel: 'Unlimited management + AI recommendations + impact analysis + auto-delay + startup history',
   },
 
   // Browser Cleaner

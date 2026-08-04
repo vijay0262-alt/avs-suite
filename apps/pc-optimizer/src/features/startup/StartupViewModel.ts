@@ -7,6 +7,10 @@ import type { StartupEntry, StartupBackup } from './startup.types';
 import type { IStartupService } from './startup.service';
 import { startupService } from './startup.service';
 import { optimizationEventBus, OptimizationEventType } from '../health';
+import { currentEdition, canUse } from '../licensing/FeatureGate';
+import { getEditionLimit } from '../licensing/editionLimits';
+
+const FREE_DISABLE_LIMIT = 3;
 
 export interface StartupState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
@@ -16,6 +20,8 @@ export interface StartupState {
   error: string | null;
   selectedEntry: StartupEntry | null;
   backups: StartupBackup[];
+  /** Number of entries disabled in the current session */
+  sessionDisabledCount: number;
 }
 
 export class StartupViewModel extends ViewModel<StartupState> {
@@ -28,6 +34,7 @@ export class StartupViewModel extends ViewModel<StartupState> {
       error: null,
       selectedEntry: null,
       backups: [],
+      sessionDisabledCount: 0,
     });
   }
 
@@ -65,8 +72,21 @@ export class StartupViewModel extends ViewModel<StartupState> {
   }
 
   async disableEntry(entry: StartupEntry) {
+    // Enforce Free edition limit: max 3 disables per session
+    const isFree = currentEdition() === 'free';
+    const hasUnlimited = canUse('startup.disable');
+    if (isFree && !hasUnlimited && this.state.sessionDisabledCount >= FREE_DISABLE_LIMIT) {
+      this.setState({
+        error: `Free edition allows disabling up to ${FREE_DISABLE_LIMIT} startup entries. Upgrade to Professional for unlimited management.`,
+      });
+      return { success: false, message: 'Free limit reached' };
+    }
+
     try {
       const result = await this.service.disableEntry(entry);
+      if (result.success) {
+        this.setState({ sessionDisabledCount: this.state.sessionDisabledCount + 1 });
+      }
       await this.loadEntries();
       await this.loadBackups();
       optimizationEventBus.emit({
@@ -115,5 +135,31 @@ export class StartupViewModel extends ViewModel<StartupState> {
 
   selectEntry(entry: StartupEntry | null) {
     this.setState({ selectedEntry: entry });
+  }
+
+  /**
+   * Returns the maximum number of entries that can be disabled in the current edition.
+   * Returns null for unlimited (Professional).
+   */
+  getDisableLimit(): number | null {
+    return getEditionLimit('startupManagerEntriesPerRun', currentEdition() === 'professional');
+  }
+
+  /**
+   * Remaining disables available in this session (Free edition only).
+   * Returns null for unlimited (Professional).
+   */
+  remainingDisables(): number | null {
+    const limit = this.getDisableLimit();
+    if (limit === null) return null;
+    return Math.max(0, limit - this.state.sessionDisabledCount);
+  }
+
+  /**
+   * Whether the disable limit has been reached (Free edition only).
+   */
+  isDisableLimitReached(): boolean {
+    const remaining = this.remainingDisables();
+    return remaining !== null && remaining === 0;
   }
 }
