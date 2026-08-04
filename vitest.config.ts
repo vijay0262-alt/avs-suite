@@ -13,6 +13,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      '@': path.resolve(__dirname, 'apps/customer-portal/src'),
       '@avs/ui': path.resolve(__dirname, 'packages/ui/src'),
       '@avs/core': path.resolve(__dirname, 'packages/core/src'),
       '@avs/shared': path.resolve(__dirname, 'packages/shared/src'),

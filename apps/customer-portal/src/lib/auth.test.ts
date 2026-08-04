@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { tokenStorage } from '@/lib/token-storage';
 import { generateCsrfToken, validateCsrfToken } from '@/lib/csrf';
