@@ -45,7 +45,7 @@ import {
   createDefaultReportStudioConfiguration,
 } from '../types';
 import type {
-  CopilotContext,
+  AIAssistantContext,
   Report,
   ReportType,
   ReportTemplate,
@@ -55,7 +55,7 @@ import type {
 
 // ── Mock Helpers ─────────────────────────────────────────────
 
-function createMockContext(healthScore: number = 75): CopilotContext {
+function createMockContext(healthScore: number = 75): AIAssistantContext {
   return {
     sources: [
       { type: 'health_score', available: true, data: healthScore, confidence: 0.9, evidence: [], futureMetadata: {} },

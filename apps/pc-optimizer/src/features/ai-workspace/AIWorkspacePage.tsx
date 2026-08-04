@@ -3,7 +3,7 @@
  *
  * Tabs:
  *   - Command Center: widget dashboard, search, layout management
- *   - Copilot: prompt processing, suggestions, analytics
+ *   - AIAssistant: prompt processing, suggestions, analytics
  *   - Report Studio: report generation, history, export, scheduling
  *   - Tools: AI tool discovery and execution analytics
  *   - Actions: natural language action planning
@@ -16,20 +16,20 @@ import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleEmptyState, ModuleLoadingState } from '../../components/ModuleStates';
 import { CommandCenterManager } from './command-center/commandCenterManager';
-import { CopilotManager } from './copilot/copilotManager';
+import { AIAssistantManager } from './AIAssistant/AIAssistantManager';
 import { ReportStudioManager } from './report-studio/reportStudioManager';
 import { ToolManager } from './tools/toolManager';
 import { NaturalLanguageActionManager } from './actions/naturalLanguageActionManager';
 import { WorkspacePersonalizationManager } from './personalization/workspacePersonalizationManager';
 import type { DashboardState, SearchResult, SearchQuery } from './command-center/types';
-import type { CopilotSuggestion, CopilotPromptResult } from './copilot/types';
+import type { AIAssistantSuggestion, AIAssistantPromptResult } from './AIAssistant/types';
 import type { Report, ReportHistoryEntry, ReportSchedule } from './report-studio/types';
 import type { ToolDefinition } from './tools/types';
 import type { ParsedRequest } from './actions/types';
 import type { WorkspaceProfile } from './personalization/types';
 
 type CCAnalytics = ReturnType<CommandCenterManager['getAnalytics']>;
-type CopilotAnalyticsData = ReturnType<CopilotManager['getAnalytics']>;
+type AIAssistantAnalyticsData = ReturnType<AIAssistantManager['getAnalytics']>;
 type ReportAnalytics = ReturnType<ReportStudioManager['getAnalytics']>;
 type ToolStats = ReturnType<ToolManager['getToolStatistics']>;
 type ActionStats = ReturnType<NaturalLanguageActionManager['getAnalytics']>;
@@ -54,7 +54,7 @@ import {
   LightBulbIcon,
 } from '@heroicons/react/24/outline';
 
-type WorkspaceTab = 'command-center' | 'copilot' | 'report-studio' | 'tools' | 'actions' | 'personalization';
+type WorkspaceTab = 'command-center' | 'AIAssistant' | 'report-studio' | 'tools' | 'actions' | 'personalization';
 
 interface AIWorkspaceState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
@@ -64,11 +64,11 @@ interface AIWorkspaceState {
   ccAnalytics: CCAnalytics | null;
   searchResults: SearchResult[];
   searchQuery: string;
-  // Copilot
-  copilotAnalytics: CopilotAnalyticsData | null;
-  copilotSuggestions: CopilotSuggestion[];
-  copilotResult: CopilotPromptResult | null;
-  copilotInput: string;
+  // AIAssistant
+  AIAssistantAnalytics: AIAssistantAnalyticsData | null;
+  AIAssistantSuggestions: AIAssistantSuggestion[];
+  AIAssistantResult: AIAssistantPromptResult | null;
+  AIAssistantInput: string;
   isProcessingPrompt: boolean;
   // Report Studio
   reports: Report[];
@@ -91,7 +91,7 @@ interface AIWorkspaceState {
 
 class AIWorkspaceViewModel extends ViewModel<AIWorkspaceState> {
   private ccManager: CommandCenterManager;
-  private copilotManager: CopilotManager;
+  private AIAssistantManager: AIAssistantManager;
   private reportStudio: ReportStudioManager;
   private toolManager: ToolManager;
   private actionManager: NaturalLanguageActionManager;
@@ -105,10 +105,10 @@ class AIWorkspaceViewModel extends ViewModel<AIWorkspaceState> {
       ccAnalytics: null,
       searchResults: [],
       searchQuery: '',
-      copilotAnalytics: null,
-      copilotSuggestions: [],
-      copilotResult: null,
-      copilotInput: '',
+      AIAssistantAnalytics: null,
+      AIAssistantSuggestions: [],
+      AIAssistantResult: null,
+      AIAssistantInput: '',
       isProcessingPrompt: false,
       reports: [],
       reportHistory: [],
@@ -125,7 +125,7 @@ class AIWorkspaceViewModel extends ViewModel<AIWorkspaceState> {
       error: null,
     });
     this.ccManager = new CommandCenterManager();
-    this.copilotManager = new CopilotManager();
+    this.AIAssistantManager = new AIAssistantManager();
     this.reportStudio = new ReportStudioManager();
     this.toolManager = new ToolManager();
     this.actionManager = new NaturalLanguageActionManager();
@@ -137,7 +137,7 @@ class AIWorkspaceViewModel extends ViewModel<AIWorkspaceState> {
     try {
       this.setState({
         ccAnalytics: this.ccManager.getAnalytics(),
-        copilotAnalytics: this.copilotManager.getAnalytics(),
+        AIAssistantAnalytics: this.AIAssistantManager.getAnalytics(),
         reportAnalytics: this.reportStudio.getAnalytics(),
         reportHistory: this.reportStudio.getReportHistory(),
         scheduledReports: this.reportStudio.getScheduledReports(),
@@ -189,25 +189,25 @@ class AIWorkspaceViewModel extends ViewModel<AIWorkspaceState> {
     this.setState({ searchResults: results });
   }
 
-  // ── Copilot ──────────────────────────────────────────────────
+  // ── AIAssistant ──────────────────────────────────────────────────
 
-  setCopilotInput(text: string) {
-    this.setState({ copilotInput: text });
+  setAIAssistantInput(text: string) {
+    this.setState({ AIAssistantInput: text });
   }
 
   processPrompt() {
-    const { copilotInput } = this.state;
-    if (!copilotInput.trim()) return;
+    const { AIAssistantInput } = this.state;
+    if (!AIAssistantInput.trim()) return;
     this.setState({ isProcessingPrompt: true, error: null });
     try {
-      const result = this.copilotManager.processPrompt(
-        { prompt: copilotInput, conversationId: 'ui-' + Date.now(), userPermissionLevel: 'free', userPreferences: {}, futureMetadata: {} },
+      const result = this.AIAssistantManager.processPrompt(
+        { prompt: AIAssistantInput, conversationId: 'ui-' + Date.now(), userPermissionLevel: 'free', userPreferences: {}, futureMetadata: {} },
         { healthScore: 75, sources: [], futureMetadata: {} } as never,
       );
       this.setState({
-        copilotResult: result,
-        copilotSuggestions: result.suggestions,
-        copilotAnalytics: this.copilotManager.getAnalytics(),
+        AIAssistantResult: result,
+        AIAssistantSuggestions: result.suggestions,
+        AIAssistantAnalytics: this.AIAssistantManager.getAnalytics(),
         isProcessingPrompt: false,
       });
     } catch (e) {
@@ -273,7 +273,7 @@ class AIWorkspaceViewModel extends ViewModel<AIWorkspaceState> {
   override dispose() {
     super.dispose();
     this.ccManager.clearAll();
-    this.copilotManager.clearAll();
+    this.AIAssistantManager.clearAll();
     this.reportStudio.clearAll();
     this.toolManager.clearAll();
     this.actionManager.clearAll();
@@ -284,7 +284,7 @@ class AIWorkspaceViewModel extends ViewModel<AIWorkspaceState> {
 
 const TABS: { id: WorkspaceTab; label: string; icon: typeof Squares2X2Icon }[] = [
   { id: 'command-center', label: 'Command Center', icon: Squares2X2Icon },
-  { id: 'copilot', label: 'Copilot', icon: ChatBubbleLeftRightIcon },
+  { id: 'AIAssistant', label: 'AIAssistant', icon: ChatBubbleLeftRightIcon },
   { id: 'report-studio', label: 'Report Studio', icon: DocumentChartBarIcon },
   { id: 'tools', label: 'AI Tools', icon: WrenchScrewdriverIcon },
   { id: 'actions', label: 'Actions', icon: BoltIcon },
@@ -303,7 +303,7 @@ export default function AIWorkspacePage() {
   if (state.bootstrap === 'loading') {
     return (
       <div className="px-6 py-6">
-        <PageHeader title="AI Workspace" description="Unified AI platform: Command Center, Copilot, Report Studio, Tools, Actions, and Personalization." />
+        <PageHeader title="AI Workspace" description="Unified AI platform: Command Center, AIAssistant, Report Studio, Tools, Actions, and Personalization." />
         <ModuleLoadingState />
       </div>
     );
@@ -315,7 +315,7 @@ export default function AIWorkspacePage() {
     <div className="px-6 py-6 space-y-6">
       <PageHeader
         title="AI Workspace"
-        description="Unified AI platform: Command Center, Copilot, Report Studio, Tools, Actions, and Personalization."
+        description="Unified AI platform: Command Center, AIAssistant, Report Studio, Tools, Actions, and Personalization."
         actions={
           <Button
             onClick={() => vm.loadDashboard()}
@@ -347,7 +347,7 @@ export default function AIWorkspacePage() {
 
       {/* Tab Content */}
       {s.activeTab === 'command-center' && <CommandCenterTab state={s} vm={vm} />}
-      {s.activeTab === 'copilot' && <CopilotTab state={s} vm={vm} />}
+      {s.activeTab === 'AIAssistant' && <AIAssistantTab state={s} vm={vm} />}
       {s.activeTab === 'report-studio' && <ReportStudioTab state={s} vm={vm} />}
       {s.activeTab === 'tools' && <ToolsTab state={s} />}
       {s.activeTab === 'actions' && <ActionsTab state={s} vm={vm} />}
@@ -440,29 +440,29 @@ function CommandCenterTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorksp
   );
 }
 
-// ── Copilot Tab ────────────────────────────────────────────────
+// ── AIAssistant Tab ────────────────────────────────────────────────
 
-function CopilotTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorkspaceViewModel }) {
+function AIAssistantTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorkspaceViewModel }) {
   const s = state;
 
   return (
     <div className="space-y-4">
-      {s.copilotAnalytics && (
+      {s.AIAssistantAnalytics && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <StatBox label="Conversations" value={s.copilotAnalytics.totalConversations} icon={ChatBubbleLeftRightIcon} />
-          <StatBox label="Messages" value={s.copilotAnalytics.totalMessages} icon={SparklesIcon} />
-          <StatBox label="Avg Confidence" value={`${(s.copilotAnalytics.averageConfidence * 100).toFixed(0)}%`} icon={LightBulbIcon} />
-          <StatBox label="Action Plan Rate" value={`${(s.copilotAnalytics.actionPlanRate * 100).toFixed(0)}%`} icon={BoltIcon} />
+          <StatBox label="Conversations" value={s.AIAssistantAnalytics.totalConversations} icon={ChatBubbleLeftRightIcon} />
+          <StatBox label="Messages" value={s.AIAssistantAnalytics.totalMessages} icon={SparklesIcon} />
+          <StatBox label="Avg Confidence" value={`${(s.AIAssistantAnalytics.averageConfidence * 100).toFixed(0)}%`} icon={LightBulbIcon} />
+          <StatBox label="Action Plan Rate" value={`${(s.AIAssistantAnalytics.actionPlanRate * 100).toFixed(0)}%`} icon={BoltIcon} />
         </div>
       )}
 
       <Card title="Process Prompt" variant="glass">
         <div className="flex items-center gap-2">
           <input
-            value={s.copilotInput}
-            onChange={(e) => vm.setCopilotInput(e.target.value)}
+            value={s.AIAssistantInput}
+            onChange={(e) => vm.setAIAssistantInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && vm.processPrompt()}
-            placeholder="Ask the AI Copilot..."
+            placeholder="Ask the AVS AI Assistant..."
             className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-sm text-[var(--avs-text-primary)]"
           />
           <Button onClick={() => vm.processPrompt()} loading={s.isProcessingPrompt} leftIcon={<SparklesIcon className="h-4 w-4" />}>
@@ -471,23 +471,23 @@ function CopilotTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorkspaceVie
         </div>
       </Card>
 
-      {s.copilotResult && (
+      {s.AIAssistantResult && (
         <Card title="Last Response" variant="glass">
           <div className="space-y-3">
-            <p className="text-sm text-[var(--avs-text-primary)]">{s.copilotResult.response.answer}</p>
+            <p className="text-sm text-[var(--avs-text-primary)]">{s.AIAssistantResult.response.answer}</p>
             <div className="flex items-center gap-2">
-              <Badge tone="brand">{s.copilotResult.response.intent}</Badge>
+              <Badge tone="brand">{s.AIAssistantResult.response.intent}</Badge>
               <span className="text-xs text-[var(--avs-text-muted)]">
-                Confidence: {(s.copilotResult.response.confidence * 100).toFixed(0)}%
+                Confidence: {(s.AIAssistantResult.response.confidence * 100).toFixed(0)}%
               </span>
               <span className="text-xs text-[var(--avs-text-muted)]">
-                {(s.copilotResult.processingTimeMs / 1000).toFixed(2)}s
+                {(s.AIAssistantResult.processingTimeMs / 1000).toFixed(2)}s
               </span>
             </div>
-            {s.copilotSuggestions.length > 0 && (
+            {s.AIAssistantSuggestions.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-1">Suggestions</h4>
-                {s.copilotSuggestions.map((sug) => (
+                {s.AIAssistantSuggestions.map((sug) => (
                   <div key={sug.id} className="flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2 mt-1">
                     <LightBulbIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
                     <span className="text-xs text-[var(--avs-text-primary)]">{sug.title}</span>

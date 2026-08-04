@@ -56,11 +56,11 @@ import type {
   LogProvider,
   DocumentProvider,
 } from '../types';
-import type { CopilotContextResolverInput } from '../../copilot/copilotContextResolver';
+import type { AIAssistantContextResolverInput } from '../../AIAssistant/AIAssistantContextResolver';
 
 // ── Mock Helpers ─────────────────────────────────────────────
 
-function createMockContextInput(healthScore: number = 75): CopilotContextResolverInput {
+function createMockContextInput(healthScore: number = 75): AIAssistantContextResolverInput {
   return {
     healthScore,
     deviceProfile: { profileType: 'gaming', performanceTier: 'high', confidence: 0.9, futureMetadata: {} },
@@ -1097,7 +1097,7 @@ describe('Context Enricher', () => {
     const ctxInput = createMockContextInput(82);
     const result = enricher.extractContext(input, ctxInput);
     expect(result.healthScore).toBe(82);
-    expect(result.copilotContext).toBeDefined();
+    expect(result.AIAssistantContext).toBeDefined();
   });
 
   it('should include conversation context', () => {
@@ -1105,7 +1105,7 @@ describe('Context Enricher', () => {
     const ctxInput = createMockContextInput();
     const result = enricher.enrich({
       input,
-      copilotContextInput: ctxInput,
+      AIAssistantContextInput: ctxInput,
       previousInputs: [createMockTextInput('previous')],
       activeTopics: ['optimization'],
       sessionId: 'sess1',
@@ -1452,7 +1452,7 @@ describe('Multimodal Manager', () => {
   it('should process text input end-to-end', () => {
     const input = createMockTextInput('Optimize my PC performance');
     const ctxInput = createMockContextInput(70);
-    const result = manager.processInput(input, { copilotContextInput: ctxInput });
+    const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(result.status).toBe('completed');
     expect(result.modality).toBe('text');
     expect(result.normalizedInput.text).toBe('Optimize my PC performance');
@@ -1464,7 +1464,7 @@ describe('Multimodal Manager', () => {
   it('should process voice input end-to-end', () => {
     const input = createMockVoiceInput('What is my health score?');
     const ctxInput = createMockContextInput(85);
-    const result = manager.processInput(input, { copilotContextInput: ctxInput });
+    const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(result.status).toBe('completed');
     expect(result.modality).toBe('voice');
     expect(result.normalizedInput.text).toBe('What is my health score?');
@@ -1474,7 +1474,7 @@ describe('Multimodal Manager', () => {
   it('should process screenshot input end-to-end', () => {
     const input = createMockScreenshotInput();
     const ctxInput = createMockContextInput(85);
-    const result = manager.processInput(input, { copilotContextInput: ctxInput });
+    const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(result.status).toBe('completed');
     expect(result.modality).toBe('screenshot');
   });
@@ -1482,7 +1482,7 @@ describe('Multimodal Manager', () => {
   it('should process log input end-to-end', () => {
     const input = createMockLogInput();
     const ctxInput = createMockContextInput(60);
-    const result = manager.processInput(input, { copilotContextInput: ctxInput });
+    const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(result.status).toBe('completed');
     expect(result.modality).toBe('system_log');
   });
@@ -1490,7 +1490,7 @@ describe('Multimodal Manager', () => {
   it('should process JSON input end-to-end', () => {
     const input = createMockJsonInput();
     const ctxInput = createMockContextInput(78);
-    const result = manager.processInput(input, { copilotContextInput: ctxInput });
+    const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(result.status).toBe('completed');
     expect(result.modality).toBe('json');
   });
@@ -1498,7 +1498,7 @@ describe('Multimodal Manager', () => {
   it('should route to tools based on intent', () => {
     const input = createMockTextInput('Optimize my PC');
     const ctxInput = createMockContextInput(70);
-    const result = manager.processInput(input, { copilotContextInput: ctxInput });
+    const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(result.toolRouting.toolIds.length).toBeGreaterThan(0);
     expect(result.toolRouting.toolIds).toContain('create_optimization_session');
   });
@@ -1506,7 +1506,7 @@ describe('Multimodal Manager', () => {
   it('should generate response with evidence', () => {
     const input = createMockTextInput('Show me recommendations');
     const ctxInput = createMockContextInput(75);
-    const result = manager.processInput(input, { copilotContextInput: ctxInput });
+    const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(result.response.evidence.length).toBeGreaterThan(0);
     expect(result.response.confidence).toBeGreaterThan(0);
   });
@@ -1517,7 +1517,7 @@ describe('Multimodal Manager', () => {
     manager.on('processing_completed', (e) => events.push(e.type));
     const input = createMockTextInput();
     const ctxInput = createMockContextInput();
-    manager.processInput(input, { copilotContextInput: ctxInput });
+    manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(events).toContain('input_received');
     expect(events).toContain('processing_completed');
   });
@@ -1541,7 +1541,7 @@ describe('Multimodal Manager', () => {
   it('should track analytics', () => {
     const input = createMockTextInput();
     const ctxInput = createMockContextInput();
-    manager.processInput(input, { copilotContextInput: ctxInput });
+    manager.processInput(input, { AIAssistantContextInput: ctxInput });
     const analytics = manager.getAnalytics();
     expect(analytics.totalInputs).toBe(1);
   });
@@ -1584,14 +1584,14 @@ describe('Multimodal Manager', () => {
     m.updateConfig(config);
     const input = createMockTextInput();
     const ctxInput = createMockContextInput();
-    expect(() => m.processInput(input, { copilotContextInput: ctxInput })).toThrow();
+    expect(() => m.processInput(input, { AIAssistantContextInput: ctxInput })).toThrow();
   });
 
   it('should process input with session tracking', () => {
     const session = manager.createSession();
     const input = createMockTextInput('test with session');
     const ctxInput = createMockContextInput();
-    manager.processInput(input, { copilotContextInput: ctxInput, sessionId: session.id });
+    manager.processInput(input, { AIAssistantContextInput: ctxInput, sessionId: session.id });
     expect(manager.getSession(session.id)!.inputCount).toBe(1);
   });
 });
@@ -1603,7 +1603,7 @@ describe('Regression Tests', () => {
     const manager = new MultimodalManager();
     const input = createMockTextInput('');
     const ctxInput = createMockContextInput();
-    const result = manager.processInput(input, { copilotContextInput: ctxInput });
+    const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(result.status).toBe('completed');
   });
 
@@ -1612,7 +1612,7 @@ describe('Regression Tests', () => {
     const input = createMockTextInput('What is my status?');
     const ctxInput = createMockContextInput();
     ctxInput.healthScore = null;
-    const result = manager.processInput(input, { copilotContextInput: ctxInput });
+    const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(result.status).toBe('completed');
     expect(result.enrichedContext.healthScore).toBeNull();
   });
@@ -1622,7 +1622,7 @@ describe('Regression Tests', () => {
     const ctxInput = createMockContextInput();
     for (let i = 0; i < 10; i++) {
       const input = createMockTextInput(`test ${i}`);
-      const result = manager.processInput(input, { copilotContextInput: ctxInput });
+      const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
       expect(result.status).toBe('completed');
     }
     expect(manager.getAnalytics().totalInputs).toBe(10);
@@ -1645,7 +1645,7 @@ describe('Regression Tests', () => {
     ];
     for (const tc of testCases) {
       const input = createMockTextInput(tc.text);
-      const result = manager.processInput(input, { copilotContextInput: ctxInput });
+      const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
       expect(result.intent.type).toBe(tc.expectedIntent);
     }
   });
@@ -1655,7 +1655,7 @@ describe('Regression Tests', () => {
     const input = createMockTextInput('test');
     input.modality = 'future_modality';
     const ctxInput = createMockContextInput();
-    const result = manager.processInput(input, { copilotContextInput: ctxInput });
+    const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(result.status).toBe('completed');
   });
 });
@@ -1689,7 +1689,7 @@ describe('Performance Tests', () => {
     const input = createMockTextInput('What is my health score?');
     const ctxInput = createMockContextInput(80);
     const start = performance.now();
-    manager.processInput(input, { copilotContextInput: ctxInput });
+    manager.processInput(input, { AIAssistantContextInput: ctxInput });
     const elapsed = performance.now() - start;
     expect(elapsed).toBeLessThan(500);
   });
@@ -1702,7 +1702,7 @@ describe('Edge Cases', () => {
     const manager = new MultimodalManager();
     const input = createMockTextInput('a'.repeat(50000));
     const ctxInput = createMockContextInput();
-    const result = manager.processInput(input, { copilotContextInput: ctxInput });
+    const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(result.status).toBe('completed');
     expect(result.normalizedInput.text.length).toBeLessThanOrEqual(10000);
   });
@@ -1711,7 +1711,7 @@ describe('Edge Cases', () => {
     const manager = new MultimodalManager();
     const input = createMockTextInput('Hello! @#$%^&*() {}[]|"<>?');
     const ctxInput = createMockContextInput();
-    const result = manager.processInput(input, { copilotContextInput: ctxInput });
+    const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(result.status).toBe('completed');
   });
 
@@ -1719,7 +1719,7 @@ describe('Edge Cases', () => {
     const manager = new MultimodalManager();
     const input = createMockTextInput('你好世界 🌍 café');
     const ctxInput = createMockContextInput();
-    const result = manager.processInput(input, { copilotContextInput: ctxInput });
+    const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(result.status).toBe('completed');
     expect(result.normalizedInput.text).toContain('你好世界');
   });
@@ -1729,7 +1729,7 @@ describe('Edge Cases', () => {
     const input = createMockJsonInput();
     input.contentReference.data = {};
     const ctxInput = createMockContextInput();
-    const result = manager.processInput(input, { copilotContextInput: ctxInput });
+    const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(result.status).toBe('completed');
   });
 
@@ -1738,7 +1738,7 @@ describe('Edge Cases', () => {
     const input = createMockLogInput();
     input.contentReference.data = '2024-01-15T10:30:00 [INFO] All good';
     const ctxInput = createMockContextInput();
-    const result = manager.processInput(input, { copilotContextInput: ctxInput });
+    const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(result.status).toBe('completed');
   });
 
@@ -1747,7 +1747,7 @@ describe('Edge Cases', () => {
     const input = createMockTextInput();
     input.contentReference.data = null;
     const ctxInput = createMockContextInput();
-    const result = manager.processInput(input, { copilotContextInput: ctxInput });
+    const result = manager.processInput(input, { AIAssistantContextInput: ctxInput });
     expect(result.status).toBe('completed');
   });
 });

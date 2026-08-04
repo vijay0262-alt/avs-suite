@@ -20,15 +20,15 @@
  *   - Every result carries confidence and evidence.
  */
 
-// ── Re-export Copilot types used by multimodal ────────────────
+// ── Re-export AIAssistant types used by multimodal ────────────────
 
 export type {
-  CopilotContext,
-  CopilotIntentType,
-  CopilotEntity,
-  CopilotEvidence,
+  AIAssistantContext,
+  AIAssistantIntentType,
+  AIAssistantEntity,
+  AIAssistantEvidence,
   PermissionLevel,
-  CopilotCapability,
+  AIAssistantCapability,
   ContextSourceType,
   DeviceProfileSummary,
   GoalSummary,
@@ -38,14 +38,14 @@ export type {
   MaintenanceSummary,
   OptimizationHistorySummary,
   RecoverySummary,
-} from '../copilot/types';
+} from '../AIAssistant/types';
 
 import type {
-  CopilotContext,
-  CopilotIntentType,
-  CopilotEntity,
-  CopilotEvidence,
-} from '../copilot/types';
+  AIAssistantContext,
+  AIAssistantIntentType,
+  AIAssistantEntity,
+  AIAssistantEvidence,
+} from '../AIAssistant/types';
 
 // ── Input Modalities ──────────────────────────────────────────
 
@@ -149,7 +149,7 @@ export interface NormalizedInput {
   inputId: string;
   modality: InputModality;
   text: string;
-  entities: CopilotEntity[];
+  entities: AIAssistantEntity[];
   language: string;
   confidence: number;
   extractedData: Record<string, unknown>;
@@ -167,7 +167,7 @@ export interface NormalizationWarning {
 
 export interface EnrichedContext {
   inputId: string;
-  copilotContext: CopilotContext;
+  AIAssistantContext: AIAssistantContext;
   healthScore: number | null;
   timeline: unknown[];
   goals: unknown[];
@@ -243,11 +243,11 @@ export type ProcessingPhase =
 // ── Detected Intent ───────────────────────────────────────────
 
 export interface DetectedIntent {
-  type: CopilotIntentType;
+  type: AIAssistantIntentType;
   confidence: number;
-  entities: CopilotEntity[];
+  entities: AIAssistantEntity[];
   sourceModality: InputModality;
-  evidence: CopilotEvidence[];
+  evidence: AIAssistantEvidence[];
   futureMetadata: Record<string, unknown>;
 }
 
@@ -289,7 +289,7 @@ export interface MultimodalResponse {
   visual: VisualResponse | null;
   actions: ResponseAction[];
   confidence: number;
-  evidence: CopilotEvidence[];
+  evidence: AIAssistantEvidence[];
   futureMetadata: Record<string, unknown>;
 }
 

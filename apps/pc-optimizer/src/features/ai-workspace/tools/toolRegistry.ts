@@ -7,7 +7,7 @@
  * Supports registration, unregistration, querying, and discovery.
  */
 import type { Tool, ToolDefinition, ToolDiscoveryResult, ToolSearchQuery, ToolCategory, ToolPlugin } from './types';
-import type { CopilotIntentType, CopilotCapability } from '../copilot/types';
+import type { AIAssistantIntentType, AIAssistantCapability } from '../AIAssistant/types';
 
 export class ToolRegistry {
   private _tools: Map<string, Tool> = new Map();
@@ -97,11 +97,11 @@ export class ToolRegistry {
     return this.getAllTools().filter((t) => t.definition.category === category);
   }
 
-  getByIntent(intent: CopilotIntentType): Tool[] {
+  getByIntent(intent: AIAssistantIntentType): Tool[] {
     return this.getAllTools().filter((t) => t.definition.supportedIntents.includes(intent));
   }
 
-  getByCapability(capability: CopilotCapability): Tool[] {
+  getByCapability(capability: AIAssistantCapability): Tool[] {
     return this.getAllTools().filter((t) => t.definition.requiredCapabilities.includes(capability));
   }
 

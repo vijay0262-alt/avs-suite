@@ -1,23 +1,23 @@
 /**
- * AI Copilot Platform — Session Manager
+ * AVS AI Assistant Platform — Session Manager
  *
  * EPIC 5 PHASE A PART 1
  *
- * Manages Copilot sessions and conversations.
+ * Manages AIAssistant sessions and conversations.
  * Tracks session lifecycle, conversation counts, and active conversation.
  */
 import type {
-  CopilotSession,
-  CopilotConversation,
-  CopilotMessage,
+  AIAssistantSession,
+  AIAssistantConversation,
+  AIAssistantMessage,
   SessionStatus,
   ConversationStatus,
 } from './types';
 import { generateSessionId, generateConversationId } from './types';
 
-export class CopilotSessionManager {
-  private _sessions: Map<string, CopilotSession> = new Map();
-  private _conversations: Map<string, CopilotConversation> = new Map();
+export class AIAssistantSessionManager {
+  private _sessions: Map<string, AIAssistantSession> = new Map();
+  private _conversations: Map<string, AIAssistantConversation> = new Map();
   private _maxConversations: number;
 
   constructor(maxConversations: number = 50) {
@@ -28,8 +28,8 @@ export class CopilotSessionManager {
     this._maxConversations = max;
   }
 
-  createSession(): CopilotSession {
-    const session: CopilotSession = {
+  createSession(): AIAssistantSession {
+    const session: AIAssistantSession = {
       id: generateSessionId(),
       createdAt: new Date().toISOString(),
       lastActivityAt: new Date().toISOString(),
@@ -42,7 +42,7 @@ export class CopilotSessionManager {
     return session;
   }
 
-  getSession(sessionId: string): CopilotSession | null {
+  getSession(sessionId: string): AIAssistantSession | null {
     return this._sessions.get(sessionId) ?? null;
   }
 
@@ -60,7 +60,7 @@ export class CopilotSessionManager {
     }
   }
 
-  createConversation(sessionId: string): CopilotConversation {
+  createConversation(sessionId: string): AIAssistantConversation {
     const session = this._sessions.get(sessionId);
     if (!session) {
       throw new Error(`Session not found: ${sessionId}`);
@@ -70,7 +70,7 @@ export class CopilotSessionManager {
       this._evictOldestConversation();
     }
 
-    const conversation: CopilotConversation = {
+    const conversation: AIAssistantConversation = {
       id: generateConversationId(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -108,11 +108,11 @@ export class CopilotSessionManager {
     return conversation;
   }
 
-  getConversation(conversationId: string): CopilotConversation | null {
+  getConversation(conversationId: string): AIAssistantConversation | null {
     return this._conversations.get(conversationId) ?? null;
   }
 
-  updateConversation(conversationId: string, updates: Partial<CopilotConversation>): boolean {
+  updateConversation(conversationId: string, updates: Partial<AIAssistantConversation>): boolean {
     const conv = this._conversations.get(conversationId);
     if (!conv) return false;
 
@@ -128,7 +128,7 @@ export class CopilotSessionManager {
     return true;
   }
 
-  addMessage(conversationId: string, message: Omit<CopilotMessage, 'timestamp' | 'futureMetadata'>): boolean {
+  addMessage(conversationId: string, message: Omit<AIAssistantMessage, 'timestamp' | 'futureMetadata'>): boolean {
     const conv = this._conversations.get(conversationId);
     if (!conv) return false;
     conv.messages.push({
@@ -140,7 +140,7 @@ export class CopilotSessionManager {
     return true;
   }
 
-  getConversationHistory(conversationId: string): CopilotConversation[] {
+  getConversationHistory(conversationId: string): AIAssistantConversation[] {
     const conv = this._conversations.get(conversationId);
     if (!conv) return [];
     return [structuredClone(conv)];
@@ -160,7 +160,7 @@ export class CopilotSessionManager {
     this._sessions.clear();
   }
 
-  getActiveSessions(): CopilotSession[] {
+  getActiveSessions(): AIAssistantSession[] {
     return Array.from(this._sessions.values()).filter((s) => s.status === 'active');
   }
 
@@ -169,7 +169,7 @@ export class CopilotSessionManager {
   }
 
   private _evictOldestConversation(): void {
-    let oldest: CopilotConversation | null = null;
+    let oldest: AIAssistantConversation | null = null;
     for (const conv of this._conversations.values()) {
       if (!oldest || conv.createdAt < oldest.createdAt) {
         oldest = conv;

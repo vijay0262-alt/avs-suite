@@ -11,7 +11,7 @@ import type {
   NormalizedInput,
   NormalizationWarning,
   MultimodalConfiguration,
-  CopilotEntity,
+  AIAssistantEntity,
 } from './types';
 import { generateNormalizedInputId } from './types';
 
@@ -284,8 +284,8 @@ export class InputNormalizer {
     return {};
   }
 
-  private _extractEntities(text: string): CopilotEntity[] {
-    const entities: CopilotEntity[] = [];
+  private _extractEntities(text: string): AIAssistantEntity[] {
+    const entities: AIAssistantEntity[] = [];
     // Extract health score references
     const healthMatch = text.match(/health\s*(?:score)?[:\s]+(\d+)/i);
     if (healthMatch) {

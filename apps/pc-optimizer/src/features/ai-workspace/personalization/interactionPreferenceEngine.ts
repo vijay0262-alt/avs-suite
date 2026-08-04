@@ -10,8 +10,8 @@ import type {
   UserPreferences,
   BehaviorAnalysisResult,
   AIInteractionStyle,
-  CopilotIntentType,
-  CopilotCapability,
+  AIAssistantIntentType,
+  AIAssistantCapability,
   PersonalizationSuggestion,
   WorkspaceConfiguration,
 } from './types';
@@ -54,15 +54,15 @@ export class InteractionPreferenceEngine {
   determinePreferredIntents(
     preferences: UserPreferences,
     analysis: BehaviorAnalysisResult | null,
-  ): CopilotIntentType[] {
+  ): AIAssistantIntentType[] {
     if (!preferences.personalizationEnabled || preferences.manualMode) {
       return [...preferences.preferredIntentTypes];
     }
 
-    const intents: CopilotIntentType[] = [...preferences.preferredIntentTypes];
+    const intents: AIAssistantIntentType[] = [...preferences.preferredIntentTypes];
 
     if (analysis) {
-      const intentMap: Record<string, CopilotIntentType> = {
+      const intentMap: Record<string, AIAssistantIntentType> = {
         create_optimization_session: 'optimization',
         explain_health: 'explanation',
         generate_report: 'reporting',
@@ -88,12 +88,12 @@ export class InteractionPreferenceEngine {
   determinePreferredCapabilities(
     preferences: UserPreferences,
     analysis: BehaviorAnalysisResult | null,
-  ): CopilotCapability[] {
+  ): AIAssistantCapability[] {
     if (!preferences.personalizationEnabled || preferences.manualMode) {
       return [...preferences.preferredCapabilities];
     }
 
-    const capabilities: CopilotCapability[] = [...preferences.preferredCapabilities];
+    const capabilities: AIAssistantCapability[] = [...preferences.preferredCapabilities];
 
     if (analysis) {
       if (analysis.toolUsage.some((t) => t.toolId === 'generate_report')) {
@@ -165,14 +165,14 @@ export class InteractionPreferenceEngine {
 
   setPreferredIntents(
     preferences: UserPreferences,
-    intents: CopilotIntentType[],
+    intents: AIAssistantIntentType[],
   ): UserPreferences {
     return { ...preferences, preferredIntentTypes: intents };
   }
 
   setPreferredCapabilities(
     preferences: UserPreferences,
-    capabilities: CopilotCapability[],
+    capabilities: AIAssistantCapability[],
   ): UserPreferences {
     return { ...preferences, preferredCapabilities: capabilities };
   }

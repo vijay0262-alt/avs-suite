@@ -1,6 +1,6 @@
 /**
  * Assistant Context Initializer — builds a real AssistantContext
- * from live system data so the AI Copilot and Daily Briefing
+ * from live system data so the AVS AI Assistant and Daily Briefing
  * have meaningful data to generate explanations and insights.
  *
  * Fetches dashboard metrics, runs the AI Health Engine analysis,
@@ -51,7 +51,7 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
   // Compute execution statistics
   let executionStatistics: ExecutionStatistics | null = null;
   try {
-    executionStatistics = executionStatisticsService.computeStatistics(executionHistory);
+    executionStatistics = executionStatisticsService.compute(executionHistory);
   } catch {
     // Statistics might not be available
   }

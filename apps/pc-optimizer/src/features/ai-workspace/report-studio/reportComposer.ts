@@ -6,7 +6,7 @@
  * Composes final reports by combining builder output with filters,
  * sections, and insights. Manages incremental updates.
  */
-import type { Report, ReportSection, ReportInsight, CopilotContext, ReportFilterSet, ReportTimeRange, ReportType } from './types';
+import type { Report, ReportSection, ReportInsight, AIAssistantContext, ReportFilterSet, ReportTimeRange, ReportType } from './types';
 import { ReportBuilder } from './reportBuilder';
 import { ReportFilterEngine } from './reportFilterEngine';
 import type { ReportTemplate } from './types';
@@ -25,7 +25,7 @@ export class ReportComposer {
   compose(
     type: ReportType,
     template: ReportTemplate,
-    context: CopilotContext,
+    context: AIAssistantContext,
     timeRange: ReportTimeRange,
     widgetRegistry: ReportWidgetRegistry,
     filters?: ReportFilterSet,

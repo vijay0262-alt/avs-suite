@@ -8,8 +8,8 @@ describe('featureFlags', () => {
     }
   });
 
-  it('restricts Duplicate Delete to Professional', () => {
-    expect(isFeatureEnabled('DUPLICATE_DELETE', 'free')).toBe(false);
+  it('allows Duplicate Delete in Free with limits and Professional unlimited', () => {
+    expect(isFeatureEnabled('DUPLICATE_DELETE', 'free')).toBe(true);
     expect(isFeatureEnabled('DUPLICATE_DELETE', 'professional')).toBe(true);
   });
 

@@ -19,17 +19,17 @@
  *   - All preferences carry confidence and evidence.
  */
 
-// ── Re-export Copilot types used by personalization ──────────
+// ── Re-export AIAssistant types used by personalization ──────────
 
 export type {
-  CopilotIntentType,
-  CopilotCapability,
-} from '../copilot/types';
+  AIAssistantIntentType,
+  AIAssistantCapability,
+} from '../AIAssistant/types';
 
 import type {
-  CopilotIntentType,
-  CopilotCapability,
-} from '../copilot/types';
+  AIAssistantIntentType,
+  AIAssistantCapability,
+} from '../AIAssistant/types';
 
 // ── Workspace Profiles ───────────────────────────────────────
 
@@ -186,8 +186,8 @@ export interface UserPreferences {
   notificationPreferences: NotificationPreferences;
   defaultGoals: string[];
   aiInteractionStyle: AIInteractionStyle;
-  preferredIntentTypes: CopilotIntentType[];
-  preferredCapabilities: CopilotCapability[];
+  preferredIntentTypes: AIAssistantIntentType[];
+  preferredCapabilities: AIAssistantCapability[];
   widgetOrdering: string[];
   personalizationEnabled: boolean;
   manualMode: boolean;

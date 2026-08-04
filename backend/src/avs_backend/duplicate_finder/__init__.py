@@ -375,8 +375,29 @@ def duplicate_delete(params: dict[str, Any] | None) -> dict[str, Any]:
     """Delete selected duplicate files."""
     if not params or 'files' not in params:
         raise ValueError("Missing 'files' parameter")
-    
+
     files_to_delete = params['files']
+
+    # Enforce Free edition limit: max 20 files per session
+    from avs_backend.licensing import get_edition_limit
+
+    limit = get_edition_limit("duplicate.files_per_run")
+    if limit is not None and len(files_to_delete) > limit:
+        logger.warning(
+            "Duplicate delete blocked: %d files exceed Free limit of %d",
+            len(files_to_delete), limit,
+        )
+        return {
+            'deletedCount': 0,
+            'spaceFreed': 0,
+            'errors': [
+                f"Free edition allows deleting up to {limit} duplicate files per session. "
+                f"Upgrade to Professional for unlimited deletion."
+            ],
+            'limitExceeded': True,
+            'limit': limit,
+        }
+
     deleted_count = 0
     space_freed = 0
     errors = []

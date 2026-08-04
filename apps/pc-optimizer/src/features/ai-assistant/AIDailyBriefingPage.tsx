@@ -2,7 +2,7 @@
  * AIDailyBriefingPage — standalone AI Daily Briefing page.
  *
  * Uses the ConversationEngine to generate insights and dashboard data,
- * then renders the DailyBriefingView from the Copilot page.
+ * then renders the DailyBriefingView from the AIAssistant page.
  */
 import { useEffect, useState, useCallback } from 'react';
 import { Card, Button, Badge } from '@avs/ui';
@@ -80,8 +80,8 @@ export default function AIDailyBriefingPage() {
             <Button size="sm" variant="secondary" onClick={init} leftIcon={<ArrowPathIcon className="h-4 w-4" />}>
               Refresh
             </Button>
-            <Button size="sm" onClick={() => navigate('/ai-copilot')} leftIcon={<ChatBubbleLeftRightIcon className="h-4 w-4" />}>
-              Open Copilot
+            <Button size="sm" onClick={() => navigate('/ai-AIAssistant')} leftIcon={<ChatBubbleLeftRightIcon className="h-4 w-4" />}>
+              Open AIAssistant
             </Button>
           </div>
         }
@@ -277,7 +277,7 @@ export default function AIDailyBriefingPage() {
               {QUICK_QUESTIONS.map((q) => (
                 <button
                   key={q.type}
-                  onClick={() => navigate('/ai-copilot')}
+                  onClick={() => navigate('/ai-AIAssistant')}
                   className="rounded-full border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-1.5 text-xs font-medium text-[var(--avs-text-secondary)] transition-all hover:border-[var(--avs-brand-primary)] hover:text-[var(--avs-text-primary)]"
                 >
                   {q.label}

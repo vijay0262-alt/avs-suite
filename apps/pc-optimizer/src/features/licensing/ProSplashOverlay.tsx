@@ -3,7 +3,7 @@
  *
  * Shows a brief animated splash on app launch celebrating Pro ownership:
  *   - Brand logo + "AVS Shield Professional" title
- *   - Active feature indicators (Real-Time Protection, AI Copilot, etc.)
+ *   - Active feature indicators (Real-Time Protection, AVS AI Assistant, etc.)
  *   - Personalized greeting
  *   - Auto-dismisses after 3 seconds or on click/Escape
  *
@@ -67,7 +67,7 @@ export function ProSplashOverlay() {
 
   const indicators = [
     { icon: ShieldCheckIcon, label: 'Real-Time Protection Active' },
-    { icon: SparklesIcon, label: 'AI Copilot Ready' },
+    { icon: SparklesIcon, label: 'AVS AI Assistant Ready' },
     { icon: ClockIcon, label: 'Scheduled Maintenance Enabled' },
     { icon: BoltIcon, label: 'Automatic Optimization Enabled' },
   ];

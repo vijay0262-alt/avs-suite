@@ -28,9 +28,9 @@ import type {
   MultimodalSession,
   MultimodalEventType,
   MultimodalEventListener,
-  CopilotContext,
-  CopilotIntentType,
-  CopilotEvidence,
+  AIAssistantContext,
+  AIAssistantIntentType,
+  AIAssistantEvidence,
 } from './types';
 import {
   DEFAULT_MULTIMODAL_CONFIGURATION,
@@ -51,10 +51,10 @@ import { SessionSynchronizer } from './sessionSynchronizer';
 import { MultimodalAnalytics } from './multimodalAnalytics';
 import { MultimodalValidator } from './multimodalValidator';
 import { generateResponseId } from './types';
-import type { CopilotContextResolverInput } from '../copilot/copilotContextResolver';
+import type { AIAssistantContextResolverInput } from '../AIAssistant/AIAssistantContextResolver';
 
 export interface ProcessInputOptions {
-  copilotContextInput: CopilotContextResolverInput;
+  AIAssistantContextInput: AIAssistantContextResolverInput;
   sessionId?: string;
   previousInputs?: MultimodalInput[];
   activeTopics?: string[];
@@ -138,20 +138,20 @@ export class MultimodalManager {
     // Enrich context
     const enriched = this._contextEnricher.enrich({
       input,
-      copilotContextInput: options.copilotContextInput,
+      AIAssistantContextInput: options.AIAssistantContextInput,
       previousInputs: options.previousInputs ?? [],
       activeTopics: options.activeTopics ?? [],
       sessionId: options.sessionId ?? input.context.sessionId,
       conversationId: input.context.conversationId,
     });
-    this._emit('context_enriched', { inputId: input.id, sourceCount: enriched.copilotContext.sources.length });
+    this._emit('context_enriched', { inputId: input.id, sourceCount: enriched.AIAssistantContext.sources.length });
 
     // Detect intent
     const intent = this._detectIntent(normalized, routing.modality);
 
     // Route to tools
     this._emit('processing_started', { inputId: input.id, intent: intent.type });
-    const toolRouting = this._routeToTools(intent, enriched.copilotContext);
+    const toolRouting = this._routeToTools(intent, enriched.AIAssistantContext);
 
     // Generate response
     const response = this._generateResponse(normalized, enriched, intent, toolRouting);
@@ -189,11 +189,11 @@ export class MultimodalManager {
     return this._normalizer.normalize(input);
   }
 
-  extractContext(input: MultimodalInput, copilotContextInput: CopilotContextResolverInput): EnrichedContext {
-    return this._contextEnricher.extractContext(input, copilotContextInput);
+  extractContext(input: MultimodalInput, AIAssistantContextInput: AIAssistantContextResolverInput): EnrichedContext {
+    return this._contextEnricher.extractContext(input, AIAssistantContextInput);
   }
 
-  routeToTools(intent: CopilotIntentType, context: CopilotContext): ToolRoutingResult {
+  routeToTools(intent: AIAssistantIntentType, context: AIAssistantContext): ToolRoutingResult {
     return this._routeToTools(
       { type: intent, confidence: 0.8, entities: [], sourceModality: 'text', evidence: [], futureMetadata: {} },
       context,
@@ -379,7 +379,7 @@ export class MultimodalManager {
 
   private _detectIntent(normalized: NormalizedInput, modality: InputModality): DetectedIntent {
     const text = normalized.text.toLowerCase();
-    let intentType: CopilotIntentType = 'question';
+    let intentType: AIAssistantIntentType = 'question';
     let confidence = 0.6;
 
     if (/optimiz|tune|speed|performance/i.test(text)) {
@@ -414,7 +414,7 @@ export class MultimodalManager {
       confidence = 0.8;
     }
 
-    const evidence: CopilotEvidence[] = [{
+    const evidence: AIAssistantEvidence[] = [{
       source: 'intent_detection',
       metric: 'matched_keywords',
       value: intentType,
@@ -434,8 +434,8 @@ export class MultimodalManager {
     };
   }
 
-  private _routeToTools(intent: DetectedIntent, _context: CopilotContext): ToolRoutingResult {
-    const toolMap: Partial<Record<CopilotIntentType, string[]>> = {
+  private _routeToTools(intent: DetectedIntent, _context: AIAssistantContext): ToolRoutingResult {
+    const toolMap: Partial<Record<AIAssistantIntentType, string[]>> = {
       explanation: ['explain_health'],
       optimization: ['create_optimization_session'],
       goal_management: ['create_goal'],

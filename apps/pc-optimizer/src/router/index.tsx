@@ -10,7 +10,7 @@ import { OnboardingProvider } from '../features/onboarding/OnboardingProvider';
 
 // Lazy load all pages
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
-const AICopilotPage = lazy(() => import('../pages/AICopilotPage'));
+const AIAssistantPage = lazy(() => import('../pages/AIAssistantPage'));
 const SecurityCenterPage = lazy(() => import('../pages/SecurityCenterPage'));
 const JunkCleanerPage = lazy(() => import('../pages/JunkCleanerPage'));
 const RegistryCleanerPage = lazy(() => import('../pages/RegistryCleanerPage'));
@@ -138,7 +138,7 @@ export const router = createHashRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       // HOME
       { path: 'dashboard', element: wrap(DashboardPage) },
-      { path: 'ai-copilot', element: wrap(AICopilotPage) },
+      { path: 'ai-AIAssistant', element: wrap(AIAssistantPage) },
       { path: 'ai-daily-briefing', element: wrap(AIDailyBriefingPage) },
       { path: 'ai-smart-optimize', element: wrap(SmartOptimizationPage) },
       { path: 'ai-workspace', element: wrap(AIWorkspacePage) },

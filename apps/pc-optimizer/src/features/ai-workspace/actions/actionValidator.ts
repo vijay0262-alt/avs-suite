@@ -11,14 +11,14 @@ import type {
   ActionValidationResult,
   ActionValidationError,
   ActionValidationWarning,
-  CopilotContext,
+  AIAssistantContext,
   PermissionLevel,
 } from './types';
 
 export class ActionValidator {
   private _permissionOrder: PermissionLevel[] = ['free', 'pro', 'enterprise'];
 
-  validate(plan: ActionPlan, context: CopilotContext, userPermission: PermissionLevel, userCapabilities: string[]): ActionValidationResult {
+  validate(plan: ActionPlan, context: AIAssistantContext, userPermission: PermissionLevel, userCapabilities: string[]): ActionValidationResult {
     const errors: ActionValidationError[] = [];
     const warnings: ActionValidationWarning[] = [];
 
@@ -104,7 +104,7 @@ export class ActionValidator {
     }
   }
 
-  private _validateExecutionReadiness(plan: ActionPlan, context: CopilotContext, warnings: ActionValidationWarning[]): void {
+  private _validateExecutionReadiness(plan: ActionPlan, context: AIAssistantContext, warnings: ActionValidationWarning[]): void {
     if (context.healthScore === null && plan.intent === 'optimization') {
       warnings.push({
         code: 'NO_HEALTH_SCORE',

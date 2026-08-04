@@ -13,15 +13,15 @@
  *   Approval → Execution Pipeline
  */
 
-// ── Re-export Copilot & Tool types ────────────────────────────
+// ── Re-export AIAssistant & Tool types ────────────────────────────
 
 export type {
-  CopilotContext,
-  CopilotEvidence,
+  AIAssistantContext,
+  AIAssistantEvidence,
   PermissionLevel,
-  CopilotCapability,
-  CopilotIntentType,
-} from '../copilot/types';
+  AIAssistantCapability,
+  AIAssistantIntentType,
+} from '../AIAssistant/types';
 
 export type {
   ToolDefinition,
@@ -29,10 +29,10 @@ export type {
 } from '../tools/types';
 
 import type {
-  CopilotEvidence,
+  AIAssistantEvidence,
   PermissionLevel,
-  CopilotCapability,
-} from '../copilot/types';
+  AIAssistantCapability,
+} from '../AIAssistant/types';
 
 import type {
   ToolDefinition,
@@ -192,7 +192,7 @@ export interface ActionPlan {
   estimatedBenefit: string;
   estimatedRisk: ActionRiskLevel;
   requiresApproval: boolean;
-  requiredCapabilities: CopilotCapability[];
+  requiredCapabilities: AIAssistantCapability[];
   rollbackAvailable: boolean;
   explanation: ActionExplanation;
   alternatives: ActionPlan[];
@@ -232,7 +232,7 @@ export function getActionPlanStatusLabel(status: ActionPlanStatus): string {
 export interface ActionExplanation {
   summary: string;
   reasoning: string;
-  evidence: CopilotEvidence[];
+  evidence: AIAssistantEvidence[];
   expectedOutcome: string;
   potentialRisks: string[];
   rollbackAvailable: boolean;

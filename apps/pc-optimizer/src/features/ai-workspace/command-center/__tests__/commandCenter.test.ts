@@ -27,9 +27,9 @@ import {
   createDefaultWidgetDefinitions,
   createDefaultDashboardLayout,
 } from '../types';
-import type { CopilotContext, WidgetDefinition, WidgetDataProvider, WidgetCategory } from '../types';
+import type { AIAssistantContext, WidgetDefinition, WidgetDataProvider, WidgetCategory } from '../types';
 
-function createMockContext(): CopilotContext {
+function createMockContext(): AIAssistantContext {
   return {
     sources: [
       { type: 'health_score', available: true, data: 75, confidence: 0.9, evidence: [], futureMetadata: {} },
@@ -63,7 +63,7 @@ function createMockContext(): CopilotContext {
     recoveryHistory: [{ id: 'rc1', timestamp: new Date().toISOString(), type: 'rollback', success: true, futureMetadata: {} }],
     userPreferences: { theme: 'dark' },
     futureMetadata: {},
-  } as CopilotContext;
+  } as AIAssistantContext;
 }
 
 // ── Types & Helpers ──────────────────────────────────────────
@@ -656,12 +656,12 @@ describe('Command Center Performance', () => {
 describe('Command Center Edge Cases', () => {
   it('should handle empty context', () => {
     const aggregator = new CommandCenterDataAggregator();
-    const emptyCtx: CopilotContext = {
+    const emptyCtx: AIAssistantContext = {
       sources: [], healthScore: null, deviceProfile: null, activeGoals: [],
       recentTimelineEvents: [], activeRecommendations: [], activePredictions: [],
       maintenanceHistory: [], optimizationHistory: [], recoveryHistory: [],
       userPreferences: {}, futureMetadata: {},
-    } as CopilotContext;
+    } as AIAssistantContext;
     const vm = aggregator.aggregate(emptyCtx);
     expect(vm.health!.score).toBeNull();
     expect(vm.goals!.activeGoals.length).toBe(0);

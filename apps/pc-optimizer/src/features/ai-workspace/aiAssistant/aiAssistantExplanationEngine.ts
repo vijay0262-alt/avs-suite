@@ -1,5 +1,5 @@
 /**
- * AI Copilot Platform — Explanation Engine
+ * AVS AI Assistant Platform — Explanation Engine
  *
  * EPIC 5 PHASE A PART 1
  *
@@ -7,10 +7,10 @@
  * Every explanation includes why, evidence, confidence, and next best action.
  */
 import type {
-  CopilotContext,
-  CopilotExplanation,
+  AIAssistantContext,
+  AIAssistantExplanation,
   ExplanationSubject,
-  CopilotEvidence,
+  AIAssistantEvidence,
   RecommendationSummary,
   PredictionSummary,
   GoalSummary,
@@ -18,12 +18,12 @@ import type {
 } from './types';
 import { clampConfidence } from './types';
 
-export class CopilotExplanationEngine {
+export class AIAssistantExplanationEngine {
   explainRecommendation(
     recommendation: RecommendationSummary,
-    context: CopilotContext,
-  ): CopilotExplanation {
-    const evidence: CopilotEvidence[] = [
+    context: AIAssistantContext,
+  ): AIAssistantExplanation {
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('recommendation', 'id', recommendation.id, 'Recommendation identifier'),
       this._createEvidence('recommendation', 'category', recommendation.category, 'Recommendation category'),
       this._createEvidence('recommendation', 'priority', recommendation.priority, 'Recommendation priority'),
@@ -52,9 +52,9 @@ export class CopilotExplanationEngine {
 
   explainHealthScore(
     healthScore: number,
-    context: CopilotContext,
-  ): CopilotExplanation {
-    const evidence: CopilotEvidence[] = [
+    context: AIAssistantContext,
+  ): AIAssistantExplanation {
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('health_score', 'score', healthScore, 'Current health score'),
     ];
 
@@ -93,9 +93,9 @@ export class CopilotExplanationEngine {
 
   explainPrediction(
     prediction: PredictionSummary,
-    context: CopilotContext,
-  ): CopilotExplanation {
-    const evidence: CopilotEvidence[] = [
+    context: AIAssistantContext,
+  ): AIAssistantExplanation {
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('prediction', 'id', prediction.id, 'Prediction identifier'),
       this._createEvidence('prediction', 'category', prediction.category, 'Prediction category'),
       this._createEvidence('prediction', 'riskLevel', prediction.riskLevel, 'Predicted risk level'),
@@ -128,9 +128,9 @@ export class CopilotExplanationEngine {
     profileType: string,
     performanceTier: string,
     confidence: number,
-    context: CopilotContext,
-  ): CopilotExplanation {
-    const evidence: CopilotEvidence[] = [
+    context: AIAssistantContext,
+  ): AIAssistantExplanation {
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('device_profile', 'profileType', profileType, 'Detected profile type'),
       this._createEvidence('device_profile', 'performanceTier', performanceTier, 'Performance tier'),
       this._createEvidence('device_profile', 'confidence', confidence, 'Profile confidence'),
@@ -158,9 +158,9 @@ export class CopilotExplanationEngine {
 
   explainTimelineEvent(
     event: TimelineEventSummary,
-    context: CopilotContext,
-  ): CopilotExplanation {
-    const evidence: CopilotEvidence[] = [
+    context: AIAssistantContext,
+  ): AIAssistantExplanation {
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('timeline', 'id', event.id, 'Event identifier'),
       this._createEvidence('timeline', 'title', event.title, 'Event title'),
       this._createEvidence('timeline', 'category', event.category, 'Event category'),
@@ -186,9 +186,9 @@ export class CopilotExplanationEngine {
 
   explainGoal(
     goal: GoalSummary,
-    context: CopilotContext,
-  ): CopilotExplanation {
-    const evidence: CopilotEvidence[] = [
+    context: AIAssistantContext,
+  ): AIAssistantExplanation {
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('goal', 'id', goal.id, 'Goal identifier'),
       this._createEvidence('goal', 'name', goal.name, 'Goal name'),
       this._createEvidence('goal', 'status', goal.status, 'Goal status'),
@@ -222,9 +222,9 @@ export class CopilotExplanationEngine {
 
   explain(
     subject: ExplanationSubject,
-    context: CopilotContext,
+    context: AIAssistantContext,
     entityId: string | null,
-  ): CopilotExplanation {
+  ): AIAssistantExplanation {
     switch (subject) {
       case 'recommendation': {
         const rec = context.activeRecommendations.find((r) => r.id === entityId);
@@ -270,7 +270,7 @@ export class CopilotExplanationEngine {
     subject: ExplanationSubject,
     entityId: string | null,
     message: string,
-  ): CopilotExplanation {
+  ): AIAssistantExplanation {
     return {
       subject,
       subjectId: entityId,
@@ -290,7 +290,7 @@ export class CopilotExplanationEngine {
     metric: string,
     value: string | number | boolean,
     description: string,
-  ): CopilotEvidence {
+  ): AIAssistantEvidence {
     return {
       source,
       metric,

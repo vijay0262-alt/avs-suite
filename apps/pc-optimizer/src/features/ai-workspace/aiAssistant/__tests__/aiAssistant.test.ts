@@ -1,5 +1,5 @@
 /**
- * Tests for the AI Copilot Platform.
+ * Tests for the AVS AI Assistant Platform.
  *
  * Covers: types, configuration, events, intent engine, context resolver,
  * response engine, suggestion engine, explanation engine, action planner,
@@ -9,30 +9,30 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { CopilotManager } from '../copilotManager';
-import { CopilotIntentEngine } from '../copilotIntentEngine';
-import { CopilotContextResolver } from '../copilotContextResolver';
-import { CopilotResponseEngine } from '../copilotResponseEngine';
-import { CopilotSuggestionEngine } from '../copilotSuggestionEngine';
-import { CopilotExplanationEngine } from '../copilotExplanationEngine';
-import { CopilotActionPlanner } from '../copilotActionPlanner';
-import { CopilotPermissionEngine } from '../copilotPermissionEngine';
-import { CopilotMemory } from '../copilotMemory';
-import { CopilotSessionManager } from '../copilotSessionManager';
-import { CopilotAnalyticsEngine } from '../copilotAnalytics';
-import { CopilotValidator } from '../copilotValidator';
-import { CopilotEvents } from '../copilotEvents';
-import { DEFAULT_COPILOT_CONFIGURATION, createCopilotConfiguration, validateConfiguration } from '../copilotConfiguration';
+import { AIAssistantManager } from '../AIAssistantManager';
+import { AIAssistantIntentEngine } from '../AIAssistantIntentEngine';
+import { AIAssistantContextResolver } from '../AIAssistantContextResolver';
+import { AIAssistantResponseEngine } from '../AIAssistantResponseEngine';
+import { AIAssistantSuggestionEngine } from '../AIAssistantSuggestionEngine';
+import { AIAssistantExplanationEngine } from '../AIAssistantExplanationEngine';
+import { AIAssistantActionPlanner } from '../AIAssistantActionPlanner';
+import { AIAssistantPermissionEngine } from '../AIAssistantPermissionEngine';
+import { AIAssistantMemory } from '../AIAssistantMemory';
+import { AIAssistantSessionManager } from '../AIAssistantSessionManager';
+import { AIAssistantAnalyticsEngine } from '../AIAssistantAnalytics';
+import { AIAssistantValidator } from '../AIAssistantValidator';
+import { AIAssistantEvents } from '../AIAssistantEvents';
+import { DEFAULT_AIAssistant_CONFIGURATION, createAIAssistantConfiguration, validateConfiguration } from '../AIAssistantConfiguration';
 import {
-  generateCopilotId,
+  generateAIAssistantId,
   clampConfidence,
   getIntentLabel,
   createDefaultIntentDefinitions,
 } from '../types';
-import type { CopilotContextResolverInput } from '../copilotContextResolver';
-import type { CopilotPromptInput } from '../types';
+import type { AIAssistantContextResolverInput } from '../AIAssistantContextResolver';
+import type { AIAssistantPromptInput } from '../types';
 
-function createMockContextInput(): CopilotContextResolverInput {
+function createMockContextInput(): AIAssistantContextResolverInput {
   return {
     healthScore: 75,
     deviceProfile: { profileType: 'gaming', performanceTier: 'high', confidence: 0.9, futureMetadata: {} },
@@ -47,7 +47,7 @@ function createMockContextInput(): CopilotContextResolverInput {
   };
 }
 
-function createMockPrompt(prompt: string): CopilotPromptInput {
+function createMockPrompt(prompt: string): AIAssistantPromptInput {
   return {
     prompt,
     conversationId: null,
@@ -59,12 +59,12 @@ function createMockPrompt(prompt: string): CopilotPromptInput {
 
 // ── Types & Helpers ──────────────────────────────────────────
 
-describe('Copilot Types & Helpers', () => {
+describe('AIAssistant Types & Helpers', () => {
   it('should generate unique IDs', () => {
-    const id1 = generateCopilotId();
-    const id2 = generateCopilotId();
+    const id1 = generateAIAssistantId();
+    const id2 = generateAIAssistantId();
     expect(id1).not.toBe(id2);
-    expect(id1).toMatch(/^copilot_/);
+    expect(id1).toMatch(/^AIAssistant_/);
   });
 
   it('should clamp confidence between 0 and 1', () => {
@@ -88,26 +88,26 @@ describe('Copilot Types & Helpers', () => {
 
 // ── Configuration ────────────────────────────────────────────
 
-describe('Copilot Configuration', () => {
+describe('AIAssistant Configuration', () => {
   it('should provide default configuration', () => {
-    expect(DEFAULT_COPILOT_CONFIGURATION.configVersion).toBe('1.0.0');
-    expect(DEFAULT_COPILOT_CONFIGURATION.featureFlags.enableCopilot).toBe(true);
+    expect(DEFAULT_AIAssistant_CONFIGURATION.configVersion).toBe('1.0.0');
+    expect(DEFAULT_AIAssistant_CONFIGURATION.featureFlags.enableAIAssistant).toBe(true);
   });
 
   it('should create configuration with overrides', () => {
-    const config = createCopilotConfiguration({ performanceTargetMs: 200 });
+    const config = createAIAssistantConfiguration({ performanceTargetMs: 200 });
     expect(config.performanceTargetMs).toBe(200);
     expect(config.configVersion).toBe('1.0.0');
   });
 
   it('should validate configuration', () => {
-    const result = validateConfiguration(DEFAULT_COPILOT_CONFIGURATION);
+    const result = validateConfiguration(DEFAULT_AIAssistant_CONFIGURATION);
     expect(result.valid).toBe(true);
     expect(result.errors.length).toBe(0);
   });
 
   it('should detect invalid configuration', () => {
-    const config = createCopilotConfiguration({ maxConversations: 0 });
+    const config = createAIAssistantConfiguration({ maxConversations: 0 });
     const result = validateConfiguration(config);
     expect(result.valid).toBe(false);
   });
@@ -115,11 +115,11 @@ describe('Copilot Configuration', () => {
 
 // ── Events ───────────────────────────────────────────────────
 
-describe('Copilot Events', () => {
-  let events: CopilotEvents;
+describe('AIAssistant Events', () => {
+  let events: AIAssistantEvents;
 
   beforeEach(() => {
-    events = new CopilotEvents();
+    events = new AIAssistantEvents();
   });
 
   it('should register and emit events', () => {
@@ -148,11 +148,11 @@ describe('Copilot Events', () => {
 
 // ── Intent Engine ────────────────────────────────────────────
 
-describe('Copilot Intent Engine', () => {
-  let engine: CopilotIntentEngine;
+describe('AIAssistant Intent Engine', () => {
+  let engine: AIAssistantIntentEngine;
 
   beforeEach(() => {
-    engine = new CopilotIntentEngine(DEFAULT_COPILOT_CONFIGURATION);
+    engine = new AIAssistantIntentEngine(DEFAULT_AIAssistant_CONFIGURATION);
   });
 
   it('should resolve question intent', () => {
@@ -184,11 +184,11 @@ describe('Copilot Intent Engine', () => {
 
 // ── Context Resolver ─────────────────────────────────────────
 
-describe('Copilot Context Resolver', () => {
-  let resolver: CopilotContextResolver;
+describe('AIAssistant Context Resolver', () => {
+  let resolver: AIAssistantContextResolver;
 
   beforeEach(() => {
-    resolver = new CopilotContextResolver();
+    resolver = new AIAssistantContextResolver();
   });
 
   it('should resolve context from all sources', () => {
@@ -224,13 +224,13 @@ describe('Copilot Context Resolver', () => {
 
 // ── Response Engine ──────────────────────────────────────────
 
-describe('Copilot Response Engine', () => {
-  let engine: CopilotResponseEngine;
-  let resolver: CopilotContextResolver;
+describe('AIAssistant Response Engine', () => {
+  let engine: AIAssistantResponseEngine;
+  let resolver: AIAssistantContextResolver;
 
   beforeEach(() => {
-    engine = new CopilotResponseEngine(DEFAULT_COPILOT_CONFIGURATION);
-    resolver = new CopilotContextResolver();
+    engine = new AIAssistantResponseEngine(DEFAULT_AIAssistant_CONFIGURATION);
+    resolver = new AIAssistantContextResolver();
   });
 
   it('should generate a response with evidence', () => {
@@ -251,13 +251,13 @@ describe('Copilot Response Engine', () => {
 
 // ── Suggestion Engine ────────────────────────────────────────
 
-describe('Copilot Suggestion Engine', () => {
-  let engine: CopilotSuggestionEngine;
-  let resolver: CopilotContextResolver;
+describe('AIAssistant Suggestion Engine', () => {
+  let engine: AIAssistantSuggestionEngine;
+  let resolver: AIAssistantContextResolver;
 
   beforeEach(() => {
-    engine = new CopilotSuggestionEngine(DEFAULT_COPILOT_CONFIGURATION);
-    resolver = new CopilotContextResolver();
+    engine = new AIAssistantSuggestionEngine(DEFAULT_AIAssistant_CONFIGURATION);
+    resolver = new AIAssistantContextResolver();
   });
 
   it('should generate suggestions with context', () => {
@@ -270,19 +270,19 @@ describe('Copilot Suggestion Engine', () => {
   it('should respect max suggestions', () => {
     const ctx = resolver.resolve(createMockContextInput());
     const suggestions = engine.generate('question', ctx, 'conv1');
-    expect(suggestions.length).toBeLessThanOrEqual(DEFAULT_COPILOT_CONFIGURATION.suggestionRules.maxSuggestions);
+    expect(suggestions.length).toBeLessThanOrEqual(DEFAULT_AIAssistant_CONFIGURATION.suggestionRules.maxSuggestions);
   });
 });
 
 // ── Explanation Engine ───────────────────────────────────────
 
-describe('Copilot Explanation Engine', () => {
-  let engine: CopilotExplanationEngine;
-  let resolver: CopilotContextResolver;
+describe('AIAssistant Explanation Engine', () => {
+  let engine: AIAssistantExplanationEngine;
+  let resolver: AIAssistantContextResolver;
 
   beforeEach(() => {
-    engine = new CopilotExplanationEngine();
-    resolver = new CopilotContextResolver();
+    engine = new AIAssistantExplanationEngine();
+    resolver = new AIAssistantContextResolver();
   });
 
   it('should explain health score', () => {
@@ -309,11 +309,11 @@ describe('Copilot Explanation Engine', () => {
 
 // ── Permission Engine ────────────────────────────────────────
 
-describe('Copilot Permission Engine', () => {
-  let engine: CopilotPermissionEngine;
+describe('AIAssistant Permission Engine', () => {
+  let engine: AIAssistantPermissionEngine;
 
   beforeEach(() => {
-    engine = new CopilotPermissionEngine(DEFAULT_COPILOT_CONFIGURATION);
+    engine = new AIAssistantPermissionEngine(DEFAULT_AIAssistant_CONFIGURATION);
   });
 
   it('should allow free actions for free users', () => {
@@ -335,14 +335,14 @@ describe('Copilot Permission Engine', () => {
 
 // ── Action Planner ───────────────────────────────────────────
 
-describe('Copilot Action Planner', () => {
-  let planner: CopilotActionPlanner;
-  let resolver: CopilotContextResolver;
+describe('AIAssistant Action Planner', () => {
+  let planner: AIAssistantActionPlanner;
+  let resolver: AIAssistantContextResolver;
 
   beforeEach(() => {
-    const permEngine = new CopilotPermissionEngine(DEFAULT_COPILOT_CONFIGURATION);
-    planner = new CopilotActionPlanner(DEFAULT_COPILOT_CONFIGURATION, permEngine);
-    resolver = new CopilotContextResolver();
+    const permEngine = new AIAssistantPermissionEngine(DEFAULT_AIAssistant_CONFIGURATION);
+    planner = new AIAssistantActionPlanner(DEFAULT_AIAssistant_CONFIGURATION, permEngine);
+    resolver = new AIAssistantContextResolver();
   });
 
   it('should create optimization plans', () => {
@@ -361,11 +361,11 @@ describe('Copilot Action Planner', () => {
 
 // ── Memory ───────────────────────────────────────────────────
 
-describe('Copilot Memory', () => {
-  let memory: CopilotMemory;
+describe('AIAssistant Memory', () => {
+  let memory: AIAssistantMemory;
 
   beforeEach(() => {
-    memory = new CopilotMemory();
+    memory = new AIAssistantMemory();
   });
 
   it('should store and retrieve session ID', () => {
@@ -394,11 +394,11 @@ describe('Copilot Memory', () => {
 
 // ── Session Manager ──────────────────────────────────────────
 
-describe('Copilot Session Manager', () => {
-  let manager: CopilotSessionManager;
+describe('AIAssistant Session Manager', () => {
+  let manager: AIAssistantSessionManager;
 
   beforeEach(() => {
-    manager = new CopilotSessionManager(10);
+    manager = new AIAssistantSessionManager(10);
   });
 
   it('should create sessions', () => {
@@ -434,15 +434,15 @@ describe('Copilot Session Manager', () => {
 
 // ── Analytics ────────────────────────────────────────────────
 
-describe('Copilot Analytics', () => {
-  let analytics: CopilotAnalyticsEngine;
+describe('AIAssistant Analytics', () => {
+  let analytics: AIAssistantAnalyticsEngine;
 
   beforeEach(() => {
-    analytics = new CopilotAnalyticsEngine();
+    analytics = new AIAssistantAnalyticsEngine();
   });
 
   it('should track conversations', () => {
-    const resolver = new CopilotContextResolver();
+    const resolver = new AIAssistantContextResolver();
     const ctx = resolver.resolve(createMockContextInput());
     analytics.recordConversation({
       id: 'c1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
@@ -461,11 +461,11 @@ describe('Copilot Analytics', () => {
 
 // ── Validator ────────────────────────────────────────────────
 
-describe('Copilot Validator', () => {
-  let validator: CopilotValidator;
+describe('AIAssistant Validator', () => {
+  let validator: AIAssistantValidator;
 
   beforeEach(() => {
-    validator = new CopilotValidator();
+    validator = new AIAssistantValidator();
   });
 
   it('should validate prompt', () => {
@@ -489,13 +489,13 @@ describe('Copilot Validator', () => {
   });
 });
 
-// ── CopilotManager (Integration) ─────────────────────────────
+// ── AIAssistantManager (Integration) ─────────────────────────────
 
-describe('CopilotManager', () => {
-  let manager: CopilotManager;
+describe('AIAssistantManager', () => {
+  let manager: AIAssistantManager;
 
   beforeEach(() => {
-    manager = new CopilotManager();
+    manager = new AIAssistantManager();
   });
 
   it('should process a prompt end-to-end', () => {
@@ -511,21 +511,21 @@ describe('CopilotManager', () => {
   });
 
   it('should generate suggestions via manager', () => {
-    const resolver = new CopilotContextResolver();
+    const resolver = new AIAssistantContextResolver();
     const ctx = resolver.resolve(createMockContextInput());
     const suggestions = manager.generateSuggestions('question', ctx, 'conv1');
     expect(suggestions.length).toBeGreaterThan(0);
   });
 
   it('should create action plans via manager', () => {
-    const resolver = new CopilotContextResolver();
+    const resolver = new AIAssistantContextResolver();
     const ctx = resolver.resolve(createMockContextInput());
     const plans = manager.createActionPlan('optimization', ctx, 'free');
     expect(plans.length).toBeGreaterThan(0);
   });
 
   it('should generate explanations via manager', () => {
-    const resolver = new CopilotContextResolver();
+    const resolver = new AIAssistantContextResolver();
     const ctx = resolver.resolve(createMockContextInput());
     const expl = manager.generateExplanation('health_score', ctx, null);
     expect(expl.subject).toBe('health_score');
@@ -545,36 +545,36 @@ describe('CopilotManager', () => {
   });
 
   it('should throw when disabled', () => {
-    manager.updateConfig({ featureFlags: { ...DEFAULT_COPILOT_CONFIGURATION.featureFlags, enableCopilot: false } });
+    manager.updateConfig({ featureFlags: { ...DEFAULT_AIAssistant_CONFIGURATION.featureFlags, enableAIAssistant: false } });
     expect(() => manager.processPrompt(createMockPrompt('Hello'), createMockContextInput())).toThrow();
   });
 });
 
 // ── Performance ──────────────────────────────────────────────
 
-describe('Copilot Performance', () => {
+describe('AIAssistant Performance', () => {
   it('should resolve intent within target', () => {
-    const engine = new CopilotIntentEngine(DEFAULT_COPILOT_CONFIGURATION);
+    const engine = new AIAssistantIntentEngine(DEFAULT_AIAssistant_CONFIGURATION);
     const start = Date.now();
     engine.resolve('What is my health score?');
     const elapsed = Date.now() - start;
-    expect(elapsed).toBeLessThan(DEFAULT_COPILOT_CONFIGURATION.intentResolutionTargetMs + 50);
+    expect(elapsed).toBeLessThan(DEFAULT_AIAssistant_CONFIGURATION.intentResolutionTargetMs + 50);
   });
 
   it('should process prompt within target', () => {
-    const manager = new CopilotManager();
+    const manager = new AIAssistantManager();
     const start = Date.now();
     manager.processPrompt(createMockPrompt('What is my health?'), createMockContextInput());
     const elapsed = Date.now() - start;
-    expect(elapsed).toBeLessThan(DEFAULT_COPILOT_CONFIGURATION.performanceTargetMs + 200);
+    expect(elapsed).toBeLessThan(DEFAULT_AIAssistant_CONFIGURATION.performanceTargetMs + 200);
   });
 });
 
 // ── Edge Cases ───────────────────────────────────────────────
 
-describe('Copilot Edge Cases', () => {
+describe('AIAssistant Edge Cases', () => {
   it('should handle empty context gracefully', () => {
-    const manager = new CopilotManager();
+    const manager = new AIAssistantManager();
     const result = manager.processPrompt(
       createMockPrompt('What is happening?'),
       {
@@ -587,14 +587,14 @@ describe('Copilot Edge Cases', () => {
   });
 
   it('should handle very long prompts', () => {
-    const manager = new CopilotManager();
+    const manager = new AIAssistantManager();
     const longPrompt = 'What '.repeat(1000) + 'is my health?';
     const result = manager.processPrompt(createMockPrompt(longPrompt), createMockContextInput());
     expect(result.response.answer.length).toBeGreaterThan(0);
   });
 
   it('should handle special characters', () => {
-    const manager = new CopilotManager();
+    const manager = new AIAssistantManager();
     const result = manager.processPrompt(createMockPrompt('What is <script>alert(1)</script>?'), createMockContextInput());
     expect(result.response.answer).not.toContain('<script>');
   });

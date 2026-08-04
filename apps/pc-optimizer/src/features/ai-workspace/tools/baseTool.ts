@@ -13,9 +13,9 @@ import type {
   ToolDefinition,
   ToolInput,
   ToolResult,
-  CopilotContext,
-  CopilotIntentType,
-  CopilotEvidence,
+  AIAssistantContext,
+  AIAssistantIntentType,
+  AIAssistantEvidence,
   ContextSourceType,
 } from './types';
 import { generateExecutionId, clampConfidence } from './types';
@@ -25,7 +25,7 @@ export abstract class BaseTool implements Tool {
 
   abstract execute(input: ToolInput): Promise<ToolResult>;
 
-  canHandle(intent: CopilotIntentType, context: CopilotContext): boolean {
+  canHandle(intent: AIAssistantIntentType, context: AIAssistantContext): boolean {
     if (!this.definition.supportedIntents.includes(intent)) return false;
     return this._hasRequiredContext(context);
   }
@@ -34,7 +34,7 @@ export abstract class BaseTool implements Tool {
     return this.definition.requiredContext;
   }
 
-  protected _hasRequiredContext(context: CopilotContext): boolean {
+  protected _hasRequiredContext(context: AIAssistantContext): boolean {
     for (const required of this.definition.requiredContext) {
       const source = context.sources.find((s) => s.type === required);
       if (!source || !source.available) return false;
@@ -48,7 +48,7 @@ export abstract class BaseTool implements Tool {
     value: string | number | boolean,
     description: string,
     confidence: number = 1.0,
-  ): CopilotEvidence {
+  ): AIAssistantEvidence {
     return {
       source,
       metric,
@@ -65,7 +65,7 @@ export abstract class BaseTool implements Tool {
     confidence: number,
     summary: string,
     details: Record<string, unknown>,
-    evidence: CopilotEvidence[],
+    evidence: AIAssistantEvidence[],
     recommendedActions: ToolResult['recommendedActions'],
     relatedModules: string[],
     executionTime: number,

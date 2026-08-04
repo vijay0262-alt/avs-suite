@@ -5,7 +5,7 @@
  *
  * Manages widget instances, their lifecycle, and data fetching.
  */
-import type { WidgetInstance, WidgetDefinition, WidgetData, CopilotContext, WidgetStatus } from './types';
+import type { WidgetInstance, WidgetDefinition, WidgetData, AIAssistantContext, WidgetStatus } from './types';
 import type { CommandCenterWidgetRegistry } from './commandCenterWidgetRegistry';
 
 export class CommandCenterWidgetManager {
@@ -44,7 +44,7 @@ export class CommandCenterWidgetManager {
     return true;
   }
 
-  async refreshWidget(widgetId: string, context: CopilotContext): Promise<WidgetData | null> {
+  async refreshWidget(widgetId: string, context: AIAssistantContext): Promise<WidgetData | null> {
     const instance = this._instances.get(widgetId);
     if (!instance) return null;
 
@@ -72,7 +72,7 @@ export class CommandCenterWidgetManager {
     }
   }
 
-  async refreshAll(context: CopilotContext): Promise<Map<string, WidgetData | null>> {
+  async refreshAll(context: AIAssistantContext): Promise<Map<string, WidgetData | null>> {
     const results = new Map<string, WidgetData | null>();
     for (const instance of this._instances.values()) {
       if (instance.status === 'hidden') continue;

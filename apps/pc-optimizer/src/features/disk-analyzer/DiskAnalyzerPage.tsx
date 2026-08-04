@@ -11,6 +11,16 @@ import { SharedConfirmDialog } from '../../components/SharedConfirmDialog';
 import { HelpButton } from '../../components/HelpButton';
 import { DiskAnalyzerViewModel } from './DiskAnalyzerViewModel';
 import { diskAnalyzerService } from './disk-analyzer.service';
+import { useIsPro } from '../sync/syncStore';
+import { useFeatureGuard } from '../licensing/useFeatureGuard';
+import { ProStatusPill, ProFeatureIndicator } from '../licensing/ProStatusBadge';
+import {
+  SparklesIcon,
+  ChartBarIcon,
+  ArrowTrendingUpIcon,
+  WrenchScrewdriverIcon,
+  LockClosedIcon,
+} from '@heroicons/react/24/outline';
 
 const CATEGORY_ICONS: Record<string, string> = {
   Pictures: '🖼️',
@@ -30,6 +40,8 @@ export default function DiskAnalyzerPage() {
   const state = useViewModel(vm);
   const [maxDepth, setMaxDepth] = useState(2);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const isPro = useIsPro();
+  const { guard, dialogElement } = useFeatureGuard();
 
   useEffect(() => {
     void vm.bootstrap();
@@ -446,8 +458,167 @@ export default function DiskAnalyzerPage() {
               </Card>
             </>
           )}
+
+          {/* Professional Features */}
+          {state.analysisResult && !state.analyzing && (
+            <div className="mt-8">
+              <Card title="Professional Features" variant="glass">
+                <div className="space-y-4">
+                  {/* AI Storage Insights */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
+                        <SparklesIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-text-primary">AI Storage Insights</span>
+                          {!isPro && <ProStatusPill />}
+                          {isPro && <ProFeatureIndicator icon={SparklesIcon} label="AI-Powered" />}
+                        </div>
+                        <p className="mt-0.5 text-xs text-text-secondary">
+                          AI analyzes your disk usage patterns and provides personalized insights — identifies space hogs, unusual file distributions, and optimization opportunities with evidence-based recommendations.
+                        </p>
+                      </div>
+                    </div>
+                    {isPro ? (
+                      <Button variant="secondary" size="sm" leftIcon={<SparklesIcon className="h-4 w-4" />}>
+                        Get Insights
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        leftIcon={<LockClosedIcon className="h-4 w-4" />}
+                        onClick={() => guard('disk.analyzer', 'Disk Analyzer', () => {}, {
+                          limitDescription: 'AI storage insights are a Professional feature.',
+                          proBenefit: 'AI-powered disk usage analysis with personalized recommendations.',
+                        })}
+                        data-testid="disk-ai-insights-upgrade"
+                      >
+                        Upgrade to Unlock
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Growth Trends */}
+                  <div className="flex items-start justify-between border-t border-[var(--avs-border)] pt-4">
+                    <div className="flex items-start gap-3">
+                      <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
+                        <ChartBarIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-text-primary">Growth Trends</span>
+                          {!isPro && <ProStatusPill />}
+                          {isPro && <ProFeatureIndicator icon={ChartBarIcon} label="Tracked" />}
+                        </div>
+                        <p className="mt-0.5 text-xs text-text-secondary">
+                          Tracks disk usage over time and visualizes growth trends. See which directories and file types are growing fastest, and when space was consumed.
+                        </p>
+                      </div>
+                    </div>
+                    {isPro ? (
+                      <Button variant="secondary" size="sm" leftIcon={<ChartBarIcon className="h-4 w-4" />}>
+                        View Trends
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        leftIcon={<LockClosedIcon className="h-4 w-4" />}
+                        onClick={() => guard('disk.analyzer', 'Disk Analyzer', () => {}, {
+                          limitDescription: 'Growth trends are a Professional feature.',
+                          proBenefit: 'Track disk usage over time with visual growth trend charts.',
+                        })}
+                        data-testid="disk-growth-trends-upgrade"
+                      >
+                        Upgrade to Unlock
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Forecasting */}
+                  <div className="flex items-start justify-between border-t border-[var(--avs-border)] pt-4">
+                    <div className="flex items-start gap-3">
+                      <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
+                        <ArrowTrendingUpIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-text-primary">Forecasting</span>
+                          {!isPro && <ProStatusPill />}
+                          {isPro && <ProFeatureIndicator icon={ArrowTrendingUpIcon} label="Predictive" />}
+                        </div>
+                        <p className="mt-0.5 text-xs text-text-secondary">
+                          Predicts when your disk will run out of space based on current growth trends. Forecasts future storage needs and recommends proactive cleanup actions.
+                        </p>
+                      </div>
+                    </div>
+                    {isPro ? (
+                      <Button variant="secondary" size="sm" leftIcon={<ArrowTrendingUpIcon className="h-4 w-4" />}>
+                        View Forecast
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        leftIcon={<LockClosedIcon className="h-4 w-4" />}
+                        onClick={() => guard('disk.analyzer', 'Disk Analyzer', () => {}, {
+                          limitDescription: 'Forecasting is a Professional feature.',
+                          proBenefit: 'Predict disk space exhaustion with trend-based forecasting.',
+                        })}
+                        data-testid="disk-forecasting-upgrade"
+                      >
+                        Upgrade to Unlock
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Cleanup Suggestions */}
+                  <div className="flex items-start justify-between border-t border-[var(--avs-border)] pt-4">
+                    <div className="flex items-start gap-3">
+                      <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
+                        <WrenchScrewdriverIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-text-primary">Cleanup Suggestions</span>
+                          {!isPro && <ProStatusPill />}
+                          {isPro && <ProFeatureIndicator icon={WrenchScrewdriverIcon} label="Smart" />}
+                        </div>
+                        <p className="mt-0.5 text-xs text-text-secondary">
+                          AI-powered cleanup recommendations — identifies safe-to-delete files, old caches, temporary files, and large unused files. Provides confidence scores and evidence for each suggestion.
+                        </p>
+                      </div>
+                    </div>
+                    {isPro ? (
+                      <Button variant="secondary" size="sm" leftIcon={<WrenchScrewdriverIcon className="h-4 w-4" />}>
+                        Get Suggestions
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        leftIcon={<LockClosedIcon className="h-4 w-4" />}
+                        onClick={() => guard('disk.analyzer', 'Disk Analyzer', () => {}, {
+                          limitDescription: 'Cleanup suggestions are a Professional feature.',
+                          proBenefit: 'AI-powered cleanup recommendations with confidence scores.',
+                        })}
+                        data-testid="disk-cleanup-suggestions-upgrade"
+                      >
+                        Upgrade to Unlock
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
         </>
       )}
+
+      {dialogElement}
 
       <SharedConfirmDialog
         open={confirmDelete}

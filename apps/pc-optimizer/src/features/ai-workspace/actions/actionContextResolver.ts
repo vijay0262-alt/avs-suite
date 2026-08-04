@@ -3,22 +3,22 @@
  *
  * EPIC 5 PHASE A PART 4
  *
- * Resolves CopilotContext for action planning.
+ * Resolves AIAssistantContext for action planning.
  * Reuses existing AI context — does NOT create new context.
  */
-import type { CopilotContext, ClassifiedIntent, ExtractedEntity } from './types';
+import type { AIAssistantContext, ClassifiedIntent, ExtractedEntity } from './types';
 
 export interface ResolvedActionContext {
-  context: CopilotContext;
+  context: AIAssistantContext;
   relevantEntities: ExtractedEntity[];
   missingEntities: string[];
   futureMetadata: Record<string, unknown>;
 }
 
 export class ActionContextResolver {
-  private _contextProvider: (() => CopilotContext) | null = null;
+  private _contextProvider: (() => AIAssistantContext) | null = null;
 
-  setContextProvider(provider: () => CopilotContext): void {
+  setContextProvider(provider: () => AIAssistantContext): void {
     this._contextProvider = provider;
   }
 
@@ -49,7 +49,7 @@ export class ActionContextResolver {
     return entities;
   }
 
-  private _findMissingEntities(intent: ClassifiedIntent, context: CopilotContext): string[] {
+  private _findMissingEntities(intent: ClassifiedIntent, context: AIAssistantContext): string[] {
     const missing: string[] = [];
 
     if (intent.intent === 'optimization' && context.healthScore === null) {
@@ -65,7 +65,7 @@ export class ActionContextResolver {
     return missing;
   }
 
-  private _createEmptyContext(): CopilotContext {
+  private _createEmptyContext(): AIAssistantContext {
     return {
       sources: [],
       healthScore: null,
@@ -79,6 +79,6 @@ export class ActionContextResolver {
       recoveryHistory: [],
       userPreferences: {},
       futureMetadata: {},
-    } as CopilotContext;
+    } as AIAssistantContext;
   }
 }

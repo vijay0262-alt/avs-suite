@@ -6,8 +6,8 @@
  * Manages the overall dashboard state including layout,
  * widget instances, view model, loading state, and search.
  */
-import type { DashboardState, DashboardLayout, WidgetInstance, CommandCenterViewModel, SearchResult, SearchQuery, CopilotContext } from './types';
-import type { CopilotSuggestion, CopilotActionPlan } from '../copilot/types';
+import type { DashboardState, DashboardLayout, WidgetInstance, CommandCenterViewModel, SearchResult, SearchQuery, AIAssistantContext } from './types';
+import type { AIAssistantSuggestion, AIAssistantActionPlan } from '../AIAssistant/types';
 import type { CommandCenterLayoutEngine } from './commandCenterLayoutEngine';
 import type { CommandCenterWidgetManager } from './commandCenterWidgetManager';
 import type { CommandCenterViewModelEngine } from './commandCenterViewModel';
@@ -67,7 +67,7 @@ export class CommandCenterStateManager {
     this._state.lastUpdatedAt = new Date().toISOString();
   }
 
-  updateViewModel(context: CopilotContext, suggestions: CopilotSuggestion[] = [], actions: CopilotActionPlan[] = []): CommandCenterViewModel {
+  updateViewModel(context: AIAssistantContext, suggestions: AIAssistantSuggestion[] = [], actions: AIAssistantActionPlan[] = []): CommandCenterViewModel {
     const vm = this._viewModelEngine.build(context, suggestions, actions);
     this._state.viewModel = vm;
     this._state.lastUpdatedAt = new Date().toISOString();

@@ -25,7 +25,7 @@ import { useNavigate } from 'react-router-dom';
 
 const QUICK_LINKS = [
   { label: 'Run a Health Scan', path: '/dashboard', icon: ShieldCheckIcon, description: 'Analyze your PC health with AI' },
-  { label: 'Open AI Copilot', path: '/ai-copilot', icon: ChatBubbleLeftRightIcon, description: 'Ask questions about your PC' },
+  { label: 'Open AVS AI Assistant', path: '/ai-AIAssistant', icon: ChatBubbleLeftRightIcon, description: 'Ask questions about your PC' },
   { label: 'Run Smart Optimize', path: '/ai-smart-optimize', icon: BoltIcon, description: 'Optimize your PC with AI recommendations' },
   { label: 'View Hardware Info', path: '/hardware-center', icon: CpuChipIcon, description: 'Check hardware health and status' },
 ];
@@ -49,7 +49,7 @@ const FAQS = [
   },
   {
     q: 'What\'s the difference between FREE and PRO?',
-    a: 'FREE includes basic scanning, dashboard, and AI Copilot. PRO adds Smart Optimization, Predictive Health, Advanced Security, Export Center, and more.',
+    a: 'FREE includes basic scanning, dashboard, and AVS AI Assistant. PRO adds Smart Optimization, Predictive Health, Advanced Security, Export Center, and more.',
   },
   {
     q: 'How do I restore quarantined files?',

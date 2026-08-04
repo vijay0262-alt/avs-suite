@@ -7,7 +7,7 @@
  * Enterprise Policies, Feature Flags, Safety Policies.
  * Does NOT modify Authentication or Licensing modules.
  */
-import type { ToolConfiguration, ToolPermissionResult, ToolPermissionRule, PermissionLevel, CopilotCapability } from './types';
+import type { ToolConfiguration, ToolPermissionResult, ToolPermissionRule, PermissionLevel, AIAssistantCapability } from './types';
 import type { ToolDefinition } from './types';
 
 const LEVEL_HIERARCHY: PermissionLevel[] = ['guest', 'free', 'pro', 'enterprise', 'future_level'];
@@ -26,7 +26,7 @@ export class ToolPermissionEngine {
   check(
     tool: ToolDefinition,
     currentLevel: PermissionLevel,
-    userCapabilities: CopilotCapability[],
+    userCapabilities: AIAssistantCapability[],
   ): ToolPermissionResult {
     const rule = this._findRule(tool.id);
     const requiredLevel = rule?.requiredLevel ?? tool.requiredPermissions;

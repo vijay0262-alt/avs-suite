@@ -5,12 +5,12 @@
  *
  * Provider-independent AI Tool Framework.
  * Every AI capability is exposed as a discoverable tool.
- * The Copilot communicates through tools instead of directly
+ * The AIAssistant communicates through tools instead of directly
  * calling business managers.
  *
  * Architecture:
  *   User Prompt → Intent Engine → Tool Resolver → Tool Registry →
- *   Selected Tool → Business Modules → Tool Result → Copilot Response
+ *   Selected Tool → Business Modules → Tool Result → AIAssistant Response
  */
 
 // Manager

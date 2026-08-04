@@ -12,18 +12,18 @@
  *   Goals → Reports → Interactive Report → Export
  */
 
-// ── Re-export Copilot types ───────────────────────────────────
+// ── Re-export AIAssistant types ───────────────────────────────────
 
 export type {
-  CopilotContext,
-  CopilotEvidence,
+  AIAssistantContext,
+  AIAssistantEvidence,
   PermissionLevel,
-} from '../copilot/types';
+} from '../AIAssistant/types';
 
 import type {
-  CopilotEvidence,
+  AIAssistantEvidence,
   PermissionLevel,
-} from '../copilot/types';
+} from '../AIAssistant/types';
 
 // ── Report Types ──────────────────────────────────────────────
 
@@ -287,7 +287,7 @@ export interface ReportInsight {
   type: InsightType;
   title: string;
   description: string;
-  evidence: CopilotEvidence[];
+  evidence: AIAssistantEvidence[];
   confidence: number;
   severity: 'info' | 'warning' | 'critical' | 'positive';
   futureMetadata: Record<string, unknown>;

@@ -604,7 +604,7 @@ function ProtectionComponentCard({ provider }: { provider: SecurityProviderInfo 
     error: { color: 'text-[var(--avs-danger)]', bg: 'bg-[var(--avs-danger)]/10', label: 'Error' },
     disabled: { color: 'text-[var(--avs-text-muted)]', bg: 'bg-[var(--avs-surface-muted)]', label: 'Disabled' },
   };
-  const cfg = statusConfig[provider.status] ?? statusConfig.inactive;
+  const cfg = statusConfig[provider.status] ?? statusConfig.inactive ?? { color: 'text-[var(--avs-text-muted)]', bg: 'bg-[var(--avs-surface-muted)]', label: 'Unknown' };
   const providerIcons: Record<string, typeof ShieldCheckIcon> = {
     behavior: EyeIcon,
     signature: ShieldCheckIcon,

@@ -1,5 +1,5 @@
 /**
- * AI Copilot Platform — Intent Engine
+ * AVS AI Assistant Platform — Intent Engine
  *
  * EPIC 5 PHASE A PART 1
  *
@@ -8,29 +8,29 @@
  * Every resolution is deterministic and explainable.
  */
 import type {
-  CopilotConfiguration,
+  AIAssistantConfiguration,
   IntentDefinition,
   IntentResolutionResult,
   AlternativeIntent,
-  CopilotIntentType,
-  CopilotCapability,
-  CopilotProviderPlugin,
+  AIAssistantIntentType,
+  AIAssistantCapability,
+  AIAssistantProviderPlugin,
 } from './types';
 import { clampConfidence } from './types';
 
-export class CopilotIntentEngine {
-  private _config: CopilotConfiguration;
-  private _plugins: CopilotProviderPlugin[] = [];
+export class AIAssistantIntentEngine {
+  private _config: AIAssistantConfiguration;
+  private _plugins: AIAssistantProviderPlugin[] = [];
 
-  constructor(config: CopilotConfiguration) {
+  constructor(config: AIAssistantConfiguration) {
     this._config = config;
   }
 
-  updateConfig(config: CopilotConfiguration): void {
+  updateConfig(config: AIAssistantConfiguration): void {
     this._config = config;
   }
 
-  registerPlugin(plugin: CopilotProviderPlugin): void {
+  registerPlugin(plugin: AIAssistantProviderPlugin): void {
     this._plugins.push(plugin);
     this._plugins.sort((a, b) => a.getPriority() - b.getPriority());
   }
@@ -113,7 +113,7 @@ export class CopilotIntentEngine {
     };
   }
 
-  getIntentDefinition(intent: CopilotIntentType): IntentDefinition | null {
+  getIntentDefinition(intent: AIAssistantIntentType): IntentDefinition | null {
     return this._config.intentDefinitions.definitions.find((d) => d.type === intent) ?? null;
   }
 
@@ -121,7 +121,7 @@ export class CopilotIntentEngine {
     return this._config.intentDefinitions.definitions;
   }
 
-  getCapabilitiesForIntent(intent: CopilotIntentType): CopilotCapability[] {
+  getCapabilitiesForIntent(intent: AIAssistantIntentType): AIAssistantCapability[] {
     const def = this.getIntentDefinition(intent);
     return def?.capabilities ?? ['answer_questions'];
   }

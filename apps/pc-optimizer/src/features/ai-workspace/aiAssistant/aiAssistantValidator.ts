@@ -1,28 +1,28 @@
 /**
- * AI Copilot Platform — Validator
+ * AVS AI Assistant Platform — Validator
  *
  * EPIC 5 PHASE A PART 1
  *
- * Validates Copilot conversations, responses, suggestions, and action plans.
+ * Validates AIAssistant conversations, responses, suggestions, and action plans.
  * Ensures structural integrity and evidence-based requirements.
  */
 import type {
-  CopilotValidationResult,
-  CopilotValidationError,
-  CopilotValidationWarning,
-  CopilotConversation,
-  CopilotResponse,
-  CopilotSuggestion,
-  CopilotActionPlan,
-  CopilotContext,
-  CopilotPromptInput,
+  AIAssistantValidationResult,
+  AIAssistantValidationError,
+  AIAssistantValidationWarning,
+  AIAssistantConversation,
+  AIAssistantResponse,
+  AIAssistantSuggestion,
+  AIAssistantActionPlan,
+  AIAssistantContext,
+  AIAssistantPromptInput,
 } from './types';
 import { clampConfidence } from './types';
 
-export class CopilotValidator {
-  validatePrompt(input: CopilotPromptInput): CopilotValidationResult {
-    const errors: CopilotValidationError[] = [];
-    const warnings: CopilotValidationWarning[] = [];
+export class AIAssistantValidator {
+  validatePrompt(input: AIAssistantPromptInput): AIAssistantValidationResult {
+    const errors: AIAssistantValidationError[] = [];
+    const warnings: AIAssistantValidationWarning[] = [];
 
     if (!input.prompt || input.prompt.trim().length === 0) {
       errors.push({ code: 'EMPTY_PROMPT', message: 'Prompt cannot be empty', field: 'prompt' });
@@ -39,9 +39,9 @@ export class CopilotValidator {
     return { valid: errors.length === 0, errors, warnings, futureMetadata: {} };
   }
 
-  validateConversation(conversation: CopilotConversation): CopilotValidationResult {
-    const errors: CopilotValidationError[] = [];
-    const warnings: CopilotValidationWarning[] = [];
+  validateConversation(conversation: AIAssistantConversation): AIAssistantValidationResult {
+    const errors: AIAssistantValidationError[] = [];
+    const warnings: AIAssistantValidationWarning[] = [];
 
     if (!conversation.id) {
       errors.push({ code: 'NO_ID', message: 'Conversation ID is required', field: 'id' });
@@ -66,9 +66,9 @@ export class CopilotValidator {
     return { valid: errors.length === 0, errors, warnings, futureMetadata: {} };
   }
 
-  validateResponse(response: CopilotResponse): CopilotValidationResult {
-    const errors: CopilotValidationError[] = [];
-    const warnings: CopilotValidationWarning[] = [];
+  validateResponse(response: AIAssistantResponse): AIAssistantValidationResult {
+    const errors: AIAssistantValidationError[] = [];
+    const warnings: AIAssistantValidationWarning[] = [];
 
     if (!response.id) {
       errors.push({ code: 'NO_ID', message: 'Response ID is required', field: 'id' });
@@ -93,9 +93,9 @@ export class CopilotValidator {
     return { valid: errors.length === 0, errors, warnings, futureMetadata: {} };
   }
 
-  validateSuggestion(suggestion: CopilotSuggestion): CopilotValidationResult {
-    const errors: CopilotValidationError[] = [];
-    const warnings: CopilotValidationWarning[] = [];
+  validateSuggestion(suggestion: AIAssistantSuggestion): AIAssistantValidationResult {
+    const errors: AIAssistantValidationError[] = [];
+    const warnings: AIAssistantValidationWarning[] = [];
 
     if (!suggestion.id) {
       errors.push({ code: 'NO_ID', message: 'Suggestion ID is required', field: 'id' });
@@ -116,9 +116,9 @@ export class CopilotValidator {
     return { valid: errors.length === 0, errors, warnings, futureMetadata: {} };
   }
 
-  validateActionPlan(plan: CopilotActionPlan): CopilotValidationResult {
-    const errors: CopilotValidationError[] = [];
-    const warnings: CopilotValidationWarning[] = [];
+  validateActionPlan(plan: AIAssistantActionPlan): AIAssistantValidationResult {
+    const errors: AIAssistantValidationError[] = [];
+    const warnings: AIAssistantValidationWarning[] = [];
 
     if (!plan.id) {
       errors.push({ code: 'NO_ID', message: 'Action plan ID is required', field: 'id' });
@@ -139,9 +139,9 @@ export class CopilotValidator {
     return { valid: errors.length === 0, errors, warnings, futureMetadata: {} };
   }
 
-  validateContext(context: CopilotContext): CopilotValidationResult {
-    const errors: CopilotValidationError[] = [];
-    const warnings: CopilotValidationWarning[] = [];
+  validateContext(context: AIAssistantContext): AIAssistantValidationResult {
+    const errors: AIAssistantValidationError[] = [];
+    const warnings: AIAssistantValidationWarning[] = [];
 
     for (const source of context.sources) {
       if (source.confidence < 0 || source.confidence > 1) {

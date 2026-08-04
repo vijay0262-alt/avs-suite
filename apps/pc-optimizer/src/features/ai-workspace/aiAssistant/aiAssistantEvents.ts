@@ -1,27 +1,27 @@
 /**
- * AI Copilot Platform — Events
+ * AVS AI Assistant Platform — Events
  *
  * EPIC 5 PHASE A PART 1
  *
- * Typed event emitter for Copilot lifecycle events.
+ * Typed event emitter for AIAssistant lifecycle events.
  */
-import type { CopilotEvent, CopilotEventListener, CopilotEventType } from './types';
+import type { AIAssistantEvent, AIAssistantEventListener, AIAssistantEventType } from './types';
 
-export class CopilotEvents {
-  private _listeners: Map<CopilotEventType, Set<CopilotEventListener>> = new Map();
+export class AIAssistantEvents {
+  private _listeners: Map<AIAssistantEventType, Set<AIAssistantEventListener>> = new Map();
 
-  on(type: CopilotEventType, listener: CopilotEventListener): void {
+  on(type: AIAssistantEventType, listener: AIAssistantEventListener): void {
     if (!this._listeners.has(type)) {
       this._listeners.set(type, new Set());
     }
     this._listeners.get(type)!.add(listener);
   }
 
-  off(type: CopilotEventType, listener: CopilotEventListener): void {
+  off(type: AIAssistantEventType, listener: AIAssistantEventListener): void {
     this._listeners.get(type)?.delete(listener);
   }
 
-  emit(event: CopilotEvent): void {
+  emit(event: AIAssistantEvent): void {
     const listeners = this._listeners.get(event.type);
     if (listeners) {
       for (const listener of listeners) {
@@ -38,11 +38,11 @@ export class CopilotEvents {
     this._listeners.clear();
   }
 
-  removeListenersForType(type: CopilotEventType): void {
+  removeListenersForType(type: AIAssistantEventType): void {
     this._listeners.delete(type);
   }
 
-  listenerCount(type?: CopilotEventType): number {
+  listenerCount(type?: AIAssistantEventType): number {
     if (type) {
       return this._listeners.get(type)?.size ?? 0;
     }
@@ -54,4 +54,4 @@ export class CopilotEvents {
   }
 }
 
-export const copilotEvents = new CopilotEvents();
+export const aiAssistantEvents = new AIAssistantEvents();

@@ -22,8 +22,8 @@ describe('Edition Matrix', () => {
       expect(isFeatureEnabled('SYSTEM_INFO', edition)).toBe(true);
     });
 
-    it('denies Disk Analyzer in Free edition', () => {
-      expect(isFeatureEnabled('DISK_ANALYZER', edition)).toBe(false);
+    it('grants Disk Analyzer in Free edition (full analysis)', () => {
+      expect(isFeatureEnabled('DISK_ANALYZER', edition)).toBe(true);
     });
 
     it('grants Junk Cleaner Basic (scan, preview, clean)', () => {
@@ -50,9 +50,9 @@ describe('Edition Matrix', () => {
       expect(isFeatureEnabled('PRIVACY_CLEAN', edition)).toBe(false);
     });
 
-    it('denies Duplicate Scan and Duplicate Delete', () => {
-      expect(isFeatureEnabled('DUPLICATE_SCAN', edition)).toBe(false);
-      expect(isFeatureEnabled('DUPLICATE_DELETE', edition)).toBe(false);
+    it('grants Duplicate Scan and Duplicate Delete in Free (with 20-file limit)', () => {
+      expect(isFeatureEnabled('DUPLICATE_SCAN', edition)).toBe(true);
+      expect(isFeatureEnabled('DUPLICATE_DELETE', edition)).toBe(true);
     });
 
     it('denies Uninstaller View, Standard, and Deep', () => {

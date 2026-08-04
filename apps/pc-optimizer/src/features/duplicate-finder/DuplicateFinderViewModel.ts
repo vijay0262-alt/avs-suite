@@ -7,6 +7,10 @@ import type { DuplicateFile, DuplicateScope, DuplicateFinderState } from './dupl
 import type { IDuplicateFinderService } from './duplicate-finder.service';
 import { duplicateFinderService } from './duplicate-finder.service';
 import { optimizationEventBus, OptimizationEventType } from '../health';
+import { currentEdition, canUse } from '../licensing/FeatureGate';
+import { getEditionLimit } from '../licensing/editionLimits';
+
+const FREE_DELETE_LIMIT = 20;
 
 export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
   constructor(private service: IDuplicateFinderService = duplicateFinderService) {
@@ -84,9 +88,19 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
       return;
     }
 
+    // Enforce Free edition limit: max 20 files per session
+    const isFree = currentEdition() === 'free';
+    const hasUnlimited = canUse('duplicate.delete');
+    const filesToDelete = this.getFilesToDelete();
+    if (isFree && !hasUnlimited && filesToDelete.length > FREE_DELETE_LIMIT) {
+      this.setState({
+        deleteError: `Free edition allows deleting up to ${FREE_DELETE_LIMIT} duplicate files per session. Upgrade to Professional for unlimited deletion.`,
+      });
+      return;
+    }
+
     this.setState({ deleting: true, deleteResult: null, deleteError: null });
     try {
-      const filesToDelete = this.getFilesToDelete();
       const result = await this.service.delete(filesToDelete);
       this.setState({ deleteResult: result, deleting: false });
       
@@ -124,16 +138,25 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
     if (newSelected.has(filePath)) {
       newSelected.delete(filePath);
     } else {
+      // Enforce Free edition limit on selection
+      const isFree = currentEdition() === 'free';
+      const hasUnlimited = canUse('duplicate.delete');
+      if (isFree && !hasUnlimited && newSelected.size >= FREE_DELETE_LIMIT) {
+        this.setState({
+          deleteError: `Free edition allows selecting up to ${FREE_DELETE_LIMIT} files. Upgrade to Professional for unlimited deletion.`,
+        });
+        return;
+      }
       newSelected.add(filePath);
     }
-    this.setState({ selectedFiles: newSelected });
+    this.setState({ selectedFiles: newSelected, deleteError: null });
   }
 
   selectAllFiles() {
     if (!this.state.scanResult) {
       return;
     }
-    
+
     const allFiles = new Set<string>();
     for (const group of this.state.scanResult.groups) {
       // Keep the first file in each group (the original), select the rest
@@ -143,6 +166,21 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
           allFiles.add(file.path);
         }
       }
+    }
+    // Enforce Free edition limit on select all
+    const isFree = currentEdition() === 'free';
+    const hasUnlimited = canUse('duplicate.delete');
+    if (isFree && !hasUnlimited && allFiles.size > FREE_DELETE_LIMIT) {
+      // Only select up to the limit
+      const limited = new Set<string>();
+      let count = 0;
+      for (const path of allFiles) {
+        if (count >= FREE_DELETE_LIMIT) break;
+        limited.add(path);
+        count++;
+      }
+      this.setState({ selectedFiles: limited });
+      return;
     }
     this.setState({ selectedFiles: allFiles });
   }
@@ -155,22 +193,31 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
     if (!this.state.scanResult) {
       return;
     }
-    
+
     const group = this.state.scanResult.groups[groupIndex];
     if (!group) {
       return;
     }
-    
+
     const newSelected = new Set(this.state.selectedFiles);
-    
+
     // Keep the first file (the original), select the rest
     for (let i = 1; i < group.files.length; i++) {
       const file = group.files[i];
       if (file && file.path) {
+        // Enforce Free edition limit
+        const isFree = currentEdition() === 'free';
+        const hasUnlimited = canUse('duplicate.delete');
+        if (isFree && !hasUnlimited && newSelected.size >= FREE_DELETE_LIMIT) {
+          this.setState({
+            deleteError: `Free edition allows selecting up to ${FREE_DELETE_LIMIT} files. Upgrade to Professional for unlimited deletion.`,
+          });
+          break;
+        }
         newSelected.add(file.path);
       }
     }
-    
+
     this.setState({ selectedFiles: newSelected });
   }
 
@@ -217,6 +264,32 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
 
   getSelectedCount(): number {
     return this.state.selectedFiles.size;
+  }
+
+  /**
+   * Returns the maximum number of files that can be deleted in the current edition.
+   * Returns null for unlimited (Professional).
+   */
+  getDeleteLimit(): number | null {
+    return getEditionLimit('duplicateFinderFilesPerRun', currentEdition() === 'professional');
+  }
+
+  /**
+   * Remaining deletions available (Free edition only).
+   * Returns null for unlimited (Professional).
+   */
+  remainingDeletes(): number | null {
+    const limit = this.getDeleteLimit();
+    if (limit === null) return null;
+    return Math.max(0, limit - this.state.selectedFiles.size);
+  }
+
+  /**
+   * Whether the delete limit has been reached (Free edition only).
+   */
+  isDeleteLimitReached(): boolean {
+    const remaining = this.remainingDeletes();
+    return remaining !== null && remaining === 0;
   }
 
   getSelectedSize(): number {

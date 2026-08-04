@@ -11,12 +11,26 @@ import { HelpButton } from '../../components/HelpButton';
 import { DuplicateFinderViewModel } from './DuplicateFinderViewModel';
 import { duplicateFinderService } from './duplicate-finder.service';
 import type { DuplicateScope } from './duplicate-finder.types';
+import { useIsPro } from '../sync/syncStore';
 import { useFeatureGuard } from '../licensing/useFeatureGuard';
+import { useEditionLimits } from '../licensing/editionLimits';
+import { ProStatusPill, ProFeatureIndicator } from '../licensing/ProStatusBadge';
+import {
+  SparklesIcon,
+  Squares2X2Icon,
+  LockClosedIcon,
+  ClockIcon,
+} from '@heroicons/react/24/outline';
 
 export default function DuplicateFinderPage() {
   const vm = useMemo(() => new DuplicateFinderViewModel(duplicateFinderService), []);
   const state = useViewModel(vm);
   const { guard, dialogElement } = useFeatureGuard();
+  const isPro = useIsPro();
+  const limits = useEditionLimits();
+  const deleteLimit = limits.getLimit('duplicateFinderFilesPerRun');
+  const remainingDeletes = vm.remainingDeletes();
+  const limitReached = vm.isDeleteLimitReached();
 
   useEffect(() => {
     void vm.bootstrap();
@@ -28,6 +42,13 @@ export default function DuplicateFinderPage() {
   };
 
   const handleDelete = () => {
+    if (limitReached) {
+      guard('duplicate.delete', 'Duplicate Finder', () => {}, {
+        limitDescription: `Free edition allows deleting up to ${deleteLimit} duplicate files per session.`,
+        proBenefit: 'Unlimited deletion + smart duplicate detection + automatic grouping.',
+      });
+      return;
+    }
     guard('duplicate.delete', 'Duplicate Finder', () => vm.delete());
   };
 
@@ -227,6 +248,40 @@ export default function DuplicateFinderPage() {
                 </Card>
               </div>
 
+              {/* Free edition limit banner */}
+              {!isPro && state.scanResult.totalDuplicates > 0 && (
+                <div
+                  className={`mb-4 rounded-[var(--avs-radius-md)] border px-4 py-3 ${
+                    limitReached
+                      ? 'border-semantic-warning/30 bg-semantic-warning/10'
+                      : 'border-[var(--avs-border)] bg-[var(--avs-surface-muted)]'
+                  }`}
+                  data-testid="duplicate-free-limit-banner"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ClockIcon className="h-4 w-4 text-text-secondary shrink-0" />
+                      <span className="text-xs text-text-secondary">
+                        Free edition: <strong className="text-text-primary">{vm.getSelectedCount()} of {deleteLimit}</strong> files selected for deletion
+                        {remainingDeletes !== null && remainingDeletes > 0 && ` (${remainingDeletes} remaining)`}
+                      </span>
+                    </div>
+                    {limitReached && (
+                      <button
+                        onClick={() => guard('duplicate.delete', 'Duplicate Finder', () => {}, {
+                          limitDescription: `Free edition allows deleting up to ${deleteLimit} duplicate files per session.`,
+                          proBenefit: 'Unlimited deletion + smart duplicate detection + automatic grouping.',
+                        })}
+                        className="text-xs font-medium text-brand-primary hover:underline"
+                        data-testid="duplicate-upgrade-link"
+                      >
+                        Upgrade to Pro →
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-text-primary">Duplicate Groups</h2>
                 <div className="flex gap-2">
@@ -323,6 +378,107 @@ export default function DuplicateFinderPage() {
                   testId="duplicate-finder-delete-result"
                 />
               )}
+
+              {/* Professional Features */}
+              <div className="mt-8">
+                <Card title="Professional Features" variant="glass">
+                  <div className="space-y-4">
+                    {/* Smart Duplicate Detection */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
+                          <SparklesIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-text-primary">Smart Duplicate Detection</span>
+                            {!isPro && <ProStatusPill />}
+                            {isPro && <ProFeatureIndicator icon={SparklesIcon} label="AI-Powered" />}
+                          </div>
+                          <p className="mt-0.5 text-xs text-text-secondary">
+                            AI-powered analysis identifies near-duplicates by content similarity, not just exact hash matches. Detects similar images, documents with minor changes, and redundant backups.
+                          </p>
+                        </div>
+                      </div>
+                      {isPro ? (
+                        <Button variant="secondary" size="sm" leftIcon={<SparklesIcon className="h-4 w-4" />}>
+                          Run Smart Scan
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          leftIcon={<LockClosedIcon className="h-4 w-4" />}
+                          onClick={() => guard('duplicate.delete', 'Duplicate Finder', () => {}, {
+                            limitDescription: 'Smart duplicate detection is a Professional feature.',
+                            proBenefit: 'AI-powered near-duplicate detection with content similarity analysis.',
+                          })}
+                          data-testid="duplicate-smart-detection-upgrade"
+                        >
+                          Upgrade to Unlock
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Automatic Grouping */}
+                    <div className="flex items-start justify-between border-t border-[var(--avs-border)] pt-4">
+                      <div className="flex items-start gap-3">
+                        <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
+                          <Squares2X2Icon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-text-primary">Automatic Grouping</span>
+                            {!isPro && <ProStatusPill />}
+                            {isPro && <ProFeatureIndicator icon={Squares2X2Icon} label="Auto" />}
+                          </div>
+                          <p className="mt-0.5 text-xs text-text-secondary">
+                            Automatically groups duplicates by file type, size range, and date. Recommends which files to keep and which to delete based on location, recency, and file integrity.
+                          </p>
+                        </div>
+                      </div>
+                      {isPro ? (
+                        <Button variant="secondary" size="sm" leftIcon={<Squares2X2Icon className="h-4 w-4" />}>
+                          Auto-Group
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          leftIcon={<LockClosedIcon className="h-4 w-4" />}
+                          onClick={() => guard('duplicate.delete', 'Duplicate Finder', () => {}, {
+                            limitDescription: 'Automatic grouping is a Professional feature.',
+                            proBenefit: 'Smart grouping with keep/delete recommendations.',
+                          })}
+                          data-testid="duplicate-auto-grouping-upgrade"
+                        >
+                          Upgrade to Unlock
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Unlimited Deletion */}
+                    <div className="flex items-start justify-between border-t border-[var(--avs-border)] pt-4">
+                      <div className="flex items-start gap-3">
+                        <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
+                          <ClockIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-text-primary">Unlimited Deletion</span>
+                            {isPro && <ProFeatureIndicator icon={ClockIcon} label="Unlimited" />}
+                          </div>
+                          <p className="mt-0.5 text-xs text-text-secondary">
+                            {isPro
+                              ? 'Delete unlimited duplicate files with no session limits.'
+                              : `Free edition: delete up to ${deleteLimit} files per session. Upgrade for unlimited deletion.`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </div>
             </>
           )}
         </>

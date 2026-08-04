@@ -1,87 +1,87 @@
 /**
- * AI Copilot Platform — Copilot Manager
+ * AVS AI Assistant Platform — AIAssistant Manager
  *
  * EPIC 5 PHASE A PART 1
  *
- * The main public API facade for the AI Copilot.
- * Orchestrates all Copilot engines and provides the public interface:
+ * The main public API facade for the AVS AI Assistant.
+ * Orchestrates all AIAssistant engines and provides the public interface:
  *   processPrompt(), resolveIntent(), generateResponse(),
  *   generateSuggestions(), createActionPlan(),
  *   getConversationHistory(), clearConversation()
  *
- * The Copilot MUST NOT execute optimizations directly.
- * The Copilot MUST NOT duplicate existing business logic.
- * The Copilot ONLY orchestrates and presents existing AI module outputs.
+ * The AIAssistant MUST NOT execute optimizations directly.
+ * The AIAssistant MUST NOT duplicate existing business logic.
+ * The AIAssistant ONLY orchestrates and presents existing AI module outputs.
  */
 import type {
-  CopilotConfiguration,
-  CopilotPromptInput,
-  CopilotPromptResult,
-  CopilotResponse,
-  CopilotSuggestion,
-  CopilotActionPlan,
-  CopilotConversation,
+  AIAssistantConfiguration,
+  AIAssistantPromptInput,
+  AIAssistantPromptResult,
+  AIAssistantResponse,
+  AIAssistantSuggestion,
+  AIAssistantActionPlan,
+  AIAssistantConversation,
   IntentResolutionResult,
-  CopilotContext,
-  CopilotProviderPlugin,
+  AIAssistantContext,
+  AIAssistantProviderPlugin,
   PermissionLevel,
-  CopilotExplanation,
+  AIAssistantExplanation,
   ExplanationSubject,
-  CopilotAnalytics,
-  CopilotValidationResult,
+  AIAssistantAnalytics,
+  AIAssistantValidationResult,
 } from './types';
-import { DEFAULT_COPILOT_CONFIGURATION, createCopilotConfiguration, validateConfiguration } from './copilotConfiguration';
-import { CopilotEvents, copilotEvents } from './copilotEvents';
-import { CopilotIntentEngine } from './copilotIntentEngine';
-import { CopilotContextResolver, type CopilotContextResolverInput } from './copilotContextResolver';
-import { CopilotResponseEngine } from './copilotResponseEngine';
-import { CopilotSuggestionEngine } from './copilotSuggestionEngine';
-import { CopilotExplanationEngine } from './copilotExplanationEngine';
-import { CopilotActionPlanner } from './copilotActionPlanner';
-import { CopilotPermissionEngine } from './copilotPermissionEngine';
-import { CopilotMemory } from './copilotMemory';
-import { CopilotSessionManager } from './copilotSessionManager';
-import { CopilotConversationEngine } from './copilotConversationEngine';
-import { CopilotAnalyticsEngine } from './copilotAnalytics';
-import { CopilotValidator } from './copilotValidator';
+import { DEFAULT_AIAssistant_CONFIGURATION, createAIAssistantConfiguration, validateConfiguration } from './AIAssistantConfiguration';
+import { aiAssistantEvents, AIAssistantEvents } from './AIAssistantEvents';
+import { AIAssistantIntentEngine } from './AIAssistantIntentEngine';
+import { AIAssistantContextResolver, type AIAssistantContextResolverInput } from './AIAssistantContextResolver';
+import { AIAssistantResponseEngine } from './AIAssistantResponseEngine';
+import { AIAssistantSuggestionEngine } from './AIAssistantSuggestionEngine';
+import { AIAssistantExplanationEngine } from './AIAssistantExplanationEngine';
+import { AIAssistantActionPlanner } from './AIAssistantActionPlanner';
+import { AIAssistantPermissionEngine } from './AIAssistantPermissionEngine';
+import { AIAssistantMemory } from './AIAssistantMemory';
+import { AIAssistantSessionManager } from './AIAssistantSessionManager';
+import { AIAssistantConversationEngine } from './AIAssistantConversationEngine';
+import { AIAssistantAnalyticsEngine } from './AIAssistantAnalytics';
+import { AIAssistantValidator } from './AIAssistantValidator';
 
-export class CopilotManager {
-  private _config: CopilotConfiguration;
-  private _events: CopilotEvents;
-  private _intentEngine: CopilotIntentEngine;
-  private _contextResolver: CopilotContextResolver;
-  private _responseEngine: CopilotResponseEngine;
-  private _suggestionEngine: CopilotSuggestionEngine;
-  private _explanationEngine: CopilotExplanationEngine;
-  private _permissionEngine: CopilotPermissionEngine;
-  private _actionPlanner: CopilotActionPlanner;
-  private _memory: CopilotMemory;
-  private _sessionManager: CopilotSessionManager;
-  private _conversationEngine: CopilotConversationEngine;
-  private _analytics: CopilotAnalyticsEngine;
-  private _validator: CopilotValidator;
+export class AIAssistantManager {
+  private _config: AIAssistantConfiguration;
+  private _events: AIAssistantEvents;
+  private _intentEngine: AIAssistantIntentEngine;
+  private _contextResolver: AIAssistantContextResolver;
+  private _responseEngine: AIAssistantResponseEngine;
+  private _suggestionEngine: AIAssistantSuggestionEngine;
+  private _explanationEngine: AIAssistantExplanationEngine;
+  private _permissionEngine: AIAssistantPermissionEngine;
+  private _actionPlanner: AIAssistantActionPlanner;
+  private _memory: AIAssistantMemory;
+  private _sessionManager: AIAssistantSessionManager;
+  private _conversationEngine: AIAssistantConversationEngine;
+  private _analytics: AIAssistantAnalyticsEngine;
+  private _validator: AIAssistantValidator;
 
-  constructor(config?: Partial<CopilotConfiguration>) {
+  constructor(config?: Partial<AIAssistantConfiguration>) {
     this._config = config
-      ? createCopilotConfiguration(config as never)
-      : structuredClone(DEFAULT_COPILOT_CONFIGURATION);
+      ? createAIAssistantConfiguration(config as never)
+      : structuredClone(DEFAULT_AIAssistant_CONFIGURATION);
 
     const validation = validateConfiguration(this._config);
     if (!validation.valid) {
-      throw new Error(`Invalid Copilot configuration: ${validation.errors.join('; ')}`);
+      throw new Error(`Invalid AIAssistant configuration: ${validation.errors.join('; ')}`);
     }
 
-    this._events = new CopilotEvents();
-    this._intentEngine = new CopilotIntentEngine(this._config);
-    this._contextResolver = new CopilotContextResolver();
-    this._responseEngine = new CopilotResponseEngine(this._config);
-    this._suggestionEngine = new CopilotSuggestionEngine(this._config);
-    this._explanationEngine = new CopilotExplanationEngine();
-    this._permissionEngine = new CopilotPermissionEngine(this._config);
-    this._actionPlanner = new CopilotActionPlanner(this._config, this._permissionEngine);
-    this._memory = new CopilotMemory();
-    this._sessionManager = new CopilotSessionManager(this._config.maxConversations);
-    this._conversationEngine = new CopilotConversationEngine(
+    this._events = new AIAssistantEvents();
+    this._intentEngine = new AIAssistantIntentEngine(this._config);
+    this._contextResolver = new AIAssistantContextResolver();
+    this._responseEngine = new AIAssistantResponseEngine(this._config);
+    this._suggestionEngine = new AIAssistantSuggestionEngine(this._config);
+    this._explanationEngine = new AIAssistantExplanationEngine();
+    this._permissionEngine = new AIAssistantPermissionEngine(this._config);
+    this._actionPlanner = new AIAssistantActionPlanner(this._config, this._permissionEngine);
+    this._memory = new AIAssistantMemory();
+    this._sessionManager = new AIAssistantSessionManager(this._config.maxConversations);
+    this._conversationEngine = new AIAssistantConversationEngine(
       this._config,
       this._intentEngine,
       this._contextResolver,
@@ -92,18 +92,18 @@ export class CopilotManager {
       this._sessionManager,
       this._events,
     );
-    this._analytics = new CopilotAnalyticsEngine();
-    this._validator = new CopilotValidator();
+    this._analytics = new AIAssistantAnalyticsEngine();
+    this._validator = new AIAssistantValidator();
   }
 
   // ── Public API ──────────────────────────────────────────────
 
   processPrompt(
-    input: CopilotPromptInput,
-    contextInput: CopilotContextResolverInput,
-  ): CopilotPromptResult {
-    if (!this._config.featureFlags.enableCopilot) {
-      throw new Error('Copilot is disabled');
+    input: AIAssistantPromptInput,
+    contextInput: AIAssistantContextResolverInput,
+  ): AIAssistantPromptResult {
+    if (!this._config.featureFlags.enableAIAssistant) {
+      throw new Error('AIAssistant is disabled');
     }
 
     const validation = this._validator.validatePrompt(input);
@@ -157,13 +157,13 @@ export class CopilotManager {
 
   generateResponse(
     intent: string,
-    context: CopilotContext,
+    context: AIAssistantContext,
     entities: never[],
     prompt: string,
     conversationId: string,
-    suggestions: CopilotSuggestion[],
+    suggestions: AIAssistantSuggestion[],
     capabilities: never[],
-  ): CopilotResponse {
+  ): AIAssistantResponse {
     if (!this._config.featureFlags.enableResponseGeneration) {
       throw new Error('Response generation is disabled');
     }
@@ -180,9 +180,9 @@ export class CopilotManager {
 
   generateSuggestions(
     intent: string,
-    context: CopilotContext,
+    context: AIAssistantContext,
     conversationId: string,
-  ): CopilotSuggestion[] {
+  ): AIAssistantSuggestion[] {
     if (!this._config.featureFlags.enableSuggestions) {
       throw new Error('Suggestions are disabled');
     }
@@ -191,9 +191,9 @@ export class CopilotManager {
 
   createActionPlan(
     intent: string,
-    context: CopilotContext,
+    context: AIAssistantContext,
     userPermissionLevel: PermissionLevel,
-  ): CopilotActionPlan[] {
+  ): AIAssistantActionPlan[] {
     if (!this._config.featureFlags.enableActionPlanning) {
       throw new Error('Action planning is disabled');
     }
@@ -202,16 +202,16 @@ export class CopilotManager {
 
   generateExplanation(
     subject: ExplanationSubject,
-    context: CopilotContext,
+    context: AIAssistantContext,
     entityId: string | null,
-  ): CopilotExplanation {
+  ): AIAssistantExplanation {
     if (!this._config.featureFlags.enableExplanations) {
       throw new Error('Explanations are disabled');
     }
     return this._explanationEngine.explain(subject, context, entityId);
   }
 
-  getConversationHistory(conversationId: string): CopilotConversation[] {
+  getConversationHistory(conversationId: string): AIAssistantConversation[] {
     return this._sessionManager.getConversationHistory(conversationId);
   }
 
@@ -219,22 +219,22 @@ export class CopilotManager {
     return this._sessionManager.clearConversation(conversationId);
   }
 
-  getAnalytics(): CopilotAnalytics {
+  getAnalytics(): AIAssistantAnalytics {
     return this._analytics.getAnalytics();
   }
 
-  validateConversation(conversation: CopilotConversation): CopilotValidationResult {
+  validateConversation(conversation: AIAssistantConversation): AIAssistantValidationResult {
     return this._validator.validateConversation(conversation);
   }
 
-  validateResponse(response: CopilotResponse): CopilotValidationResult {
+  validateResponse(response: AIAssistantResponse): AIAssistantValidationResult {
     return this._validator.validateResponse(response);
   }
 
   // ── Configuration ───────────────────────────────────────────
 
-  updateConfig(config: Partial<CopilotConfiguration>): void {
-    this._config = createCopilotConfiguration(config as never);
+  updateConfig(config: Partial<AIAssistantConfiguration>): void {
+    this._config = createAIAssistantConfiguration(config as never);
     this._intentEngine.updateConfig(this._config);
     this._responseEngine.updateConfig(this._config);
     this._suggestionEngine.updateConfig(this._config);
@@ -244,13 +244,13 @@ export class CopilotManager {
     this._sessionManager.setMaxConversations(this._config.maxConversations);
   }
 
-  getConfig(): CopilotConfiguration {
+  getConfig(): AIAssistantConfiguration {
     return this._config;
   }
 
   // ── Plugin Registration ─────────────────────────────────────
 
-  registerPlugin(plugin: CopilotProviderPlugin): void {
+  registerPlugin(plugin: AIAssistantProviderPlugin): void {
     this._intentEngine.registerPlugin(plugin);
     this._responseEngine.registerPlugin(plugin);
     this._suggestionEngine.registerPlugin(plugin);
@@ -266,7 +266,7 @@ export class CopilotManager {
     this._events.off(type, listener);
   }
 
-  getEvents(): CopilotEvents {
+  getEvents(): AIAssistantEvents {
     return this._events;
   }
 
@@ -276,7 +276,7 @@ export class CopilotManager {
     this._memory.clear();
   }
 
-  getMemorySnapshot(): ReturnType<CopilotMemory['getSnapshot']> {
+  getMemorySnapshot(): ReturnType<AIAssistantMemory['getSnapshot']> {
     return this._memory.getSnapshot();
   }
 
@@ -296,4 +296,4 @@ export class CopilotManager {
   }
 }
 
-export { copilotEvents };
+export { AIAssistantEvents };

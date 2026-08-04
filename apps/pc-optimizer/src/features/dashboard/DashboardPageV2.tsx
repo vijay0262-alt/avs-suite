@@ -134,7 +134,7 @@ function getAIModules(isPro: boolean): AIModuleCard[] {
     { id: 'active-protection', name: 'AI Active Protection', description: 'Real-time monitoring and behavior analysis', icon: <ShieldExclamationIcon className="h-5 w-5" />, path: '/ai-active-protection', status: 'active' },
     { id: 'threat-investigation', name: 'AI Threat Investigation', description: 'Explainable AI threat timeline and correlation', icon: <EyeIcon className="h-5 w-5" />, path: '/threat-investigation', status: isPro ? 'active' : 'pro' },
     { id: 'remediation', name: 'AI Remediation', description: 'Safe quarantine, rollback, and recovery', icon: <WrenchScrewdriverIcon className="h-5 w-5" />, path: '/quarantine', status: isPro ? 'active' : 'pro' },
-    { id: 'ai-copilot', name: 'AI Copilot', description: 'Your AI assistant for PC health and security', icon: <ChatBubbleLeftRightIcon className="h-5 w-5" />, path: '/ai-copilot', status: 'active' },
+    { id: 'ai-AIAssistant', name: 'AVS AI Assistant', description: 'Your AI assistant for PC health and security', icon: <ChatBubbleLeftRightIcon className="h-5 w-5" />, path: '/ai-AIAssistant', status: 'active' },
     { id: 'daily-briefing', name: 'AI Daily Briefing', description: 'Daily AI summary and system highlights', icon: <SunIcon className="h-5 w-5" />, path: '/ai-daily-briefing', status: 'active' },
   ];
 }
@@ -376,7 +376,7 @@ export default function DashboardPage() {
             { id: 'ai-smart-optimize', name: 'AI Smart Optimize', icon: SparklesIcon, color: 'text-brand-primary', path: '/ai-smart-optimize', proEnhanced: false },
             { id: 'quick-scan', name: 'Quick Scan', icon: ShieldExclamationIcon, color: 'text-semantic-success', path: '/quick-scan', proEnhanced: false },
             { id: 'full-scan', name: 'Full Scan', icon: ShieldExclamationIcon, color: 'text-semantic-danger', path: '/full-scan', proEnhanced: false },
-            { id: 'ai-copilot', name: 'AI Copilot', icon: ChatBubbleLeftRightIcon, color: 'text-brand-primary', path: '/ai-copilot', proEnhanced: false },
+            { id: 'ai-AIAssistant', name: 'AVS AI Assistant', icon: ChatBubbleLeftRightIcon, color: 'text-brand-primary', path: '/ai-AIAssistant', proEnhanced: false },
             { id: 'junk-cleaner', name: 'Junk Cleaner', icon: CircleStackIcon, color: 'text-brand-primary', path: '/junk-cleaner', proEnhanced: false },
             { id: 'startup-manager', name: 'Startup Manager', icon: BoltIcon, color: 'text-semantic-success', path: '/startup-manager', proEnhanced: false },
             { id: 'privacy-cleaner', name: 'Privacy Cleaner', icon: ShieldExclamationIcon, color: 'text-semantic-warning', path: '/privacy-cleaner', proEnhanced: true },

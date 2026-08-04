@@ -77,7 +77,7 @@ export const FEATURES = {
   DISK_ANALYZER: {
     key: 'disk-analyzer',
     description: 'Visualise disk usage by folder and file type.',
-    editions: ['professional'] as const,
+    editions: ['free', 'professional'] as const,
   },
 
   // ── Junk Cleaner ─────────────────────────────────────────────
@@ -137,12 +137,12 @@ export const FEATURES = {
   DUPLICATE_SCAN: {
     key: 'duplicate-scan',
     description: 'Scan and preview duplicate files.',
-    editions: ['professional'] as const,
+    editions: ['free', 'professional'] as const,
   },
   DUPLICATE_DELETE: {
     key: 'duplicate-delete',
-    description: 'Delete duplicate files.',
-    editions: ['professional'] as const,
+    description: 'Delete duplicate files (up to 20 per session in Free).',
+    editions: ['free', 'professional'] as const,
   },
 
   // ── Uninstaller ──────────────────────────────────────────────

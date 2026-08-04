@@ -5,7 +5,7 @@
  *
  * Suggests actions to users based on context and rules.
  */
-import type { ActionSuggestion, SuggestionRule, CopilotContext } from './types';
+import type { ActionSuggestion, SuggestionRule, AIAssistantContext } from './types';
 import { generateSuggestionId } from './types';
 
 export class ActionSuggestionEngine {
@@ -19,7 +19,7 @@ export class ActionSuggestionEngine {
     this._rules = rules;
   }
 
-  getSuggestions(context: CopilotContext, limit: number = 5): ActionSuggestion[] {
+  getSuggestions(context: AIAssistantContext, limit: number = 5): ActionSuggestion[] {
     const suggestions: ActionSuggestion[] = [];
 
     for (const rule of this._rules) {
@@ -32,7 +32,7 @@ export class ActionSuggestionEngine {
       .slice(0, limit);
   }
 
-  private _evaluateRule(rule: SuggestionRule, context: CopilotContext): ActionSuggestion | null {
+  private _evaluateRule(rule: SuggestionRule, context: AIAssistantContext): ActionSuggestion | null {
     let confidence = 0;
     let shouldSuggest = false;
 

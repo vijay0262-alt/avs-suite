@@ -25,7 +25,7 @@ import type {
   ActionValidationResult,
   ApprovalResult,
   ActionSuggestion,
-  CopilotContext,
+  AIAssistantContext,
   PermissionLevel,
   ActionPlugin,
   ActionAnalyticsData,
@@ -87,7 +87,7 @@ export class NaturalLanguageActionManager {
 
   // ── Public API ──────────────────────────────────────────────
 
-  setContextProvider(provider: () => CopilotContext): void {
+  setContextProvider(provider: () => AIAssistantContext): void {
     this._contextResolver.setContextProvider(provider);
   }
 

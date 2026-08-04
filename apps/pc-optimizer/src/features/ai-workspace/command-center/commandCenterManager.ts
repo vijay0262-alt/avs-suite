@@ -7,7 +7,7 @@
  * Public APIs: loadDashboard(), refreshWidget(), refreshAll(),
  * saveLayout(), loadLayout(), registerWidget(), getDashboardState()
  *
- * The Command Center consumes existing AI modules via CopilotContext.
+ * The Command Center consumes existing AI modules via AIAssistantContext.
  * It MUST NOT duplicate business logic or execute optimizations.
  */
 import type {
@@ -18,14 +18,14 @@ import type {
   DashboardLayout,
   DashboardState,
   WidgetStatus,
-  CopilotContext,
+  AIAssistantContext,
   SearchResult,
   SearchQuery,
   CommandCenterAnalytics as CommandCenterAnalyticsData,
   CommandCenterViewModel,
   RefreshPolicy,
 } from './types';
-import type { CopilotSuggestion, CopilotActionPlan } from '../copilot/types';
+import type { AIAssistantSuggestion, AIAssistantActionPlan } from '../AIAssistant/types';
 import { DEFAULT_COMMAND_CENTER_CONFIGURATION, createCommandCenterConfiguration, validateCommandCenterConfiguration } from './commandCenterConfiguration';
 import { CommandCenterEvents, commandCenterEvents } from './commandCenterEvents';
 import { CommandCenterWidgetRegistry } from './commandCenterWidgetRegistry';
@@ -48,7 +48,7 @@ export class CommandCenterManager {
   private _refreshEngine: CommandCenterRefreshEngine;
   private _stateManager: CommandCenterStateManager;
   private _analytics: CommandCenterAnalytics;
-  private _contextProvider: (() => CopilotContext) | null = null;
+  private _contextProvider: (() => AIAssistantContext) | null = null;
 
   constructor(config?: Partial<CommandCenterConfiguration>) {
     this._config = config
@@ -85,7 +85,7 @@ export class CommandCenterManager {
 
   // ── Public API ──────────────────────────────────────────────
 
-  setContextProvider(provider: () => CopilotContext): void {
+  setContextProvider(provider: () => AIAssistantContext): void {
     this._contextProvider = provider;
     this._refreshEngine.setContextProvider(provider);
   }
@@ -227,9 +227,9 @@ export class CommandCenterManager {
   }
 
   updateViewModel(
-    context: CopilotContext,
-    suggestions: CopilotSuggestion[] = [],
-    actions: CopilotActionPlan[] = [],
+    context: AIAssistantContext,
+    suggestions: AIAssistantSuggestion[] = [],
+    actions: AIAssistantActionPlan[] = [],
   ): CommandCenterViewModel {
     return this._stateManager.updateViewModel(context, suggestions, actions);
   }

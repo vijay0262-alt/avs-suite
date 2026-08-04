@@ -65,7 +65,7 @@ export type {
   TimelineEventItem,
   RecoveryViewModel,
   DeviceProfileViewModel,
-  CopilotViewModel,
+  AIAssistantViewModel,
   OptimizationViewModel,
   DashboardLayout,
   LayoutWidgetEntry,

@@ -1,5 +1,5 @@
 /**
- * AICopilotPage — first-class AI assistant page.
+ * AIAssistantPage — first-class AI assistant page.
  *
  * Connects the existing ConversationEngine, ExplanationEngine,
  * QuestionRouter, and InsightGenerator to a premium chat UI.
@@ -56,7 +56,7 @@ interface ChatMessage {
   } | null;
 }
 
-export function AICopilotPage() {
+export function AIAssistantPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -69,10 +69,10 @@ export function AICopilotPage() {
   const { guard, dialogElement } = useFeatureGuard();
 
   // Track daily question count for Free edition limit enforcement
-  const COPILOT_COUNT_KEY = 'avs-copilot-questions';
+  const AIAssistant_COUNT_KEY = 'avs-AIAssistant-questions';
   const getTodayCount = useCallback((): number => {
     try {
-      const raw = localStorage.getItem(COPILOT_COUNT_KEY);
+      const raw = localStorage.getItem(AIAssistant_COUNT_KEY);
       if (!raw) return 0;
       const data = JSON.parse(raw) as { date: string; count: number };
       const today = new Date().toISOString().split('T')[0];
@@ -89,13 +89,13 @@ export function AICopilotPage() {
     const next = questionsToday + 1;
     setQuestionsToday(next);
     try {
-      localStorage.setItem(COPILOT_COUNT_KEY, JSON.stringify({ date: today, count: next }));
+      localStorage.setItem(AIAssistant_COUNT_KEY, JSON.stringify({ date: today, count: next }));
     } catch {
       // localStorage may not be available
     }
   }, [questionsToday]);
 
-  const maxQuestions = limits.getLimit('aiCopilotQuestionsPerDay');
+  const maxQuestions = limits.getLimit('AIAssistantQuestionsPerDay');
   const questionsRemaining = maxQuestions === null ? null : Math.max(0, maxQuestions - questionsToday);
   const isLimitReached = maxQuestions !== null && questionsToday >= maxQuestions;
 
@@ -121,7 +121,7 @@ export function AICopilotPage() {
 
     // Enforce daily question limit for Free edition
     if (isLimitReached) {
-      guard('ai.smart_optimization', 'AI Copilot', () => {}, {
+      guard('ai.smart_optimization', 'AVS AI Assistant', () => {}, {
         limitDescription: `You've used all ${maxQuestions} AI questions for today. The limit resets at midnight.`,
         proBenefit: 'Unlimited AI questions with conversation history and cross-module reasoning.',
       });
@@ -185,13 +185,13 @@ export function AICopilotPage() {
   return (
     <div className="flex h-full flex-col px-6 py-6">
       <PageHeader
-        title="AI Copilot"
+        title="AVS AI Assistant"
         description="Your AI-powered PC health assistant. Ask questions, get explanations, and receive evidence-based recommendations."
         actions={
           <div className="flex items-center gap-2">
             <ProStatusPill />
             {!limits.isPro && maxQuestions !== null && (
-              <Badge tone={questionsRemaining !== null && questionsRemaining <= 5 ? 'warning' : 'neutral'} data-testid="copilot-question-counter">
+              <Badge tone={questionsRemaining !== null && questionsRemaining <= 5 ? 'warning' : 'neutral'} data-testid="AIAssistant-question-counter">
                 {questionsRemaining} / {maxQuestions} questions left today
               </Badge>
             )}

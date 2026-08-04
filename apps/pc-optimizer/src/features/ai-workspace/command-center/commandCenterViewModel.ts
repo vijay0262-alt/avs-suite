@@ -6,8 +6,8 @@
  * Wraps the data aggregator output and provides
  * view-specific helpers for the dashboard.
  */
-import type { CommandCenterViewModel, CopilotContext, WidgetCategory } from './types';
-import type { CopilotSuggestion, CopilotActionPlan } from '../copilot/types';
+import type { CommandCenterViewModel, AIAssistantContext, WidgetCategory } from './types';
+import type { AIAssistantSuggestion, AIAssistantActionPlan } from '../AIAssistant/types';
 import { CommandCenterDataAggregator } from './commandCenterDataAggregator';
 
 export class CommandCenterViewModelEngine {
@@ -19,7 +19,7 @@ export class CommandCenterViewModelEngine {
     this._aggregator = new CommandCenterDataAggregator();
   }
 
-  build(context: CopilotContext, suggestions: CopilotSuggestion[] = [], actions: CopilotActionPlan[] = []): CommandCenterViewModel {
+  build(context: AIAssistantContext, suggestions: AIAssistantSuggestion[] = [], actions: AIAssistantActionPlan[] = []): CommandCenterViewModel {
     const hash = this._hashContext(context);
     if (hash === this._lastContextHash && this._cached) {
       return this._cached;
@@ -65,13 +65,13 @@ export class CommandCenterViewModelEngine {
       case 'timeline': return vm.timeline;
       case 'recovery': return vm.recovery;
       case 'device_profile': return vm.deviceProfile;
-      case 'copilot': return vm.copilot;
+      case 'AIAssistant': return vm.AIAssistant;
       case 'optimization': return vm.optimization;
       default: return null;
     }
   }
 
-  private _hashContext(context: CopilotContext): string {
+  private _hashContext(context: AIAssistantContext): string {
     const parts: string[] = [];
     parts.push(`hs:${context.healthScore ?? 'null'}`);
     parts.push(`goals:${context.activeGoals.length}`);

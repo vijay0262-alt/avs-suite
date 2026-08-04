@@ -14,7 +14,7 @@ import type {
   ReportWidgetDefinition,
   ReportWidgetInstance,
   ReportSection,
-  CopilotContext,
+  AIAssistantContext,
   ReportInsight,
   ReportChart,
   ReportTable,
@@ -32,7 +32,7 @@ export class ReportBuilder {
   build(
     type: ReportType,
     template: ReportTemplate,
-    context: CopilotContext,
+    context: AIAssistantContext,
     timeRange: ReportTimeRange,
     widgetRegistry: { get: (id: string) => ReportWidgetDefinition | null },
   ): Report {
@@ -67,7 +67,7 @@ export class ReportBuilder {
   private _instantiateWidgets(
     template: ReportTemplate,
     widgetRegistry: { get: (id: string) => ReportWidgetDefinition | null },
-    context: CopilotContext,
+    context: AIAssistantContext,
   ): ReportWidgetInstance[] {
     const instances: ReportWidgetInstance[] = [];
 
@@ -87,7 +87,7 @@ export class ReportBuilder {
     return instances;
   }
 
-  private _extractWidgetData(def: ReportWidgetDefinition, context: CopilotContext): Record<string, unknown> {
+  private _extractWidgetData(def: ReportWidgetDefinition, context: AIAssistantContext): Record<string, unknown> {
     const data: Record<string, unknown> = {};
 
     switch (def.type) {
@@ -145,7 +145,7 @@ export class ReportBuilder {
     }));
   }
 
-  private _buildCharts(type: ReportType, context: CopilotContext): ReportChart[] {
+  private _buildCharts(type: ReportType, context: AIAssistantContext): ReportChart[] {
     const charts: ReportChart[] = [];
 
     // Health trend chart
@@ -183,7 +183,7 @@ export class ReportBuilder {
     return charts;
   }
 
-  private _buildTables(type: ReportType, context: CopilotContext): ReportTable[] {
+  private _buildTables(type: ReportType, context: AIAssistantContext): ReportTable[] {
     const tables: ReportTable[] = [];
 
     // Recommendations table
@@ -221,7 +221,7 @@ export class ReportBuilder {
     return tables;
   }
 
-  private _buildInsights(type: ReportType, context: CopilotContext): ReportInsight[] {
+  private _buildInsights(type: ReportType, context: AIAssistantContext): ReportInsight[] {
     const insights: ReportInsight[] = [];
 
     // Summary insight
@@ -294,7 +294,7 @@ export class ReportBuilder {
     return insights;
   }
 
-  private _buildRecommendations(context: CopilotContext): string[] {
+  private _buildRecommendations(context: AIAssistantContext): string[] {
     const recs: string[] = [];
 
     if (context.healthScore !== null && context.healthScore < 60) {
@@ -313,7 +313,7 @@ export class ReportBuilder {
     return recs;
   }
 
-  private _calculateConfidence(context: CopilotContext): number {
+  private _calculateConfidence(context: AIAssistantContext): number {
     let conf = 0.5;
     if (context.healthScore !== null) conf += 0.15;
     if (context.activeRecommendations.length > 0) conf += 0.1;

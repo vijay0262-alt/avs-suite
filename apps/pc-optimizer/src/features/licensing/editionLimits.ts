@@ -28,8 +28,8 @@ export interface EditionLimits {
   dashboardRecommendations: EditionLimit;
   dashboardSecurityEvents: EditionLimit;
 
-  // AI Copilot
-  aiCopilotQuestionsPerDay: EditionLimit;
+  // AVS AI Assistant
+  AIAssistantQuestionsPerDay: EditionLimit;
 
   // AI Smart Optimize
   aiSmartOptimizePerRun: EditionLimit;
@@ -103,8 +103,8 @@ export const EDITION_LIMITS: EditionLimits = {
     proLabel: 'Unlimited security events',
   },
 
-  // AI Copilot
-  aiCopilotQuestionsPerDay: {
+  // AVS AI Assistant
+  AIAssistantQuestionsPerDay: {
     free: 20,
     professional: null,
     freeLabel: '20 AI questions per day',
@@ -163,8 +163,8 @@ export const EDITION_LIMITS: EditionLimits = {
   duplicateFinderFilesPerRun: {
     free: 20,
     professional: null,
-    freeLabel: 'Delete up to 20 duplicates',
-    proLabel: 'Unlimited deletion',
+    freeLabel: 'Delete up to 20 duplicates per session',
+    proLabel: 'Unlimited deletion + smart duplicate detection + automatic grouping',
   },
 
   // Large File Analyzer

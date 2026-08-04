@@ -4,14 +4,14 @@
  * EPIC 5 PHASE A PART 3
  *
  * Aggregates data from all AI modules into a unified view model.
- * Does NOT duplicate business logic — reads from CopilotContext
+ * Does NOT duplicate business logic — reads from AIAssistantContext
  * which is already resolved from existing AI modules.
  */
-import type { CopilotContext, CopilotEvidence, CommandCenterViewModel, HealthViewModel, GoalsViewModel, RecommendationsViewModel, PredictionsViewModel, MaintenanceViewModel, AutomationViewModel, TimelineViewModel, RecoveryViewModel, DeviceProfileViewModel, CopilotViewModel, OptimizationViewModel } from './types';
-import type { CopilotSuggestion, CopilotActionPlan } from '../copilot/types';
+import type { AIAssistantContext, AIAssistantEvidence, CommandCenterViewModel, HealthViewModel, GoalsViewModel, RecommendationsViewModel, PredictionsViewModel, MaintenanceViewModel, AutomationViewModel, TimelineViewModel, RecoveryViewModel, DeviceProfileViewModel, AIAssistantViewModel, OptimizationViewModel } from './types';
+import type { AIAssistantSuggestion, AIAssistantActionPlan } from '../AIAssistant/types';
 
 export class CommandCenterDataAggregator {
-  aggregate(context: CopilotContext, copilotSuggestions: CopilotSuggestion[] = [], copilotActions: CopilotActionPlan[] = []): CommandCenterViewModel {
+  aggregate(context: AIAssistantContext, AIAssistantSuggestions: AIAssistantSuggestion[] = [], AIAssistantActions: AIAssistantActionPlan[] = []): CommandCenterViewModel {
     return {
       health: this._aggregateHealth(context),
       goals: this._aggregateGoals(context),
@@ -22,17 +22,17 @@ export class CommandCenterDataAggregator {
       timeline: this._aggregateTimeline(context),
       recovery: this._aggregateRecovery(context),
       deviceProfile: this._aggregateDeviceProfile(context),
-      copilot: this._aggregateCopilot(copilotSuggestions, copilotActions),
+      AIAssistant: this._aggregateAIAssistant(AIAssistantSuggestions, AIAssistantActions),
       optimization: this._aggregateOptimization(context),
       generatedAt: new Date().toISOString(),
       futureMetadata: {},
     };
   }
 
-  private _aggregateHealth(context: CopilotContext): HealthViewModel {
+  private _aggregateHealth(context: AIAssistantContext): HealthViewModel {
     const score = context.healthScore;
     const level = score === null ? 'unknown' : score >= 80 ? 'good' : score >= 60 ? 'fair' : score >= 40 ? 'poor' : 'critical';
-    const evidence: CopilotEvidence[] = score !== null
+    const evidence: AIAssistantEvidence[] = score !== null
       ? [{ source: 'health_score', metric: 'score', value: score, timestamp: new Date().toISOString(), description: 'Current health score', confidence: 0.9, futureMetadata: {} }]
       : [];
 
@@ -48,7 +48,7 @@ export class CommandCenterDataAggregator {
     return { score, level, trend, evidence, futureMetadata: {} };
   }
 
-  private _aggregateGoals(context: CopilotContext): GoalsViewModel {
+  private _aggregateGoals(context: AIAssistantContext): GoalsViewModel {
     const goals = context.activeGoals;
     return {
       activeGoals: goals.map((g) => ({ id: g.id, name: g.name, status: g.status, priority: g.priority, progress: g.progress, futureMetadata: {} })),
@@ -58,7 +58,7 @@ export class CommandCenterDataAggregator {
     };
   }
 
-  private _aggregateRecommendations(context: CopilotContext): RecommendationsViewModel {
+  private _aggregateRecommendations(context: AIAssistantContext): RecommendationsViewModel {
     const recs = context.activeRecommendations;
     const byPriority: Record<string, number> = {};
     for (const r of recs) byPriority[r.priority] = (byPriority[r.priority] ?? 0) + 1;
@@ -70,7 +70,7 @@ export class CommandCenterDataAggregator {
     };
   }
 
-  private _aggregatePredictions(context: CopilotContext): PredictionsViewModel {
+  private _aggregatePredictions(context: AIAssistantContext): PredictionsViewModel {
     const preds = context.activePredictions;
     const byRiskLevel: Record<string, number> = {};
     for (const p of preds) byRiskLevel[p.riskLevel] = (byRiskLevel[p.riskLevel] ?? 0) + 1;
@@ -82,7 +82,7 @@ export class CommandCenterDataAggregator {
     };
   }
 
-  private _aggregateMaintenance(context: CopilotContext): MaintenanceViewModel {
+  private _aggregateMaintenance(context: AIAssistantContext): MaintenanceViewModel {
     const history = context.maintenanceHistory;
     return {
       lastMaintenance: history.length > 0 ? history[0]!.timestamp : null,
@@ -92,7 +92,7 @@ export class CommandCenterDataAggregator {
     };
   }
 
-  private _aggregateAutomation(context: CopilotContext): AutomationViewModel {
+  private _aggregateAutomation(context: AIAssistantContext): AutomationViewModel {
     const sources = context.sources.filter((s) => s.type === 'automation');
     return {
       enabled: sources.length > 0 && sources[0]!.available,
@@ -102,7 +102,7 @@ export class CommandCenterDataAggregator {
     };
   }
 
-  private _aggregateTimeline(context: CopilotContext): TimelineViewModel {
+  private _aggregateTimeline(context: AIAssistantContext): TimelineViewModel {
     const events = context.recentTimelineEvents;
     return {
       totalEvents: events.length,
@@ -111,7 +111,7 @@ export class CommandCenterDataAggregator {
     };
   }
 
-  private _aggregateRecovery(context: CopilotContext): RecoveryViewModel {
+  private _aggregateRecovery(context: AIAssistantContext): RecoveryViewModel {
     const history = context.recoveryHistory;
     return {
       available: history.length > 0,
@@ -121,7 +121,7 @@ export class CommandCenterDataAggregator {
     };
   }
 
-  private _aggregateDeviceProfile(context: CopilotContext): DeviceProfileViewModel | null {
+  private _aggregateDeviceProfile(context: AIAssistantContext): DeviceProfileViewModel | null {
     if (!context.deviceProfile) return null;
     return {
       profileType: context.deviceProfile.profileType,
@@ -131,7 +131,7 @@ export class CommandCenterDataAggregator {
     };
   }
 
-  private _aggregateCopilot(suggestions: CopilotSuggestion[], actions: CopilotActionPlan[]): CopilotViewModel {
+  private _aggregateAIAssistant(suggestions: AIAssistantSuggestion[], actions: AIAssistantActionPlan[]): AIAssistantViewModel {
     return {
       suggestions,
       pendingActions: actions,
@@ -139,7 +139,7 @@ export class CommandCenterDataAggregator {
     };
   }
 
-  private _aggregateOptimization(context: CopilotContext): OptimizationViewModel {
+  private _aggregateOptimization(context: AIAssistantContext): OptimizationViewModel {
     const history = context.optimizationHistory;
     return {
       activeSession: false,

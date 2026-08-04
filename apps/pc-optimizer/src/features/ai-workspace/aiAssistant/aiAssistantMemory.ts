@@ -1,5 +1,5 @@
 /**
- * AI Copilot Platform — Memory
+ * AVS AI Assistant Platform — Memory
  *
  * EPIC 5 PHASE A PART 1
  *
@@ -9,14 +9,14 @@
  * and recent entities.
  */
 import type {
-  CopilotMemory as CopilotMemoryData,
-  CopilotContext,
-  CopilotSuggestion,
-  CopilotEntity,
+  AIAssistantMemory as AIAssistantMemoryData,
+  AIAssistantContext,
+  AIAssistantSuggestion,
+  AIAssistantEntity,
 } from './types';
 
-export class CopilotMemory {
-  private _memory: CopilotMemoryData;
+export class AIAssistantMemory {
+  private _memory: AIAssistantMemoryData;
 
   constructor() {
     this._memory = {
@@ -38,11 +38,11 @@ export class CopilotMemory {
     return this._memory.activeSessionId;
   }
 
-  setContext(context: CopilotContext): void {
+  setContext(context: AIAssistantContext): void {
     this._memory.conversationContext = context;
   }
 
-  getContext(): CopilotContext | null {
+  getContext(): AIAssistantContext | null {
     return this._memory.conversationContext;
   }
 
@@ -59,15 +59,15 @@ export class CopilotMemory {
     return [...this._memory.recentTopics];
   }
 
-  setPendingSuggestions(suggestions: CopilotSuggestion[]): void {
+  setPendingSuggestions(suggestions: AIAssistantSuggestion[]): void {
     this._memory.pendingSuggestions = suggestions;
   }
 
-  getPendingSuggestions(): CopilotSuggestion[] {
+  getPendingSuggestions(): AIAssistantSuggestion[] {
     return [...this._memory.pendingSuggestions];
   }
 
-  addEntity(entity: CopilotEntity): void {
+  addEntity(entity: AIAssistantEntity): void {
     const existingIdx = this._memory.recentEntities.findIndex(
       (e) => e.type === entity.type && e.id === entity.id,
     );
@@ -81,7 +81,7 @@ export class CopilotMemory {
     }
   }
 
-  getRecentEntities(): CopilotEntity[] {
+  getRecentEntities(): AIAssistantEntity[] {
     return [...this._memory.recentEntities];
   }
 
@@ -97,7 +97,7 @@ export class CopilotMemory {
     };
   }
 
-  getSnapshot(): CopilotMemoryData {
+  getSnapshot(): AIAssistantMemoryData {
     return structuredClone(this._memory);
   }
 

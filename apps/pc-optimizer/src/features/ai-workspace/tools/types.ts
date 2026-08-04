@@ -5,33 +5,33 @@
  *
  * Provider-independent AI Tool Framework.
  * Every AI capability is exposed as a discoverable tool.
- * The Copilot communicates through tools instead of directly
+ * The AIAssistant communicates through tools instead of directly
  * calling business managers.
  *
  * Architecture:
  *   User Prompt → Intent Engine → Tool Resolver → Tool Registry →
- *   Selected Tool → Business Modules → Tool Result → Copilot Response
+ *   Selected Tool → Business Modules → Tool Result → AIAssistant Response
  *
  * Core principles:
- *   - Tools are the only interface between Copilot and business modules.
+ *   - Tools are the only interface between AIAssistant and business modules.
  *   - Every tool result carries evidence, confidence, and traceability.
  *   - Tools never execute optimizations directly — they orchestrate
  *     existing module outputs and return structured results.
  *   - New AI capabilities require only registering a new tool.
  */
 
-// ── Re-export Copilot types used by tools ─────────────────────
+// ── Re-export AIAssistant types used by tools ─────────────────────
 
 export type {
-  CopilotIntentType,
-  CopilotCapability,
-  CopilotContext,
-  CopilotEntity,
-  CopilotEvidence,
+  AIAssistantIntentType,
+  AIAssistantCapability,
+  AIAssistantContext,
+  AIAssistantEntity,
+  AIAssistantEvidence,
   PermissionLevel,
-  CopilotValidationResult,
-  CopilotValidationError,
-  CopilotValidationWarning,
+  AIAssistantValidationResult,
+  AIAssistantValidationError,
+  AIAssistantValidationWarning,
   DeviceProfileSummary,
   GoalSummary,
   TimelineEventSummary,
@@ -41,17 +41,17 @@ export type {
   OptimizationHistorySummary,
   RecoverySummary,
   ContextSourceType,
-} from '../copilot/types';
+} from '../AIAssistant/types';
 
 import type {
-  CopilotIntentType,
-  CopilotCapability,
-  CopilotContext,
-  CopilotEvidence,
+  AIAssistantIntentType,
+  AIAssistantCapability,
+  AIAssistantContext,
+  AIAssistantEvidence,
   PermissionLevel,
-  CopilotValidationResult,
+  AIAssistantValidationResult,
   ContextSourceType,
-} from '../copilot/types';
+} from '../AIAssistant/types';
 
 // ── Tool Categories ───────────────────────────────────────────
 
@@ -184,8 +184,8 @@ export interface ToolDefinition {
   name: string;
   description: string;
   category: ToolCategory;
-  supportedIntents: CopilotIntentType[];
-  requiredCapabilities: CopilotCapability[];
+  supportedIntents: AIAssistantIntentType[];
+  requiredCapabilities: AIAssistantCapability[];
   requiredPermissions: PermissionLevel;
   requiredContext: ContextSourceType[];
   estimatedDuration: number;
@@ -199,10 +199,10 @@ export interface ToolDefinition {
 
 export interface ToolInput {
   toolId: string;
-  context: CopilotContext;
+  context: AIAssistantContext;
   parameters: Record<string, unknown>;
   userPermissionLevel: PermissionLevel;
-  userCapabilities: CopilotCapability[];
+  userCapabilities: AIAssistantCapability[];
   conversationId: string | null;
   futureMetadata: Record<string, unknown>;
 }
@@ -216,7 +216,7 @@ export interface ToolResult {
   confidence: number;
   summary: string;
   details: Record<string, unknown>;
-  supportingEvidence: CopilotEvidence[];
+  supportingEvidence: AIAssistantEvidence[];
   recommendedActions: RecommendedAction[];
   relatedModules: string[];
   executionTime: number;
@@ -238,7 +238,7 @@ export interface RecommendedAction {
 export interface Tool {
   definition: ToolDefinition;
   execute(input: ToolInput): Promise<ToolResult>;
-  canHandle(intent: CopilotIntentType, context: CopilotContext): boolean;
+  canHandle(intent: AIAssistantIntentType, context: AIAssistantContext): boolean;
   getRequiredContext(): ContextSourceType[];
 }
 
@@ -257,7 +257,7 @@ export interface ToolPlugin {
 export interface ToolPermissionRule {
   toolId: string;
   requiredLevel: PermissionLevel;
-  requiredCapabilities: CopilotCapability[];
+  requiredCapabilities: AIAssistantCapability[];
   description: string;
   futureMetadata: Record<string, unknown>;
 }
@@ -267,7 +267,7 @@ export interface ToolPermissionResult {
   reason: string | null;
   requiredLevel: PermissionLevel;
   currentLevel: PermissionLevel;
-  missingCapabilities: CopilotCapability[];
+  missingCapabilities: AIAssistantCapability[];
   futureMetadata: Record<string, unknown>;
 }
 
@@ -283,8 +283,8 @@ export interface ToolDiscoveryResult {
 export interface ToolSearchQuery {
   query?: string;
   category?: ToolCategory;
-  intent?: CopilotIntentType;
-  capability?: CopilotCapability;
+  intent?: AIAssistantIntentType;
+  capability?: AIAssistantCapability;
   riskLevel?: ToolRiskLevel;
   futureMetadata?: Record<string, unknown>;
 }
@@ -403,7 +403,7 @@ export interface ToolPerformanceTargets {
 
 // ── Tool Validation ───────────────────────────────────────────
 
-export type ToolValidationResult = CopilotValidationResult;
+export type ToolValidationResult = AIAssistantValidationResult;
 
 // ── Tool Resolver ─────────────────────────────────────────────
 

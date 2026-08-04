@@ -6,7 +6,7 @@
  * 12 built-in tools that expose AI capabilities through the tool framework.
  * Each tool orchestrates existing AI module outputs without duplicating logic.
  */
-import type { Tool, ToolDefinition, ToolInput, ToolResult, CopilotEvidence } from './types';
+import type { Tool, ToolDefinition, ToolInput, ToolResult, AIAssistantEvidence } from './types';
 import { BaseTool } from './baseTool';
 
 // ── 1. ExplainHealthTool ─────────────────────────────────────
@@ -37,7 +37,7 @@ export class ExplainHealthTool extends BaseTool {
     }
 
     const level = score >= 80 ? 'good' : score >= 60 ? 'fair' : score >= 40 ? 'poor' : 'critical';
-    const evidence: CopilotEvidence[] = [
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('health_score', 'score', score, 'Current health score'),
     ];
 
@@ -90,7 +90,7 @@ export class ExplainRecommendationTool extends BaseTool {
       return this._createFailureResult(this.definition.id, 'No recommendation found', Date.now() - start);
     }
 
-    const evidence: CopilotEvidence[] = [
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('recommendation', 'id', rec.id, 'Recommendation ID'),
       this._createEvidence('recommendation', 'category', rec.category, 'Recommendation category'),
       this._createEvidence('recommendation', 'priority', rec.priority, 'Recommendation priority'),
@@ -146,7 +146,7 @@ export class ExplainPredictionTool extends BaseTool {
       return this._createFailureResult(this.definition.id, 'No prediction found', Date.now() - start);
     }
 
-    const evidence: CopilotEvidence[] = [
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('prediction', 'id', pred.id, 'Prediction ID'),
       this._createEvidence('prediction', 'category', pred.category, 'Prediction category'),
       this._createEvidence('prediction', 'riskLevel', pred.riskLevel, 'Predicted risk level'),
@@ -204,7 +204,7 @@ export class ExplainTimelineTool extends BaseTool {
       return this._createFailureResult(this.definition.id, 'No timeline event found', Date.now() - start);
     }
 
-    const evidence: CopilotEvidence[] = [
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('timeline', 'id', event.id, 'Event ID'),
       this._createEvidence('timeline', 'title', event.title, 'Event title'),
       this._createEvidence('timeline', 'category', event.category, 'Event category'),
@@ -263,7 +263,7 @@ export class ExplainGoalTool extends BaseTool {
       return this._createFailureResult(this.definition.id, 'No goal found', Date.now() - start);
     }
 
-    const evidence: CopilotEvidence[] = [
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('goal', 'id', goal.id, 'Goal ID'),
       this._createEvidence('goal', 'name', goal.name, 'Goal name'),
       this._createEvidence('goal', 'status', goal.status, 'Goal status'),
@@ -329,7 +329,7 @@ export class ShowRecoveryTool extends BaseTool {
       );
     }
 
-    const evidence: CopilotEvidence[] = [
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('recovery_history', 'count', history.length, 'Recovery records count'),
     ];
 
@@ -387,7 +387,7 @@ export class ComparePlansTool extends BaseTool {
       byPriority[rec.priority] = (byPriority[rec.priority] ?? 0) + 1;
     }
 
-    const evidence: CopilotEvidence[] = [
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('recommendations', 'count', recs.length, 'Total recommendations'),
       this._createEvidence('recommendations', 'priorities', JSON.stringify(byPriority), 'Priority distribution'),
     ];
@@ -441,7 +441,7 @@ export class SimulationTool extends BaseTool {
     }
 
     const projectedScore = Math.min(100, score + recs.length * 3);
-    const evidence: CopilotEvidence[] = [
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('simulation', 'currentScore', score, 'Current health score'),
       this._createEvidence('simulation', 'projectedScore', projectedScore, 'Projected health score after optimization'),
       this._createEvidence('simulation', 'recommendationCount', recs.length, 'Recommendations applied in simulation'),
@@ -499,7 +499,7 @@ export class OptimizationSessionTool extends BaseTool {
       return order.indexOf(a.priority) - order.indexOf(b.priority);
     });
 
-    const evidence: CopilotEvidence[] = [
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('optimization_session', 'recommendationCount', recs.length, 'Recommendations in session'),
       this._createEvidence('optimization_session', 'topPriority', sorted[0]!.priority, 'Highest priority'),
     ];
@@ -548,7 +548,7 @@ export class MaintenanceTool extends BaseTool {
     const history = input.context.maintenanceHistory;
     const lastMaintenance = history[0];
 
-    const evidence: CopilotEvidence[] = [
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('maintenance', 'historyCount', history.length, 'Maintenance history count'),
     ];
 
@@ -600,7 +600,7 @@ export class GoalCreationTool extends BaseTool {
     const goalName = (input.parameters.name as string) || 'New Optimization Goal';
     const goalType = (input.parameters.type as string) || 'performance';
 
-    const evidence: CopilotEvidence[] = [
+    const evidence: AIAssistantEvidence[] = [
       this._createEvidence('goal_creation', 'name', goalName, 'Proposed goal name'),
       this._createEvidence('goal_creation', 'type', goalType, 'Proposed goal type'),
     ];
@@ -648,7 +648,7 @@ export class ReportGenerationTool extends BaseTool {
     const start = Date.now();
     const ctx = input.context;
 
-    const evidence: CopilotEvidence[] = [];
+    const evidence: AIAssistantEvidence[] = [];
     const sections: string[] = [];
 
     if (ctx.healthScore !== null) {

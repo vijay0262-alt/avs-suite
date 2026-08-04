@@ -1,5 +1,5 @@
 /**
- * AI Copilot Platform — Permission Engine
+ * AVS AI Assistant Platform — Permission Engine
  *
  * EPIC 5 PHASE A PART 1
  *
@@ -8,7 +8,7 @@
  * Only reads permission level and checks against configured rules.
  */
 import type {
-  CopilotConfiguration,
+  AIAssistantConfiguration,
   PermissionResult,
   PermissionLevel,
   ActionType,
@@ -18,14 +18,14 @@ import { getPermissionLevelLabel } from './types';
 
 const LEVEL_HIERARCHY: PermissionLevel[] = ['guest', 'free', 'pro', 'enterprise', 'future_level'];
 
-export class CopilotPermissionEngine {
-  private _config: CopilotConfiguration;
+export class AIAssistantPermissionEngine {
+  private _config: AIAssistantConfiguration;
 
-  constructor(config: CopilotConfiguration) {
+  constructor(config: AIAssistantConfiguration) {
     this._config = config;
   }
 
-  updateConfig(config: CopilotConfiguration): void {
+  updateConfig(config: AIAssistantConfiguration): void {
     this._config = config;
   }
 

@@ -1,5 +1,5 @@
 /**
- * AI Copilot Platform — Context Resolver
+ * AVS AI Assistant Platform — Context Resolver
  *
  * EPIC 5 PHASE A PART 1
  *
@@ -8,10 +8,10 @@
  * Every context source carries confidence and evidence.
  */
 import type {
-  CopilotContext,
-  CopilotContextSource,
+  AIAssistantContext,
+  AIAssistantContextSource,
   ContextSourceType,
-  CopilotEvidence,
+  AIAssistantEvidence,
   DeviceProfileSummary,
   GoalSummary,
   TimelineEventSummary,
@@ -22,7 +22,7 @@ import type {
   RecoverySummary,
 } from './types';
 
-export interface CopilotContextResolverInput {
+export interface AIAssistantContextResolverInput {
   healthScore: number | null;
   deviceProfile: DeviceProfileSummary | null;
   activeGoals: GoalSummary[];
@@ -36,9 +36,9 @@ export interface CopilotContextResolverInput {
   futureMetadata?: Record<string, unknown>;
 }
 
-export class CopilotContextResolver {
-  resolve(input: CopilotContextResolverInput): CopilotContext {
-    const sources: CopilotContextSource[] = [];
+export class AIAssistantContextResolver {
+  resolve(input: AIAssistantContextResolverInput): AIAssistantContext {
+    const sources: AIAssistantContextSource[] = [];
 
     if (input.healthScore !== null) {
       sources.push(this._createSource('health_score', true, input.healthScore, 0.9, [
@@ -122,8 +122,8 @@ export class CopilotContextResolver {
     available: boolean,
     data: unknown,
     confidence: number,
-    evidence: CopilotEvidence[],
-  ): CopilotContextSource {
+    evidence: AIAssistantEvidence[],
+  ): AIAssistantContextSource {
     return {
       type,
       available,
@@ -139,7 +139,7 @@ export class CopilotContextResolver {
     metric: string,
     value: string | number | boolean,
     description: string,
-  ): CopilotEvidence {
+  ): AIAssistantEvidence {
     return {
       source,
       metric,
@@ -151,15 +151,15 @@ export class CopilotContextResolver {
     };
   }
 
-  getAvailableSources(context: CopilotContext): CopilotContextSource[] {
+  getAvailableSources(context: AIAssistantContext): AIAssistantContextSource[] {
     return context.sources.filter((s) => s.available);
   }
 
-  getSourceByType(context: CopilotContext, type: ContextSourceType): CopilotContextSource | null {
+  getSourceByType(context: AIAssistantContext, type: ContextSourceType): AIAssistantContextSource | null {
     return context.sources.find((s) => s.type === type) ?? null;
   }
 
-  getAverageConfidence(context: CopilotContext): number {
+  getAverageConfidence(context: AIAssistantContext): number {
     if (context.sources.length === 0) return 0;
     const sum = context.sources.reduce((acc, s) => acc + s.confidence, 0);
     return sum / context.sources.length;

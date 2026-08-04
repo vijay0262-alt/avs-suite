@@ -5,14 +5,14 @@
  *
  * Validates reports: data sources, permissions, template, widgets.
  */
-import type { Report, ReportValidationResult, ReportValidationError, ReportValidationWarning, CopilotContext, PermissionLevel } from './types';
+import type { Report, ReportValidationResult, ReportValidationError, ReportValidationWarning, AIAssistantContext, PermissionLevel } from './types';
 
 export class ReportValidator {
   private _permissionOrder: PermissionLevel[] = ['free', 'pro', 'enterprise'];
 
   validate(
     report: Report,
-    context: CopilotContext,
+    context: AIAssistantContext,
     userPermission: PermissionLevel,
     requiredDataSources: string[],
   ): ReportValidationResult {
@@ -32,7 +32,7 @@ export class ReportValidator {
     };
   }
 
-  private _validateDataSources(context: CopilotContext, required: string[], errors: ReportValidationError[]): void {
+  private _validateDataSources(context: AIAssistantContext, required: string[], errors: ReportValidationError[]): void {
     const availableSources = new Set(context.sources.filter((s) => s.available).map((s) => s.type));
     for (const src of required) {
       if (!availableSources.has(src as never)) {

@@ -7,7 +7,7 @@
  * Public APIs: registerTool(), executeTool(), discoverTools(),
  * searchTools(), validateTool(), getToolMetadata(), getToolStatistics()
  *
- * The Copilot communicates exclusively through tools.
+ * The AIAssistant communicates exclusively through tools.
  * Business modules remain isolated.
  * New AI capabilities require only registering a new tool.
  */
@@ -23,10 +23,10 @@ import type {
   ToolAnalytics as ToolAnalyticsData,
   ToolResolutionResult,
   ToolPlugin,
-  CopilotIntentType,
-  CopilotContext,
+  AIAssistantIntentType,
+  AIAssistantContext,
   PermissionLevel,
-  CopilotCapability,
+  AIAssistantCapability,
   ToolPermissionResult,
 } from './types';
 import { DEFAULT_TOOL_CONFIGURATION, createToolConfiguration, validateToolConfiguration } from './toolConfiguration';
@@ -148,7 +148,7 @@ export class ToolManager {
 
   // ── Resolution ──────────────────────────────────────────────
 
-  resolveTool(intent: CopilotIntentType, context: CopilotContext): ToolResolutionResult {
+  resolveTool(intent: AIAssistantIntentType, context: AIAssistantContext): ToolResolutionResult {
     return this._resolver.resolve(intent, context);
   }
 
@@ -163,7 +163,7 @@ export class ToolManager {
   checkPermission(
     toolId: string,
     currentLevel: PermissionLevel,
-    userCapabilities: CopilotCapability[],
+    userCapabilities: AIAssistantCapability[],
   ): ToolPermissionResult {
     const tool = this._registry.getTool(toolId);
     if (!tool) {

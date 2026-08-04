@@ -1,42 +1,42 @@
 /**
- * AI Copilot Platform — Action Planner
+ * AVS AI Assistant Platform — Action Planner
  *
  * EPIC 5 PHASE A PART 1
  *
- * Plans actions without direct execution. The Copilot NEVER executes
+ * Plans actions without direct execution. The AIAssistant NEVER executes
  * optimizations. It only plans and presents actions for user confirmation.
  * Every action plan includes parameters, permissions, and evidence.
  */
 import type {
-  CopilotConfiguration,
-  CopilotActionPlan,
+  AIAssistantConfiguration,
+  AIAssistantActionPlan,
   ActionType,
-  CopilotContext,
-  CopilotIntentType,
-  CopilotEvidence,
+  AIAssistantContext,
+  AIAssistantIntentType,
+  AIAssistantEvidence,
 } from './types';
 import { generateActionPlanId } from './types';
-import type { CopilotPermissionEngine } from './copilotPermissionEngine';
+import type { AIAssistantPermissionEngine } from './AIAssistantPermissionEngine';
 
-export class CopilotActionPlanner {
-  private _config: CopilotConfiguration;
-  private _permissionEngine: CopilotPermissionEngine;
+export class AIAssistantActionPlanner {
+  private _config: AIAssistantConfiguration;
+  private _permissionEngine: AIAssistantPermissionEngine;
 
-  constructor(config: CopilotConfiguration, permissionEngine: CopilotPermissionEngine) {
+  constructor(config: AIAssistantConfiguration, permissionEngine: AIAssistantPermissionEngine) {
     this._config = config;
     this._permissionEngine = permissionEngine;
   }
 
-  updateConfig(config: CopilotConfiguration): void {
+  updateConfig(config: AIAssistantConfiguration): void {
     this._config = config;
   }
 
   createPlans(
-    intent: CopilotIntentType,
-    context: CopilotContext,
+    intent: AIAssistantIntentType,
+    context: AIAssistantContext,
     userPermissionLevel: string,
-  ): CopilotActionPlan[] {
-    const plans: CopilotActionPlan[] = [];
+  ): AIAssistantActionPlan[] {
+    const plans: AIAssistantActionPlan[] = [];
 
     switch (intent) {
       case 'optimization':
@@ -146,8 +146,8 @@ export class CopilotActionPlanner {
     description: string,
     parameters: Record<string, unknown>,
     userPermissionLevel: string,
-    evidence: CopilotEvidence,
-  ): CopilotActionPlan {
+    evidence: AIAssistantEvidence,
+  ): AIAssistantActionPlan {
     const permission = this._permissionEngine.check(type, userPermissionLevel as never);
 
     return {
@@ -170,7 +170,7 @@ export class CopilotActionPlanner {
     metric: string,
     value: string | number | boolean,
     description: string,
-  ): CopilotEvidence {
+  ): AIAssistantEvidence {
     return {
       source,
       metric,

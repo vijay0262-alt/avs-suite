@@ -6,7 +6,7 @@
  * Resolves intents and context to the most appropriate tool.
  * Uses intent matching, capability matching, and context availability.
  */
-import type { ToolResolutionResult, Tool, CopilotIntentType, CopilotContext } from './types';
+import type { ToolResolutionResult, Tool, AIAssistantIntentType, AIAssistantContext } from './types';
 import type { ToolRegistry } from './toolRegistry';
 
 export class ToolResolver {
@@ -16,7 +16,7 @@ export class ToolResolver {
     this._registry = registry;
   }
 
-  resolve(intent: CopilotIntentType, context: CopilotContext): ToolResolutionResult {
+  resolve(intent: AIAssistantIntentType, context: AIAssistantContext): ToolResolutionResult {
     const allTools = this._registry.getByIntent(intent);
     if (allTools.length === 0) {
       return {
@@ -62,7 +62,7 @@ export class ToolResolver {
     };
   }
 
-  private _scoreTool(tool: Tool, intent: CopilotIntentType, context: CopilotContext): number {
+  private _scoreTool(tool: Tool, intent: AIAssistantIntentType, context: AIAssistantContext): number {
     let score = 0;
 
     if (tool.definition.supportedIntents.includes(intent)) score += 0.4;

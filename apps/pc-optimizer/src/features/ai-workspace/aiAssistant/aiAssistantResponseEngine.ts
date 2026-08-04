@@ -1,5 +1,5 @@
 /**
- * AI Copilot Platform — Response Engine
+ * AVS AI Assistant Platform — Response Engine
  *
  * EPIC 5 PHASE A PART 1
  *
@@ -9,47 +9,47 @@
  * recommendations, next actions, and relevant modules.
  */
 import type {
-  CopilotConfiguration,
-  CopilotResponse,
-  CopilotContext,
-  CopilotEntity,
-  CopilotIntentType,
-  CopilotCapability,
-  CopilotEvidence,
-  CopilotSuggestion,
+  AIAssistantConfiguration,
+  AIAssistantResponse,
+  AIAssistantContext,
+  AIAssistantEntity,
+  AIAssistantIntentType,
+  AIAssistantCapability,
+  AIAssistantEvidence,
+  AIAssistantSuggestion,
   RecommendationSummary,
-  CopilotProviderPlugin,
-  CopilotResponseInput,
+  AIAssistantProviderPlugin,
+  AIAssistantResponseInput,
 } from './types';
 import { generateResponseId, clampConfidence } from './types';
 
-export class CopilotResponseEngine {
-  private _config: CopilotConfiguration;
-  private _plugins: CopilotProviderPlugin[] = [];
+export class AIAssistantResponseEngine {
+  private _config: AIAssistantConfiguration;
+  private _plugins: AIAssistantProviderPlugin[] = [];
 
-  constructor(config: CopilotConfiguration) {
+  constructor(config: AIAssistantConfiguration) {
     this._config = config;
   }
 
-  updateConfig(config: CopilotConfiguration): void {
+  updateConfig(config: AIAssistantConfiguration): void {
     this._config = config;
   }
 
-  registerPlugin(plugin: CopilotProviderPlugin): void {
+  registerPlugin(plugin: AIAssistantProviderPlugin): void {
     this._plugins.push(plugin);
     this._plugins.sort((a, b) => a.getPriority() - b.getPriority());
   }
 
   generate(
-    intent: CopilotIntentType,
-    context: CopilotContext,
-    entities: CopilotEntity[],
+    intent: AIAssistantIntentType,
+    context: AIAssistantContext,
+    entities: AIAssistantEntity[],
     prompt: string,
     conversationId: string,
-    suggestions: CopilotSuggestion[],
-    capabilities: CopilotCapability[],
-  ): CopilotResponse {
-    const responseInput: CopilotResponseInput = {
+    suggestions: AIAssistantSuggestion[],
+    capabilities: AIAssistantCapability[],
+  ): AIAssistantResponse {
+    const responseInput: AIAssistantResponseInput = {
       intent,
       context,
       entities,
@@ -75,14 +75,14 @@ export class CopilotResponseEngine {
   }
 
   private _generateBuiltin(
-    intent: CopilotIntentType,
-    context: CopilotContext,
-    entities: CopilotEntity[],
+    intent: AIAssistantIntentType,
+    context: AIAssistantContext,
+    entities: AIAssistantEntity[],
     prompt: string,
     conversationId: string,
-    suggestions: CopilotSuggestion[],
-    capabilities: CopilotCapability[],
-  ): CopilotResponse {
+    suggestions: AIAssistantSuggestion[],
+    capabilities: AIAssistantCapability[],
+  ): AIAssistantResponse {
     const evidence = this._collectEvidence(context, entities);
     const relevantModules = this._identifyRelevantModules(intent, context);
     const relatedRecommendations = this._extractRecommendations(context);
@@ -107,8 +107,8 @@ export class CopilotResponseEngine {
     };
   }
 
-  private _collectEvidence(context: CopilotContext, entities: CopilotEntity[]): CopilotEvidence[] {
-    const evidence: CopilotEvidence[] = [];
+  private _collectEvidence(context: AIAssistantContext, entities: AIAssistantEntity[]): AIAssistantEvidence[] {
+    const evidence: AIAssistantEvidence[] = [];
 
     for (const source of context.sources) {
       evidence.push(...source.evidence);
@@ -129,7 +129,7 @@ export class CopilotResponseEngine {
     return evidence;
   }
 
-  private _identifyRelevantModules(intent: CopilotIntentType, context: CopilotContext): string[] {
+  private _identifyRelevantModules(intent: AIAssistantIntentType, context: AIAssistantContext): string[] {
     const modules: string[] = [];
 
     if (context.healthScore !== null) modules.push('HealthScore');
@@ -160,14 +160,14 @@ export class CopilotResponseEngine {
     return modules;
   }
 
-  private _extractRecommendations(context: CopilotContext): RecommendationSummary[] {
+  private _extractRecommendations(context: AIAssistantContext): RecommendationSummary[] {
     return context.activeRecommendations.slice(0, 5);
   }
 
   private _composeAnswer(
-    intent: CopilotIntentType,
-    context: CopilotContext,
-    _entities: CopilotEntity[],
+    intent: AIAssistantIntentType,
+    context: AIAssistantContext,
+    _entities: AIAssistantEntity[],
     _prompt: string,
   ): string {
     const parts: string[] = [];
@@ -274,7 +274,7 @@ export class CopilotResponseEngine {
         break;
       }
       case 'conversation': {
-        parts.push('Hello! I\'m your AVS Shield AI Copilot. I can help you with questions, recommendations, explanations, planning, and navigation. How can I assist you?');
+        parts.push('Hello! I\'m your AVS Shield AVS AI Assistant. I can help you with questions, recommendations, explanations, planning, and navigation. How can I assist you?');
         break;
       }
       default: {
@@ -287,16 +287,16 @@ export class CopilotResponseEngine {
   }
 
   private _composeReasoning(
-    intent: CopilotIntentType,
-    context: CopilotContext,
-    evidence: CopilotEvidence[],
+    intent: AIAssistantIntentType,
+    context: AIAssistantContext,
+    evidence: AIAssistantEvidence[],
   ): string {
     const sources = context.sources.map((s) => s.type).join(', ');
     const evidenceCount = evidence.length;
     return `This response was generated using ${context.sources.length} context sources (${sources}) and ${evidenceCount} pieces of evidence. The intent was resolved as "${intent}".`;
   }
 
-  private _computeConfidence(context: CopilotContext, evidence: CopilotEvidence[]): number {
+  private _computeConfidence(context: AIAssistantContext, evidence: AIAssistantEvidence[]): number {
     if (context.sources.length === 0) return 0.3;
     const avgSourceConfidence = context.sources.reduce((acc, s) => acc + s.confidence, 0) / context.sources.length;
     const avgEvidenceConfidence = evidence.length > 0

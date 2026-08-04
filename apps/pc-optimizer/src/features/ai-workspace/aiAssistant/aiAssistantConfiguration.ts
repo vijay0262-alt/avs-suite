@@ -1,17 +1,17 @@
 /**
- * AI Copilot Platform — Configuration
+ * AVS AI Assistant Platform — Configuration
  *
  * EPIC 5 PHASE A PART 1
  *
- * Configuration-driven Copilot with intents, templates, rules,
+ * Configuration-driven AIAssistant with intents, templates, rules,
  * permissions, feature flags, and provider config.
  */
 import type {
-  CopilotConfiguration,
+  AIAssistantConfiguration,
   IntentDefinitions,
   ResponseTemplates,
   PermissionRules,
-  CopilotFeatureFlags,
+  AIAssistantFeatureFlags,
   ProviderConfiguration,
 } from './types';
 import {
@@ -19,7 +19,7 @@ import {
   createDefaultResponseTemplates,
   createDefaultSuggestionRules,
   createDefaultPermissionRules,
-  createDefaultCopilotFeatureFlags,
+  createDefaultAIAssistantFeatureFlags,
   createDefaultProviders,
 } from './types';
 
@@ -31,13 +31,13 @@ export type DeepPartial<T> = {
       : T[P];
 };
 
-export const DEFAULT_COPILOT_CONFIGURATION: CopilotConfiguration = {
+export const DEFAULT_AIAssistant_CONFIGURATION: AIAssistantConfiguration = {
   configVersion: '1.0.0',
   intentDefinitions: createDefaultIntentDefinitions(),
   responseTemplates: createDefaultResponseTemplates(),
   suggestionRules: createDefaultSuggestionRules(),
   permissionRules: createDefaultPermissionRules(),
-  featureFlags: createDefaultCopilotFeatureFlags(),
+  featureFlags: createDefaultAIAssistantFeatureFlags(),
   providers: createDefaultProviders(),
   performanceTargetMs: 500,
   intentResolutionTargetMs: 100,
@@ -48,18 +48,18 @@ export const DEFAULT_COPILOT_CONFIGURATION: CopilotConfiguration = {
   futureMetadata: {},
 };
 
-export function createCopilotConfiguration(
-  overrides?: DeepPartial<CopilotConfiguration>,
-): CopilotConfiguration {
-  if (!overrides) return structuredClone(DEFAULT_COPILOT_CONFIGURATION);
+export function createAIAssistantConfiguration(
+  overrides?: DeepPartial<AIAssistantConfiguration>,
+): AIAssistantConfiguration {
+  if (!overrides) return structuredClone(DEFAULT_AIAssistant_CONFIGURATION);
 
-  return mergeConfiguration(DEFAULT_COPILOT_CONFIGURATION, overrides);
+  return mergeConfiguration(DEFAULT_AIAssistant_CONFIGURATION, overrides);
 }
 
 function mergeConfiguration(
-  base: CopilotConfiguration,
-  overrides: DeepPartial<CopilotConfiguration>,
-): CopilotConfiguration {
+  base: AIAssistantConfiguration,
+  overrides: DeepPartial<AIAssistantConfiguration>,
+): AIAssistantConfiguration {
   return {
     configVersion: overrides.configVersion ?? base.configVersion,
     intentDefinitions: overrides.intentDefinitions
@@ -121,7 +121,7 @@ function mergePermissionRules(
 }
 
 export function validateConfiguration(
-  config: CopilotConfiguration,
+  config: AIAssistantConfiguration,
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
@@ -168,6 +168,6 @@ export function getDefaultProviders(): ProviderConfiguration[] {
   return createDefaultProviders();
 }
 
-export function getDefaultFeatureFlags(): CopilotFeatureFlags {
-  return createDefaultCopilotFeatureFlags();
+export function getDefaultFeatureFlags(): AIAssistantFeatureFlags {
+  return createDefaultAIAssistantFeatureFlags();
 }

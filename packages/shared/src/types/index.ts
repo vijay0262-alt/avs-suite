@@ -6,7 +6,7 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 
 export type NavItemId =
   | 'dashboard'
-  | 'ai-copilot'
+  | 'ai-AIAssistant'
   | 'ai-daily-briefing'
   | 'ai-smart-optimize'
   | 'ai-workspace'

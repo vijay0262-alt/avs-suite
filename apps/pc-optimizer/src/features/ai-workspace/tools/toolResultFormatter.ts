@@ -3,15 +3,15 @@
  *
  * EPIC 5 PHASE A PART 2
  *
- * Formats tool results for Copilot consumption.
- * Converts structured ToolResult into Copilot-friendly formats.
+ * Formats tool results for AIAssistant consumption.
+ * Converts structured ToolResult into AIAssistant-friendly formats.
  */
-import type { ToolResult, CopilotEvidence } from './types';
+import type { ToolResult, AIAssistantEvidence } from './types';
 
 export interface FormattedToolResult {
   text: string;
   confidence: number;
-  evidence: CopilotEvidence[];
+  evidence: AIAssistantEvidence[];
   recommendedActions: ToolResult['recommendedActions'];
   relatedModules: string[];
   status: string;
@@ -75,7 +75,7 @@ export class ToolResultFormatter {
     return result.summary;
   }
 
-  formatEvidence(result: ToolResult): CopilotEvidence[] {
+  formatEvidence(result: ToolResult): AIAssistantEvidence[] {
     return result.supportingEvidence;
   }
 

@@ -1,7 +1,7 @@
 /**
  * FreeUsageWidget — transparent usage tracker for Free edition users.
  *
- * Shows remaining limits for AI Copilot, Smart Optimize, Junk Cleaner,
+ * Shows remaining limits for AVS AI Assistant, Smart Optimize, Junk Cleaner,
  * Registry Cleaner, and Predictive Health forecast.
  *
  * In Professional edition, renders nothing — Pro has unlimited usage.
@@ -68,9 +68,9 @@ export function FreeUsageWidget() {
   if (isPro) return null;
 
   // Read current usage from localStorage
-  const getCopilotUsage = (): number => {
+  const getAIAssistantUsage = (): number => {
     try {
-      const raw = localStorage.getItem('avs-copilot-questions');
+      const raw = localStorage.getItem('avs-AIAssistant-questions');
       if (!raw) return 0;
       const data = JSON.parse(raw) as { date: string; count: number };
       const today = new Date().toISOString().split('T')[0];
@@ -81,8 +81,8 @@ export function FreeUsageWidget() {
     }
   };
 
-  const copilotUsed = getCopilotUsage();
-  const copilotMax = limits.getLimit('aiCopilotQuestionsPerDay') ?? 0;
+  const AIAssistantUsed = getAIAssistantUsage();
+  const AIAssistantMax = limits.getLimit('AIAssistantQuestionsPerDay') ?? 0;
 
   const smartOptMax = limits.getLimit('aiSmartOptimizePerRun') ?? 0;
 
@@ -102,9 +102,9 @@ export function FreeUsageWidget() {
 
         <UsageRow
           icon={SparklesIcon}
-          label="AI Copilot"
-          current={copilotUsed}
-          max={copilotMax}
+          label="AVS AI Assistant"
+          current={AIAssistantUsed}
+          max={AIAssistantMax}
           unit="questions"
         />
 

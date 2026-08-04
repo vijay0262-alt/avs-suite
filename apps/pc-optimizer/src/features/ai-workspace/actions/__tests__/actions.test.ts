@@ -31,7 +31,7 @@ import {
   createDefaultApprovalPolicies,
   createDefaultSuggestionRules,
 } from '../types';
-import type { CopilotContext, ClassifiedIntent, PermissionLevel } from '../types';
+import type { AIAssistantContext, ClassifiedIntent, PermissionLevel } from '../types';
 import type { ToolDefinition } from '../../tools/types';
 
 function createMockTool(id: string, name: string, riskLevel: string = 'low', requiredPermissions: PermissionLevel = 'free'): ToolDefinition {
@@ -52,7 +52,7 @@ function createMockTool(id: string, name: string, riskLevel: string = 'low', req
   };
 }
 
-function createMockContext(): CopilotContext {
+function createMockContext(): AIAssistantContext {
   return {
     sources: [
       { type: 'health_score', available: true, data: 55, confidence: 0.9, evidence: [], futureMetadata: {} },
@@ -85,7 +85,7 @@ function createMockContext(): CopilotContext {
     recoveryHistory: [{ id: 'rc1', timestamp: new Date().toISOString(), type: 'rollback', success: true, futureMetadata: {} }],
     userPreferences: { theme: 'dark' },
     futureMetadata: {},
-  } as CopilotContext;
+  } as AIAssistantContext;
 }
 
 function createMockIntent(actionType: string = 'optimization'): ClassifiedIntent {

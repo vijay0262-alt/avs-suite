@@ -1,5 +1,5 @@
 /**
- * AI Copilot Platform — Conversation Engine
+ * AVS AI Assistant Platform — Conversation Engine
  *
  * EPIC 5 PHASE A PART 1
  *
@@ -9,49 +9,49 @@
  * Does NOT duplicate business logic. Coordinates existing engines.
  */
 import type {
-  CopilotConfiguration,
-  CopilotConversation,
-  CopilotSuggestion,
-  CopilotActionPlan,
-  CopilotContext,
-  CopilotEntity,
-  CopilotIntentType,
-  CopilotPromptInput,
-  CopilotPromptResult,
-  CopilotReference,
-  CopilotMessage,
+  AIAssistantConfiguration,
+  AIAssistantConversation,
+  AIAssistantSuggestion,
+  AIAssistantActionPlan,
+  AIAssistantContext,
+  AIAssistantEntity,
+  AIAssistantIntentType,
+  AIAssistantPromptInput,
+  AIAssistantPromptResult,
+  AIAssistantReference,
+  AIAssistantMessage,
 } from './types';
-import { generateMessageId, generateCopilotId } from './types';
-import type { CopilotIntentEngine } from './copilotIntentEngine';
-import type { CopilotContextResolver, CopilotContextResolverInput } from './copilotContextResolver';
-import type { CopilotResponseEngine } from './copilotResponseEngine';
-import type { CopilotSuggestionEngine } from './copilotSuggestionEngine';
-import type { CopilotActionPlanner } from './copilotActionPlanner';
-import type { CopilotMemory } from './copilotMemory';
-import type { CopilotSessionManager } from './copilotSessionManager';
-import type { CopilotEvents } from './copilotEvents';
+import { generateMessageId, generateAIAssistantId } from './types';
+import type { AIAssistantIntentEngine } from './AIAssistantIntentEngine';
+import type { AIAssistantContextResolver, AIAssistantContextResolverInput } from './AIAssistantContextResolver';
+import type { AIAssistantResponseEngine } from './AIAssistantResponseEngine';
+import type { AIAssistantSuggestionEngine } from './AIAssistantSuggestionEngine';
+import type { AIAssistantActionPlanner } from './AIAssistantActionPlanner';
+import type { AIAssistantMemory } from './AIAssistantMemory';
+import type { AIAssistantSessionManager } from './AIAssistantSessionManager';
+import type { AIAssistantEvents } from './AIAssistantEvents';
 
-export class CopilotConversationEngine {
-  private _config: CopilotConfiguration;
-  private _intentEngine: CopilotIntentEngine;
-  private _contextResolver: CopilotContextResolver;
-  private _responseEngine: CopilotResponseEngine;
-  private _suggestionEngine: CopilotSuggestionEngine;
-  private _actionPlanner: CopilotActionPlanner;
-  private _memory: CopilotMemory;
-  private _sessionManager: CopilotSessionManager;
-  private _events: CopilotEvents;
+export class AIAssistantConversationEngine {
+  private _config: AIAssistantConfiguration;
+  private _intentEngine: AIAssistantIntentEngine;
+  private _contextResolver: AIAssistantContextResolver;
+  private _responseEngine: AIAssistantResponseEngine;
+  private _suggestionEngine: AIAssistantSuggestionEngine;
+  private _actionPlanner: AIAssistantActionPlanner;
+  private _memory: AIAssistantMemory;
+  private _sessionManager: AIAssistantSessionManager;
+  private _events: AIAssistantEvents;
 
   constructor(
-    config: CopilotConfiguration,
-    intentEngine: CopilotIntentEngine,
-    contextResolver: CopilotContextResolver,
-    responseEngine: CopilotResponseEngine,
-    suggestionEngine: CopilotSuggestionEngine,
-    actionPlanner: CopilotActionPlanner,
-    memory: CopilotMemory,
-    sessionManager: CopilotSessionManager,
-    events: CopilotEvents,
+    config: AIAssistantConfiguration,
+    intentEngine: AIAssistantIntentEngine,
+    contextResolver: AIAssistantContextResolver,
+    responseEngine: AIAssistantResponseEngine,
+    suggestionEngine: AIAssistantSuggestionEngine,
+    actionPlanner: AIAssistantActionPlanner,
+    memory: AIAssistantMemory,
+    sessionManager: AIAssistantSessionManager,
+    events: AIAssistantEvents,
   ) {
     this._config = config;
     this._intentEngine = intentEngine;
@@ -64,14 +64,14 @@ export class CopilotConversationEngine {
     this._events = events;
   }
 
-  updateConfig(config: CopilotConfiguration): void {
+  updateConfig(config: AIAssistantConfiguration): void {
     this._config = config;
   }
 
   processPrompt(
-    input: CopilotPromptInput,
-    contextInput: CopilotContextResolverInput,
-  ): CopilotPromptResult {
+    input: AIAssistantPromptInput,
+    contextInput: AIAssistantContextResolverInput,
+  ): AIAssistantPromptResult {
     const startTime = Date.now();
 
     // 1. Resolve intent
@@ -87,7 +87,7 @@ export class CopilotConversationEngine {
     const suggestions = this._suggestionEngine.generate(
       intentResult.intent,
       context,
-      input.conversationId ?? generateCopilotId(),
+      input.conversationId ?? generateAIAssistantId(),
     );
 
     // 5. Generate response
@@ -96,7 +96,7 @@ export class CopilotConversationEngine {
       context,
       entities,
       input.prompt,
-      input.conversationId ?? generateCopilotId(),
+      input.conversationId ?? generateAIAssistantId(),
       suggestions,
       intentResult.capabilities,
     );
@@ -112,7 +112,7 @@ export class CopilotConversationEngine {
     const references = this._buildReferences(context, entities);
 
     // 8. Create or update conversation
-    let conversation: CopilotConversation;
+    let conversation: AIAssistantConversation;
     if (input.conversationId) {
       const existing = this._sessionManager.getConversation(input.conversationId);
       if (existing) {
@@ -130,7 +130,7 @@ export class CopilotConversationEngine {
         );
       }
     } else {
-      const newId = generateCopilotId();
+      const newId = generateAIAssistantId();
       conversation = this._createNewConversation(
         newId,
         intentResult,
@@ -143,7 +143,7 @@ export class CopilotConversationEngine {
     }
 
     // 9. Add messages
-    const userMessage: CopilotMessage = {
+    const userMessage: AIAssistantMessage = {
       id: generateMessageId(),
       role: 'user',
       content: input.prompt,
@@ -153,9 +153,9 @@ export class CopilotConversationEngine {
       futureMetadata: {},
     };
 
-    const copilotMessage: CopilotMessage = {
+    const AIAssistantMessage: AIAssistantMessage = {
       id: generateMessageId(),
-      role: 'copilot',
+      role: 'AIAssistant',
       content: response.answer,
       timestamp: new Date().toISOString(),
       intent: intentResult.intent,
@@ -163,7 +163,7 @@ export class CopilotConversationEngine {
       futureMetadata: {},
     };
 
-    conversation.messages.push(userMessage, copilotMessage);
+    conversation.messages.push(userMessage, AIAssistantMessage);
 
     // 10. Update memory
     this._memory.setContext(context);
@@ -217,8 +217,8 @@ export class CopilotConversationEngine {
     };
   }
 
-  private _extractEntities(context: CopilotContext, _intent: CopilotIntentType): CopilotEntity[] {
-    const entities: CopilotEntity[] = [];
+  private _extractEntities(context: AIAssistantContext, _intent: AIAssistantIntentType): AIAssistantEntity[] {
+    const entities: AIAssistantEntity[] = [];
 
     if (context.healthScore !== null) {
       entities.push({
@@ -278,8 +278,8 @@ export class CopilotConversationEngine {
     return entities;
   }
 
-  private _buildReferences(context: CopilotContext, entities: CopilotEntity[]): CopilotReference[] {
-    const references: CopilotReference[] = [];
+  private _buildReferences(context: AIAssistantContext, entities: AIAssistantEntity[]): AIAssistantReference[] {
+    const references: AIAssistantReference[] = [];
 
     for (const entity of entities) {
       references.push({
@@ -306,13 +306,13 @@ export class CopilotConversationEngine {
 
   private _createNewConversation(
     id: string,
-    intentResult: { intent: CopilotIntentType; confidence: number; capabilities: string[] },
-    context: CopilotContext,
-    entities: CopilotEntity[],
-    suggestions: CopilotSuggestion[],
-    actionPlans: CopilotActionPlan[],
-    references: CopilotReference[],
-  ): CopilotConversation {
+    intentResult: { intent: AIAssistantIntentType; confidence: number; capabilities: string[] },
+    context: AIAssistantContext,
+    entities: AIAssistantEntity[],
+    suggestions: AIAssistantSuggestion[],
+    actionPlans: AIAssistantActionPlan[],
+    references: AIAssistantReference[],
+  ): AIAssistantConversation {
     const now = new Date().toISOString();
     return {
       id,
@@ -333,13 +333,13 @@ export class CopilotConversationEngine {
   }
 
   private _updateConversation(
-    conv: CopilotConversation,
-    intentResult: { intent: CopilotIntentType; confidence: number; capabilities: string[] },
-    context: CopilotContext,
-    entities: CopilotEntity[],
-    suggestions: CopilotSuggestion[],
-    actionPlans: CopilotActionPlan[],
-    references: CopilotReference[],
+    conv: AIAssistantConversation,
+    intentResult: { intent: AIAssistantIntentType; confidence: number; capabilities: string[] },
+    context: AIAssistantContext,
+    entities: AIAssistantEntity[],
+    suggestions: AIAssistantSuggestion[],
+    actionPlans: AIAssistantActionPlan[],
+    references: AIAssistantReference[],
   ): void {
     conv.intent = intentResult.intent;
     conv.confidence = intentResult.confidence;

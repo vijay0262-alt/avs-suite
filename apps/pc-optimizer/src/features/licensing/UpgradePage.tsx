@@ -33,7 +33,7 @@ const PRO_FEATURES = [
   { label: 'Startup Manager', icon: RocketLaunchIcon, free: 'View only', pro: 'Full control' },
   { label: 'Duplicate File Finder', icon: ChartBarIcon, free: false, pro: true },
   { label: 'Software Uninstaller', icon: RocketLaunchIcon, free: false, pro: true },
-  { label: 'AI Copilot', icon: SparklesIcon, free: true, pro: true },
+  { label: 'AVS AI Assistant', icon: SparklesIcon, free: true, pro: true },
   { label: 'Dashboard & Health Score', icon: ChartBarIcon, free: true, pro: true },
 ];
 

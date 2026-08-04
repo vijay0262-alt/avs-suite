@@ -184,7 +184,7 @@ export default function SettingsPage() {
                   <p className="text-xs font-medium text-text-muted mb-3">Included with your subscription</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {[
-                      { label: 'AI Copilot Unlimited', icon: SparklesIcon },
+                      { label: 'AVS AI Assistant Unlimited', icon: SparklesIcon },
                       { label: 'AI Active Protection', icon: CheckCircleIcon },
                       { label: 'Unlimited Optimization', icon: RocketLaunchIcon },
                       { label: 'Predictive Health', icon: ArrowPathIcon },
@@ -248,7 +248,7 @@ export default function SettingsPage() {
                       { label: 'AI Dashboard & Health Scores', free: true, pro: true },
                       { label: 'AI Daily Briefing', free: '1/day', pro: 'Unlimited' },
                       { label: 'AI Smart Optimize', free: '5/run', pro: 'Unlimited' },
-                      { label: 'AI Copilot Questions', free: '20/day', pro: 'Unlimited' },
+                      { label: 'AVS AI Assistant Questions', free: '20/day', pro: 'Unlimited' },
                       { label: 'Junk Cleaner', free: '500 MB/run', pro: 'Unlimited' },
                       { label: 'Registry Cleaner', free: '50 issues', pro: 'Unlimited' },
                       { label: 'Startup Manager', free: '3 entries', pro: 'Unlimited' },

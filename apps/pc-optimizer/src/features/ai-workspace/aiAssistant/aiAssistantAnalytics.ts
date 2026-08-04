@@ -1,23 +1,23 @@
 /**
- * AI Copilot Platform — Analytics
+ * AVS AI Assistant Platform — Analytics
  *
  * EPIC 5 PHASE A PART 1
  *
- * Tracks and reports Copilot usage analytics.
+ * Tracks and reports AIAssistant usage analytics.
  * No personal data is stored — only aggregate metrics.
  */
 import type {
-  CopilotAnalytics,
-  CopilotConversation,
-  CopilotResponse,
-  CopilotSuggestion,
-  CopilotActionPlan,
+  AIAssistantAnalytics,
+  AIAssistantConversation,
+  AIAssistantResponse,
+  AIAssistantSuggestion,
+  AIAssistantActionPlan,
   TopicCount,
   EntityCount,
   EntityType,
 } from './types';
 
-export class CopilotAnalyticsEngine {
+export class AIAssistantAnalyticsEngine {
   private _totalConversations: number = 0;
   private _totalMessages: number = 0;
   private _byIntent: Map<string, number> = new Map();
@@ -32,7 +32,7 @@ export class CopilotAnalyticsEngine {
   private _topics: Map<string, number> = new Map();
   private _entities: Map<EntityType, number> = new Map();
 
-  recordConversation(conversation: CopilotConversation): void {
+  recordConversation(conversation: AIAssistantConversation): void {
     this._totalConversations += 1;
     this._totalMessages += conversation.messages.length;
 
@@ -47,7 +47,7 @@ export class CopilotAnalyticsEngine {
     this._confidenceCount += 1;
   }
 
-  recordResponse(response: CopilotResponse, processingTimeMs: number): void {
+  recordResponse(response: AIAssistantResponse, processingTimeMs: number): void {
     this._incrementMap(this._byIntent, response.intent);
 
     for (const cap of response.capabilities) {
@@ -61,18 +61,18 @@ export class CopilotAnalyticsEngine {
     this._responseTimeCount += 1;
   }
 
-  recordSuggestions(suggestions: CopilotSuggestion[], accepted: boolean): void {
+  recordSuggestions(suggestions: AIAssistantSuggestion[], accepted: boolean): void {
     this._suggestionTotal += suggestions.length;
     if (accepted) {
       this._suggestionAccepted += suggestions.length;
     }
   }
 
-  recordActionPlans(actionPlans: CopilotActionPlan[]): void {
+  recordActionPlans(actionPlans: AIAssistantActionPlan[]): void {
     this._actionPlanTotal += actionPlans.length;
   }
 
-  getAnalytics(): CopilotAnalytics {
+  getAnalytics(): AIAssistantAnalytics {
     const byIntent: Record<string, number> = {};
     for (const [key, val] of this._byIntent) {
       byIntent[key] = val;

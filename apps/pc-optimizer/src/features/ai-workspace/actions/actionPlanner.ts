@@ -10,14 +10,14 @@
 import type {
   ClassifiedIntent,
   ExtractedEntity,
-  CopilotContext,
-  CopilotCapability,
+  AIAssistantContext,
+  AIAssistantCapability,
   ActionPlan,
   ActionStep,
   ToolDefinition,
   ActionRiskLevel,
   ActionExplanation,
-  CopilotEvidence,
+  AIAssistantEvidence,
 } from './types';
 import { generateActionPlanId, generateActionStepId } from './types';
 
@@ -25,7 +25,7 @@ export class ActionPlanner {
   plan(
     intent: ClassifiedIntent,
     entities: ExtractedEntity[],
-    context: CopilotContext,
+    context: AIAssistantContext,
     tools: ToolDefinition[],
   ): ActionPlan {
     const steps = this._generateSteps(intent, entities, tools);
@@ -113,7 +113,7 @@ export class ActionPlanner {
     return maxRisk;
   }
 
-  private _estimateBenefit(intent: ClassifiedIntent, context: CopilotContext, _entities: ExtractedEntity[]): string {
+  private _estimateBenefit(intent: ClassifiedIntent, context: AIAssistantContext, _entities: ExtractedEntity[]): string {
     switch (intent.intent) {
       case 'optimization': {
         const score = context.healthScore ?? 50;
@@ -144,7 +144,7 @@ export class ActionPlanner {
     return riskScores[risk] >= riskScores['medium'];
   }
 
-  private _checkRollback(intent: ClassifiedIntent, context: CopilotContext): boolean {
+  private _checkRollback(intent: ClassifiedIntent, context: AIAssistantContext): boolean {
     if (intent.intent === 'optimization') return true;
     if (intent.intent === 'maintenance') return context.recoveryHistory.length > 0;
     if (intent.intent === 'recovery') return true;
@@ -153,14 +153,14 @@ export class ActionPlanner {
 
   private _generateExplanation(
     intent: ClassifiedIntent,
-    context: CopilotContext,
+    context: AIAssistantContext,
     entities: ExtractedEntity[],
     tools: ToolDefinition[],
     risk: ActionRiskLevel,
     benefit: string,
     rollbackAvailable: boolean,
   ): ActionExplanation {
-    const evidence: CopilotEvidence[] = [];
+    const evidence: AIAssistantEvidence[] = [];
 
     if (context.healthScore !== null) {
       evidence.push({
@@ -199,7 +199,7 @@ export class ActionPlanner {
   private _generateAlternatives(
     intent: ClassifiedIntent,
     entities: ExtractedEntity[],
-    context: CopilotContext,
+    context: AIAssistantContext,
     tools: ToolDefinition[],
   ): ActionPlan[] {
     // Generate a simpler alternative if multiple tools are selected
@@ -214,8 +214,8 @@ export class ActionPlanner {
     return [];
   }
 
-  private _extractCapabilities(tools: ToolDefinition[]): CopilotCapability[] {
-    const caps = new Set<CopilotCapability>();
+  private _extractCapabilities(tools: ToolDefinition[]): AIAssistantCapability[] {
+    const caps = new Set<AIAssistantCapability>();
     for (const tool of tools) {
       for (const cap of tool.requiredCapabilities) {
         caps.add(cap);

@@ -12,24 +12,24 @@
  *   Layout Engine → Command Center
  */
 
-// ── Re-export Copilot types used by Command Center ────────────
+// ── Re-export AIAssistant types used by Command Center ────────────
 
 export type {
-  CopilotContext,
-  CopilotEvidence,
-  CopilotSuggestion,
-  CopilotActionPlan,
+  AIAssistantContext,
+  AIAssistantEvidence,
+  AIAssistantSuggestion,
+  AIAssistantActionPlan,
   PermissionLevel,
-  CopilotIntentType,
-} from '../copilot/types';
+  AIAssistantIntentType,
+} from '../AIAssistant/types';
 
 import type {
-  CopilotContext,
-  CopilotEvidence,
-  CopilotSuggestion,
-  CopilotActionPlan,
+  AIAssistantContext,
+  AIAssistantEvidence,
+  AIAssistantSuggestion,
+  AIAssistantActionPlan,
   PermissionLevel,
-} from '../copilot/types';
+} from '../AIAssistant/types';
 
 // ── Widget Categories ─────────────────────────────────────────
 
@@ -44,7 +44,7 @@ export type WidgetCategory =
   | 'timeline'
   | 'recovery'
   | 'device_profile'
-  | 'copilot'
+  | 'AIAssistant'
   | 'quick_actions'
   | 'future_category';
 
@@ -60,7 +60,7 @@ export function getWidgetCategoryLabel(category: WidgetCategory): string {
     timeline: 'Timeline Summary',
     recovery: 'Recovery Status',
     device_profile: 'Device Profile',
-    copilot: 'Copilot Suggestions',
+    AIAssistant: 'AIAssistant Suggestions',
     quick_actions: 'Quick Actions',
     future_category: 'Future Widget',
   };
@@ -217,7 +217,7 @@ export interface WidgetData {
   widgetId: string;
   category: WidgetCategory;
   content: Record<string, unknown>;
-  evidence: CopilotEvidence[];
+  evidence: AIAssistantEvidence[];
   confidence: number;
   timestamp: string;
   futureMetadata: Record<string, unknown>;
@@ -228,7 +228,7 @@ export interface WidgetData {
 export interface WidgetDataProvider {
   getProviderName(): string;
   getCategory(): WidgetCategory;
-  fetchData(context: CopilotContext): Promise<WidgetData>;
+  fetchData(context: AIAssistantContext): Promise<WidgetData>;
 }
 
 // ── View Model ────────────────────────────────────────────────
@@ -243,7 +243,7 @@ export interface CommandCenterViewModel {
   timeline: TimelineViewModel | null;
   recovery: RecoveryViewModel | null;
   deviceProfile: DeviceProfileViewModel | null;
-  copilot: CopilotViewModel | null;
+  AIAssistant: AIAssistantViewModel | null;
   optimization: OptimizationViewModel | null;
   generatedAt: string;
   futureMetadata: Record<string, unknown>;
@@ -253,7 +253,7 @@ export interface HealthViewModel {
   score: number | null;
   level: string;
   trend: 'improving' | 'declining' | 'stable' | 'unknown';
-  evidence: CopilotEvidence[];
+  evidence: AIAssistantEvidence[];
   futureMetadata: Record<string, unknown>;
 }
 
@@ -348,9 +348,9 @@ export interface DeviceProfileViewModel {
   futureMetadata: Record<string, unknown>;
 }
 
-export interface CopilotViewModel {
-  suggestions: CopilotSuggestion[];
-  pendingActions: CopilotActionPlan[];
+export interface AIAssistantViewModel {
+  suggestions: AIAssistantSuggestion[];
+  pendingActions: AIAssistantActionPlan[];
   futureMetadata: Record<string, unknown>;
 }
 
@@ -523,10 +523,10 @@ export function createDefaultWidgetDefinitions(): WidgetDefinition[] {
     { cat: 'timeline', title: 'Timeline Summary', provider: 'timeline_provider', actions: [{ id: 'view_timeline', label: 'View Timeline', type: 'view_timeline', icon: null, description: 'View full timeline', futureMetadata: {} }] },
     { cat: 'recovery', title: 'Recovery Status', provider: 'recovery_provider', actions: [{ id: 'view_recovery', label: 'View Recovery', type: 'view_recovery', icon: null, description: 'View recovery options', futureMetadata: {} }] },
     { cat: 'device_profile', title: 'Device Profile', provider: 'device_profile_provider', actions: [] },
-    { cat: 'copilot', title: 'Copilot Suggestions', provider: 'copilot_provider', actions: [{ id: 'ask_ai', label: 'Ask AI', type: 'ask_ai', icon: null, description: 'Ask the AI Copilot', futureMetadata: {} }] },
+    { cat: 'AIAssistant', title: 'AIAssistant Suggestions', provider: 'AIAssistant_provider', actions: [{ id: 'ask_ai', label: 'Ask AI', type: 'ask_ai', icon: null, description: 'Ask the AVS AI Assistant', futureMetadata: {} }] },
     { cat: 'quick_actions', title: 'Quick Actions', provider: 'quick_actions_provider', actions: [
       { id: 'qa_gen_session', label: 'Optimize', type: 'generate_optimization_session', icon: null, description: 'Generate optimization session', futureMetadata: {} },
-      { id: 'qa_ask_ai', label: 'Ask AI', type: 'ask_ai', icon: null, description: 'Ask the AI Copilot', futureMetadata: {} },
+      { id: 'qa_ask_ai', label: 'Ask AI', type: 'ask_ai', icon: null, description: 'Ask the AVS AI Assistant', futureMetadata: {} },
       { id: 'qa_compare', label: 'Compare', type: 'compare_plans', icon: null, description: 'Compare plans', futureMetadata: {} },
       { id: 'qa_goal', label: 'Goal', type: 'create_goal', icon: null, description: 'Create a goal', futureMetadata: {} },
       { id: 'qa_sim', label: 'Simulate', type: 'run_simulation', icon: null, description: 'Run simulation', futureMetadata: {} },

@@ -1,30 +1,30 @@
 /**
- * AI Copilot Platform — Type Definitions
+ * AVS AI Assistant Platform — Type Definitions
  *
  * EPIC 5 PHASE A PART 1
  *
- * The AI Copilot is the primary AI interface for AVS Shield.
+ * The AVS AI Assistant is the primary AI interface for AVS Shield.
  * It orchestrates all existing AI modules to answer questions,
  * explain system behavior, recommend actions, create optimization
  * sessions, and navigate the platform using natural language.
  *
  * Architecture:
  *   User Prompt → Intent Engine → AI Context → Knowledge Engine →
- *   Recommendation Engine → Goal Engine → Copilot → Structured Response
+ *   Recommendation Engine → Goal Engine → AIAssistant → Structured Response
  *
  * Core architectural principle:
  *   "The AI must never invent information. Every answer, suggestion,
  *    and action plan must be traceable back to AI modules, with
  *    supporting evidence and a confidence score."
  *
- * The Copilot MUST NOT execute optimizations directly.
- * The Copilot MUST NOT duplicate existing business logic.
- * The Copilot ONLY orchestrates and presents existing AI module outputs.
+ * The AIAssistant MUST NOT execute optimizations directly.
+ * The AIAssistant MUST NOT duplicate existing business logic.
+ * The AIAssistant ONLY orchestrates and presents existing AI module outputs.
  */
 
-// ── Copilot Intent Types ──────────────────────────────────────
+// ── AIAssistant Intent Types ──────────────────────────────────────
 
-export type CopilotIntentType =
+export type AIAssistantIntentType =
   | 'question'
   | 'recommendation'
   | 'explanation'
@@ -39,7 +39,7 @@ export type CopilotIntentType =
   | 'conversation'
   | 'future_intent';
 
-export type CopilotCapability =
+export type AIAssistantCapability =
   | 'answer_questions'
   | 'explain_recommendations'
   | 'explain_health_score'
@@ -57,31 +57,31 @@ export type CopilotCapability =
 // ── Intent Resolution ─────────────────────────────────────────
 
 export interface IntentDefinition {
-  type: CopilotIntentType;
+  type: AIAssistantIntentType;
   label: string;
   description: string;
   keywords: string[];
-  capabilities: CopilotCapability[];
+  capabilities: AIAssistantCapability[];
   minConfidence: number;
   futureMetadata: Record<string, unknown>;
 }
 
 export interface IntentResolutionResult {
-  intent: CopilotIntentType;
+  intent: AIAssistantIntentType;
   confidence: number;
   matchedKeywords: string[];
-  capabilities: CopilotCapability[];
+  capabilities: AIAssistantCapability[];
   alternativeIntents: AlternativeIntent[];
   futureMetadata: Record<string, unknown>;
 }
 
 export interface AlternativeIntent {
-  intent: CopilotIntentType;
+  intent: AIAssistantIntentType;
   confidence: number;
   reason: string;
 }
 
-// ── Copilot Entity ────────────────────────────────────────────
+// ── AIAssistant Entity ────────────────────────────────────────────
 
 export type EntityType =
   | 'recommendation'
@@ -98,7 +98,7 @@ export type EntityType =
   | 'feature'
   | 'future_entity';
 
-export interface CopilotEntity {
+export interface AIAssistantEntity {
   type: EntityType;
   id: string;
   name: string;
@@ -123,17 +123,17 @@ export type ContextSourceType =
   | 'user_preferences'
   | 'future_source';
 
-export interface CopilotContextSource {
+export interface AIAssistantContextSource {
   type: ContextSourceType;
   available: boolean;
   data: unknown;
   confidence: number;
-  evidence: CopilotEvidence[];
+  evidence: AIAssistantEvidence[];
   futureMetadata: Record<string, unknown>;
 }
 
-export interface CopilotContext {
-  sources: CopilotContextSource[];
+export interface AIAssistantContext {
+  sources: AIAssistantContextSource[];
   healthScore: number | null;
   deviceProfile: DeviceProfileSummary | null;
   activeGoals: GoalSummary[];
@@ -217,9 +217,9 @@ export interface RecoverySummary {
   futureMetadata: Record<string, unknown>;
 }
 
-// ── Copilot Evidence ──────────────────────────────────────────
+// ── AIAssistant Evidence ──────────────────────────────────────────
 
-export interface CopilotEvidence {
+export interface AIAssistantEvidence {
   source: string;
   metric: string;
   value: string | number | boolean;
@@ -229,25 +229,25 @@ export interface CopilotEvidence {
   futureMetadata: Record<string, unknown>;
 }
 
-// ── Copilot Response ──────────────────────────────────────────
+// ── AIAssistant Response ──────────────────────────────────────────
 
-export interface CopilotResponse {
+export interface AIAssistantResponse {
   id: string;
   conversationId: string;
   answer: string;
   reasoningSummary: string;
-  supportingEvidence: CopilotEvidence[];
+  supportingEvidence: AIAssistantEvidence[];
   confidence: number;
   relatedRecommendations: RecommendationSummary[];
-  suggestedNextActions: CopilotSuggestion[];
+  suggestedNextActions: AIAssistantSuggestion[];
   relevantModules: string[];
-  intent: CopilotIntentType;
-  capabilities: CopilotCapability[];
+  intent: AIAssistantIntentType;
+  capabilities: AIAssistantCapability[];
   generatedAt: string;
   futureMetadata: Record<string, unknown>;
 }
 
-// ── Copilot Suggestion ────────────────────────────────────────
+// ── AIAssistant Suggestion ────────────────────────────────────────
 
 export type SuggestionType =
   | 'optimize_now'
@@ -263,7 +263,7 @@ export type SuggestionType =
   | 'navigate_to'
   | 'future_suggestion';
 
-export interface CopilotSuggestion {
+export interface AIAssistantSuggestion {
   id: string;
   type: SuggestionType;
   title: string;
@@ -271,13 +271,13 @@ export interface CopilotSuggestion {
   confidence: number;
   priority: SuggestionPriority;
   actionId: string | null;
-  evidence: CopilotEvidence[];
+  evidence: AIAssistantEvidence[];
   futureMetadata: Record<string, unknown>;
 }
 
 export type SuggestionPriority = 'critical' | 'high' | 'medium' | 'low' | 'informational';
 
-// ── Copilot Explanation ───────────────────────────────────────
+// ── AIAssistant Explanation ───────────────────────────────────────
 
 export type ExplanationSubject =
   | 'recommendation'
@@ -291,12 +291,12 @@ export type ExplanationSubject =
   | 'simulation'
   | 'future_subject';
 
-export interface CopilotExplanation {
+export interface AIAssistantExplanation {
   subject: ExplanationSubject;
   subjectId: string | null;
   title: string;
   why: string;
-  evidence: CopilotEvidence[];
+  evidence: AIAssistantEvidence[];
   confidence: number;
   relatedContext: string[];
   alternativeView: string;
@@ -318,7 +318,7 @@ export type ActionType =
   | 'navigate_to'
   | 'future_action';
 
-export interface CopilotActionPlan {
+export interface AIAssistantActionPlan {
   id: string;
   type: ActionType;
   title: string;
@@ -328,42 +328,42 @@ export interface CopilotActionPlan {
   allowed: boolean;
   permissionReason: string | null;
   estimatedBenefit: string;
-  evidence: CopilotEvidence[];
+  evidence: AIAssistantEvidence[];
   futureMetadata: Record<string, unknown>;
 }
 
 // ── Conversation Model ────────────────────────────────────────
 
-export interface CopilotConversation {
+export interface AIAssistantConversation {
   id: string;
   createdAt: string;
   updatedAt: string;
-  intent: CopilotIntentType;
+  intent: AIAssistantIntentType;
   confidence: number;
-  context: CopilotContext;
-  entities: CopilotEntity[];
+  context: AIAssistantContext;
+  entities: AIAssistantEntity[];
   selectedModules: string[];
-  generatedActions: CopilotActionPlan[];
-  suggestions: CopilotSuggestion[];
-  references: CopilotReference[];
-  messages: CopilotMessage[];
+  generatedActions: AIAssistantActionPlan[];
+  suggestions: AIAssistantSuggestion[];
+  references: AIAssistantReference[];
+  messages: AIAssistantMessage[];
   status: ConversationStatus;
   futureMetadata: Record<string, unknown>;
 }
 
 export type ConversationStatus = 'active' | 'completed' | 'expired' | 'cancelled';
 
-export interface CopilotMessage {
+export interface AIAssistantMessage {
   id: string;
-  role: 'user' | 'copilot';
+  role: 'user' | 'AIAssistant';
   content: string;
   timestamp: string;
-  intent: CopilotIntentType | null;
+  intent: AIAssistantIntentType | null;
   responseId: string | null;
   futureMetadata: Record<string, unknown>;
 }
 
-export interface CopilotReference {
+export interface AIAssistantReference {
   type: EntityType;
   id: string;
   title: string;
@@ -373,19 +373,19 @@ export interface CopilotReference {
 
 // ── Memory ────────────────────────────────────────────────────
 
-export interface CopilotMemory {
-  conversationContext: CopilotContext | null;
+export interface AIAssistantMemory {
+  conversationContext: AIAssistantContext | null;
   activeSessionId: string | null;
   recentTopics: string[];
-  pendingSuggestions: CopilotSuggestion[];
-  recentEntities: CopilotEntity[];
+  pendingSuggestions: AIAssistantSuggestion[];
+  recentEntities: AIAssistantEntity[];
   futureContextProviders: string[];
   futureMetadata: Record<string, unknown>;
 }
 
 // ── Session ───────────────────────────────────────────────────
 
-export interface CopilotSession {
+export interface AIAssistantSession {
   id: string;
   createdAt: string;
   lastActivityAt: string;
@@ -418,7 +418,7 @@ export interface PermissionResult {
 
 // ── Analytics ─────────────────────────────────────────────────
 
-export interface CopilotAnalytics {
+export interface AIAssistantAnalytics {
   totalConversations: number;
   totalMessages: number;
   byIntent: Record<string, number>;
@@ -445,20 +445,20 @@ export interface EntityCount {
 
 // ── Validation ────────────────────────────────────────────────
 
-export interface CopilotValidationResult {
+export interface AIAssistantValidationResult {
   valid: boolean;
-  errors: CopilotValidationError[];
-  warnings: CopilotValidationWarning[];
+  errors: AIAssistantValidationError[];
+  warnings: AIAssistantValidationWarning[];
   futureMetadata: Record<string, unknown>;
 }
 
-export interface CopilotValidationError {
+export interface AIAssistantValidationError {
   code: string;
   message: string;
   field?: string;
 }
 
-export interface CopilotValidationWarning {
+export interface AIAssistantValidationWarning {
   code: string;
   message: string;
   field?: string;
@@ -466,7 +466,7 @@ export interface CopilotValidationWarning {
 
 // ── Prompt Input ──────────────────────────────────────────────
 
-export interface CopilotPromptInput {
+export interface AIAssistantPromptInput {
   prompt: string;
   conversationId: string | null;
   userPermissionLevel: PermissionLevel;
@@ -474,11 +474,11 @@ export interface CopilotPromptInput {
   futureMetadata: Record<string, unknown>;
 }
 
-export interface CopilotPromptResult {
-  conversation: CopilotConversation;
-  response: CopilotResponse;
-  suggestions: CopilotSuggestion[];
-  actionPlans: CopilotActionPlan[];
+export interface AIAssistantPromptResult {
+  conversation: AIAssistantConversation;
+  response: AIAssistantResponse;
+  suggestions: AIAssistantSuggestion[];
+  actionPlans: AIAssistantActionPlan[];
   processingTimeMs: number;
   futureMetadata: Record<string, unknown>;
 }
@@ -497,8 +497,8 @@ export interface ResponseTemplates {
 }
 
 export interface ResponseTemplate {
-  intent: CopilotIntentType;
-  capability: CopilotCapability;
+  intent: AIAssistantIntentType;
+  capability: AIAssistantCapability;
   template: string;
   futureMetadata: Record<string, unknown>;
 }
@@ -516,8 +516,8 @@ export interface PermissionRules {
   futureMetadata: Record<string, unknown>;
 }
 
-export interface CopilotFeatureFlags {
-  enableCopilot: boolean;
+export interface AIAssistantFeatureFlags {
+  enableAIAssistant: boolean;
   enableIntentResolution: boolean;
   enableContextResolution: boolean;
   enableResponseGeneration: boolean;
@@ -541,13 +541,13 @@ export interface ProviderConfiguration {
   futureMetadata: Record<string, unknown>;
 }
 
-export interface CopilotConfiguration {
+export interface AIAssistantConfiguration {
   configVersion: string;
   intentDefinitions: IntentDefinitions;
   responseTemplates: ResponseTemplates;
   suggestionRules: SuggestionRules;
   permissionRules: PermissionRules;
-  featureFlags: CopilotFeatureFlags;
+  featureFlags: AIAssistantFeatureFlags;
   providers: ProviderConfiguration[];
   performanceTargetMs: number;
   intentResolutionTargetMs: number;
@@ -560,7 +560,7 @@ export interface CopilotConfiguration {
 
 // ── Events ────────────────────────────────────────────────────
 
-export type CopilotEventType =
+export type AIAssistantEventType =
   | 'conversation_started'
   | 'intent_resolved'
   | 'response_generated'
@@ -568,47 +568,47 @@ export type CopilotEventType =
   | 'action_planned'
   | 'conversation_completed';
 
-export interface CopilotEvent {
-  type: CopilotEventType;
+export interface AIAssistantEvent {
+  type: AIAssistantEventType;
   conversationId: string | null;
   timestamp: string;
   data: unknown;
 }
 
-export type CopilotEventListener = (event: CopilotEvent) => void;
+export type AIAssistantEventListener = (event: AIAssistantEvent) => void;
 
 // ── Provider Plugin (Extensibility) ───────────────────────────
 
-export interface CopilotProviderPlugin {
+export interface AIAssistantProviderPlugin {
   getPluginName(): string;
   getVersion(): string;
   getPriority(): number;
   isAvailable(): boolean;
   resolveIntent?(prompt: string): IntentResolutionResult | null;
-  generateResponse?(input: CopilotResponseInput): CopilotResponse | null;
-  generateSuggestions?(input: CopilotSuggestionInput): CopilotSuggestion[] | null;
+  generateResponse?(input: AIAssistantResponseInput): AIAssistantResponse | null;
+  generateSuggestions?(input: AIAssistantSuggestionInput): AIAssistantSuggestion[] | null;
 }
 
-export interface CopilotResponseInput {
-  intent: CopilotIntentType;
-  context: CopilotContext;
-  entities: CopilotEntity[];
+export interface AIAssistantResponseInput {
+  intent: AIAssistantIntentType;
+  context: AIAssistantContext;
+  entities: AIAssistantEntity[];
   prompt: string;
   conversationId: string;
   futureMetadata: Record<string, unknown>;
 }
 
-export interface CopilotSuggestionInput {
-  intent: CopilotIntentType;
-  context: CopilotContext;
+export interface AIAssistantSuggestionInput {
+  intent: AIAssistantIntentType;
+  context: AIAssistantContext;
   conversationId: string;
   futureMetadata: Record<string, unknown>;
 }
 
 // ── Helper Functions ──────────────────────────────────────────
 
-export function generateCopilotId(): string {
-  return `copilot_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+export function generateAIAssistantId(): string {
+  return `AIAssistant_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
 export function generateConversationId(): string {
@@ -647,8 +647,8 @@ export function clampConfidence(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-export function getIntentLabel(intent: CopilotIntentType): string {
-  const labels: Record<CopilotIntentType, string> = {
+export function getIntentLabel(intent: AIAssistantIntentType): string {
+  const labels: Record<AIAssistantIntentType, string> = {
     question: 'Question',
     recommendation: 'Recommendation',
     explanation: 'Explanation',
@@ -666,8 +666,8 @@ export function getIntentLabel(intent: CopilotIntentType): string {
   return labels[intent] ?? 'Unknown';
 }
 
-export function getCapabilityLabel(capability: CopilotCapability): string {
-  const labels: Record<CopilotCapability, string> = {
+export function getCapabilityLabel(capability: AIAssistantCapability): string {
+  const labels: Record<AIAssistantCapability, string> = {
     answer_questions: 'Answer Questions',
     explain_recommendations: 'Explain Recommendations',
     explain_health_score: 'Explain Health Score',
@@ -701,8 +701,8 @@ export function getActionTypeLabel(action: ActionType): string {
   return labels[action] ?? 'Unknown';
 }
 
-export function getEventTypeLabel(event: CopilotEventType): string {
-  const labels: Record<CopilotEventType, string> = {
+export function getEventTypeLabel(event: AIAssistantEventType): string {
+  const labels: Record<AIAssistantEventType, string> = {
     conversation_started: 'Conversation Started',
     intent_resolved: 'Intent Resolved',
     response_generated: 'Response Generated',
@@ -838,9 +838,9 @@ export function createDefaultPermissionRules(): PermissionRules {
   };
 }
 
-export function createDefaultCopilotFeatureFlags(): CopilotFeatureFlags {
+export function createDefaultAIAssistantFeatureFlags(): AIAssistantFeatureFlags {
   return {
-    enableCopilot: true,
+    enableAIAssistant: true,
     enableIntentResolution: true,
     enableContextResolution: true,
     enableResponseGeneration: true,

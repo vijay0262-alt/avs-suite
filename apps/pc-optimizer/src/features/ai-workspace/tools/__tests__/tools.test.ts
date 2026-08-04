@@ -20,9 +20,9 @@ import { ToolEvents } from '../toolEvents';
 import { createDefaultTools, ExplainHealthTool, OptimizationSessionTool } from '../builtinTools';
 import { DEFAULT_TOOL_CONFIGURATION, createToolConfiguration, validateToolConfiguration } from '../toolConfiguration';
 import { generateToolId, clampConfidence, getToolCategoryLabel, getRiskLevelLabel } from '../types';
-import type { Tool, ToolInput, ToolResult, CopilotContext } from '../types';
+import type { Tool, ToolInput, ToolResult, AIAssistantContext } from '../types';
 
-function createMockContext(): CopilotContext {
+function createMockContext(): AIAssistantContext {
   return {
     sources: [
       { type: 'health_score', available: true, data: 75, confidence: 0.9, evidence: [], futureMetadata: {} },
@@ -48,10 +48,10 @@ function createMockContext(): CopilotContext {
     recoveryHistory: [{ id: 'rc1', timestamp: new Date().toISOString(), type: 'rollback', success: true, futureMetadata: {} }],
     userPreferences: { theme: 'dark' },
     futureMetadata: {},
-  } as CopilotContext;
+  } as AIAssistantContext;
 }
 
-function createMockInput(toolId: string, context?: CopilotContext, params?: Record<string, unknown>): ToolInput {
+function createMockInput(toolId: string, context?: AIAssistantContext, params?: Record<string, unknown>): ToolInput {
   return {
     toolId,
     context: context ?? createMockContext(),
@@ -636,12 +636,12 @@ describe('Tool Edge Cases', () => {
   });
 
   it('should handle empty context gracefully', async () => {
-    const emptyCtx: CopilotContext = {
+    const emptyCtx: AIAssistantContext = {
       sources: [], healthScore: null, deviceProfile: null, activeGoals: [],
       recentTimelineEvents: [], activeRecommendations: [], activePredictions: [],
       maintenanceHistory: [], optimizationHistory: [], recoveryHistory: [],
       userPreferences: {}, futureMetadata: {},
-    } as CopilotContext;
+    } as AIAssistantContext;
     const input = createMockInput('explain_health', emptyCtx);
     const result = await manager.executeTool(input);
     expect(result.status).toBe('failed');

@@ -32,7 +32,7 @@ import type {
   ReportWidgetDefinition,
   ReportTemplate,
   ReportFilterSet,
-  CopilotContext,
+  AIAssistantContext,
   PermissionLevel,
   ReportPlugin,
   ReportValidationResult,
@@ -72,7 +72,7 @@ export class ReportStudioManager {
   private _history: ReportHistory;
   private _analytics: ReportAnalytics;
   private _validator: ReportValidator;
-  private _contextProvider: (() => CopilotContext) | null = null;
+  private _contextProvider: (() => AIAssistantContext) | null = null;
   private _userPermission: PermissionLevel = 'free';
 
   constructor(config?: Partial<ReportStudioConfiguration>) {
@@ -102,7 +102,7 @@ export class ReportStudioManager {
 
   // ── Public API ──────────────────────────────────────────────
 
-  setContextProvider(provider: () => CopilotContext): void {
+  setContextProvider(provider: () => AIAssistantContext): void {
     this._contextProvider = provider;
   }
 

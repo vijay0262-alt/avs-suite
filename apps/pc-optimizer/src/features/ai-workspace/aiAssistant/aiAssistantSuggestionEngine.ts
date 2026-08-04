@@ -1,5 +1,5 @@
 /**
- * AI Copilot Platform — Suggestion Engine
+ * AVS AI Assistant Platform — Suggestion Engine
  *
  * EPIC 5 PHASE A PART 1
  *
@@ -7,37 +7,37 @@
  * Every suggestion is evidence-based with confidence and priority.
  */
 import type {
-  CopilotConfiguration,
-  CopilotSuggestion,
-  CopilotContext,
-  CopilotIntentType,
+  AIAssistantConfiguration,
+  AIAssistantSuggestion,
+  AIAssistantContext,
+  AIAssistantIntentType,
   SuggestionType,
   SuggestionPriority,
-  CopilotEvidence,
-  CopilotProviderPlugin,
-  CopilotSuggestionInput,
+  AIAssistantEvidence,
+  AIAssistantProviderPlugin,
+  AIAssistantSuggestionInput,
 } from './types';
 import { generateSuggestionId, clampConfidence } from './types';
 
-export class CopilotSuggestionEngine {
-  private _config: CopilotConfiguration;
-  private _plugins: CopilotProviderPlugin[] = [];
+export class AIAssistantSuggestionEngine {
+  private _config: AIAssistantConfiguration;
+  private _plugins: AIAssistantProviderPlugin[] = [];
 
-  constructor(config: CopilotConfiguration) {
+  constructor(config: AIAssistantConfiguration) {
     this._config = config;
   }
 
-  updateConfig(config: CopilotConfiguration): void {
+  updateConfig(config: AIAssistantConfiguration): void {
     this._config = config;
   }
 
-  registerPlugin(plugin: CopilotProviderPlugin): void {
+  registerPlugin(plugin: AIAssistantProviderPlugin): void {
     this._plugins.push(plugin);
     this._plugins.sort((a, b) => a.getPriority() - b.getPriority());
   }
 
-  generate(intent: CopilotIntentType, context: CopilotContext, conversationId: string): CopilotSuggestion[] {
-    const input: CopilotSuggestionInput = {
+  generate(intent: AIAssistantIntentType, context: AIAssistantContext, conversationId: string): AIAssistantSuggestion[] {
+    const input: AIAssistantSuggestionInput = {
       intent,
       context,
       conversationId,
@@ -57,8 +57,8 @@ export class CopilotSuggestionEngine {
     return this._generateBuiltin(intent, context);
   }
 
-  private _generateBuiltin(intent: CopilotIntentType, context: CopilotContext): CopilotSuggestion[] {
-    const suggestions: CopilotSuggestion[] = [];
+  private _generateBuiltin(intent: AIAssistantIntentType, context: AIAssistantContext): AIAssistantSuggestion[] {
+    const suggestions: AIAssistantSuggestion[] = [];
 
     // Suggest optimization if recommendations exist
     if (context.activeRecommendations.length > 0) {
@@ -167,7 +167,7 @@ export class CopilotSuggestionEngine {
     return this._filterAndRank(suggestions);
   }
 
-  private _filterAndRank(suggestions: CopilotSuggestion[]): CopilotSuggestion[] {
+  private _filterAndRank(suggestions: AIAssistantSuggestion[]): AIAssistantSuggestion[] {
     const filtered = suggestions.filter(
       (s) => s.confidence >= this._config.suggestionRules.minConfidence,
     );
@@ -193,8 +193,8 @@ export class CopilotSuggestionEngine {
     description: string,
     confidence: number,
     priority: SuggestionPriority,
-    evidence: CopilotEvidence,
-  ): CopilotSuggestion {
+    evidence: AIAssistantEvidence,
+  ): AIAssistantSuggestion {
     return {
       id: generateSuggestionId(),
       type,
@@ -213,7 +213,7 @@ export class CopilotSuggestionEngine {
     metric: string,
     value: string | number | boolean,
     description: string,
-  ): CopilotEvidence {
+  ): AIAssistantEvidence {
     return {
       source,
       metric,

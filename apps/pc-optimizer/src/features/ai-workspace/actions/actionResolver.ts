@@ -6,7 +6,7 @@
  * Resolves intents to tools using the AI Tool Framework.
  * Does NOT execute tools — only selects them.
  */
-import type { ClassifiedIntent, ToolDefinition, CopilotContext, CopilotIntentType } from './types';
+import type { ClassifiedIntent, ToolDefinition, AIAssistantContext, AIAssistantIntentType } from './types';
 import type { ToolManager } from '../tools/toolManager';
 
 export class ActionResolver {
@@ -16,14 +16,14 @@ export class ActionResolver {
     this._toolManager = manager;
   }
 
-  resolve(intent: ClassifiedIntent, context: CopilotContext): ToolDefinition[] {
+  resolve(intent: ClassifiedIntent, context: AIAssistantContext): ToolDefinition[] {
     if (!this._toolManager) return [];
 
-    // Map intent action types to Copilot intent types for tool resolution
-    const copilotIntent = this._mapToCopilotIntent(intent.intent);
-    if (!copilotIntent) return [];
+    // Map intent action types to AIAssistant intent types for tool resolution
+    const AIAssistantIntent = this._mapToAIAssistantIntent(intent.intent);
+    if (!AIAssistantIntent) return [];
 
-    const resolution = this._toolManager.resolveTool(copilotIntent, context);
+    const resolution = this._toolManager.resolveTool(AIAssistantIntent, context);
     const tools: ToolDefinition[] = [];
 
     if (resolution.selectedTool) {
@@ -54,8 +54,8 @@ export class ActionResolver {
     return tools;
   }
 
-  private _mapToCopilotIntent(actionType: string): CopilotIntentType | null {
-    const mapping: Record<string, CopilotIntentType> = {
+  private _mapToAIAssistantIntent(actionType: string): AIAssistantIntentType | null {
+    const mapping: Record<string, AIAssistantIntentType> = {
       optimization: 'optimization',
       maintenance: 'maintenance',
       recovery: 'recovery',

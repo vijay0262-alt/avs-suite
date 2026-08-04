@@ -6,20 +6,20 @@
  * Manages widget refresh: manual, interval, event-driven,
  * on focus, on demand.
  */
-import type { RefreshPolicy, CopilotContext } from './types';
+import type { RefreshPolicy, AIAssistantContext } from './types';
 import type { CommandCenterWidgetManager } from './commandCenterWidgetManager';
 
 export class CommandCenterRefreshEngine {
   private _policies: Map<string, RefreshPolicy> = new Map();
   private _intervals: Map<string, ReturnType<typeof setInterval>> = new Map();
   private _widgetManager: CommandCenterWidgetManager;
-  private _contextProvider: (() => CopilotContext) | null = null;
+  private _contextProvider: (() => AIAssistantContext) | null = null;
 
   constructor(widgetManager: CommandCenterWidgetManager) {
     this._widgetManager = widgetManager;
   }
 
-  setContextProvider(provider: () => CopilotContext): void {
+  setContextProvider(provider: () => AIAssistantContext): void {
     this._contextProvider = provider;
   }
 

@@ -73,7 +73,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
     labelKey: 'nav.section.home',
     entries: [
       { id: 'dashboard', to: '/dashboard', labelKey: 'nav.dashboard', Icon: Squares2X2Icon },
-      { id: 'ai-copilot', to: '/ai-copilot', labelKey: 'nav.aiCopilot', Icon: SparklesIcon },
+      { id: 'ai-AIAssistant', to: '/ai-AIAssistant', labelKey: 'nav.AIAssistant', Icon: SparklesIcon },
       { id: 'ai-daily-briefing', to: '/ai-daily-briefing', labelKey: 'nav.aiDailyBriefing', Icon: LightBulbIcon },
       { id: 'ai-smart-optimize', to: '/ai-smart-optimize', labelKey: 'nav.aiSmartOptimize', Icon: BoltIcon, proEnhanced: true },
       { id: 'ai-workspace', to: '/ai-workspace', labelKey: 'nav.aiWorkspace', Icon: CommandLineIcon },
