@@ -10,6 +10,10 @@ import type {
   RegistryCleanResult,
 } from './registry.types';
 import { optimizationEventBus, OptimizationEventType } from '../health';
+import { currentEdition, canUse } from '../licensing/FeatureGate';
+import { getEditionLimit } from '../licensing/editionLimits';
+
+const FREE_ISSUE_LIMIT = 20;
 
 export interface RegistryState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
@@ -73,11 +77,16 @@ export class RegistryCleanerViewModel extends ViewModel<RegistryState> {
     this.setState({ scanning: true, scanError: null, cleanResult: null });
     try {
       const result = await this.service.scan(categories);
+      const isFree = currentEdition() === 'free';
+      const hasUnlimited = canUse('registry.fix');
+      // In Free edition, pre-select only up to 20 issues
+      const selectedIds = (isFree && !hasUnlimited)
+        ? new Set(result.issues.slice(0, FREE_ISSUE_LIMIT).map((i) => i.id))
+        : new Set(result.issues.map((i) => i.id));
       this.setState({
         issues: result.issues,
         breakdown: result.categoryBreakdown,
-        // Pre-select all discovered issues by default.
-        selected: new Set(result.issues.map((i) => i.id)),
+        selected: selectedIds,
         scanning: false,
       });
     } catch (err) {
@@ -90,13 +99,44 @@ export class RegistryCleanerViewModel extends ViewModel<RegistryState> {
 
   toggleIssue(id: string): void {
     const selected = new Set(this.state.selected);
-    if (selected.has(id)) selected.delete(id);
-    else selected.add(id);
+    if (selected.has(id)) {
+      selected.delete(id);
+    } else {
+      // Enforce Free edition limit when selecting
+      const isFree = currentEdition() === 'free';
+      const hasUnlimited = canUse('registry.fix');
+      if (isFree && !hasUnlimited && selected.size >= FREE_ISSUE_LIMIT) {
+        return; // silently ignore — limit reached
+      }
+      selected.add(id);
+    }
     this.setState({ selected });
   }
 
+  /**
+   * Returns the maximum number of issues that can be fixed in the current edition.
+   * Returns null for unlimited (Professional).
+   */
+  getFixLimit(): number | null {
+    return getEditionLimit('registryCleanerIssuesPerRun', currentEdition() === 'professional');
+  }
+
+  /**
+   * Whether the current edition has unlimited repairs.
+   */
+  hasUnlimitedRepairs(): boolean {
+    return currentEdition() === 'professional' || canUse('registry.fix');
+  }
+
   selectAll(): void {
-    this.setState({ selected: new Set(this.state.issues.map((i) => i.id)) });
+    const isFree = currentEdition() === 'free';
+    const hasUnlimited = canUse('registry.fix');
+    if (isFree && !hasUnlimited) {
+      // Free edition: limit selection to 20 issues
+      this.setState({ selected: new Set(this.state.issues.slice(0, FREE_ISSUE_LIMIT).map((i) => i.id)) });
+    } else {
+      this.setState({ selected: new Set(this.state.issues.map((i) => i.id)) });
+    }
   }
 
   selectNone(): void {
@@ -106,6 +146,17 @@ export class RegistryCleanerViewModel extends ViewModel<RegistryState> {
   async clean(): Promise<void> {
     const toFix = this.state.issues.filter((i) => this.state.selected.has(i.id));
     if (toFix.length === 0) return;
+
+    // Enforce Free edition limit: max 20 issues per scan
+    const isFree = currentEdition() === 'free';
+    const hasUnlimited = canUse('registry.fix');
+    if (isFree && !hasUnlimited && toFix.length > FREE_ISSUE_LIMIT) {
+      this.setState({
+        cleanError: `Free edition repairs up to ${FREE_ISSUE_LIMIT} issues per scan. Upgrade to Professional for unlimited repairs.`,
+      });
+      return;
+    }
+
     this.setState({ cleaning: true, cleanError: null });
     try {
       const result = await this.service.clean(toFix);

@@ -11,11 +11,25 @@ import { LiveScanProgress } from '../shared/components/LiveScanProgress';
 import { RegistryCleanerViewModel } from './RegistryCleanerViewModel';
 import { registryService } from './registry.service';
 import { CATEGORY_LABELS } from './registry.types';
-import { WrenchScrewdriverIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { useIsPro } from '../sync/syncStore';
+import { useFeatureGuard } from '../licensing/useFeatureGuard';
+import { useEditionLimits } from '../licensing/editionLimits';
+import { ProStatusPill, ProFeatureIndicator } from '../licensing/ProStatusBadge';
+import {
+  WrenchScrewdriverIcon,
+  ShieldCheckIcon,
+  ClockIcon,
+  ArrowPathIcon,
+  LockClosedIcon,
+} from '@heroicons/react/24/outline';
 
 export default function RegistryCleanerPage() {
   const vm = useMemo(() => new RegistryCleanerViewModel(registryService), []);
   const state = useViewModel(vm);
+  const isPro = useIsPro();
+  const { guard, dialogElement } = useFeatureGuard();
+  const limits = useEditionLimits();
+  const fixLimit = limits.getLimit('registryCleanerIssuesPerRun');
 
   useEffect(() => {
     void vm.bootstrap();
@@ -23,6 +37,10 @@ export default function RegistryCleanerPage() {
   }, [vm]);
 
   const selectedCount = state.selected.size;
+  const issueCount = state.issues.length;
+  const remainingFixes = fixLimit !== null ? Math.max(0, fixLimit - selectedCount) : null;
+  const limitReached = fixLimit !== null && selectedCount >= fixLimit;
+  const hasMoreIssues = issueCount > (fixLimit ?? 0);
 
   return (
     <div data-testid="page-registry-cleaner">
@@ -117,6 +135,40 @@ export default function RegistryCleanerPage() {
             </div>
           )}
 
+          {/* Free edition limit banner */}
+          {!isPro && issueCount > 0 && (
+            <div
+              className={`mb-4 rounded-[var(--avs-radius-md)] border px-4 py-3 ${
+                limitReached
+                  ? 'border-semantic-warning/30 bg-semantic-warning/10'
+                  : 'border-[var(--avs-border)] bg-[var(--avs-surface-muted)]'
+              }`}
+              data-testid="registry-free-limit-banner"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ClockIcon className="h-4 w-4 text-text-secondary shrink-0" />
+                  <span className="text-xs text-text-secondary">
+                    Free edition: <strong className="text-text-primary">{selectedCount} of {fixLimit}</strong> issues selected for repair
+                    {hasMoreIssues && ` (${issueCount - (fixLimit ?? 0)} more found)`}
+                  </span>
+                </div>
+                {limitReached && hasMoreIssues && (
+                  <button
+                    onClick={() => guard('registry.fix', 'Registry Cleaner', () => {}, {
+                      limitDescription: `Free edition repairs up to ${fixLimit} issues per scan. ${issueCount} issues found.`,
+                      proBenefit: 'Unlimited repairs + automatic backup + scheduled repair.',
+                    })}
+                    className="text-xs font-medium text-brand-primary hover:underline"
+                    data-testid="registry-upgrade-link"
+                  >
+                    Upgrade to Pro →
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Category summary */}
           {Object.keys(state.breakdown).length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 my-6">
@@ -143,11 +195,16 @@ export default function RegistryCleanerPage() {
             <>
               <div className="flex items-center gap-2 mb-3">
                 <Button variant="secondary" size="sm" onClick={() => vm.selectAll()}>
-                  Select All
+                  Select All{!isPro && fixLimit !== null ? ` (max ${fixLimit})` : ''}
                 </Button>
                 <Button variant="secondary" size="sm" onClick={() => vm.selectNone()}>
                   Select None
                 </Button>
+                {!isPro && (
+                  <span className="ml-auto text-xs text-text-muted">
+                    {selectedCount}/{fixLimit} selected
+                  </span>
+                )}
               </div>
               <Card>
                 <div className="divide-y divide-[var(--avs-border)]">
@@ -193,7 +250,12 @@ export default function RegistryCleanerPage() {
           {/* Backups */}
           {state.backups.length > 0 && (
             <div className="mt-8">
-              <h2 className="text-lg font-semibold text-text-primary mb-3">Backups</h2>
+              <div className="flex items-center gap-2 mb-3">
+                <h2 className="text-lg font-semibold text-text-primary">Backups</h2>
+                {isPro && (
+                  <ProFeatureIndicator icon={ShieldCheckIcon} label="Automatic Backup" />
+                )}
+              </div>
               <Card>
                 <div className="space-y-2">
                   {state.backups.map((b) => (
@@ -216,6 +278,89 @@ export default function RegistryCleanerPage() {
               </Card>
             </div>
           )}
+
+          {/* Pro Features — Scheduled Repair */}
+          <div className="mt-8">
+            <Card title="Professional Features" variant="glass">
+              <div className="space-y-4">
+                {/* Scheduled Repair */}
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
+                      <ClockIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-text-primary">Scheduled Repair</span>
+                        {!isPro && <ProStatusPill />}
+                      </div>
+                      <p className="mt-0.5 text-xs text-text-secondary">
+                        Automatically scan and repair registry issues on a schedule — weekly, monthly, or custom.
+                      </p>
+                    </div>
+                  </div>
+                  {isPro ? (
+                    <Button variant="secondary" size="sm" leftIcon={<ArrowPathIcon className="h-4 w-4" />}>
+                      Configure Schedule
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      leftIcon={<LockClosedIcon className="h-4 w-4" />}
+                      onClick={() => guard('registry.fix', 'Registry Cleaner', () => {}, {
+                        limitDescription: 'Scheduled repair is a Professional feature.',
+                        proBenefit: 'Automatically scan and repair registry issues on a schedule.',
+                      })}
+                      data-testid="registry-schedule-upgrade"
+                    >
+                      Upgrade to Unlock
+                    </Button>
+                  )}
+                </div>
+
+                {/* Automatic Backup */}
+                <div className="flex items-start justify-between border-t border-[var(--avs-border)] pt-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
+                      <ShieldCheckIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-text-primary">Automatic Backup</span>
+                        {isPro && <ProFeatureIndicator icon={ShieldCheckIcon} label="Active" />}
+                      </div>
+                      <p className="mt-0.5 text-xs text-text-secondary">
+                        Every repair is automatically backed up before changes are applied. Restore anytime.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Unlimited Repairs */}
+                <div className="flex items-start justify-between border-t border-[var(--avs-border)] pt-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
+                      <WrenchScrewdriverIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-text-primary">Unlimited Repairs</span>
+                        {isPro && <ProFeatureIndicator icon={WrenchScrewdriverIcon} label="Unlimited" />}
+                      </div>
+                      <p className="mt-0.5 text-xs text-text-secondary">
+                        {isPro
+                          ? 'Repair all detected registry issues with no limits.'
+                          : `Free edition: repair up to ${fixLimit} issues per scan. Upgrade for unlimited.`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {dialogElement}
         </>
       )}
     </div>

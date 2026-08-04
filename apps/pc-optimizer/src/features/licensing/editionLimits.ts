@@ -137,10 +137,10 @@ export const EDITION_LIMITS: EditionLimits = {
 
   // Registry Cleaner
   registryCleanerIssuesPerRun: {
-    free: 50,
+    free: 20,
     professional: null,
-    freeLabel: 'Repair up to 50 issues',
-    proLabel: 'Unlimited repair',
+    freeLabel: 'Repair up to 20 issues per scan',
+    proLabel: 'Unlimited repairs + automatic backup + scheduled repair',
   },
 
   // Startup Manager

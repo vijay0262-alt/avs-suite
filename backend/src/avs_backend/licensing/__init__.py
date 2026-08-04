@@ -402,6 +402,31 @@ def _get_current_edition() -> str:
         return "free"
 
 
+# ── Edition Limits ────────────────────────────────────────────
+
+# Per-module limits for Free edition. Professional edition is always unlimited.
+# This mirrors the frontend EDITION_LIMITS so the backend can enforce
+# limits even if the RPC is called directly.
+_EDITION_LIMITS: dict[str, int | None] = {
+    "registry.issues_per_run": 20,
+    "junk.bytes_per_run": 500 * 1024 * 1024,  # 500 MB
+    "startup.entries_per_run": 3,
+    "duplicate.files_per_run": 20,
+    "large_files.per_session": 10,
+}
+
+
+def get_edition_limit(key: str) -> int | None:
+    """Get the limit value for the given key based on current edition.
+
+    Returns None for unlimited (Professional edition or unknown keys).
+    """
+    edition = _get_current_edition()
+    if edition in ("professional", "ultimate", "trial"):
+        return None
+    return _EDITION_LIMITS.get(key)
+
+
 def require_feature(rpc_method: str) -> Callable:
     """Decorator: enforce edition restrictions on an RPC handler.
 

@@ -536,7 +536,7 @@ function ScanTab({ vm }: { vm: SecurityCenterViewModel }) {
           )}
         </div>
 
-        {/* Capability Cards */
+        {/* Capability Cards */}
         {s.capabilities.length > 0 && (
           <Card title="Detection Capabilities" variant="glass">
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">

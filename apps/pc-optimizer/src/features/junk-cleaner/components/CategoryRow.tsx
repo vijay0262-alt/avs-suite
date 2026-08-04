@@ -13,7 +13,6 @@ import {
   ArrowDownTrayIcon,
   BugAntIcon,
   ClockIcon,
-  CalendarDaysIcon,
   PuzzlePieceIcon,
   RectangleStackIcon,
   ExclamationTriangleIcon,
