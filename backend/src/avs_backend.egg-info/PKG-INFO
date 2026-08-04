@@ -1,0 +1,6 @@
+Metadata-Version: 2.4
+Name: avs-backend
+Version: 0.1.0
+Summary: AVS PC Optimizer — Python backend (JSON-RPC over stdio)
+License: Proprietary
+Requires-Python: >=3.12

@@ -7,10 +7,11 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleSuccessBanner, ModuleErrorBanner, ModuleEmptyState } from '../../components/ModuleStates';
 import { HelpButton } from '../../components/HelpButton';
+import { LiveScanProgress } from '../shared/components/LiveScanProgress';
 import { RegistryCleanerViewModel } from './RegistryCleanerViewModel';
 import { registryService } from './registry.service';
 import { CATEGORY_LABELS } from './registry.types';
-import { WrenchScrewdriverIcon } from '@heroicons/react/24/outline';
+import { WrenchScrewdriverIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 
 export default function RegistryCleanerPage() {
   const vm = useMemo(() => new RegistryCleanerViewModel(registryService), []);
@@ -30,6 +31,24 @@ export default function RegistryCleanerPage() {
         description="Find and safely remove invalid Windows registry entries. Every change is backed up first."
         actions={<HelpButton text="The registry scanner checks for invalid file references, broken shortcuts, missing shared DLLs, and obsolete COM objects. Every fix is backed up and can be restored." />}
       />
+
+      {/* Safety guardrail banner */}
+      <div
+        className="mb-4 rounded-[var(--avs-radius-md)] border border-[color-mix(in_srgb,var(--avs-brand-primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--avs-brand-primary)_5%,transparent)] px-4 py-3"
+        data-testid="registry-safety-banner"
+      >
+        <div className="flex items-start gap-2">
+          <ShieldCheckIcon className="h-5 w-5 text-brand-primary shrink-0 mt-0.5" />
+          <div className="text-xs text-text-secondary">
+            <span className="font-semibold text-text-primary">Safety Guardrails:</span>{' '}
+            Registry cleaning is{' '}
+            <strong>manual review only</strong> — no automatic deletion. Every fix is
+            backed up and can be restored. A{' '}
+            <strong>System Restore Point</strong> is automatically created before
+            any registry changes.
+          </div>
+        </div>
+      </div>
 
       {state.bootstrap === 'error' && (
         <ModuleErrorState
@@ -85,6 +104,17 @@ export default function RegistryCleanerPage() {
               message={`${state.cleanResult.errors.length} error(s) occurred during fixing.`}
               testId="registry-clean-errors"
             />
+          )}
+
+          {/* Live scanning progress */}
+          {state.scanning && (
+            <div className="mb-6">
+              <LiveScanProgress
+                isRunning={state.scanning}
+                scanLabel="Registry"
+                phases={Object.entries(CATEGORY_LABELS).map(([id, label]) => ({ id, label: `Scanning ${label}…` }))}
+              />
+            </div>
           )}
 
           {/* Category summary */}

@@ -48,7 +48,7 @@ interface SystemInfo {
 
 export default function DiagnosticsPage() {
   const { data: syncData } = useSyncStore();
-  const edition = syncData ? planToEdition(syncData.subscription.plan).toLowerCase() : 'free';
+  const edition = syncData ? planToEdition(syncData.subscription.plan, syncData.license?.edition).toLowerCase() : 'free';
   const licenseStatus = syncData?.license?.status ?? 'FREE';
   const [diag, setDiag] = useState<DiagnosticsData | null>(null);
   const [sysInfo, setSysInfo] = useState<SystemInfo | null>(null);

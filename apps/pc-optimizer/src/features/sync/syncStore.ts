@@ -105,7 +105,14 @@ export interface SyncStoreState {
 
 // ── Helper: derive edition from sync data ───────────────────────
 
-export function planToEdition(plan: string): 'FREE' | 'PROFESSIONAL' {
+/**
+ * Derive edition from subscription plan, with license edition as fallback.
+ * If the subscription plan says FREE but a PRO license exists, use the license edition.
+ */
+export function planToEdition(
+  plan: string,
+  licenseEdition?: string | null,
+): 'FREE' | 'PROFESSIONAL' {
   const upper = plan.toUpperCase();
   switch (upper) {
     case 'PROFESSIONAL':
@@ -114,8 +121,16 @@ export function planToEdition(plan: string): 'FREE' | 'PROFESSIONAL' {
     case 'ENTERPRISE':
       return 'PROFESSIONAL';
     default:
-      return 'FREE';
+      break;
   }
+  // Fallback: check license edition if subscription plan is FREE
+  if (licenseEdition) {
+    const ed = licenseEdition.toUpperCase();
+    if (ed === 'PROFESSIONAL' || ed === 'PRO' || ed === 'ULTIMATE' || ed === 'ENTERPRISE') {
+      return 'PROFESSIONAL';
+    }
+  }
+  return 'FREE';
 }
 
 // ── Store ───────────────────────────────────────────────────────
@@ -242,7 +257,7 @@ export function stopPeriodicSync(): void {
 export function useEdition(): 'FREE' | 'PROFESSIONAL' {
   return useSyncStore((s) => {
     if (!s.data) return 'FREE';
-    return planToEdition(s.data.subscription.plan);
+    return planToEdition(s.data.subscription.plan, s.data.license?.edition);
   });
 }
 
@@ -269,7 +284,7 @@ export function usePlan(): string {
 export function useIsPro(): boolean {
   return useSyncStore((s) => {
     if (!s.data) return false;
-    return planToEdition(s.data.subscription.plan) === 'PROFESSIONAL';
+    return planToEdition(s.data.subscription.plan, s.data.license?.edition) === 'PROFESSIONAL';
   });
 }
 

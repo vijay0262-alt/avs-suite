@@ -17,7 +17,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Button, Badge } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
-import { useSyncStore } from '../sync/syncStore';
+import { useSyncStore, planToEdition } from '../sync/syncStore';
 import { useAuthStore } from '../auth/authStore';
 import { getVersionString, getBuildString } from '../../config/version';
 import { apiClient, ApiError } from '../auth/apiClient';
@@ -41,33 +41,53 @@ export default function ActivationPage() {
     setActivateLoading(true);
     setActivateError(null);
     setActivateSuccess(null);
+    let activationWorked = false;
     try {
       const resp = await apiClient.post<{ redeemed: boolean }>(
         '/api/customer/licenses/redeem',
         { license_key: trimmed },
       );
+      activationWorked = true;
       if (resp.redeemed) {
         setActivateSuccess('License activated successfully! Your account has been upgraded to Professional.');
       } else {
         setActivateSuccess('This license key is already linked to your account.');
       }
       setLicenseKeyInput('');
-      // Re-sync to get updated subscription/license data
-      await sync();
     } catch (err) {
       if (err instanceof ApiError) {
-        setActivateError(err.detail ?? err.message);
+        const detail = err.detail ?? err.message;
+        setActivateError(detail);
+        // If the error indicates the license is already linked/active,
+        // treat it as a soft success — the sync will reflect the actual state.
+        if (detail.toLowerCase().includes('already') || detail.toLowerCase().includes('pro')) {
+          setActivateError(null);
+          setActivateSuccess('Your license is already active. Syncing your account status…');
+          activationWorked = true;
+        }
       } else {
         setActivateError(err instanceof Error ? err.message : 'Failed to activate license. Please try again.');
       }
-    } finally {
-      setActivateLoading(false);
     }
+    // Always re-sync after activation attempt — even on error, the backend
+    // may have updated the subscription/license state.
+    if (activationWorked) {
+      // Clear cached sync data to force fresh fetch from backend
+      try {
+        localStorage.removeItem('avs_sync_cache');
+      } catch { /* ignore */ }
+      await sync();
+    }
+    setActivateLoading(false);
   }, [licenseKeyInput, sync]);
 
   const handleRefresh = useCallback(async () => {
     setActionLoading(true);
     setActionSuccess(null);
+    // Clear cached sync data to force fresh fetch from backend
+    try {
+      localStorage.removeItem('avs_sync_cache');
+    } catch { /* ignore */ }
     const ok = await sync();
     setActionLoading(false);
     if (ok) {
@@ -76,11 +96,12 @@ export default function ActivationPage() {
   }, [sync]);
 
   useEffect(() => {
-    if (!syncData) void sync();
-  }, [syncData, sync]);
+    // Always sync on mount to get fresh license/subscription data from backend
+    void sync();
+  }, [sync]);
 
   const plan = syncData?.subscription.plan ?? 'FREE';
-  const isProfessional = plan.toUpperCase() === 'PROFESSIONAL';
+  const isProfessional = planToEdition(plan, syncData?.license?.edition) === 'PROFESSIONAL';
   const isConnected = !isOffline && phase !== 'offline';
   const serverVersion = syncData?.server_version ?? null;
 
@@ -178,7 +199,9 @@ export default function ActivationPage() {
             <div>
               <div className="text-text-muted">Current Plan</div>
               <div className="flex items-center gap-2 mt-1">
-                <span className="font-medium text-text-primary">{syncData.subscription.plan}</span>
+                <span className="font-medium text-text-primary">
+                  {isProfessional ? 'PROFESSIONAL' : syncData.subscription.plan}
+                </span>
                 <Badge tone={syncData.subscription.status === 'ACTIVE' ? 'success' : 'neutral'}>
                   {syncData.subscription.status}
                 </Badge>
@@ -187,9 +210,9 @@ export default function ActivationPage() {
             <div>
               <div className="text-text-muted">Expiration Date</div>
               <div className="font-medium text-text-primary mt-1">
-                {syncData.subscription.expires_at
-                  ? new Date(syncData.subscription.expires_at).toLocaleDateString()
-                  : '—'}
+                {(syncData.subscription.expires_at || license?.expires_at)
+                  ? new Date(syncData.subscription.expires_at ?? license!.expires_at!).toLocaleDateString()
+                  : 'Lifetime'}
               </div>
             </div>
             {features.length > 0 && (

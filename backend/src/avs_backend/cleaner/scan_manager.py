@@ -40,6 +40,7 @@ class _CleanerRuntime:
 
     cleaner: ICleaner
     progress: int = 0
+    current_path: str | None = None
     future: Future[CleanerResult] | None = None
     result: CleanerResult | None = None
 
@@ -54,6 +55,7 @@ class ScanSnapshot:
     finished_at: float | None
     progress: int
     current_cleaner: str | None
+    current_path: str | None
     cleaners: list[dict[str, object]]
     total_files: int
     total_bytes: int
@@ -312,14 +314,16 @@ class ScanManager:
             progresses = [rt.progress for rt in task.runtimes] or [0]
             avg_progress = int(sum(progresses) / len(progresses))
 
-            current = next(
+            running_rt = next(
                 (
-                    rt.cleaner.name
+                    rt
                     for rt in task.runtimes
                     if rt.future is not None and not rt.future.done()
                 ),
                 None,
             )
+            current = running_rt.cleaner.name if running_rt else None
+            current_path = running_rt.current_path if running_rt else None
 
             total_files = sum((rt.result.total_files if rt.result else 0) for rt in task.runtimes)
             total_bytes = sum((rt.result.total_bytes if rt.result else 0) for rt in task.runtimes)
@@ -346,6 +350,7 @@ class ScanManager:
                 finished_at=task.finished_at,
                 progress=avg_progress,
                 current_cleaner=current,
+                current_path=current_path,
                 cleaners=cleaner_dicts,
                 total_files=total_files,
                 total_bytes=total_bytes,
@@ -434,8 +439,12 @@ class ScanManager:
             # No lock — int assignment is atomic under CPython.
             rt.progress = pct
 
+        def on_file(path: str) -> None:
+            # Update current path for live UI display.
+            rt.current_path = path
+
         try:
-            result = rt.cleaner.scan(task.cancel_event, on_progress)
+            result = rt.cleaner.scan(task.cancel_event, on_progress, on_file=on_file)
         except Exception as e:  # noqa: BLE001 — engine safety net
             log.exception("Cleaner %s crashed", rt.cleaner.id)
             result = CleanerResult(
@@ -448,6 +457,7 @@ class ScanManager:
             )
         rt.result = result
         rt.progress = 100
+        rt.current_path = None
         return result
 
     def _maybe_cache_completed_scan(self, task: _Task) -> None:

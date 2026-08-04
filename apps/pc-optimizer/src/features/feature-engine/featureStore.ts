@@ -57,7 +57,7 @@ function createEngine(): FeatureEngine {
   _engine = new FeatureEngine(() => {
     const syncData = useSyncStore.getState().data;
     if (!syncData) return null;
-    return planToEdition(syncData.subscription.plan);
+    return planToEdition(syncData.subscription.plan, syncData.license?.edition);
   });
   return _engine;
 }

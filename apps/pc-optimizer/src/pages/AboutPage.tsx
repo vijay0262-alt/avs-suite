@@ -38,7 +38,7 @@ export default function AboutPage() {
   const versionInfo = getVersionInfo();
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ status: 'idle' });
   const { data: syncData, isOffline } = useSyncStore();
-  const edition = syncData ? planToEdition(syncData.subscription.plan).toLowerCase() : 'free';
+  const edition = syncData ? planToEdition(syncData.subscription.plan, syncData.license?.edition).toLowerCase() : 'free';
   const licenseStatus = syncData?.license?.status ?? 'FREE';
   const isActivated = edition === 'professional';
   const [sdkInfo, setSdkInfo] = useState<SdkInfo | null>(null);

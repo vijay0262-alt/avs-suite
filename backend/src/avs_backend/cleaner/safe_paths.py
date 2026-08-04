@@ -64,6 +64,9 @@ _FORBIDDEN_RAW: tuple[str, ...] = (
     r"C:\Recovery",
     r"C:\Boot",
     r"C:\EFI",
+    # Windows Search Index — deleting Windows.edb forces a full reindex
+    # that causes massive CPU spikes for hours. Never touch.
+    r"C:\ProgramData\Microsoft\Search\Data",
 )
 
 FORBIDDEN_ROOTS: frozenset[str] = frozenset(_norm(p) for p in _FORBIDDEN_RAW)

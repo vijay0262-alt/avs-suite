@@ -40,6 +40,8 @@ CATEGORIES: dict[str, str] = {
     "shared_dlls": "Missing shared DLLs",
     "uninstall": "Leftover uninstall entries",
     "muicache": "Invalid MUICache entries",
+    "file_extensions": "Unused file extensions",
+    "installer_cache": "Installer cache leftovers",
 }
 
 
@@ -337,12 +339,105 @@ def _scan_muicache() -> list[RegistryIssue]:
     return issues
 
 
+def _scan_file_extensions() -> list[RegistryIssue]:
+    """Scan HKCR\\.ext keys that map to programs no longer on disk.
+
+    For each file extension key under HKCR (e.g. ``.pdf``, ``.docx``),
+    check the default value — it typically references a ProgID (e.g.
+    ``AcroExch.Document``). Then check if that ProgID's shell open command
+    points to an executable that still exists. If not, the extension
+    mapping is obsolete.
+    """
+    issues: list[RegistryIssue] = []
+    hive = "HKCR"
+    # Enumerate all subkeys starting with a dot
+    try:
+        with _open_key(hive, "", winreg.KEY_READ) as key:
+            i = 0
+            while True:
+                try:
+                    name = winreg.EnumKey(key, i)
+                except OSError:
+                    break
+                i += 1
+                if not name.startswith("."):
+                    continue
+                # Read the default value — it's the ProgID
+                prog_id_res = _read_value(hive, name, "")
+                if not prog_id_res:
+                    continue
+                prog_id, _ = prog_id_res
+                if not isinstance(prog_id, str) or not prog_id:
+                    continue
+                # Check the ProgID's shell\\open\\command
+                cmd_subkey = f"{prog_id}\\shell\\open\\command"
+                cmd_res = _read_value(hive, cmd_subkey, "")
+                if not cmd_res:
+                    continue
+                cmd, _ = cmd_res
+                if not isinstance(cmd, str) or not cmd:
+                    continue
+                exe = _extract_exe_path(cmd)
+                if exe and not _path_exists(exe):
+                    issues.append(
+                        RegistryIssue(
+                            id=str(uuid.uuid4()),
+                            category="file_extensions",
+                            description=f"File extension '{name}' maps to missing program '{prog_id}'",
+                            hive=hive,
+                            subkey=name,
+                            value_name="",
+                            value_data=str(prog_id),
+                            severity="low",
+                        )
+                    )
+    except OSError:
+        pass
+    return issues
+
+
+def _scan_installer_cache() -> list[RegistryIssue]:
+    """Check HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Installer\\UserData.
+
+    Each subkey under UserData represents a user/security context.
+    Under each, ``Components`` and ``Products`` contain component/product
+    entries. We check if the component's install path (KeyPath) still
+    exists on disk. Missing paths indicate leftover installer cache.
+    """
+    issues: list[RegistryIssue] = []
+    hive = "HKLM"
+    base = r"Software\Microsoft\Windows\CurrentVersion\Installer\UserData"
+    for user_sid in _iter_subkeys(hive, base):
+        components_base = f"{base}\\{user_sid}\\Components"
+        for component_guid in _iter_subkeys(hive, components_base):
+            comp_subkey = f"{components_base}\\{component_guid}"
+            for name, data, _ in _iter_values(hive, comp_subkey):
+                # In the Components key, value names are product GUIDs
+                # and the data is the file path (KeyPath).
+                if isinstance(data, str) and data and not _path_exists(data):
+                    issues.append(
+                        RegistryIssue(
+                            id=str(uuid.uuid4()),
+                            category="installer_cache",
+                            description=f"Installer component '{component_guid}' references missing file",
+                            hive=hive,
+                            subkey=comp_subkey,
+                            value_name=name,
+                            value_data=str(data),
+                            severity="low",
+                        )
+                    )
+    return issues
+
+
 _SCANNERS = {
     "startup": _scan_startup,
     "app_paths": _scan_app_paths,
     "shared_dlls": _scan_shared_dlls,
     "uninstall": _scan_uninstall,
     "muicache": _scan_muicache,
+    "file_extensions": _scan_file_extensions,
+    "installer_cache": _scan_installer_cache,
 }
 
 
@@ -409,7 +504,13 @@ def _delete_value(hive: str, subkey: str, value_name: str) -> None:
 
 
 def fix_issues(issues: list[RegistryIssue]) -> dict[str, Any]:
-    """Back up, then delete, the registry values behind each issue."""
+    """Back up, then delete, the registry values behind each issue.
+
+    A System Restore Point is created before any registry values are
+    deleted so the user can revert if something goes wrong. This is
+    best-effort — if System Protection is disabled or the process lacks
+    admin privileges, the fix proceeds anyway with a logged warning.
+    """
     if not IS_WINDOWS:
         return {
             "fixed": 0,
@@ -417,6 +518,17 @@ def fix_issues(issues: list[RegistryIssue]) -> dict[str, Any]:
             "backupId": None,
             "errors": ["Registry cleaning is only available on Windows"],
         }
+
+    # Best-effort System Restore Point before registry changes.
+    try:
+        from avs_backend.system_restore import create_restore_point
+        rp_result = create_restore_point("AVS Shield — Pre-registry-fix checkpoint")
+        if rp_result.success:
+            log.info("Restore point created (seq=%s) before registry fix", rp_result.sequence_number)
+        else:
+            log.warning("Restore point creation failed (non-blocking): %s", rp_result.error)
+    except Exception as e:  # noqa: BLE001
+        log.warning("Restore point creation error (non-blocking): %s", e)
 
     backup_id = _write_backup(issues)
     fixed = 0

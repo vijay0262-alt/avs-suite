@@ -8,6 +8,7 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleLoadingState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
 import { HelpButton } from '../../components/HelpButton';
+import { LiveScanProgress } from '../shared/components/LiveScanProgress';
 import { PrivacyViewModel } from './PrivacyViewModel';
 import { privacyService } from './privacy.service';
 import { useFeatureGuard } from '../licensing/useFeatureGuard';
@@ -221,6 +222,23 @@ export default function PrivacyPage() {
               </Button>
             </div>
           </Card>
+
+          {/* Live scanning progress */}
+          {state.scanning && (
+            <div className="mb-4">
+              <LiveScanProgress
+                isRunning={state.scanning}
+                scanLabel="Privacy"
+                phases={[
+                  { id: 'browser', label: 'Scanning browser traces…' },
+                  { id: 'cookies', label: 'Checking cookies and cache…' },
+                  { id: 'history', label: 'Analyzing browsing history…' },
+                  { id: 'temp', label: 'Scanning temporary files…' },
+                  { id: 'recent', label: 'Checking recent activity…' },
+                ]}
+              />
+            </div>
+          )}
 
           {state.scanResult && (
             <Card title="Scan Results" className="mb-4">

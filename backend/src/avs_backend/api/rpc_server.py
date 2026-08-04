@@ -68,6 +68,7 @@ _FEATURE_MODULES = [
     "avs_backend.security_remediation",
     "avs_backend.predictive_health",
     "avs_backend.realtime_protection",
+    "avs_backend.system_restore",
 ]
 
 # Track which modules have finished importing (success or failure)
@@ -101,6 +102,7 @@ def _build_method_to_module_map() -> None:
         "security": "avs_backend.security",
         "predictive": "avs_backend.predictive_health",
         "realtime": "avs_backend.realtime_protection",
+        "restore": "avs_backend.system_restore",
         "scheduler": "avs_backend.scheduler",
     }
     _METHOD_TO_MODULE.update(_explicit)

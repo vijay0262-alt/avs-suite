@@ -31,6 +31,7 @@ class LogFileCleaner(BaseCleaner):
     def targets(self) -> Iterable[Path]:
         return [
             expand(r"%SystemRoot%\Logs"),
+            expand(r"%SystemRoot%\System32\LogFiles"),
             expand(r"%LOCALAPPDATA%\Microsoft\Windows\WebCache"),
             expand(r"%TEMP%"),
         ]

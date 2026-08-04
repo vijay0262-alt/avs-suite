@@ -10,9 +10,14 @@ import platform
 # Only import cleaner classes on Windows
 if platform.system() == "Windows":
     from .browser_cache import BrowserCacheCleaner
+    from .browser_history import BrowserHistoryCleaner
+    from .chkdsk_fragments import ChkdskFragmentsCleaner
     from .crash_dump import CrashDumpCleaner
+    from .event_logs import EventLogCleaner
+    from .icon_cache import IconCacheCleaner
     from .log_file import LogFileCleaner
     from .prefetch import PrefetchCleaner
+    from .recent_items import RecentItemsCleaner
     from .recycle_bin import RecycleBinCleaner
     from .thumbnail_cache import ThumbnailCacheCleaner
     from .user_temp import UserTempCleaner
@@ -21,9 +26,14 @@ if platform.system() == "Windows":
 else:
     # Stub classes for non-Windows platforms
     BrowserCacheCleaner = None
+    BrowserHistoryCleaner = None
+    ChkdskFragmentsCleaner = None
     CrashDumpCleaner = None
+    EventLogCleaner = None
+    IconCacheCleaner = None
     LogFileCleaner = None
     PrefetchCleaner = None
+    RecentItemsCleaner = None
     RecycleBinCleaner = None
     ThumbnailCacheCleaner = None
     UserTempCleaner = None
@@ -44,23 +54,36 @@ def all_cleaners() -> list:
         return []
     
     return [
+        # Core System & Junk Cleanup
         WindowsTempCleaner(),
         UserTempCleaner(),
+        PrefetchCleaner(),
+        CrashDumpCleaner(),
+        ChkdskFragmentsCleaner(),
+        LogFileCleaner(),
+        EventLogCleaner(),
+        IconCacheCleaner(),
+        RecentItemsCleaner(),
+        # Browser Cleaning
+        BrowserCacheCleaner(),
+        BrowserHistoryCleaner(),
+        # Other
         RecycleBinCleaner(),
         ThumbnailCacheCleaner(),
-        PrefetchCleaner(),
         WindowsUpdateCacheCleaner(),
-        BrowserCacheCleaner(),
-        CrashDumpCleaner(),
-        LogFileCleaner(),
     ]
 
 
 __all__ = [
     "BrowserCacheCleaner",
+    "BrowserHistoryCleaner",
+    "ChkdskFragmentsCleaner",
     "CrashDumpCleaner",
+    "EventLogCleaner",
+    "IconCacheCleaner",
     "LogFileCleaner",
     "PrefetchCleaner",
+    "RecentItemsCleaner",
     "RecycleBinCleaner",
     "ThumbnailCacheCleaner",
     "UserTempCleaner",

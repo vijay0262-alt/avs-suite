@@ -43,4 +43,6 @@ export const CATEGORY_LABELS: Record<string, string> = {
   shared_dlls: 'Missing shared DLLs',
   uninstall: 'Leftover uninstall entries',
   muicache: 'Invalid MUICache entries',
+  file_extensions: 'Unused file extensions',
+  installer_cache: 'Installer cache leftovers',
 };

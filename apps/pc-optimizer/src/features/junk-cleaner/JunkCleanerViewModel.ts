@@ -113,10 +113,16 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
     this.setState({ bootstrap: 'loading', bootstrapError: null });
     try {
       const catalog = await this.service.list();
+      // Browser History & Cookies is opt-in (unchecked by default).
+      // Deleting cookies logs users out of all websites — must be a
+      // deliberate user choice.
+      const OPT_OUT_BY_DEFAULT = new Set(['browser-history']);
       this.setState({
         bootstrap: 'ready',
         catalog,
-        selected: new Set(catalog.map((c) => c.id)),
+        selected: new Set(
+          catalog.filter((c) => !OPT_OUT_BY_DEFAULT.has(c.id)).map((c) => c.id)
+        ),
       });
     } catch (err) {
       this.setState({

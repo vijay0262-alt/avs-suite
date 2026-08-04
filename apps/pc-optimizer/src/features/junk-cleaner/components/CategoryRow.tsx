@@ -12,6 +12,11 @@ import {
   BoltIcon,
   ArrowDownTrayIcon,
   BugAntIcon,
+  ClockIcon,
+  CalendarDaysIcon,
+  PuzzlePieceIcon,
+  RectangleStackIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import type { CleanerCategory, CleanerSummary, ScanStatus } from '../junkCleaner.types';
 
@@ -23,9 +28,18 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   prefetch: BoltIcon,
   'windows-update-cache': ArrowDownTrayIcon,
   'browser-cache': GlobeAltIcon,
+  'browser-history': ClockIcon,
   'crash-dumps': BugAntIcon,
   'log-files': DocumentTextIcon,
+  'event-logs': DocumentTextIcon,
+  'icon-cache': RectangleStackIcon,
+  'recent-items': ClockIcon,
+  'chkdsk-fragments': PuzzlePieceIcon,
 };
+
+// Cleaners that are opt-in (unchecked by default) because they have
+// side effects like logging users out of websites.
+const OPT_IN_CLEANERS = new Set(['browser-history']);
 
 const STATUS_TONE: Record<ScanStatus, 'neutral' | 'brand' | 'success' | 'warning' | 'danger'> = {
   pending: 'neutral',
@@ -112,6 +126,12 @@ export const CategoryRow = memo(function CategoryRow({
             {CATEGORY_LABEL[category]}
           </Badge>
           <Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge>
+          {OPT_IN_CLEANERS.has(id) && (
+            <span className="flex items-center gap-1 text-xs text-semantic-warning" title="Opt-in: unchecked by default. Deleting cookies will log you out of websites.">
+              <ExclamationTriangleIcon className="h-3.5 w-3.5" />
+              Opt-in
+            </span>
+          )}
         </div>
         <p className="mt-0.5 truncate text-xs text-text-secondary">{description}</p>
 

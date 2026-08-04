@@ -10,10 +10,11 @@
  *
  * No local business logic for edition selection or feature gating.
  */
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useEffect, type ReactNode } from 'react';
 import type { Edition, FeatureKey } from '@avs/shared/featureFlags';
 import { isFeatureEnabled, shouldHideFeature } from '@avs/shared/featureFlags';
 import { useSyncStore, planToEdition } from '../features/sync/syncStore';
+import { initFeatureGateFromSync } from '../features/licensing/FeatureGate';
 
 export interface EditionManagerValue {
   edition: Edition;
@@ -46,7 +47,8 @@ export function EditionManagerProvider({
 
   const value = useMemo<EditionManagerValue>(() => {
     const plan = data?.subscription.plan ?? 'FREE';
-    const edition: Edition = planToEdition(plan) === 'PROFESSIONAL' ? 'professional' : 'free';
+    const licenseEdition = data?.license?.edition ?? null;
+    const edition: Edition = planToEdition(plan, licenseEdition) === 'PROFESSIONAL' ? 'professional' : 'free';
     const isActivated = edition === 'professional';
     const backendFeatures = data?.features ?? [];
 
@@ -62,6 +64,11 @@ export function EditionManagerProvider({
       },
     };
   }, [data, sync, isOffline]);
+
+  // Keep FeatureGate module-level state in sync with sync data
+  useEffect(() => {
+    initFeatureGateFromSync();
+  }, [data]);
 
   return <EditionManagerContext.Provider value={value}>{children}</EditionManagerContext.Provider>;
 }

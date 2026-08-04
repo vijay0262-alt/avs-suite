@@ -215,8 +215,17 @@ class ICleaner(ABC):
     category: CleanerCategory
 
     @abstractmethod
-    def scan(self, cancel: Event, on_progress: ProgressCallback) -> CleanerResult:
-        """Execute the scan and return the populated result."""
+    def scan(
+        self,
+        cancel: Event,
+        on_progress: ProgressCallback,
+        on_file: "Callable[[str], None] | None" = None,
+    ) -> CleanerResult:
+        """Execute the scan and return the populated result.
+
+        ``on_file`` is an optional callback invoked with each file path
+        as it is enumerated, for live UI display.
+        """
 
     @abstractmethod
     def validate(self, candidate_paths: list[str]) -> CleaningPreview:

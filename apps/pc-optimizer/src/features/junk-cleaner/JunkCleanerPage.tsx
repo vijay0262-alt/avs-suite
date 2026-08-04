@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button, Card } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
@@ -8,6 +8,11 @@ import {
   ArrowPathIcon,
   ExclamationTriangleIcon,
   SparklesIcon,
+  CalendarDaysIcon,
+  ClockIcon,
+  LightBulbIcon,
+  ArrowPathRoundedSquareIcon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 import { PageHeader } from '../../components/PageHeader';
 import { HelpButton } from '../../components/HelpButton';
@@ -23,6 +28,9 @@ import { CleaningSummary } from './components/CleaningSummary';
 import { CleaningLog } from './components/CleaningLog';
 import { canUse, currentEdition } from '../licensing/FeatureGate';
 import { useFeatureGuard } from '../licensing/useFeatureGuard';
+import { useIsPro } from '../sync/syncStore';
+import { ProOnlySection, ProFeatureIndicator } from '../licensing/ProStatusBadge';
+import { schedulerBackendService } from '../maintenance-engine/schedulerBackendService';
 
 const FREE_CLEAN_LIMIT_BYTES = 500 * 1024 * 1024; // 500 MB
 
@@ -74,9 +82,78 @@ export default function JunkCleanerPage() {
 
   const running = state.snapshot.status === 'running';
   const { guard, dialogElement } = useFeatureGuard();
+  const isPro = useIsPro();
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduleFreq, setScheduleFreq] = useState('weekly');
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [bgCleanupEnabled, setBgCleanupEnabled] = useState(false);
   const hasResults =
     state.snapshot.present && !running && Boolean(state.snapshot.cleaners?.length);
   const scanEverStarted = scanIssuedOnce || state.snapshot.present;
+
+  // Load existing scheduled junk cleanup task on mount (Pro only)
+  useEffect(() => {
+    if (!isPro) return;
+    void (async () => {
+      try {
+        const result = await schedulerBackendService.listTasks();
+        const junkTask = result.tasks.find((t) => t.action === 'junk_cleaner');
+        if (junkTask) {
+          setScheduleEnabled(true);
+          const freq = junkTask.nextRun ? 'weekly' : 'weekly';
+          setScheduleFreq(freq);
+        }
+      } catch { /* ignore - backend may not be available */ }
+    })();
+  }, [isPro]);
+
+  const handleScheduleToggle = useCallback(async (enabled: boolean) => {
+    setScheduleEnabled(enabled);
+    if (!enabled) {
+      try {
+        setScheduleLoading(true);
+        await schedulerBackendService.deleteTask('junk_cleaner');
+      } catch { /* ignore */ } finally {
+        setScheduleLoading(false);
+      }
+    } else {
+      try {
+        setScheduleLoading(true);
+        await schedulerBackendService.createTask({
+          action: 'junk_cleaner',
+          schedule: scheduleFreq,
+          time: '03:00',
+        });
+      } catch { /* ignore */ } finally {
+        setScheduleLoading(false);
+      }
+    }
+  }, [scheduleFreq]);
+
+  const handleScheduleFreqChange = useCallback(async (freq: string) => {
+    setScheduleFreq(freq);
+    if (scheduleEnabled) {
+      try {
+        setScheduleLoading(true);
+        await schedulerBackendService.updateTask({
+          action: 'junk_cleaner',
+          schedule: freq,
+          time: '03:00',
+        });
+      } catch { /* ignore */ } finally {
+        setScheduleLoading(false);
+      }
+    }
+  }, [scheduleEnabled]);
+
+  // Smart recommendations: sort cleaners by bytes (largest first) for Pro users
+  const smartRecommendations = useMemo(() => {
+    if (!isPro || !state.snapshot.present || !state.snapshot.cleaners) return [];
+    return [...state.snapshot.cleaners]
+      .filter((c) => c.totalBytes > 0)
+      .sort((a, b) => b.totalBytes - a.totalBytes)
+      .slice(0, 3);
+  }, [isPro, state.snapshot]);
 
   const anySelected = state.selected.size > 0;
   const allSelected = state.selected.size === state.catalog.length && state.catalog.length > 0;
@@ -168,6 +245,25 @@ export default function JunkCleanerPage() {
         }
       />
 
+      {/* Safety guardrail banner */}
+      <div
+        className="mb-4 rounded-[var(--avs-radius-md)] border border-[color-mix(in_srgb,var(--avs-brand-primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--avs-brand-primary)_5%,transparent)] px-4 py-3"
+        data-testid="junk-safety-banner"
+      >
+        <div className="flex items-start gap-2">
+          <ShieldCheckIcon className="h-5 w-5 text-brand-primary shrink-0 mt-0.5" />
+          <div className="text-xs text-text-secondary">
+            <span className="font-semibold text-text-primary">Safety Guardrails:</span>{' '}
+            AVS Shield never touches <strong>C:\Windows\System32</strong>,{' '}
+            <strong>Windows Search Index</strong> (Windows.edb), or{' '}
+            <strong>active system registry keys</strong>. Browser cookies &amp; history
+            are opt-in (unchecked by default). A{' '}
+            <strong>System Restore Point</strong> is automatically created before
+            every cleaning operation.
+          </div>
+        </div>
+      </div>
+
       {state.bootstrap === 'loading' && (
         <Card>
           <div className="py-6 text-sm text-text-muted" data-testid="junk-bootstrap-loading">
@@ -207,6 +303,23 @@ export default function JunkCleanerPage() {
 
       {state.bootstrap === 'ready' && (
         <>
+          {/* Free edition limit notice */}
+          {!isPro && hasResults && totalJunkBytes > FREE_CLEAN_LIMIT_BYTES && (
+            <div className="rounded-[var(--avs-radius-md)] bg-semantic-warning/10 border border-semantic-warning/20 px-4 py-3" data-testid="junk-free-limit-notice">
+              <div className="flex items-center gap-2">
+                <ExclamationTriangleIcon className="h-5 w-5 text-semantic-warning shrink-0" />
+                <div>
+                  <span className="text-sm font-medium text-text-primary">
+                    Free edition cleans up to 500 MB per session
+                  </span>
+                  <p className="text-xs text-text-secondary mt-0.5">
+                    {(totalJunkBytes / (1024 * 1024)).toFixed(0)} MB detected. Only the largest categories under 500 MB will be cleaned. Upgrade to Professional for unlimited cleaning.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {scanEverStarted && <ScanProgress snapshot={state.snapshot} />}
 
           <Card
@@ -275,6 +388,117 @@ export default function JunkCleanerPage() {
               onReload={() => void vm.loadHistory(true)}
             />
           )}
+
+          {/* Pro-only: Smart Cleanup Recommendations */}
+          <ProOnlySection>
+            {smartRecommendations.length > 0 && (
+              <Card title="Smart Cleanup Recommendations" variant="glass">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <LightBulbIcon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
+                    <span className="text-sm font-medium text-[var(--avs-text-primary)]">
+                      AI-powered recommendations based on scan results
+                    </span>
+                  </div>
+                  {smartRecommendations.map((rec, idx) => {
+                    const cleaner = state.catalog.find((c) => c.id === rec.id);
+                    return (
+                      <div
+                        key={rec.id}
+                        className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--avs-brand-primary)]/10 text-xs font-bold text-[var(--avs-brand-primary)]">
+                            {idx + 1}
+                          </span>
+                          <div>
+                            <span className="text-sm font-medium text-[var(--avs-text-primary)]">
+                              {cleaner?.name ?? rec.id}
+                            </span>
+                            <p className="text-xs text-[var(--avs-text-muted)]">
+                              {(rec.totalBytes / (1024 * 1024)).toFixed(0)} MB · {rec.totalFiles} files
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            vm.setAllSelected(false);
+                            vm.toggleSelection(rec.id);
+                          }}
+                          data-testid={`smart-rec-clean-${rec.id}`}
+                        >
+                          Clean This
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
+
+            {/* Pro-only: Scheduled Cleaning & Background Cleanup */}
+            <Card title="Automation" variant="glass">
+              <div className="space-y-3">
+                {/* Scheduled Cleaning */}
+                <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
+                  <div className="flex items-center gap-2">
+                    <CalendarDaysIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
+                    <div>
+                      <span className="text-xs font-medium text-[var(--avs-text-primary)]">Scheduled Cleaning</span>
+                      <p className="text-xs text-[var(--avs-text-muted)]">Automatically clean junk files on a schedule</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={scheduleFreq}
+                      onChange={(e) => void handleScheduleFreqChange(e.target.value)}
+                      disabled={!scheduleEnabled || scheduleLoading}
+                      className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-2 py-1 text-xs text-[var(--avs-text-primary)]"
+                      data-testid="junk-schedule-freq"
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                    <button
+                      onClick={() => void handleScheduleToggle(!scheduleEnabled)}
+                      disabled={scheduleLoading}
+                      className={`relative h-6 w-11 rounded-full transition-colors ${scheduleEnabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-glass-border)]'}`}
+                      data-testid="junk-schedule-toggle"
+                    >
+                      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${scheduleEnabled ? 'left-5' : 'left-0.5'}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Background Cleanup */}
+                <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
+                  <div className="flex items-center gap-2">
+                    <ArrowPathRoundedSquareIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
+                    <div>
+                      <span className="text-xs font-medium text-[var(--avs-text-primary)]">Background Cleanup</span>
+                      <p className="text-xs text-[var(--avs-text-muted)]">Continuously clean junk files in the background</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setBgCleanupEnabled((v) => !v)}
+                    className={`relative h-6 w-11 rounded-full transition-colors ${bgCleanupEnabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-glass-border)]'}`}
+                    data-testid="junk-bg-cleanup-toggle"
+                  >
+                    <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${bgCleanupEnabled ? 'left-5' : 'left-0.5'}`} />
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--avs-border)]">
+                  <ProFeatureIndicator icon={ClockIcon} label="Unlimited Cleaning" />
+                  <ProFeatureIndicator icon={CalendarDaysIcon} label="Scheduled" />
+                  <ProFeatureIndicator icon={ArrowPathRoundedSquareIcon} label="Background" />
+                  <ProFeatureIndicator icon={LightBulbIcon} label="Smart Recommendations" />
+                </div>
+              </div>
+            </Card>
+          </ProOnlySection>
         </>
       )}
 

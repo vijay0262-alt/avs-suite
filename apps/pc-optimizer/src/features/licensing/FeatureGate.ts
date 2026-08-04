@@ -31,7 +31,7 @@ export function initFeatureGateFromSync(): void {
     _currentEdition = 'free';
     return;
   }
-  const planEdition = planToEdition(syncData.subscription.plan);
+  const planEdition = planToEdition(syncData.subscription.plan, syncData.license?.edition);
   _currentEdition = planEdition === 'PROFESSIONAL' ? 'professional' : 'free';
 }
 

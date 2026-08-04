@@ -41,7 +41,7 @@ interface LicenseInfo {
 
 export default function AboutPage() {
   const { data: syncData, isOffline } = useSyncStore();
-  const edition = syncData ? planToEdition(syncData.subscription.plan).toLowerCase() : 'free';
+  const edition = syncData ? planToEdition(syncData.subscription.plan, syncData.license?.edition).toLowerCase() : 'free';
   const licenseStatus = syncData?.license?.status ?? 'FREE';
   const isActivated = edition === 'professional';
   const [info, setInfo] = useState<LicenseInfo | null>(null);

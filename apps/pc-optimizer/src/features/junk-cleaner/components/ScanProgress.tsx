@@ -17,6 +17,8 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
   const totalFiles = snapshot.totalFiles ?? 0;
   const totalItems = snapshot.totalItems ?? totalFiles;
   const errorCount = snapshot.errorCount ?? 0;
+  const currentPath = snapshot.currentPath ?? null;
+  const currentCleaner = snapshot.currentCleaner ?? null;
 
   return (
     <Card
@@ -24,6 +26,32 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
       className="mb-4"
       data-testid="junk-scan-progress"
     >
+      {/* Live file display — prominent like SUPERAntiSpyware / CCleaner */}
+      {running && (
+        <div className="mb-4 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-4 py-3" data-testid="junk-live-file">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-3 w-3 shrink-0">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-primary opacity-75" />
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-brand-primary" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-medium text-text-secondary">
+                {currentCleaner ? `Scanning: ${currentCleaner}` : 'Starting scan…'}
+              </div>
+              {currentPath && (
+                <div
+                  className="mt-0.5 truncate text-xs text-text-muted font-mono"
+                  title={currentPath}
+                  data-testid="junk-current-file"
+                >
+                  {currentPath}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
         <div>
           <div className="text-xs uppercase tracking-wide text-text-muted">Files Scanned</div>
@@ -72,20 +100,20 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
           <div
             className="mt-1 truncate text-lg font-medium text-text-primary"
             data-testid="junk-current-cleaner"
-            title={snapshot.currentCleaner ?? undefined}
+            title={currentCleaner ?? undefined}
           >
-            {snapshot.currentCleaner ?? (running ? 'Starting…' : '—')}
+            {currentCleaner ?? (running ? 'Starting…' : '—')}
           </div>
         </div>
-        {snapshot.currentPath && (
+        {currentPath && (
           <div className="min-w-0">
             <div className="text-xs uppercase tracking-wide text-text-muted">Current Path</div>
             <div
               className="mt-1 truncate text-sm font-medium text-text-primary"
               data-testid="junk-current-path"
-              title={snapshot.currentPath}
+              title={currentPath}
             >
-              {snapshot.currentPath}
+              {currentPath}
             </div>
           </div>
         )}
@@ -94,7 +122,7 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
       <div className="mt-4">
         <ProgressBar
           value={progress}
-          label={running ? 'Overall progress' : `Finished · ${errorCount} warnings`}
+          label={running ? `Scanning… ${progress}%` : `Finished · ${errorCount} warnings`}
           tone={
             snapshot.status === 'failed'
               ? 'danger'
@@ -104,6 +132,31 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
           }
         />
       </div>
+
+      {/* Per-cleaner progress bars — shown while scanning */}
+      {running && snapshot.cleaners && snapshot.cleaners.length > 0 && (
+        <div className="mt-4 space-y-2" data-testid="junk-per-cleaner-progress">
+          {snapshot.cleaners
+            .filter((c) => (c.progress ?? 0) < 100)
+            .slice(0, 6)
+            .map((c) => (
+              <div key={c.id} className="flex items-center gap-3">
+                <span className="w-32 shrink-0 truncate text-xs text-text-secondary" title={c.name}>
+                  {c.name}
+                </span>
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--avs-surface-muted)]">
+                  <div
+                    className="h-full rounded-full bg-brand-primary transition-all duration-300"
+                    style={{ width: `${c.progress ?? 0}%` }}
+                  />
+                </div>
+                <span className="w-10 shrink-0 text-right text-xs tabular-nums text-text-muted">
+                  {c.progress ?? 0}%
+                </span>
+              </div>
+            ))}
+        </div>
+      )}
     </Card>
   );
 }

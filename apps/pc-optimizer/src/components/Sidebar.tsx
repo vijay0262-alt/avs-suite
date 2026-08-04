@@ -137,6 +137,8 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'uninstaller', to: '/uninstaller', labelKey: 'nav.uninstaller', Icon: ArchiveBoxXMarkIcon, proEnhanced: true },
       { id: 'software-updater', to: '/software-updater', labelKey: 'nav.softwareUpdater', Icon: ArrowPathIcon, proEnhanced: true },
       { id: 'maintenance-history', to: '/maintenance-history', labelKey: 'nav.maintenanceHistory', Icon: ClipboardDocumentListIcon, proEnhanced: true },
+      { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon, proEnhanced: true },
+      { id: 'recovery-center', to: '/recovery-center', labelKey: 'nav.recoveryCenter', Icon: LifebuoyIcon },
     ],
   },
   // ── REPORTS ───────────────────────────────────────────────────
@@ -156,9 +158,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
     labelKey: 'nav.section.tools',
     entries: [
       { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
-      { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon, proEnhanced: true },
       { id: 'network-information', to: '/network-information', labelKey: 'nav.networkInformation', Icon: WifiIcon },
-      { id: 'recovery-center', to: '/recovery-center', labelKey: 'nav.recoveryCenter', Icon: LifebuoyIcon },
       { id: 'restoration', to: '/restoration', labelKey: 'nav.restoration', Icon: ArrowPathRoundedSquareIcon },
     ],
   },
@@ -171,7 +171,6 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'upgrade', to: '/upgrade', labelKey: 'nav.upgrade', Icon: ArrowUpTrayIcon },
       { id: 'settings', to: '/settings', labelKey: 'nav.settings', Icon: Cog6ToothIcon },
       { id: 'notifications', to: '/notifications', labelKey: 'nav.notifications', Icon: BellIcon },
-      { id: 'help', to: '/help', labelKey: 'nav.help', Icon: LifebuoyIcon },
       { id: 'help-support', to: '/help-support', labelKey: 'nav.helpSupport', Icon: ChatBubbleLeftRightIcon },
       { id: 'about', to: '/about', labelKey: 'nav.about', Icon: InformationCircleIcon },
     ],
@@ -188,13 +187,21 @@ function NavSectionView({
   isPro: boolean;
   t: (key: string) => string;
 }) {
+  const entries = section.entries.filter((entry) => {
+    // Hide 'upgrade' entry for Pro users — they're already upgraded
+    if (entry.id === 'upgrade' && isPro) return false;
+    return true;
+  });
+
+  if (entries.length === 0) return null;
+
   return (
     <div data-testid={`sidebar-section-${section.id}`}>
       <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted/70">
         {t(section.labelKey)}
       </span>
       <div className="flex flex-col gap-0.5">
-        {section.entries.map(({ id, to, labelKey, Icon, proEnhanced }) => (
+        {entries.map(({ id, to, labelKey, Icon, proEnhanced }) => (
           <NavLink
             key={id}
             to={to}

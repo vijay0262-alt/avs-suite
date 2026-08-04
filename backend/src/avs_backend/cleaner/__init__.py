@@ -137,6 +137,7 @@ def cleaner_scan_status(params: dict[str, Any] | None) -> dict[str, Any]:
         "finishedAt": snap.finished_at,
         "progress": snap.progress,
         "currentCleaner": snap.current_cleaner,
+        "currentPath": snap.current_path,
         "cleaners": snap.cleaners,
         "totalFiles": snap.total_files,
         "totalBytes": snap.total_bytes,

@@ -113,10 +113,10 @@ export const EDITION_LIMITS: EditionLimits = {
 
   // AI Smart Optimize
   aiSmartOptimizePerRun: {
-    free: 5,
+    free: 0,
     professional: null,
-    freeLabel: 'Maximum 5 optimizations per run',
-    proLabel: 'Unlimited optimizations',
+    freeLabel: 'View optimization plan — upgrade to Professional for one-click execution',
+    proLabel: 'Unlimited AI-driven optimizations with automatic sequencing, rollback, scheduling, and background execution',
   },
 
   // AI Daily Briefing

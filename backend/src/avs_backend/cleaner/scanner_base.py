@@ -67,6 +67,9 @@ log = logging.getLogger("avs.cleaner")
 _PROGRESS_STRIDE = 1000
 # How often the walker checks the cancel event (in directories).
 _CANCEL_CHECK_STRIDE = 4
+# How often the walker notifies the on_file callback (in files processed).
+# Throttled to avoid flooding the RPC channel with per-file updates.
+_FILE_NOTIFY_STRIDE = 50
 
 # Deletion retry policy — transient failures (e.g. Explorer holding a
 # lock during scan finalisation) are worth one or two quick retries.
@@ -127,7 +130,12 @@ class BaseCleaner(ICleaner):
     # ------------------------------------------------------------------
     # Engine
     # ------------------------------------------------------------------
-    def scan(self, cancel: Event, on_progress: ProgressCallback) -> CleanerResult:
+    def scan(
+        self,
+        cancel: Event,
+        on_progress: ProgressCallback,
+        on_file: "Callable[[str], None] | None" = None,
+    ) -> CleanerResult:
         started = time.monotonic()
         result = CleanerResult(
             cleaner_id=self.id,
@@ -138,7 +146,7 @@ class BaseCleaner(ICleaner):
         )
 
         try:
-            self._scan_targets(result, cancel, on_progress)
+            self._scan_targets(result, cancel, on_progress, on_file)
         except Exception as e:  # noqa: BLE001 — engine safety net
             log.exception("Unexpected failure in cleaner %s", self.id)
             result.errors.append(f"engine: {e}")
@@ -158,7 +166,11 @@ class BaseCleaner(ICleaner):
     # Internal
     # ------------------------------------------------------------------
     def _scan_targets(
-        self, result: CleanerResult, cancel: Event, on_progress: ProgressCallback
+        self,
+        result: CleanerResult,
+        cancel: Event,
+        on_progress: ProgressCallback,
+        on_file: "Callable[[str], None] | None" = None,
     ) -> None:
         roots = [r for r in self.targets() if r]
         valid_roots = [r for r in roots if r.exists() and not is_forbidden(r)]
@@ -187,6 +199,7 @@ class BaseCleaner(ICleaner):
                 ext_filter,
                 min_age_cutoff,
                 processed_ref=[processed_files],
+                on_file=on_file,
             )
             # Report per-root progress. Individual walks may have added
             # thousands of files; a coarse tick per root keeps the UI
@@ -205,6 +218,7 @@ class BaseCleaner(ICleaner):
         ext_filter: set[str] | None,
         min_age_cutoff: float,
         processed_ref: list[int],
+        on_file: "Callable[[str], None] | None" = None,
     ) -> None:
         # Explicit stack (BFS via deque) — no recursion.
         frontier: deque[str] = deque([str(root)])
@@ -281,6 +295,13 @@ class BaseCleaner(ICleaner):
                         result.total_files += 1
                         result.total_bytes += int(st.st_size)
                         processed_ref[0] += 1
+
+                        # Notify live file callback (throttled).
+                        if on_file and processed_ref[0] % _FILE_NOTIFY_STRIDE == 0:
+                            try:
+                                on_file(entry.path)
+                            except Exception:  # noqa: BLE001
+                                pass
 
                         if processed_ref[0] % _PROGRESS_STRIDE == 0 and cancel.is_set():
                             return

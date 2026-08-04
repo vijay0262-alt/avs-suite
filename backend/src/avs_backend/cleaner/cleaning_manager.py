@@ -174,9 +174,26 @@ class CleaningManager:
     # Execute
     # ------------------------------------------------------------------
     def execute(self, scan_task_id: str, only: list[str] | None = None) -> str:
-        """Start a cleaning task. Cancels any running task first."""
+        """Start a cleaning task. Cancels any running task first.
+
+        A System Restore Point is created before any files are deleted so
+        the user can revert if something goes wrong. This is best-effort —
+        if System Protection is disabled or the process lacks admin
+        privileges, the cleaning proceeds anyway with a logged warning.
+        """
         log.info("[CleaningManager] execute called for scan_task_id=%s, only=%s", scan_task_id, only)
         start = time.monotonic()
+
+        # Best-effort System Restore Point before cleaning.
+        try:
+            from avs_backend.system_restore import create_restore_point
+            rp_result = create_restore_point("AVS Shield — Pre-cleaning checkpoint")
+            if rp_result.success:
+                log.info("Restore point created (seq=%s) before cleaning", rp_result.sequence_number)
+            else:
+                log.warning("Restore point creation failed (non-blocking): %s", rp_result.error)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Restore point creation error (non-blocking): %s", e)
         
         with self._lock:
             if self._task is not None and self._task.status == ScanStatus.RUNNING:

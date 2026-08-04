@@ -10,14 +10,15 @@
  *   - Execution history & learning data
  *   - Configuration controls
  */
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Button, Badge } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleEmptyState, ModuleLoadingState } from '../../components/ModuleStates';
 import { useEditionLimits } from '../licensing/editionLimits';
-import { useFeatureGuard } from '../licensing/useFeatureGuard';
+import { useIsPro } from '../sync/syncStore';
 import { ProStatusBanner, ProStatusPill, ProOnlySection, ProFeatureIndicator } from '../licensing/ProStatusBadge';
 import {
   SmartOptimizationEngine,
@@ -49,6 +50,7 @@ import {
   BeakerIcon,
   CalendarDaysIcon,
   EyeIcon,
+  LockClosedIcon,
 } from '@heroicons/react/24/outline';
 
 // ── ViewModel ──────────────────────────────────────────────────
@@ -206,12 +208,27 @@ export default function SmartOptimizationPage() {
   const vm = useMemo(() => new SmartOptViewModel(), []);
   const state = useViewModel(vm);
   const limits = useEditionLimits();
-  const { guard, dialogElement } = useFeatureGuard();
+  const isPro = useIsPro();
+  const navigate = useNavigate();
+  const [showUpgradeMessage, setShowUpgradeMessage] = useState(false);
 
   useEffect(() => {
     vm.bootstrap();
     return () => vm.dispose();
   }, [vm]);
+
+  const handleGeneratePlan = useCallback(() => {
+    setShowUpgradeMessage(false);
+    vm.generatePlan();
+  }, [vm]);
+
+  const handleExecutePlan = useCallback(() => {
+    if (!isPro) {
+      setShowUpgradeMessage(true);
+      return;
+    }
+    vm.executePlan();
+  }, [isPro, vm]);
 
   if (state.bootstrap === 'loading') {
     return (
@@ -224,7 +241,7 @@ export default function SmartOptimizationPage() {
 
   const s = state;
   const dash = s.dashboard;
-  const maxOptimizations = limits.getLimit('aiSmartOptimizePerRun');
+  const maxOptimizations = isPro ? limits.getLimit('aiSmartOptimizePerRun') : null;
   const visibleActions = s.preview ? s.preview.actionsPreview.slice(0, maxOptimizations ?? undefined) : [];
   const hiddenCount = s.preview && maxOptimizations !== null ? Math.max(0, s.preview.actionsPreview.length - maxOptimizations) : 0;
 
@@ -238,7 +255,7 @@ export default function SmartOptimizationPage() {
           <div className="flex items-center gap-2">
             <ProStatusPill />
             <Button
-              onClick={() => vm.generatePlan()}
+              onClick={handleGeneratePlan}
               loading={s.isGenerating}
               leftIcon={<BoltIcon className="h-4 w-4" />}
             >
@@ -350,22 +367,11 @@ export default function SmartOptimizationPage() {
                 Simulate
               </Button>
               <Button
-                onClick={() => {
-                  if (limits.isPro) {
-                    vm.executePlan();
-                  } else if (maxOptimizations !== null && s.preview && s.preview.actionsPreview.length > maxOptimizations) {
-                    guard('ai.smart_optimization', 'AI Smart Optimize', () => vm.executePlan(), {
-                      limitDescription: `Free edition allows up to ${maxOptimizations} optimizations per run. This plan has ${s.preview!.actionsPreview.length} actions.`,
-                      proBenefit: 'Unlimited optimizations with automatic scheduling and background execution.',
-                    });
-                  } else {
-                    vm.executePlan();
-                  }
-                }}
+                onClick={handleExecutePlan}
                 loading={s.isExecuting}
-                leftIcon={<BoltIcon className="h-4 w-4" />}
+                leftIcon={isPro ? <BoltIcon className="h-4 w-4" /> : <LockClosedIcon className="h-4 w-4" />}
               >
-                {limits.isPro ? 'Auto Optimize' : 'Execute Plan'}
+                {isPro ? 'Auto Optimize' : 'Upgrade to Execute'}
               </Button>
             </div>
 
@@ -378,13 +384,52 @@ export default function SmartOptimizationPage() {
               </div>
             )}
 
-            {/* Pro-only automation controls */}
+            {/* Pro-only automation controls — functional for Pro, visual hint for Free */}
             <ProOnlySection>
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--avs-border)]">
-                <ProFeatureIndicator icon={CalendarDaysIcon} label="Schedule Weekly" />
-                <ProFeatureIndicator icon={ArrowPathIcon} label="Optimize in Background" />
-                <ProFeatureIndicator icon={EyeIcon} label="Rollback Available" />
-                <ProFeatureIndicator icon={ClockIcon} label="Optimization History" />
+              <div className="space-y-3 pt-2 border-t border-[var(--avs-border)]">
+                <div className="flex flex-wrap gap-2">
+                  <ProFeatureIndicator icon={EyeIcon} label="Rollback Available" />
+                  <ProFeatureIndicator icon={ClockIcon} label="Optimization History" />
+                </div>
+                {/* Scheduled Optimization */}
+                <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
+                  <div className="flex items-center gap-2">
+                    <CalendarDaysIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
+                    <div>
+                      <span className="text-xs font-medium text-[var(--avs-text-primary)]">Scheduled Optimization</span>
+                      <p className="text-xs text-[var(--avs-text-muted)]">Automatically run optimization on a schedule</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={s.config?.preferredStyle === 'aggressive' ? 'daily' : 'weekly'}
+                      onChange={(e) => {
+                        const style = e.target.value === 'daily' ? 'aggressive' : 'balanced';
+                        vm.updateConfig({ preferredStyle: style });
+                      }}
+                      className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-2 py-1 text-xs text-[var(--avs-text-primary)]"
+                    >
+                      <option value="weekly">Weekly</option>
+                      <option value="daily">Daily</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                  </div>
+                </div>
+                {/* Background Optimization */}
+                <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
+                  <div className="flex items-center gap-2">
+                    <ArrowPathIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
+                    <div>
+                      <span className="text-xs font-medium text-[var(--avs-text-primary)]">Background Optimization</span>
+                      <p className="text-xs text-[var(--avs-text-muted)]">Continuously optimize in the background</p>
+                    </div>
+                  </div>
+                  <ConfigToggle
+                    label=""
+                    value={s.config?.autoApproveLowRisk ?? false}
+                    onChange={(v) => vm.updateConfig({ autoApproveLowRisk: v })}
+                  />
+                </div>
               </div>
             </ProOnlySection>
           </div>
@@ -511,13 +556,60 @@ export default function SmartOptimizationPage() {
       )}
 
       {/* Empty State */}
-      {!s.plan && !s.isGenerating && (
+      {!s.plan && !s.isGenerating && !showUpgradeMessage && (
         <Card>
           <ModuleEmptyState
             icon={BoltIcon}
             title="No optimization plan yet"
-            message="Click 'Generate Plan' to analyze your system and create an evidence-based optimization plan."
+            message={isPro
+              ? "Click 'Generate Plan' to analyze your system and create an evidence-based optimization plan with one-click execution."
+              : "Click 'Generate Plan' to analyze your system and see what can be optimized. Upgrade to Professional for one-click automatic optimization."}
           />
+        </Card>
+      )}
+
+      {/* Upgrade message for Free users - shown when they try to execute */}
+      {showUpgradeMessage && !isPro && (
+        <Card variant="glass" data-testid="smart-opt-upgrade-message">
+          <div className="flex flex-col items-center text-center py-8 px-6 gap-4">
+            <div className="rounded-full bg-semantic-warning/10 p-4">
+              <LockClosedIcon className="h-8 w-8 text-semantic-warning" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-text-primary">Upgrade to Professional for Full Optimization</h3>
+              <p className="text-sm text-text-secondary max-w-md">
+                You can see the optimization plan and expected improvements. Professional edition unlocks:
+              </p>
+              <div className="flex flex-wrap justify-center gap-2 text-xs">
+                <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">One-click Auto Optimize</span>
+                <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">Automatic sequencing</span>
+                <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">Risk assessment</span>
+                <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">Rollback support</span>
+                <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">Background optimization</span>
+                <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">Scheduled optimization</span>
+              </div>
+              <p className="text-sm text-text-muted pt-2">
+                Or use <span className="font-medium text-text-primary">Manual Optimization</span> —
+                run individual scans and cleaners from the sidebar with your Free edition.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="primary"
+                onClick={() => navigate('/license')}
+                leftIcon={<BoltIcon className="h-4 w-4" />}
+                data-testid="smart-opt-upgrade-button"
+              >
+                Upgrade to Professional
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setShowUpgradeMessage(false)}
+              >
+                Maybe Later
+              </Button>
+            </div>
+          </div>
         </Card>
       )}
 
@@ -529,8 +621,6 @@ export default function SmartOptimizationPage() {
           </div>
         </div>
       )}
-
-      {dialogElement}
     </div>
   );
 }
