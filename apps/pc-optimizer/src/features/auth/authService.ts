@@ -231,7 +231,7 @@ export const authService = {
       const resp = await apiClient.post<LoginResponse>(
         endpoint,
         { identifier, password },
-        { noAuth: true },
+        { noAuth: true, timeoutMs: 30000 },
       );
       const session = sessionFromLogin(resp);
       tokenStorage.save(session);
@@ -268,7 +268,7 @@ export const authService = {
       const resp = await apiClient.post<RefreshResponse>(
         '/api/customer/auth/refresh',
         { refresh_token: existing.refreshToken },
-        { noAuth: true },
+        { noAuth: true, timeoutMs: 30000 },
       );
       const session = sessionFromRefresh(resp, existing);
       tokenStorage.save(session);

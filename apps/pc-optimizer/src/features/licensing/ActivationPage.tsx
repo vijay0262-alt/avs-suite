@@ -14,7 +14,7 @@
  *   - Shows Refresh button (re-syncs from backend)
  *   - Shows registered devices
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, Button, Badge } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
 import { useSyncStore, planToEdition } from '../sync/syncStore';
@@ -23,7 +23,12 @@ import { getVersionString, getBuildString } from '../../config/version';
 import { apiClient, ApiError } from '../auth/apiClient';
 
 export default function ActivationPage() {
-  const { data: syncData, phase, isOffline, lastSyncAt, sync, error } = useSyncStore();
+  const syncData = useSyncStore((s) => s.data);
+  const phase = useSyncStore((s) => s.phase);
+  const isOffline = useSyncStore((s) => s.isOffline);
+  const lastSyncAt = useSyncStore((s) => s.lastSyncAt);
+  const sync = useSyncStore((s) => s.sync);
+  const error = useSyncStore((s) => s.error);
   const { customer, session } = useAuthStore();
 
   const [actionLoading, setActionLoading] = useState(false);
@@ -66,7 +71,12 @@ export default function ActivationPage() {
           activationWorked = true;
         }
       } else {
-        setActivateError(err instanceof Error ? err.message : 'Failed to activate license. Please try again.');
+        const msg = err instanceof Error ? err.message : 'Failed to activate license. Please try again.';
+        setActivateError(
+          msg.includes('Maximum call stack') || msg.includes('stack size')
+            ? 'Unable to connect to the activation server. Please check your connection and try again.'
+            : msg
+        );
       }
     }
     // Always re-sync after activation attempt — even on error, the backend
@@ -95,16 +105,16 @@ export default function ActivationPage() {
     }
   }, [sync]);
 
+  const syncRef = useRef(sync);
+  syncRef.current = sync;
   useEffect(() => {
     // Always sync on mount to get fresh license/subscription data from backend
-    void sync();
-  }, [sync]);
+    void syncRef.current();
+  }, []);
 
   const plan = syncData?.subscription.plan ?? 'FREE';
   const isProfessional = planToEdition(plan, syncData?.license?.edition) === 'PROFESSIONAL';
   const isConnected = !isOffline && phase !== 'offline';
-  const serverVersion = syncData?.server_version ?? null;
-
   const customerName = customer?.display_name ?? session?.customerName ?? syncData?.customer?.display_name ?? '—';
   const customerEmail = customer?.email ?? session?.customerEmail ?? syncData?.customer?.email ?? '—';
   const accountStatus = customer?.account_status ?? session?.accountStatus ?? syncData?.customer?.account_status ?? 'UNKNOWN';
@@ -112,7 +122,6 @@ export default function ActivationPage() {
   const license = syncData?.license ?? null;
   const devices = syncData?.devices ?? [];
   const features = syncData?.features ?? [];
-  const serverUrl = 'https://api.avsshield.com';
 
   return (
     <div data-testid="page-license-activation" className="space-y-4">
@@ -123,34 +132,20 @@ export default function ActivationPage() {
 
       {/* Server Connection */}
       <Card title="Server Connection">
-        <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-3">
-          <div>
-            <div className="text-text-muted">Connection Status</div>
-            <div className="flex items-center gap-2 mt-1">
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  isConnected ? 'bg-semantic-success' :
-                  phase === 'syncing' ? 'bg-semantic-warning' :
-                  'bg-semantic-danger'
-                }`}
-                data-testid="license-connection-indicator"
-              />
-              <span className="font-medium text-text-primary">
-                {isConnected ? 'Connected' : phase === 'syncing' ? 'Syncing…' : isOffline ? 'Offline (cached)' : 'Disconnected'}
-              </span>
-            </div>
-          </div>
-          <div>
-            <div className="text-text-muted">Server</div>
-            <div className="font-mono text-xs text-text-secondary mt-1">
-              {serverUrl}
-            </div>
-          </div>
-          <div>
-            <div className="text-text-muted">Server Version</div>
-            <div className="font-medium text-text-primary mt-1">
-              {serverVersion ? `v${serverVersion}` : '—'}
-            </div>
+        <div>
+          <div className="text-text-muted">Connection Status</div>
+          <div className="flex items-center gap-2 mt-1">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isConnected ? 'bg-semantic-success' :
+                phase === 'syncing' ? 'bg-semantic-warning' :
+                'bg-semantic-danger'
+              }`}
+              data-testid="license-connection-indicator"
+            />
+            <span className="font-medium text-text-primary">
+              {isConnected ? 'Connected' : phase === 'syncing' ? 'Syncing…' : isOffline ? 'Offline (cached)' : 'Disconnected'}
+            </span>
           </div>
         </div>
       </Card>

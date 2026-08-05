@@ -59,9 +59,12 @@ export const useSubscriptionStore = create<SubscriptionState>((set) => ({
         error: null,
       });
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to fetch subscription';
       set({
         loading: false,
-        error: err instanceof Error ? err.message : 'Failed to fetch subscription',
+        error: msg.includes('Maximum call stack')
+          ? 'Unable to fetch subscription data. Please try again later.'
+          : msg,
       });
     }
   },

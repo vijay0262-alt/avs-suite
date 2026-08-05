@@ -179,63 +179,114 @@ async function doFetch(
   }
 }
 
+// ── Network retry helper ───────────────────────────────────────
+
+const MAX_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 1000;
+
+function isRetryableNetworkError(err: unknown): boolean {
+  if (err instanceof NetworkError) {
+    return (
+      err.kind === 'TIMEOUT' ||
+      err.kind === 'DNS_FAILURE' ||
+      err.kind === 'CONNECTION_REFUSED' ||
+      err.kind === 'NETWORK_UNREACHABLE'
+    );
+  }
+  return false;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export const apiClient = {
   async request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     let session = opts.noAuth ? null : callbacks?.getSession() ?? null;
 
     // If token will expire soon, try to refresh proactively
+    // Guard against infinite refresh loops
     if (session && tokenStorage.willExpireSoon(session) && !opts.noAuth) {
       const refreshed = await callbacks?.refreshSession().catch(() => null);
-      if (refreshed) session = refreshed;
-    }
-
-    let response = await doFetch(path, opts, session);
-
-    // If 401 on an authenticated request, try one refresh then retry
-    if (response.status === 401 && !opts.noAuth && callbacks) {
-      const refreshed = await callbacks.refreshSession().catch(() => null);
       if (refreshed) {
-        session = refreshed;
-        response = await doFetch(path, opts, session);
-      } else {
-        callbacks.onSessionExpired();
-        throw new AuthError('Session expired. Please log in again.');
+        // Only accept the refreshed session if it's not also about to expire
+        if (!tokenStorage.willExpireSoon(refreshed)) {
+          session = refreshed;
+        }
       }
     }
 
-    // 401 on noAuth requests (e.g. login) = invalid credentials, not session expiry
-    if (response.status === 401 && opts.noAuth) {
-      let detail: string | undefined;
+    // Retry loop for network errors (server cold-start, transient DNS, etc.)
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const body = await response.json();
-        detail = body?.detail ?? body?.message;
-      } catch {
-        // Non-JSON error body
+        let response = await doFetch(path, opts, session);
+
+        // If 401 on an authenticated request, try one refresh then retry
+        if (response.status === 401 && !opts.noAuth && callbacks) {
+          const refreshed = await callbacks.refreshSession().catch(() => null);
+          if (refreshed) {
+            session = refreshed;
+            response = await doFetch(path, opts, session);
+          } else {
+            callbacks.onSessionExpired();
+            throw new AuthError('Session expired. Please log in again.');
+          }
+        }
+
+        // 401 on noAuth requests (e.g. login) = invalid credentials, not session expiry
+        if (response.status === 401 && opts.noAuth) {
+          let detail: string | undefined;
+          try {
+            const body = await response.json();
+            detail = body?.detail ?? body?.message;
+          } catch {
+            // Non-JSON error body
+          }
+          throw new ApiError('Authentication failed', response.status, detail);
+        }
+
+        if (!response.ok) {
+          let detail: string | undefined;
+          try {
+            const body = await response.json();
+            detail = body?.detail ?? body?.message;
+          } catch {
+            // Non-JSON error body
+          }
+          throw new ApiError(
+            `Request failed: ${response.status} ${response.statusText}`,
+            response.status,
+            detail,
+          );
+        }
+
+        // Handle 204 No Content
+        if (response.status === 204) {
+          return undefined as T;
+        }
+
+        return response.json() as Promise<T>;
+      } catch (err) {
+        lastError = err;
+        // Only retry on network errors (not ApiError, AuthError, etc.)
+        if (isRetryableNetworkError(err) && attempt < MAX_RETRIES) {
+          const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+          console.warn(`[AVS] Retrying ${opts.method ?? 'GET'} ${path} in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          await sleep(delay);
+          // Refresh session before retry (in case it expired during wait)
+          if (!opts.noAuth) {
+            const refreshed = await callbacks?.refreshSession().catch(() => null);
+            if (refreshed && !tokenStorage.willExpireSoon(refreshed)) {
+              session = refreshed;
+            }
+          }
+          continue;
+        }
+        throw err;
       }
-      throw new ApiError('Authentication failed', response.status, detail);
     }
-
-    if (!response.ok) {
-      let detail: string | undefined;
-      try {
-        const body = await response.json();
-        detail = body?.detail ?? body?.message;
-      } catch {
-        // Non-JSON error body
-      }
-      throw new ApiError(
-        `Request failed: ${response.status} ${response.statusText}`,
-        response.status,
-        detail,
-      );
-    }
-
-    // Handle 204 No Content
-    if (response.status === 204) {
-      return undefined as T;
-    }
-
-    return response.json() as Promise<T>;
+    throw lastError;
   },
 
   get<T>(path: string, opts?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {

@@ -52,7 +52,12 @@ export default function SettingsPage() {
   const { customer, session, logout } = useAuthStore();
   const { entitlement, created, syncPhase, syncError, lastSyncAt, syncEntitlement } = useEntitlementStore();
   const { editionLabel, enabledFeatures, disabledFeatures, enabledCount, disabledCount, initialized: featureEngineInitialized } = useFeatureStore();
-  const { subscription, loading: subLoading, error: subError, lastSyncAt: subLastSyncAt, connectionStatus, sync: syncSubscription } = useSubscriptionStore();
+  const subscription = useSubscriptionStore((s) => s.subscription);
+  const subLoading = useSubscriptionStore((s) => s.loading);
+  const subError = useSubscriptionStore((s) => s.error);
+  const subLastSyncAt = useSubscriptionStore((s) => s.lastSyncAt);
+  const connectionStatus = useSubscriptionStore((s) => s.connectionStatus);
+  const syncSubscription = useSubscriptionStore((s) => s.sync);
   const {
     status: updateStatus,
     updateInfo,
@@ -442,7 +447,7 @@ export default function SettingsPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => void syncSubscription()}
+              onClick={() => void syncSubscription().catch(() => {})}
               loading={subLoading}
               leftIcon={<ArrowPathIcon className="h-4 w-4" />}
               data-testid="settings-subscription-refresh"
@@ -496,7 +501,7 @@ export default function SettingsPage() {
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => void syncSubscription()}
+                onClick={() => void syncSubscription().catch(() => {})}
                 data-testid="settings-subscription-retry"
               >
                 Retry
