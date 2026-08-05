@@ -33,7 +33,9 @@ const MaintenanceHistoryPage = lazy(() => import('../pages/MaintenanceHistoryPag
 const ReportsPage = lazy(() => import('../pages/ReportsPage'));
 const OptimizationReportsPage = lazy(() => import('../pages/OptimizationReportsPage'));
 const SmartOptimizationPage = lazy(() => import('../pages/SmartOptimizationPage'));
-const AIWorkspacePage = lazy(() => import('../pages/AIWorkspacePage'));
+
+// AI Workspace disabled — kept in codebase for future use
+// const AIWorkspacePage = lazy(() => import('../pages/AIWorkspacePage'));
 
 // v2.0 security sub-pages and new route wrappers
 import {
@@ -69,7 +71,6 @@ import {
   LargeFilesPage,
   ReportsTimelinePage,
   AnalyticsPage,
-  NetworkInformationPage,
   DriverInformationPage,
   BackupRestorePage,
   SecurityHistoryPage,
@@ -141,7 +142,7 @@ export const router = createHashRouter([
       { path: 'ai-assistant', element: wrap(AIAssistantPage) },
       { path: 'ai-daily-briefing', element: wrap(AIDailyBriefingPage) },
       { path: 'ai-smart-optimize', element: wrap(SmartOptimizationPage) },
-      { path: 'ai-workspace', element: wrap(AIWorkspacePage) },
+      { path: 'ai-workspace', element: <Navigate to="/dashboard" replace /> },
       // SYSTEM HEALTH
       { path: 'system-health', element: wrap(SystemHealthPage) },
       { path: 'hardware-center', element: wrap(HardwareCenterPage) },
@@ -194,7 +195,8 @@ export const router = createHashRouter([
       // TOOLS
       { path: 'system-information', element: wrap(SystemInformationPage) },
       { path: 'disk-analyzer', element: wrap(DiskAnalyzerPage) },
-      { path: 'network-information', element: wrap(NetworkInformationPage) },
+      // Network Information hidden — backend module unavailable, redirect to dashboard
+      { path: 'network-information', element: <Navigate to="/dashboard" replace /> },
       { path: 'driver-information', element: wrap(DriverInformationPage) },
       { path: 'backup-restore', element: wrap(BackupRestorePage) },
       { path: 'recovery-center', element: wrap(RecoveryCenterPage) },

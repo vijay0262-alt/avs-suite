@@ -63,8 +63,8 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
   const handleStartScan = useCallback(() => {
     onboardingService.completeOnboarding();
     onClose();
-    navigate('/dashboard');
-  }, [onClose, navigate]);
+    // FirstScanDialog will appear automatically after welcome closes
+  }, [onClose]);
 
   const handleStartTour = useCallback(() => {
     onboardingService.completeOnboarding();

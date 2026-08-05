@@ -48,6 +48,7 @@ import type { OptimizationSummary } from './OptimizationSummary.types';
 import { saveSession, loadSession, clearSession } from './sessionPersistence';
 import { canUse as featureGateCanUse } from '../licensing/FeatureGate';
 import type { ManagedFeature } from '@avs/licensing';
+import { onboardingService } from '../onboarding/OnboardingService';
 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
 
@@ -565,6 +566,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanReport: report,
       healthScanError: null,
     });
+
+    // Mark first scan as complete so the FirstScanDialog doesn't show again
+    onboardingService.completeFirstScan();
   }
 
   private async runHealthScan(phase: 'scan' | 'verify' = 'scan'): Promise<void> {

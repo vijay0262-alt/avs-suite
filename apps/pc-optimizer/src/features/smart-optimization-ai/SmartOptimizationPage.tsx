@@ -214,6 +214,8 @@ export default function SmartOptimizationPage() {
 
   useEffect(() => {
     vm.bootstrap();
+    // Auto-generate plan on page load so user sees results immediately
+    void vm.generatePlan();
     return () => vm.dispose();
   }, [vm]);
 

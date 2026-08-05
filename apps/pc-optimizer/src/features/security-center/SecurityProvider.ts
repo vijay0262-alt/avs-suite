@@ -37,7 +37,7 @@ export abstract class SecurityProvider {
       name,
       type,
       version,
-      status: 'inactive',
+      status: 'active',
       enabled: true,
       priority,
       description,

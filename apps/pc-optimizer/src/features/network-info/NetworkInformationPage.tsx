@@ -13,7 +13,7 @@ import { Card, Button, Badge } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import { PageHeader } from '../../components/PageHeader';
-import { ModuleEmptyState, ModuleLoadingState, ModuleErrorState, ModuleErrorBanner } from '../../components/ModuleStates';
+import { ModuleEmptyState, ModuleLoadingState, ModuleErrorBanner } from '../../components/ModuleStates';
 import {
   WifiIcon,
   ArrowPathIcon,
@@ -156,10 +156,24 @@ export default function NetworkInformationPage() {
   }
 
   if (state.error && state.adapters.length === 0) {
+    const isBackendMissing = state.error.includes('failed to load') || state.error.includes('unavailable') || state.error.includes('avs.rpc');
     return (
       <div className="px-6 py-6">
         <PageHeader title="Network Information" description="Network adapters, connections, and diagnostics" />
-        <ModuleErrorState message={state.error} onRetry={() => vm.bootstrap()} />
+        <Card variant="glass">
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <WifiIcon className="h-12 w-12 text-text-muted mb-4" />
+            <h3 className="text-sm font-semibold text-text-primary mb-2">Network information unavailable</h3>
+            <p className="text-sm text-text-secondary max-w-md mb-4">
+              {isBackendMissing
+                ? 'The network diagnostics module could not be loaded. This feature requires the AVS Shield desktop application to be running with the backend service active.'
+                : state.error}
+            </p>
+            <Button onClick={() => vm.bootstrap()} variant="secondary" leftIcon={<ArrowPathIcon className="h-4 w-4" />}>
+              Try Again
+            </Button>
+          </div>
+        </Card>
       </div>
     );
   }

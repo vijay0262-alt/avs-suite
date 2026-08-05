@@ -146,22 +146,26 @@ export default function SystemHealthOverviewPage() {
         <Card variant="glass">
           <div className="flex items-center gap-6">
             <div className="flex flex-col items-center">
-              <div className="relative h-24 w-24">
-                <svg className="h-24 w-24 -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="45" fill="none" stroke="var(--avs-surface-muted)" strokeWidth="8" />
+              <div className="relative h-28 w-28">
+                <svg className="h-28 w-28 -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="var(--avs-surface-muted)" strokeWidth="7" />
                   <circle
-                    cx="50" cy="50" r="45" fill="none"
+                    cx="50" cy="50" r="42" fill="none"
                     stroke={ds.healthScorePanel.overallScore >= 80 ? 'var(--avs-success)' : ds.healthScorePanel.overallScore >= 60 ? 'var(--avs-warning)' : 'var(--avs-danger)'}
-                    strokeWidth="8" strokeLinecap="round"
-                    strokeDasharray={`${(ds.healthScorePanel.overallScore / 100) * 283} 283`}
+                    strokeWidth="7" strokeLinecap="round"
+                    strokeDasharray={`${(Math.round(ds.healthScorePanel.overallScore) / 100) * 264} 264`}
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-bold text-[var(--avs-text-primary)]">{ds.healthScorePanel.overallScore}</span>
-                  <span className="text-xs text-[var(--avs-text-muted)]">{ds.healthScorePanel.letterGrade}</span>
+                  <span className="text-3xl font-bold tabular-nums text-[var(--avs-text-primary)]">
+                    {Math.round(ds.healthScorePanel.overallScore)}
+                  </span>
+                  <span className="mt-0.5 rounded-full bg-[var(--avs-surface-muted)] px-2 py-0.5 text-xs font-semibold text-[var(--avs-text-secondary)]">
+                    {ds.healthScorePanel.letterGrade}
+                  </span>
                 </div>
               </div>
-              <span className="mt-1 text-xs text-[var(--avs-text-muted)]">{ds.healthScorePanel.healthLevel}</span>
+              <span className="mt-2 text-xs font-medium text-[var(--avs-text-muted)]">{ds.healthScorePanel.healthLevel}</span>
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
@@ -174,8 +178,8 @@ export default function SystemHealthOverviewPage() {
                     ) : (
                       <ArrowTrendingDownIcon className="h-4 w-4 text-[var(--avs-danger)]" />
                     )}
-                    <span className={`text-xs font-medium ${ds.healthScorePanel.scoreChange > 0 ? 'text-[var(--avs-success)]' : 'text-[var(--avs-danger)]'}`}>
-                      {ds.healthScorePanel.scoreChange > 0 ? '+' : ''}{ds.healthScorePanel.scoreChange}
+                    <span className={`text-xs font-medium tabular-nums ${ds.healthScorePanel.scoreChange > 0 ? 'text-[var(--avs-success)]' : 'text-[var(--avs-danger)]'}`}>
+                      {ds.healthScorePanel.scoreChange > 0 ? '+' : ''}{Math.round(ds.healthScorePanel.scoreChange)}
                     </span>
                   </div>
                 )}
@@ -208,7 +212,7 @@ export default function SystemHealthOverviewPage() {
                     <Icon className="h-5 w-5 text-[var(--avs-text-secondary)]" />
                     <span className="text-sm font-medium text-[var(--avs-text-primary)]">{card.categoryName}</span>
                   </div>
-                  <Badge tone={tone}>{card.score}/100</Badge>
+                  <Badge tone={tone}>{Math.round(card.score)}/100</Badge>
                 </div>
                 {card.issues.length > 0 && (
                   <div className="mt-3 space-y-1">

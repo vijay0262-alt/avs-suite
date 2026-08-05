@@ -8,6 +8,7 @@
 const ONBOARDING_KEY = 'avs-onboarding-complete';
 const DISMISSED_TIPS_KEY = 'avs-dismissed-tips';
 const LEARNING_MODE_KEY = 'avs-learning-mode';
+const FIRST_SCAN_KEY = 'avs-first-scan-complete';
 
 export interface OnboardingState {
   hasCompleted: boolean;
@@ -75,6 +76,20 @@ class OnboardingServiceImpl {
   setLearningMode(enabled: boolean): void {
     try {
       localStorage.setItem(LEARNING_MODE_KEY, String(enabled));
+    } catch { /* ignore */ }
+  }
+
+  hasCompletedFirstScan(): boolean {
+    try {
+      return localStorage.getItem(FIRST_SCAN_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  completeFirstScan(): void {
+    try {
+      localStorage.setItem(FIRST_SCAN_KEY, 'true');
     } catch { /* ignore */ }
   }
 }

@@ -9,6 +9,7 @@ import { Card, Button, Badge } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleEmptyState } from '../../components/ModuleStates';
 import { conversationEngine } from '../ai-assistant';
+import { initAssistantContext } from '../ai-assistant/assistantContextInitializer';
 import type { AssistantDashboardData, AssistantInsight } from '../ai-assistant';
 import { QUICK_QUESTIONS } from '../ai-assistant/types';
 import { ProStatusBanner, ProStatusPill, ProOnlySection } from '../licensing/ProStatusBadge';
@@ -47,8 +48,13 @@ export default function AIDailyBriefingPage() {
   const [briefingTab, setBriefingTab] = useState<'today' | 'yesterday' | 'weekly' | 'monthly'>('today');
   const [timelineData, setTimelineData] = useState<HealthTimelineEntry[]>([]);
 
-  const init = useCallback(() => {
+  const init = useCallback(async () => {
     setLoading(true);
+    try {
+      await initAssistantContext();
+    } catch {
+      // Context init may fail outside Electron; continue with empty context
+    }
     conversationEngine.startSession();
     setDashboardData(conversationEngine.getDashboardData());
     setInsights(conversationEngine.getTopInsights(10));
@@ -65,7 +71,7 @@ export default function AIDailyBriefingPage() {
   }, [briefingTab]);
 
   useEffect(() => {
-    init();
+    void init();
   }, [init]);
 
   return (
@@ -77,7 +83,7 @@ export default function AIDailyBriefingPage() {
         actions={
           <div className="flex items-center gap-2">
             <ProStatusPill />
-            <Button size="sm" variant="secondary" onClick={init} leftIcon={<ArrowPathIcon className="h-4 w-4" />}>
+            <Button size="sm" variant="secondary" onClick={() => void init()} leftIcon={<ArrowPathIcon className="h-4 w-4" />}>
               Refresh
             </Button>
             <Button size="sm" onClick={() => navigate('/ai-assistant')} leftIcon={<ChatBubbleLeftRightIcon className="h-4 w-4" />}>

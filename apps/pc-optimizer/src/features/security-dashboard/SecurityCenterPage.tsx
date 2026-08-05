@@ -63,8 +63,8 @@ const TABS: { id: SecurityCenterTab; label: string; icon: typeof ShieldCheckIcon
 ];
 
 const SIDEBAR_SCAN_MODES: { id: ScanMode; label: string; description: string; icon: typeof MagnifyingGlassIcon }[] = [
-  { id: 'quick', label: 'Quick Scan', description: 'Fast scan of critical system areas', icon: MagnifyingGlassIcon },
-  { id: 'full', label: 'Full Scan', description: 'Deep scan of entire system', icon: ShieldCheckIcon },
+  { id: 'quick', label: 'Quick Scan', description: 'Fast scan of critical system areas (~10 sec)', icon: MagnifyingGlassIcon },
+  { id: 'full', label: 'Full Scan', description: 'Deep scan of all files, folders & paths (~2-5 min)', icon: ShieldCheckIcon },
   { id: 'custom', label: 'Custom Scan', description: 'Scan specific folders or drives', icon: ComputerDesktopIcon },
 ];
 
@@ -474,21 +474,31 @@ function ScanTab({ vm }: { vm: SecurityCenterViewModel }) {
             <div className="space-y-3">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-[var(--avs-text-primary)]">{progress.currentPhase}</span>
-                  <span className="text-xs text-[var(--avs-text-muted)]">{formatDuration(progress.elapsedMs)}</span>
+                  <span className="text-xs font-medium text-[var(--avs-text-primary)] truncate" title={progress.currentPhase}>
+                    {progress.currentPhase}
+                  </span>
+                  <span className="text-xs text-[var(--avs-text-muted)] shrink-0 ml-2">{formatDuration(progress.elapsedMs)}</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-[var(--avs-surface-muted)]">
                   <div
                     className="h-full rounded-full transition-all duration-300"
                     style={{
-                      width: progress.status === 'completed' ? '100%' : `${Math.min(95, (progress.providersCompleted / Math.max(1, progress.providersTotal)) * 100)}%`,
+                      width: progress.status === 'completed' ? '100%' : `${Math.min(95, (progress.filesScanned / Math.max(1, progress.filesTotal ?? progress.providersTotal)) * 100)}%`,
                       background: 'var(--avs-gradient-brand)',
                     }}
                   />
                 </div>
               </div>
+              {progress.currentFilePath && (
+                <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-2 py-1.5">
+                  <div className="text-xs text-text-muted mb-0.5">Current file:</div>
+                  <div className="text-xs font-mono text-text-secondary truncate" title={progress.currentFilePath}>
+                    {progress.currentFilePath}
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
-                <StatBox label="Items" value={progress.itemsScanned.toLocaleString()} icon={CircleStackIcon} />
+                <StatBox label="Files" value={progress.filesScanned.toLocaleString()} icon={CircleStackIcon} />
                 <StatBox label="Threats" value={progress.threatsFound.toString()} icon={ExclamationTriangleIcon} />
               </div>
               {progress.aiObservations.length > 0 && (
@@ -515,13 +525,14 @@ function ScanTab({ vm }: { vm: SecurityCenterViewModel }) {
           <LiveScanProgress
             isRunning={s.isScanning}
             scanLabel="Security"
-            currentItem={progress?.currentPhase ?? null}
-            progress={progress?.status === 'completed' ? 100 : progress ? Math.min(95, Math.round((progress.providersCompleted / Math.max(1, progress.providersTotal)) * 100)) : undefined}
-            itemsScanned={progress?.itemsScanned}
+            currentItem={progress?.currentFilePath ?? progress?.currentPhase ?? null}
+            progress={progress?.status === 'completed' ? 100 : progress ? Math.min(95, Math.round((progress.filesScanned / Math.max(1, progress.filesTotal ?? progress.providersTotal)) * 100)) : undefined}
+            itemsScanned={progress?.filesScanned ?? progress?.itemsScanned}
             itemsFound={progress?.threatsFound}
             elapsedMs={progress?.elapsedMs}
             phases={[
               { id: 'collect', label: 'Collecting system data from backend…' },
+              { id: 'deepscan', label: 'Deep scanning files and folders…' },
               { id: 'analyze', label: 'Analyzing collected data with security providers…' },
               { id: 'detect', label: 'Running threat detection providers…' },
               { id: 'score', label: 'Computing security scores and recommendations…' },

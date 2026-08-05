@@ -52,7 +52,7 @@ export default function SettingsPage() {
   const { customer, session, logout } = useAuthStore();
   const { entitlement, created, syncPhase, syncError, lastSyncAt, syncEntitlement } = useEntitlementStore();
   const { editionLabel, enabledFeatures, disabledFeatures, enabledCount, disabledCount, initialized: featureEngineInitialized } = useFeatureStore();
-  const { subscription, loading: subLoading, error: subError, lastSyncAt: subLastSyncAt, connectionStatus, serverVersion, serverUrl, sync: syncSubscription } = useSubscriptionStore();
+  const { subscription, loading: subLoading, error: subError, lastSyncAt: subLastSyncAt, connectionStatus, sync: syncSubscription } = useSubscriptionStore();
   const {
     status: updateStatus,
     updateInfo,
@@ -259,22 +259,20 @@ export default function SettingsPage() {
                       { label: 'Process Intelligence', free: 'Top 10', pro: 'Unlimited' },
                       { label: 'Hardware Center History', free: '24 hours', pro: 'Unlimited' },
                       { label: 'Predictive Health', free: '7-day', pro: 'Unlimited' },
-                      { label: 'Real-Time Protection', free: false, pro: true },
-                      { label: 'Scheduled Scans', free: false, pro: true },
-                      { label: 'Automatic Optimization', free: false, pro: true },
-                      { label: 'Background Monitoring', free: false, pro: true },
+                      { label: 'Real-Time Protection', free: 'Pro only', pro: true },
+                      { label: 'Scheduled Scans', free: 'Pro only', pro: true },
+                      { label: 'Automatic Optimization', free: 'Pro only', pro: true },
+                      { label: 'Background Monitoring', free: 'Pro only', pro: true },
                       { label: 'Export Formats', free: 'PDF', pro: 'PDF, CSV, JSON, Excel' },
-                      { label: 'Priority Support', free: false, pro: true },
+                      { label: 'Priority Support', free: 'Pro only', pro: true },
                     ].map((row) => (
                       <tr key={row.label} className="border-t border-[var(--avs-border)]">
                         <td className="p-2 text-text-secondary">{row.label}</td>
                         <td className="p-2 text-center">
                           {row.free === true ? (
                             <CheckCircleIcon className="inline h-3.5 w-3.5 text-semantic-success" />
-                          ) : row.free === false ? (
-                            <span className="text-text-muted">\u2014</span>
                           ) : (
-                            <span className="text-text-secondary">{row.free}</span>
+                            <span className={row.free === 'Pro only' ? 'text-text-muted italic' : 'text-text-secondary'}>{row.free}</span>
                           )}
                         </td>
                         <td className="p-2 text-center">
@@ -476,10 +474,6 @@ export default function SettingsPage() {
                     {connectionStatus === 'connected' ? 'Connected' : connectionStatus === 'checking' ? 'Checking…' : 'Disconnected'}
                   </Badge>
                 </span>
-                <span className="text-text-muted">Server</span>
-                <span className="font-mono text-xs text-text-primary">{serverUrl}</span>
-                <span className="text-text-muted">API Version</span>
-                <span className="text-text-primary">{serverVersion ? `v${serverVersion}` : '—'}</span>
               </div>
 
               {subscription.features.length > 0 && (

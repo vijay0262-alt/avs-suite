@@ -100,15 +100,24 @@ export function AIAssistantPage() {
   const questionsRemaining = maxQuestions === null ? null : Math.max(0, maxQuestions - questionsToday);
   const isLimitReached = maxQuestions !== null && questionsToday >= maxQuestions;
 
-  const initSession = useCallback(() => {
+  const [contextLoading, setContextLoading] = useState(true);
+
+  const initSession = useCallback(async () => {
+    setContextLoading(true);
+    try {
+      await initAssistantContext();
+    } catch {
+      // Context init may fail outside Electron; continue with empty context
+    }
     const id = conversationEngine.startSession();
     setSessionId(id);
     setDashboardData(conversationEngine.getDashboardData());
     setInsights(conversationEngine.getTopInsights(5));
+    setContextLoading(false);
   }, []);
 
   useEffect(() => {
-    initSession();
+    void initSession();
   }, [initSession]);
 
   useEffect(() => {
@@ -180,7 +189,7 @@ export function AIAssistantPage() {
 
   const handleReset = () => {
     setMessages([]);
-    initSession();
+    void initSession();
   };
 
   return (
@@ -224,7 +233,7 @@ export function AIAssistantPage() {
       />
 
       {activeView === 'briefing' ? (
-        <DailyBriefingView insights={insights} dashboardData={dashboardData} onAsk={handleAsk} />
+        <DailyBriefingView insights={insights} dashboardData={dashboardData} onAsk={handleAsk} contextLoading={contextLoading} />
       ) : (
         <div className="flex flex-1 gap-4 overflow-hidden">
           {/* Chat Panel */}
@@ -430,10 +439,12 @@ function DailyBriefingView({
   insights,
   dashboardData,
   onAsk,
+  contextLoading,
 }: {
   insights: AssistantInsight[];
   dashboardData: AssistantDashboardData | null;
   onAsk: (q: string) => void;
+  contextLoading: boolean;
 }) {
   const insightIcons: Record<string, typeof LightBulbIcon> = {
     storage_increase: ChartBarIcon,
@@ -459,7 +470,9 @@ function DailyBriefingView({
           <div>
             <h2 className="text-lg font-bold text-[var(--avs-text-primary)]">AI Daily Briefing</h2>
             <p className="text-sm text-[var(--avs-text-secondary)]">
-              {insights.length > 0
+              {contextLoading
+                ? 'Loading system data…'
+                : insights.length > 0
                 ? `${insights.length} insights generated from your system data`
                 : 'No insights available — run a health scan to generate insights'}
             </p>

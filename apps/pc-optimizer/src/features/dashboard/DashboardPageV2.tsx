@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button, Card, DashboardSection, StatCard, InsightCard, RecommendationCard, ChartCard, TimelineCard, Sparkline, EmptyState, LoadingState } from '@avs/ui';
 import { ModuleErrorBanner } from '../../components/ModuleStates';
 import {
@@ -143,6 +143,7 @@ export default function DashboardPage() {
   const vm = useMemo(() => new DashboardViewModel(dashboardService), []);
   const state = useViewModel(vm);
   const navigate = useNavigate();
+  const location = useLocation();
   const isPro = useIsPro();
   const limits = useEditionLimits();
 
@@ -150,6 +151,18 @@ export default function DashboardPage() {
     void vm.bootstrap();
     return () => vm.dispose();
   }, [vm]);
+
+  // Auto-trigger health scan when navigated from FirstScanDialog
+  useEffect(() => {
+    if (state.bootstrap === 'ready' && state.healthScanStep === 'idle') {
+      const navState = location.state as { action?: string } | null;
+      if (navState?.action === 'auto-scan') {
+        vm.startHealthScan();
+        // Clear the location state so it doesn't re-trigger
+        navigate('/dashboard', { replace: true, state: {} });
+      }
+    }
+  }, [state.bootstrap, state.healthScanStep, location.state, navigate, vm]);
 
   const isScanning = state.healthScanStep !== 'idle' && state.healthScanStep !== 'complete';
   const [cpuHistory, setCpuHistory] = useState<number[]>([]);

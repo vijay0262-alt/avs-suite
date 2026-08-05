@@ -219,6 +219,9 @@ export class SecurityCenterViewModel extends ViewModel<SecurityCenterState> {
         scanType,
         status: 'running',
         currentPhase: 'Initializing scan engine…',
+        currentFilePath: null,
+        filesScanned: 0,
+        filesTotal: null,
         providersCompleted: 0,
         providersTotal: this.service.getProviders().length,
         threatsFound: 0,
@@ -252,10 +255,15 @@ export class SecurityCenterViewModel extends ViewModel<SecurityCenterState> {
           'Cross-referencing threat intelligence database…',
         ];
 
+        // If we have a current file path from the deep scan, show it as the phase
+        const currentPhase = progress.currentFilePath
+          ? `Scanning: ${progress.currentFilePath}`
+          : phases[phaseIndex] ?? 'Scanning…';
+
         this.setState({
           scanProgress: {
             ...progress,
-            currentPhase: phases[phaseIndex] ?? 'Scanning…',
+            currentPhase,
             aiObservations: observations.slice(0, Math.min(4, Math.floor(elapsed / 300) + 1)),
           },
         });
