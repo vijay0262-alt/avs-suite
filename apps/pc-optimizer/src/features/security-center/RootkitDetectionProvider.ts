@@ -52,7 +52,7 @@ export class RootkitDetectionProvider extends SecurityProvider {
 
       const duration = Date.now() - start;
       this.markRun();
-      this.setStatus('inactive');
+      this.setStatus('active');
       return this.successResult(context, threats, duration, inputs.length, { analyzed: inputs.length });
     } catch (e) {
       const duration = Date.now() - start;

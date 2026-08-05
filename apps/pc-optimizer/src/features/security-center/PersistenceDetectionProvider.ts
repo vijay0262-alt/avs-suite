@@ -85,7 +85,7 @@ export class PersistenceDetectionProvider extends SecurityProvider {
         : 0;
       const duration = Date.now() - start;
       this.markRun();
-      this.setStatus('inactive');
+      this.setStatus('active');
       return this.successResult(context, threats, duration, itemsScanned, { threatsFound: threats.length });
     } catch (e) {
       const duration = Date.now() - start;

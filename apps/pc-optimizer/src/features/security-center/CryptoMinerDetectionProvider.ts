@@ -52,7 +52,7 @@ export class CryptoMinerDetectionProvider extends SecurityProvider {
 
       const duration = Date.now() - start;
       this.markRun();
-      this.setStatus('inactive');
+      this.setStatus('active');
       return this.successResult(context, threats, duration, processes.length, { analyzed: processes.length });
     } catch (e) {
       const duration = Date.now() - start;

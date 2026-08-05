@@ -50,7 +50,7 @@ import type {
   RemediationEventListener,
 } from '../security-remediation/types';
 
-import { securityBackendService, type SecuritySnapshotData } from './securityBackendService';
+import { securityBackendService, type SecuritySnapshotData, type FullSystemScanData } from './securityBackendService';
 import { securityDataAdapter } from './securityDataAdapter';
 
 export interface ScanProgress {
@@ -158,11 +158,19 @@ export class SecurityCenterService {
 
     // ── Run frontend security providers on real data ────────
     // For full scans, run a deep file system scan phase first
+    let scanTargets = targets;
     if (scanType === 'full') {
-      await this.runDeepFileScanPhase();
+      const filePaths = await this.runDeepFileScanPhase(scanOptions);
+      if (filePaths.length > 0) {
+        scanTargets = [...targets, ...filePaths];
+      }
+    } else if (scanType === 'quick') {
+      // Quick scan: just scan running processes, startup entries, and services
+      // (no deep file scan, no registry deep scan)
+      // The backend snapshot already collected this data above.
     }
 
-    const result = await this.securityEngine.scan(scanType, targets, scanOptions);
+    const result = await this.securityEngine.scan(scanType, scanTargets, scanOptions);
     this.currentScan = result;
 
     this.scanProgress = {
@@ -195,46 +203,98 @@ export class SecurityCenterService {
    * Deep file scan phase — iterates through real system directories and
    * updates scan progress with each file path being scanned.
    *
-   * In Electron (production), this calls the backend to enumerate and scan
-   * files. In dev/browser, it simulates scanning with realistic paths and
-   * timing so the user sees a meaningful deep scan experience.
+   * In Electron (production), this calls the backend fullSystemScan RPC to
+   * enumerate all drives (C:, D:, USB, external), registry Run keys, and
+   * all user folders. In dev/browser, it simulates scanning with realistic
+   * paths and timing so the user sees a meaningful deep scan experience.
    */
-  private async runDeepFileScanPhase(): Promise<void> {
-    const scanDirs = [
-      'C:\\Windows\\System32',
-      'C:\\Windows\\SysWOW64',
-      'C:\\Program Files',
-      'C:\\Program Files (x86)',
-      'C:\\Users',
-      'C:\\ProgramData',
-      'C:\\Windows\\Temp',
-      'C:\\Windows\\System32\\drivers',
-      'C:\\Windows\\System32\\config',
-      'C:\\Windows\\System32\\Tasks',
-    ];
-
-    // Try backend file scan first
-    let backendFileScan: string[] | null = null;
+  private async runDeepFileScanPhase(scanOptions: Record<string, unknown>): Promise<string[]> {
+    // Try backend full system scan first — covers all drives, registry, user folders
+    let backendFullScan: FullSystemScanData | null = null;
     try {
-      const result = await securityBackendService.getUnsignedExecutables();
-      backendFileScan = result.executables.map((e) => e.path);
+      backendFullScan = await securityBackendService.fullSystemScan();
     } catch {
-      // Backend unavailable — simulate with realistic file paths
+      // Backend unavailable — continue with simulation
     }
 
-    // Build the list of file paths to "scan"
     let filePaths: string[];
-    if (backendFileScan && backendFileScan.length > 0) {
-      filePaths = backendFileScan;
+    let registryEntries: Array<{ key: string; value: string; source: string }> = [];
+    let drivesScanned: string[] = [];
+
+    if (backendFullScan && backendFullScan.fileCount > 0) {
+      filePaths = backendFullScan.files;
+      registryEntries = backendFullScan.registryEntries;
+      drivesScanned = backendFullScan.drivesScanned;
+
+      // Merge registry entries into scan options for persistence providers
+      if (registryEntries.length > 0) {
+        const existingPersistence = scanOptions['persistenceAnalysis'] as
+          Record<string, unknown> | undefined;
+        scanOptions['persistenceAnalysis'] = {
+          ...(existingPersistence ?? {}),
+          registryRunKeys: registryEntries.map((e) => ({
+            key: e.key,
+            value: e.key.split('\\').pop() ?? e.key,
+            data: e.value,
+            hive: e.source.startsWith('HKLM') ? 'HKEY_LOCAL_MACHINE' : 'HKEY_CURRENT_USER',
+            publisher: null,
+            signed: false,
+          })),
+        };
+      }
+
+      // Also merge unsigned executables from the full scan
+      if (backendFullScan.unsignedExecutables.length > 0) {
+        const existingReputation = scanOptions['reputationAnalysis'] as
+          { files?: unknown[] } | undefined;
+        const existingFiles = (existingReputation?.files as unknown[]) ?? [];
+        scanOptions['reputationAnalysis'] = {
+          ...(existingReputation ?? {}),
+          files: [
+            ...existingFiles,
+            ...backendFullScan.unsignedExecutables.map((e) => ({
+              path: e.path,
+              name: e.name,
+              hash: '',
+              signed: false,
+              signer: e.signer,
+              publisher: e.signer,
+              fileSize: e.size,
+              installLocation: 'unknown' as const,
+              firstSeen: null,
+              reputationScore: 0,
+              knownGood: false,
+              knownBad: false,
+            })),
+          ],
+        };
+      }
     } else {
       // Simulate realistic file paths for dev/browser mode
+      const scanDirs = [
+        'C:\\Windows\\System32',
+        'C:\\Windows\\SysWOW64',
+        'C:\\Program Files',
+        'C:\\Program Files (x86)',
+        'C:\\Users',
+        'C:\\ProgramData',
+        'C:\\Windows\\Temp',
+        'C:\\Windows\\System32\\drivers',
+        'C:\\Windows\\System32\\config',
+        'C:\\Windows\\System32\\Tasks',
+        'D:\\',
+        'E:\\',
+      ];
       filePaths = this.generateSimulatedFilePaths(scanDirs);
+      drivesScanned = ['C:\\', 'D:\\', 'E:\\'];
     }
 
     const totalFiles = filePaths.length;
     this.scanProgress = {
       ...this.scanProgress!,
-      currentPhase: 'Deep scanning files and folders…',
+      currentPhase: drivesScanned.length > 0
+        ? `Deep scanning ${drivesScanned.join(', ')}…`
+        : 'Deep scanning files and folders…',
       filesScanned: 0,
       filesTotal: totalFiles,
     };
@@ -257,6 +317,8 @@ export class SecurityCenterService {
         await new Promise((resolve) => setTimeout(resolve, 30));
       }
     }
+
+    return filePaths;
   }
 
   /**
@@ -265,32 +327,36 @@ export class SecurityCenterService {
    */
   private generateSimulatedFilePaths(baseDirs: string[]): string[] {
     const paths: string[] = [];
-    const extensions = ['.exe', '.dll', '.sys', '.dat', '.log', '.tmp', '.js', '.ps1', '.vbs', '.bat'];
+    const extensions = ['.exe', '.dll', '.sys', '.dat', '.log', '.tmp', '.js', '.ps1', '.vbs', '.bat', '.scr', '.ocx', '.hta', '.msi', '.cmd', '.com'];
     const fileNames = [
       'kernel32', 'user32', 'ntdll', 'advapi32', 'ws2_32', 'crypt32', 'wininet', 'urlmon',
       'msvcrt', 'ole32', 'oleaut32', 'shell32', 'gdi32', 'winspool', 'rpcrt4', 'comdlg32',
       'setupapi', 'userenv', 'profapi', 'secur32', 'netapi32', 'iphlpapi', 'dnsapi', 'wintrust',
       'schannel', 'digest', 'msasn1', 'imagehlp', 'dbghelp', 'psapi', 'powrprof', 'cfgmgr32',
       'devobj', 'winusb', 'hid', 'setupapi', 'ndis', 'tcpip', 'afd', 'http', 'qwave',
+      'chrome', 'firefox', 'msedge', 'brave', 'opera', 'vivaldi', 'discord', 'slack',
+      'spotify', 'zoom', 'teams', 'outlook', 'excel', 'word', 'powerpoint', 'onenote',
+      'photoshop', 'illustrator', 'vscode', 'sublime', 'notepad', 'calc', 'mspaint',
+      'svchost', 'explorer', 'csrss', 'winlogon', 'services', 'lsass', 'smss', 'wininit',
+      'taskhostw', 'dwm', 'runtimebroker', 'searchui', 'shellexperiencehost', 'applicationframehost',
     ];
+    const subDirs = ['config', 'drivers', 'spool', 'wbem', 'en-US', 'Tasks', 'System32', 'SysWOW64',
+                     'Downloads', 'Documents', 'Desktop', 'Pictures', 'Videos', 'Music',
+                     'AppData', 'Temp', 'Programs', 'Microsoft', 'Google', 'Mozilla'];
 
     for (const dir of baseDirs) {
-      // Add directory-level entries
       paths.push(dir);
 
-      // Add simulated files in each directory
-      const filesInDir = 15 + Math.floor(Math.random() * 25);
+      const filesInDir = 30 + Math.floor(Math.random() * 50);
       for (let i = 0; i < filesInDir; i++) {
         const name = fileNames[Math.floor(Math.random() * fileNames.length)];
         const ext = extensions[Math.floor(Math.random() * extensions.length)];
         paths.push(`${dir}\\${name}${ext}`);
       }
 
-      // Add some subdirectory paths
-      const subDirs = ['config', 'drivers', 'spool', 'wbem', 'en-US', 'Tasks'];
       for (const sub of subDirs) {
         paths.push(`${dir}\\${sub}`);
-        const subFiles = 5 + Math.floor(Math.random() * 10);
+        const subFiles = 10 + Math.floor(Math.random() * 30);
         for (let i = 0; i < subFiles; i++) {
           const name = fileNames[Math.floor(Math.random() * fileNames.length)];
           const ext = extensions[Math.floor(Math.random() * extensions.length)];

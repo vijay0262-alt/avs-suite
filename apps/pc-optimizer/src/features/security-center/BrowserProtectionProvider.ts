@@ -120,7 +120,7 @@ export class BrowserProtectionProvider extends SecurityProvider {
       const itemsScanned = extensions.length + (settings ? 1 : 0);
       const duration = Date.now() - start;
       this.markRun();
-      this.setStatus('inactive');
+      this.setStatus('active');
       return this.successResult(context, threats, duration, itemsScanned, { extensionsScanned: extensions.length });
     } catch (e) {
       const duration = Date.now() - start;

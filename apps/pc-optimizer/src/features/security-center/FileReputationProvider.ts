@@ -48,7 +48,7 @@ export class FileReputationProvider extends SecurityProvider {
 
       const duration = Date.now() - start;
       this.markRun();
-      this.setStatus('inactive');
+      this.setStatus('active');
       return this.successResult(context, threats, duration, files.length, { analyzed: files.length });
     } catch (e) {
       const duration = Date.now() - start;

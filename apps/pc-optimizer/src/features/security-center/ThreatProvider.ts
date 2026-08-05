@@ -30,7 +30,7 @@ export abstract class ThreatProvider extends SecurityProvider {
       const { threats, itemsScanned, metadata } = await this.detectThreats(context);
       const duration = Date.now() - start;
       this.markRun();
-      this.setStatus('inactive');
+      this.setStatus('active');
       return this.successResult(context, threats, duration, itemsScanned, metadata);
     } catch (e) {
       const duration = Date.now() - start;

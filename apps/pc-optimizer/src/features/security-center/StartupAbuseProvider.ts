@@ -55,7 +55,7 @@ export class StartupAbuseProvider extends SecurityProvider {
       const itemsScanned = startupEntries.length + runKeys.length;
       const duration = Date.now() - start;
       this.markRun();
-      this.setStatus('inactive');
+      this.setStatus('active');
       return this.successResult(context, threats, duration, itemsScanned, { analyzed: itemsScanned });
     } catch (e) {
       const duration = Date.now() - start;

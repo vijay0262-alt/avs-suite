@@ -87,7 +87,7 @@ export class ReputationProvider extends SecurityProvider {
       const itemsScanned = entries.length;
       const duration = Date.now() - start;
       this.markRun();
-      this.setStatus('inactive');
+      this.setStatus('active');
       return this.successResult(context, threats, duration, itemsScanned, { entriesScanned: entries.length });
     } catch (e) {
       const duration = Date.now() - start;

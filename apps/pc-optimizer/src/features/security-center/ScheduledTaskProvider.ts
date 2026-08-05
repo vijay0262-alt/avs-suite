@@ -46,7 +46,7 @@ export class ScheduledTaskProvider extends SecurityProvider {
 
       const duration = Date.now() - start;
       this.markRun();
-      this.setStatus('inactive');
+      this.setStatus('active');
       return this.successResult(context, threats, duration, tasks.length, { analyzed: tasks.length });
     } catch (e) {
       const duration = Date.now() - start;

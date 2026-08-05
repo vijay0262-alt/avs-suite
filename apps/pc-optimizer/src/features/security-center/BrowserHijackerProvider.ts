@@ -59,7 +59,7 @@ export class BrowserHijackerProvider extends SecurityProvider {
       const itemsScanned = (input?.extensions.length ?? 0) + (input?.settings ? 1 : 0);
       const duration = Date.now() - start;
       this.markRun();
-      this.setStatus('inactive');
+      this.setStatus('active');
       return this.successResult(context, threats, duration, itemsScanned, { extensions: input?.extensions.length ?? 0 });
     } catch (e) {
       const duration = Date.now() - start;

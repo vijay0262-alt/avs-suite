@@ -411,22 +411,88 @@ def get_browser_extensions(_params: dict[str, Any] | None = None) -> dict[str, A
 # Unsigned Executables
 # =====================================================================
 
+def _enumerate_all_drives() -> list[str]:
+    """Enumerate all available drive letters (fixed, removable, network)."""
+    drives: list[str] = []
+    if not IS_WINDOWS:
+        return drives
+    try:
+        import ctypes
+        bitmask = ctypes.windll.kernel32.GetLogicalDrives()
+        for i in range(26):
+            if bitmask & (1 << i):
+                letter = chr(ord('A') + i)
+                # Check drive type — include fixed, removable, and network
+                drive_path = f"{letter}:\\"
+                drive_type = ctypes.windll.kernel32.GetDriveTypeW(ctypes.c_wchar_p(drive_path))
+                # 0=unknown, 1=no root, 2=removable, 3=fixed, 4=network, 5=cdrom, 6=ramdisk
+                if drive_type in (2, 3, 4, 6):
+                    drives.append(drive_path)
+    except Exception as e:
+        log.debug("Drive enumeration failed: %s", e)
+        # Fallback: at least include C:
+        drives = ["C:\\"]
+    return drives
+
+
+def _get_user_folders() -> list[str]:
+    """Get user-specific folders for scanning."""
+    folders: list[str] = []
+    if not IS_WINDOWS:
+        return folders
+    user_profile = os.path.expandvars("%USERPROFILE%")
+    user_dirs = [
+        os.path.join(user_profile, "Downloads"),
+        os.path.join(user_profile, "Documents"),
+        os.path.join(user_profile, "Desktop"),
+        os.path.join(user_profile, "Pictures"),
+        os.path.join(user_profile, "Videos"),
+        os.path.join(user_profile, "Music"),
+    ]
+    for d in user_dirs:
+        if os.path.isdir(d):
+            folders.append(d)
+    # Also add public user folders
+    public = os.path.expandvars(r"%PUBLIC%")
+    if os.path.isdir(public):
+        folders.append(public)
+    return folders
+
+
 @register("security.unsignedExecutables")
 def get_unsigned_executables(_params: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Scan common locations for unsigned executables.
+    """Scan all drives and common locations for unsigned executables.
 
-    Checks: Temp, AppData, ProgramData, Downloads for .exe/.dll files
+    Checks: all fixed/removable drives, Temp, AppData, ProgramData, Downloads,
+    Documents, Desktop, Program Files, Windows directories for .exe/.dll files
     that are not digitally signed.
     """
     if not IS_WINDOWS:
         return {"executables": [], "supported": False, "capturedAt": _now_iso()}
 
+    # Build comprehensive scan directory list
     scan_dirs = [
         os.path.expandvars("%TEMP%"),
         os.path.expandvars("%APPDATA%"),
         os.path.expandvars("%LOCALAPPDATA%"),
         os.path.expandvars("%PROGRAMDATA%"),
+        os.path.join(os.environ.get("SystemDrive", "C:"), "\\Windows\\System32"),
+        os.path.join(os.environ.get("SystemDrive", "C:"), "\\Windows\\SysWOW64"),
+        os.path.expandvars(r"%ProgramFiles%"),
+        os.path.expandvars(r"%ProgramFiles(x86)%"),
     ]
+
+    # Add all user folders
+    scan_dirs.extend(_get_user_folders())
+
+    # Add root of all drives (for full scan, the PowerShell will recurse)
+    all_drives = _enumerate_all_drives()
+    for drive in all_drives:
+        if drive not in scan_dirs:
+            scan_dirs.append(drive)
+
+    # Remove duplicates and non-existent dirs
+    scan_dirs = list(dict.fromkeys(d for d in scan_dirs if os.path.isdir(d)))
 
     ps_script = r"""
 param([string[]]$ScanDirs)
@@ -434,7 +500,7 @@ $ErrorActionPreference = 'SilentlyContinue'
 $results = @()
 foreach ($dir in $ScanDirs) {
     if (-not (Test-Path $dir)) { continue }
-    $exeFiles = Get-ChildItem -Path $dir -Include *.exe,*.dll -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 200
+    $exeFiles = Get-ChildItem -Path $dir -Include *.exe,*.dll,*.sys,*.scr,*.ocx -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 500
     foreach ($file in $exeFiles) {
         $sig = Get-AuthenticodeSignature -FilePath $file.FullName -ErrorAction SilentlyContinue
         if ($sig -and $sig.Status -ne 'Valid') {
@@ -454,7 +520,7 @@ $results | ConvertTo-Json -Depth 3 -Compress
     # Pass directories as PowerShell array
     dirs_arg = ",".join(f"'{d}'" for d in scan_dirs)
     full_script = f"$ScanDirs = @({dirs_arg})\n{ps_script}"
-    output = _run_powershell(full_script, timeout=30.0)
+    output = _run_powershell(full_script, timeout=60.0)
 
     if not output:
         return {"executables": [], "error": "PowerShell scan failed", "capturedAt": _now_iso()}
@@ -545,6 +611,122 @@ def get_network_connections(_params: dict[str, Any] | None = None) -> dict[str, 
             "error": str(e),
             "capturedAt": _now_iso(),
         }
+
+
+# =====================================================================
+# Full System File Scan
+# =====================================================================
+
+@register("security.fullSystemScan")
+def full_system_scan(_params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Comprehensive full system file scan across all drives.
+
+    Enumerates all fixed, removable, and network drives, then scans
+    every directory for executables, scripts, and suspicious files.
+    Also scans registry Run keys for persistence entries.
+
+    Returns:
+        - files: list of all scanned files with paths
+        - fileCount: total number of files scanned
+        - drivesScanned: list of drives that were scanned
+        - registryEntries: suspicious registry entries found
+        - unsignedExecutables: unsigned exe/dll files found
+        - capturedAt: timestamp
+    """
+    if not IS_WINDOWS:
+        return {"files": [], "fileCount": 0, "supported": False, "capturedAt": _now_iso()}
+
+    all_drives = _enumerate_all_drives()
+    user_folders = _get_user_folders()
+
+    # Build comprehensive directory list for file enumeration
+    scan_dirs: list[str] = []
+    for drive in all_drives:
+        scan_dirs.append(drive)
+    scan_dirs.extend(user_folders)
+    scan_dirs.extend([
+        os.path.expandvars("%TEMP%"),
+        os.path.expandvars("%APPDATA%"),
+        os.path.expandvars("%LOCALAPPDATA%"),
+        os.path.expandvars("%PROGRAMDATA%"),
+    ])
+    scan_dirs = list(dict.fromkeys(d for d in scan_dirs if os.path.isdir(d)))
+
+    # Use PowerShell to enumerate all files across all drives
+    ps_script = r"""
+$ErrorActionPreference = 'SilentlyContinue'
+$allFiles = @()
+$extensions = '*.exe','*.dll','*.sys','*.scr','*.ocx','*.js','*.vbs','*.ps1','*.bat','*.cmd','*.hta','*.msi','*.com','*.pif'
+foreach ($drive in $drives) {
+    if (Test-Path $drive) {
+        $files = Get-ChildItem -Path $drive -Include $extensions -Recurse -File -ErrorAction SilentlyContinue
+        foreach ($f in $files) {
+            $allFiles += $f.FullName
+        }
+    }
+}
+$allFiles | ConvertTo-Json -Compress
+"""
+    dirs_arg = ",".join(f"'{d}'" for d in scan_dirs)
+    full_script = f"$drives = @({dirs_arg})\n{ps_script}"
+    output = _run_powershell(full_script, timeout=120.0)
+
+    files: list[str] = []
+    if output:
+        try:
+            import json
+            data = json.loads(output)
+            if isinstance(data, str):
+                files = [data]
+            elif isinstance(data, list):
+                files = [str(f) for f in data if f]
+        except (ValueError, TypeError):
+            pass
+
+    # Collect registry Run key entries for persistence analysis
+    registry_entries: list[dict[str, Any]] = []
+    try:
+        import winreg
+        run_keys = [
+            (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\Run", "HKLM_Run"),
+            (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", "HKCU_Run"),
+            (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\RunOnce", "HKLM_RunOnce"),
+            (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\RunOnce", "HKCU_RunOnce"),
+            (winreg.HKEY_LOCAL_MACHINE, r"Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run", "HKLM_WOW64_Run"),
+        ]
+        for root, sub_path, source in run_keys:
+            try:
+                with winreg.OpenKey(root, sub_path) as key:
+                    for i in range(winreg.QueryInfoKey(key)[1]):
+                        try:
+                            name, value, _ = winreg.EnumValue(key, i)
+                            registry_entries.append({
+                                "key": f"{source}\\{name}",
+                                "value": value,
+                                "source": source,
+                            })
+                        except OSError:
+                            break
+            except (FileNotFoundError, OSError):
+                continue
+    except (ImportError, OSError):
+        pass
+
+    # Get unsigned executables (reuse the existing function)
+    unsigned_result = get_unsigned_executables()
+    unsigned_execs = unsigned_result.get("executables", [])
+
+    return {
+        "files": files,
+        "fileCount": len(files),
+        "drivesScanned": all_drives,
+        "registryEntries": registry_entries,
+        "registryEntryCount": len(registry_entries),
+        "unsignedExecutables": unsigned_execs,
+        "unsignedExecutableCount": len(unsigned_execs),
+        "capturedAt": _now_iso(),
+        "supported": True,
+    }
 
 
 # =====================================================================

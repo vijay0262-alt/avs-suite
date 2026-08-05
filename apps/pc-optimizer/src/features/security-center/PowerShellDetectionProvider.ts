@@ -68,7 +68,7 @@ export class PowerShellDetectionProvider extends SecurityProvider {
 
       const duration = Date.now() - start;
       this.markRun();
-      this.setStatus('inactive');
+      this.setStatus('active');
       return this.successResult(context, threats, duration, psScripts.length, { analyzed: psScripts.length });
     } catch (e) {
       const duration = Date.now() - start;

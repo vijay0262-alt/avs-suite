@@ -110,6 +110,18 @@ export interface SecuritySnapshotData {
   supported: boolean;
 }
 
+export interface FullSystemScanData {
+  files: string[];
+  fileCount: number;
+  drivesScanned: string[];
+  registryEntries: Array<{ key: string; value: string; source: string }>;
+  registryEntryCount: number;
+  unsignedExecutables: BackendUnsignedExecutable[];
+  unsignedExecutableCount: number;
+  capturedAt: string;
+  supported: boolean;
+}
+
 export interface ScanStatus {
   scanId: string | null;
   status: string;
@@ -173,6 +185,10 @@ export const securityBackendService = {
 
   async getUnsignedExecutables(): Promise<{ executables: BackendUnsignedExecutable[]; count: number; capturedAt: string }> {
     return rpc.raw(RPC_METHODS.SECURITY_UNSIGNED_EXECUTABLES);
+  },
+
+  async fullSystemScan(): Promise<FullSystemScanData> {
+    return rpc.raw<FullSystemScanData>(RPC_METHODS.SECURITY_FULL_SYSTEM_SCAN);
   },
 
   async getNetworkConnections(): Promise<{ connections: BackendNetworkConnection[]; listeningPorts: BackendListeningPort[]; connectionCount: number; listeningPortCount: number; capturedAt: string }> {

@@ -65,7 +65,7 @@ export class NetworkBehaviorProvider extends SecurityProvider {
       const itemsScanned = (input?.connections.length ?? 0) + (input?.listeningPorts.length ?? 0) + (input?.dnsQueries.length ?? 0);
       const duration = Date.now() - start;
       this.markRun();
-      this.setStatus('inactive');
+      this.setStatus('active');
       return this.successResult(context, threats, duration, itemsScanned, { analyzed: itemsScanned });
     } catch (e) {
       const duration = Date.now() - start;

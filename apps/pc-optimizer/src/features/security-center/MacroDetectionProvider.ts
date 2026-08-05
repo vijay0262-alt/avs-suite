@@ -61,7 +61,7 @@ export class MacroDetectionProvider extends SecurityProvider {
 
       const duration = Date.now() - start;
       this.markRun();
-      this.setStatus('inactive');
+      this.setStatus('active');
       return this.successResult(context, threats, duration, macros.length, { analyzed: macros.length });
     } catch (e) {
       const duration = Date.now() - start;
