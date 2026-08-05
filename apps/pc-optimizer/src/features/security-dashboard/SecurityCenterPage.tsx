@@ -293,6 +293,23 @@ function OverviewTab({ vm }: { vm: SecurityCenterViewModel }) {
         })}
       </div>
 
+      {/* Threat Protection Description */}
+      <Card variant="glass">
+        <div className="flex items-start gap-4">
+          <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-brand-primary)]/10 p-3 shrink-0">
+            <ShieldCheckIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--avs-text-primary)]">What AVS Shield Protects Against</h3>
+            <p className="mt-1 text-sm text-[var(--avs-text-secondary)]">
+              AVS Shield scans your system for a wide range of threats including{' '}
+              <span className="font-medium text-[var(--avs-text-primary)]">trojans, worms, PUPs (Potentially Unwanted Programs), malware, spyware, adware, ransomware, keyloggers, rootkits, backdoors, crypto miners, browser hijackers, and suspicious startup entries</span>.
+              Detected threats are automatically quarantined and can be safely removed to keep your PC clean and secure.
+            </p>
+          </div>
+        </div>
+      </Card>
+
       {/* Protection Status & Capabilities */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Protection Status" variant="glass">

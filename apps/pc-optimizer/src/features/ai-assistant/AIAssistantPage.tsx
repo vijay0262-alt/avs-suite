@@ -27,6 +27,7 @@ import {
   type AssistantDashboardData,
   type AssistantInsight,
 } from '../ai-assistant';
+import { initAssistantContext } from '../ai-assistant/assistantContextInitializer';
 import { QUICK_QUESTIONS } from '../ai-assistant/types';
 import {
   SparklesIcon,

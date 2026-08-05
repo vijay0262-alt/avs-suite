@@ -20,18 +20,6 @@ export interface Tip {
 
 const TIPS: readonly Tip[] = [
   {
-    id: 'tip-dashboard-health-score',
-    route: '/dashboard',
-    title: 'Health Score',
-    body: 'The Health Score summarizes your PC\'s overall condition. Click "AI Smart Optimize" to run a full optimization scan.',
-  },
-  {
-    id: 'tip-dashboard-quick-actions',
-    route: '/dashboard',
-    title: 'Quick Actions',
-    body: 'Use Quick Actions for fast access to common tasks like junk cleaning, startup management, and privacy cleaning.',
-  },
-  {
     id: 'tip-junk-cleaner-preview',
     route: '/junk-cleaner',
     title: 'Preview Before Cleaning',
