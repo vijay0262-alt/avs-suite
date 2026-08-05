@@ -5,7 +5,7 @@
  * This bridges the two data models so the dashboard can display
  * the same rich hardware data that the Hardware Center shows.
  */
-import type { HardwareSnapshot, HardwareComponent, CPUComponent, GPUComponent, CoolingComponent, BatteryComponent, StorageComponent } from '../hardware-center/types';
+import type { HardwareSnapshot, CPUComponent, GPUComponent, CoolingComponent, BatteryComponent, StorageComponent } from '../hardware-center/types';
 import type { HardwareSensors, HardwareSensorReading, HardwareClockReading } from './dashboard.types';
 
 export function hardwareSnapshotToSensors(snapshot: HardwareSnapshot): HardwareSensors {

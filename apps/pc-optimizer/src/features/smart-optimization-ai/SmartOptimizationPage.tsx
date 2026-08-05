@@ -238,11 +238,6 @@ export default function SmartOptimizationPage() {
     dashVm.startHealthScan();
   }, [dashVm]);
 
-  const handleGeneratePlan = useCallback(() => {
-    setShowUpgradeMessage(false);
-    vm.generatePlan();
-  }, [vm]);
-
   const handleExecutePlan = useCallback(() => {
     if (!isPro) {
       setShowUpgradeMessage(true);
