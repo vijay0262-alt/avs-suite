@@ -10,7 +10,6 @@ import { OnboardingProvider } from '../features/onboarding/OnboardingProvider';
 
 // Lazy load all pages
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
-const AIAssistantPage = lazy(() => import('../pages/AIAssistantPage'));
 const SecurityCenterPage = lazy(() => import('../pages/SecurityCenterPage'));
 const JunkCleanerPage = lazy(() => import('../pages/JunkCleanerPage'));
 const RegistryCleanerPage = lazy(() => import('../pages/RegistryCleanerPage'));
@@ -64,7 +63,6 @@ import {
   PublisherTrustAnalysisPage,
 } from '../pages/SecuritySubPages';
 import {
-  AIDailyBriefingPage,
   SystemHealthPage,
   PerformanceAnalyticsPage,
   BrowserCleanerPage,
@@ -139,9 +137,10 @@ export const router = createHashRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       // HOME
       { path: 'dashboard', element: wrap(DashboardPage) },
-      { path: 'ai-assistant', element: wrap(AIAssistantPage) },
-      { path: 'ai-daily-briefing', element: wrap(AIDailyBriefingPage) },
+      { path: 'ai-assistant', element: <Navigate to="/dashboard" replace /> },
+      { path: 'ai-daily-briefing', element: <Navigate to="/dashboard" replace /> },
       { path: 'ai-smart-optimize', element: wrap(SmartOptimizationPage) },
+      { path: 'ai-smart-security', element: wrap(SecurityCenterPage) },
       { path: 'ai-workspace', element: <Navigate to="/dashboard" replace /> },
       // SYSTEM HEALTH
       { path: 'system-health', element: wrap(SystemHealthPage) },

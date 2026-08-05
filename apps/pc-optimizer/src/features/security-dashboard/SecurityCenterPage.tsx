@@ -50,6 +50,7 @@ import {
   ChartBarIcon,
   FireIcon,
   ComputerDesktopIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 
 const TABS: { id: SecurityCenterTab; label: string; icon: typeof ShieldCheckIcon }[] = [
@@ -211,6 +212,31 @@ export function SecurityCenterPage() {
           </div>
         }
       />
+
+      {/* AI Smart Security — Deep System Scan */}
+      <Card variant="glass" className="mb-6">
+        <div className="flex flex-col items-center gap-4 py-6 px-4 text-center">
+          <div className="rounded-full bg-brand-primary/10 p-4">
+            <ShieldCheckIcon className="h-10 w-10 text-brand-primary" aria-hidden />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-text-primary">AI Smart Security</h2>
+            <p className="mt-2 max-w-2xl text-sm text-text-secondary">
+              Protect your PC from <span className="font-medium text-text-primary">viruses, ransomware, spyware, malware, PUPs, trojans, adware, keyloggers, rootkits, backdoors, crypto miners, browser hijackers</span>, and more. AI Smart Security runs a deep system scan to detect, investigate, and safely remove threats with evidence-based remediation.
+            </p>
+          </div>
+          <Button
+            size="lg"
+            onClick={() => { vm.setScanMode('full'); vm.startScan('full'); vm.setActiveTab('scan'); }}
+            disabled={state.isScanning}
+            loading={state.isScanning}
+            leftIcon={state.isScanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <SparklesIcon className="h-5 w-5" />}
+            data-testid="ai-smart-security-scan-btn"
+          >
+            {state.isScanning ? 'Scanning…' : 'AI Smart Security'}
+          </Button>
+        </div>
+      </Card>
 
       {/* Tab Bar */}
       <div className="mb-6 flex gap-1 overflow-x-auto rounded-[var(--avs-radius-lg)] bg-[var(--avs-surface-muted)] p-1">

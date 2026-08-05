@@ -23,8 +23,6 @@ import {
   DocumentChartBarIcon,
   CircleStackIcon,
   HeartIcon,
-  SparklesIcon,
-  LightBulbIcon,
   MagnifyingGlassIcon,
   GlobeAltIcon,
   ClockIcon,
@@ -63,9 +61,11 @@ const NAV_SECTIONS: readonly NavSection[] = [
     labelKey: 'nav.section.home',
     entries: [
       { id: 'dashboard', to: '/dashboard', labelKey: 'nav.dashboard', Icon: Squares2X2Icon },
-      { id: 'ai-assistant', to: '/ai-assistant', labelKey: 'nav.aiAssistant', Icon: SparklesIcon },
-      { id: 'ai-daily-briefing', to: '/ai-daily-briefing', labelKey: 'nav.aiDailyBriefing', Icon: LightBulbIcon },
       { id: 'ai-smart-optimize', to: '/ai-smart-optimize', labelKey: 'nav.aiSmartOptimize', Icon: BoltIcon, proEnhanced: true },
+      { id: 'ai-smart-security', to: '/ai-smart-security', labelKey: 'nav.aiSmartSecurity', Icon: ShieldCheckIcon },
+      // AI Assistant and AI Daily Briefing disabled — replaced by AI Smart Security
+      // { id: 'ai-assistant', to: '/ai-assistant', labelKey: 'nav.aiAssistant', Icon: SparklesIcon },
+      // { id: 'ai-daily-briefing', to: '/ai-daily-briefing', labelKey: 'nav.aiDailyBriefing', Icon: LightBulbIcon },
       // AI Workspace disabled — kept in codebase for future use
       // { id: 'ai-workspace', to: '/ai-workspace', labelKey: 'nav.aiWorkspace', Icon: CommandLineIcon },
     ],

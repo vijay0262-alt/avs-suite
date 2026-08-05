@@ -9,6 +9,7 @@ export type NavItemId =
   | 'ai-assistant'
   | 'ai-daily-briefing'
   | 'ai-smart-optimize'
+  | 'ai-smart-security'
   | 'ai-workspace'
   | 'system-health'
   | 'hardware-center'
