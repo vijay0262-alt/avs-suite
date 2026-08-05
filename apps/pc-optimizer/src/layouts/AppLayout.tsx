@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { TitleBar } from '../components/TitleBar';
 import { Breadcrumbs } from '../components/Breadcrumbs';
@@ -25,6 +25,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
  */
 export function AppLayout() {
   useKeyboardShortcuts();
+  const location = useLocation();
 
   return (
     <div className="flex h-full flex-col bg-[var(--avs-bg)] text-text-primary">
@@ -45,7 +46,7 @@ export function AppLayout() {
           data-testid="app-main-content"
         >
           <Breadcrumbs />
-          <ErrorBoundary>
+          <ErrorBoundary resetKey={location.pathname}>
             <Outlet />
           </ErrorBoundary>
         </main>

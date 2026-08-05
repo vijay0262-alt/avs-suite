@@ -15,6 +15,8 @@ import {
 interface Props {
   children?: ReactNode;
   standalone?: boolean;
+  /** When this value changes, any caught error is cleared — useful for resetting on route change. */
+  resetKey?: string;
 }
 
 interface State {
@@ -47,6 +49,12 @@ export class ErrorBoundary extends Component<Props, State> {
     // eslint-disable-next-line no-console
     console.error('[ErrorBoundary]', error, info.componentStack);
     this.setState({ errorInfo: info });
+  }
+
+  override componentDidUpdate(prevProps: Props): void {
+    if (this.state.error && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ error: null, errorInfo: null });
+    }
   }
 
   private reset = () => this.setState({ error: null, errorInfo: null });
