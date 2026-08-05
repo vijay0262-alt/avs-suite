@@ -183,6 +183,11 @@ def _get_live_cpu_metrics() -> dict[str, Any]:
                             break
     except Exception:
         pass
+
+    # Windows fallback: query WMI for CPU temperature
+    if temperature is None and IS_WINDOWS:
+        temperature = _get_windows_cpu_temperature()
+
     return {
         "usage": usage,
         "frequency": int(round((freq.current if freq else 0.0))),
@@ -192,6 +197,47 @@ def _get_live_cpu_metrics() -> dict[str, Any]:
         "threads": 0,
         "temperature": temperature,
     }
+
+
+@_ttl_cache(ttl_seconds=5.0)
+def _get_windows_cpu_temperature() -> float | None:
+    """Get CPU temperature on Windows via WMI/PowerShell.
+
+    Tries OpenHardwareMonitor/LibreHardwareMonitor WMI namespace first
+    (if installed), then falls back to Win32_TemperatureProbe.
+    Result is cached for 5 seconds to avoid shelling out on every poll.
+    """
+    ps_script = r"""
+$ErrorActionPreference = 'SilentlyContinue'
+# Try LibreHardwareMonitor / OpenHardwareMonitor WMI namespace
+$lhm = Get-WmiObject -Namespace 'root\LibreHardwareMonitor' -Class Sensor -ErrorAction SilentlyContinue |
+    Where-Object { $_.SensorType -eq 'Temperature' -and ($_.Name -match 'CPU|Core|Package') } |
+    Select-Object -First 1
+if ($lhm) { Write-Output $lhm.Value; return }
+$ohm = Get-WmiObject -Namespace 'root\OpenHardwareMonitor' -Class Sensor -ErrorAction SilentlyContinue |
+    Where-Object { $_.SensorType -eq 'Temperature' -and ($_.Name -match 'CPU|Core|Package') } |
+    Select-Object -First 1
+if ($ohm) { Write-Output $ohm.Value; return }
+# Try Win32_TemperatureProbe (often returns 0 or nothing on consumer hardware)
+$probe = Get-WmiObject -Class Win32_TemperatureProbe -ErrorAction SilentlyContinue |
+    Where-Object { $_.CurrentReading -gt 0 } |
+    Select-Object -First 1
+if ($probe) {
+    # Win32_TemperatureProbe returns tenths of a degree Kelvin
+    $kelvin = $probe.CurrentReading / 10.0
+    $celsius = $kelvin - 273.15
+    Write-Output $celsius
+}
+"""
+    output = _run_powershell(ps_script, timeout=5.0)
+    if output:
+        try:
+            val = float(output.strip())
+            if val > 0 and val < 200:
+                return val
+        except (ValueError, TypeError):
+            pass
+    return None
 
 
 def _get_live_memory_metrics() -> dict[str, Any]:

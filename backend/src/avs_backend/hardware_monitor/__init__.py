@@ -22,7 +22,10 @@ import os
 import subprocess
 from typing import Any
 
-import psutil
+try:
+    import psutil
+except ImportError:
+    psutil = None  # type: ignore[assignment]
 
 from avs_backend.api.registry import register
 
@@ -53,7 +56,7 @@ def _get_temperatures() -> dict[str, Any]:
     source = "unknown"
 
     # Method 1: psutil.sensors_temperatures() — works on Linux, not Windows
-    if hasattr(psutil, 'sensors_temperatures'):
+    if psutil and hasattr(psutil, 'sensors_temperatures'):
         try:
             temps = psutil.sensors_temperatures()
             if temps:
@@ -135,7 +138,7 @@ def _get_fan_speeds() -> dict[str, Any]:
     sensors: list[dict[str, Any]] = []
 
     # Method 1: psutil.sensors_fans() — Linux only
-    if hasattr(psutil, 'sensors_fans'):
+    if psutil and hasattr(psutil, 'sensors_fans'):
         try:
             fans = psutil.sensors_fans()
             if fans:
@@ -214,7 +217,8 @@ def _get_clocks() -> dict[str, Any]:
 
     # CPU clock via psutil
     try:
-        freq = psutil.cpu_freq()
+        if psutil:
+            freq = psutil.cpu_freq()
         if freq:
             clocks.append({
                 "name": "CPU",
@@ -276,7 +280,7 @@ try {
 
 def _get_battery() -> dict[str, Any]:
     """Get battery health and status."""
-    if hasattr(psutil, 'sensors_battery'):
+    if psutil and hasattr(psutil, 'sensors_battery'):
         try:
             battery = psutil.sensors_battery()
             if battery is not None:

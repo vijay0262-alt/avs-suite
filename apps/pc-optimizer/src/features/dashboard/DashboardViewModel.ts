@@ -355,11 +355,84 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         hardwareSensorsLoading: false,
       });
     } catch (err) {
-      this.setState({
-        hardwareSensorsLoading: false,
-        hardwareSensorsError: err instanceof Error ? err.message : String(err),
-      });
+      // If hardware.sensors RPC is unavailable (module failed to load),
+      // fall back to building a HardwareSensors object from dashboard.live
+      // data, which is always available and already being polled.
+      try {
+        const live = await this.service.getLiveMetrics();
+        const fallbackSensors = this.buildHardwareSensorsFromLive(live);
+        this.setState({
+          hardwareSensors: fallbackSensors,
+          hardwareSensorsLoading: false,
+          hardwareSensorsError: null,
+        });
+      } catch {
+        this.setState({
+          hardwareSensorsLoading: false,
+          hardwareSensorsError: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
+  }
+
+  private buildHardwareSensorsFromLive(live: LiveMetrics): HardwareSensors {
+    const tempSensors = live.cpu.temperature !== null
+      ? [{
+          name: 'CPU',
+          value: live.cpu.temperature,
+          high: null,
+          critical: null,
+          unit: 'celsius',
+          source: 'dashboard.live',
+          supported: true,
+        }]
+      : [];
+
+    const clockSensors = live.cpu.frequency > 0
+      ? [{
+          name: 'CPU',
+          current: live.cpu.frequency,
+          min: null,
+          max: null,
+          unit: 'mhz',
+          source: 'dashboard.live',
+          supported: true,
+        }]
+      : [];
+
+    return {
+      temperature: {
+        sensors: tempSensors,
+        supported: tempSensors.length > 0,
+        source: tempSensors.length > 0 ? 'dashboard.live' : null,
+        message: tempSensors.length === 0
+          ? 'Temperature sensors are not available on this system. Install LibreHardwareMonitor for detailed sensor data.'
+          : undefined,
+      },
+      fans: {
+        sensors: [],
+        supported: false,
+        source: null,
+        message: 'Fan speed sensors are not available on this system.',
+      },
+      clocks: {
+        clocks: clockSensors,
+        supported: clockSensors.length > 0,
+      },
+      battery: {
+        present: false,
+        percent: null,
+        powerPlugged: null,
+        secsLeft: null,
+        supported: false,
+        message: 'No battery detected on this system.',
+      },
+      power: {
+        supported: false,
+        source: null,
+        message: 'Power usage monitoring is not available on this system.',
+      },
+    };
   }
 
   async loadLiveMetrics(): Promise<void> {
