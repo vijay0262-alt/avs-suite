@@ -628,6 +628,10 @@ export default function DashboardPage() {
           error={state.healthScanError}
           currentFile={state.healthScanCurrentFile}
           subProgress={state.healthScanSubProgress}
+          scanPhase={state.scanPhase}
+          scanOverallProgress={state.scanOverallProgress}
+          scanLiveStats={state.scanLiveStats}
+          scanStartTime={state.scanStartTime}
           onCancel={() => vm.cancelHealthScan()}
           onClose={() => vm.closeHealthScan()}
           onOptimize={() => vm.executeHealthScanOptimizations()}

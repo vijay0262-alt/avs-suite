@@ -24,7 +24,10 @@ import type {
   OptimizationDetails,
   VerificationLog,
   HardwareSensors,
+  ScanPhase,
+  ScanLiveStats,
 } from './dashboard.types';
+import { SCAN_PHASES } from './dashboard.types';
 import type { DashboardService } from './dashboard.service';
 import { privacyService as defaultPrivacyService } from '../privacy/privacy.service';
 import type { IPrivacyService } from '../privacy/privacy.service';
@@ -173,6 +176,12 @@ export interface DashboardState {
   healthScanCurrentFile: string | null;
   healthScanSubProgress: number; // 0-100 sub-progress within current module
 
+  // AI Smart Optimize scan phases & live stats
+  scanPhase: ScanPhase | null;
+  scanOverallProgress: number; // 0-100 smooth overall progress
+  scanLiveStats: ScanLiveStats;
+  scanStartTime: number | null;
+
   // Verification / developer logs
   verificationLogs: VerificationLog[];
   developerMode: boolean;
@@ -242,6 +251,20 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanHistory: [],
       healthScanCurrentFile: null,
       healthScanSubProgress: 0,
+
+      scanPhase: null,
+      scanOverallProgress: 0,
+      scanLiveStats: {
+        filesScanned: 0,
+        registryEntries: 0,
+        startupItems: 0,
+        privacyItems: 0,
+        estimatedStorageRecovery: 0,
+        estimatedMemoryRecovery: 0,
+        estimatedStartupImprovement: 0,
+        recommendationsFound: 0,
+      },
+      scanStartTime: null,
       verificationLogs: [],
       developerMode: false,
 
@@ -636,6 +659,20 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanResult: null,
       healthScanCurrentFile: null,
       healthScanSubProgress: 0,
+
+      scanPhase: 'preparing',
+      scanOverallProgress: 0,
+      scanLiveStats: {
+        filesScanned: 0,
+        registryEntries: 0,
+        startupItems: 0,
+        privacyItems: 0,
+        estimatedStorageRecovery: 0,
+        estimatedMemoryRecovery: 0,
+        estimatedStartupImprovement: 0,
+        recommendationsFound: 0,
+      },
+      scanStartTime: Date.now(),
     });
 
     // Brief preparing phase for UX feedback, then start scanning
@@ -665,6 +702,20 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanResult: null,
       healthScanCurrentFile: null,
       healthScanSubProgress: 0,
+
+      scanPhase: null,
+      scanOverallProgress: 0,
+      scanLiveStats: {
+        filesScanned: 0,
+        registryEntries: 0,
+        startupItems: 0,
+        privacyItems: 0,
+        estimatedStorageRecovery: 0,
+        estimatedMemoryRecovery: 0,
+        estimatedStartupImprovement: 0,
+        recommendationsFound: 0,
+      },
+      scanStartTime: null,
     });
   }
 
@@ -749,17 +800,69 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   private async runHealthScan(phase: 'scan' | 'verify' = 'scan'): Promise<void> {
     const startedAt = Date.now();
 
+    // Helper: update scan phase and overall progress
+    const setScanPhase = (p: ScanPhase, subPct: number): void => {
+      const phaseInfo = SCAN_PHASES.find((s) => s.id === p);
+      if (!phaseInfo) return;
+      const overall = Math.round(phaseInfo.startPercent + (subPct / 100) * (phaseInfo.endPercent - phaseInfo.startPercent));
+      this.setState({ scanPhase: p, scanOverallProgress: Math.min(overall, phaseInfo.endPercent) });
+    };
+
+    // Helper: increment live stats
+    const addStats = (patch: Partial<ScanLiveStats>): void => {
+      this.setState({
+        scanLiveStats: {
+          ...this.state.scanLiveStats,
+          filesScanned: this.state.scanLiveStats.filesScanned + (patch.filesScanned ?? 0),
+          registryEntries: this.state.scanLiveStats.registryEntries + (patch.registryEntries ?? 0),
+          startupItems: this.state.scanLiveStats.startupItems + (patch.startupItems ?? 0),
+          privacyItems: this.state.scanLiveStats.privacyItems + (patch.privacyItems ?? 0),
+          estimatedStorageRecovery: this.state.scanLiveStats.estimatedStorageRecovery + (patch.estimatedStorageRecovery ?? 0),
+          estimatedMemoryRecovery: this.state.scanLiveStats.estimatedMemoryRecovery + (patch.estimatedMemoryRecovery ?? 0),
+          estimatedStartupImprovement: this.state.scanLiveStats.estimatedStartupImprovement + (patch.estimatedStartupImprovement ?? 0),
+          recommendationsFound: this.state.scanLiveStats.recommendationsFound + (patch.recommendationsFound ?? 0),
+        },
+      });
+    };
+
+    // Map module IDs to scan phases
+    const modulePhaseMap: Record<string, ScanPhase> = {
+      junk: 'junk',
+      privacy: 'privacy',
+      registry: 'registry',
+      startup: 'startup',
+      performance: 'performance',
+      disk: 'performance',
+      security: 'performance',
+      system: 'performance',
+    };
+
+    // Stats increment per module per simulated step
+    const moduleStatsMap: Record<string, Partial<ScanLiveStats>> = {
+      junk: { filesScanned: 120 },
+      privacy: { privacyItems: 30, filesScanned: 45 },
+      registry: { registryEntries: 80 },
+      startup: { startupItems: 15 },
+      performance: { filesScanned: 20 },
+      disk: { filesScanned: 30 },
+      security: { filesScanned: 10 },
+      system: { filesScanned: 5 },
+    };
+
     const scanIfNotCancelled = async (id: string, fn: () => Promise<Partial<HealthScanModuleResult>>): Promise<void> => {
       if (this.state.healthScanCancelled) {
         this.updateModuleStatus(id, { status: 'skipped' });
         return;
       }
+      const scanPhase = modulePhaseMap[id] ?? 'performance';
       this.updateModuleStatus(id, { status: 'scanning' });
       this.setState({ healthScanCurrentFile: null, healthScanSubProgress: 0 });
+      setScanPhase(scanPhase, 0);
 
       // Simulate file-by-file scanning progress for smooth UX
       const moduleSimPaths = MODULE_SIM_PATHS[id] ?? [];
       const simSteps = Math.min(8, moduleSimPaths.length);
+      const statsPerStep = moduleStatsMap[id] ?? {};
       for (let i = 0; i < simSteps; i++) {
         if (this.state.healthScanCancelled) break;
         const subPct = Math.round(((i + 1) / simSteps) * 80); // Reserve 20% for actual scan
@@ -767,14 +870,26 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           healthScanCurrentFile: moduleSimPaths[i] ?? null,
           healthScanSubProgress: subPct,
         });
+        setScanPhase(scanPhase, subPct);
+        addStats(statsPerStep);
         await new Promise((r) => setTimeout(r, 200 + Math.random() * 200));
       }
 
       try {
         this.setState({ healthScanCurrentFile: 'Running deep scan...', healthScanSubProgress: 90 });
+        setScanPhase(scanPhase, 90);
         const patch = await fn();
         this.updateModuleStatus(id, { status: 'complete', ...patch });
         this.setState({ healthScanCurrentFile: null, healthScanSubProgress: 100 });
+        setScanPhase(scanPhase, 100);
+
+        // Update live stats from actual scan results
+        if (patch.issuesFound && patch.issuesFound > 0) {
+          addStats({ recommendationsFound: 1 });
+        }
+        if (patch.recoverableSpace && patch.recoverableSpace > 0) {
+          addStats({ estimatedStorageRecovery: patch.recoverableSpace });
+        }
       } catch (err) {
         this.updateModuleStatus(id, { status: 'error', error: err instanceof Error ? err.message : String(err) });
         this.setState({ healthScanCurrentFile: null, healthScanSubProgress: 0 });
@@ -822,33 +937,6 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           },
         };
       }),
-      scanIfNotCancelled('startup', async () => {
-        const entries = await startupService.listEntries();
-        const high = entries.filter((e) => e.impact === 'high' && e.enabled);
-        return {
-          score: Math.max(0, 100 - high.length * 5),
-          issuesFound: high.length,
-          recoverableSpace: 0,
-          severity: high.length > 5 ? 'high' : high.length > 0 ? 'medium' : 'low',
-          measuredDetail: `${high.length} high-impact startup items`,
-          rawContext: { entries },
-          details: {
-            summary: `${high.length} high-impact startup applications are enabled`,
-            impact: (high.length > 5 ? 'high' : high.length > 0 ? 'medium' : 'low') as OptimizationDetails['impact'],
-            safeToRemove: true,
-            groups: [
-              {
-                title: 'Applications to disable',
-                safeToRemove: true,
-                why: 'Disabling unnecessary startup items reduces Windows boot delay.',
-                items: high.slice(0, 10).map((e) => ({ name: e.name })),
-              },
-            ],
-            notChanged: ['Startup entries are backed up and can be re-enabled', 'System startup files are not deleted'],
-            why: 'Too many startup applications increase Windows boot time. Disabling unnecessary items reduces startup delay.',
-          },
-        };
-      }),
       scanIfNotCancelled('privacy', async () => {
         const result = await this.privacyService.scan();
         const groups = result.categoriesFound.map((cat) => ({
@@ -874,6 +962,63 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
             groups,
             notChanged: notChanged.privacy,
             why: 'Browser cache, cookies, recent files, and DNS cache can reveal browsing history and activity. Cleaning them improves privacy without deleting personal data.',
+          },
+        };
+      }),
+      scanIfNotCancelled('registry', async () => {
+        const result = await registryService.scan();
+        const byCategory: Record<string, typeof result.issues> = {};
+        result.issues.forEach((i) => {
+          const list = (byCategory[i.category] ??= []);
+          list.push(i);
+        });
+        const groups = Object.entries(byCategory).map(([cat, issues]) => ({
+          title: cat,
+          safeToRemove: true,
+          why: 'Invalid or obsolete registry entries can slow Windows startup and operation.',
+          items: issues.slice(0, 5).map((i) => ({ name: i.description })),
+        }));
+        return {
+          score: Math.max(0, 100 - result.issues.length),
+          issuesFound: result.issues.length,
+          recoverableSpace: 0,
+          severity: result.issues.length > 50 ? 'high' : result.issues.length > 10 ? 'medium' : 'low',
+          measuredDetail: `${result.issues.length} registry issues`,
+          rawContext: { result },
+          details: {
+            summary: `${result.issues.length} invalid or obsolete registry entries found`,
+            impact: (result.issues.length > 50 ? 'high' : result.issues.length > 10 ? 'medium' : 'low') as OptimizationDetails['impact'],
+            safeToRemove: true,
+            groups,
+            notChanged: ['Registry backups are created before changes', 'Installed software registrations are not removed'],
+            why: 'Invalid registry entries can cause slowdowns. Cleaning them safely removes obsolete references while keeping backups.',
+          },
+        };
+      }),
+      scanIfNotCancelled('startup', async () => {
+        const entries = await startupService.listEntries();
+        const high = entries.filter((e) => e.impact === 'high' && e.enabled);
+        return {
+          score: Math.max(0, 100 - high.length * 5),
+          issuesFound: high.length,
+          recoverableSpace: 0,
+          severity: high.length > 5 ? 'high' : high.length > 0 ? 'medium' : 'low',
+          measuredDetail: `${high.length} high-impact startup items`,
+          rawContext: { entries },
+          details: {
+            summary: `${high.length} high-impact startup applications are enabled`,
+            impact: (high.length > 5 ? 'high' : high.length > 0 ? 'medium' : 'low') as OptimizationDetails['impact'],
+            safeToRemove: true,
+            groups: [
+              {
+                title: 'Applications to disable',
+                safeToRemove: true,
+                why: 'Disabling unnecessary startup items reduces Windows boot delay.',
+                items: high.slice(0, 10).map((e) => ({ name: e.name })),
+              },
+            ],
+            notChanged: ['Startup entries are backed up and can be re-enabled', 'System startup files are not deleted'],
+            why: 'Too many startup applications increase Windows boot time. Disabling unnecessary items reduces startup delay.',
           },
         };
       }),
@@ -923,36 +1068,6 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
             })),
             notChanged: notChanged.files,
             why: 'Low disk space slows the system and prevents updates. Identifying large files helps recover space without deleting personal data.',
-          },
-        };
-      }),
-      scanIfNotCancelled('registry', async () => {
-        const result = await registryService.scan();
-        const byCategory: Record<string, typeof result.issues> = {};
-        result.issues.forEach((i) => {
-          const list = (byCategory[i.category] ??= []);
-          list.push(i);
-        });
-        const groups = Object.entries(byCategory).map(([cat, issues]) => ({
-          title: cat,
-          safeToRemove: true,
-          why: 'Invalid or obsolete registry entries can slow Windows startup and operation.',
-          items: issues.slice(0, 5).map((i) => ({ name: i.description })),
-        }));
-        return {
-          score: Math.max(0, 100 - result.issues.length),
-          issuesFound: result.issues.length,
-          recoverableSpace: 0,
-          severity: result.issues.length > 50 ? 'high' : result.issues.length > 10 ? 'medium' : 'low',
-          measuredDetail: `${result.issues.length} registry issues`,
-          rawContext: { result },
-          details: {
-            summary: `${result.issues.length} invalid or obsolete registry entries found`,
-            impact: (result.issues.length > 50 ? 'high' : result.issues.length > 10 ? 'medium' : 'low') as OptimizationDetails['impact'],
-            safeToRemove: true,
-            groups,
-            notChanged: ['Registry backups are created before changes', 'Installed software registrations are not removed'],
-            why: 'Invalid registry entries can cause slowdowns. Cleaning them safely removes obsolete references while keeping backups.',
           },
         };
       }),
@@ -1032,6 +1147,34 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       if (this.state.healthScanCancelled) break;
       await task;
     }
+
+    // Phase 7: AI Optimization Planning (80-95%)
+    if (!this.state.healthScanCancelled) {
+      this.setState({ scanPhase: 'ai_planning', healthScanCurrentFile: 'Calculating optimization plan...' });
+      const planningItems = ['Calculating impact', 'Calculating risk', 'Building optimization plan', 'Creating rollback strategy'];
+      for (let i = 0; i < planningItems.length; i++) {
+        if (this.state.healthScanCancelled) break;
+        const subPct = Math.round(((i + 1) / planningItems.length) * 100);
+        setScanPhase('ai_planning', subPct);
+        this.setState({ healthScanCurrentFile: planningItems[i] + '...' });
+        await new Promise((r) => setTimeout(r, 400 + Math.random() * 200));
+      }
+    }
+
+    // Phase 8: Finalizing (95-100%)
+    if (!this.state.healthScanCancelled) {
+      this.setState({ scanPhase: 'finalizing', healthScanCurrentFile: 'Final verification...' });
+      const finalizingItems = ['Preparing recommendations...', 'Final verification...'];
+      for (let i = 0; i < finalizingItems.length; i++) {
+        if (this.state.healthScanCancelled) break;
+        const subPct = Math.round(((i + 1) / finalizingItems.length) * 100);
+        setScanPhase('finalizing', subPct);
+        this.setState({ healthScanCurrentFile: finalizingItems[i] });
+        await new Promise((r) => setTimeout(r, 300));
+      }
+      this.setState({ scanOverallProgress: 100, healthScanCurrentFile: null });
+    }
+
     this.finishHealthScan(this.state.healthScanModules, startedAt, phase);
   }
 
@@ -1451,6 +1594,19 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanExecution: null,
       healthScanResult: null,
       optimizationSummary: null,
+      scanPhase: null,
+      scanOverallProgress: 0,
+      scanLiveStats: {
+        filesScanned: 0,
+        registryEntries: 0,
+        startupItems: 0,
+        privacyItems: 0,
+        estimatedStorageRecovery: 0,
+        estimatedMemoryRecovery: 0,
+        estimatedStartupImprovement: 0,
+        recommendationsFound: 0,
+      },
+      scanStartTime: null,
     });
     clearSession();
   }

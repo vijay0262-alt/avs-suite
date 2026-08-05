@@ -16,13 +16,12 @@ import { ProStatusBanner, ProStatusPill, ProFeatureIndicator, ProOnlySection } f
 import { useFeatureGuard } from '../licensing/useFeatureGuard';
 import { canUse } from '../licensing/FeatureGate';
 import { LockClosedIcon as LockIconSmall } from '@heroicons/react/24/solid';
-import { LiveScanProgress } from '../shared/components/LiveScanProgress';
 import {
   SecurityCenterViewModel,
   type SecurityCenterTab,
   type ScanMode,
 } from './SecurityCenterViewModel';
-import type { Threat, ThreatCategory, ThreatSeverity, SecurityProviderInfo } from '../security-center/types';
+import type { Threat, ThreatCategory, ThreatSeverity } from '../security-center/types';
 import type { ThreatInvestigation } from '../security-investigation/types';
 import type { RemediationPlan } from '../security-remediation/types';
 import {
@@ -51,7 +50,17 @@ import {
   FireIcon,
   ComputerDesktopIcon,
   SparklesIcon,
+  CommandLineIcon,
+  CogIcon,
+  ShieldExclamationIcon,
+  PlayIcon,
+  StopIcon,
 } from '@heroicons/react/24/outline';
+import {
+  SECURITY_SCAN_PHASES,
+  type ScanTreeNode,
+  type LiveThreatCard,
+} from './securityScanTypes';
 
 const TABS: { id: SecurityCenterTab; label: string; icon: typeof ShieldCheckIcon }[] = [
   { id: 'overview', label: 'Overview', icon: ShieldCheckIcon },
@@ -292,7 +301,7 @@ function OverviewTab({ vm }: { vm: SecurityCenterViewModel }) {
   const scoreCards = [
     { label: 'Security Score', value: s.securityScore, icon: ShieldCheckIcon, tone: s.securityScore >= 80 ? 'success' : s.securityScore >= 60 ? 'warning' : 'danger' },
     { label: 'Active Threats', value: s.activeThreats.length, icon: ExclamationTriangleIcon, tone: s.activeThreats.length === 0 ? 'success' : 'danger' },
-    { label: 'Providers Active', value: `${s.providers.filter(p => p.status === 'active').length}/${s.providers.length}`, icon: CpuChipIcon, tone: 'info' },
+    { label: 'Providers Active', value: `${s.snapshot?.protectionStatus.providersActive ?? 0}/${s.snapshot?.protectionStatus.providersTotal ?? 0}`, icon: CpuChipIcon, tone: 'info' },
     { label: 'Investigations', value: s.activeInvestigations.length, icon: BeakerIcon, tone: s.activeInvestigations.length === 0 ? 'success' : 'warning' },
   ] as const;
 
@@ -448,7 +457,11 @@ function StatusRow({ label, value, ok }: { label: string; value: string; ok: boo
 
 function ScanTab({ vm }: { vm: SecurityCenterViewModel }) {
   const s = vm.state;
-  const progress = s.scanProgress;
+
+  // If scan is complete and we have an AI summary, show the summary screen
+  if (!s.isScanning && s.aiSummary) {
+    return <ScanAISummary vm={vm} />;
+  }
 
   return (
     <div className="flex gap-6">
@@ -482,230 +495,509 @@ function ScanTab({ vm }: { vm: SecurityCenterViewModel }) {
           </div>
         </Card>
 
-        {/* Scan Now Button */}
-        <Button
-          size="lg"
-          onClick={() => vm.startScan()}
-          disabled={s.isScanning}
-          loading={s.isScanning}
-          leftIcon={<MagnifyingGlassIcon className="h-5 w-5" />}
-          className="w-full"
-        >
-          {s.isScanning ? 'Scanning…' : 'Scan Now'}
-        </Button>
+        {/* Scan Now / Cancel Button */}
+        {s.isScanning ? (
+          <Button
+            size="lg"
+            variant="danger"
+            onClick={() => vm.cancelScan()}
+            leftIcon={<StopIcon className="h-5 w-5" />}
+            className="w-full"
+          >
+            Cancel Scan
+          </Button>
+        ) : (
+          <Button
+            size="lg"
+            onClick={() => vm.startScan()}
+            disabled={s.isScanning}
+            loading={s.isScanning}
+            leftIcon={<PlayIcon className="h-5 w-5" />}
+            className="w-full"
+          >
+            Start Scan
+          </Button>
+        )}
 
-        {/* Scan Progress (in sidebar when scanning) */}
-        {progress && (
-          <Card title="Scan Progress" variant="glass">
-            <div className="space-y-3">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-[var(--avs-text-primary)] truncate" title={progress.currentPhase}>
-                    {progress.currentPhase}
-                  </span>
-                  <span className="text-xs text-[var(--avs-text-muted)] shrink-0 ml-2">{formatDuration(progress.elapsedMs)}</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-[var(--avs-surface-muted)]">
-                  <div
-                    className="h-full rounded-full transition-all duration-300"
-                    style={{
-                      width: progress.status === 'completed' ? '100%' : `${Math.min(95, (progress.filesScanned / Math.max(1, progress.filesTotal ?? progress.providersTotal)) * 100)}%`,
-                      background: 'var(--avs-gradient-brand)',
-                    }}
-                  />
-                </div>
+        {/* Last Scan Result summary in sidebar */}
+        {s.lastScanResult && !s.isScanning && (
+          <Card title="Last Scan" variant="glass">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[var(--avs-text-muted)]">Type</span>
+                <span className="text-sm font-medium text-[var(--avs-text-primary)] capitalize">{s.lastScanResult.scanType}</span>
               </div>
-              {progress.currentFilePath && (
-                <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-2 py-1.5">
-                  <div className="text-xs text-text-muted mb-0.5">Current file:</div>
-                  <div className="text-xs font-mono text-text-secondary truncate" title={progress.currentFilePath}>
-                    {progress.currentFilePath}
-                  </div>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-2">
-                <StatBox label="Files" value={progress.filesScanned.toLocaleString()} icon={CircleStackIcon} />
-                <StatBox label="Threats" value={progress.threatsFound.toString()} icon={ExclamationTriangleIcon} />
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[var(--avs-text-muted)]">Duration</span>
+                <span className="text-sm font-medium text-[var(--avs-text-primary)]">{formatDuration(s.lastScanResult.duration)}</span>
               </div>
-              {progress.aiObservations.length > 0 && (
-                <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-2">
-                  <div className="space-y-1">
-                    {progress.aiObservations.slice(0, 3).map((obs, i) => (
-                      <div key={i} className="flex items-start gap-1.5">
-                        <ChevronRightIcon className="mt-0.5 h-3 w-3 shrink-0 text-[var(--avs-brand-primary)]" />
-                        <span className="text-xs text-[var(--avs-text-secondary)]">{obs}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[var(--avs-text-muted)]">Threats</span>
+                <span className={`text-sm font-semibold ${s.lastScanResult.threats.length > 0 ? 'text-[var(--avs-danger)]' : 'text-[var(--avs-success)]'}`}>
+                  {s.lastScanResult.threats.length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[var(--avs-text-muted)]">Score</span>
+                <span className="text-lg font-bold text-[var(--avs-text-primary)]">{s.lastScanResult.securityScore}</span>
+              </div>
             </div>
           </Card>
         )}
       </div>
 
-      {/* Right / Main Section — Protection Components */}
+      {/* Right / Main Section — Scan Experience */}
       <div className="flex-1 space-y-6">
-        {/* Live scan progress — prominent display like SUPERAntiSpyware / CCleaner */}
-        {s.isScanning && (
-          <LiveScanProgress
-            isRunning={s.isScanning}
-            scanLabel="Security"
-            currentItem={progress?.currentFilePath ?? progress?.currentPhase ?? null}
-            progress={progress?.status === 'completed' ? 100 : progress ? Math.min(95, Math.round((progress.filesScanned / Math.max(1, progress.filesTotal ?? progress.providersTotal)) * 100)) : undefined}
-            itemsScanned={progress?.filesScanned ?? progress?.itemsScanned}
-            itemsFound={progress?.threatsFound}
-            elapsedMs={progress?.elapsedMs}
-            phases={[
-              { id: 'collect', label: 'Collecting system data from backend…' },
-              { id: 'deepscan', label: 'Deep scanning files and folders…' },
-              { id: 'analyze', label: 'Analyzing collected data with security providers…' },
-              { id: 'detect', label: 'Running threat detection providers…' },
-              { id: 'score', label: 'Computing security scores and recommendations…' },
-            ]}
-          />
-        )}
-
-        {/* Header */}
-        <div>
-          <h3 className="text-sm font-semibold text-[var(--avs-text-primary)]">Protection Components</h3>
-          <p className="mt-0.5 text-xs text-[var(--avs-text-muted)]">
-            These security engines will be used to scan your system for threats.
-          </p>
-        </div>
-
-        {/* Protection Provider Cards */}
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {s.providers.map((provider) => (
-            <ProtectionComponentCard key={provider.id} provider={provider} />
-          ))}
-          {s.providers.length === 0 && (
-            <Card variant="glass" className="col-span-full">
-              <ModuleEmptyState
-                icon={ShieldCheckIcon}
-                title="No providers loaded"
-                message="Security providers will appear here once initialized."
-              />
-            </Card>
-          )}
-        </div>
-
-        {/* Capability Cards */}
-        {s.capabilities.length > 0 && (
-          <Card title="Detection Capabilities" variant="glass">
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-              {s.capabilities.map((cap) => (
-                <div
-                  key={cap.name}
-                  className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className={`h-2 w-2 rounded-full ${cap.enabled ? 'bg-[var(--avs-success)]' : 'bg-[var(--avs-text-muted)]'}`} />
-                    <div>
-                      <p className="text-sm font-medium text-[var(--avs-text-primary)]">{cap.description}</p>
-                      <p className="text-xs text-[var(--avs-text-muted)]">{cap.name}</p>
-                    </div>
-                  </div>
-                  <Badge tone={cap.enabled ? 'success' : 'neutral'}>
-                    {cap.enabled ? 'Active' : 'Disabled'}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-
-        {/* Last Scan Result */}
-        {s.lastScanResult && (
-          <Card title="Last Scan Result" variant="glass">
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                <StatBox label="Scan Type" value={s.lastScanResult.scanType} icon={MagnifyingGlassIcon} />
-                <StatBox label="Duration" value={formatDuration(s.lastScanResult.duration)} icon={ClockIcon} />
-                <StatBox label="Threats" value={s.lastScanResult.threats.length.toString()} icon={ExclamationTriangleIcon} />
-                <StatBox label="Score" value={s.lastScanResult.securityScore.toString()} icon={ShieldCheckIcon} />
-              </div>
-
-              <div>
-                <p className="mb-2 text-xs font-semibold text-[var(--avs-text-secondary)]">Provider Results</p>
-                <div className="space-y-1">
-                  {s.lastScanResult.providerResults.map((pr) => (
-                    <div key={pr.providerId} className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-1.5">
-                      <div className="flex items-center gap-2">
-                        <div className={`h-1.5 w-1.5 rounded-full ${pr.success ? 'bg-[var(--avs-success)]' : 'bg-[var(--avs-danger)]'}`} />
-                        <span className="text-xs font-medium text-[var(--avs-text-primary)]">{pr.providerId}</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-[var(--avs-text-muted)]">
-                        <span>{pr.itemsScanned} items</span>
-                        <span className={pr.threats.length > 0 ? 'text-[var(--avs-danger)] font-medium' : ''}>{pr.threats.length} threats</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Card>
+        {s.isScanning ? (
+          <ScanProgressView vm={vm} />
+        ) : (
+          <ScanIdleView vm={vm} />
         )}
       </div>
     </div>
   );
 }
 
-function ProtectionComponentCard({ provider }: { provider: SecurityProviderInfo }) {
-  const statusConfig: Record<string, { color: string; bg: string; label: string }> = {
-    active: { color: 'text-[var(--avs-success)]', bg: 'bg-[var(--avs-success)]/10', label: 'Active' },
-    inactive: { color: 'text-[var(--avs-text-muted)]', bg: 'bg-[var(--avs-surface-muted)]', label: 'Inactive' },
-    error: { color: 'text-[var(--avs-danger)]', bg: 'bg-[var(--avs-danger)]/10', label: 'Error' },
-    disabled: { color: 'text-[var(--avs-text-muted)]', bg: 'bg-[var(--avs-surface-muted)]', label: 'Disabled' },
-  };
-  const cfg = statusConfig[provider.status] ?? statusConfig.inactive ?? { color: 'text-[var(--avs-text-muted)]', bg: 'bg-[var(--avs-surface-muted)]', label: 'Unknown' };
-  const providerIcons: Record<string, typeof ShieldCheckIcon> = {
-    behavior: EyeIcon,
-    signature: ShieldCheckIcon,
-    heuristic: CpuChipIcon,
-    network: WifiIcon,
-    cloud: GlobeAltIcon,
-    memory: CpuChipIcon,
-    startup: ArrowPathIcon,
-    browser: GlobeAltIcon,
-    registry: ComputerDesktopIcon,
-    file: CircleStackIcon,
-  };
-  const Icon = providerIcons[provider.type] ?? ShieldCheckIcon;
+// ─── Scan Idle View ─────────────────────────────────────────────────
+
+function ScanIdleView({ vm }: { vm: SecurityCenterViewModel }) {
+  const s = vm.state;
+  const phases = s.scanMode === 'full' ? SECURITY_SCAN_PHASES : SECURITY_SCAN_PHASES.slice(0, 6);
 
   return (
-    <div className="rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-4 transition-colors hover:border-[var(--avs-border-hover)]">
-      <div className="flex items-start gap-3">
-        <div className={`rounded-[var(--avs-radius-md)] p-2.5 ${cfg.bg}`}>
-          <Icon className={`h-5 w-5 ${cfg.color}`} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <h4 className="text-sm font-semibold text-[var(--avs-text-primary)]">{provider.name}</h4>
-            <span className={`text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
+    <div className="space-y-6">
+      {/* Hero — Scan Readiness */}
+      <Card variant="glass" className="p-6">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="rounded-full bg-brand-primary/10 p-4">
+            <ShieldCheckIcon className="h-10 w-10 text-brand-primary" aria-hidden />
           </div>
-          <p className="mt-1 text-xs text-[var(--avs-text-secondary)]">{provider.description}</p>
-          {provider.capabilities.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {provider.capabilities.map((cap) => (
-                <span
-                  key={cap}
-                  className="rounded-full bg-[var(--avs-surface)] px-2 py-0.5 text-xs text-[var(--avs-text-muted)]"
-                >
-                  {cap}
-                </span>
-              ))}
+          <div>
+            <h3 className="text-lg font-bold text-text-primary">
+              {s.scanMode === 'full' ? 'Full System Security Scan' : s.scanMode === 'custom' ? 'Custom Scan' : 'Quick Security Scan'}
+            </h3>
+            <p className="mt-2 max-w-xl text-sm text-text-secondary">
+              {s.scanMode === 'full'
+                ? 'A comprehensive 14-phase security scan covering processes, system directories, user profile, registry, scheduled tasks, services, browser security, PowerShell scripts, persistence, behavior analysis, threat investigation, and AI remediation planning.'
+                : 'A fast scan of critical system areas — processes, registry, scheduled tasks, and behavior analysis.'}
+            </p>
+          </div>
+          <Button
+            size="lg"
+            onClick={() => vm.startScan()}
+            leftIcon={<SparklesIcon className="h-5 w-5" />}
+            data-testid="start-scan-btn"
+          >
+            Start {s.scanMode === 'full' ? 'Full System' : 'Quick'} Scan
+          </Button>
+        </div>
+      </Card>
+
+      {/* Phase Preview */}
+      <Card title="Scan Phases" variant="glass">
+        <div className="space-y-2">
+          {phases.map((phase, idx) => (
+            <div key={phase.id} className="flex items-center gap-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--avs-surface)] text-xs font-bold text-[var(--avs-text-muted)]">
+                {idx + 1}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-[var(--avs-text-primary)]">{phase.label}</p>
+                <p className="text-xs text-[var(--avs-text-muted)] truncate">{phase.description}</p>
+              </div>
+              <span className="text-xs font-medium text-[var(--avs-text-muted)] shrink-0">
+                {phase.startPercent}–{phase.endPercent}%
+              </span>
             </div>
-          )}
-          <div className="mt-2 flex items-center gap-3 text-xs text-[var(--avs-text-muted)]">
-            <span>v{provider.version}</span>
-            <span className="capitalize">{provider.type}</span>
-            {provider.lastRun && (
-              <span>Last run: {formatTimeAgo(provider.lastRun)}</span>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Scan Progress View (live scanning) ──────────────────────────────
+
+function ScanProgressView({ vm }: { vm: SecurityCenterViewModel }) {
+  const s = vm.state;
+  const phases = s.scanMode === 'full' ? SECURITY_SCAN_PHASES : SECURITY_SCAN_PHASES.slice(0, 6);
+  const currentPhase = phases[s.scanPhaseIndex];
+  const elapsed = s.scanStartTime ? Date.now() - s.scanStartTime : 0;
+  const [displayProgress, setDisplayProgress] = useState(s.scanOverallProgress);
+
+  // Smooth progress bar interpolation
+  useEffect(() => {
+    if (displayProgress === s.scanOverallProgress) return;
+    const diff = s.scanOverallProgress - displayProgress;
+    if (Math.abs(diff) < 0.5) {
+      setDisplayProgress(s.scanOverallProgress);
+      return;
+    }
+    const raf = requestAnimationFrame(() => {
+      setDisplayProgress(prev => prev + diff * 0.15);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [s.scanOverallProgress, displayProgress]);
+
+  return (
+    <div className="space-y-4">
+      {/* Current Phase + Progress Bar */}
+      <Card variant="glass" className="p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <span className="relative flex h-3 w-3 shrink-0">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-primary opacity-75" />
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-brand-primary" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-text-primary">
+                Phase {s.scanPhaseIndex + 1} of {phases.length}: {currentPhase?.label ?? 'Scanning…'}
+              </p>
+              <p className="text-xs text-text-muted">{currentPhase?.description}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-xs tabular-nums text-text-muted">{formatDuration(elapsed)}</span>
+            {s.scanEstimatedRemaining != null && s.scanEstimatedRemaining > 0 && (
+              <span className="text-xs text-text-muted">~{formatDuration(s.scanEstimatedRemaining)} left</span>
             )}
           </div>
         </div>
+
+        {/* Smooth progress bar */}
+        <div className="h-3 overflow-hidden rounded-full bg-[var(--avs-surface-muted)]">
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${Math.min(100, displayProgress)}%`,
+              background: 'var(--avs-gradient-brand, var(--avs-brand-primary))',
+              transition: 'width 80ms linear',
+            }}
+          />
+        </div>
+        <div className="mt-1.5 flex items-center justify-between">
+          <span className="text-xs text-text-muted">
+            {s.scanCurrentModule} {s.scanCurrentFolder ? `· ${s.scanCurrentFolder}` : ''}
+          </span>
+          <span className="text-sm font-bold tabular-nums text-text-primary">{Math.round(displayProgress)}%</span>
+        </div>
+        {s.scanCurrentFile && (
+          <div className="mt-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-2 py-1.5">
+            <div className="text-xs text-text-muted mb-0.5">Current file:</div>
+            <div className="text-xs font-mono text-text-secondary truncate" title={s.scanCurrentFile}>
+              {s.scanCurrentFile}
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Live Dashboard Stats */}
+      <Card title="Live Dashboard" variant="glass">
+        <div className="grid grid-cols-3 gap-3 md:grid-cols-4 lg:grid-cols-6">
+          <LiveStatBox label="Files Scanned" value={s.scanLiveStats.filesScanned} icon={CircleStackIcon} />
+          <LiveStatBox label="Registry Keys" value={s.scanLiveStats.registryKeysChecked} icon={CogIcon} />
+          <LiveStatBox label="Processes" value={s.scanLiveStats.processesAnalyzed} icon={CpuChipIcon} />
+          <LiveStatBox label="Services" value={s.scanLiveStats.servicesChecked} icon={Cog6ToothIcon} />
+          <LiveStatBox label="Scheduled Tasks" value={s.scanLiveStats.scheduledTasks} icon={ClockIcon} />
+          <LiveStatBox label="Browser Objects" value={s.scanLiveStats.browserObjects} icon={GlobeAltIcon} />
+          <LiveStatBox label="Scripts" value={s.scanLiveStats.scriptsInspected} icon={CommandLineIcon} />
+          <LiveStatBox label="Threats Found" value={s.scanLiveStats.threatsFound} icon={ExclamationTriangleIcon} danger={s.scanLiveStats.threatsFound > 0} />
+          <LiveStatBox label="AI Confidence" value={s.scanLiveStats.aiConfidence ? `${s.scanLiveStats.aiConfidence}%` : '—'} icon={SparklesIcon} />
+          <LiveStatBox label="Persistence" value={s.scanLiveStats.persistenceEntries} icon={ShieldExclamationIcon} />
+          <LiveStatBox label="Unsigned EXEs" value={s.scanLiveStats.unsignedExecutables} icon={BugAntIcon} danger={s.scanLiveStats.unsignedExecutables > 0} />
+          <LiveStatBox label="Providers" value={s.scanLiveStats.providersLoaded} icon={EyeIcon} />
+        </div>
+      </Card>
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+        {/* Scan Tree */}
+        <Card title="Scan Tree" variant="glass">
+          <div className="space-y-1.5">
+            {s.scanTree.map((node) => (
+              <ScanTreeRow key={node.id} node={node} />
+            ))}
+          </div>
+        </Card>
+
+        {/* Live Threat Cards */}
+        <Card title={`Threats Detected (${s.liveThreats.length})`} variant="glass">
+          {s.liveThreats.length === 0 ? (
+            <div className="flex flex-col items-center py-8 text-center">
+              <ShieldCheckIcon className="h-8 w-8 text-[var(--avs-success)]" />
+              <p className="mt-2 text-sm text-[var(--avs-text-muted)]">No threats detected so far</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {s.liveThreats.map((threat) => (
+                <LiveThreatRow key={threat.id} threat={threat} />
+              ))}
+            </div>
+          )}
+        </Card>
       </div>
+    </div>
+  );
+}
+
+function ScanTreeRow({ node }: { node: ScanTreeNode }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasChildren = node.children && node.children.length > 0;
+
+  const statusIcon = {
+    pending: <div className="h-3 w-3 rounded-full border-2 border-[var(--avs-border)]" />,
+    scanning: <ArrowPathIcon className="h-3 w-3 animate-spin text-[var(--avs-brand-primary)]" />,
+    complete: <CheckIcon className="h-3 w-3 text-[var(--avs-success)]" />,
+    error: <XMarkIcon className="h-3 w-3 text-[var(--avs-danger)]" />,
+  };
+
+  return (
+    <div>
+      <button
+        onClick={() => hasChildren && setExpanded(!expanded)}
+        className={`flex w-full items-center gap-2 rounded-[var(--avs-radius-md)] px-2 py-1.5 text-left transition-colors ${
+          node.status === 'scanning' ? 'bg-[var(--avs-brand-primary)]/10' : 'hover:bg-[var(--avs-surface-muted)]'
+        }`}
+      >
+        <span className="shrink-0">{statusIcon[node.status]}</span>
+        <span className={`text-sm ${node.status === 'scanning' ? 'font-medium text-[var(--avs-text-primary)]' : node.status === 'complete' ? 'text-[var(--avs-text-secondary)]' : 'text-[var(--avs-text-muted)]'}`}>
+          {node.label}
+        </span>
+        {node.itemsScanned > 0 && (
+          <span className="ml-auto text-xs text-[var(--avs-text-muted)]">{node.itemsScanned} items</span>
+        )}
+        {node.threatsFound > 0 && (
+          <span className="text-xs font-medium text-[var(--avs-danger)]">{node.threatsFound} threats</span>
+        )}
+        {hasChildren && (
+          <ChevronRightIcon className={`h-3 w-3 text-[var(--avs-text-muted)] transition-transform ${expanded ? 'rotate-90' : ''}`} />
+        )}
+      </button>
+      {expanded && hasChildren && (
+        <div className="ml-5 space-y-1">
+          {node.children!.map((child) => (
+            <ScanTreeRow key={child.id} node={child} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LiveThreatRow({ threat }: { threat: LiveThreatCard }) {
+  return (
+    <div className="rounded-[var(--avs-radius-md)] border border-[var(--avs-danger)]/20 bg-[var(--avs-danger)]/5 p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ExclamationTriangleIcon className="h-4 w-4 text-[var(--avs-danger)]" />
+          <span className="text-sm font-semibold text-[var(--avs-text-primary)]">{threat.name}</span>
+        </div>
+        <span className="text-xs font-bold text-[var(--avs-danger)]">{threat.confidence}%</span>
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[var(--avs-text-muted)]">
+        <span><span className="font-medium text-[var(--avs-text-secondary)]">Type:</span> {threat.type}</span>
+        <span><span className="font-medium text-[var(--avs-text-secondary)]">Risk:</span> {threat.risk}</span>
+        <span><span className="font-medium text-[var(--avs-text-secondary)]">Status:</span> {threat.status}</span>
+      </div>
+      <div className="mt-1 text-xs text-[var(--avs-text-muted)] truncate" title={threat.location}>
+        <span className="font-medium text-[var(--avs-text-secondary)]">Location:</span> {threat.location}
+      </div>
+      <div className="mt-0.5 text-xs text-[var(--avs-text-muted)]">
+        <span className="font-medium text-[var(--avs-text-secondary)]">Action:</span> {threat.actionPlanned}
+      </div>
+    </div>
+  );
+}
+
+function LiveStatBox({ label, value, icon: Icon, danger }: { label: string; value: number | string; icon: typeof ShieldCheckIcon; danger?: boolean }) {
+  return (
+    <div className={`rounded-[var(--avs-radius-md)] p-3 ${danger ? 'bg-[var(--avs-danger)]/10' : 'bg-[var(--avs-surface-muted)]'}`}>
+      <div className="flex items-center gap-1.5">
+        <Icon className={`h-3.5 w-3.5 ${danger ? 'text-[var(--avs-danger)]' : 'text-[var(--avs-text-muted)]'}`} />
+        <span className="text-xs text-[var(--avs-text-muted)] truncate">{label}</span>
+      </div>
+      <p className={`mt-1 text-lg font-bold tabular-nums ${danger ? 'text-[var(--avs-danger)]' : 'text-[var(--avs-text-primary)]'}`}>
+        {typeof value === 'number' ? value.toLocaleString() : value}
+      </p>
+    </div>
+  );
+}
+
+// ─── AI Summary Screen ──────────────────────────────────────────────
+
+function ScanAISummary({ vm }: { vm: SecurityCenterViewModel }) {
+  const s = vm.state;
+  const summary = s.aiSummary!;
+  const scoreColor = summary.securityScore >= 80 ? 'var(--avs-success)' : summary.securityScore >= 60 ? 'var(--avs-warning)' : 'var(--avs-danger)';
+  const { dialogElement } = useFeatureGuard();
+  const canRemediate = canUse('security.remediate');
+
+  return (
+    <div className="space-y-6">
+      {/* Security Score Hero */}
+      <Card variant="glass" className="p-6">
+        <div className="flex flex-col items-center gap-6">
+          {/* Score Circle */}
+          <div className="relative flex h-32 w-32 items-center justify-center">
+            <svg className="h-32 w-32 -rotate-90" viewBox="0 0 128 128">
+              <circle cx="64" cy="64" r="56" fill="none" stroke="var(--avs-surface-muted)" strokeWidth="8" />
+              <circle
+                cx="64" cy="64" r="56" fill="none" stroke={scoreColor} strokeWidth="8"
+                strokeDasharray={`${2 * Math.PI * 56}`}
+                strokeDashoffset={`${2 * Math.PI * 56 * (1 - summary.securityScore / 100)}`}
+                strokeLinecap="round"
+                style={{ transition: 'stroke-dashoffset 1s ease-out' }}
+              />
+            </svg>
+            <div className="absolute flex flex-col items-center">
+              <span className="text-3xl font-bold" style={{ color: scoreColor }}>{summary.securityScore}</span>
+              <span className="text-xs text-[var(--avs-text-muted)]">Security Score</span>
+            </div>
+          </div>
+
+          {/* AI Verdict */}
+          <div className="text-center max-w-2xl">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <SparklesIcon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
+              <h3 className="text-lg font-bold text-text-primary">AI Verdict</h3>
+            </div>
+            <p className="text-sm text-text-secondary">{summary.aiVerdict}</p>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4 w-full max-w-2xl">
+            <SummaryStatBox label="Threats Found" value={summary.threatsFound} icon={ExclamationTriangleIcon} tone={summary.threatsFound > 0 ? 'danger' : 'success'} />
+            <SummaryStatBox label="Neutralized" value={summary.threatsNeutralized} icon={CheckIcon} tone="success" />
+            <SummaryStatBox label="Manual Review" value={summary.manualReviewRequired} icon={EyeIcon} tone={summary.manualReviewRequired > 0 ? 'warning' : 'success'} />
+            <SummaryStatBox label="Scan Duration" value={formatDuration(summary.scanDuration)} icon={ClockIcon} tone="info" />
+          </div>
+        </div>
+      </Card>
+
+      {/* Protected Areas + Risk */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card title="Protected Areas" variant="glass">
+          <div className="flex flex-wrap gap-2">
+            {summary.protectedAreas.map((area) => (
+              <div key={area} className="flex items-center gap-1.5 rounded-full bg-[var(--avs-success)]/10 px-3 py-1.5">
+                <CheckIcon className="h-3.5 w-3.5 text-[var(--avs-success)]" />
+                <span className="text-xs font-medium text-[var(--avs-text-primary)]">{area}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card title="Risk Assessment" variant="glass">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[var(--avs-text-secondary)]">Estimated Risk</span>
+              <Badge tone={summary.estimatedRisk === 'Low' ? 'success' : summary.estimatedRisk === 'Moderate' ? 'warning' : 'danger'}>
+                {summary.estimatedRisk}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[var(--avs-text-secondary)]">Files Scanned</span>
+              <span className="text-sm font-medium text-[var(--avs-text-primary)]">{summary.filesScanned.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[var(--avs-text-secondary)]">Items Analyzed</span>
+              <span className="text-sm font-medium text-[var(--avs-text-primary)]">{summary.itemsScanned.toLocaleString()}</span>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Threats Found List */}
+      {s.lastScanResult && s.lastScanResult.threats.length > 0 && (
+        <Card title={`Threats Found (${s.lastScanResult.threats.length})`} variant="glass">
+          <div className="space-y-2">
+            {s.lastScanResult.threats.map((threat) => (
+              <div key={threat.id} className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`rounded-[var(--avs-radius-md)] p-1.5 ${SEVERITY_BG[threat.severity]}`}>
+                      <ExclamationTriangleIcon className={`h-4 w-4 ${SEVERITY_COLORS[threat.severity]}`} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--avs-text-primary)]">{threat.name}</p>
+                      <p className="text-xs text-[var(--avs-text-muted)]">{CATEGORY_LABELS[threat.category] ?? threat.category} · {threat.detectionSource}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge tone={threat.status === 'active' ? 'danger' : 'neutral'}>{threat.status}</Badge>
+                    <span className={`text-xs font-bold ${SEVERITY_COLORS[threat.severity]}`}>{(threat.confidence * 100).toFixed(0)}%</span>
+                  </div>
+                </div>
+                {threat.affectedAssets.length > 0 && threat.affectedAssets[0] && (
+                  <p className="mt-1.5 text-xs text-[var(--avs-text-muted)] truncate" title={threat.affectedAssets[0].path}>
+                    📁 {threat.affectedAssets[0].path}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* One-Click Actions */}
+      <Card variant="glass" className="p-5">
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Button
+            size="lg"
+            onClick={() => {
+              if (s.lastScanResult && s.lastScanResult.threats.length > 0) {
+                const inv = s.investigations.find(i => i.threatIds.some(tid => s.lastScanResult!.threats.some(t => t.id === tid)));
+                if (inv) {
+                  vm.createRemediationPlan(inv.id);
+                  vm.setActiveTab('remediation');
+                }
+              }
+            }}
+            disabled={summary.threatsFound === 0}
+            leftIcon={<WrenchScrewdriverIcon className="h-5 w-5" />}
+          >
+            {canRemediate ? 'Quarantine All' : 'Quarantine All (Pro)'}
+          </Button>
+          <Button
+            size="lg"
+            variant="secondary"
+            onClick={() => vm.setActiveTab('threats')}
+            leftIcon={<ExclamationTriangleIcon className="h-5 w-5" />}
+          >
+            Review Findings
+          </Button>
+          <Button
+            size="lg"
+            variant="secondary"
+            onClick={() => vm.setActiveTab('investigation')}
+            leftIcon={<BeakerIcon className="h-5 w-5" />}
+          >
+            Open Investigation
+          </Button>
+          <Button
+            size="lg"
+            variant="ghost"
+            onClick={() => {
+              vm.dismissSummary();
+              vm.startScan();
+            }}
+            leftIcon={<ArrowPathIcon className="h-5 w-5" />}
+          >
+            Scan Again
+          </Button>
+        </div>
+      </Card>
+      {dialogElement}
+    </div>
+  );
+}
+
+function SummaryStatBox({ label, value, icon: Icon, tone }: { label: string; value: number | string; icon: typeof ShieldCheckIcon; tone: 'success' | 'warning' | 'danger' | 'info' }) {
+  const toneColor = tone === 'success' ? 'var(--avs-success)' : tone === 'warning' ? 'var(--avs-warning)' : tone === 'danger' ? 'var(--avs-danger)' : 'var(--avs-info)';
+  return (
+    <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 text-center">
+      <Icon className="mx-auto h-5 w-5" style={{ color: toneColor }} />
+      <p className="mt-1.5 text-xl font-bold text-[var(--avs-text-primary)]">{value}</p>
+      <p className="text-xs text-[var(--avs-text-muted)]">{label}</p>
     </div>
   );
 }
@@ -1452,21 +1744,12 @@ function ReportsTab({ vm }: { vm: SecurityCenterViewModel }) {
         )}
       </Card>
 
-      <Card title="Provider Status Report" variant="glass">
-        <div className="space-y-1">
-          {s.providers.map((p) => (
-            <div key={p.id} className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
-              <div className="flex items-center gap-2">
-                <div className={`h-2 w-2 rounded-full ${p.status === 'active' ? 'bg-[var(--avs-success)]' : p.status === 'error' ? 'bg-[var(--avs-danger)]' : 'bg-[var(--avs-text-muted)]'}`} />
-                <span className="text-sm font-medium text-[var(--avs-text-primary)]">{p.name}</span>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-[var(--avs-text-muted)]">
-                <span>{p.type}</span>
-                <span>v{p.version}</span>
-                {p.lastRun && <span>{formatTimeAgo(p.lastRun)}</span>}
-              </div>
-            </div>
-          ))}
+      <Card title="Protection Summary" variant="glass">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <StatBox label="Total Scans" value={s.scanHistory.length.toString()} icon={ArrowPathIcon} />
+          <StatBox label="Threats Detected" value={s.scanHistory.reduce((sum, e) => sum + e.threatsDetected, 0).toString()} icon={ExclamationTriangleIcon} />
+          <StatBox label="Avg Score" value={s.scanHistory.length > 0 ? Math.round(s.scanHistory.reduce((sum, e) => sum + e.securityScore, 0) / s.scanHistory.length).toString() : '—'} icon={ShieldCheckIcon} />
+          <StatBox label="Avg Duration" value={s.scanHistory.length > 0 ? formatDuration(Math.round(s.scanHistory.reduce((sum, e) => sum + e.duration, 0) / s.scanHistory.length)) : '—'} icon={ClockIcon} />
         </div>
       </Card>
     </div>
@@ -1480,47 +1763,22 @@ function SettingsTab({ vm }: { vm: SecurityCenterViewModel }) {
 
   return (
     <div className="space-y-6">
-      <Card title="Security Configuration" variant="glass">
+      <Card title="Protection Status" variant="glass">
         <div className="space-y-3">
-          <ToggleRow label="Behavior Analysis" description="Monitor process behavior patterns" enabled={s.capabilities.find(c => c.name === 'behavior_analysis')?.enabled ?? false} />
-          <ToggleRow label="Signature Detection" description="Signature-based threat detection" enabled={s.capabilities.find(c => c.name === 'signature_detection')?.enabled ?? false} />
-          <ToggleRow label="Persistence Detection" description="Detect persistence mechanisms" enabled={s.capabilities.find(c => c.name === 'persistence_detection')?.enabled ?? false} />
-          <ToggleRow label="Browser Protection" description="Browser extension and settings monitoring" enabled={s.capabilities.find(c => c.name === 'browser_protection')?.enabled ?? false} />
-          <ToggleRow label="Reputation Analysis" description="File and publisher reputation checks" enabled={s.capabilities.find(c => c.name === 'reputation_analysis')?.enabled ?? false} />
-          <ToggleRow label="Threat Intelligence" description="Correlate with threat intelligence feeds" enabled={s.capabilities.find(c => c.name === 'threat_intelligence')?.enabled ?? false} />
-        </div>
-      </Card>
-
-      <Card title="Definitions" variant="glass">
-        <div className="space-y-2">
-          <StatusRow label="Version" value={s.snapshot?.definitionsVersion ?? '1.0.0'} ok={true} />
+          <StatusRow label="Real-Time Protection" value={s.snapshot?.protectionStatus.realTimeProtection ? 'Active' : 'Inactive'} ok={s.snapshot?.protectionStatus.realTimeProtection ?? false} />
+          <StatusRow label="Definitions" value={s.snapshot?.protectionStatus.definitionsActive ? 'Up to Date' : 'Unknown'} ok={s.snapshot?.protectionStatus.definitionsActive ?? false} />
+          <StatusRow label="Overall Protected" value={s.snapshot?.protectionStatus.overallProtected ? 'Yes' : 'No'} ok={s.snapshot?.protectionStatus.overallProtected ?? false} />
+          <StatusRow label="Definitions Version" value={s.snapshot?.definitionsVersion ?? '1.0.0'} ok={true} />
           <StatusRow label="Last Updated" value={s.snapshot?.lastUpdate ? formatTimeAgo(s.snapshot.lastUpdate) : 'Never'} ok={!!s.snapshot?.lastUpdate} />
-          <StatusRow label="Status" value={s.snapshot?.protectionStatus.definitionsActive ? 'Active' : 'Inactive'} ok={s.snapshot?.protectionStatus.definitionsActive ?? false} />
         </div>
       </Card>
 
       <Card title="About" variant="glass">
         <div className="space-y-1 text-sm text-[var(--avs-text-secondary)]">
-          <p>AI Security Center v2.0</p>
-          <p>{s.providers.length} detection providers registered</p>
-          <p>{s.capabilities.length} security capabilities</p>
+          <p>AVS Shield v2.0 — AI Smart Security</p>
           <p>Powered by AVS Shield AI Engine</p>
         </div>
       </Card>
-    </div>
-  );
-}
-
-function ToggleRow({ label, description, enabled }: { label: string; description: string; enabled: boolean }) {
-  return (
-    <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
-      <div>
-        <p className="text-sm font-medium text-[var(--avs-text-primary)]">{label}</p>
-        <p className="text-xs text-[var(--avs-text-muted)]">{description}</p>
-      </div>
-      <div className={`relative h-6 w-11 rounded-full transition-colors ${enabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'}`}>
-        <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
-      </div>
     </div>
   );
 }

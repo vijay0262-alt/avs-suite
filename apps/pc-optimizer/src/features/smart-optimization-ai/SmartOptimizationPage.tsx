@@ -654,6 +654,10 @@ export default function SmartOptimizationPage() {
           error={dashState.healthScanError}
           currentFile={dashState.healthScanCurrentFile}
           subProgress={dashState.healthScanSubProgress}
+          scanPhase={dashState.scanPhase}
+          scanOverallProgress={dashState.scanOverallProgress}
+          scanLiveStats={dashState.scanLiveStats}
+          scanStartTime={dashState.scanStartTime}
           onCancel={() => dashVm.cancelHealthScan()}
           onClose={() => dashVm.closeHealthScan()}
           onOptimize={() => dashVm.executeHealthScanOptimizations()}

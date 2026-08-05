@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button, Card } from '@avs/ui';
 import { formatDataSize } from '@avs/shared/utils';
 import {
@@ -19,7 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Modal } from './Modal';
 import { useAnimatedNumber } from './useAnimatedNumber';
-import { SCORE_ZONE_CONFIG, type ScoreZone } from '../dashboard.types';
+import { SCORE_ZONE_CONFIG, SCAN_PHASES, type ScoreZone, type ScanPhase, type ScanLiveStats } from '../dashboard.types';
 import type {
   HealthScanStep,
   HealthScanModuleResult,
@@ -37,6 +37,10 @@ export interface HealthScanModalProps {
   error: string | null;
   currentFile?: string | null;
   subProgress?: number;
+  scanPhase?: ScanPhase | null;
+  scanOverallProgress?: number;
+  scanLiveStats?: ScanLiveStats;
+  scanStartTime?: number | null;
   onCancel: () => void;
   onClose: () => void;
   onOptimize: () => void;
@@ -87,39 +91,51 @@ function ModuleIcon({ id }: { id: string }) {
 
 export function HealthScanModal({
   step,
-  modules,
   report,
   execution,
   result,
   error,
   currentFile,
   subProgress,
+  scanPhase,
+  scanOverallProgress,
+  scanLiveStats,
+  scanStartTime,
   onCancel,
   onClose,
   onOptimize,
   onCancelExecute,
 }: HealthScanModalProps) {
-  const total = modules.length || 1;
-  const done = modules.filter((m) => m.status === 'complete' || m.status === 'error' || m.status === 'skipped').length;
-  const progress = Math.round((done / total) * 100);
-  const currentModule = modules.find((m) => m.status === 'scanning');
+  const currentPhaseInfo = scanPhase ? SCAN_PHASES.find((p) => p.id === scanPhase) : null;
+  const elapsed = scanStartTime ? Date.now() - scanStartTime : 0;
 
   if (step === 'preparing') {
     return (
-      <Modal open title="Preparing Optimization" onClose={onCancel} size="lg" actions={null}>
-        <div className="space-y-6 text-center" data-testid="health-scan-preparing">
-          <div className="flex justify-center">
-            <SparklesIcon className="h-12 w-12 text-brand-primary animate-pulse" aria-hidden />
+      <Modal open title="AI Smart Optimize — Full System Scan" onClose={onCancel} size="lg" actions={null}>
+        <div className="space-y-6" data-testid="health-scan-preparing">
+          <div className="text-center">
+            <div className="flex justify-center mb-3">
+              <SparklesIcon className="h-12 w-12 text-brand-primary animate-pulse" aria-hidden />
+            </div>
+            <div className="text-lg font-medium text-text-primary">
+              Preparing AI Analysis...
+            </div>
+            <p className="text-sm text-text-secondary mt-1">
+              Initializing optimization engine and loading analysis modules.
+            </p>
           </div>
-          <div className="text-lg font-medium text-text-primary">
-            Preparing Optimization...
-          </div>
-          <p className="text-sm text-text-secondary">
-            Analyzing your system to find the best optimization actions.
-          </p>
+
+          {/* Phase indicator */}
+          <PhaseIndicator currentPhase="preparing" />
+
+          {/* Smooth progress bar */}
           <div className="w-full h-3 bg-[var(--avs-surface-muted)] rounded-full overflow-hidden">
-            <div className="h-full bg-brand-primary transition-all duration-500" style={{ width: '5%' }} />
+            <div
+              className="h-full bg-brand-primary transition-all duration-500 ease-out"
+              style={{ width: `${scanOverallProgress ?? 0}%` }}
+            />
           </div>
+
           <div className="flex justify-center">
             <Button variant="secondary" onClick={onCancel}>
               Cancel
@@ -131,37 +147,53 @@ export function HealthScanModal({
   }
 
   if (step === 'scanning') {
-    // Calculate smooth overall progress including sub-progress within current module
-    const smoothProgress = currentModule
-      ? Math.min(99, Math.round(((done + (subProgress ?? 0) / 100) / total) * 100))
-      : progress;
+    const overallPct = scanOverallProgress ?? 0;
+    const stats = scanLiveStats ?? {
+      filesScanned: 0, registryEntries: 0, startupItems: 0, privacyItems: 0,
+      estimatedStorageRecovery: 0, estimatedMemoryRecovery: 0, estimatedStartupImprovement: 0, recommendationsFound: 0,
+    };
 
     return (
       <Modal open title="AI Smart Optimize — Full System Scan" onClose={onCancel} size="lg" actions={null}>
-        <div className="space-y-6">
+        <div className="space-y-5" data-testid="health-scan-scanning">
+          {/* Current phase name + percentage */}
           <div className="text-center">
             <div className="text-lg font-medium text-text-primary mb-1">
-              {currentModule ? `Scanning ${currentModule.moduleName}...` : 'Preparing scan...'}
+              {currentPhaseInfo?.label ?? 'Scanning...'}
             </div>
-            <div className="text-sm text-text-secondary">{smoothProgress}% complete</div>
+            <div className="text-sm text-text-secondary tabular-nums">{overallPct}% complete</div>
           </div>
 
-          {/* Overall progress bar */}
+          {/* Smooth overall progress bar */}
           <div className="w-full h-3 bg-[var(--avs-surface-muted)] rounded-full overflow-hidden">
             <div
-              className="h-full bg-brand-primary transition-all duration-500 ease-out"
-              style={{ width: `${smoothProgress}%` }}
+              className="h-full bg-brand-primary transition-all duration-300 ease-out"
+              style={{ width: `${overallPct}%` }}
             />
           </div>
 
-          {/* Current file path display */}
+          {/* Phase indicator */}
+          <PhaseIndicator currentPhase={scanPhase ?? 'preparing'} />
+
+          {/* Live stats grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="scan-live-stats">
+            <LiveStatBox label="Files Scanned" value={stats.filesScanned.toLocaleString()} icon={<CircleStackIcon className="h-4 w-4" />} />
+            <LiveStatBox label="Registry Entries" value={stats.registryEntries.toLocaleString()} icon={<ServerIcon className="h-4 w-4" />} />
+            <LiveStatBox label="Startup Items" value={stats.startupItems.toLocaleString()} icon={<ServerIcon className="h-4 w-4" />} />
+            <LiveStatBox label="Privacy Items" value={stats.privacyItems.toLocaleString()} icon={<ShieldCheckIcon className="h-4 w-4" />} />
+            <LiveStatBox label="Est. Storage Recovery" value={formatDataSize(stats.estimatedStorageRecovery)} icon={<TrashIcon className="h-4 w-4" />} />
+            <LiveStatBox label="Est. Memory Recovery" value={formatDataSize(stats.estimatedMemoryRecovery)} icon={<CpuChipIcon className="h-4 w-4" />} />
+            <LiveStatBox label="Est. Startup Improvement" value={`${stats.estimatedStartupImprovement}s`} icon={<ClockIcon className="h-4 w-4" />} />
+            <LiveStatBox label="Recommendations" value={stats.recommendationsFound.toLocaleString()} icon={<SparklesIcon className="h-4 w-4" />} />
+          </div>
+
+          {/* Current file path display + sub-progress */}
           {currentFile && (
             <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2" data-testid="scan-current-file">
               <div className="flex items-center gap-2">
                 <ArrowPathIcon className="h-4 w-4 text-brand-primary shrink-0 animate-spin" aria-hidden />
                 <span className="text-xs text-text-secondary truncate font-mono">{currentFile}</span>
               </div>
-              {/* Sub-progress bar within current module */}
               <div className="mt-2 w-full h-1.5 bg-[var(--avs-surface-muted)] rounded-full overflow-hidden">
                 <div
                   className="h-full bg-brand-primary/60 transition-all duration-300 ease-out"
@@ -171,26 +203,10 @@ export function HealthScanModal({
             </div>
           )}
 
+          {/* Elapsed time */}
           <div className="flex items-center gap-2 text-sm text-text-secondary">
             <ClockIcon className="h-4 w-4" aria-hidden />
-            <span>Elapsed: {report ? formatDuration(Date.now() - report.startedAt) : '0s'}</span>
-          </div>
-
-          <div className="space-y-2">
-            {modules.map((m) => (
-              <div
-                key={m.moduleId}
-                className="flex items-center justify-between p-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)]"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="text-text-muted">
-                    <ModuleIcon id={m.moduleId} />
-                  </div>
-                  <span className="text-sm font-medium text-text-primary">{m.moduleName}</span>
-                </div>
-                <StatusBadge status={m.status} />
-              </div>
-            ))}
+            <span>Elapsed: {formatDuration(elapsed)}</span>
           </div>
 
           <div className="flex justify-center">
@@ -214,6 +230,10 @@ export function HealthScanModal({
     const cleanModules = report.modules.filter((m) => m.status === 'complete' && m.issuesFound === 0);
     const totalRecovery = report.recoverableSpace;
     const estSpeedImprovement = Math.min(25, Math.round(report.issuesFound * 3 + report.recoverableSpace / (500 * 1024 * 1024) * 5));
+    const optimizationActions = findings.filter((m) => m.canAutoFix).length;
+    const memoryRecovery = report.modules.find((m) => m.moduleId === 'performance')?.recoverableSpace ?? 0;
+    const startupItems = report.modules.find((m) => m.moduleId === 'startup')?.issuesFound ?? 0;
+    const estStartupImprovement = Math.min(30, startupItems * 3);
 
     // Score breakdown from modules
     const perfScore = report.modules.find((m) => m.moduleId === 'performance')?.score ?? report.overallScore;
@@ -223,7 +243,7 @@ export function HealthScanModal({
     return (
       <Modal
         open
-        title="AI Scan Summary"
+        title="AI Summary — Scan Complete"
         onClose={onClose}
         size="lg"
         actions={
@@ -240,28 +260,77 @@ export function HealthScanModal({
         }
       >
         <div className="space-y-6" data-testid="health-scan-report">
-          {/* Verdict */}
+          {/* AI Summary header */}
           <div className="text-center">
+            <div className="flex justify-center mb-2">
+              <SparklesIcon className="h-10 w-10 text-brand-primary" aria-hidden />
+            </div>
             <div className={`text-4xl font-bold ${zoneConfig.textColor}`}>
               {zoneConfig.label}
             </div>
             <p className="mt-1 text-sm text-text-secondary">{zoneConfig.message}</p>
           </div>
 
-          {/* Score Breakdown */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-4 text-center">
-              <div className={`text-2xl font-bold ${scoreToColor(perfScore)}`}>{perfScore}</div>
-              <div className="text-xs text-text-muted mt-1">Performance</div>
+          {/* Overall Health Score */}
+          <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-5 text-center">
+            <div className="text-xs uppercase tracking-wide text-text-muted mb-2">Overall Health Score</div>
+            <div className={`text-5xl font-bold tabular-nums ${scoreToColor(healthScore)}`}>{healthScore}</div>
+            <div className="mt-2 flex justify-center gap-4">
+              <div className="text-center">
+                <div className={`text-lg font-bold ${scoreToColor(perfScore)}`}>{perfScore}</div>
+                <div className="text-xs text-text-muted">Performance</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-lg font-bold ${scoreToColor(securityScore)}`}>{securityScore}</div>
+                <div className="text-xs text-text-muted">Security</div>
+              </div>
             </div>
-            <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-4 text-center">
-              <div className={`text-2xl font-bold ${scoreToColor(securityScore)}`}>{securityScore}</div>
-              <div className="text-xs text-text-muted mt-1">Security</div>
-            </div>
-            <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-4 text-center">
-              <div className={`text-2xl font-bold ${scoreToColor(healthScore)}`}>{healthScore}</div>
-              <div className="text-xs text-text-muted mt-1">Health</div>
-            </div>
+          </div>
+
+          {/* AI Summary stats grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4" data-testid="ai-summary-stats">
+            <Card>
+              <div className="flex items-center gap-2 mb-1">
+                <CircleStackIcon className="h-4 w-4 text-brand-primary" />
+                <span className="text-xs text-text-muted">Recoverable Storage</span>
+              </div>
+              <div className="text-xl font-bold text-text-primary">{formatDataSize(totalRecovery)}</div>
+            </Card>
+            <Card>
+              <div className="flex items-center gap-2 mb-1">
+                <CpuChipIcon className="h-4 w-4 text-brand-primary" />
+                <span className="text-xs text-text-muted">Memory Recovery</span>
+              </div>
+              <div className="text-xl font-bold text-text-primary">{formatDataSize(memoryRecovery)}</div>
+            </Card>
+            <Card>
+              <div className="flex items-center gap-2 mb-1">
+                <ClockIcon className="h-4 w-4 text-brand-primary" />
+                <span className="text-xs text-text-muted">Startup Improvement</span>
+              </div>
+              <div className="text-xl font-bold text-text-primary">~{estStartupImprovement}s faster</div>
+            </Card>
+            <Card>
+              <div className="flex items-center gap-2 mb-1">
+                <SparklesIcon className="h-4 w-4 text-brand-primary" />
+                <span className="text-xs text-text-muted">Optimization Actions</span>
+              </div>
+              <div className="text-xl font-bold text-text-primary">{optimizationActions} found</div>
+            </Card>
+            <Card>
+              <div className="flex items-center gap-2 mb-1">
+                <ClockIcon className="h-4 w-4 text-brand-primary" />
+                <span className="text-xs text-text-muted">Estimated Time</span>
+              </div>
+              <div className="text-xl font-bold text-text-primary">~{Math.max(1, Math.round(duration / 1000))}s</div>
+            </Card>
+            <Card>
+              <div className="flex items-center gap-2 mb-1">
+                <ArrowPathIcon className="h-4 w-4 text-brand-primary" />
+                <span className="text-xs text-text-muted">Est. Speed Improvement</span>
+              </div>
+              <div className="text-xl font-bold text-text-primary">~{estSpeedImprovement}%</div>
+            </Card>
           </div>
 
           {/* Findings */}
@@ -295,29 +364,9 @@ export function HealthScanModal({
             ))}
           </div>
 
-          {/* Estimated Recovery + Speed */}
-          {hasOptimizable && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-[var(--avs-radius-md)] border border-brand-primary/20 bg-brand-primary/5 p-4">
-                <div className="flex items-center gap-2">
-                  <CircleStackIcon className="h-4 w-4 text-brand-primary" />
-                  <span className="text-xs text-text-muted">Estimated Recovery</span>
-                </div>
-                <div className="text-2xl font-bold text-text-primary mt-1">{formatDataSize(totalRecovery)}</div>
-              </div>
-              <div className="rounded-[var(--avs-radius-md)] border border-semantic-success/20 bg-semantic-success/5 p-4">
-                <div className="flex items-center gap-2">
-                  <CpuChipIcon className="h-4 w-4 text-semantic-success" />
-                  <span className="text-xs text-text-muted">Est. Speed Improvement</span>
-                </div>
-                <div className="text-2xl font-bold text-text-primary mt-1">~{estSpeedImprovement}%</div>
-              </div>
-            </div>
-          )}
-
           {/* Recommended Action */}
           {hasOptimizable && (
-            <div className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-4">
+            <div className="rounded-[var(--avs-radius-md)] border border-brand-primary/20 bg-brand-primary/5 p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <SparklesIcon className="h-5 w-5 text-brand-primary" />
@@ -834,19 +883,57 @@ function DetailedResultSection({ module: m }: { module: HealthScanModuleResult }
   );
 }
 
-function StatusBadge({ status }: { status: HealthScanModuleResult['status'] }) {
-  if (status === 'scanning') {
-    return <span className="text-sm text-brand-primary">Scanning...</span>;
-  }
-  if (status === 'complete') {
-    return <CheckCircleIcon className="h-5 w-5 text-semantic-success" aria-hidden />;
-  }
-  if (status === 'error') {
-    return <XCircleIcon className="h-5 w-5 text-semantic-danger" aria-hidden />;
-  }
-  if (status === 'skipped') {
-    return <span className="text-sm text-text-muted">Skipped</span>;
-  }
-  return <span className="text-sm text-text-muted">Pending</span>;
+
+// ── Phase Indicator: shows 8 scan phases with current highlighted ──
+
+function PhaseIndicator({ currentPhase }: { currentPhase: ScanPhase }) {
+  const currentIndex = SCAN_PHASES.findIndex((p) => p.id === currentPhase);
+  return (
+    <div className="flex items-center gap-1 flex-wrap" data-testid="phase-indicator">
+      {SCAN_PHASES.map((phase, i) => {
+        const isComplete = i < currentIndex;
+        const isCurrent = i === currentIndex;
+        return (
+          <div key={phase.id} className="flex items-center gap-1">
+            <div
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-[var(--avs-radius-sm)] text-xs transition-colors ${
+                isCurrent
+                  ? 'bg-brand-primary/15 text-brand-primary font-medium'
+                  : isComplete
+                    ? 'text-semantic-success'
+                    : 'text-text-muted'
+              }`}
+            >
+              {isComplete ? (
+                <CheckCircleIcon className="h-3.5 w-3.5" aria-hidden />
+              ) : isCurrent ? (
+                <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              ) : (
+                <div className="h-3.5 w-3.5 rounded-full border border-current opacity-40" />
+              )}
+              <span className={isCurrent ? '' : isComplete ? '' : 'hidden sm:inline'}>{phase.label}</span>
+            </div>
+            {i < SCAN_PHASES.length - 1 && (
+              <div className={`h-px w-3 ${isComplete ? 'bg-semantic-success/40' : 'bg-[var(--avs-border)]'}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Live Stat Box: compact stat display for the scanning screen ──
+
+function LiveStatBox({ label, value, icon }: { label: string; value: string; icon: ReactNode }) {
+  return (
+    <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2" data-testid={`live-stat-${label.replace(/\s+/g, '-').toLowerCase()}`}>
+      <div className="flex items-center gap-1.5 text-text-muted mb-0.5">
+        {icon}
+        <span className="text-xs">{label}</span>
+      </div>
+      <div className="text-sm font-bold text-text-primary tabular-nums">{value}</div>
+    </div>
+  );
 }
 

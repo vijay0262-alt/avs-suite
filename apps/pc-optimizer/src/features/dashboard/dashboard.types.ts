@@ -412,6 +412,136 @@ export type HealthScanStep =
   | 'updating_dashboard'
   | 'complete';
 
+// ── AI Smart Optimize Scan Phases ───────────────────────────────
+
+export type ScanPhase =
+  | 'preparing'
+  | 'junk'
+  | 'privacy'
+  | 'registry'
+  | 'startup'
+  | 'performance'
+  | 'ai_planning'
+  | 'finalizing';
+
+export interface ScanPhaseInfo {
+  id: ScanPhase;
+  label: string;
+  startPercent: number;
+  endPercent: number;
+  items: string[];
+}
+
+export const SCAN_PHASES: ScanPhaseInfo[] = [
+  {
+    id: 'preparing',
+    label: 'Preparing AI Analysis',
+    startPercent: 0,
+    endPercent: 5,
+    items: [
+      'Initializing optimization engine...',
+      'Loading optimization modules...',
+      'Checking configuration...',
+    ],
+  },
+  {
+    id: 'junk',
+    label: 'Junk Analysis',
+    startPercent: 5,
+    endPercent: 20,
+    items: [
+      'Temporary files',
+      'Recycle Bin',
+      'Browser cache',
+      'Windows update cache',
+      'Logs',
+    ],
+  },
+  {
+    id: 'privacy',
+    label: 'Privacy Analysis',
+    startPercent: 20,
+    endPercent: 35,
+    items: [
+      'Cookies',
+      'History',
+      'Browser cache',
+      'Tracking data',
+      'Recent files',
+    ],
+  },
+  {
+    id: 'registry',
+    label: 'Registry Analysis',
+    startPercent: 35,
+    endPercent: 50,
+    items: [
+      'Registry keys',
+      'Broken entries',
+      'Application references',
+      'Invalid associations',
+    ],
+  },
+  {
+    id: 'startup',
+    label: 'Startup Analysis',
+    startPercent: 50,
+    endPercent: 65,
+    items: [
+      'Startup applications',
+      'Services',
+      'Scheduled tasks',
+      'Boot optimization',
+    ],
+  },
+  {
+    id: 'performance',
+    label: 'Performance Analysis',
+    startPercent: 65,
+    endPercent: 80,
+    items: [
+      'Processes',
+      'Memory',
+      'Storage',
+      'Drivers',
+      'Performance metrics',
+    ],
+  },
+  {
+    id: 'ai_planning',
+    label: 'AI Optimization Planning',
+    startPercent: 80,
+    endPercent: 95,
+    items: [
+      'Calculating impact',
+      'Calculating risk',
+      'Building optimization plan',
+      'Creating rollback strategy',
+    ],
+  },
+  {
+    id: 'finalizing',
+    label: 'Finalizing',
+    startPercent: 95,
+    endPercent: 100,
+    items: [
+      'Preparing recommendations...',
+      'Final verification...',
+    ],
+  },
+];
+
+export interface ScanLiveStats {
+  filesScanned: number;
+  registryEntries: number;
+  startupItems: number;
+  privacyItems: number;
+  estimatedStorageRecovery: number;
+  estimatedMemoryRecovery: number;
+  estimatedStartupImprovement: number;
+  recommendationsFound: number;
+}
+
 export interface OptimizationDetailItem {
   name: string;
   size?: number;
