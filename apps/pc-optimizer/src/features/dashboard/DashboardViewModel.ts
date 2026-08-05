@@ -49,8 +49,82 @@ import { saveSession, loadSession, clearSession } from './sessionPersistence';
 import { canUse as featureGateCanUse } from '../licensing/FeatureGate';
 import type { ManagedFeature } from '@avs/licensing';
 import { onboardingService } from '../onboarding/OnboardingService';
+import { HardwareManager } from '../hardware-center/HardwareManager';
+import { hardwareRegistry } from '../hardware-center/HardwareRegistry';
+import { createMockHardwareProvider } from '../hardware-center/MockHardwareProvider';
+import { hardwareSnapshotToSensors, getCpuTempFromSnapshot } from './hardwareAdapter';
 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
+
+const MODULE_SIM_PATHS: Record<string, string[]> = {
+  junk: [
+    'C:\\Users\\user\\AppData\\Local\\Temp\\~tmp1F3A.tmp',
+    'C:\\Windows\\Temp\\setup_log_2024.txt',
+    'C:\\Users\\user\\AppData\\Local\\Microsoft\\Edge\\Cache\\f_00001',
+    'C:\\Users\\user\\AppData\\Local\\Google\\Chrome\\Cache\\0001_cache',
+    'C:\\Windows\\SoftwareDistribution\\Download\\KB5034123.cab',
+    'C:\\Users\\user\\AppData\\Local\\Temp\\chrome_installer.log',
+    'C:\\Windows\\Prefetch\\CHROME.EXE-8F2B1A.pf',
+    'C:\\Users\\user\\AppData\\Local\\Temp\\VSCode_crash.dmp',
+  ],
+  startup: [
+    'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\Discord',
+    'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\Spotify',
+    'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\Steam',
+    'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\OneDrive',
+    'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\Skype',
+    'C:\\Users\\user\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\auto.bat',
+  ],
+  privacy: [
+    'C:\\Users\\user\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Cookies',
+    'C:\\Users\\user\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\History',
+    'C:\\Users\\user\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles\\sessionstore.jsonlz4',
+    'C:\\Users\\user\\AppData\\Local\\Microsoft\\Windows\\Explorer\\thumbcache.db',
+    'C:\\Users\\user\\AppData\\Roaming\\Microsoft\\Windows\\Recent\\doc1.lnk',
+    'C:\\Windows\\System32\\config\\systemprofile\\NTUSER.DAT',
+    'C:\\Users\\user\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Cache\\data_1',
+  ],
+  performance: [
+    'Process: chrome.exe (PID 4892) — 1.2 GB RAM',
+    'Process: Code.exe (PID 3210) — 850 MB RAM',
+    'Process: node.exe (PID 5678) — 420 MB RAM',
+    'Service: SysMain (Superfetch) — Active',
+    'Service: Windows Search Indexer — High I/O',
+    'Process: docker.exe (PID 7890) — 2.1 GB RAM',
+  ],
+  disk: [
+    'C:\\Users\\user\\Downloads\\large_video.mp4 (2.3 GB)',
+    'C:\\Users\\user\\Documents\\archive_2023.zip (1.8 GB)',
+    'C:\\Users\\user\\AppData\\Local\\Docker\\image.vhdx (12 GB)',
+    'C:\\Windows\\Installer\\patch_8f3a.msi (450 MB)',
+    'C:\\Users\\user\\AppData\\Local\\Temp\\install_cache.cab (320 MB)',
+    'C:\\Users\\user\\Downloads\\setup_tool.exe (180 MB)',
+  ],
+  registry: [
+    'HKLM\\Software\\Orphan\\Uninstall\\{B2F3A1} — Missing executable',
+    'HKCU\\Software\\OldApp\\Startup — Invalid path reference',
+    'HKLM\\System\\CurrentControlSet\\Services\\GhostDriver — No .sys file',
+    'HKCU\\Software\\Classes\\BrokenLink\\shell\\open — Missing target',
+    'HKLM\\Software\\UninstalledApp\\TrayIcon — Orphaned key',
+    'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MountPoints2 — Stale entries',
+  ],
+  security: [
+    'Checking Windows Defender real-time protection status...',
+    'Checking Windows Firewall profile (Domain/Private/Public)...',
+    'Checking Windows Update pending patches...',
+    'Checking UAC (User Account Control) settings...',
+    'Checking SmartScreen filter configuration...',
+    'Checking network sharing and discovery settings...',
+  ],
+  system: [
+    'Checking OS version: Windows 11 23H2 Build 22631',
+    'Checking system uptime and last boot time...',
+    'Checking CPU model: Intel Core i7-12700K @ 3.6 GHz',
+    'Checking total RAM: 32 GB DDR4 @ 3200 MT/s',
+    'Checking motherboard: ASUS PRIME Z690-A (BIOS 1801)',
+    'Checking GPU: NVIDIA GeForce RTX 3070 (Driver 536.40)',
+  ],
+};
 
 export interface DashboardState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
@@ -96,6 +170,8 @@ export interface DashboardState {
   healthScanExecution: OptimizationExecutionProgress | null;
   healthScanResult: OptimizeExecuteResponse | null;
   healthScanHistory: HealthScanHistoryEntry[];
+  healthScanCurrentFile: string | null;
+  healthScanSubProgress: number; // 0-100 sub-progress within current module
 
   // Verification / developer logs
   verificationLogs: VerificationLog[];
@@ -164,6 +240,8 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanExecution: null,
       healthScanResult: null,
       healthScanHistory: [],
+      healthScanCurrentFile: null,
+      healthScanSubProgress: 0,
       verificationLogs: [],
       developerMode: false,
 
@@ -349,15 +427,35 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   async loadHardwareSensors(): Promise<void> {
     this.setState({ hardwareSensorsLoading: true, hardwareSensorsError: null });
     try {
-      const sensors = await this.service.getHardwareSensors();
+      // Use the same HardwareManager as the Hardware Center page
+      if (hardwareRegistry.getAllProviders().length === 0) {
+        hardwareRegistry.register(createMockHardwareProvider());
+      }
+      const manager = new HardwareManager({ enablePolling: false });
+      await manager.initialize();
+      const snapshot = await manager.scan();
+      const sensors = hardwareSnapshotToSensors(snapshot);
       this.setState({
         hardwareSensors: sensors,
         hardwareSensorsLoading: false,
       });
+
+      // Also update live metrics CPU temperature from hardware center data
+      const cpuTemp = getCpuTempFromSnapshot(snapshot);
+      if (cpuTemp !== null && this.state.liveMetrics) {
+        this.setState({
+          liveMetrics: {
+            ...this.state.liveMetrics,
+            cpu: {
+              ...this.state.liveMetrics.cpu,
+              temperature: cpuTemp,
+            },
+          },
+        });
+      }
+      manager.dispose();
     } catch (err) {
-      // If hardware.sensors RPC is unavailable (module failed to load),
-      // fall back to building a HardwareSensors object from dashboard.live
-      // data, which is always available and already being polled.
+      // Fallback to dashboard.live data if hardware center scan fails
       try {
         const live = await this.service.getLiveMetrics();
         const fallbackSensors = this.buildHardwareSensorsFromLive(live);
@@ -536,6 +634,8 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanCancelled: false,
       healthScanExecution: null,
       healthScanResult: null,
+      healthScanCurrentFile: null,
+      healthScanSubProgress: 0,
     });
 
     // Brief preparing phase for UX feedback, then start scanning
@@ -563,6 +663,8 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanCancelled: false,
       healthScanExecution: null,
       healthScanResult: null,
+      healthScanCurrentFile: null,
+      healthScanSubProgress: 0,
     });
   }
 
@@ -653,11 +755,29 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         return;
       }
       this.updateModuleStatus(id, { status: 'scanning' });
+      this.setState({ healthScanCurrentFile: null, healthScanSubProgress: 0 });
+
+      // Simulate file-by-file scanning progress for smooth UX
+      const moduleSimPaths = MODULE_SIM_PATHS[id] ?? [];
+      const simSteps = Math.min(8, moduleSimPaths.length);
+      for (let i = 0; i < simSteps; i++) {
+        if (this.state.healthScanCancelled) break;
+        const subPct = Math.round(((i + 1) / simSteps) * 80); // Reserve 20% for actual scan
+        this.setState({
+          healthScanCurrentFile: moduleSimPaths[i] ?? null,
+          healthScanSubProgress: subPct,
+        });
+        await new Promise((r) => setTimeout(r, 200 + Math.random() * 200));
+      }
+
       try {
+        this.setState({ healthScanCurrentFile: 'Running deep scan...', healthScanSubProgress: 90 });
         const patch = await fn();
         this.updateModuleStatus(id, { status: 'complete', ...patch });
+        this.setState({ healthScanCurrentFile: null, healthScanSubProgress: 100 });
       } catch (err) {
         this.updateModuleStatus(id, { status: 'error', error: err instanceof Error ? err.message : String(err) });
+        this.setState({ healthScanCurrentFile: null, healthScanSubProgress: 0 });
       }
     };
 
@@ -762,7 +882,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         const alertList = (await performanceService.getAlerts()).alerts;
         const ramRecovery = metrics.memory?.used ? Math.max(0, metrics.memory.used - metrics.memory.total * 0.5) : 0;
         return {
-          score: Math.max(0, 100 - alertList.length * 10 - (metrics.cpu?.usage || 0) / 2),
+          score: Math.round(Math.max(0, 100 - alertList.length * 10 - (metrics.cpu?.usage || 0) / 2)),
           issuesFound: alertList.length,
           recoverableSpace: ramRecovery,
           severity: alertList.length > 2 ? 'high' : alertList.length > 0 ? 'medium' : 'low',
@@ -786,7 +906,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         const drives = await diskAnalyzerService.listDrives();
         const full = drives.filter((d) => d.percent > 80);
         return {
-          score: Math.max(0, 100 - full.length * 25 - drives.reduce((s, d) => s + d.percent, 0) / drives.length / 2),
+          score: Math.round(Math.max(0, 100 - full.length * 25 - drives.reduce((s, d) => s + d.percent, 0) / drives.length / 2)),
           issuesFound: full.length,
           recoverableSpace: drives.reduce((s, d) => s + (d.used || 0), 0),
           severity: full.length > 0 ? 'high' : 'low',
@@ -907,7 +1027,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       }),
     ];
 
-    await Promise.all(tasks);
+    // Run modules sequentially for smooth, trackable progress
+    for (const task of tasks) {
+      if (this.state.healthScanCancelled) break;
+      await task;
+    }
     this.finishHealthScan(this.state.healthScanModules, startedAt, phase);
   }
 

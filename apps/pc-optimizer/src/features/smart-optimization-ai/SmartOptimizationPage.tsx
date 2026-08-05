@@ -20,6 +20,10 @@ import { ModuleEmptyState, ModuleLoadingState } from '../../components/ModuleSta
 import { useEditionLimits } from '../licensing/editionLimits';
 import { useIsPro } from '../sync/syncStore';
 import { ProStatusBanner, ProStatusPill, ProOnlySection, ProFeatureIndicator } from '../licensing/ProStatusBadge';
+import { DashboardViewModel } from '../dashboard/DashboardViewModel';
+import { dashboardService } from '../dashboard/dashboard.service';
+import { HealthScanModal } from '../dashboard/components/HealthScanModal';
+import { formatDataSize } from '@avs/shared/utils';
 import {
   SmartOptimizationEngine,
   type OptimizationPlan,
@@ -51,6 +55,7 @@ import {
   CalendarDaysIcon,
   EyeIcon,
   LockClosedIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 
 // ── ViewModel ──────────────────────────────────────────────────
@@ -212,12 +217,26 @@ export default function SmartOptimizationPage() {
   const navigate = useNavigate();
   const [showUpgradeMessage, setShowUpgradeMessage] = useState(false);
 
+  // Dashboard ViewModel for health scan (AI Smart Optimize button)
+  const dashVm = useMemo(() => new DashboardViewModel(dashboardService), []);
+  const dashState = useViewModel(dashVm);
+
+  useEffect(() => {
+    void dashVm.bootstrap();
+    return () => dashVm.dispose();
+  }, [dashVm]);
+
   useEffect(() => {
     vm.bootstrap();
     // Auto-generate plan on page load so user sees results immediately
     void vm.generatePlan();
     return () => vm.dispose();
   }, [vm]);
+
+  const handleSmartOptimize = useCallback(() => {
+    setShowUpgradeMessage(false);
+    dashVm.startHealthScan();
+  }, [dashVm]);
 
   const handleGeneratePlan = useCallback(() => {
     setShowUpgradeMessage(false);
@@ -231,6 +250,8 @@ export default function SmartOptimizationPage() {
     }
     vm.executePlan();
   }, [isPro, vm]);
+
+  const isScanning = dashState.healthScanStep !== 'idle' && dashState.healthScanStep !== 'complete';
 
   if (state.bootstrap === 'loading') {
     return (
@@ -257,11 +278,14 @@ export default function SmartOptimizationPage() {
           <div className="flex items-center gap-2">
             <ProStatusPill />
             <Button
-              onClick={handleGeneratePlan}
-              loading={s.isGenerating}
-              leftIcon={<BoltIcon className="h-4 w-4" />}
+              onClick={handleSmartOptimize}
+              disabled={isScanning}
+              loading={isScanning}
+              leftIcon={isScanning ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <SparklesIcon className="h-4 w-4" />}
+              size="lg"
+              data-testid="ai-smart-optimize-btn"
             >
-              Generate Plan
+              {isScanning ? 'Scanning...' : 'AI Smart Optimize'}
             </Button>
           </div>
         }
@@ -274,7 +298,7 @@ export default function SmartOptimizationPage() {
           <StatBox label="Potential Score" value={dash.summary.potentialHealthScore} icon={ArrowTrendingUpIcon} />
           <StatBox label="Available Actions" value={dash.summary.totalAvailableActions} icon={BoltIcon} />
           <StatBox label="High Impact" value={dash.summary.highImpactActions} icon={ExclamationTriangleIcon} />
-          <StatBox label="Est. Recovery" value={`${(dash.summary.estimatedTotalRecoveryMB / 1024).toFixed(1)} GB`} icon={CircleStackIcon} />
+          <StatBox label="Est. Recovery" value={formatDataSize(dash.summary.estimatedTotalRecoveryMB * 1024 * 1024)} icon={CircleStackIcon} />
           <StatBox label="Est. Duration" value={formatDuration(dash.summary.estimatedDurationSeconds)} icon={ClockIcon} />
         </div>
       )}
@@ -315,8 +339,8 @@ export default function SmartOptimizationPage() {
             <p className="text-sm font-medium text-[var(--avs-text-primary)]">{s.preview.headline}</p>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <MetricBox label="Score Improvement" value={`+${s.preview.scoreImprovement}`} icon={ArrowTrendingUpIcon} />
-              <MetricBox label="Storage Recovery" value={`${s.preview.estimatedStorageRecoveryMB} MB`} icon={CircleStackIcon} />
-              <MetricBox label="RAM Recovery" value={`${s.preview.estimatedRamRecoveryMB} MB`} icon={CpuChipIcon} />
+              <MetricBox label="Storage Recovery" value={formatDataSize(s.preview.estimatedStorageRecoveryMB * 1024 * 1024)} icon={CircleStackIcon} />
+              <MetricBox label="RAM Recovery" value={formatDataSize(s.preview.estimatedRamRecoveryMB * 1024 * 1024)} icon={CpuChipIcon} />
               <MetricBox label="Startup Improvement" value={`${(s.preview.estimatedStartupImprovementMs / 1000).toFixed(1)}s`} icon={ClockIcon} />
             </div>
 
@@ -446,7 +470,7 @@ export default function SmartOptimizationPage() {
               <MetricBox label="Simulated Score" value={s.simulation.simulatedHealthScore.toString()} icon={ChartBarIcon} />
               <MetricBox label="Confidence" value={`${(s.simulation.confidence * 100).toFixed(0)}%`} icon={CheckCircleIcon} />
               <MetricBox label="Simulated Risk" value={s.simulation.simulatedRisk} icon={ShieldCheckIcon} />
-              <MetricBox label="RAM Recovery" value={`${s.simulation.simulatedBenefits.ramRecoveryMB} MB`} icon={CpuChipIcon} />
+              <MetricBox label="RAM Recovery" value={formatDataSize(s.simulation.simulatedBenefits.ramRecoveryMB * 1024 * 1024)} icon={CpuChipIcon} />
             </div>
             {s.simulation.assumptions.length > 0 && (
               <div>
@@ -474,7 +498,7 @@ export default function SmartOptimizationPage() {
             <p className="text-sm font-medium text-[var(--avs-text-primary)]">{s.lastReport.summary.headline}</p>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <MetricBox label="Health Change" value={`${s.lastReport.summary.healthScoreChange > 0 ? '+' : ''}${s.lastReport.summary.healthScoreChange}`} icon={ArrowTrendingUpIcon} />
-              <MetricBox label="Storage Recovered" value={`${s.lastReport.summary.storageRecoveredMB} MB`} icon={CircleStackIcon} />
+              <MetricBox label="Storage Recovered" value={formatDataSize(s.lastReport.summary.storageRecoveredMB * 1024 * 1024)} icon={CircleStackIcon} />
               <MetricBox label="Success" value={s.lastReport.successCount.toString()} icon={CheckCircleIcon} />
               <MetricBox label="Failed" value={s.lastReport.failureCount.toString()} icon={ExclamationTriangleIcon} />
             </div>
@@ -564,8 +588,8 @@ export default function SmartOptimizationPage() {
             icon={BoltIcon}
             title="No optimization plan yet"
             message={isPro
-              ? "Click 'Generate Plan' to analyze your system and create an evidence-based optimization plan with one-click execution."
-              : "Click 'Generate Plan' to analyze your system and see what can be optimized. Upgrade to Professional for one-click automatic optimization."}
+              ? "Click 'AI Smart Optimize' to run a complete system scan and create an evidence-based optimization plan with one-click execution."
+              : "Click 'AI Smart Optimize' to run a complete system scan and see what can be optimized. Upgrade to Professional for one-click automatic optimization."}
           />
         </Card>
       )}
@@ -622,6 +646,24 @@ export default function SmartOptimizationPage() {
             <span className="text-sm text-[var(--avs-danger)]">{s.error}</span>
           </div>
         </div>
+      )}
+
+      {/* Health Scan Modal — triggered by AI Smart Optimize button */}
+      {dashState.healthScanStep !== 'idle' && (
+        <HealthScanModal
+          step={dashState.healthScanStep}
+          modules={dashState.healthScanModules}
+          report={dashState.healthScanReport}
+          execution={dashState.healthScanExecution}
+          result={dashState.healthScanResult}
+          error={dashState.healthScanError}
+          currentFile={dashState.healthScanCurrentFile}
+          subProgress={dashState.healthScanSubProgress}
+          onCancel={() => dashVm.cancelHealthScan()}
+          onClose={() => dashVm.closeHealthScan()}
+          onOptimize={() => dashVm.executeHealthScanOptimizations()}
+          onCancelExecute={() => dashVm.cancelHealthScanOptimizations()}
+        />
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button, Card } from '@avs/ui';
-import { formatBytes } from '@avs/shared/utils';
+import { formatDataSize } from '@avs/shared/utils';
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
@@ -35,6 +35,8 @@ export interface HealthScanModalProps {
   execution: OptimizationExecutionProgress | null;
   result: OptimizeExecuteResponse | null;
   error: string | null;
+  currentFile?: string | null;
+  subProgress?: number;
   onCancel: () => void;
   onClose: () => void;
   onOptimize: () => void;
@@ -90,6 +92,8 @@ export function HealthScanModal({
   execution,
   result,
   error,
+  currentFile,
+  subProgress,
   onCancel,
   onClose,
   onOptimize,
@@ -127,22 +131,45 @@ export function HealthScanModal({
   }
 
   if (step === 'scanning') {
+    // Calculate smooth overall progress including sub-progress within current module
+    const smoothProgress = currentModule
+      ? Math.min(99, Math.round(((done + (subProgress ?? 0) / 100) / total) * 100))
+      : progress;
+
     return (
-      <Modal open title="Health Scan" onClose={onCancel} size="lg" actions={null}>
+      <Modal open title="AI Smart Optimize — Full System Scan" onClose={onCancel} size="lg" actions={null}>
         <div className="space-y-6">
           <div className="text-center">
             <div className="text-lg font-medium text-text-primary mb-1">
               {currentModule ? `Scanning ${currentModule.moduleName}...` : 'Preparing scan...'}
             </div>
-            <div className="text-sm text-text-secondary">{progress}% complete</div>
+            <div className="text-sm text-text-secondary">{smoothProgress}% complete</div>
           </div>
 
+          {/* Overall progress bar */}
           <div className="w-full h-3 bg-[var(--avs-surface-muted)] rounded-full overflow-hidden">
             <div
-              className="h-full bg-brand-primary transition-all duration-300"
-              style={{ width: `${progress}%` }}
+              className="h-full bg-brand-primary transition-all duration-500 ease-out"
+              style={{ width: `${smoothProgress}%` }}
             />
           </div>
+
+          {/* Current file path display */}
+          {currentFile && (
+            <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2" data-testid="scan-current-file">
+              <div className="flex items-center gap-2">
+                <ArrowPathIcon className="h-4 w-4 text-brand-primary shrink-0 animate-spin" aria-hidden />
+                <span className="text-xs text-text-secondary truncate font-mono">{currentFile}</span>
+              </div>
+              {/* Sub-progress bar within current module */}
+              <div className="mt-2 w-full h-1.5 bg-[var(--avs-surface-muted)] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand-primary/60 transition-all duration-300 ease-out"
+                  style={{ width: `${subProgress ?? 0}%` }}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 text-sm text-text-secondary">
             <ClockIcon className="h-4 w-4" aria-hidden />
@@ -185,7 +212,7 @@ export function HealthScanModal({
     // Categorize findings
     const findings = report.modules.filter((m) => m.status === 'complete' && m.issuesFound > 0);
     const cleanModules = report.modules.filter((m) => m.status === 'complete' && m.issuesFound === 0);
-    const totalRecoveryMB = (report.recoverableSpace / (1024 * 1024)).toFixed(1);
+    const totalRecovery = report.recoverableSpace;
     const estSpeedImprovement = Math.min(25, Math.round(report.issuesFound * 3 + report.recoverableSpace / (500 * 1024 * 1024) * 5));
 
     // Score breakdown from modules
@@ -254,7 +281,7 @@ export function HealthScanModal({
                 <span className="text-sm text-text-secondary flex-1">{m.measuredDetail || m.moduleName}</span>
                 <span className="text-xs text-text-muted tabular-nums">
                   {m.issuesFound} issue{m.issuesFound > 1 ? 's' : ''}
-                  {m.recoverableSpace > 0 && ` · ${formatBytes(m.recoverableSpace)}`}
+                  {m.recoverableSpace > 0 && ` · ${formatDataSize(m.recoverableSpace)}`}
                 </span>
               </div>
             ))}
@@ -276,7 +303,7 @@ export function HealthScanModal({
                   <CircleStackIcon className="h-4 w-4 text-brand-primary" />
                   <span className="text-xs text-text-muted">Estimated Recovery</span>
                 </div>
-                <div className="text-2xl font-bold text-text-primary mt-1">{totalRecoveryMB} MB</div>
+                <div className="text-2xl font-bold text-text-primary mt-1">{formatDataSize(totalRecovery)}</div>
               </div>
               <div className="rounded-[var(--avs-radius-md)] border border-semantic-success/20 bg-semantic-success/5 p-4">
                 <div className="flex items-center gap-2">
@@ -339,7 +366,7 @@ export function HealthScanModal({
             </Card>
             <Card>
               <div className="text-2xl font-bold text-semantic-success tabular-nums">
-                {formatBytes(execution?.spaceRecovered || 0)}
+                {formatDataSize(execution?.spaceRecovered || 0)}
               </div>
               <div className="text-sm text-text-secondary">Space Recovered</div>
             </Card>
@@ -562,7 +589,7 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4" data-testid="celebration-summary">
             <Card>
               <div className="text-xl font-bold text-semantic-success tabular-nums">
-                {formatBytes(totalBytesRecovered)}
+                {formatDataSize(totalBytesRecovered)}
               </div>
               <div className="text-xs text-text-secondary">Recovered Storage</div>
             </Card>
@@ -780,7 +807,7 @@ function DetailedResultSection({ module: m }: { module: HealthScanModuleResult }
           {/* Actual measured results */}
           {hasActual && actual!.bytesRecovered !== undefined && actual!.bytesRecovered > 0 && (
             <div className="text-xs text-text-secondary">
-              {formatBytes(actual!.bytesRecovered)} recovered
+              {formatDataSize(actual!.bytesRecovered)} recovered
             </div>
           )}
 
@@ -798,7 +825,7 @@ function DetailedResultSection({ module: m }: { module: HealthScanModuleResult }
               {' · '}
               Issues: {m.verification.beforeIssues} → {m.verification.afterIssues}
               {' · '}
-              Recoverable: {formatBytes(m.verification.beforeRecoverable)} → {formatBytes(m.verification.afterRecoverable)}
+              Recoverable: {formatDataSize(m.verification.beforeRecoverable)} → {formatDataSize(m.verification.afterRecoverable)}
             </div>
           )}
         </div>
