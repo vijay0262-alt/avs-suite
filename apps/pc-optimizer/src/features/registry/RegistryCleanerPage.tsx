@@ -8,6 +8,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleSuccessBanner, ModuleErrorBanner, ModuleEmptyState } from '../../components/ModuleStates';
 import { HelpButton } from '../../components/HelpButton';
 import { UnifiedScanProgressCard, REGISTRY_SCAN_CONFIG } from '../unified-scan';
+import { UnifiedCleanerResults } from '../unified-results';
 import { RegistryCleanerViewModel } from './RegistryCleanerViewModel';
 import { registryService } from './registry.service';
 import { CATEGORY_LABELS } from './registry.types';
@@ -135,6 +136,36 @@ export default function RegistryCleanerPage() {
                   registryEntries: state.issues.length,
                   issuesFound: state.issues.length,
                 }}
+              />
+            </div>
+          )}
+
+          {/* Unified AI Results (shown after scan with issues) */}
+          {!state.scanning && state.issues.length > 0 && !state.cleanResult && (
+            <div className="mb-6">
+              <UnifiedCleanerResults
+                data={{
+                  moduleId: 'registry',
+                  moduleName: 'Registry Cleaner',
+                  moduleIcon: 'ServerStackIcon',
+                  timestamp: Date.now(),
+                  durationMs: 5000,
+                  itemsAnalyzed: state.issues.length,
+                  issuesFound: state.issues.length,
+                  categoryBreakdown: state.breakdown,
+                  categoryLabels: CATEGORY_LABELS,
+                  issues: state.issues.map((i) => ({
+                    id: i.id,
+                    description: i.description,
+                    category: i.category,
+                    severity: i.severity,
+                    location: `${i.hive}\\${i.subkey}${i.valueName ? ` : ${i.valueName}` : ''}`,
+                  })),
+                }}
+                isPro={isPro}
+                onClose={() => vm.selectNone()}
+                onFix={(ids) => { ids.forEach((id) => { if (!state.selected.has(id)) vm.toggleIssue(id); }); vm.clean(); }}
+                onRescan={() => vm.scan()}
               />
             </div>
           )}

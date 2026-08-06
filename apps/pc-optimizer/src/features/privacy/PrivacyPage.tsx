@@ -9,6 +9,8 @@ import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleLoadingState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
 import { HelpButton } from '../../components/HelpButton';
 import { UnifiedScanProgressCard, PRIVACY_SCAN_CONFIG } from '../unified-scan';
+import { UnifiedCleanerResults } from '../unified-results';
+import { useIsPro } from '../sync/syncStore';
 import { PrivacyViewModel } from './PrivacyViewModel';
 import { privacyService } from './privacy.service';
 import { useFeatureGuard } from '../licensing/useFeatureGuard';
@@ -17,6 +19,7 @@ export default function PrivacyPage() {
   const vm = useMemo(() => new PrivacyViewModel(privacyService), []);
   const state = useViewModel(vm);
   const { guard, dialogElement } = useFeatureGuard();
+  const isPro = useIsPro();
 
   useEffect(() => {
     void vm.bootstrap();
@@ -233,6 +236,36 @@ export default function PrivacyPage() {
                 counters={{
                   privacyItems: state.scanResult?.items.length ?? 0,
                 }}
+              />
+            </div>
+          )}
+
+          {/* Unified AI Results */}
+          {state.scanResult && !state.cleaning && !state.cleanResult && (
+            <div className="mb-4">
+              <UnifiedCleanerResults
+                data={{
+                  moduleId: 'privacy',
+                  moduleName: 'Privacy Cleaner',
+                  moduleIcon: 'EyeSlashIcon',
+                  timestamp: Date.now(),
+                  durationMs: 3000,
+                  itemsAnalyzed: state.scanResult.itemCount,
+                  issuesFound: state.scanResult.itemCount,
+                  recoverableSpace: state.scanResult.totalSize,
+                  categoryBreakdown: state.scanResult.categoryBreakdown,
+                  issues: state.scanResult.items.map((item, i) => ({
+                    id: `privacy-${i}`,
+                    description: item.description,
+                    category: item.category,
+                    severity: item.riskLevel,
+                    location: item.path,
+                  })),
+                }}
+                isPro={isPro}
+                onClose={() => vm.clearResults()}
+                onFix={() => vm.clean()}
+                onRescan={() => vm.scan()}
               />
             </div>
           )}

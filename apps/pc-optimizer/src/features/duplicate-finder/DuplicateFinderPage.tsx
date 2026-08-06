@@ -9,6 +9,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleLoadingState, ModuleEmptyState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
 import { HelpButton } from '../../components/HelpButton';
 import { UnifiedScanProgressCard, DUPLICATE_SCAN_CONFIG } from '../unified-scan';
+import { UnifiedCleanerResults } from '../unified-results';
 import { DuplicateFinderViewModel } from './DuplicateFinderViewModel';
 import { duplicateFinderService } from './duplicate-finder.service';
 import type { DuplicateScope } from './duplicate-finder.types';
@@ -236,6 +237,32 @@ export default function DuplicateFinderPage() {
 
           {state.scanResult && (
             <>
+              <div className="mb-4">
+                <UnifiedCleanerResults
+                  data={{
+                    moduleId: 'duplicate',
+                    moduleName: 'Duplicate Finder',
+                    moduleIcon: 'DocumentDuplicateIcon',
+                    timestamp: Date.now(),
+                    durationMs: state.scanResult.scanDurationMs,
+                    itemsAnalyzed: state.scanResult.totalFiles,
+                    issuesFound: state.scanResult.totalDuplicates,
+                    recoverableSpace: state.scanResult.recoverableSpace,
+                    issues: state.scanResult.groups.flatMap((g, gi) =>
+                      g.files.map((f, fi) => ({
+                        id: `dup-${gi}-${fi}`,
+                        description: `Duplicate of ${f.name}`,
+                        category: 'duplicate',
+                        severity: 'low' as const,
+                        location: f.path,
+                      })),
+                    ),
+                  }}
+                  isPro={isPro}
+                  onClose={() => {}}
+                  onRescan={() => vm.scan()}
+                />
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                 <Card title="Total Files">
                   <p className="text-3xl font-bold text-text-primary">{state.scanResult.totalFiles}</p>

@@ -62,6 +62,7 @@ import {
   type LiveThreatCard,
 } from './securityScanTypes';
 import { UnifiedSecurityScanProgress } from './UnifiedSecurityScanProgress';
+import { UnifiedSecurityScanResults } from './UnifiedSecurityScanResults';
 
 const TABS: { id: SecurityCenterTab; label: string; icon: typeof ShieldCheckIcon }[] = [
   { id: 'overview', label: 'Overview', icon: ShieldCheckIcon },
@@ -547,7 +548,7 @@ function ScanTab({ vm }: { vm: SecurityCenterViewModel }) {
         {s.isScanning ? (
           <UnifiedSecurityScanProgress vm={vm} />
         ) : s.aiSummary ? (
-          <ScanAISummary vm={vm} />
+          <UnifiedSecurityScanResults vm={vm} isPro={canUse('security.remediate')} />
         ) : (
           <ScanIdleView vm={vm} />
         )}
@@ -821,7 +822,7 @@ function LiveStatBox({ label, value, icon: Icon, danger }: { label: string; valu
 }
 
 // ─── AI Summary Screen ──────────────────────────────────────────────
-
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function ScanAISummary({ vm }: { vm: SecurityCenterViewModel }) {
   const s = vm.state;
   const summary = s.aiSummary!;

@@ -30,6 +30,7 @@ import { dashboardService } from './dashboard.service';
 import { generateRecommendations } from './dashboard.utils';
 import type { DashboardMetrics, LiveMetrics, HardwareSensorReading } from './dashboard.types';
 import { UnifiedHealthScanModal } from './components/UnifiedHealthScanModal';
+import { UnifiedHealthScanResults } from './components/UnifiedHealthScanResults';
 import { useIsPro } from '../sync/syncStore';
 import { useEditionLimits } from '../licensing/editionLimits';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
@@ -617,8 +618,8 @@ export default function DashboardPage() {
         </div>
       </DashboardSection>
 
-      {/* Health Scan Modal */}
-      {state.healthScanStep !== 'idle' && (
+      {/* Health Scan Modal (scanning/optimizing phases) */}
+      {state.healthScanStep !== 'idle' && state.healthScanStep !== 'report' && state.healthScanStep !== 'complete' && (
         <UnifiedHealthScanModal
           step={state.healthScanStep}
           report={state.healthScanReport}
@@ -635,6 +636,18 @@ export default function DashboardPage() {
           onClose={() => vm.closeHealthScan()}
           onOptimize={() => vm.executeHealthScanOptimizations()}
           onCancelExecute={() => vm.cancelHealthScanOptimizations()}
+        />
+      )}
+
+      {/* Health Scan Results (report/complete phases) */}
+      {(state.healthScanStep === 'report' || state.healthScanStep === 'complete') && (
+        <UnifiedHealthScanResults
+          step={state.healthScanStep}
+          report={state.healthScanReport}
+          result={state.healthScanResult}
+          onClose={() => vm.closeHealthScan()}
+          onOptimize={() => vm.executeHealthScanOptimizations()}
+          isPro={isPro}
         />
       )}
 

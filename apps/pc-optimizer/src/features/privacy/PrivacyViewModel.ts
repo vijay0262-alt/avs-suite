@@ -167,6 +167,10 @@ export class PrivacyViewModel extends ViewModel<PrivacyState> {
     this.setState({ scanError: null });
   }
 
+  clearResults() {
+    this.setState({ scanResult: null });
+  }
+
   clearCleanError() {
     this.setState({ cleanError: null });
   }
