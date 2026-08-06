@@ -6,6 +6,7 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 
 export type NavItemId =
   | 'dashboard'
+  | 'protection-center'
   | 'ai-assistant'
   | 'ai-daily-briefing'
   | 'ai-smart-optimize'

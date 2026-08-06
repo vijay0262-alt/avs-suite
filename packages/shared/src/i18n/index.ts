@@ -46,6 +46,7 @@ export const en = {
       overview: 'Home',
     },
     dashboard: 'Dashboard',
+    protectionCenter: 'AI Protection Center',
     aiSmartOptimize: 'AI Smart Optimize',
     aiSmartSecurity: 'AI Smart Security',
     aiWorkspace: 'AI Workspace',

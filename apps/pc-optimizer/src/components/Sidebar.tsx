@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import { GlobalSearch } from './GlobalSearch';
 import {
   Squares2X2Icon,
+  ShieldExclamationIcon,
   TrashIcon,
   RocketLaunchIcon,
   DocumentDuplicateIcon,
@@ -61,6 +62,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
     labelKey: 'nav.section.home',
     entries: [
       { id: 'dashboard', to: '/dashboard', labelKey: 'nav.dashboard', Icon: Squares2X2Icon },
+      { id: 'protection-center', to: '/protection-center', labelKey: 'nav.protectionCenter', Icon: ShieldExclamationIcon },
       { id: 'ai-smart-optimize', to: '/ai-smart-optimize', labelKey: 'nav.aiSmartOptimize', Icon: BoltIcon, proEnhanced: true },
       { id: 'ai-smart-security', to: '/ai-smart-security', labelKey: 'nav.aiSmartSecurity', Icon: ShieldCheckIcon },
       // AI Assistant and AI Daily Briefing disabled — replaced by AI Smart Security
