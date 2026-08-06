@@ -9,6 +9,7 @@ const ONBOARDING_KEY = 'avs-onboarding-complete';
 const DISMISSED_TIPS_KEY = 'avs-dismissed-tips';
 const LEARNING_MODE_KEY = 'avs-learning-mode';
 const FIRST_SCAN_KEY = 'avs-first-scan-complete';
+const WELCOME_NEVER_SHOW_KEY = 'avs-welcome-never-show';
 
 export interface OnboardingState {
   hasCompleted: boolean;
@@ -37,6 +38,22 @@ class OnboardingServiceImpl {
     } catch {
       return false;
     }
+  }
+
+  shouldShowWelcome(): boolean {
+    try {
+      if (localStorage.getItem(WELCOME_NEVER_SHOW_KEY) === 'true') return false;
+      return !this.hasCompletedOnboarding();
+    } catch {
+      return true;
+    }
+  }
+
+  neverShowWelcome(): void {
+    try {
+      localStorage.setItem(WELCOME_NEVER_SHOW_KEY, 'true');
+      localStorage.setItem(ONBOARDING_KEY, 'true');
+    } catch { /* ignore */ }
   }
 
   completeOnboarding(): void {

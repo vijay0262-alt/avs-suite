@@ -29,7 +29,6 @@ const DiagnosticsPage = lazy(() => import('../features/diagnostics/DiagnosticsPa
 const ProcessIntelligencePage = lazy(() => import('../pages/ProcessIntelligencePage'));
 const PredictiveHealthPage = lazy(() => import('../pages/PredictiveHealthPage'));
 const ActivationPage = lazy(() => import('../features/licensing/ActivationPage'));
-const MaintenanceHistoryPage = lazy(() => import('../pages/MaintenanceHistoryPage'));
 const ReportsPage = lazy(() => import('../pages/ReportsPage'));
 const OptimizationReportsPage = lazy(() => import('../pages/OptimizationReportsPage'));
 const SmartOptimizationPage = lazy(() => import('../pages/SmartOptimizationPage'));
@@ -67,9 +66,6 @@ import {
   SystemHealthPage,
   PerformanceAnalyticsPage,
   BrowserCleanerPage,
-  LargeFilesPage,
-  ReportsTimelinePage,
-  AnalyticsPage,
   DriverInformationPage,
   BackupRestorePage,
   SecurityHistoryPage,
@@ -79,7 +75,6 @@ import {
   RecoveryCenterPage,
   UpgradePage,
   HelpPage,
-  ExportCenterPageWrapper,
   NotificationsPageWrapper,
 } from '../pages/NewPageWrappers';
 

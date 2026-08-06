@@ -50,7 +50,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       onClick={onClose}
       data-testid={testId}
       role="dialog"
@@ -58,7 +58,7 @@ export function Modal({
       aria-labelledby={titleId}
     >
       <div
-        className={`bg-[var(--avs-surface)] rounded-[var(--avs-radius-lg)] shadow-[var(--avs-shadow-xl,var(--avs-shadow-lg))] w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col`}
+        className={`bg-[var(--avs-surface)] border border-[var(--avs-border)] rounded-[var(--avs-radius-lg)] shadow-2xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col`}
         onClick={(e) => e.stopPropagation()}
         role="document"
       >

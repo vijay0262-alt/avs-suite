@@ -231,7 +231,7 @@ export const authService = {
       const resp = await apiClient.post<LoginResponse>(
         endpoint,
         { identifier, password },
-        { noAuth: true, timeoutMs: 30000 },
+        { noAuth: true, timeoutMs: 15000 },
       );
       const session = sessionFromLogin(resp);
       tokenStorage.save(session);
@@ -268,7 +268,7 @@ export const authService = {
       const resp = await apiClient.post<RefreshResponse>(
         '/api/customer/auth/refresh',
         { refresh_token: existing.refreshToken },
-        { noAuth: true, timeoutMs: 30000 },
+        { noAuth: true, timeoutMs: 15000 },
       );
       const session = sessionFromRefresh(resp, existing);
       tokenStorage.save(session);
@@ -317,6 +317,24 @@ export const authService = {
    */
   getSession(): StoredSession | null {
     return tokenStorage.load();
+  },
+
+  /**
+   * Derive a CustomerProfile from a StoredSession without an HTTP call.
+   * Used to skip the redundant validate() round-trip after login.
+   */
+  getProfileFromSession(session: StoredSession): CustomerProfile {
+    return {
+      id: session.customerId,
+      first_name: session.customerName?.split(' ')[0] ?? '',
+      last_name: session.customerName?.split(' ').slice(1).join(' ') ?? '',
+      display_name: session.customerName,
+      email: session.customerEmail,
+      phone_number: '',
+      account_status: session.accountStatus,
+      email_verified: true,
+      phone_verified: false,
+    };
   },
 
   /**

@@ -37,8 +37,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true, error: null, errorCode: null });
     try {
       const session = await authService.login(identifier, password);
-      // Fetch profile to populate customer info
-      const profile = await authService.validate();
+      // Login response already contains full customer profile —
+      // skip the extra validate() round-trip to speed up login.
+      const profile = authService.getProfileFromSession(session);
       set({
         phase: 'authenticated',
         session,
@@ -81,7 +82,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (tokenStorage.isExpired(session)) {
       try {
         const refreshed = await authService.refresh();
-        const profile = await authService.validate();
+        const profile = authService.getProfileFromSession(refreshed);
         set({
           phase: 'authenticated',
           session: refreshed,
@@ -95,25 +96,24 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
     }
 
-    // Token is still valid — validate with server
+    // Token is still valid — set authenticated immediately from cached
+    // session data, then validate in background for fresh profile data.
+    const cachedProfile = authService.getProfileFromSession(session);
+    set({
+      phase: 'authenticated',
+      session,
+      customer: cachedProfile,
+    });
+
+    // Background validation — non-blocking, updates profile if server
+    // returns fresher data. Falls back gracefully on network error.
     try {
       const profile = await authService.validate();
       if (profile) {
-        set({
-          phase: 'authenticated',
-          session,
-          customer: profile,
-        });
-      } else {
-        set({ phase: 'unauthenticated' });
+        set({ customer: profile });
       }
     } catch {
-      // Network error — allow offline use with cached session
-      set({
-        phase: 'authenticated',
-        session,
-        customer: null,
-      });
+      // Network error — keep cached session, app works offline
     }
   },
 

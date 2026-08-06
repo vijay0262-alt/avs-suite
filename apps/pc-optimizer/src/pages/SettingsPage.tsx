@@ -3,32 +3,14 @@ import { useTheme } from '@avs/ui';
 import { PageHeader } from '../components/PageHeader';
 import { HelpButton } from '../components/HelpButton';
 import type { ThemeMode } from '@avs/shared/types';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useEdition } from '../config/EditionManager';
 import { getVersionString, getBuildString, getChannelString, getEditionString } from '../config/version';
 import { useUpgradeDialog } from '../components/UpgradeDialog';
 import { useAuthStore } from '../features/auth/authStore';
-import { useEntitlementStore } from '../features/entitlement/entitlementStore';
-import { useFeatureStore, FEATURE_LABELS } from '../features/feature-engine';
-import { useUpdateStore } from '../features/update';
 import { useSubscriptionStore } from '../features/subscription/subscriptionStore';
-import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, StarIcon, CheckCircleIcon, CloudArrowDownIcon, ArrowDownTrayIcon, XCircleIcon, RocketLaunchIcon, SparklesIcon } from '@heroicons/react/24/outline';
-import { onboardingService } from '../features/onboarding/OnboardingProvider';
-import { KEYBOARD_SHORTCUTS } from '../components/useKeyboardShortcuts';
+import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, StarIcon, CheckCircleIcon, CloudArrowDownIcon, RocketLaunchIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useTraySettings } from '../hooks/useTraySettings';
-
-interface VerificationLog {
-  id: string;
-  timestamp: number;
-  moduleId: string;
-  action: string;
-  rpcMethod: string;
-  before?: number;
-  after?: number;
-  durationMs: number;
-  success: boolean;
-  message?: string;
-}
 
 const THEMES: readonly { id: ThemeMode; label: string }[] = [
   { id: 'light', label: 'Light' },
@@ -41,78 +23,37 @@ const THEMES: readonly { id: ThemeMode; label: string }[] = [
  * updates, account, entitlements, subscriptions, features, and developer tools.
  */
 const DEV_STORAGE_KEY = 'avs-developer-mode';
-const LOGS_STORAGE_KEY = 'avs-verification-logs';
 
 export default function SettingsPage() {
   const { mode, setMode } = useTheme();
-  const [devMode, setDevMode] = useState(false);
-  const [logs, setLogs] = useState<VerificationLog[]>([]);
-  const [learningMode, setLearningMode] = useState(false);
   const edition = useEdition();
   const { show: showUpgrade } = useUpgradeDialog();
   const { settings: traySettings, startupEnabled, loading: trayLoading, updateSettings: updateTray, enableStartup, disableStartup } = useTraySettings();
   const { customer, session, logout } = useAuthStore();
-  const { entitlement, created, syncPhase, syncError, lastSyncAt, syncEntitlement } = useEntitlementStore();
-  const { editionLabel, enabledFeatures, disabledFeatures, enabledCount, disabledCount, initialized: featureEngineInitialized } = useFeatureStore();
   const subscription = useSubscriptionStore((s) => s.subscription);
-  const subLoading = useSubscriptionStore((s) => s.loading);
-  const subError = useSubscriptionStore((s) => s.error);
-  const subLastSyncAt = useSubscriptionStore((s) => s.lastSyncAt);
-  const connectionStatus = useSubscriptionStore((s) => s.connectionStatus);
-  const syncSubscription = useSubscriptionStore((s) => s.sync);
-  const {
-    status: updateStatus,
-    updateInfo,
-    manifest: updateManifest,
-    downloadProgress,
-    installer: updateInstaller,
-    error: updateError,
-    lastCheckAt: updateLastCheckAt,
-    currentVersion: updateCurrentVersion,
-    forceUpdate: updateForceUpdate,
-    checkForUpdates,
-    download: downloadUpdate,
-    cancelDownload: cancelUpdateDownload,
-    verifyUpdate,
-    prepareInstaller,
-    launchInstaller,
-    clearError: clearUpdateError,
-  } = useUpdateStore();
 
   useEffect(() => {
-    try {
-      setDevMode(typeof window !== 'undefined' && window.localStorage.getItem(DEV_STORAGE_KEY) === 'true');
-      setLearningMode(onboardingService.isLearningMode());
-      const raw = typeof window !== 'undefined' ? window.localStorage.getItem(LOGS_STORAGE_KEY) : null;
-      setLogs(raw ? (JSON.parse(raw) as VerificationLog[]) : []);
-    } catch {
-      setLogs([]);
-    }
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === DEV_STORAGE_KEY) setDevMode(e.newValue === 'true');
-      if (e.key === LOGS_STORAGE_KEY) {
-        try {
-          setLogs(e.newValue ? (JSON.parse(e.newValue) as VerificationLog[]) : []);
-        } catch {
-          setLogs([]);
+    // Sync dev mode state from localStorage
+    const syncDevMode = () => {
+      try {
+        const stored = typeof window !== 'undefined' && window.localStorage.getItem(DEV_STORAGE_KEY) === 'true';
+        // devMode state is read by the tray settings hook
+        if (stored) {
+          document.documentElement.setAttribute('data-dev-mode', 'true');
+        } else {
+          document.documentElement.removeAttribute('data-dev-mode');
         }
+      } catch {
+        // ignore
       }
+    };
+    syncDevMode();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === DEV_STORAGE_KEY) syncDevMode();
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
-
-  const toggleDevMode = () => {
-    const next = !devMode;
-    setDevMode(next);
-    try {
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(DEV_STORAGE_KEY, String(next));
-      }
-    } catch {
-      // ignore
-    }
-  };
 
   return (
     <div data-testid="page-settings">

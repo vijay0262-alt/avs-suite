@@ -6,7 +6,6 @@ import {
   getVersionString,
   getBuildString,
   getChannelString,
-  getEditionString,
   getArchitectureString,
 } from '../config/version';
 import { useState, useEffect, useCallback } from 'react';

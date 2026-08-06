@@ -18,7 +18,7 @@ interface OnboardingProviderProps {
 }
 
 export function OnboardingProvider({ children }: OnboardingProviderProps) {
-  const [welcomeOpen, setWelcomeOpen] = useState(() => !onboardingService.hasCompletedOnboarding());
+  const [welcomeOpen, setWelcomeOpen] = useState(() => onboardingService.shouldShowWelcome());
   const [firstScanOpen, setFirstScanOpen] = useState(false);
 
   const closeWelcome = useCallback(() => {

@@ -42,23 +42,41 @@ interface WelcomeDialogProps {
 export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
   const navigate = useNavigate();
   const [stepIndex, setStepIndex] = useState(0);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   const currentStep = STEPS[stepIndex]!;
   const isLastStep = stepIndex === STEPS.length - 1;
 
   const handleNext = useCallback(() => {
     if (isLastStep) {
-      onboardingService.completeOnboarding();
+      if (dontShowAgain) {
+        onboardingService.neverShowWelcome();
+      } else {
+        onboardingService.completeOnboarding();
+      }
       onClose();
     } else {
       setStepIndex((i) => Math.min(i + 1, STEPS.length - 1));
     }
-  }, [isLastStep, onClose]);
+  }, [isLastStep, onClose, dontShowAgain]);
 
   const handleSkip = useCallback(() => {
-    onboardingService.completeOnboarding();
+    if (dontShowAgain) {
+      onboardingService.neverShowWelcome();
+    } else {
+      onboardingService.completeOnboarding();
+    }
     onClose();
-  }, [onClose]);
+  }, [onClose, dontShowAgain]);
+
+  const handleContinueToApp = useCallback(() => {
+    if (dontShowAgain) {
+      onboardingService.neverShowWelcome();
+    } else {
+      onboardingService.completeOnboarding();
+    }
+    onClose();
+  }, [onClose, dontShowAgain]);
 
   const handleStartScan = useCallback(() => {
     onboardingService.completeOnboarding();
@@ -80,27 +98,45 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
       onClose={handleSkip}
       size="md"
       actions={
-        <div className="flex items-center justify-between w-full">
-          <Button variant="ghost" size="sm" onClick={handleSkip} data-testid="welcome-skip">
-            Skip
-          </Button>
-          <div className="flex items-center gap-2">
-            {stepIndex > 0 && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setStepIndex((i) => Math.max(i - 1, 0))}
-                data-testid="welcome-back"
-              >
-                Back
-              </Button>
-            )}
-            {!isLastStep && (
-              <Button variant="primary" size="sm" onClick={handleNext} data-testid="welcome-next">
-                Continue
-                <ArrowRightIcon className="h-4 w-4" />
-              </Button>
-            )}
+        <div className="flex flex-col gap-3 w-full">
+          <label className="flex items-center gap-2 text-caption text-text-secondary cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={dontShowAgain}
+              onChange={(e) => setDontShowAgain(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-[var(--avs-border)] accent-brand-primary"
+              data-testid="welcome-never-show"
+            />
+            Don&apos;t show this welcome message again
+          </label>
+          <div className="flex items-center justify-between w-full">
+            <Button variant="ghost" size="sm" onClick={handleSkip} data-testid="welcome-skip">
+              Skip
+            </Button>
+            <div className="flex items-center gap-2">
+              {stepIndex > 0 && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setStepIndex((i) => Math.max(i - 1, 0))}
+                  data-testid="welcome-back"
+                >
+                  Back
+                </Button>
+              )}
+              {!isLastStep && (
+                <Button variant="primary" size="sm" onClick={handleNext} data-testid="welcome-next">
+                  Continue
+                  <ArrowRightIcon className="h-4 w-4" />
+                </Button>
+              )}
+              {isLastStep && (
+                <Button variant="primary" size="sm" onClick={handleContinueToApp} data-testid="welcome-continue-app">
+                  Continue to Application
+                  <ArrowRightIcon className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       }
@@ -264,7 +300,7 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
               </Button>
               <Button
                 variant="secondary"
-                onClick={handleSkip}
+                onClick={handleContinueToApp}
                 className="w-full"
                 data-testid="welcome-skip-tour"
               >
