@@ -29,7 +29,7 @@ import { DashboardViewModel } from './DashboardViewModel';
 import { dashboardService } from './dashboard.service';
 import { generateRecommendations } from './dashboard.utils';
 import type { DashboardMetrics, LiveMetrics, HardwareSensorReading } from './dashboard.types';
-import { HealthScanModal } from './components/HealthScanModal';
+import { UnifiedHealthScanModal } from './components/UnifiedHealthScanModal';
 import { useIsPro } from '../sync/syncStore';
 import { useEditionLimits } from '../licensing/editionLimits';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
@@ -619,9 +619,8 @@ export default function DashboardPage() {
 
       {/* Health Scan Modal */}
       {state.healthScanStep !== 'idle' && (
-        <HealthScanModal
+        <UnifiedHealthScanModal
           step={state.healthScanStep}
-          modules={state.healthScanModules}
           report={state.healthScanReport}
           execution={state.healthScanExecution}
           result={state.healthScanResult}

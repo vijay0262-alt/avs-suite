@@ -1,17 +1,26 @@
 /**
  * Electron main entry — creates the BrowserWindow, spawns the Python
- * backend as a JSON-RPC child, wires the updater, structured logger, and
- * global crash handler.
+ * backend as a JSON-RPC child, wires the updater, structured logger,
+ * global crash handler, system tray, and background protection service.
  *
  * Everything Windows-specific is delegated to the Python child; this
  * module is intentionally OS-agnostic.
+ *
+ * Window close behaviour:
+ *   - Default: minimize to system tray (protection continues)
+ *   - Optional: exit application (with confirmation dialog)
+ *   - The background protection service runs independently of the window
  */
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, shell, Notification } from 'electron';
 import { exec } from 'child_process';
 import path from 'node:path';
 import { installCrashHandler } from '../crash/crashReporter';
 import { createLogger } from '../logger/logger';
-import { runStartup, shutdownStartup } from '../startup/startupStateMachine';
+import { runStartup, shutdownStartup, getRpcClient } from '../startup/startupStateMachine';
+import { TrayManager } from '../tray/TrayManager';
+import { BackgroundProtectionService } from '../tray/BackgroundProtectionService';
+import { getTraySettings } from '../tray/traySettings';
+import { setMainWindow, showMainWindow } from './windowManager';
 
 // Local environment configuration (mirrors @avs/shared/env to avoid ES module import in Electron main)
 type AppEnvironment = 'development' | 'staging' | 'production';
@@ -73,6 +82,9 @@ installCrashHandler(log);
 
 let mainWindow: BrowserWindow | null = null;
 let splashWindow: BrowserWindow | null = null;
+let trayManager: TrayManager | null = null;
+let bgProtection: BackgroundProtectionService | null = null;
+let isQuitting = false;
 
 function createSplashWindow(): BrowserWindow {
   const splash = new BrowserWindow({
@@ -192,9 +204,38 @@ async function createMainWindow(): Promise<void> {
       splashWindow.close();
       splashWindow = null;
     }
-    mainWindow?.show();
+    // If launched with --minimized, skip showing the window
+    if (process.argv.includes('--minimized')) {
+      log.info('[startup] Launched with --minimized — window hidden to tray');
+    } else {
+      mainWindow?.show();
+    }
   });
-  mainWindow.on('closed', () => (mainWindow = null));
+
+  // ── Window close behaviour ──────────────────────────────
+  // Intercept the close event.  Unless the user explicitly chose
+  // "Exit AVS Shield" from the tray (isQuitting=true), hide the
+  // window instead of destroying it.  This keeps the renderer
+  // state alive and protection running in the background.
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      const settings = getTraySettings();
+      if (settings.closeBehavior === 'minimize-to-tray') {
+        event.preventDefault();
+        mainWindow?.hide();
+        log.info('[window] Close intercepted — hiding to tray (protection continues)');
+        return;
+      }
+    }
+    // If quitting or closeBehavior is 'exit', let the window close
+    setMainWindow(null);
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+
+  setMainWindow(mainWindow);
 }
 
 function checkAndRelaunchAsAdmin(): Promise<boolean> {
@@ -235,9 +276,29 @@ function checkAndRelaunchAsAdmin(): Promise<boolean> {
   });
 }
 
+// ── Single instance lock ──────────────────────────────────────
+// Prevent multiple instances of AVS Shield from running.
+// If a second instance is launched, focus the existing window.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  log.info('[startup] Another instance is already running — exiting');
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    // Someone tried to run a second instance — focus our window
+    log.info('[startup] Second instance detected — focusing existing window');
+    showMainWindow();
+  });
+}
+
 app.whenReady().then(async () => {
   const appStart = Date.now();
   log.info(`[startup] AVS Shield Optimizer starting (env=${env.env}, version=${app.getVersion()})`);
+
+  // Ensure Notification support is available
+  if (!Notification.isSupported()) {
+    log.warn('[startup] Notifications not supported on this platform');
+  }
 
   // Auto-elevate to administrator on Windows for full functionality
   const needsRelaunch = await checkAndRelaunchAsAdmin();
@@ -268,16 +329,75 @@ app.whenReady().then(async () => {
     env,
   );
 
+  // ── Initialize system tray ──────────────────────────────
+  trayManager = new TrayManager(log, {
+    onRunScan: () => {
+      // Tell the renderer to start a security scan
+      mainWindow?.webContents.send('avs:tray:action', { action: 'run-scan' });
+    },
+    onRunOptimize: () => {
+      // Tell the renderer to start optimization
+      mainWindow?.webContents.send('avs:tray:action', { action: 'run-optimize' });
+    },
+    onCheckUpdates: () => {
+      // Tell the renderer to check for updates
+      mainWindow?.webContents.send('avs:tray:action', { action: 'check-updates' });
+    },
+  });
+  trayManager.create();
+
+  // ── Initialize background protection service ────────────
+  const rpcClient = getRpcClient();
+  bgProtection = new BackgroundProtectionService(log, rpcClient, (state) => {
+    trayManager?.setProtectionState(state);
+  });
+  await bgProtection.start();
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) void createMainWindow();
+    else showMainWindow();
   });
 });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+// ── Window lifecycle ──────────────────────────────────────────
+// Do NOT quit when all windows are closed — the app runs in the
+// background via the system tray.  Only quit when the user
+// explicitly chooses "Exit AVS Shield" from the tray menu.
+app.on('window-all-closed', (event: Electron.Event) => {
+  // Prevent the default quit behavior
+  event.preventDefault();
 });
 
-app.on('will-quit', () => {
-  shutdownStartup();
-  log.info('AVS Shield Optimizer shutting down');
+// ── Application shutdown ──────────────────────────────────────
+app.on('will-quit', async (event) => {
+  // Shutdown background protection and tray
+  if (trayManager) {
+    trayManager.destroy();
+    trayManager = null;
+  }
+  if (bgProtection) {
+    event.preventDefault();
+    await bgProtection.shutdown();
+    bgProtection = null;
+    // Continue with the quit
+    shutdownStartup();
+    log.info('AVS Shield Optimizer shutting down');
+    app.exit(0);
+  } else {
+    shutdownStartup();
+    log.info('AVS Shield Optimizer shutting down');
+  }
 });
+
+// ── Export for IPC handlers ───────────────────────────────────
+export function getTrayManager(): TrayManager | null {
+  return trayManager;
+}
+
+export function getBackgroundProtection(): BackgroundProtectionService | null {
+  return bgProtection;
+}
+
+export function setIsQuitting(value: boolean): void {
+  isQuitting = value;
+}

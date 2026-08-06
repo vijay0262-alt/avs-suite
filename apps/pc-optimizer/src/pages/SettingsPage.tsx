@@ -15,6 +15,7 @@ import { useSubscriptionStore } from '../features/subscription/subscriptionStore
 import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, StarIcon, CheckCircleIcon, CloudArrowDownIcon, ArrowDownTrayIcon, XCircleIcon, RocketLaunchIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { onboardingService } from '../features/onboarding/OnboardingProvider';
 import { KEYBOARD_SHORTCUTS } from '../components/useKeyboardShortcuts';
+import { useTraySettings } from '../hooks/useTraySettings';
 
 interface VerificationLog {
   id: string;
@@ -49,6 +50,7 @@ export default function SettingsPage() {
   const [learningMode, setLearningMode] = useState(false);
   const edition = useEdition();
   const { show: showUpgrade } = useUpgradeDialog();
+  const { settings: traySettings, startupEnabled, loading: trayLoading, updateSettings: updateTray, enableStartup, disableStartup } = useTraySettings();
   const { customer, session, logout } = useAuthStore();
   const { entitlement, created, syncPhase, syncError, lastSyncAt, syncEntitlement } = useEntitlementStore();
   const { editionLabel, enabledFeatures, disabledFeatures, enabledCount, disabledCount, initialized: featureEngineInitialized } = useFeatureStore();
@@ -137,6 +139,80 @@ export default function SettingsPage() {
           <p className="mt-3 text-xs text-text-muted">
             Theme is stored locally and re-applied on next launch.
           </p>
+        </Card>
+
+        <Card title="Background & System Tray" variant="glass">
+          <div className="space-y-4">
+            {/* Close behavior */}
+            <div>
+              <div className="text-sm font-medium text-text-primary mb-2">When closing AVS Shield</div>
+              <div className="space-y-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="closeBehavior"
+                    checked={traySettings.closeBehavior === 'minimize-to-tray'}
+                    onChange={() => updateTray({ closeBehavior: 'minimize-to-tray' })}
+                    className="h-4 w-4 accent-[var(--avs-brand-primary)]"
+                  />
+                  <div>
+                    <span className="text-sm text-text-primary">Minimize to System Tray (Default)</span>
+                    <p className="text-xs text-text-muted">Window hides to tray. Protection continues in the background.</p>
+                  </div>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="closeBehavior"
+                    checked={traySettings.closeBehavior === 'exit'}
+                    onChange={() => updateTray({ closeBehavior: 'exit' })}
+                    className="h-4 w-4 accent-[var(--avs-brand-primary)]"
+                  />
+                  <div>
+                    <span className="text-sm text-text-primary">Exit Application</span>
+                    <p className="text-xs text-text-muted">Closing the window exits AVS Shield. Protection stops.</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Start with Windows */}
+            <div className="border-t border-[var(--avs-border)] pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium text-text-primary">Start AVS Shield with Windows</div>
+                  <p className="text-xs text-text-secondary">
+                    {edition === 'professional'
+                      ? 'Launch AVS Shield automatically when Windows starts. Protection begins immediately.'
+                      : 'Professional feature. Enable to start AVS Shield with Windows for continuous protection.'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => startupEnabled ? disableStartup() : enableStartup()}
+                  disabled={trayLoading}
+                  className={`relative h-6 w-11 rounded-full transition-colors ${startupEnabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'}`}
+                >
+                  <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${startupEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Notifications */}
+            <div className="border-t border-[var(--avs-border)] pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium text-text-primary">Notifications</div>
+                  <p className="text-xs text-text-secondary">Show native Windows notifications for security and system events.</p>
+                </div>
+                <button
+                  onClick={() => updateTray({ notificationsEnabled: !traySettings.notificationsEnabled })}
+                  className={`relative h-6 w-11 rounded-full transition-colors ${traySettings.notificationsEnabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'}`}
+                >
+                  <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${traySettings.notificationsEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+            </div>
+          </div>
         </Card>
 
         <Card title="Language" variant="glass">

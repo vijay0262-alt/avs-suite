@@ -7,7 +7,7 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleSuccessBanner, ModuleErrorBanner, ModuleEmptyState } from '../../components/ModuleStates';
 import { HelpButton } from '../../components/HelpButton';
-import { LiveScanProgress } from '../shared/components/LiveScanProgress';
+import { UnifiedScanProgressCard, REGISTRY_SCAN_CONFIG } from '../unified-scan';
 import { RegistryCleanerViewModel } from './RegistryCleanerViewModel';
 import { registryService } from './registry.service';
 import { CATEGORY_LABELS } from './registry.types';
@@ -124,13 +124,17 @@ export default function RegistryCleanerPage() {
             />
           )}
 
-          {/* Live scanning progress */}
+          {/* Unified scanning progress */}
           {state.scanning && (
             <div className="mb-6">
-              <LiveScanProgress
+              <UnifiedScanProgressCard
+                config={REGISTRY_SCAN_CONFIG}
                 isRunning={state.scanning}
-                scanLabel="Registry"
-                phases={Object.entries(CATEGORY_LABELS).map(([id, label]) => ({ id, label: `Scanning ${label}…` }))}
+                startTime={Date.now()}
+                counters={{
+                  registryEntries: state.issues.length,
+                  issuesFound: state.issues.length,
+                }}
               />
             </div>
           )}

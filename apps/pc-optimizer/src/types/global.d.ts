@@ -150,12 +150,29 @@ declare global {
     onEvent(cb: (event: { type: string; payload: unknown }) => void): () => void;
   }
 
+  interface AvsTrayApi {
+    getSettings(): Promise<unknown>;
+    updateSettings(patch: Record<string, unknown>): Promise<unknown>;
+    isStartupEnabled(): Promise<boolean>;
+    enableStartup(): Promise<boolean>;
+    disableStartup(): Promise<boolean>;
+    onSettingsChanged(cb: (settings: unknown) => void): () => void;
+    onAction(cb: (action: { action: string }) => void): () => void;
+    onNavigate(cb: (route: string) => void): () => void;
+  }
+
+  interface AvsNotificationsApi {
+    onEvent(cb: (notification: unknown) => void): () => void;
+  }
+
   interface Window {
     avs: {
       rpc: AvsRpcClient;
       app: AvsAppApi;
       updater: AvsUpdaterApi;
       license: AvsLicenseApi;
+      tray?: AvsTrayApi;
+      notifications?: AvsNotificationsApi;
     };
   }
 }

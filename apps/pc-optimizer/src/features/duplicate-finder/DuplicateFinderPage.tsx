@@ -8,6 +8,7 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleLoadingState, ModuleEmptyState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
 import { HelpButton } from '../../components/HelpButton';
+import { UnifiedScanProgressCard, DUPLICATE_SCAN_CONFIG } from '../unified-scan';
 import { DuplicateFinderViewModel } from './DuplicateFinderViewModel';
 import { duplicateFinderService } from './duplicate-finder.service';
 import type { DuplicateScope } from './duplicate-finder.types';
@@ -222,6 +223,16 @@ export default function DuplicateFinderPage() {
               </Button>
             </div>
           </Card>
+
+          {state.scanning && (
+            <div className="mb-4">
+              <UnifiedScanProgressCard
+                config={DUPLICATE_SCAN_CONFIG}
+                isRunning={state.scanning}
+                startTime={Date.now()}
+              />
+            </div>
+          )}
 
           {state.scanResult && (
             <>

@@ -61,6 +61,7 @@ import {
   type ScanTreeNode,
   type LiveThreatCard,
 } from './securityScanTypes';
+import { UnifiedSecurityScanProgress } from './UnifiedSecurityScanProgress';
 
 const TABS: { id: SecurityCenterTab; label: string; icon: typeof ShieldCheckIcon }[] = [
   { id: 'overview', label: 'Overview', icon: ShieldCheckIcon },
@@ -458,11 +459,6 @@ function StatusRow({ label, value, ok }: { label: string; value: string; ok: boo
 function ScanTab({ vm }: { vm: SecurityCenterViewModel }) {
   const s = vm.state;
 
-  // If scan is complete and we have an AI summary, show the summary screen
-  if (!s.isScanning && s.aiSummary) {
-    return <ScanAISummary vm={vm} />;
-  }
-
   return (
     <div className="flex gap-6">
       {/* Left Sidebar — Scan Types + Scan Now Button */}
@@ -549,7 +545,9 @@ function ScanTab({ vm }: { vm: SecurityCenterViewModel }) {
       {/* Right / Main Section — Scan Experience */}
       <div className="flex-1 space-y-6">
         {s.isScanning ? (
-          <ScanProgressView vm={vm} />
+          <UnifiedSecurityScanProgress vm={vm} />
+        ) : s.aiSummary ? (
+          <ScanAISummary vm={vm} />
         ) : (
           <ScanIdleView vm={vm} />
         )}
@@ -617,7 +615,7 @@ function ScanIdleView({ vm }: { vm: SecurityCenterViewModel }) {
 }
 
 // ─── Scan Progress View (live scanning) ──────────────────────────────
-
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function ScanProgressView({ vm }: { vm: SecurityCenterViewModel }) {
   const s = vm.state;
   const phases = s.scanMode === 'full' ? SECURITY_SCAN_PHASES : SECURITY_SCAN_PHASES.slice(0, 6);

@@ -19,6 +19,7 @@ import { HelpButton } from '../../components/HelpButton';
 import { JunkCleanerViewModel } from './JunkCleanerViewModel';
 import { junkCleanerService } from './junkCleaner.service';
 import { CategoryRow } from './components/CategoryRow';
+import { UnifiedScanProgressCard, JUNK_SCAN_CONFIG } from '../unified-scan';
 import { ScanProgress } from './components/ScanProgress';
 import { DetailsTable } from './components/DetailsTable';
 import { PreviewDialog } from './components/PreviewDialog';
@@ -320,7 +321,23 @@ export default function JunkCleanerPage() {
             </div>
           )}
 
-          {scanEverStarted && <ScanProgress snapshot={state.snapshot} />}
+          {scanEverStarted && state.snapshot.status === 'running' && (
+            <div className="mb-4">
+              <UnifiedScanProgressCard
+                config={JUNK_SCAN_CONFIG}
+                isRunning={state.snapshot.status === 'running'}
+                progress={state.snapshot.progress ?? 0}
+                currentFile={state.snapshot.currentPath ?? null}
+                startTime={state.snapshot.startedAt ?? null}
+                counters={{
+                  filesScanned: state.snapshot.totalFiles ?? 0,
+                  junkFiles: state.snapshot.totalItems ?? 0,
+                  junkSize: state.snapshot.totalBytes ?? 0,
+                }}
+              />
+            </div>
+          )}
+          {scanEverStarted && state.snapshot.status !== 'running' && <ScanProgress snapshot={state.snapshot} />}
 
           <Card
             title="Categories"

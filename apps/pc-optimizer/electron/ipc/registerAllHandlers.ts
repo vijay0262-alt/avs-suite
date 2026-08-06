@@ -18,6 +18,9 @@ import { exec } from 'child_process';
 import type { RpcClient } from './pythonBridge';
 import type { LicenseBridge } from '../licensing/licenseBridge';
 import { checkForUpdates as updaterCheck, downloadUpdate as updaterDownload, quitAndInstall as updaterInstall } from '../updater/updater';
+import { getTraySettings, updateTraySettings, onSettingsChanged, type TraySettings } from '../tray/traySettings';
+import { isStartupEnabled, enableStartup, disableStartup } from '../tray/windowsStartup';
+import { onNotification, type AvsNotification } from '../notifications/NotificationManager';
 
 export interface IpcDependencies {
   rpc: RpcClient;
@@ -337,6 +340,56 @@ function registerUpdaterHandlers(): void {
   registerHandler('avs:updater:install', () => updaterInstall());
 }
 
+// ── Tray & background service handlers ──────────────────────
+
+function registerTrayHandlers(logger: Logger): void {
+  // Get current tray settings
+  registerHandler('avs:tray:getSettings', () => {
+    return getTraySettings();
+  });
+
+  // Update tray settings
+  registerHandler('avs:tray:updateSettings', (_e, patch: Partial<TraySettings>) => {
+    const updated = updateTraySettings(patch);
+    logger.info('[ipc] Tray settings updated', patch);
+    return updated;
+  });
+
+  // Check if startup with Windows is enabled
+  registerHandler('avs:tray:isStartupEnabled', () => {
+    return isStartupEnabled();
+  });
+
+  // Enable startup with Windows
+  registerHandler('avs:tray:enableStartup', () => {
+    return enableStartup(logger);
+  });
+
+  // Disable startup with Windows
+  registerHandler('avs:tray:disableStartup', () => {
+    return disableStartup(logger);
+  });
+
+  // Subscribe to settings changes (push to renderer)
+  onSettingsChanged((settings) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send('avs:tray:settingsChanged', settings);
+    }
+  });
+}
+
+// ── Notification handlers ────────────────────────────────────
+
+function registerNotificationHandlers(logger: Logger): void {
+  // Subscribe to notifications (push to renderer for in-app toasts)
+  onNotification((notification: AvsNotification) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send('avs:notification:event', notification);
+    }
+  });
+  logger.info('[ipc] Notification handlers registered');
+}
+
 // ── Auto-update interval tracking ───────────────────────────
 
 const autoUpdateIntervals = new Set<NodeJS.Timeout>();
@@ -374,6 +427,8 @@ export function registerAllHandlers(deps: IpcDependencies): void {
   registerRpcHandler(rpc, logger);
   registerLicenseHandlers(licenseBridge, logger);
   registerUpdaterHandlers();
+  registerTrayHandlers(logger);
+  registerNotificationHandlers(logger);
 
   logger.info(`[ipc] All IPC handlers registered (${registeredChannels.size} channels)`);
 }

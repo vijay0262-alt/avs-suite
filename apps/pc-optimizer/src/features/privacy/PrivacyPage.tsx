@@ -8,7 +8,7 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleLoadingState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
 import { HelpButton } from '../../components/HelpButton';
-import { LiveScanProgress } from '../shared/components/LiveScanProgress';
+import { UnifiedScanProgressCard, PRIVACY_SCAN_CONFIG } from '../unified-scan';
 import { PrivacyViewModel } from './PrivacyViewModel';
 import { privacyService } from './privacy.service';
 import { useFeatureGuard } from '../licensing/useFeatureGuard';
@@ -223,19 +223,16 @@ export default function PrivacyPage() {
             </div>
           </Card>
 
-          {/* Live scanning progress */}
+          {/* Unified scanning progress */}
           {state.scanning && (
             <div className="mb-4">
-              <LiveScanProgress
+              <UnifiedScanProgressCard
+                config={PRIVACY_SCAN_CONFIG}
                 isRunning={state.scanning}
-                scanLabel="Privacy"
-                phases={[
-                  { id: 'browser', label: 'Scanning browser traces…' },
-                  { id: 'cookies', label: 'Checking cookies and cache…' },
-                  { id: 'history', label: 'Analyzing browsing history…' },
-                  { id: 'temp', label: 'Scanning temporary files…' },
-                  { id: 'recent', label: 'Checking recent activity…' },
-                ]}
+                startTime={Date.now()}
+                counters={{
+                  privacyItems: state.scanResult?.items.length ?? 0,
+                }}
               />
             </div>
           )}

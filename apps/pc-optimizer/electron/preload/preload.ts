@@ -105,6 +105,35 @@ const api = {
       return () => ipcRenderer.removeListener('avs:license:event', wrapped);
     },
   },
+  tray: {
+    getSettings: (): Promise<unknown> => invokeWithTimeout('avs:tray:getSettings'),
+    updateSettings: (patch: Record<string, unknown>): Promise<unknown> => invokeWithTimeout('avs:tray:updateSettings', patch),
+    isStartupEnabled: (): Promise<boolean> => invokeWithTimeout<boolean>('avs:tray:isStartupEnabled'),
+    enableStartup: (): Promise<boolean> => invokeWithTimeout<boolean>('avs:tray:enableStartup'),
+    disableStartup: (): Promise<boolean> => invokeWithTimeout<boolean>('avs:tray:disableStartup'),
+    onSettingsChanged(cb: (settings: unknown) => void): () => void {
+      const wrapped = (_e: Electron.IpcRendererEvent, settings: unknown) => cb(settings);
+      ipcRenderer.on('avs:tray:settingsChanged', wrapped);
+      return () => ipcRenderer.removeListener('avs:tray:settingsChanged', wrapped);
+    },
+    onAction(cb: (action: { action: string }) => void): () => void {
+      const wrapped = (_e: Electron.IpcRendererEvent, action: { action: string }) => cb(action);
+      ipcRenderer.on('avs:tray:action', wrapped);
+      return () => ipcRenderer.removeListener('avs:tray:action', wrapped);
+    },
+    onNavigate(cb: (route: string) => void): () => void {
+      const wrapped = (_e: Electron.IpcRendererEvent, route: string) => cb(route);
+      ipcRenderer.on('avs:tray:navigate', wrapped);
+      return () => ipcRenderer.removeListener('avs:tray:navigate', wrapped);
+    },
+  },
+  notifications: {
+    onEvent(cb: (notification: unknown) => void): () => void {
+      const wrapped = (_e: Electron.IpcRendererEvent, notification: unknown) => cb(notification);
+      ipcRenderer.on('avs:notification:event', wrapped);
+      return () => ipcRenderer.removeListener('avs:notification:event', wrapped);
+    },
+  },
 } as const;
 
 contextBridge.exposeInMainWorld('avs', api);
