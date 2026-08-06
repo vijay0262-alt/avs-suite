@@ -9,7 +9,7 @@ import {
   getArchitectureString,
 } from '../config/version';
 import { useState, useEffect, useCallback } from 'react';
-import { useEdition, useEditionManager } from '../config/EditionManager';
+import { useEditionManager } from '../config/EditionManager';
 import { UpdateManager } from '../features/licensing/UpdateManager';
 
 const { APP_METADATA } = constants;
@@ -36,7 +36,6 @@ interface SdkInfo {
 export default function AboutPage() {
   const versionInfo = getVersionInfo();
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ status: 'idle' });
-  const edition = useEdition();
   const { isOffline, isActivated } = useEditionManager();
   const licenseStatus = isActivated ? 'ACTIVATED' : 'FREE';
   const [sdkInfo, setSdkInfo] = useState<SdkInfo | null>(null);
