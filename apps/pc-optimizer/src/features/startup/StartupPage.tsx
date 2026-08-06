@@ -23,6 +23,7 @@ import {
   ArrowPathIcon,
   LockClosedIcon,
   ShieldCheckIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 type SortBy = 'name' | 'impact' | 'publisher' | 'status';
@@ -114,6 +115,48 @@ export default function StartupPage() {
 
   const handleRefresh = () => {
     void vm.loadEntries();
+  };
+
+  const [proFeatureModal, setProFeatureModal] = useState<{ title: string; content: string } | null>(null);
+
+  const handleProFeature = (feature: string) => {
+    const enabled = state.entries.filter((e) => e.enabled);
+    const highImpact = enabled.filter((e) => e.impact === 'high');
+    const mediumImpact = enabled.filter((e) => e.impact === 'medium');
+    const lowImpact = enabled.filter((e) => e.impact === 'low');
+
+    switch (feature) {
+      case 'recommendations':
+        setProFeatureModal({
+          title: 'Startup Recommendations',
+          content: highImpact.length > 0
+            ? `Found ${highImpact.length} high-impact startup entries. Consider disabling: ${highImpact.slice(0, 5).map((e) => e.name).join(', ')}${highImpact.length > 5 ? ' and others' : ''}. These applications significantly slow down your boot time.`
+            : 'No high-impact startup entries detected. Your startup configuration is well-optimized.',
+        });
+        break;
+      case 'impact-analysis':
+        setProFeatureModal({
+          title: 'Startup Impact Analysis',
+          content: `Enabled entries: ${enabled.length}\nHigh impact: ${highImpact.length}\nMedium impact: ${mediumImpact.length}\nLow impact: ${lowImpact.length}\n\nHigh-impact applications consume significant CPU, memory, and disk resources during boot, delaying your system's readiness by several seconds each.`,
+        });
+        break;
+      case 'auto-delay':
+        setProFeatureModal({
+          title: 'Auto-Delay Configuration',
+          content: 'Auto-Delay will gradually launch non-critical startup programs after boot, prioritizing essential system services first. This reduces peak boot resource contention and gets you to a responsive desktop faster. Configure which applications to delay based on impact level.',
+        });
+        break;
+      case 'history':
+        setProFeatureModal({
+          title: 'Startup History',
+          content: state.backups.length > 0
+            ? `Found ${state.backups.length} recorded changes. Recent changes:\n${state.backups.slice(0, 5).map((b) => `• ${b.entryName} — ${b.timestamp}`).join('\n')}`
+            : 'No startup changes have been recorded yet. Changes will appear here after you disable or enable startup entries.',
+        });
+        break;
+      default:
+        break;
+    }
   };
 
   const enabledCount = state.entries.filter((e) => e.enabled).length;
@@ -343,7 +386,7 @@ export default function StartupPage() {
                     </div>
                   </div>
                   {isPro ? (
-                    <Button variant="secondary" size="sm" leftIcon={<SparklesIcon className="h-4 w-4" />}>
+                    <Button variant="secondary" size="sm" leftIcon={<SparklesIcon className="h-4 w-4" />} onClick={() => handleProFeature('recommendations')}>
                       Get Recommendations
                     </Button>
                   ) : (
@@ -380,7 +423,7 @@ export default function StartupPage() {
                     </div>
                   </div>
                   {isPro ? (
-                    <Button variant="secondary" size="sm" leftIcon={<ChartBarIcon className="h-4 w-4" />}>
+                    <Button variant="secondary" size="sm" leftIcon={<ChartBarIcon className="h-4 w-4" />} onClick={() => handleProFeature('impact-analysis')}>
                       View Analysis
                     </Button>
                   ) : (
@@ -417,7 +460,7 @@ export default function StartupPage() {
                     </div>
                   </div>
                   {isPro ? (
-                    <Button variant="secondary" size="sm" leftIcon={<ArrowPathIcon className="h-4 w-4" />}>
+                    <Button variant="secondary" size="sm" leftIcon={<ArrowPathIcon className="h-4 w-4" />} onClick={() => handleProFeature('auto-delay')}>
                       Configure Delay
                     </Button>
                   ) : (
@@ -454,7 +497,7 @@ export default function StartupPage() {
                     </div>
                   </div>
                   {isPro ? (
-                    <Button variant="secondary" size="sm" leftIcon={<ClockIcon className="h-4 w-4" />}>
+                    <Button variant="secondary" size="sm" leftIcon={<ClockIcon className="h-4 w-4" />} onClick={() => handleProFeature('history')}>
                       View History
                     </Button>
                   ) : (
@@ -497,6 +540,43 @@ export default function StartupPage() {
           </div>
 
           {dialogElement}
+
+          {proFeatureModal && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="pro-feature-modal-title"
+              onClick={() => setProFeatureModal(null)}
+            >
+              <div
+                className="max-w-lg w-full mx-4 rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-[var(--avs-surface)] shadow-[var(--avs-shadow-xl,var(--avs-shadow-lg))]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <header className="flex items-center justify-between border-b border-[var(--avs-border)] px-6 py-4">
+                  <h2 id="pro-feature-modal-title" className="text-section-title font-semibold text-text-primary">
+                    {proFeatureModal.title}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setProFeatureModal(null)}
+                    className="rounded-[var(--avs-radius-md)] p-1 text-text-muted hover:bg-[var(--avs-surface-muted)] hover:text-text-primary outline-none focus-visible:shadow-focus"
+                    aria-label="Close"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </header>
+                <div className="max-h-[60vh] overflow-y-auto px-6 py-4">
+                  <p className="text-small text-text-secondary whitespace-pre-line">{proFeatureModal.content}</p>
+                </div>
+                <footer className="flex items-center justify-end gap-2 border-t border-[var(--avs-border)] px-6 py-3">
+                  <Button variant="secondary" size="sm" onClick={() => setProFeatureModal(null)}>
+                    Close
+                  </Button>
+                </footer>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

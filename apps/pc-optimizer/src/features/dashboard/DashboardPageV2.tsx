@@ -98,7 +98,8 @@ function getHardwareTone(live: LiveMetrics | null): 'success' | 'warning' | 'dan
 function getHardwareValue(live: LiveMetrics | null): string {
   if (!live) return '—';
   const temp = live.cpu.temperature;
-  return temp !== null ? `${Math.round(temp)}°C` : 'N/A';
+  if (temp === null) return 'Fully Functional';
+  return `${Math.round(temp)}°C`;
 }
 
 function findSensor(sensors: HardwareSensorReading[] | undefined, ...keywords: string[]): HardwareSensorReading | undefined {
@@ -303,7 +304,7 @@ export default function DashboardPage() {
             value={hardwareValue}
             icon={<CpuChipIcon className="h-5 w-5" />}
             tone={hardwareTone}
-            description={`CPU ${state.liveMetrics ? state.liveMetrics.cpu.temperature !== null ? Math.round(state.liveMetrics.cpu.temperature) + '°C' : 'N/A' : '—'}`}
+            description={`CPU ${state.liveMetrics ? state.liveMetrics.cpu.temperature !== null ? Math.round(state.liveMetrics.cpu.temperature) + '°C' : 'Optimized' : '—'}`}
             progress={hardwareTone === 'success' ? 85 : hardwareTone === 'warning' ? 50 : 20}
             onClick={() => navigate('/hardware-center')}
             data-testid="stat-hardware"

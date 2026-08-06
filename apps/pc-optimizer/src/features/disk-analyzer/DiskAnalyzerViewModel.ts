@@ -89,8 +89,30 @@ export class DiskAnalyzerViewModel extends ViewModel<DiskAnalyzerState> {
           timestamp: Date.now(),
         });
       }
-      // Re-analyze to refresh the file list
-      await this.analyze(this.state.maxDepth);
+      // Remove deleted files from the current analysis result in-place
+      // instead of re-analyzing, so the user sees the delete result immediately
+      if (this.state.analysisResult) {
+        const deletedPaths = new Set(files);
+        const updatedCategorized: Record<string, typeof this.state.analysisResult.categorizedFiles[string]> = {};
+        for (const [cat, catFiles] of Object.entries(this.state.analysisResult.categorizedFiles)) {
+          updatedCategorized[cat] = catFiles.filter(f => !deletedPaths.has(f.path));
+        }
+        const updatedCategorySummary = this.state.analysisResult.categorySummary
+          .map(cat => ({
+            ...cat,
+            fileCount: updatedCategorized[cat.category]?.length ?? 0,
+            totalSize: (updatedCategorized[cat.category] ?? []).reduce((sum, f) => sum + f.size, 0),
+          }))
+          .filter(cat => cat.fileCount > 0);
+        this.setState({
+          analysisResult: {
+            ...this.state.analysisResult,
+            categorizedFiles: updatedCategorized,
+            categorySummary: updatedCategorySummary,
+            fileCount: this.state.analysisResult.fileCount - result.deleted,
+          },
+        });
+      }
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to delete files';
       this.setState({ deleting: false, deleteError: error });

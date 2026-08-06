@@ -5,12 +5,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, Button } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
-import { ModuleErrorState, ModuleEmptyState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
+import { ModuleErrorState, ModuleEmptyState, ModuleSuccessBanner, ModuleErrorBanner, ModuleLoadingState } from '../../components/ModuleStates';
 import { SharedConfirmDialog } from '../../components/SharedConfirmDialog';
 import { HelpButton } from '../../components/HelpButton';
 import { UpdaterViewModel } from './UpdaterViewModel';
 import { updaterService } from './updater.service';
 import { useFeatureGuard } from '../licensing/useFeatureGuard';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
 export default function UpdaterPage() {
   const vm = useMemo(() => new UpdaterViewModel(updaterService), []);
@@ -44,16 +45,21 @@ export default function UpdaterPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
               <h2 className="text-section-title font-semibold text-text-primary">Updates</h2>
-              {state.available ? (
+              {state.loading ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <ArrowPathIcon className="h-4 w-4 text-brand-primary animate-spin" aria-hidden />
+                  <p className="text-small text-text-secondary">Checking for updates…</p>
+                </div>
+              ) : state.available ? (
                 <p className="text-small text-text-secondary">
                   {state.upgrades.length} update{state.upgrades.length !== 1 ? 's' : ''} available
                 </p>
               ) : (
-                <p className="text-small text-red-400">{state.reason}</p>
+                <p className="text-small text-semantic-danger">{state.reason}</p>
               )}
             </div>
             <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => vm.refresh()} disabled={state.loading}>
+              <Button variant="secondary" onClick={() => vm.refresh()} disabled={state.loading} leftIcon={state.loading ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : undefined}>
                 {state.loading ? 'Checking…' : 'Check for Updates'}
               </Button>
               {state.upgrades.length > 0 && (
@@ -63,6 +69,13 @@ export default function UpdaterPage() {
               )}
             </div>
           </div>
+
+          {state.loading && (
+            <ModuleLoadingState
+              message="Scanning installed applications for available updates…"
+              testId="updater-checking"
+            />
+          )}
 
           {state.actionMessage && (
             <ModuleSuccessBanner

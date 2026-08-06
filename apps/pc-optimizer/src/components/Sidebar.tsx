@@ -104,10 +104,12 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'browser-cleaner', to: '/browser-cleaner', labelKey: 'nav.browserCleaner', Icon: GlobeAltIcon, proEnhanced: true },
       { id: 'registry-cleaner', to: '/registry-cleaner', labelKey: 'nav.registryCleaner', Icon: WrenchScrewdriverIcon },
       { id: 'duplicate-finder', to: '/duplicate-finder', labelKey: 'nav.duplicateFinder', Icon: DocumentDuplicateIcon, proEnhanced: true },
-      { id: 'large-files', to: '/large-files', labelKey: 'nav.largeFiles', Icon: CircleStackIcon },
+      // Large Files disabled — merged into Disk Analyzer
+      // { id: 'large-files', to: '/large-files', labelKey: 'nav.largeFiles', Icon: CircleStackIcon },
       { id: 'uninstaller', to: '/uninstaller', labelKey: 'nav.uninstaller', Icon: ArchiveBoxXMarkIcon, proEnhanced: true },
       { id: 'software-updater', to: '/software-updater', labelKey: 'nav.softwareUpdater', Icon: ArrowPathIcon, proEnhanced: true },
-      { id: 'maintenance-history', to: '/maintenance-history', labelKey: 'nav.maintenanceHistory', Icon: ClipboardDocumentListIcon, proEnhanced: true },
+      // Maintenance History disabled
+      // { id: 'maintenance-history', to: '/maintenance-history', labelKey: 'nav.maintenanceHistory', Icon: ClipboardDocumentListIcon, proEnhanced: true },
       { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon, proEnhanced: true },
       { id: 'recovery-center', to: '/recovery-center', labelKey: 'nav.recoveryCenter', Icon: LifebuoyIcon },
     ],
@@ -118,9 +120,12 @@ const NAV_SECTIONS: readonly NavSection[] = [
     labelKey: 'nav.section.reports',
     entries: [
       { id: 'reports', to: '/reports', labelKey: 'nav.reports', Icon: DocumentChartBarIcon },
-      { id: 'reports-timeline', to: '/reports-timeline', labelKey: 'nav.reportsTimeline', Icon: ClockIcon },
-      { id: 'analytics', to: '/analytics', labelKey: 'nav.analytics', Icon: ChartBarIcon },
-      { id: 'export-center', to: '/export-center', labelKey: 'nav.exportCenter', Icon: DocumentArrowDownIcon },
+      // Reports Timeline disabled
+      // { id: 'reports-timeline', to: '/reports-timeline', labelKey: 'nav.reportsTimeline', Icon: ClockIcon },
+      // Analytics disabled
+      // { id: 'analytics', to: '/analytics', labelKey: 'nav.analytics', Icon: ChartBarIcon },
+      // Export Center disabled
+      // { id: 'export-center', to: '/export-center', labelKey: 'nav.exportCenter', Icon: DocumentArrowDownIcon },
     ],
   },
   // ── TOOLS ─────────────────────────────────────────────────────

@@ -20,6 +20,7 @@ import {
   ArrowTrendingUpIcon,
   WrenchScrewdriverIcon,
   LockClosedIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -208,16 +209,25 @@ export default function DiskAnalyzerPage() {
             />
           )}
 
-          {state.analysisResult && !state.analyzing && (
+          {state.deleting && (
+            <ModuleLoadingState
+              message="Deleting selected files…"
+              testId="disk-analyzer-deleting"
+            />
+          )}
+
+          {state.analysisResult && !state.analyzing && !state.deleting && (
             <>
               {/* Delete result feedback */}
               {state.deleteResult && (
                 <Card className="mb-4">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-small font-semibold text-text-primary">
-                        Deleted {state.deleteResult.deleted} files, freed {vm.formatBytes(state.deleteResult.bytesFreed)}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <CheckCircleIcon className="h-5 w-5 text-semantic-success shrink-0" />
+                      <div>
+                        <p className="text-small font-semibold text-semantic-success">
+                          Deleted {state.deleteResult.deleted} file(s) successfully — freed {vm.formatBytes(state.deleteResult.bytesFreed)}
+                        </p>
                       {state.deleteResult.failed > 0 && (
                         <p className="text-caption text-semantic-danger mt-1">
                           {state.deleteResult.failed} files could not be deleted
@@ -235,6 +245,7 @@ export default function DiskAnalyzerPage() {
                           )}
                         </div>
                       )}
+                      </div>
                     </div>
                     <Button variant="secondary" onClick={() => vm.clearSelection()}>Dismiss</Button>
                   </div>

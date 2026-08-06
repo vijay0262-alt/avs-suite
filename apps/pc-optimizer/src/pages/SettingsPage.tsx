@@ -265,12 +265,12 @@ export default function SettingsPage() {
                   <p className="text-caption font-medium text-text-muted mb-3">Included with your subscription</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {[
-                      { label: 'AVS AI Assistant Unlimited', icon: SparklesIcon },
-                      { label: 'AI Active Protection', icon: CheckCircleIcon },
+                      { label: 'Active Protection', icon: CheckCircleIcon },
                       { label: 'Unlimited Optimization', icon: RocketLaunchIcon },
                       { label: 'Predictive Health', icon: ArrowPathIcon },
                       { label: 'Priority Updates', icon: CloudArrowDownIcon },
                       { label: 'Background Monitoring', icon: CheckCircleIcon },
+                      { label: 'Smart Optimize', icon: SparklesIcon },
                     ].map((feat) => (
                       <div key={feat.label} className="flex items-center gap-2">
                         <feat.icon className="h-4 w-4 text-brand-primary shrink-0" />
@@ -326,16 +326,15 @@ export default function SettingsPage() {
                   </thead>
                   <tbody>
                     {[
-                      { label: 'AI Dashboard & Health Scores', free: true, pro: true },
-                      { label: 'AI Daily Briefing', free: '1/day', pro: 'Unlimited' },
-                      { label: 'AI Smart Optimize', free: '5/run', pro: 'Unlimited' },
-                      { label: 'AVS AI Assistant Questions', free: '20/day', pro: 'Unlimited' },
+                      { label: 'Dashboard & Health Scores', free: true, pro: true },
+                      { label: 'Daily Briefing', free: '1/day', pro: 'Unlimited' },
+                      { label: 'Smart Optimize', free: '5/run', pro: 'Unlimited' },
                       { label: 'Junk Cleaner', free: '500 MB/run', pro: 'Unlimited' },
                       { label: 'Registry Cleaner', free: '50 issues', pro: 'Unlimited' },
                       { label: 'Startup Manager', free: '3 entries', pro: 'Unlimited' },
                       { label: 'Browser Cleaner', free: '1 browser', pro: 'All browsers' },
                       { label: 'Duplicate Finder', free: '20 files', pro: 'Unlimited' },
-                      { label: 'Large File Analyzer', free: '10 files', pro: 'Unlimited' },
+                      { label: 'Disk Analyzer', free: '10 files', pro: 'Unlimited' },
                       { label: 'Software Uninstaller', free: 'Manual', pro: 'Batch + cleanup' },
                       { label: 'Process Intelligence', free: 'Top 10', pro: 'Unlimited' },
                       { label: 'Hardware Center History', free: '24 hours', pro: 'Unlimited' },
@@ -344,7 +343,6 @@ export default function SettingsPage() {
                       { label: 'Scheduled Scans', free: 'Pro only', pro: true },
                       { label: 'Automatic Optimization', free: 'Pro only', pro: true },
                       { label: 'Background Monitoring', free: 'Pro only', pro: true },
-                      { label: 'Export Formats', free: 'PDF', pro: 'PDF, CSV, JSON, Excel' },
                       { label: 'Priority Support', free: 'Pro only', pro: true },
                     ].map((row) => (
                       <tr key={row.label} className="border-t border-[var(--avs-border)]">
@@ -408,15 +406,8 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card title="Telemetry" variant="glass">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-small font-medium text-text-primary">Anonymous usage data</div>
-              <p className="text-caption text-text-secondary">Help improve AVS Shield Optimizer by sending anonymous diagnostics. No personal data is collected.</p>
-            </div>
-            <Badge tone="neutral" data-testid="settings-telemetry-toggle">Disabled</Badge>
-          </div>
-        </Card>
+        {/* Telemetry disabled */}
+        {/* <Card title="Telemetry" variant="glass"> ... </Card> */}
 
         <Card title="AVS Shield Account" variant="glass">
           <div className="flex items-center justify-between">
@@ -452,458 +443,13 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card
-          title="Optimizer Entitlement"
-          variant="glass"
-          actions={
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void syncEntitlement('optimizer')}
-              loading={syncPhase === 'syncing'}
-              leftIcon={<ArrowPathIcon className="h-4 w-4" />}
-              data-testid="settings-entitlement-resync"
-            >
-              Sync
-            </Button>
-          }
-        >
-          {entitlement ? (
-            <div className="space-y-2" data-testid="settings-entitlement-info">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-small">
-                <span className="text-text-muted">Product</span>
-                <span className="text-text-primary">{entitlement.product_name}</span>
-                <span className="text-text-muted">Edition</span>
-                <span className="text-text-primary">{entitlement.edition}</span>
-                <span className="text-text-muted">Status</span>
-                <span>
-                  <Badge tone={entitlement.status === 'ACTIVE' ? 'success' : 'neutral'}>
-                    {entitlement.status}
-                  </Badge>
-                </span>
-                <span className="text-text-muted">Activation Type</span>
-                <span className="text-text-primary">{entitlement.activation_type}</span>
-                <span className="text-text-muted">Auto Renew</span>
-                <span className="text-text-primary">{entitlement.auto_renew ? 'Yes' : 'No'}</span>
-                <span className="text-text-muted">Provisioning</span>
-                <span className="text-text-primary">{created ? 'Newly created' : 'Existing'}</span>
-                <span className="text-text-muted">Valid Until</span>
-                <span className="text-text-primary">{entitlement.valid_until ?? 'Lifetime'}</span>
-                <span className="text-text-muted">Last Sync</span>
-                <span className="text-text-primary">{lastSyncAt ? new Date(lastSyncAt).toLocaleString() : '—'}</span>
-              </div>
-            </div>
-          ) : syncError ? (
-            <div className="space-y-2" data-testid="settings-entitlement-error">
-              <p className="text-small text-semantic-danger">{syncError}</p>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => void syncEntitlement('optimizer')}
-                data-testid="settings-entitlement-retry"
-              >
-                Retry Sync
-              </Button>
-            </div>
-          ) : syncPhase === 'syncing' ? (
-            <p className="text-small text-text-muted" data-testid="settings-entitlement-syncing">
-              Synchronizing entitlement…
-            </p>
-          ) : (
-            <p className="text-small text-text-muted" data-testid="settings-entitlement-empty">
-              No entitlement synced yet.
-            </p>
-          )}
-        </Card>
-
-        <Card
-          title="Subscription"
-          variant="glass"
-          actions={
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void syncSubscription().catch(() => {})}
-              loading={subLoading}
-              leftIcon={<ArrowPathIcon className="h-4 w-4" />}
-              data-testid="settings-subscription-refresh"
-            >
-              Refresh
-            </Button>
-          }
-        >
-          {subscription ? (
-            <div className="space-y-2" data-testid="settings-subscription-info">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-small">
-                <span className="text-text-muted">Plan</span>
-                <span className="text-text-primary">{subscription.plan}</span>
-                <span className="text-text-muted">Status</span>
-                <span>
-                  <Badge tone={subscription.status === 'ACTIVE' ? 'success' : 'neutral'}>
-                    {subscription.status}
-                  </Badge>
-                </span>
-                <span className="text-text-muted">Started</span>
-                <span className="text-text-primary">{subscription.started_at ? new Date(subscription.started_at).toLocaleDateString() : '—'}</span>
-                <span className="text-text-muted">Expires</span>
-                <span className="text-text-primary">{subscription.expires_at ? new Date(subscription.expires_at).toLocaleDateString() : '—'}</span>
-                <span className="text-text-muted">Last Sync</span>
-                <span className="text-text-primary">{subLastSyncAt ? new Date(subLastSyncAt).toLocaleString() : '—'}</span>
-                <span className="text-text-muted">Connection</span>
-                <span>
-                  <Badge tone={connectionStatus === 'connected' ? 'success' : connectionStatus === 'checking' ? 'warning' : 'danger'}>
-                    {connectionStatus === 'connected' ? 'Connected' : connectionStatus === 'checking' ? 'Checking…' : 'Disconnected'}
-                  </Badge>
-                </span>
-              </div>
-
-              {subscription.features.length > 0 && (
-                <div>
-                  <div className="text-caption font-medium text-text-muted mb-1">Features</div>
-                  <div className="flex flex-wrap gap-1">
-                    {subscription.features.map((f) => (
-                      <span key={f} className="inline-flex items-center gap-1 rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface-muted)] px-2 py-0.5 text-caption text-text-secondary">
-                        <CheckCircleIcon className="h-3 w-3 text-semantic-success" />
-                        {f}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : subError ? (
-            <div className="space-y-2" data-testid="settings-subscription-error">
-              <p className="text-small text-semantic-danger">{subError}</p>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => void syncSubscription().catch(() => {})}
-                data-testid="settings-subscription-retry"
-              >
-                Retry
-              </Button>
-            </div>
-          ) : subLoading ? (
-            <p className="text-small text-text-muted" data-testid="settings-subscription-loading">
-              Loading subscription…
-            </p>
-          ) : (
-            <p className="text-small text-text-muted" data-testid="settings-subscription-empty">
-              No subscription data available.
-            </p>
-          )}
-        </Card>
-
-        <Card
-          title="Feature Engine"
-          variant="glass"
-          actions={
-            <Badge tone={featureEngineInitialized ? 'success' : 'neutral'}>
-              {featureEngineInitialized ? 'Active' : 'Inactive'}
-            </Badge>
-          }
-        >
-          <div className="space-y-3" data-testid="settings-feature-engine">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-small">
-              <span className="text-text-muted">License Edition</span>
-              <span className="text-text-primary">{editionLabel}</span>
-              <span className="text-text-muted">Enabled Features</span>
-              <span className="text-text-primary">{enabledCount} / {enabledCount + disabledCount}</span>
-              <span className="text-text-muted">Disabled Features</span>
-              <span className="text-text-primary">{disabledCount}</span>
-            </div>
-
-            {enabledFeatures.length > 0 && (
-              <div>
-                <div className="text-caption font-medium text-text-muted mb-1">Enabled</div>
-                <div className="flex flex-wrap gap-1">
-                  {enabledFeatures.map((f) => (
-                    <span key={f} className="inline-flex items-center gap-1 rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface-muted)] px-2 py-0.5 text-caption text-text-secondary">
-                      <CheckCircleIcon className="h-3 w-3 text-semantic-success" />
-                      {FEATURE_LABELS[f]}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {disabledFeatures.length > 0 && (
-              <div>
-                <div className="text-caption font-medium text-text-muted mb-1">Disabled</div>
-                <div className="flex flex-wrap gap-1">
-                  {disabledFeatures.map((f) => (
-                    <span key={f} className="inline-flex items-center gap-1 rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface-muted)] px-2 py-0.5 text-caption text-text-muted">
-                      <StarIcon className="h-3 w-3 text-semantic-warning/60" />
-                      {FEATURE_LABELS[f]}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </Card>
-
-        <Card
-          title="Updates"
-          variant="glass"
-          actions={
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => void checkForUpdates('optimizer')}
-                loading={updateStatus === 'checking'}
-                leftIcon={<CloudArrowDownIcon className="h-4 w-4" />}
-                data-testid="settings-update-check"
-              >
-                Check Now
-              </Button>
-              {updateStatus === 'downloading' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => cancelUpdateDownload()}
-                  leftIcon={<XCircleIcon className="h-4 w-4" />}
-                  data-testid="settings-update-cancel"
-                >
-                  Cancel
-                </Button>
-              )}
-              {updateStatus === 'update-available' && updateManifest && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => void downloadUpdate('optimizer')}
-                  leftIcon={<ArrowDownTrayIcon className="h-4 w-4" />}
-                  data-testid="settings-update-download"
-                >
-                  Download
-                </Button>
-              )}
-              {updateStatus === 'downloaded' && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => void verifyUpdate()}
-                  data-testid="settings-update-verify"
-                >
-                  Verify
-                </Button>
-              )}
-              {updateStatus === 'verified' && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => void prepareInstaller()}
-                  data-testid="settings-update-prepare"
-                >
-                  Prepare
-                </Button>
-              )}
-              {updateStatus === 'ready' && updateInstaller && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => void launchInstaller()}
-                  leftIcon={<RocketLaunchIcon className="h-4 w-4" />}
-                  data-testid="settings-update-install"
-                >
-                  Install
-                </Button>
-              )}
-            </div>
-          }
-        >
-          <div className="space-y-3" data-testid="settings-update-section">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-small">
-              <span className="text-text-muted">Current Version</span>
-              <span className="text-text-primary">{updateCurrentVersion}</span>
-              <span className="text-text-muted">Latest Version</span>
-              <span className="text-text-primary">{updateInfo?.latestVersion ?? '—'}</span>
-              <span className="text-text-muted">Release Channel</span>
-              <span className="text-text-primary">{updateManifest?.releaseChannel ?? '—'}</span>
-              <span className="text-text-muted">Published Date</span>
-              <span className="text-text-primary">{updateManifest?.publishedAt ? new Date(updateManifest.publishedAt).toLocaleDateString() : '—'}</span>
-              <span className="text-text-muted">File Size</span>
-              <span className="text-text-primary">{updateManifest?.fileSize ? `${(updateManifest.fileSize / 1024 / 1024).toFixed(1)} MB` : '—'}</span>
-              <span className="text-text-muted">Update Status</span>
-              <span>
-                <Badge tone={
-                  updateStatus === 'no-update' ? 'success' :
-                  updateStatus === 'update-available' ? 'warning' :
-                  updateStatus === 'downloading' || updateStatus === 'verifying' || updateStatus === 'preparing' ? 'neutral' :
-                  updateStatus === 'downloaded' || updateStatus === 'verified' || updateStatus === 'ready' ? 'success' :
-                  updateStatus === 'error' ? 'danger' : 'neutral'
-                }>
-                  {updateStatus}
-                </Badge>
-              </span>
-              <span className="text-text-muted">Last Check</span>
-              <span className="text-text-primary">{updateLastCheckAt ? new Date(updateLastCheckAt).toLocaleString() : '—'}</span>
-            </div>
-
-            {updateForceUpdate && updateStatus === 'update-available' && (
-              <div className="rounded-[var(--avs-radius-md)] bg-semantic-danger/10 border border-semantic-danger/30 px-3 py-2" data-testid="settings-force-update-notice">
-                <p className="text-small text-semantic-danger">
-                  A mandatory update is available. Premium features will be limited until the update is installed.
-                </p>
-              </div>
-            )}
-
-            {downloadProgress && updateStatus === 'downloading' && (
-              <div data-testid="settings-download-progress">
-                <div className="flex items-center justify-between text-caption text-text-muted mb-1">
-                  <span>Downloading… {downloadProgress.percent.toFixed(0)}%</span>
-                  <span>{(downloadProgress.downloadedBytes / 1024 / 1024).toFixed(1)} / {(downloadProgress.totalBytes / 1024 / 1024).toFixed(1)} MB</span>
-                </div>
-                <div className="h-2 rounded-full bg-[var(--avs-surface-muted)] overflow-hidden">
-                  <div
-                    className="h-full transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
-                    style={{ background: 'var(--avs-gradient-brand)', width: `${downloadProgress.percent}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {updateManifest?.releaseNotes && updateStatus === 'update-available' && (
-              <div>
-                <div className="text-caption font-medium text-text-muted mb-1">Release Notes</div>
-                <p className="text-small text-text-secondary whitespace-pre-line">{updateManifest.releaseNotes}</p>
-              </div>
-            )}
-
-            {updateError && (
-              <div className="rounded-[var(--avs-radius-md)] bg-semantic-danger/10 border border-semantic-danger/30 px-3 py-2" data-testid="settings-update-error">
-                <p className="text-small text-semantic-danger">{updateError}</p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => clearUpdateError()}
-                  className="mt-1"
-                >
-                  Dismiss
-                </Button>
-              </div>
-            )}
-
-            {updateStatus === 'ready' && updateInstaller && (
-              <div className="rounded-[var(--avs-radius-md)] bg-semantic-success/10 border border-semantic-success/30 px-3 py-2" data-testid="settings-update-ready">
-                <p className="text-small text-semantic-success">
-                  Update is ready to install. Click &quot;Install&quot; to launch the installer. The application will close during installation.
-                </p>
-              </div>
-            )}
-          </div>
-        </Card>
-
-        <Card title="Developer" variant="glass">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-small font-medium text-text-primary">Developer Verification Mode</div>
-              <p className="text-caption text-text-secondary">
-                Shows every RPC call, backend function, files deleted, entries disabled and before/after values.
-              </p>
-            </div>
-            <Button variant={devMode ? 'primary' : 'secondary'} onClick={toggleDevMode}>
-              {devMode ? 'Enabled' : 'Disabled'}
-            </Button>
-          </div>
-
-          {devMode && (
-            <div className="mt-4 border-t border-[var(--avs-border)] pt-4">
-              <div className="text-small font-medium text-text-primary mb-2">Verification Log ({logs.length})</div>
-              {logs.length === 0 ? (
-                <p className="text-small text-text-secondary">No verification data yet. Run a Smart Health Scan optimization to populate this log.</p>
-              ) : (
-                <div className="max-h-96 overflow-auto border border-[var(--avs-border)] rounded-[var(--avs-radius-md)]">
-                  <table className="w-full text-caption text-left">
-                    <thead className="bg-[var(--avs-surface-muted)] text-text-secondary sticky top-0">
-                      <tr>
-                        <th className="p-2">Time</th>
-                        <th className="p-2">Module</th>
-                        <th className="p-2">Action</th>
-                        <th className="p-2">RPC</th>
-                        <th className="p-2">Before</th>
-                        <th className="p-2">After</th>
-                        <th className="p-2">Duration</th>
-                        <th className="p-2">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {logs.map((log) => (
-                        <tr key={log.id} className="border-t border-[var(--avs-border)]">
-                          <td className="p-2 tabular-nums">{new Date(log.timestamp).toLocaleTimeString()}</td>
-                          <td className="p-2">{log.moduleId}</td>
-                          <td className="p-2">{log.action}</td>
-                          <td className="p-2 font-mono">{log.rpcMethod}</td>
-                          <td className="p-2 tabular-nums">{log.before ?? '-'}</td>
-                          <td className="p-2 tabular-nums">{log.after ?? '-'}</td>
-                          <td className="p-2 tabular-nums">{log.durationMs}ms</td>
-                          <td className={`p-2 ${log.success ? 'text-semantic-success' : 'text-semantic-danger'}`}>
-                            {log.success ? 'OK' : 'FAIL'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-        </Card>
-
-        <Card title="Onboarding & Help" variant="glass">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-small font-medium text-text-primary">Restart Welcome Tour</div>
-                <p className="text-caption text-text-secondary">
-                  Replay the first-run onboarding experience and guided tour.
-                </p>
-              </div>
-              <Button
-                variant="secondary"
-                onClick={() => onboardingService.resetOnboarding()}
-                leftIcon={<SparklesIcon className="h-4 w-4" />}
-                data-testid="settings-restart-onboarding"
-              >
-                Restart
-              </Button>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-small font-medium text-text-primary">Learning Mode</div>
-                <p className="text-caption text-text-secondary">
-                  Show contextual tips and hints throughout the application.
-                </p>
-              </div>
-              <Button
-                variant={learningMode ? 'primary' : 'secondary'}
-                onClick={() => {
-                  const next = !learningMode;
-                  onboardingService.setLearningMode(next);
-                  setLearningMode(next);
-                }}
-                data-testid="settings-learning-mode"
-              >
-                {learningMode ? 'Enabled' : 'Disabled'}
-              </Button>
-            </div>
-          </div>
-        </Card>
-
-        <Card title="Keyboard Shortcuts" variant="glass">
-          <div className="space-y-1.5" data-testid="settings-keyboard-shortcuts">
-            {KEYBOARD_SHORTCUTS.map((shortcut) => (
-              <div key={shortcut.keys} className="flex items-center justify-between py-1">
-                <span className="text-small text-text-secondary">{shortcut.description}</span>
-                <kbd className="rounded-[var(--avs-radius-sm)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] px-2 py-0.5 text-caption font-mono text-text-primary">
-                  {shortcut.keys}
-                </kbd>
-              </div>
-            ))}
-          </div>
-        </Card>
+        {/* Optimizer Entitlement disabled */}
+        {/* Subscription disabled */}
+        {/* Feature Engine disabled */}
+        {/* Updates section disabled */}
+        {/* Developer section disabled */}
+        {/* Onboarding & Help disabled */}
+        {/* Keyboard Shortcuts disabled */}
       </div>
     </div>
   );

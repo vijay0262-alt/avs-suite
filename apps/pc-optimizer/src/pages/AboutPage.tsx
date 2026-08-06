@@ -93,7 +93,7 @@ export default function AboutPage() {
               <p className="text-small text-text-muted">{APP_METADATA.description}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Badge tone="brand">{getEditionString()}</Badge>
+              <Badge tone="brand">{isActivated ? 'Professional Edition' : 'Free Edition'}</Badge>
               <Badge tone="neutral">{getChannelString()}</Badge>
               <Badge tone="neutral">{getArchitectureString()}</Badge>
             </div>
@@ -123,7 +123,7 @@ export default function AboutPage() {
           </div>
           <div>
             <dt className="text-text-muted">Edition</dt>
-            <dd className="font-medium text-text-primary">{getEditionString()}</dd>
+            <dd className="font-medium text-text-primary capitalize">{edition}</dd>
           </div>
         </dl>
       </Card>

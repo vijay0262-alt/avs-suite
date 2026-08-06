@@ -183,16 +183,19 @@ export const router = createHashRouter([
       { path: 'browser-cleaner', element: <BrowserCleanerPage /> },
       { path: 'registry-cleaner', element: wrap(RegistryCleanerPage) },
       { path: 'duplicate-finder', element: wrap(DuplicateFinderPage) },
-      { path: 'large-files', element: <LargeFilesPage /> },
+      // Large Files disabled — redirect to disk analyzer
+      { path: 'large-files', element: <Navigate to="/disk-analyzer" replace /> },
       { path: 'uninstaller', element: wrap(UninstallerPage) },
       { path: 'software-updater', element: wrap(UpdaterPage) },
-      { path: 'maintenance-history', element: wrap(MaintenanceHistoryPage) },
+      // Maintenance History disabled
+      { path: 'maintenance-history', element: <Navigate to="/dashboard" replace /> },
       // REPORTS
       { path: 'reports', element: wrap(ReportsPage) },
       { path: 'optimization-reports', element: wrap(OptimizationReportsPage) },
-      { path: 'reports-timeline', element: <ReportsTimelinePage /> },
-      { path: 'analytics', element: <AnalyticsPage /> },
-      { path: 'export-center', element: wrap(ExportCenterPageWrapper) },
+      // Reports Timeline, Analytics, Export Center disabled
+      { path: 'reports-timeline', element: <Navigate to="/reports" replace /> },
+      { path: 'analytics', element: <Navigate to="/reports" replace /> },
+      { path: 'export-center', element: <Navigate to="/reports" replace /> },
       // TOOLS
       { path: 'system-information', element: wrap(SystemInformationPage) },
       { path: 'disk-analyzer', element: wrap(DiskAnalyzerPage) },
