@@ -9,7 +9,7 @@ import {
   getArchitectureString,
 } from '../config/version';
 import { useState, useEffect, useCallback } from 'react';
-import { useSyncStore, planToEdition } from '../features/sync/syncStore';
+import { useEdition, useEditionManager } from '../config/EditionManager';
 import { UpdateManager } from '../features/licensing/UpdateManager';
 
 const { APP_METADATA } = constants;
@@ -36,10 +36,9 @@ interface SdkInfo {
 export default function AboutPage() {
   const versionInfo = getVersionInfo();
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ status: 'idle' });
-  const { data: syncData, isOffline } = useSyncStore();
-  const edition = syncData ? planToEdition(syncData.subscription.plan, syncData.license?.edition).toLowerCase() : 'free';
-  const licenseStatus = syncData?.license?.status ?? 'FREE';
-  const isActivated = edition === 'professional';
+  const edition = useEdition();
+  const { isOffline, isActivated } = useEditionManager();
+  const licenseStatus = isActivated ? 'ACTIVATED' : 'FREE';
   const [sdkInfo, setSdkInfo] = useState<SdkInfo | null>(null);
 
   useEffect(() => {
@@ -122,7 +121,7 @@ export default function AboutPage() {
           </div>
           <div>
             <dt className="text-text-muted">Edition</dt>
-            <dd className="font-medium text-text-primary capitalize">{edition}</dd>
+            <dd className="font-medium text-text-primary">{isActivated ? 'Professional Edition' : 'Free Edition'}</dd>
           </div>
         </dl>
       </Card>
@@ -200,7 +199,7 @@ export default function AboutPage() {
           </div>
           <div>
             <dt className="text-text-muted">Edition</dt>
-            <dd className="font-medium text-text-primary capitalize mt-1">{edition}</dd>
+            <dd className="font-medium text-text-primary mt-1">{isActivated ? 'Professional Edition' : 'Free Edition'}</dd>
           </div>
           <div>
             <dt className="text-text-muted">Product Code</dt>
