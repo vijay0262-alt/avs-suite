@@ -247,7 +247,13 @@ describe('authStore', () => {
       // Should still be authenticated (offline mode with cached session)
       expect(state.phase).toBe('authenticated');
       expect(state.session).not.toBeNull();
-      expect(state.customer).toBeNull(); // couldn't fetch profile
+      // Customer profile should be populated from cached session data
+      // (StoredSession contains customerId, customerName, customerEmail, accountStatus)
+      expect(state.customer).not.toBeNull();
+      expect(state.customer?.email).toBe('offline@example.com');
+      expect(state.customer?.display_name).toBe('Offline User');
+      expect(state.customer?.id).toBe('cust-uuid');
+      expect(state.customer?.account_status).toBe('ACTIVE');
     });
   });
 });
