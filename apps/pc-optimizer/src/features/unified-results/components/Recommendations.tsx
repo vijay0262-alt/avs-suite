@@ -54,14 +54,14 @@ export function Recommendations({ recommendations, selectedIds, onToggle, onTogg
             checked={allSelected}
             onChange={(e) => onToggleAll(sorted.map((r) => r.id), e.target.checked)}
           />
-          <span className="text-xs font-medium text-text-secondary">
+          <span className="text-caption font-medium text-text-secondary">
             {selectedIds.size} of {sorted.length} selected
           </span>
         </label>
         {safeIds.length > 0 && (
           <button
             onClick={() => onToggleAll(safeIds, true)}
-            className="text-xs font-medium text-brand-primary hover:underline"
+            className="text-caption font-medium text-brand-primary hover:underline"
           >
             Select All Safe ({safeIds.length})
           </button>
@@ -114,17 +114,17 @@ function RecommendationRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <PriorityBadge priority={rec.priority} />
-            <span className="text-sm font-semibold text-text-primary">{rec.title}</span>
+            <span className="text-small font-semibold text-text-primary">{rec.title}</span>
             {rec.requiresPro && (
-              <span className="rounded-full bg-brand-primary/10 px-2 py-0.5 text-[10px] font-medium text-brand-primary">
+              <span className="rounded-full bg-brand-primary/10 px-2 py-0.5 text-micro font-medium text-brand-primary">
                 Pro
               </span>
             )}
           </div>
-          <p className="mt-1 text-xs text-text-secondary">{rec.summary}</p>
+          <p className="mt-1 text-caption text-text-secondary">{rec.summary}</p>
 
           {/* Quick stats */}
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-caption">
             <span className="flex items-center gap-1 text-text-muted">
               <SparklesIcon className="h-3 w-3" />
               <span>Benefit: <span className="font-medium text-text-secondary">{rec.expectedBenefit}</span></span>
@@ -148,8 +148,8 @@ function RecommendationRow({
 
         {/* AI Confidence */}
         <div className="shrink-0 text-right">
-          <div className="text-xs text-text-muted">AI Confidence</div>
-          <div className="text-sm font-bold tabular-nums text-brand-primary">
+          <div className="text-caption text-text-muted">AI Confidence</div>
+          <div className="text-small font-bold tabular-nums text-brand-primary">
             {Math.round(rec.aiConfidence * 100)}%
           </div>
         </div>
@@ -169,24 +169,24 @@ function RecommendationRow({
       {expanded && (
         <div className="border-t border-[var(--avs-border)] px-3 pb-3 pt-2 space-y-2">
           {/* Description */}
-          <p className="text-xs text-text-secondary">{rec.description}</p>
+          <p className="text-caption text-text-secondary">{rec.description}</p>
 
           {/* Why it matters */}
           <div className="rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface)] p-2.5">
             <div className="flex items-center gap-1.5 mb-1">
               <InformationCircleIcon className="h-3.5 w-3.5 text-brand-primary" />
-              <span className="text-xs font-semibold text-text-primary">Why This Matters</span>
+              <span className="text-caption font-semibold text-text-primary">Why This Matters</span>
             </div>
-            <p className="text-xs text-text-secondary">{rec.whyItMatters}</p>
+            <p className="text-caption text-text-secondary">{rec.whyItMatters}</p>
           </div>
 
           {/* What happens if ignored */}
           <div className="rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface)] p-2.5">
             <div className="flex items-center gap-1.5 mb-1">
               <ExclamationCircleIcon className="h-3.5 w-3.5 text-semantic-warning" />
-              <span className="text-xs font-semibold text-text-primary">If Ignored</span>
+              <span className="text-caption font-semibold text-text-primary">If Ignored</span>
             </div>
-            <p className="text-xs text-text-secondary">{rec.whatHappensIfIgnored}</p>
+            <p className="text-caption text-text-secondary">{rec.whatHappensIfIgnored}</p>
           </div>
 
           {/* Evidence */}
@@ -194,11 +194,11 @@ function RecommendationRow({
             <div className="rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface)] p-2.5">
               <div className="flex items-center gap-1.5 mb-1">
                 <CheckIcon className="h-3.5 w-3.5 text-semantic-success" />
-                <span className="text-xs font-semibold text-text-primary">Evidence</span>
+                <span className="text-caption font-semibold text-text-primary">Evidence</span>
               </div>
               <ul className="space-y-0.5">
                 {rec.evidence.map((ev, i) => (
-                  <li key={i} className="text-xs text-text-muted flex items-start gap-1.5">
+                  <li key={i} className="text-caption text-text-muted flex items-start gap-1.5">
                     <span className="mt-1 h-1 w-1 rounded-full bg-text-muted shrink-0" />
                     <span>{ev}</span>
                   </li>
@@ -215,7 +215,7 @@ function RecommendationRow({
 function PriorityBadge({ priority }: { priority: IssuePriority }) {
   return (
     <span
-      className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${priorityBg(priority)} ${priorityColor(priority)}`}
+      className={`rounded-full px-2 py-0.5 text-micro font-bold uppercase tracking-wide ${priorityBg(priority)} ${priorityColor(priority)}`}
     >
       {priorityLabel(priority)}
     </span>

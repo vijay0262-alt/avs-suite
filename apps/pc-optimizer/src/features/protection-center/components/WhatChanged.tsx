@@ -37,7 +37,7 @@ export function WhatChanged({ changes }: WhatChangedProps) {
   if (changes.length === 0 || (changes.length === 1 && changes[0]?.id === 'change-none')) {
     return (
       <div className="rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-gradient-surface p-4 text-center">
-        <p className="text-sm text-[var(--avs-text-muted)]">
+        <p className="text-small text-[var(--avs-text-muted)]">
           No changes detected since the last optimization.
         </p>
       </div>
@@ -58,13 +58,13 @@ export function WhatChanged({ changes }: WhatChangedProps) {
             <li key={change.id} className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <Icon className={clsx('h-4 w-4 shrink-0', dc.color)} />
-                <span className="text-sm text-[var(--avs-text-primary)] truncate">{change.label}</span>
+                <span className="text-small text-[var(--avs-text-primary)] truncate">{change.label}</span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className={clsx('text-sm font-bold tabular-nums', dc.color)}>
+                <span className={clsx('text-small font-bold tabular-nums', dc.color)}>
                   {formatDelta(change.delta, change.unit)}
                 </span>
-                <span className="text-xs text-[var(--avs-text-muted)]">{timeAgo(change.timestamp)}</span>
+                <span className="text-caption text-[var(--avs-text-muted)]">{timeAgo(change.timestamp)}</span>
               </div>
             </li>
           );

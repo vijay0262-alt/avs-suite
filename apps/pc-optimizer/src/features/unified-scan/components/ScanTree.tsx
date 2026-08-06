@@ -68,7 +68,7 @@ function TreeNode({ node, depth = 0 }: { node: UnifiedScanTreeNode; depth?: numb
         <StatusIcon status={node.status} />
 
         <span
-          className={`text-sm flex-1 truncate ${
+          className={`text-small flex-1 truncate ${
             isScanning
               ? 'font-medium text-text-primary'
               : node.status === 'complete'
@@ -81,7 +81,7 @@ function TreeNode({ node, depth = 0 }: { node: UnifiedScanTreeNode; depth?: numb
 
         {/* Items/issues count */}
         {(node.itemsScanned > 0 || node.issuesFound > 0) && (
-          <div className="flex items-center gap-2 text-xs tabular-nums text-text-muted shrink-0">
+          <div className="flex items-center gap-2 text-caption tabular-nums text-text-muted shrink-0">
             {node.itemsScanned > 0 && (
               <span>{node.itemsScanned.toLocaleString()} items</span>
             )}

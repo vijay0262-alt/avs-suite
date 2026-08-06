@@ -84,41 +84,41 @@ export default function PerformanceAnalyticsPage() {
           <Card variant="glass">
             <div className="flex items-center gap-2">
               <CpuChipIcon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
-              <span className="text-sm font-medium text-[var(--avs-text-primary)]">CPU</span>
+              <span className="text-small font-medium text-[var(--avs-text-primary)]">CPU</span>
             </div>
             <p className="mt-2 text-3xl font-bold text-[var(--avs-text-primary)]">{state.metrics.cpu.usage.toFixed(1)}%</p>
-            <p className="text-xs text-[var(--avs-text-muted)]">{state.metrics.cpu.processorName}</p>
-            <p className="text-xs text-[var(--avs-text-muted)]">{vm.formatFrequency(state.metrics.cpu.clockSpeed)} · {state.metrics.cpu.temperatureCelsius}°C</p>
+            <p className="text-caption text-[var(--avs-text-muted)]">{state.metrics.cpu.processorName}</p>
+            <p className="text-caption text-[var(--avs-text-muted)]">{vm.formatFrequency(state.metrics.cpu.clockSpeed)} · {state.metrics.cpu.temperatureCelsius}°C</p>
           </Card>
 
           <Card variant="glass">
             <div className="flex items-center gap-2">
               <CircleStackIcon className="h-5 w-5 text-[var(--avs-success)]" />
-              <span className="text-sm font-medium text-[var(--avs-text-primary)]">Memory</span>
+              <span className="text-small font-medium text-[var(--avs-text-primary)]">Memory</span>
             </div>
             <p className="mt-2 text-3xl font-bold text-[var(--avs-text-primary)]">{state.metrics.memory.usage.toFixed(1)}%</p>
-            <p className="text-xs text-[var(--avs-text-muted)]">{vm.formatBytes(state.metrics.memory.used)} / {vm.formatBytes(state.metrics.memory.total)}</p>
-            <p className="text-xs text-[var(--avs-text-muted)]">Cached: {vm.formatBytes(state.metrics.memory.cached)}</p>
+            <p className="text-caption text-[var(--avs-text-muted)]">{vm.formatBytes(state.metrics.memory.used)} / {vm.formatBytes(state.metrics.memory.total)}</p>
+            <p className="text-caption text-[var(--avs-text-muted)]">Cached: {vm.formatBytes(state.metrics.memory.cached)}</p>
           </Card>
 
           <Card variant="glass">
             <div className="flex items-center gap-2">
               <ChartBarIcon className="h-5 w-5 text-[var(--avs-warning)]" />
-              <span className="text-sm font-medium text-[var(--avs-text-primary)]">Disk</span>
+              <span className="text-small font-medium text-[var(--avs-text-primary)]">Disk</span>
             </div>
             <p className="mt-2 text-3xl font-bold text-[var(--avs-text-primary)]">{state.metrics.disk.activeTime.toFixed(1)}%</p>
-            <p className="text-xs text-[var(--avs-text-muted)]">Read: {vm.formatBytes(state.metrics.disk.readSpeed)}/s</p>
-            <p className="text-xs text-[var(--avs-text-muted)]">Write: {vm.formatBytes(state.metrics.disk.writeSpeed)}/s</p>
+            <p className="text-caption text-[var(--avs-text-muted)]">Read: {vm.formatBytes(state.metrics.disk.readSpeed)}/s</p>
+            <p className="text-caption text-[var(--avs-text-muted)]">Write: {vm.formatBytes(state.metrics.disk.writeSpeed)}/s</p>
           </Card>
 
           <Card variant="glass">
             <div className="flex items-center gap-2">
               <WifiIcon className="h-5 w-5 text-[var(--avs-info)]" />
-              <span className="text-sm font-medium text-[var(--avs-text-primary)]">Network</span>
+              <span className="text-small font-medium text-[var(--avs-text-primary)]">Network</span>
             </div>
             <p className="mt-2 text-3xl font-bold text-[var(--avs-text-primary)]">{vm.formatBytes(state.metrics.network.downloadSpeed)}/s</p>
-            <p className="text-xs text-[var(--avs-text-muted)]">Upload: {vm.formatBytes(state.metrics.network.uploadSpeed)}/s</p>
-            <p className="text-xs text-[var(--avs-text-muted)]">Total: {vm.formatBytes(state.metrics.network.totalBytesReceived + state.metrics.network.totalBytesSent)}</p>
+            <p className="text-caption text-[var(--avs-text-muted)]">Upload: {vm.formatBytes(state.metrics.network.uploadSpeed)}/s</p>
+            <p className="text-caption text-[var(--avs-text-muted)]">Total: {vm.formatBytes(state.metrics.network.totalBytesReceived + state.metrics.network.totalBytesSent)}</p>
           </Card>
         </div>
       )}
@@ -128,19 +128,19 @@ export default function PerformanceAnalyticsPage() {
         <Card title="Performance Trends" variant="glass">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="text-xs font-medium text-[var(--avs-text-secondary)] mb-2">CPU Usage History</p>
+              <p className="text-caption font-medium text-[var(--avs-text-secondary)] mb-2">CPU Usage History</p>
               <Sparkline data={state.graphHistory.cpu} color="var(--avs-brand-primary)" />
             </div>
             <div>
-              <p className="text-xs font-medium text-[var(--avs-text-secondary)] mb-2">Memory Usage History</p>
+              <p className="text-caption font-medium text-[var(--avs-text-secondary)] mb-2">Memory Usage History</p>
               <Sparkline data={state.graphHistory.memory} color="var(--avs-success)" />
             </div>
             <div>
-              <p className="text-xs font-medium text-[var(--avs-text-secondary)] mb-2">Disk Read History</p>
+              <p className="text-caption font-medium text-[var(--avs-text-secondary)] mb-2">Disk Read History</p>
               <Sparkline data={state.graphHistory.diskRead} color="var(--avs-warning)" />
             </div>
             <div>
-              <p className="text-xs font-medium text-[var(--avs-text-secondary)] mb-2">Network Download History</p>
+              <p className="text-caption font-medium text-[var(--avs-text-secondary)] mb-2">Network Download History</p>
               <Sparkline data={state.graphHistory.networkDownload} color="var(--avs-info)" />
             </div>
           </div>
@@ -156,7 +156,7 @@ export default function PerformanceAnalyticsPage() {
           <select
             value={sortBy}
             onChange={(e) => { setSortBy(e.target.value); handleLoadProcesses(); }}
-            className="rounded-[var(--avs-radius-sm)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-2 py-1 text-xs text-[var(--avs-text-primary)]"
+            className="rounded-[var(--avs-radius-sm)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-2 py-1 text-caption text-[var(--avs-text-primary)]"
           >
             <option value="cpu">Sort by CPU</option>
             <option value="memory">Sort by Memory</option>
@@ -167,15 +167,15 @@ export default function PerformanceAnalyticsPage() {
           <div className="space-y-1">
             {state.topProcesses.map((proc) => (
               <div key={proc.pid} className="flex items-center gap-3 rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface-muted)] px-3 py-2">
-                <span className="text-xs text-[var(--avs-text-muted)] w-12">{proc.pid}</span>
-                <span className="text-sm text-[var(--avs-text-primary)] flex-1 truncate">{proc.name}</span>
-                <span className="text-xs text-[var(--avs-text-secondary)]">{proc.cpuPercent.toFixed(1)}% CPU</span>
-                <span className="text-xs text-[var(--avs-text-secondary)]">{vm.formatBytes(proc.memoryBytes)}</span>
+                <span className="text-caption text-[var(--avs-text-muted)] w-12">{proc.pid}</span>
+                <span className="text-small text-[var(--avs-text-primary)] flex-1 truncate">{proc.name}</span>
+                <span className="text-caption text-[var(--avs-text-secondary)]">{proc.cpuPercent.toFixed(1)}% CPU</span>
+                <span className="text-caption text-[var(--avs-text-secondary)]">{vm.formatBytes(proc.memoryBytes)}</span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-[var(--avs-text-muted)] py-4 text-center">No process data available</p>
+          <p className="text-small text-[var(--avs-text-muted)] py-4 text-center">No process data available</p>
         )}
       </Card>
 
@@ -187,8 +187,8 @@ export default function PerformanceAnalyticsPage() {
               <div key={i} className="flex items-center gap-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-4 py-3">
                 <ExclamationTriangleIcon className={`h-4 w-4 ${alert.severity === 'critical' ? 'text-[var(--avs-danger)]' : alert.severity === 'warning' ? 'text-[var(--avs-warning)]' : 'text-[var(--avs-info)]'}`} />
                 <div className="flex-1">
-                  <p className="text-sm text-[var(--avs-text-primary)]">{alert.message}</p>
-                  <p className="text-xs text-[var(--avs-text-muted)]">Value: {alert.value} / Threshold: {alert.threshold}</p>
+                  <p className="text-small text-[var(--avs-text-primary)]">{alert.message}</p>
+                  <p className="text-caption text-[var(--avs-text-muted)]">Value: {alert.value} / Threshold: {alert.threshold}</p>
                 </div>
               </div>
             ))}
@@ -199,7 +199,7 @@ export default function PerformanceAnalyticsPage() {
       {/* Optimize Result */}
       {state.optimizeResult && (
         <Card title="Optimization Result" variant="glass">
-          <div className="space-y-2 text-sm">
+          <div className="space-y-2 text-small">
             <p className="text-[var(--avs-text-primary)]">Memory freed: {vm.formatBytes(state.optimizeResult.memoryFreed)}</p>
             <p className="text-[var(--avs-text-secondary)]">Processes optimized: {state.optimizeResult.processesOptimized}</p>
             <p className="text-[var(--avs-text-secondary)]">Health improvement: +{state.optimizeResult.healthImprovement} points</p>
@@ -212,7 +212,7 @@ export default function PerformanceAnalyticsPage() {
 }
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
-  if (data.length === 0) return <div className="h-12 text-xs text-[var(--avs-text-muted)] flex items-center">No data</div>;
+  if (data.length === 0) return <div className="h-12 text-caption text-[var(--avs-text-muted)] flex items-center">No data</div>;
   const max = Math.max(...data, 1);
   const min = Math.min(...data, 0);
   const range = max - min || 1;

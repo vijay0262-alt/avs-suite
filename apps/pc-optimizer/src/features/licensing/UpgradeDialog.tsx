@@ -70,7 +70,7 @@ export function UpgradeDialog({
       size="md"
       actions={
         <div className="flex flex-col gap-3 w-full">
-          <label className="flex items-center gap-2 text-xs text-text-muted cursor-pointer select-none">
+          <label className="flex items-center gap-2 text-caption text-text-muted cursor-pointer select-none">
             <input
               type="checkbox"
               checked={dontRemind}
@@ -108,7 +108,7 @@ export function UpgradeDialog({
             <div className="text-base font-semibold text-text-primary">
               {proBenefit ? proBenefit : `${moduleName} offers enhanced capabilities`}
             </div>
-            <div className="text-sm text-text-secondary">
+            <div className="text-small text-text-secondary">
               You&apos;re using the Free edition. Upgrade for the full experience.
             </div>
           </div>
@@ -116,18 +116,18 @@ export function UpgradeDialog({
 
         {limitDescription && (
           <Card className="bg-[var(--avs-surface-muted)] border-[var(--avs-border)]">
-            <div className="text-sm text-text-secondary">
+            <div className="text-small text-text-secondary">
               {limitDescription}
             </div>
           </Card>
         )}
 
         <div className="space-y-2">
-          <div className="text-xs uppercase tracking-wide text-text-muted">
+          <div className="text-caption uppercase tracking-wide text-text-muted">
             What Professional unlocks:
           </div>
           {TIER_FEATURES.professional.map((f) => (
-            <div key={f} className="flex items-center gap-2 text-sm text-text-primary">
+            <div key={f} className="flex items-center gap-2 text-small text-text-primary">
               <CheckIcon className="h-4 w-4 text-semantic-success shrink-0" aria-hidden />
               <span>{f}</span>
             </div>
@@ -135,7 +135,7 @@ export function UpgradeDialog({
         </div>
 
         {features.length > 0 && (
-          <div className="text-xs text-text-muted">
+          <div className="text-caption text-text-muted">
             Affected capabilities: {features.join(', ')}
           </div>
         )}

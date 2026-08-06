@@ -23,14 +23,22 @@ export function DashboardSection({
   ...rest
 }: DashboardSectionProps) {
   return (
-    <section className={clsx(className)} {...rest as Record<string, unknown>}>
+    <section className={clsx('animate-slide-up', className)} {...rest as Record<string, unknown>}>
       {(title || actions) && (
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            {icon && <span className="text-[var(--avs-brand-primary)]">{icon}</span>}
-            {title && <h2 className="text-base font-semibold text-[var(--avs-text-primary)]">{title}</h2>}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            {icon && (
+              <span className="text-[var(--avs-brand-primary)] flex items-center">
+                {icon}
+              </span>
+            )}
+            {title && (
+              <h2 className="text-section-title text-[var(--avs-text-primary)]">
+                {title}
+              </h2>
+            )}
           </div>
-          {actions}
+          {actions && <div className="flex items-center gap-2">{actions}</div>}
         </div>
       )}
       {children}

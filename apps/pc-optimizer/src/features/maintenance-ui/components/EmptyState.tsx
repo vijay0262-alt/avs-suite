@@ -24,7 +24,7 @@ export function EmptyState({ icon, title, description, action, testId }: EmptySt
       )}
       <h3 className="text-base font-semibold text-[var(--avs-text-primary)]">{title}</h3>
       {description && (
-        <p className="mt-1 max-w-sm text-sm text-[var(--avs-text-secondary)]">{description}</p>
+        <p className="mt-1 max-w-sm text-small text-[var(--avs-text-secondary)]">{description}</p>
       )}
       {action && <div className="mt-4">{action}</div>}
     </div>

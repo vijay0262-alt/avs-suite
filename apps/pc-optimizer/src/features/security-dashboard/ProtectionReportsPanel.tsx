@@ -61,8 +61,8 @@ export function ProtectionReportsPanel({ reports, onGenerate, onExport }: Protec
               >
                 <rt.icon className="h-5 w-5 shrink-0 text-brand-primary" aria-hidden />
                 <div className="min-w-0">
-                  <div className="text-sm font-medium text-text-primary">{rt.label}</div>
-                  <div className="text-xs text-text-secondary">
+                  <div className="text-small font-medium text-text-primary">{rt.label}</div>
+                  <div className="text-caption text-text-secondary">
                     {existing ? `Generated: ${new Date(existing.generatedAt).toLocaleString()}` : 'Click to generate'}
                   </div>
                 </div>
@@ -83,13 +83,13 @@ export function ProtectionReportsPanel({ reports, onGenerate, onExport }: Protec
               </Button>
               {exportOpen && (
                 <div className="absolute right-0 top-full mt-1 z-50 min-w-[120px] rounded-md border border-border bg-surface shadow-lg" data-testid="export-dropdown">
-                  <button className="flex w-full items-center px-3 py-2 text-sm text-text-primary hover:bg-surface-muted" onClick={() => handleExport('json')} data-testid="export-json">
+                  <button className="flex w-full items-center px-3 py-2 text-small text-text-primary hover:bg-surface-muted" onClick={() => handleExport('json')} data-testid="export-json">
                     JSON
                   </button>
-                  <button className="flex w-full items-center px-3 py-2 text-sm text-text-primary hover:bg-surface-muted" onClick={() => handleExport('csv')} data-testid="export-csv">
+                  <button className="flex w-full items-center px-3 py-2 text-small text-text-primary hover:bg-surface-muted" onClick={() => handleExport('csv')} data-testid="export-csv">
                     CSV
                   </button>
-                  <button className="flex w-full items-center px-3 py-2 text-sm text-text-primary hover:bg-surface-muted" onClick={() => handleExport('txt')} data-testid="export-txt">
+                  <button className="flex w-full items-center px-3 py-2 text-small text-text-primary hover:bg-surface-muted" onClick={() => handleExport('txt')} data-testid="export-txt">
                     Text
                   </button>
                 </div>
@@ -101,12 +101,12 @@ export function ProtectionReportsPanel({ reports, onGenerate, onExport }: Protec
           <div className="space-y-4">
             {/* Summary */}
             <div>
-              <div className="text-xs font-medium uppercase tracking-wide text-text-muted mb-1">Summary</div>
-              <p className="text-sm text-text-primary">{selected.summary}</p>
+              <div className="text-caption font-medium uppercase tracking-wide text-text-muted mb-1">Summary</div>
+              <p className="text-small text-text-primary">{selected.summary}</p>
             </div>
 
             {/* Period */}
-            <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-4 text-caption">
               <span className="text-text-secondary">Period:</span>
               <span className="font-medium text-text-primary">
                 {new Date(selected.period.start).toLocaleDateString()} — {new Date(selected.period.end).toLocaleDateString()}
@@ -115,12 +115,12 @@ export function ProtectionReportsPanel({ reports, onGenerate, onExport }: Protec
 
             {/* Metrics */}
             <div>
-              <div className="text-xs font-medium uppercase tracking-wide text-text-muted mb-2">Metrics</div>
+              <div className="text-caption font-medium uppercase tracking-wide text-text-muted mb-2">Metrics</div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {Object.entries(selected.metrics).map(([key, value]) => (
                   <div key={key} className="rounded-md border border-border p-2" data-testid={`report-metric-${key}`}>
-                    <div className="text-xs text-text-muted">{key}</div>
-                    <div className="text-sm font-medium text-text-primary">{value}</div>
+                    <div className="text-caption text-text-muted">{key}</div>
+                    <div className="text-small font-medium text-text-primary">{value}</div>
                   </div>
                 ))}
               </div>
@@ -129,10 +129,10 @@ export function ProtectionReportsPanel({ reports, onGenerate, onExport }: Protec
             {/* Details */}
             {selected.details.length > 0 && (
               <div>
-                <div className="text-xs font-medium uppercase tracking-wide text-text-muted mb-2">Details</div>
+                <div className="text-caption font-medium uppercase tracking-wide text-text-muted mb-2">Details</div>
                 <div className="max-h-48 space-y-1 overflow-y-auto">
                   {selected.details.map((detail, i) => (
-                    <div key={i} className="text-xs text-text-secondary py-0.5">
+                    <div key={i} className="text-caption text-text-secondary py-0.5">
                       • {detail}
                     </div>
                   ))}
@@ -143,7 +143,7 @@ export function ProtectionReportsPanel({ reports, onGenerate, onExport }: Protec
         </Card>
       ) : (
         <Card data-testid="report-empty">
-          <div className="py-8 text-center text-sm text-text-secondary">
+          <div className="py-8 text-center text-small text-text-secondary">
             Select a report type above to generate and view it.
           </div>
         </Card>

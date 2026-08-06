@@ -104,10 +104,10 @@ export default function PrivacyPage() {
 
   const getRiskColor = (level: string) => {
     switch (level) {
-      case 'high': return 'text-red-500';
-      case 'medium': return 'text-yellow-500';
-      case 'low': return 'text-green-500';
-      default: return 'text-gray-500';
+      case 'high': return 'text-semantic-danger';
+      case 'medium': return 'text-semantic-warning';
+      case 'low': return 'text-semantic-success';
+      default: return 'text-text-muted';
     }
   };
 
@@ -153,9 +153,9 @@ export default function PrivacyPage() {
           )}
           <Card title="Detected Browsers" className="mb-4">
             {state.browsersLoading ? (
-              <p className="text-text-secondary">Detecting browsers...</p>
+              <p className="text-small text-text-secondary">Detecting browsers...</p>
             ) : state.browsersDetected.length === 0 ? (
-              <p className="text-text-secondary">No browsers detected</p>
+              <p className="text-small text-text-secondary">No browsers detected</p>
             ) : (
               <div className="flex flex-wrap gap-3">
                 {state.browsersDetected.map(browser => {
@@ -180,7 +180,7 @@ export default function PrivacyPage() {
                         onChange={handleBrowserToggle}
                         className="w-4 h-4"
                       />
-                      <span className="text-sm text-text-primary font-medium">
+                      <span className="text-small text-text-primary font-medium">
                         {browser.charAt(0).toUpperCase() + browser.slice(1)}
                       </span>
                     </label>
@@ -210,7 +210,7 @@ export default function PrivacyPage() {
                       onChange={() => handleToggleCategory(category)}
                       className="w-4 h-4"
                     />
-                    <span className="text-sm text-text-primary">{label}</span>
+                    <span className="text-small text-text-primary">{label}</span>
                   </label>
                 );
               })}
@@ -274,32 +274,32 @@ export default function PrivacyPage() {
             <Card title="Scan Results" className="mb-4">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                 <div>
-                  <p className="text-2xl font-bold text-text-primary">{state.scanResult.itemCount}</p>
-                  <p className="text-sm text-text-secondary">Items Found</p>
+                  <p className="text-statistic text-text-primary">{state.scanResult.itemCount}</p>
+                  <p className="text-caption text-text-secondary">Items Found</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-text-primary">{vm.formatBytes(state.scanResult.totalSize)}</p>
-                  <p className="text-sm text-text-secondary">Recoverable Space</p>
+                  <p className="text-statistic text-text-primary">{vm.formatBytes(state.scanResult.totalSize)}</p>
+                  <p className="text-caption text-text-secondary">Recoverable Space</p>
                 </div>
                 <div>
-                  <p className={`text-2xl font-bold ${getRiskColor(state.scanResult.riskLevel)}`}>
+                  <p className={`text-statistic ${getRiskColor(state.scanResult.riskLevel)}`}>
                     {state.scanResult.riskLevel.toUpperCase()}
                   </p>
-                  <p className="text-sm text-text-secondary">Risk Level</p>
+                  <p className="text-caption text-text-secondary">Risk Level</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-text-primary">{state.scanResult.categoriesFound.length}</p>
-                  <p className="text-sm text-text-secondary">Categories</p>
+                  <p className="text-statistic text-text-primary">{state.scanResult.categoriesFound.length}</p>
+                  <p className="text-caption text-text-secondary">Categories</p>
                 </div>
               </div>
 
               <div className="mb-4">
-                <h3 className="font-semibold text-text-primary mb-2">Category Breakdown</h3>
+                <h3 className="text-small font-semibold text-text-primary mb-2">Category Breakdown</h3>
                 <div className="space-y-2">
                   {Object.entries(state.scanResult.categoryBreakdown).map(([category, size]) => (
                     <div key={category} className="flex justify-between items-center">
-                      <span className="text-sm text-text-secondary">{CATEGORY_LABELS[category] || category}</span>
-                      <span className="text-sm text-text-primary">{vm.formatBytes(size)}</span>
+                      <span className="text-small text-text-secondary">{CATEGORY_LABELS[category] || category}</span>
+                      <span className="text-small text-text-primary">{vm.formatBytes(size)}</span>
                     </div>
                   ))}
                 </div>

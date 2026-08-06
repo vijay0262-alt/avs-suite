@@ -127,16 +127,16 @@ interface AIModuleCard {
 
 function getAIModules(isPro: boolean): AIModuleCard[] {
   return [
-    { id: 'hardware-intelligence', name: 'AI Hardware Intelligence', description: 'Analyze, explain, and monitor hardware health', icon: <CpuChipIcon className="h-5 w-5" />, path: '/hardware-center', status: 'active' },
-    { id: 'process-intelligence', name: 'AI Process Intelligence', description: 'Understand every running process and its impact', icon: <EyeIcon className="h-5 w-5" />, path: '/process-intelligence', status: 'active' },
-    { id: 'smart-optimization', name: 'AI Smart Optimization', description: 'Evidence-based optimization recommendations', icon: <SparklesIcon className="h-5 w-5" />, path: '/ai-smart-optimize', status: 'active' },
-    { id: 'predictive-health', name: 'AI Predictive Health', description: 'Detect degrading trends before they become problems', icon: <ChartBarIcon className="h-5 w-5" />, path: '/predictive-health', status: isPro ? 'active' : 'pro' },
-    { id: 'security-center', name: 'AI Security Center', description: 'Comprehensive security analysis and monitoring', icon: <ShieldExclamationIcon className="h-5 w-5" />, path: '/security-center', status: 'active' },
-    { id: 'active-protection', name: 'AI Active Protection', description: 'Real-time monitoring and behavior analysis', icon: <ShieldExclamationIcon className="h-5 w-5" />, path: '/ai-active-protection', status: 'active' },
-    { id: 'threat-investigation', name: 'AI Threat Investigation', description: 'Explainable AI threat timeline and correlation', icon: <EyeIcon className="h-5 w-5" />, path: '/threat-investigation', status: isPro ? 'active' : 'pro' },
-    { id: 'remediation', name: 'AI Remediation', description: 'Safe quarantine, rollback, and recovery', icon: <WrenchScrewdriverIcon className="h-5 w-5" />, path: '/quarantine', status: isPro ? 'active' : 'pro' },
+    { id: 'hardware-intelligence', name: 'Hardware Intelligence', description: 'Analyze, explain, and monitor hardware health', icon: <CpuChipIcon className="h-5 w-5" />, path: '/hardware-center', status: 'active' },
+    { id: 'process-intelligence', name: 'Process Intelligence', description: 'Understand every running process and its impact', icon: <EyeIcon className="h-5 w-5" />, path: '/process-intelligence', status: 'active' },
+    { id: 'smart-optimization', name: 'AI Smart Optimize', description: 'Evidence-based optimization recommendations', icon: <SparklesIcon className="h-5 w-5" />, path: '/ai-smart-optimize', status: 'active' },
+    { id: 'predictive-health', name: 'Predictive Health', description: 'Detect degrading trends before they become problems', icon: <ChartBarIcon className="h-5 w-5" />, path: '/predictive-health', status: isPro ? 'active' : 'pro' },
+    { id: 'security-center', name: 'Security Center', description: 'Comprehensive security analysis and monitoring', icon: <ShieldExclamationIcon className="h-5 w-5" />, path: '/security-center', status: 'active' },
+    { id: 'active-protection', name: 'Active Protection', description: 'Real-time monitoring and behavior analysis', icon: <ShieldExclamationIcon className="h-5 w-5" />, path: '/ai-active-protection', status: 'active' },
+    { id: 'threat-investigation', name: 'Threat Investigation', description: 'Explainable threat timeline and correlation', icon: <EyeIcon className="h-5 w-5" />, path: '/threat-investigation', status: isPro ? 'active' : 'pro' },
+    { id: 'remediation', name: 'Remediation', description: 'Safe quarantine, rollback, and recovery', icon: <WrenchScrewdriverIcon className="h-5 w-5" />, path: '/quarantine', status: isPro ? 'active' : 'pro' },
     { id: 'ai-assistant', name: 'AVS AI Assistant', description: 'Your AI assistant for PC health and security', icon: <ChatBubbleLeftRightIcon className="h-5 w-5" />, path: '/ai-assistant', status: 'active' },
-    { id: 'daily-briefing', name: 'AI Daily Briefing', description: 'Daily AI summary and system highlights', icon: <SunIcon className="h-5 w-5" />, path: '/ai-daily-briefing', status: 'active' },
+    { id: 'daily-briefing', name: 'Daily Briefing', description: 'Daily summary and system highlights', icon: <SunIcon className="h-5 w-5" />, path: '/ai-daily-briefing', status: 'active' },
   ];
 }
 
@@ -220,7 +220,7 @@ export default function DashboardPage() {
   const visibleRecommendations = recommendations.slice(0, maxRecommendations);
 
   return (
-    <div className="space-y-8" data-testid="page-dashboard">
+    <div className="space-y-7" data-testid="page-dashboard">
       {/* Error banners for data load failures */}
       {state.metricsError && (
         <ModuleErrorBanner
@@ -245,8 +245,8 @@ export default function DashboardPage() {
       {/* Greeting */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">{getGreeting()}</h1>
-          <p className="mt-1 text-sm text-text-secondary">
+          <h1 className="text-page-title text-text-primary">{getGreeting()}</h1>
+          <p className="mt-1.5 text-small text-text-secondary">
             Here&apos;s your AI-powered system overview for today.
           </p>
         </div>
@@ -266,9 +266,9 @@ export default function DashboardPage() {
 
       {/* AI Score Cards Row */}
       <DashboardSection>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 animate-slide-up">
           <StatCard
-            label="AI Health Score"
+            label="Health Score"
             value={healthScore}
             unit="/ 100"
             icon={<HeartIcon className="h-5 w-5" />}
@@ -321,9 +321,9 @@ export default function DashboardPage() {
         </div>
       </DashboardSection>
 
-      {/* AI Daily Briefing */}
-      <DashboardSection title="AI Daily Briefing" icon={<SparklesIcon className="h-5 w-5" />}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {/* Daily Briefing */}
+      <DashboardSection title="Daily Briefing" icon={<SparklesIcon className="h-5 w-5" />}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {healthScore >= 80 ? (
             <InsightCard
               icon={<CheckCircleIcon className="h-5 w-5" />}
@@ -354,7 +354,7 @@ export default function DashboardPage() {
           <InsightCard
             icon={<ShieldExclamationIcon className="h-5 w-5" />}
             iconColor={securityTone === 'success' ? 'text-semantic-success' : 'text-semantic-warning'}
-            title="AI Active Protection"
+            title="Active Protection"
             description={securityTone === 'success'
               ? 'Real-time protection is active. Your system is being monitored.'
               : 'Real-time protection needs attention. Check security settings.'}
@@ -364,10 +364,10 @@ export default function DashboardPage() {
         </div>
       </DashboardSection>
 
-      {/* AI Recommendations */}
+      {/* Recommendations */}
       {visibleRecommendations.length > 0 && (
-        <DashboardSection title={`AI Recommendations${!isPro && recommendations.length > maxRecommendations ? ` (Top ${maxRecommendations})` : ''}`} icon={<ChartBarIcon className="h-5 w-5" />}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <DashboardSection title={`Recommendations${!isPro && recommendations.length > maxRecommendations ? ` (Top ${maxRecommendations})` : ''}`} icon={<ChartBarIcon className="h-5 w-5" />}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {visibleRecommendations.map((rec) => (
               <RecommendationCard
                 key={rec.id}
@@ -385,7 +385,7 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <DashboardSection title="Quick Actions" icon={<BoltIcon className="h-5 w-5" />}>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {[
             { id: 'ai-smart-optimize', name: 'AI Smart Optimize', icon: SparklesIcon, color: 'text-brand-primary', path: '/ai-smart-optimize', proEnhanced: false },
             { id: 'quick-scan', name: 'Quick Scan', icon: ShieldExclamationIcon, color: 'text-semantic-success', path: '/quick-scan', proEnhanced: false },
@@ -396,7 +396,7 @@ export default function DashboardPage() {
             { id: 'privacy-cleaner', name: 'Privacy Cleaner', icon: ShieldExclamationIcon, color: 'text-semantic-warning', path: '/privacy-cleaner', proEnhanced: true },
             { id: 'disk-analyzer', name: 'Disk Analyzer', icon: ChartBarIcon, color: 'text-semantic-danger', path: '/disk-analyzer', proEnhanced: true },
             { id: 'duplicate-finder', name: 'Duplicate Finder', icon: DocumentTextIcon, color: 'text-semantic-info', path: '/duplicate-finder', proEnhanced: true },
-            { id: 'process-intelligence', name: 'Process AI', icon: CpuChipIcon, color: 'text-brand-primary', path: '/process-intelligence', proEnhanced: false },
+            { id: 'process-intelligence', name: 'Process Intelligence', icon: CpuChipIcon, color: 'text-brand-primary', path: '/process-intelligence', proEnhanced: false },
           ].map((action) => (
             <button
               key={action.id}
@@ -410,15 +410,15 @@ export default function DashboardPage() {
                   <StarIcon className="absolute -top-1 -right-1 h-3.5 w-3.5 text-semantic-warning/70" data-testid={`quick-action-pro-badge-${action.id}`} />
                 )}
               </div>
-              <span className="text-sm font-medium text-text-primary">{action.name}</span>
+              <span className="text-small font-medium text-text-primary">{action.name}</span>
             </button>
           ))}
         </div>
       </DashboardSection>
 
-      {/* AI Modules */}
-      <DashboardSection title="AI Modules" icon={<SparklesIcon className="h-5 w-5" />}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      {/* Intelligence Modules */}
+      <DashboardSection title="Intelligence Modules" icon={<SparklesIcon className="h-5 w-5" />}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {getAIModules(isPro).map((mod) => (
             <Card
               key={mod.id}
@@ -432,12 +432,12 @@ export default function DashboardPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-text-primary">{mod.name}</span>
+                  <span className="text-small font-medium text-text-primary">{mod.name}</span>
                   {mod.status === 'pro' && (
                     <StarIcon className="h-3.5 w-3.5 text-semantic-warning/70" data-testid={`ai-module-pro-badge-${mod.id}`} />
                   )}
                 </div>
-                <p className="text-xs text-text-secondary mt-0.5">{mod.description}</p>
+                <p className="text-caption text-text-secondary mt-0.5">{mod.description}</p>
               </div>
               <ArrowRightIcon className="h-4 w-4 text-text-muted shrink-0 mt-1" />
             </Card>
@@ -456,13 +456,13 @@ export default function DashboardPage() {
 
       {/* Live Charts */}
       <DashboardSection title="Live System Monitor" icon={<ChartBarIcon className="h-5 w-5" />}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
           <ChartCard title="CPU Usage" icon={<CpuChipIcon className="h-4 w-4" />}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-3xl font-bold text-text-primary tabular-nums">
+              <span className="text-statistic text-text-primary tabular-nums">
                 {state.liveMetrics ? `${Math.round(state.liveMetrics.cpu.usage)}%` : '—'}
               </span>
-              <span className="text-xs text-text-muted">
+              <span className="text-caption text-text-muted">
                 {state.liveMetrics ? `${state.liveMetrics.cpu.logicalProcessors} cores` : ''}
               </span>
             </div>
@@ -470,10 +470,10 @@ export default function DashboardPage() {
           </ChartCard>
           <ChartCard title="Memory Usage" icon={<CircleStackIcon className="h-4 w-4" />}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-3xl font-bold text-text-primary tabular-nums">
+              <span className="text-statistic text-text-primary tabular-nums">
                 {state.liveMetrics ? `${Math.round(state.liveMetrics.memory.usage)}%` : '—'}
               </span>
-              <span className="text-xs text-text-muted">
+              <span className="text-caption text-text-muted">
                 {state.liveMetrics ? `${Math.round(state.liveMetrics.memory.used / 1_000_000_000)} / ${Math.round(state.liveMetrics.memory.total / 1_000_000_000)} GB` : ''}
               </span>
             </div>
@@ -483,12 +483,12 @@ export default function DashboardPage() {
       </DashboardSection>
 
       {/* Recent Activity & Security Events */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-slide-up">
         <TimelineCard
           title="Recent Activity"
           icon={<ClockIcon className="h-4 w-4" />}
           items={(state.healthScanHistory || []).slice(0, 5).map((h) => ({
-            title: h.result === 'success' ? 'AI Smart Optimize Completed' : 'Optimization Partial',
+            title: h.result === 'success' ? 'Smart Optimize Completed' : 'Optimization Partial',
             description: `Health: ${h.healthBefore} → ${h.healthAfter}. Recovered ${Math.round(h.recoveredSpace / 1_000_000)} MB.`,
             timestamp: new Date(h.date).toLocaleDateString(),
             severity: h.result === 'success' ? 'success' : 'warning',
@@ -522,6 +522,7 @@ export default function DashboardPage() {
 
       {/* Hardware Monitoring */}
       <DashboardSection title="Hardware Monitoring" icon={<CpuChipIcon className="h-5 w-5" />}>
+
         {state.hardwareSensorsError && (
           <ModuleErrorBanner
             message={`Failed to load hardware sensors: ${state.hardwareSensorsError}`}
@@ -569,15 +570,15 @@ export default function DashboardPage() {
               { label: 'Power Usage', value: power.supported ? 'Available' : 'Unsupported', icon: <BoltIcon className="h-5 w-5" />, supported: power.supported },
             ];
             return (
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3" data-testid="hardware-monitoring-grid">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4" data-testid="hardware-monitoring-grid">
                 {metrics.map((m) => (
                   <Card key={m.label} variant="gradient" className="flex items-center gap-3">
                     <div className={`p-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] ${m.supported ? 'text-text-muted' : 'text-text-muted/40'}`}>
                       {m.icon}
                     </div>
                     <div>
-                      <div className="text-xs text-text-muted">{m.label}</div>
-                      <div className={`text-lg font-bold tabular-nums ${m.supported ? 'text-text-primary' : 'text-text-muted/60'}`}>
+                      <div className="text-caption text-text-muted">{m.label}</div>
+                      <div className={`text-statistic-sm tabular-nums ${m.supported ? 'text-text-primary' : 'text-text-muted/60'}`}>
                         {m.value}
                       </div>
                     </div>
@@ -598,7 +599,7 @@ export default function DashboardPage() {
 
       {/* System Status */}
       <DashboardSection title="System Status" icon={<CheckCircleIcon className="h-5 w-5" />}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: 'CPU Temp', value: state.liveMetrics?.cpu.temperature != null ? `${Math.round(state.liveMetrics.cpu.temperature)}°C` : 'Unsupported', icon: CpuChipIcon },
             { label: 'Memory', value: state.liveMetrics ? `${Math.round(state.liveMetrics.memory.usage)}%` : '—', icon: CircleStackIcon },
@@ -610,8 +611,8 @@ export default function DashboardPage() {
                 <stat.icon className="h-5 w-5 text-text-muted" />
               </div>
               <div>
-                <div className="text-xs text-text-muted">{stat.label}</div>
-                <div className="text-lg font-bold text-text-primary tabular-nums">{stat.value}</div>
+                <div className="text-caption text-text-muted">{stat.label}</div>
+                <div className="text-statistic-sm text-text-primary tabular-nums">{stat.value}</div>
               </div>
             </Card>
           ))}

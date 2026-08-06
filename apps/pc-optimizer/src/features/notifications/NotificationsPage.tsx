@@ -184,7 +184,7 @@ export default function NotificationsPage() {
                 <div key={cat} className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
                   <div className="flex items-center gap-2">
                     <Icon className="h-5 w-5 text-[var(--avs-text-secondary)]" />
-                    <span className="text-sm font-medium capitalize text-[var(--avs-text-primary)]">{cat} Alerts</span>
+                    <span className="text-small font-medium capitalize text-[var(--avs-text-primary)]">{cat} Alerts</span>
                   </div>
                   <button
                     onClick={() => vm.updatePrefs({ [cat]: !prefs[cat as keyof NotificationPrefs] } as Partial<NotificationPrefs>)}
@@ -200,7 +200,7 @@ export default function NotificationsPage() {
           <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
             <div className="flex items-center gap-2">
               <BellIcon className="h-5 w-5 text-[var(--avs-text-secondary)]" />
-              <span className="text-sm font-medium text-[var(--avs-text-primary)]">Sound Notifications</span>
+              <span className="text-small font-medium text-[var(--avs-text-primary)]">Sound Notifications</span>
             </div>
             <button
               onClick={() => vm.updatePrefs({ soundEnabled: !prefs.soundEnabled })}
@@ -213,7 +213,7 @@ export default function NotificationsPage() {
           <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
             <div className="flex items-center gap-2">
               <InformationCircleIcon className="h-5 w-5 text-[var(--avs-text-secondary)]" />
-              <span className="text-sm font-medium text-[var(--avs-text-primary)]">Desktop Notifications</span>
+              <span className="text-small font-medium text-[var(--avs-text-primary)]">Desktop Notifications</span>
             </div>
             <button
               onClick={() => vm.updatePrefs({ desktopNotifications: !prefs.desktopNotifications })}
@@ -224,11 +224,11 @@ export default function NotificationsPage() {
           </div>
 
           <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
-            <span className="text-sm font-medium text-[var(--avs-text-primary)]">Notification Frequency</span>
+            <span className="text-small font-medium text-[var(--avs-text-primary)]">Notification Frequency</span>
             <select
               value={prefs.frequency}
               onChange={(e) => vm.updatePrefs({ frequency: e.target.value as NotificationPrefs['frequency'] })}
-              className="rounded-[var(--avs-radius-sm)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-1.5 text-sm text-[var(--avs-text-primary)]"
+              className="rounded-[var(--avs-radius-sm)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-1.5 text-small text-[var(--avs-text-primary)]"
             >
               <option value="instant">Instant</option>
               <option value="hourly">Hourly Digest</option>
@@ -242,7 +242,7 @@ export default function NotificationsPage() {
       <Card title="Recent Notifications" variant="glass">
         {state.error ? (
           <div className="space-y-2">
-            <p className="text-sm text-semantic-danger">{state.error}</p>
+            <p className="text-small text-semantic-danger">{state.error}</p>
             <Button variant="secondary" size="sm" onClick={() => vm.bootstrap()} data-testid="notifications-retry">Retry</Button>
           </div>
         ) : state.notifications.length > 0 ? (
@@ -256,13 +256,13 @@ export default function NotificationsPage() {
                 >
                   <Icon className={`h-5 w-5 ${notif.severity === 'critical' ? 'text-[var(--avs-danger)]' : notif.severity === 'warning' ? 'text-[var(--avs-warning)]' : 'text-[var(--avs-info)]'}`} />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-[var(--avs-text-primary)]">{notif.title}</p>
-                    <p className="text-xs text-[var(--avs-text-secondary)]">{notif.message}</p>
-                    <p className="text-xs text-[var(--avs-text-muted)] mt-0.5">{new Date(notif.timestamp).toLocaleString()}</p>
+                    <p className="text-small font-medium text-[var(--avs-text-primary)]">{notif.title}</p>
+                    <p className="text-caption text-[var(--avs-text-secondary)]">{notif.message}</p>
+                    <p className="text-caption text-[var(--avs-text-muted)] mt-0.5">{new Date(notif.timestamp).toLocaleString()}</p>
                   </div>
                   <Badge tone="neutral">{notif.category}</Badge>
                   {!notif.read && (
-                    <button onClick={() => vm.markAsRead(notif.id)} className="text-xs text-[var(--avs-brand-primary)] hover:underline">
+                    <button onClick={() => vm.markAsRead(notif.id)} className="text-caption text-[var(--avs-brand-primary)] hover:underline">
                       Mark read
                     </button>
                   )}

@@ -47,8 +47,8 @@ function MetricRow({ icon: Icon, label, value, percent, warnAt, dangerAt }: Metr
       <Icon className="h-4 w-4 shrink-0 text-[var(--avs-text-muted)]" />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between mb-1">
-          <span className="text-xs font-medium text-[var(--avs-text-secondary)]">{label}</span>
-          <span className={clsx('text-xs font-bold tabular-nums', getTone(percent, warnAt, dangerAt))}>
+          <span className="text-caption font-medium text-[var(--avs-text-secondary)]">{label}</span>
+          <span className={clsx('text-caption font-bold tabular-nums', getTone(percent, warnAt, dangerAt))}>
             {value}
           </span>
         </div>
@@ -72,7 +72,7 @@ export function SystemHealthSnapshot({ data }: SystemHealthSnapshotProps) {
   if (!data) {
     return (
       <div className="rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-gradient-surface p-4 text-center">
-        <p className="text-sm text-[var(--avs-text-muted)]">Loading system health…</p>
+        <p className="text-small text-[var(--avs-text-muted)]">Loading system health…</p>
       </div>
     );
   }
@@ -89,11 +89,11 @@ export function SystemHealthSnapshot({ data }: SystemHealthSnapshotProps) {
           <HeartIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
         </div>
         <div>
-          <div className="text-2xl font-bold text-[var(--avs-text-primary)] tabular-nums">
+          <div className="text-statistic font-bold text-[var(--avs-text-primary)] tabular-nums">
             {data.overallHealthScore}
-            <span className="text-sm text-[var(--avs-text-muted)] font-normal">/100</span>
+            <span className="text-small text-[var(--avs-text-muted)] font-normal">/100</span>
           </div>
-          <div className="text-xs text-[var(--avs-text-muted)] capitalize">
+          <div className="text-caption text-[var(--avs-text-muted)] capitalize">
             {data.overallScoreZone} · Uptime {formatUptime(data.uptimeSeconds)}
           </div>
         </div>

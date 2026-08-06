@@ -69,7 +69,7 @@ export default function AboutPage() {
 
       {/* Application Info */}
       <Card title="Application">
-        <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 text-small md:grid-cols-2">
           <div>
             <div className="text-text-muted">Product</div>
             <div className="font-medium text-text-primary mt-1">
@@ -106,9 +106,9 @@ export default function AboutPage() {
       {/* License Info */}
       <Card title="License">
         {loading ? (
-          <div className="text-sm text-text-muted">Loading license information...</div>
+          <div className="text-small text-text-muted">Loading license information...</div>
         ) : info ? (
-          <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 text-small md:grid-cols-2">
             <div>
               <div className="text-text-muted">Edition</div>
               <div className="flex items-center gap-2 mt-1">
@@ -150,14 +150,14 @@ export default function AboutPage() {
             </div>
           </div>
         ) : (
-          <div className="text-sm text-text-muted">No license information available.</div>
+          <div className="text-small text-text-muted">No license information available.</div>
         )}
       </Card>
 
       {/* SDK / Server Info */}
       <Card title="Platform">
         {info ? (
-          <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 text-small md:grid-cols-2">
             <div>
               <div className="text-text-muted">SDK Version</div>
               <div className="font-medium text-text-primary mt-1">
@@ -166,13 +166,13 @@ export default function AboutPage() {
             </div>
             <div>
               <div className="text-text-muted">Server URL</div>
-              <div className="font-mono text-xs text-text-secondary mt-1">
+              <div className="font-mono text-caption text-text-secondary mt-1">
                 {info.server_url}
               </div>
             </div>
             <div>
               <div className="text-text-muted">Device Fingerprint</div>
-              <div className="font-mono text-xs text-text-secondary mt-1">
+              <div className="font-mono text-caption text-text-secondary mt-1">
                 {info.fingerprint}
               </div>
             </div>
@@ -184,7 +184,7 @@ export default function AboutPage() {
             </div>
           </div>
         ) : (
-          <div className="text-sm text-text-muted">Platform information unavailable.</div>
+          <div className="text-small text-text-muted">Platform information unavailable.</div>
         )}
       </Card>
     </div>

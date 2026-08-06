@@ -298,9 +298,9 @@ export default function OptimizationReportsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Report List */}
         <div className="lg:col-span-1 space-y-3">
-          <h3 className="text-sm font-semibold text-[var(--avs-text-primary)]">Reports</h3>
+          <h3 className="text-small font-semibold text-[var(--avs-text-primary)]">Reports</h3>
           {s.reports.length === 0 && s.v1Reports.length === 0 && (
-            <p className="text-xs text-[var(--avs-text-muted)]">No reports available.</p>
+            <p className="text-caption text-[var(--avs-text-muted)]">No reports available.</p>
           )}
           {s.reports.map((report) => (
             <ReportListItem
@@ -335,7 +335,7 @@ export default function OptimizationReportsPage() {
             <Card variant="glass">
               <div className="py-12 text-center">
                 <DocumentChartBarIcon className="h-10 w-10 text-[var(--avs-text-muted)] mx-auto mb-3" />
-                <p className="text-sm text-[var(--avs-text-muted)]">Select a report to view details.</p>
+                <p className="text-small text-[var(--avs-text-muted)]">Select a report to view details.</p>
               </div>
             </Card>
           )}
@@ -345,11 +345,11 @@ export default function OptimizationReportsPage() {
             <Card title="Actions" variant="glass">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-[var(--avs-text-muted)]">Format:</span>
+                  <span className="text-caption text-[var(--avs-text-muted)]">Format:</span>
                   <select
                     value={s.exportFormat}
                     onChange={(e) => vm.setExportFormat(e.target.value as ExportFormat)}
-                    className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-2 py-1 text-xs text-[var(--avs-text-primary)]"
+                    className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-2 py-1 text-caption text-[var(--avs-text-primary)]"
                   >
                     {EXPORT_FORMATS.map((f) => (
                       <option key={f} value={f}>{f.toUpperCase()}</option>
@@ -368,7 +368,7 @@ export default function OptimizationReportsPage() {
               </div>
               {s.lastExport && (
                 <div className="mt-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
-                  <p className="text-xs text-[var(--avs-text-secondary)]">
+                  <p className="text-caption text-[var(--avs-text-secondary)]">
                     Exported: <span className="font-medium text-[var(--avs-text-primary)]">{s.lastExport.filename}</span> ({s.lastExport.content.length} bytes)
                   </p>
                 </div>
@@ -384,16 +384,16 @@ export default function OptimizationReportsPage() {
                   <select
                     value={s.compareAId ?? ''}
                     onChange={(e) => vm.setCompareA(e.target.value || null)}
-                    className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-xs text-[var(--avs-text-primary)]"
+                    className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-caption text-[var(--avs-text-primary)]"
                   >
                     <option value="">Report A…</option>
                     {s.reports.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
                   </select>
-                  <span className="text-xs text-[var(--avs-text-muted)]">vs</span>
+                  <span className="text-caption text-[var(--avs-text-muted)]">vs</span>
                   <select
                     value={s.compareBId ?? ''}
                     onChange={(e) => vm.setCompareB(e.target.value || null)}
-                    className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-xs text-[var(--avs-text-primary)]"
+                    className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-caption text-[var(--avs-text-primary)]"
                   >
                     <option value="">Report B…</option>
                     {s.reports.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
@@ -404,8 +404,8 @@ export default function OptimizationReportsPage() {
                 </div>
                 {s.comparison && (
                   <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-4 space-y-2">
-                    <p className="text-sm font-medium text-[var(--avs-text-primary)]">{s.comparison.summary}</p>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
+                    <p className="text-small font-medium text-[var(--avs-text-primary)]">{s.comparison.summary}</p>
+                    <div className="grid grid-cols-2 gap-2 text-caption">
                       <ComparisonRow label="Health Delta" value={s.comparison.healthDelta} />
                       <ComparisonRow label="Storage Delta" value={s.comparison.storageDelta} suffix=" bytes" />
                       <ComparisonRow label="Performance Delta" value={s.comparison.performanceDelta} />
@@ -413,7 +413,7 @@ export default function OptimizationReportsPage() {
                       <ComparisonRow label="Startup Delta" value={s.comparison.startupDelta} />
                       <ComparisonRow label="Duration Delta" value={s.comparison.durationDelta} suffix="ms" />
                     </div>
-                    <p className="text-xs text-[var(--avs-text-muted)]">
+                    <p className="text-caption text-[var(--avs-text-muted)]">
                       Winner: <span className="font-semibold capitalize text-[var(--avs-text-primary)]">{s.comparison.winner}</span>
                     </p>
                   </div>
@@ -429,9 +429,9 @@ export default function OptimizationReportsPage() {
                 {s.history.slice(-10).reverse().map((entry) => (
                   <div key={entry.id} className="flex items-center gap-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
                     <ClockIcon className="h-4 w-4 text-[var(--avs-text-muted)]" />
-                    <span className="text-xs font-medium text-[var(--avs-text-primary)] capitalize">{entry.action}</span>
-                    <span className="text-xs text-[var(--avs-text-muted)]">{formatTimeAgo(entry.timestamp)}</span>
-                    <span className="text-xs text-[var(--avs-text-muted)] ml-auto">Report: {entry.reportId.slice(0, 8)}</span>
+                    <span className="text-caption font-medium text-[var(--avs-text-primary)] capitalize">{entry.action}</span>
+                    <span className="text-caption text-[var(--avs-text-muted)]">{formatTimeAgo(entry.timestamp)}</span>
+                    <span className="text-caption text-[var(--avs-text-muted)] ml-auto">Report: {entry.reportId.slice(0, 8)}</span>
                   </div>
                 ))}
               </div>
@@ -451,8 +451,8 @@ function StatCard({ label, value, icon: Icon }: { label: string; value: string |
       <div className="flex items-center gap-2">
         <Icon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
         <div>
-          <p className="text-xs text-[var(--avs-text-muted)]">{label}</p>
-          <p className="text-lg font-bold text-[var(--avs-text-primary)]">{value}</p>
+          <p className="text-caption text-[var(--avs-text-muted)]">{label}</p>
+          <p className="text-section-title font-bold text-[var(--avs-text-primary)]">{value}</p>
         </div>
       </div>
     </Card>
@@ -477,11 +477,11 @@ function ReportListItem({
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-sm font-medium text-[var(--avs-text-primary)] truncate">{title}</span>
+        <span className="text-small font-medium text-[var(--avs-text-primary)] truncate">{title}</span>
         <ResultIcon className={`h-4 w-4 shrink-0 ${RESULT_COLORS[overallResult]}`} />
       </div>
-      <p className="text-xs text-[var(--avs-text-muted)] mt-1 line-clamp-2">{summary}</p>
-      <div className="flex items-center gap-3 mt-2 text-xs text-[var(--avs-text-muted)]">
+      <p className="text-caption text-[var(--avs-text-muted)] mt-1 line-clamp-2">{summary}</p>
+      <div className="flex items-center gap-3 mt-2 text-caption text-[var(--avs-text-muted)]">
         {healthDelta !== null && (
           <span className={healthDelta > 0 ? 'text-[var(--avs-success)]' : ''}>
             Health: {healthDelta > 0 ? '+' : ''}{healthDelta}
@@ -509,11 +509,11 @@ function V1ReportListItem({ report, isSelected, onSelect }: { report: V1Intellig
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-sm font-medium text-[var(--avs-text-primary)] truncate">{story.title}</span>
+        <span className="text-small font-medium text-[var(--avs-text-primary)] truncate">{story.title}</span>
         <ResultIcon className={`h-4 w-4 shrink-0 ${color}`} />
       </div>
-      <p className="text-xs text-[var(--avs-text-muted)] mt-1 line-clamp-2">{report.headline}</p>
-      <div className="flex items-center gap-3 mt-2 text-xs text-[var(--avs-text-muted)]">
+      <p className="text-caption text-[var(--avs-text-muted)] mt-1 line-clamp-2">{report.headline}</p>
+      <div className="flex items-center gap-3 mt-2 text-caption text-[var(--avs-text-muted)]">
         {report.healthDelta.delta !== null && (
           <span className={report.healthDelta.delta > 0 ? 'text-[var(--avs-success)]' : ''}>
             Health: {report.healthDelta.delta > 0 ? '+' : ''}{report.healthDelta.delta}
@@ -531,7 +531,7 @@ function ReportDetail({ report }: { report: OptimizationReport }) {
   return (
     <Card title={report.title} variant="glass">
       <div className="space-y-4">
-        <p className="text-sm text-[var(--avs-text-secondary)]">{report.summary}</p>
+        <p className="text-small text-[var(--avs-text-secondary)]">{report.summary}</p>
 
         {/* Key Metrics */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -544,9 +544,9 @@ function ReportDetail({ report }: { report: OptimizationReport }) {
         {/* Sections */}
         {report.sections.filter(s => s.visible).map((section) => (
           <div key={section.type}>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-2">{section.title}</h4>
+            <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-2">{section.title}</h4>
             <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
-              <pre className="text-xs text-[var(--avs-text-secondary)] whitespace-pre-wrap">
+              <pre className="text-caption text-[var(--avs-text-secondary)] whitespace-pre-wrap">
                 {JSON.stringify(section.data, null, 2)}
               </pre>
             </div>
@@ -556,15 +556,15 @@ function ReportDetail({ report }: { report: OptimizationReport }) {
         {/* Next Best Actions */}
         {report.nextBestActions.length > 0 && (
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-2">Next Best Actions</h4>
+            <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-2">Next Best Actions</h4>
             <div className="space-y-2">
               {report.nextBestActions.map((action) => (
                 <div key={action.id} className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-[var(--avs-text-primary)]">{action.title}</span>
+                    <span className="text-small font-medium text-[var(--avs-text-primary)]">{action.title}</span>
                     <Badge tone="brand">{action.safety}</Badge>
                   </div>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-[var(--avs-text-muted)]">
+                  <div className="flex items-center gap-3 mt-1 text-caption text-[var(--avs-text-muted)]">
                     <span>Impact: {action.estimatedImpact}</span>
                     <span>Time: {formatDuration(action.estimatedTime)}</span>
                     <span>Confidence: {(action.confidence * 100).toFixed(0)}%</span>
@@ -578,10 +578,10 @@ function ReportDetail({ report }: { report: OptimizationReport }) {
         {/* Evidence */}
         {report.evidence.length > 0 && (
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-2">Evidence</h4>
+            <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-2">Evidence</h4>
             <div className="space-y-1">
               {report.evidence.slice(0, 10).map((ev, i) => (
-                <div key={i} className="flex items-center gap-2 text-xs">
+                <div key={i} className="flex items-center gap-2 text-caption">
                   <span className="font-medium text-[var(--avs-text-secondary)]">{ev.source}:</span>
                   <span className="text-[var(--avs-text-muted)]">{ev.metric} = {String(ev.value)}</span>
                 </div>
@@ -600,17 +600,17 @@ function V1ReportDetail({ report }: { report: V1IntelligenceReport }) {
     <Card title={story.title} variant="glass">
       <div className="space-y-4">
         <div>
-          <p className="text-sm font-semibold text-[var(--avs-text-primary)]">{report.headline}</p>
-          <p className="text-xs text-[var(--avs-text-muted)] mt-0.5">{report.subtitle}</p>
+          <p className="text-small font-semibold text-[var(--avs-text-primary)]">{report.headline}</p>
+          <p className="text-caption text-[var(--avs-text-muted)] mt-0.5">{report.subtitle}</p>
         </div>
 
-        <p className="text-sm text-[var(--avs-text-secondary)]">{story.narrative}</p>
+        <p className="text-small text-[var(--avs-text-secondary)]">{story.narrative}</p>
 
         {/* Story Highlights */}
         {story.highlights.length > 0 && (
           <div className="space-y-1">
             {story.highlights.map((h, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs text-[var(--avs-text-secondary)]">
+              <div key={i} className="flex items-center gap-2 text-caption text-[var(--avs-text-secondary)]">
                 <CheckCircleIcon className="h-4 w-4 text-[var(--avs-success)] shrink-0" />
                 <span>{h}</span>
               </div>
@@ -629,13 +629,13 @@ function V1ReportDetail({ report }: { report: V1IntelligenceReport }) {
         {/* Actions Completed */}
         {report.actionsCompleted.length > 0 && (
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-2">Actions Completed ({report.actionsCompleted.length})</h4>
+            <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-2">Actions Completed ({report.actionsCompleted.length})</h4>
             <div className="space-y-1">
               {report.actionsCompleted.map((action) => (
                 <div key={action.stepId} className="flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
                   <CheckCircleIcon className="h-4 w-4 text-[var(--avs-success)] shrink-0" />
-                  <span className="text-xs font-medium text-[var(--avs-text-primary)]">{action.title}</span>
-                  <span className="text-xs text-[var(--avs-text-muted)] ml-auto">{action.category}</span>
+                  <span className="text-caption font-medium text-[var(--avs-text-primary)]">{action.title}</span>
+                  <span className="text-caption text-[var(--avs-text-muted)] ml-auto">{action.category}</span>
                 </div>
               ))}
             </div>
@@ -645,13 +645,13 @@ function V1ReportDetail({ report }: { report: V1IntelligenceReport }) {
         {/* Actions Skipped */}
         {report.actionsSkipped.length > 0 && (
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-2">Actions Skipped ({report.actionsSkipped.length})</h4>
+            <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-2">Actions Skipped ({report.actionsSkipped.length})</h4>
             <div className="space-y-1">
               {report.actionsSkipped.map((action) => (
                 <div key={action.stepId} className="flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
                   <ExclamationTriangleIcon className="h-4 w-4 text-[var(--avs-warning)] shrink-0" />
-                  <span className="text-xs font-medium text-[var(--avs-text-primary)]">{action.title}</span>
-                  <span className="text-xs text-[var(--avs-text-muted)] ml-auto">{action.description}</span>
+                  <span className="text-caption font-medium text-[var(--avs-text-primary)]">{action.title}</span>
+                  <span className="text-caption text-[var(--avs-text-muted)] ml-auto">{action.description}</span>
                 </div>
               ))}
             </div>
@@ -663,9 +663,9 @@ function V1ReportDetail({ report }: { report: V1IntelligenceReport }) {
           <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
             <div className="flex items-center gap-2">
               <ArrowPathIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
-              <span className="text-xs font-medium text-[var(--avs-text-primary)]">Rollback Available</span>
+              <span className="text-caption font-medium text-[var(--avs-text-primary)]">Rollback Available</span>
             </div>
-            <p className="text-xs text-[var(--avs-text-muted)] mt-1">{report.rollbackInfo.formatted}</p>
+            <p className="text-caption text-[var(--avs-text-muted)] mt-1">{report.rollbackInfo.formatted}</p>
           </div>
         )}
       </div>
@@ -678,9 +678,9 @@ function MetricBox({ label, value, icon: Icon }: { label: string; value: string;
     <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
       <div className="flex items-center gap-2">
         <Icon className="h-4 w-4 text-[var(--avs-text-muted)]" />
-        <span className="text-xs text-[var(--avs-text-muted)]">{label}</span>
+        <span className="text-caption text-[var(--avs-text-muted)]">{label}</span>
       </div>
-      <p className="text-sm font-semibold text-[var(--avs-text-primary)] mt-1">{value}</p>
+      <p className="text-small font-semibold text-[var(--avs-text-primary)] mt-1">{value}</p>
     </div>
   );
 }

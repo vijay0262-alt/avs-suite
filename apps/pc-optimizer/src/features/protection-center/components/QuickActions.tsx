@@ -68,8 +68,8 @@ export function QuickActions({ actions, onNavigate, isPro }: QuickActionsProps) 
               )}
             </div>
             <div>
-              <div className="text-sm font-semibold text-[var(--avs-text-primary)]">{action.label}</div>
-              <div className="text-xs text-[var(--avs-text-muted)]">{action.description}</div>
+              <div className="text-small font-semibold text-[var(--avs-text-primary)]">{action.label}</div>
+              <div className="text-caption text-[var(--avs-text-muted)]">{action.description}</div>
             </div>
           </button>
         );

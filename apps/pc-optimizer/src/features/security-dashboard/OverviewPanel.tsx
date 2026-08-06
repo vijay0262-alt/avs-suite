@@ -71,7 +71,7 @@ export function OverviewPanel({
   if (!overview) {
     return (
       <Card data-testid="overview-empty">
-        <div className="py-8 text-center text-sm text-text-secondary">
+        <div className="py-8 text-center text-small text-text-secondary">
           No security data available yet.
         </div>
       </Card>
@@ -85,7 +85,7 @@ export function OverviewPanel({
         {/* Security Score Ring */}
         <Card data-testid="overview-score-ring">
           <div className="flex flex-col items-center">
-            <span className="text-xs font-medium uppercase tracking-wide text-text-muted mb-2">Security Score</span>
+            <span className="text-caption font-medium uppercase tracking-wide text-text-muted mb-2">Security Score</span>
             <ScoreRing score={overview.securityScore} />
             <div className="mt-2">
               <Badge tone={scoreTone(overview.securityScore) === 'success' ? 'success' : scoreTone(overview.securityScore) === 'warning' ? 'warning' : 'danger'}>
@@ -99,20 +99,20 @@ export function OverviewPanel({
         <Card data-testid="overview-protection-status">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium uppercase tracking-wide text-text-muted">Protection Status</span>
+              <span className="text-caption font-medium uppercase tracking-wide text-text-muted">Protection Status</span>
               <ShieldCheckIcon className="h-5 w-5 text-semantic-success" aria-hidden />
             </div>
-            <div className="text-2xl font-bold text-text-primary capitalize">{overview.protectionStatus}</div>
+            <div className="text-statistic font-bold text-text-primary capitalize">{overview.protectionStatus}</div>
             <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-caption">
                 <span className="text-text-secondary">Mode</span>
                 <span className="font-medium text-text-primary capitalize">{overview.protectionMode}</span>
               </div>
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-caption">
                 <span className="text-text-secondary">Monitors</span>
                 <span className="font-medium text-text-primary">{overview.activeMonitors}/{overview.totalMonitors}</span>
               </div>
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-caption">
                 <span className="text-text-secondary">Uptime</span>
                 <span className="font-medium text-text-primary">{formatUptime(overview.protectionUptime)}</span>
               </div>
@@ -124,17 +124,17 @@ export function OverviewPanel({
         <Card data-testid="overview-ai-confidence">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium uppercase tracking-wide text-text-muted">AI Confidence</span>
+              <span className="text-caption font-medium uppercase tracking-wide text-text-muted">AI Confidence</span>
               <CpuChipIcon className="h-5 w-5 text-brand-primary" aria-hidden />
             </div>
-            <div className="text-2xl font-bold text-text-primary">
+            <div className="text-statistic font-bold text-text-primary">
               {(overview.aiConfidenceScore * 100).toFixed(0)}%
             </div>
             <ProgressBar
               value={overview.aiConfidenceScore * 100}
               tone={overview.aiConfidenceScore >= 0.8 ? 'success' : overview.aiConfidenceScore >= 0.6 ? 'warning' : 'danger'}
             />
-            <p className="text-xs text-text-secondary">
+            <p className="text-caption text-text-secondary">
               {overview.aiConfidenceScore >= 0.8 ? 'High confidence in detections' : 'Some detections may need review'}
             </p>
           </div>
@@ -144,14 +144,14 @@ export function OverviewPanel({
         <Card data-testid="overview-threat-level">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium uppercase tracking-wide text-text-muted">Threat Level</span>
+              <span className="text-caption font-medium uppercase tracking-wide text-text-muted">Threat Level</span>
               <ExclamationTriangleIcon className="h-5 w-5 text-semantic-warning" aria-hidden />
             </div>
-            <div className="text-2xl font-bold text-text-primary capitalize">{overview.threatLevel}</div>
+            <div className="text-statistic font-bold text-text-primary capitalize">{overview.threatLevel}</div>
             <Badge tone={threatLevelTone(overview.threatLevel)}>
               {overview.threatLevel === 'none' ? 'No threats' : `${overview.threatLevel} threat level`}
             </Badge>
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-caption">
               <span className="text-text-secondary">Definitions</span>
               <span className="font-medium text-text-primary capitalize">{overview.definitionsStatus.replace(/_/g, ' ')}</span>
             </div>
@@ -184,7 +184,7 @@ export function OverviewPanel({
           {health && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-text-secondary">Status</span>
+                <span className="text-small text-text-secondary">Status</span>
                 <Badge tone={health.status === 'healthy' ? 'success' : health.status === 'degraded' ? 'warning' : 'danger'}>
                   {health.status}
                 </Badge>
@@ -192,7 +192,7 @@ export function OverviewPanel({
               {health.issues.length > 0 ? (
                 <div className="space-y-1">
                   {health.issues.slice(0, 3).map((issue: HealthIssue, i: number) => (
-                    <div key={i} className="text-xs text-text-secondary">
+                    <div key={i} className="text-caption text-text-secondary">
                       <span className={`font-medium ${issue.severity === 'critical' ? 'text-semantic-danger' : issue.severity === 'high' ? 'text-semantic-warning' : ''}`}>
                         {issue.severity}:
                       </span>{' '}
@@ -201,7 +201,7 @@ export function OverviewPanel({
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-text-secondary">No issues detected. All systems healthy.</p>
+                <p className="text-caption text-text-secondary">No issues detected. All systems healthy.</p>
               )}
             </div>
           )}
@@ -213,8 +213,8 @@ export function OverviewPanel({
             <div className="space-y-3">
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-text-secondary">CPU (target &lt;1%)</span>
-                  <span className="text-xs font-medium text-text-primary">{telemetry.cpuUsage.toFixed(2)}%</span>
+                  <span className="text-caption text-text-secondary">CPU (target &lt;1%)</span>
+                  <span className="text-caption font-medium text-text-primary">{telemetry.cpuUsage.toFixed(2)}%</span>
                 </div>
                 <ProgressBar
                   value={telemetry.cpuUsage}
@@ -223,19 +223,19 @@ export function OverviewPanel({
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-text-secondary">Memory (target &lt;150MB)</span>
-                  <span className="text-xs font-medium text-text-primary">{telemetry.memoryUsage.toFixed(0)}MB</span>
+                  <span className="text-caption text-text-secondary">Memory (target &lt;150MB)</span>
+                  <span className="text-caption font-medium text-text-primary">{telemetry.memoryUsage.toFixed(0)}MB</span>
                 </div>
                 <ProgressBar
                   value={(telemetry.memoryUsage / 150) * 100}
                   tone={telemetry.memoryUsage <= 150 ? 'success' : 'warning'}
                 />
               </div>
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-caption">
                 <span className="text-text-secondary">Events/min</span>
                 <span className="font-medium text-text-primary">{telemetry.eventsPerMinute.toFixed(1)}</span>
               </div>
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-caption">
                 <span className="text-text-secondary">Queue depth</span>
                 <span className="font-medium text-text-primary">{telemetry.queueDepth}</span>
               </div>
@@ -247,29 +247,29 @@ export function OverviewPanel({
         <Card title="Session Info" data-testid="overview-session-info">
           {session ? (
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-caption">
                 <span className="text-text-secondary flex items-center gap-1">
                   <ClockIcon className="h-3 w-3" /> Started
                 </span>
                 <span className="font-medium text-text-primary">{new Date(session.startedAt).toLocaleTimeString()}</span>
               </div>
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-caption">
                 <span className="text-text-secondary">Events processed</span>
                 <span className="font-medium text-text-primary">{session.eventsProcessed}</span>
               </div>
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-caption">
                 <span className="text-text-secondary">Threats detected</span>
                 <span className="font-medium text-text-primary">{session.threatsDetected}</span>
               </div>
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-caption">
                 <span className="text-text-secondary">Threats blocked</span>
                 <span className="font-medium text-text-primary">{session.threatsBlocked}</span>
               </div>
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-caption">
                 <span className="text-text-secondary">Notifications sent</span>
                 <span className="font-medium text-text-primary">{session.notificationsSent}</span>
               </div>
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-caption">
                 <span className="text-text-secondary">Last updated</span>
                 <span className="font-medium text-text-primary">
                   {lastUpdated > 0 ? new Date(lastUpdated).toLocaleTimeString() : 'N/A'}
@@ -277,7 +277,7 @@ export function OverviewPanel({
               </div>
             </div>
           ) : (
-            <p className="text-xs text-text-secondary">No active session.</p>
+            <p className="text-caption text-text-secondary">No active session.</p>
           )}
         </Card>
       </div>
@@ -321,7 +321,7 @@ function LiveCount({ label, value, icon }: { label: string; value: number; icon?
     <div className="flex flex-col items-center text-center" data-testid={`live-count-${label.toLowerCase().replace(/\s+/g, '-')}`}>
       {icon && <div className="mb-1 text-text-muted">{icon}</div>}
       <div className="text-xl font-semibold text-text-primary">{value.toLocaleString()}</div>
-      <div className="text-xs text-text-muted">{label}</div>
+      <div className="text-caption text-text-muted">{label}</div>
     </div>
   );
 }

@@ -51,26 +51,26 @@ export function ProviderHealthPanel({ providers, health, diagnostics }: Provider
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card data-testid="provider-summary-total">
           <div className="text-center">
-            <div className="text-2xl font-bold text-text-primary">{providers.length}</div>
-            <div className="text-xs text-text-muted">Total Providers</div>
+            <div className="text-statistic font-bold text-text-primary">{providers.length}</div>
+            <div className="text-caption text-text-muted">Total Providers</div>
           </div>
         </Card>
         <Card data-testid="provider-summary-healthy">
           <div className="text-center">
-            <div className="text-2xl font-bold text-semantic-success">{healthyCount}</div>
-            <div className="text-xs text-text-muted">Healthy</div>
+            <div className="text-statistic font-bold text-semantic-success">{healthyCount}</div>
+            <div className="text-caption text-text-muted">Healthy</div>
           </div>
         </Card>
         <Card data-testid="provider-summary-degraded">
           <div className="text-center">
-            <div className="text-2xl font-bold text-semantic-warning">{degradedCount}</div>
-            <div className="text-xs text-text-muted">Degraded</div>
+            <div className="text-statistic font-bold text-semantic-warning">{degradedCount}</div>
+            <div className="text-caption text-text-muted">Degraded</div>
           </div>
         </Card>
         <Card data-testid="provider-summary-error">
           <div className="text-center">
-            <div className="text-2xl font-bold text-semantic-danger">{errorCount}</div>
-            <div className="text-xs text-text-muted">Error</div>
+            <div className="text-statistic font-bold text-semantic-danger">{errorCount}</div>
+            <div className="text-caption text-text-muted">Error</div>
           </div>
         </Card>
       </div>
@@ -80,7 +80,7 @@ export function ProviderHealthPanel({ providers, health, diagnostics }: Provider
         <Card title="Overall Health" data-testid="provider-overall-health">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-text-secondary">Status</span>
+              <span className="text-small text-text-secondary">Status</span>
               <Badge tone={health.status === 'healthy' ? 'success' : health.status === 'degraded' ? 'warning' : 'danger'}>
                 {health.status}
               </Badge>
@@ -92,7 +92,7 @@ export function ProviderHealthPanel({ providers, health, diagnostics }: Provider
             {health.issues.length > 0 && (
               <div className="space-y-1">
                 {health.issues.map((issue, i) => (
-                  <div key={i} className="text-xs text-text-secondary">
+                  <div key={i} className="text-caption text-text-secondary">
                     <span className={`font-medium ${issue.severity === 'critical' ? 'text-semantic-danger' : issue.severity === 'high' ? 'text-semantic-warning' : ''}`}>
                       [{issue.severity}]
                     </span>{' '}
@@ -116,8 +116,8 @@ export function ProviderHealthPanel({ providers, health, diagnostics }: Provider
             onClick={() => setFilter(f)}
             className={
               filter === f
-                ? 'rounded-md bg-brand-primary/10 px-2.5 py-1 text-xs font-medium text-brand-primary capitalize'
-                : 'rounded-md px-2.5 py-1 text-xs text-text-secondary hover:bg-surface-muted capitalize'
+                ? 'rounded-md bg-brand-primary/10 px-2.5 py-1 text-caption font-medium text-brand-primary capitalize'
+                : 'rounded-md px-2.5 py-1 text-caption text-text-secondary hover:bg-surface-muted capitalize'
             }
             data-testid={`provider-filter-${f}`}
           >
@@ -134,16 +134,16 @@ export function ProviderHealthPanel({ providers, health, diagnostics }: Provider
               <div className="flex items-center gap-3">
                 <StatusIcon status={provider.status} />
                 <div>
-                  <div className="text-sm font-medium text-text-primary">{provider.name}</div>
-                  <div className="text-xs text-text-muted">{provider.description}</div>
+                  <div className="text-small font-medium text-text-primary">{provider.name}</div>
+                  <div className="text-caption text-text-muted">{provider.description}</div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 {provider.latency > 0 && (
-                  <span className="text-xs text-text-muted">{provider.latency}ms</span>
+                  <span className="text-caption text-text-muted">{provider.latency}ms</span>
                 )}
                 {provider.lastRun && (
-                  <span className="text-xs text-text-muted">
+                  <span className="text-caption text-text-muted">
                     {new Date(provider.lastRun).toLocaleTimeString()}
                   </span>
                 )}
@@ -159,13 +159,13 @@ export function ProviderHealthPanel({ providers, health, diagnostics }: Provider
         <Card title="Diagnostics" data-testid="provider-diagnostics">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-text-secondary">Overall</span>
+              <span className="text-small text-text-secondary">Overall</span>
               <Badge tone={diagnostics.overallStatus === 'pass' ? 'success' : diagnostics.overallStatus === 'warn' ? 'warning' : 'danger'}>
                 {diagnostics.overallStatus}
               </Badge>
             </div>
             {diagnostics.results.map((result, i) => (
-              <div key={i} className="flex items-center justify-between text-xs">
+              <div key={i} className="flex items-center justify-between text-caption">
                 <span className="text-text-secondary">{result.component}: {result.message}</span>
                 <Badge tone={result.status === 'pass' ? 'success' : result.status === 'warn' ? 'warning' : 'danger'}>
                   {result.status}

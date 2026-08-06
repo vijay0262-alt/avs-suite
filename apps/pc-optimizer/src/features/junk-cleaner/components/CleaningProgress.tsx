@@ -69,10 +69,10 @@ export function CleaningProgress({ open, snapshot, onCancel }: CleaningProgressP
         {/* Progress bar with percentage */}
         <div>
           <div className="mb-2 flex items-baseline justify-between">
-            <span className="text-sm font-medium text-text-primary">
+            <span className="text-small font-medium text-text-primary">
               {currentOperation}
             </span>
-            <span className="text-xs tabular-nums text-text-muted">
+            <span className="text-caption tabular-nums text-text-muted">
               {progress}%
             </span>
           </div>
@@ -80,7 +80,7 @@ export function CleaningProgress({ open, snapshot, onCancel }: CleaningProgressP
           
           {/* Current file */}
           <p
-            className="mt-2 truncate font-mono text-xs text-text-muted"
+            className="mt-2 truncate font-mono text-caption text-text-muted"
             title={snapshot.currentFile ?? undefined}
             data-testid="cleaning-progress-current-file"
           >
@@ -89,7 +89,7 @@ export function CleaningProgress({ open, snapshot, onCancel }: CleaningProgressP
         </div>
 
         {/* Metrics grid */}
-        <div className="grid grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-3 gap-4 text-small">
           <Metric label="Files removed" value={(snapshot.totalFilesRemoved ?? 0).toLocaleString()} testId="cp-removed" />
           <Metric label="Total files" value={totalTargets.toLocaleString()} testId="cp-total" />
           <Metric label="Remaining" value={remaining.toLocaleString()} testId="cp-remaining" />
@@ -99,7 +99,7 @@ export function CleaningProgress({ open, snapshot, onCancel }: CleaningProgressP
         </div>
 
         {/* ETA */}
-        <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center justify-between text-small">
           <span className="text-text-muted">Estimated time remaining</span>
           <span className="font-semibold tabular-nums text-text-primary" data-testid="cp-eta">
             {fmtDuration(snapshot.etaMs)}
@@ -108,7 +108,7 @@ export function CleaningProgress({ open, snapshot, onCancel }: CleaningProgressP
 
         {/* Skipped/Failed warning */}
         {(snapshot.totalFilesSkipped ?? 0) > 0 || (snapshot.totalFilesFailed ?? 0) > 0 ? (
-          <div className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-3 text-xs text-text-secondary">
+          <div className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-3 text-caption text-text-secondary">
             Skipped: {(snapshot.totalFilesSkipped ?? 0).toLocaleString()} ·
             Failed: {(snapshot.totalFilesFailed ?? 0).toLocaleString()} · These files were
             excluded for safety (locks, permissions, or protected paths).
@@ -122,9 +122,9 @@ export function CleaningProgress({ open, snapshot, onCancel }: CleaningProgressP
 function Metric({ label, value, testId }: { label: string; value: string; testId: string }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-wide text-text-muted">{label}</div>
+      <div className="text-caption uppercase tracking-wide text-text-muted">{label}</div>
       <div
-        className="mt-0.5 text-lg font-semibold text-text-primary tabular-nums"
+        className="mt-0.5 text-section-title font-semibold text-text-primary tabular-nums"
         data-testid={testId}
       >
         {value}

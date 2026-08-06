@@ -151,7 +151,7 @@ export function RecoveryCenterPage() {
 
       {state.error && (
         <Card variant="glass">
-          <div className="flex items-center gap-2 text-sm text-[var(--avs-danger)]">
+          <div className="flex items-center gap-2 text-small text-[var(--avs-danger)]">
             <ExclamationTriangleIcon className="h-4 w-4" />
             {state.error}
           </div>
@@ -166,11 +166,11 @@ export function RecoveryCenterPage() {
             ) : (
               <ExclamationTriangleIcon className="h-5 w-5 text-[var(--avs-danger)]" />
             )}
-            <span className="text-sm text-[var(--avs-text-primary)]">
+            <span className="text-small text-[var(--avs-text-primary)]">
               {state.restoreResult.status === 'success' ? 'Restore completed successfully' : 'Restore failed'}
             </span>
             {state.restoreResult.message && (
-              <span className="text-xs text-[var(--avs-text-muted)]">{state.restoreResult.message}</span>
+              <span className="text-caption text-[var(--avs-text-muted)]">{state.restoreResult.message}</span>
             )}
           </div>
         </Card>
@@ -186,15 +186,15 @@ export function RecoveryCenterPage() {
               >
                 <ShieldCheckIcon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-[var(--avs-text-primary)]">
+                  <span className="text-small font-medium text-[var(--avs-text-primary)]">
                     {backup.details || backup.operation || backup.id}
                   </span>
                   <div className="flex items-center gap-2 mt-0.5">
                     <ClockIcon className="h-3 w-3 text-[var(--avs-text-muted)]" />
-                    <span className="text-xs text-[var(--avs-text-muted)]">
+                    <span className="text-caption text-[var(--avs-text-muted)]">
                       {new Date(backup.timestamp).toLocaleString()}
                     </span>
-                    <span className="text-xs text-[var(--avs-text-muted)]">
+                    <span className="text-caption text-[var(--avs-text-muted)]">
                       ({(backup.size / 1024 / 1024).toFixed(1)} MB)
                     </span>
                   </div>

@@ -152,13 +152,13 @@ function ErrorFallback({ error, errorInfo, onReset, standalone }: ErrorFallbackP
           <ExclamationTriangleIcon className="h-6 w-6 text-semantic-danger" aria-hidden />
         </div>
         <div className="flex-1">
-          <h2 className="text-lg font-semibold text-text-primary">
+          <h2 className="text-section-title font-semibold text-text-primary">
             Something went wrong
           </h2>
-          <p className="mt-1 text-sm text-text-secondary">
+          <p className="mt-1 text-small text-text-secondary">
             AVS Shield encountered an unexpected problem.
           </p>
-          <p className="mt-1 text-xs text-text-muted">
+          <p className="mt-1 text-caption text-text-muted">
             The rest of the application is still running safely.
           </p>
         </div>
@@ -238,18 +238,18 @@ function ErrorFallback({ error, errorInfo, onReset, standalone }: ErrorFallbackP
           data-testid="error-boundary-details-content"
         >
           <div>
-            <span className="text-xs font-medium text-text-muted">Error: </span>
-            <span className="text-xs text-text-secondary">{error.message}</span>
+            <span className="text-caption font-medium text-text-muted">Error: </span>
+            <span className="text-caption text-text-secondary">{error.message}</span>
           </div>
           {error.stack && (
-            <pre className="overflow-auto text-xs text-text-muted whitespace-pre-wrap break-all">
+            <pre className="overflow-auto text-caption text-text-muted whitespace-pre-wrap break-all">
               {error.stack}
             </pre>
           )}
           {errorInfo?.componentStack && (
             <div>
-              <span className="text-xs font-medium text-text-muted">Component stack:</span>
-              <pre className="mt-1 overflow-auto text-xs text-text-muted whitespace-pre-wrap break-all">
+              <span className="text-caption font-medium text-text-muted">Component stack:</span>
+              <pre className="mt-1 overflow-auto text-caption text-text-muted whitespace-pre-wrap break-all">
                 {errorInfo.componentStack}
               </pre>
             </div>
@@ -258,7 +258,7 @@ function ErrorFallback({ error, errorInfo, onReset, standalone }: ErrorFallbackP
       )}
 
       {/* Footer */}
-      <p className="mt-4 text-xs text-text-muted">
+      <p className="mt-4 text-caption text-text-muted">
         If the problem persists, contact{' '}
         <a
           href="mailto:help@avsshield.com"

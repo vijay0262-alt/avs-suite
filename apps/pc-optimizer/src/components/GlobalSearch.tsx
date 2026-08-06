@@ -157,9 +157,9 @@ export function GlobalSearch({ entries: navEntries }: GlobalSearchProps) {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDownInput}
-          className="w-full rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] py-1.5 pl-9 pr-7 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus:border-[var(--avs-border-hover)] transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
+          className="w-full rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] py-1.5 pl-9 pr-7 text-small text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus:border-[var(--avs-border-hover)] transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
         />
-        <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden md:inline-block rounded bg-[var(--avs-surface)] px-1.5 py-0.5 text-[10px] text-text-muted border border-[var(--avs-border)]">
+        <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden md:inline-block rounded bg-[var(--avs-surface)] px-1.5 py-0.5 text-micro text-text-muted border border-[var(--avs-border)]">
           Ctrl+K
         </kbd>
       </div>
@@ -167,7 +167,7 @@ export function GlobalSearch({ entries: navEntries }: GlobalSearchProps) {
         <div className="absolute z-50 mt-1 w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] shadow-[var(--avs-shadow-lg)] overflow-hidden">
           {showRecent ? (
             <div data-testid="search-recent">
-              <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+              <div className="px-3 py-1.5 text-micro font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
                 <ClockIcon className="h-3 w-3" aria-hidden />
                 Recent Searches
               </div>
@@ -177,7 +177,7 @@ export function GlobalSearch({ entries: navEntries }: GlobalSearchProps) {
                     <button
                       role="option"
                       onClick={() => selectRecent(term)}
-                      className="w-full text-left px-3 py-2 text-sm text-text-primary hover:bg-[var(--avs-surface-muted)] transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
+                      className="w-full text-left px-3 py-2 text-small text-text-primary hover:bg-[var(--avs-surface-muted)] transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
                     >
                       <span className="flex items-center gap-2">
                         <ClockIcon className="h-3.5 w-3.5 text-text-muted" aria-hidden />
@@ -189,9 +189,9 @@ export function GlobalSearch({ entries: navEntries }: GlobalSearchProps) {
               </ul>
             </div>
           ) : normalized === '' ? (
-            <div className="px-3 py-2 text-xs text-text-muted">Type to find a module, setting, or action — e.g. startup, disk, clean</div>
+            <div className="px-3 py-2 text-caption text-text-muted">Type to find a module, setting, or action — e.g. startup, disk, clean</div>
           ) : results.length === 0 ? (
-            <div className="px-3 py-2 text-xs text-text-muted">No results for &ldquo;{query}&rdquo;</div>
+            <div className="px-3 py-2 text-caption text-text-muted">No results for &ldquo;{query}&rdquo;</div>
           ) : (
             <ul role="listbox" className="max-h-72 overflow-y-auto" data-testid="search-results">
               {results.map((entry, index) => (
@@ -201,7 +201,7 @@ export function GlobalSearch({ entries: navEntries }: GlobalSearchProps) {
                     aria-selected={index === highlighted}
                     onClick={() => select(entry.to)}
                     onMouseEnter={() => setHighlighted(index)}
-                    className={`w-full text-left px-3 py-2 text-sm transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)] ${
+                    className={`w-full text-left px-3 py-2 text-small transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)] ${
                       index === highlighted ? 'text-white' : 'text-text-primary hover:bg-[var(--avs-surface-muted)]'
                     }`}
                     style={index === highlighted ? { background: 'var(--avs-gradient-brand)' } : undefined}
@@ -209,7 +209,7 @@ export function GlobalSearch({ entries: navEntries }: GlobalSearchProps) {
                     <div className="flex items-center justify-between gap-2">
                       <span>{entry.label}</span>
                       {entry.category && (
-                        <span className={`text-[10px] uppercase tracking-wider ${index === highlighted ? 'text-white/70' : 'text-text-muted'}`}>
+                        <span className={`text-micro uppercase tracking-wider ${index === highlighted ? 'text-white/70' : 'text-text-muted'}`}>
                           {entry.category}
                         </span>
                       )}

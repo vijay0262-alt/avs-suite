@@ -102,12 +102,12 @@ export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSum
           <Icon className={`h-8 w-8 ${tone}`} aria-hidden />
           <div>
             <div
-              className="text-2xl font-semibold text-text-primary tabular-nums"
+              className="text-statistic font-semibold text-text-primary tabular-nums"
               data-testid="cleaning-summary-recovered"
             >
               Recovered {formatBytes(bytesRecovered)}
             </div>
-            <div className="text-sm text-text-secondary">
+            <div className="text-small text-text-secondary">
               {filesRemoved.toLocaleString()} files removed in {fmtDuration(durationMs)}
             </div>
           </div>
@@ -130,10 +130,10 @@ export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSum
 
         {/* Per category breakdown */}
         <div>
-          <div className="mb-2 text-xs uppercase tracking-wide text-text-muted">Per category</div>
-          <table className="w-full text-sm" data-testid="cleaning-summary-table">
+          <div className="mb-2 text-caption uppercase tracking-wide text-text-muted">Per category</div>
+          <table className="w-full text-small" data-testid="cleaning-summary-table">
             <thead>
-              <tr className="border-b border-[var(--avs-border)] text-xs uppercase text-text-muted">
+              <tr className="border-b border-[var(--avs-border)] text-caption uppercase text-text-muted">
                 <th className="py-2 text-left font-medium">Category</th>
                 <th className="py-2 text-right font-medium">Removed</th>
                 <th className="py-2 text-right font-medium">Recovered</th>
@@ -161,7 +161,7 @@ export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSum
         
         {/* Errors/warnings if any */}
         {(snapshot.totalFilesFailed ?? 0) > 0 && (
-          <div className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-3 text-xs text-text-secondary">
+          <div className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-3 text-caption text-text-secondary">
             Some files could not be cleaned due to locks, permissions, or other errors. 
             These files were skipped for safety.
           </div>
@@ -174,7 +174,7 @@ export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSum
 function StatCard({ label, value, testId }: { label: string; value: number | string; testId: string }) {
   return (
     <div className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-3">
-      <div className="text-xs uppercase text-text-muted">{label}</div>
+      <div className="text-caption uppercase text-text-muted">{label}</div>
       <div
         className="mt-1 text-xl font-semibold text-text-primary tabular-nums"
         data-testid={testId}

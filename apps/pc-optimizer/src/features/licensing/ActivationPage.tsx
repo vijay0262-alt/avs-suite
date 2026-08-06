@@ -152,7 +152,7 @@ export default function ActivationPage() {
 
       {/* Account Info */}
       <Card title="Account">
-        <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 text-small md:grid-cols-2">
           <div>
             <div className="text-text-muted">Signed in as</div>
             <div className="font-medium text-text-primary mt-1">{customerName}</div>
@@ -181,16 +181,16 @@ export default function ActivationPage() {
       {/* Subscription */}
       <Card title="Subscription">
         {phase === 'syncing' && !syncData ? (
-          <p className="text-sm text-text-muted">Loading subscription…</p>
+          <p className="text-small text-text-muted">Loading subscription…</p>
         ) : error && !syncData ? (
           <div className="space-y-2">
-            <p className="text-sm text-semantic-danger">{error}</p>
+            <p className="text-small text-semantic-danger">{error}</p>
             <Button variant="secondary" size="sm" onClick={() => void sync()} data-testid="subscription-retry">
               Retry
             </Button>
           </div>
         ) : syncData ? (
-          <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 text-small md:grid-cols-2">
             <div>
               <div className="text-text-muted">Current Plan</div>
               <div className="flex items-center gap-2 mt-1">
@@ -217,7 +217,7 @@ export default function ActivationPage() {
                   {features.map((f) => (
                     <span
                       key={f}
-                      className="inline-flex items-center rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-2 py-0.5 text-xs text-text-secondary"
+                      className="inline-flex items-center rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-2 py-0.5 text-caption text-text-secondary"
                     >
                       {f}
                     </span>
@@ -242,7 +242,7 @@ export default function ActivationPage() {
             )}
           </div>
         ) : (
-          <p className="text-sm text-text-muted">No subscription data available.</p>
+          <p className="text-small text-text-muted">No subscription data available.</p>
         )}
       </Card>
 
@@ -251,10 +251,10 @@ export default function ActivationPage() {
         <Card title="License">
           {license ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 text-small md:grid-cols-2">
                 <div>
                   <div className="text-text-muted">License Key</div>
-                  <div className="font-mono text-xs text-text-secondary mt-1">
+                  <div className="font-mono text-caption text-text-secondary mt-1">
                     {license.license_key ? '••••-••••-••••-••••' : '—'}
                   </div>
                 </div>
@@ -295,7 +295,7 @@ export default function ActivationPage() {
               </div>
 
               {actionSuccess && (
-                <div className="rounded-[var(--avs-radius-md)] bg-semantic-success/10 px-3 py-2 text-sm text-semantic-success">
+                <div className="rounded-[var(--avs-radius-md)] bg-semantic-success/10 px-3 py-2 text-small text-semantic-success">
                   {actionSuccess}
                 </div>
               )}
@@ -313,7 +313,7 @@ export default function ActivationPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-text-secondary">
+              <p className="text-small text-text-secondary">
                 Your subscription is Professional but no license is assigned. Try syncing from the server.
               </p>
               <Button
@@ -334,10 +334,10 @@ export default function ActivationPage() {
               <div className="flex items-center gap-2">
                 <Badge tone="neutral">FREE Edition</Badge>
               </div>
-              <p className="text-sm text-text-secondary">
+              <p className="text-small text-text-secondary">
                 No license key required. Your account authenticates directly with AVS Shield.
               </p>
-              <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 mt-2">
+              <div className="grid grid-cols-1 gap-4 text-small md:grid-cols-2 mt-2">
                 <div>
                   <div className="text-text-muted">License</div>
                   <div className="font-medium text-text-primary mt-1">Not Required</div>
@@ -354,8 +354,8 @@ export default function ActivationPage() {
             {/* License Key Activation */}
             <div className="border-t border-[var(--avs-border)] pt-4" data-testid="license-key-activation">
               <div className="mb-2">
-                <h4 className="text-sm font-semibold text-text-primary">Have a License Key?</h4>
-                <p className="text-xs text-text-muted mt-0.5">
+                <h4 className="text-small font-semibold text-text-primary">Have a License Key?</h4>
+                <p className="text-caption text-text-muted mt-0.5">
                   Activate your product to Professional version by entering your license key.
                 </p>
               </div>
@@ -366,7 +366,7 @@ export default function ActivationPage() {
                   onChange={(e) => setLicenseKeyInput(e.target.value)}
                   placeholder="AVS-XXXX-XXXX-XXXX-XXXX"
                   disabled={activateLoading || !isConnected}
-                  className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-surface px-3 py-2 text-sm font-mono uppercase text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-50"
+                  className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-surface px-3 py-2 text-small font-mono uppercase text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-50"
                   data-testid="license-key-input"
                 />
                 <Button
@@ -380,13 +380,13 @@ export default function ActivationPage() {
               </div>
 
               {activateError && (
-                <div className="mt-2 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 px-3 py-2 text-sm text-semantic-danger" data-testid="activate-license-error">
+                <div className="mt-2 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 px-3 py-2 text-small text-semantic-danger" data-testid="activate-license-error">
                   {activateError}
                 </div>
               )}
 
               {activateSuccess && (
-                <div className="mt-2 rounded-[var(--avs-radius-md)] bg-semantic-success/10 px-3 py-2 text-sm text-semantic-success" data-testid="activate-license-success">
+                <div className="mt-2 rounded-[var(--avs-radius-md)] bg-semantic-success/10 px-3 py-2 text-small text-semantic-success" data-testid="activate-license-success">
                   {activateSuccess}
                 </div>
               )}
@@ -400,14 +400,14 @@ export default function ActivationPage() {
         <Card title="Registered Devices">
           <div className="space-y-3">
             {devices.map((dev) => (
-              <div key={dev.id} className="flex items-center justify-between text-sm border-b border-[var(--avs-border)] pb-2 last:border-0">
+              <div key={dev.id} className="flex items-center justify-between text-small border-b border-[var(--avs-border)] pb-2 last:border-0">
                 <div>
                   <div className="font-medium text-text-primary">{dev.device_name ?? 'Unnamed Device'}</div>
-                  <div className="font-mono text-xs text-text-muted">{dev.device_fingerprint}</div>
+                  <div className="font-mono text-caption text-text-muted">{dev.device_fingerprint}</div>
                 </div>
                 <div className="flex items-center gap-3">
                   {dev.app_version && (
-                    <span className="text-xs text-text-muted">v{dev.app_version}</span>
+                    <span className="text-caption text-text-muted">v{dev.app_version}</span>
                   )}
                   <Badge tone={dev.status === 'active' ? 'success' : 'neutral'}>
                     {dev.status}
@@ -421,7 +421,7 @@ export default function ActivationPage() {
 
       {/* Sync Info */}
       <Card title="Sync">
-        <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 text-small md:grid-cols-3">
           <div>
             <div className="text-text-muted">Last Sync</div>
             <div className="font-medium text-text-primary mt-1">

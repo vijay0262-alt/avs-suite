@@ -167,14 +167,14 @@ export function UnifiedResultsView({
                 a.click();
                 URL.revokeObjectURL(url);
               }}
-              className="rounded-[var(--avs-radius-md)] px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-[var(--avs-surface-muted)] transition-colors"
+              className="rounded-[var(--avs-radius-md)] px-3 py-1.5 text-caption font-medium text-text-secondary hover:bg-[var(--avs-surface-muted)] transition-colors"
             >
               Save Report
             </button>
             {onReviewDetails && (
               <button
                 onClick={onReviewDetails}
-                className="rounded-[var(--avs-radius-md)] px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-[var(--avs-surface-muted)] transition-colors"
+                className="rounded-[var(--avs-radius-md)] px-3 py-1.5 text-caption font-medium text-text-secondary hover:bg-[var(--avs-surface-muted)] transition-colors"
               >
                 Review Details
               </button>
@@ -184,7 +184,7 @@ export function UnifiedResultsView({
             {onApplyAllSafe && safeRecommendationIds.length > 0 && (
               <button
                 onClick={handleApplyAllSafe}
-                className="rounded-[var(--avs-radius-md)] bg-brand-primary/10 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-primary/20 transition-colors"
+                className="rounded-[var(--avs-radius-md)] bg-brand-primary/10 px-3 py-1.5 text-caption font-medium text-brand-primary hover:bg-brand-primary/20 transition-colors"
               >
                 Apply All Safe ({safeRecommendationIds.length})
               </button>
@@ -192,7 +192,7 @@ export function UnifiedResultsView({
             {onApplySelected && selectedIds.size > 0 && (
               <button
                 onClick={handleApplySelected}
-                className="rounded-[var(--avs-radius-md)] bg-brand-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-primary/90 transition-colors"
+                className="rounded-[var(--avs-radius-md)] bg-brand-primary px-3 py-1.5 text-caption font-medium text-white hover:bg-brand-primary/90 transition-colors"
               >
                 Apply Selected ({selectedIds.size})
               </button>
@@ -201,14 +201,14 @@ export function UnifiedResultsView({
               <button
                 key={action.id}
                 onClick={action.action}
-                className="rounded-[var(--avs-radius-md)] px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-[var(--avs-surface-muted)] transition-colors"
+                className="rounded-[var(--avs-radius-md)] px-3 py-1.5 text-caption font-medium text-text-secondary hover:bg-[var(--avs-surface-muted)] transition-colors"
               >
                 {action.label}
               </button>
             ))}
             <button
               onClick={onClose}
-              className="rounded-[var(--avs-radius-md)] px-3 py-1.5 text-xs font-medium text-text-muted hover:bg-[var(--avs-surface-muted)] transition-colors"
+              className="rounded-[var(--avs-radius-md)] px-3 py-1.5 text-caption font-medium text-text-muted hover:bg-[var(--avs-surface-muted)] transition-colors"
             >
               Close
             </button>
@@ -222,7 +222,7 @@ export function UnifiedResultsView({
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div>
-      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">{title}</h3>
+      <h3 className="mb-3 text-small font-semibold uppercase tracking-wide text-text-muted">{title}</h3>
       {children}
     </div>
   );

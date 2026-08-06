@@ -13,6 +13,7 @@ import {
   InboxIcon,
   CheckCircleIcon,
   InformationCircleIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 // ── Loading State ────────────────────────────────────────────────
@@ -33,7 +34,7 @@ export function ModuleLoadingState({
         aria-live="polite"
       >
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--avs-border)] border-t-brand-primary" />
-        <p className="mt-3 text-sm text-text-secondary">{message}</p>
+        <p className="mt-3 text-small text-text-secondary">{message}</p>
       </div>
     </Card>
   );
@@ -61,10 +62,10 @@ export function ModuleErrorState({
         aria-live="assertive"
       >
         <ExclamationTriangleIcon className="h-10 w-10 text-semantic-danger" aria-hidden />
-        <p className="mt-3 max-w-md text-center text-sm font-medium text-text-primary">
+        <p className="mt-4 max-w-md text-center text-body font-medium text-text-primary">
           Something went wrong
         </p>
-        <p className="mt-1 max-w-md text-center text-xs text-text-muted">{message}</p>
+        <p className="mt-1 max-w-md text-center text-caption text-text-muted">{message}</p>
         {onRetry && (
           <Button
             variant="secondary"
@@ -104,8 +105,8 @@ export function ModuleEmptyState({
         data-testid={testId ?? 'module-empty'}
       >
         <Icon className="h-10 w-10 text-text-muted" aria-hidden />
-        <p className="mt-3 text-sm font-medium text-text-primary">{title}</p>
-        {message && <p className="mt-1 max-w-md text-center text-xs text-text-muted">{message}</p>}
+        <p className="mt-4 text-body font-medium text-text-primary">{title}</p>
+        {message && <p className="mt-1 max-w-md text-center text-caption text-text-muted">{message}</p>}
         {action && <div className="mt-4">{action}</div>}
       </div>
     </Card>
@@ -135,17 +136,17 @@ export function ModuleSuccessBanner({
       >
         <CheckCircleIcon className="h-5 w-5 shrink-0 text-semantic-success" aria-hidden />
         <div className="flex-1">
-          <p className="text-sm font-medium text-text-primary">{title}</p>
-          {message && <p className="mt-0.5 text-xs text-text-secondary">{message}</p>}
+          <p className="text-small font-medium text-text-primary">{title}</p>
+          {message && <p className="mt-0.5 text-caption text-text-secondary">{message}</p>}
         </div>
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="text-text-muted hover:text-text-primary transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
+            className="text-text-muted hover:text-text-primary transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)] focus:outline-none focus-visible:shadow-focus rounded-[var(--avs-radius-sm)] p-0.5"
             aria-label="Dismiss"
             data-testid={(testId ?? 'module-success') + '-dismiss'}
           >
-            ✕
+            <XMarkIcon className="h-4 w-4" />
           </button>
         )}
       </div>
@@ -176,7 +177,7 @@ export function ModuleErrorBanner({
       >
         <ExclamationTriangleIcon className="h-5 w-5 shrink-0 text-semantic-danger" aria-hidden />
         <div className="flex-1">
-          <p className="text-sm text-semantic-danger">{message}</p>
+          <p className="text-small text-semantic-danger">{message}</p>
         </div>
         {onRetry && (
           <Button
@@ -192,10 +193,10 @@ export function ModuleErrorBanner({
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="text-text-muted hover:text-text-primary transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
+            className="text-text-muted hover:text-text-primary transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)] focus:outline-none focus-visible:shadow-focus rounded-[var(--avs-radius-sm)] p-0.5"
             aria-label="Dismiss"
           >
-            ✕
+            <XMarkIcon className="h-4 w-4" />
           </button>
         )}
       </div>
@@ -223,15 +224,15 @@ export function ModuleInfoBanner({
       >
         <InformationCircleIcon className="h-5 w-5 shrink-0 text-semantic-info" aria-hidden />
         <div className="flex-1">
-          <p className="text-sm text-text-secondary">{message}</p>
+          <p className="text-small text-text-secondary">{message}</p>
         </div>
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="text-text-muted hover:text-text-primary transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
+            className="text-text-muted hover:text-text-primary transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)] focus:outline-none focus-visible:shadow-focus rounded-[var(--avs-radius-sm)] p-0.5"
             aria-label="Dismiss"
           >
-            ✕
+            <XMarkIcon className="h-4 w-4" />
           </button>
         )}
       </div>

@@ -10,8 +10,8 @@ export interface HealthBadgeProps {
 export const HealthBadge = React.memo(function HealthBadge({ badge, size = 'md' }: HealthBadgeProps) {
   const config = HEALTH_BADGE_CONFIG[badge];
   const sizeClasses = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-3 py-1 text-sm',
+    sm: 'px-2 py-0.5 text-caption',
+    md: 'px-3 py-1 text-small',
     lg: 'px-4 py-1.5 text-base',
   };
   return (

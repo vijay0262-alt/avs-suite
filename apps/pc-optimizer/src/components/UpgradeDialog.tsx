@@ -121,7 +121,7 @@ function XIcon() {
 function renderCell(value: string | boolean): ReactNode {
   if (value === true) return <CheckIcon />;
   if (value === false) return <XIcon />;
-  return <span className="text-text-muted text-xs">{value}</span>;
+  return <span className="text-text-muted text-caption">{value}</span>;
 }
 
 const EDITION_LABELS: Record<Edition, string> = {
@@ -188,10 +188,10 @@ export function UpgradeDialog({ open, onClose, onUpgrade, onActivate, onLearnMor
 
         {showProfessional && (
           <div className="mb-6" data-testid="upgrade-dialog-professional-section">
-            <h3 className="mb-2 text-sm font-semibold text-text-secondary">Professional Benefits</h3>
+            <h3 className="mb-2 text-small font-semibold text-text-secondary">Professional Benefits</h3>
             <ul className="space-y-1.5">
               {PROFESSIONAL_BENEFITS.map((benefit) => (
-                <li key={benefit} className="flex items-start gap-2 text-sm text-text-secondary">
+                <li key={benefit} className="flex items-start gap-2 text-small text-text-secondary">
                   <CheckIcon />
                   <span>{benefit}</span>
                 </li>
@@ -202,10 +202,10 @@ export function UpgradeDialog({ open, onClose, onUpgrade, onActivate, onLearnMor
 
         {showUltimate && (
           <div className="mb-6" data-testid="upgrade-dialog-ultimate-section">
-            <h3 className="mb-2 text-sm font-semibold text-text-secondary">Ultimate Benefits</h3>
+            <h3 className="mb-2 text-small font-semibold text-text-secondary">Ultimate Benefits</h3>
             <ul className="space-y-1.5">
               {ULTIMATE_BENEFITS.map((benefit) => (
-                <li key={benefit} className="flex items-start gap-2 text-sm text-text-secondary">
+                <li key={benefit} className="flex items-start gap-2 text-small text-text-secondary">
                   <CheckIcon />
                   <span>{benefit}</span>
                 </li>
@@ -216,7 +216,7 @@ export function UpgradeDialog({ open, onClose, onUpgrade, onActivate, onLearnMor
 
         <Card title="Feature Comparison">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-small">
               <thead>
                 <tr className="border-b border-[var(--avs-border)]">
                   <th className="py-2 text-left text-text-muted">Feature</th>

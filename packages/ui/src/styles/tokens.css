@@ -1,5 +1,5 @@
 /**
- * AVS Shield v1.2 Design Tokens
+ * AVS Shield V2.0 Design Tokens
  *
  * Premium dark-first design system with glassmorphism,
  * deep navy backgrounds, and vibrant blue/cyan accents.
@@ -11,19 +11,29 @@
 :root {
   color-scheme: light;
 
-  /* Brand — vibrant blue/cyan */
+  /* ── Brand — vibrant blue/cyan ─────────────────────────────────── */
   --avs-brand-primary: #0EA5E9;
   --avs-brand-secondary: #0284C7;
   --avs-brand-accent: #38BDF8;
   --avs-brand-glow: rgba(14, 165, 233, 0.15);
 
-  /* Semantic */
+  /* ── Semantic colors ───────────────────────────────────────────── */
   --avs-success: #22C55E;
   --avs-warning: #F59E0B;
   --avs-danger: #EF4444;
   --avs-info: #0EA5E9;
 
-  /* Surfaces — light theme */
+  /* Semantic backgrounds (tinted) */
+  --avs-success-bg: rgba(34, 197, 94, 0.08);
+  --avs-success-border: rgba(34, 197, 94, 0.25);
+  --avs-warning-bg: rgba(245, 158, 11, 0.08);
+  --avs-warning-border: rgba(245, 158, 11, 0.25);
+  --avs-danger-bg: rgba(239, 68, 68, 0.08);
+  --avs-danger-border: rgba(239, 68, 68, 0.25);
+  --avs-info-bg: rgba(14, 165, 233, 0.08);
+  --avs-info-border: rgba(14, 165, 233, 0.25);
+
+  /* ── Surfaces — light theme ────────────────────────────────────── */
   --avs-bg: #F0F4F8;
   --avs-surface: #FFFFFF;
   --avs-surface-muted: #F1F5F9;
@@ -34,39 +44,76 @@
   --avs-text-secondary: #475569;
   --avs-text-muted: #94A3B8;
 
-  /* Glass */
-  --avs-glass-bg: rgba(255, 255, 255, 0.7);
-  --avs-glass-border: rgba(255, 255, 255, 0.2);
-  --avs-glass-blur: 12px;
+  /* ── Glass ─────────────────────────────────────────────────────── */
+  --avs-glass-bg: rgba(255, 255, 255, 0.72);
+  --avs-glass-border: rgba(255, 255, 255, 0.25);
+  --avs-glass-blur: 16px;
 
-  /* Shadows */
-  --avs-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
-  --avs-shadow-md: 0 4px 16px rgba(15, 23, 42, 0.10);
-  --avs-shadow-lg: 0 16px 48px rgba(15, 23, 42, 0.14);
+  /* ── Shadows ───────────────────────────────────────────────────── */
+  --avs-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --avs-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.06);
+  --avs-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.08);
   --avs-shadow-glow: 0 0 24px var(--avs-brand-glow);
-  --avs-focus-ring: 0 0 0 3px rgba(14, 165, 233, 0.35);
+  --avs-focus-ring: 0 0 0 2px var(--avs-surface), 0 0 0 4px rgba(14, 165, 233, 0.45);
 
-  /* Radius */
+  /* ── Radius ────────────────────────────────────────────────────── */
   --avs-radius-sm: 6px;
   --avs-radius-md: 10px;
   --avs-radius-lg: 14px;
-  --avs-radius-xl: 20px;
-  --avs-radius-2xl: 24px;
+  --avs-radius-xl: 18px;
+  --avs-radius-2xl: 22px;
 
-  /* Gradients */
+  /* ── Gradients ─────────────────────────────────────────────────── */
   --avs-gradient-brand: linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%);
-  --avs-gradient-surface: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+  --avs-gradient-surface: linear-gradient(145deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
   --avs-gradient-glow: radial-gradient(circle at 50% 0%, var(--avs-brand-glow) 0%, transparent 70%);
 
-  /* Animation */
+  /* ── Animation ─────────────────────────────────────────────────── */
   --avs-duration-fast: 150ms;
   --avs-duration-normal: 250ms;
   --avs-duration-slow: 400ms;
   --avs-easing: cubic-bezier(0.22, 1, 0.36, 1);
   --avs-easing-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  /* Spacing scale */
+  /* ── Spacing scale ─────────────────────────────────────────────── */
   --avs-space-section: 1.75rem;
+  --avs-space-page-x: 2rem;
+  --avs-space-page-y: 1.5rem;
+  --avs-space-card: 1.25rem;
+  --avs-space-card-tight: 1rem;
+
+  /* ── Typography scale ──────────────────────────────────────────── */
+  --avs-text-page-title: 1.625rem;       /* 26px — page H1 */
+  --avs-text-page-title-lh: 2rem;        /* 32px line-height */
+  --avs-text-section-title: 1.0625rem;   /* 17px — section H2 */
+  --avs-text-section-title-lh: 1.5rem;   /* 24px */
+  --avs-text-card-title: 0.9375rem;      /* 15px — card H3 */
+  --avs-text-card-title-lh: 1.375rem;    /* 22px */
+  --avs-text-body: 0.875rem;             /* 14px — descriptions, labels */
+  --avs-text-body-lh: 1.375rem;          /* 22px */
+  --avs-text-small: 0.8125rem;           /* 13px — nav items, secondary */
+  --avs-text-small-lh: 1.25rem;          /* 20px */
+  --avs-text-caption: 0.75rem;           /* 12px — captions, meta */
+  --avs-text-caption-lh: 1rem;           /* 16px */
+  --avs-text-micro: 0.6875rem;           /* 11px — section labels, badges */
+  --avs-text-micro-lh: 0.875rem;         /* 14px */
+  --avs-text-statistic: 1.75rem;         /* 28px — large stat numbers */
+  --avs-text-statistic-lh: 2.125rem;     /* 34px */
+  --avs-text-statistic-sm: 1.25rem;      /* 20px — compact stat numbers */
+  --avs-text-statistic-sm-lh: 1.5rem;    /* 24px */
+
+  /* Font weights */
+  --avs-font-normal: 400;
+  --avs-font-medium: 500;
+  --avs-font-semibold: 600;
+  --avs-font-bold: 700;
+
+  /* Letter spacing */
+  --avs-tracking-tight: -0.01em;
+  --avs-tracking-normal: 0;
+  --avs-tracking-wide: 0.025em;
+  --avs-tracking-wider: 0.06em;
+  --avs-tracking-widest: 0.1em;
 }
 
 :root[data-theme='dark'] {
@@ -84,6 +131,16 @@
   --avs-danger: #F87171;
   --avs-info: #38BDF8;
 
+  /* Semantic backgrounds (tinted) — dark */
+  --avs-success-bg: rgba(74, 222, 128, 0.10);
+  --avs-success-border: rgba(74, 222, 128, 0.25);
+  --avs-warning-bg: rgba(251, 191, 36, 0.10);
+  --avs-warning-border: rgba(251, 191, 36, 0.25);
+  --avs-danger-bg: rgba(248, 113, 113, 0.10);
+  --avs-danger-border: rgba(248, 113, 113, 0.25);
+  --avs-info-bg: rgba(56, 189, 248, 0.10);
+  --avs-info-border: rgba(56, 189, 248, 0.25);
+
   /* Deep navy surfaces */
   --avs-bg: #0B1120;
   --avs-surface: #111827;
@@ -96,15 +153,16 @@
   --avs-text-muted: #64748B;
 
   /* Glass — dark mode */
-  --avs-glass-bg: rgba(17, 24, 39, 0.6);
+  --avs-glass-bg: rgba(17, 24, 39, 0.65);
   --avs-glass-border: rgba(56, 189, 248, 0.12);
-  --avs-glass-blur: 16px;
+  --avs-glass-blur: 20px;
 
   /* Shadows — deeper for dark */
-  --avs-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --avs-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
-  --avs-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --avs-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --avs-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --avs-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.35);
   --avs-shadow-glow: 0 0 32px var(--avs-brand-glow);
+  --avs-focus-ring: 0 0 0 2px var(--avs-surface), 0 0 0 4px rgba(56, 189, 248, 0.5);
 
   /* Gradients */
   --avs-gradient-surface: linear-gradient(145deg, rgba(56,189,248,0.04) 0%, rgba(255,255,255,0.01) 100%);

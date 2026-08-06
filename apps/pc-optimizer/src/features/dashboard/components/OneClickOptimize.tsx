@@ -35,7 +35,7 @@ export const OneClickOptimize = React.memo(function OneClickOptimize({
       <Card title="One Click Optimize">
         <div className="text-center py-8">
           <SparklesIcon className="h-16 w-16 mx-auto text-brand-primary mb-4" aria-hidden />
-          <p className="text-sm text-text-secondary mb-6">
+          <p className="text-small text-text-secondary mb-6">
             Optimize your system with a single click. Clean temporary files, clear caches, and improve performance.
           </p>
           <Button
@@ -73,10 +73,10 @@ export const OneClickOptimize = React.memo(function OneClickOptimize({
       >
         {previewLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="text-sm text-text-muted">Analyzing system...</div>
+            <div className="text-small text-text-muted">Analyzing system...</div>
           </div>
         ) : previewError ? (
-          <div className="flex items-center gap-3 py-4 text-sm text-semantic-danger">
+          <div className="flex items-center gap-3 py-4 text-small text-semantic-danger">
             <ExclamationTriangleIcon className="h-5 w-5" aria-hidden />
             <span>{previewError}</span>
           </div>
@@ -87,18 +87,18 @@ export const OneClickOptimize = React.memo(function OneClickOptimize({
                 <div className="text-3xl font-bold text-text-primary tabular-nums">
                   {formatBytes(preview.totalRecoverable)}
                 </div>
-                <div className="text-sm text-text-secondary">Space to recover</div>
+                <div className="text-small text-text-secondary">Space to recover</div>
               </div>
               <div className="text-right">
-                <div className="text-lg font-semibold text-text-primary tabular-nums">
+                <div className="text-section-title font-semibold text-text-primary tabular-nums">
                   ~{preview.estimatedTime}s
                 </div>
-                <div className="text-sm text-text-secondary">Estimated time</div>
+                <div className="text-small text-text-secondary">Estimated time</div>
               </div>
             </div>
 
             <div>
-              <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">
+              <div className="mb-3 text-caption uppercase tracking-wide text-text-muted">
                 Actions to perform
               </div>
               <div className="space-y-2">
@@ -110,12 +110,12 @@ export const OneClickOptimize = React.memo(function OneClickOptimize({
                     <div className="flex items-center gap-3">
                       <CheckCircleIcon className="h-5 w-5 text-semantic-success" aria-hidden />
                       <div>
-                        <div className="text-sm font-medium text-text-primary">{action.name}</div>
-                        <div className="text-xs text-text-secondary">{action.description}</div>
+                        <div className="text-small font-medium text-text-primary">{action.name}</div>
+                        <div className="text-caption text-text-secondary">{action.description}</div>
                       </div>
                     </div>
                     {action.size > 0 && (
-                      <div className="text-sm font-medium text-text-primary tabular-nums">
+                      <div className="text-small font-medium text-text-primary tabular-nums">
                         {formatBytes(action.size)}
                       </div>
                     )}
@@ -144,8 +144,8 @@ export const OneClickOptimize = React.memo(function OneClickOptimize({
             <div className="absolute inset-0 border-4 border-[var(--avs-border)] rounded-full" />
             <div className="absolute inset-0 border-4 border-brand-primary rounded-full border-t-transparent animate-spin" />
           </div>
-          <div className="text-lg font-medium text-text-primary mb-2">Optimizing your system...</div>
-          <div className="text-sm text-text-secondary">This may take a few moments</div>
+          <div className="text-section-title font-medium text-text-primary mb-2">Optimizing your system...</div>
+          <div className="text-small text-text-secondary">This may take a few moments</div>
         </div>
       </Modal>
     );
@@ -178,10 +178,10 @@ export const OneClickOptimize = React.memo(function OneClickOptimize({
               <CheckCircleIcon className="h-8 w-8 text-semantic-success" aria-hidden />
             </div>
             <div>
-              <div className="text-2xl font-bold text-text-primary tabular-nums">
+              <div className="text-statistic font-bold text-text-primary tabular-nums">
                 {formatBytes(result.totalRecovered)}
               </div>
-              <div className="text-sm text-text-secondary">Space recovered</div>
+              <div className="text-small text-text-secondary">Space recovered</div>
             </div>
           </div>
 
@@ -199,14 +199,14 @@ export const OneClickOptimize = React.memo(function OneClickOptimize({
           </div>
 
           {optimizeError && (
-            <div className="flex items-start gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 text-sm text-semantic-danger">
+            <div className="flex items-start gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 text-small text-semantic-danger">
               <ExclamationTriangleIcon className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
               <span>{optimizeError}</span>
             </div>
           )}
 
           <div>
-            <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">
+            <div className="mb-3 text-caption uppercase tracking-wide text-text-muted">
               Action details
             </div>
             <div className="space-y-2">
@@ -221,12 +221,12 @@ export const OneClickOptimize = React.memo(function OneClickOptimize({
                     ) : (
                       <ExclamationTriangleIcon className="h-5 w-5 text-semantic-warning" aria-hidden />
                     )}
-                    <div className="text-sm text-text-primary capitalize">
+                    <div className="text-small text-text-primary capitalize">
                       {key.replace(/([A-Z])/g, ' $1').trim()}
                     </div>
                   </div>
                   {value.size > 0 && (
-                    <div className="text-sm font-medium text-text-primary tabular-nums">
+                    <div className="text-small font-medium text-text-primary tabular-nums">
                       {formatBytes(value.size)}
                     </div>
                   )}
@@ -255,8 +255,8 @@ const StatCard = React.memo(function StatCard({
     <div className="flex items-center gap-3 p-4 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)]">
       <Icon className="h-5 w-5 text-semantic-primary" aria-hidden />
       <div>
-        <div className="text-xs text-text-muted">{label}</div>
-        <div className="text-sm font-semibold text-text-primary tabular-nums">{value}</div>
+        <div className="text-caption text-text-muted">{label}</div>
+        <div className="text-small font-semibold text-text-primary tabular-nums">{value}</div>
       </div>
     </div>
   );

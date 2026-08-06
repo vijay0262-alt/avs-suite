@@ -147,7 +147,7 @@ export const HistoryTable = React.memo(function HistoryTable({
             placeholder="Search executions..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-            className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] py-2 pl-9 pr-3 text-sm text-[var(--avs-text-primary)] outline-none focus:border-[var(--avs-brand-primary)]"
+            className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] py-2 pl-9 pr-3 text-small text-[var(--avs-text-primary)] outline-none focus:border-[var(--avs-brand-primary)]"
             aria-label="Search execution history"
             data-testid="history-search-input"
           />
@@ -166,7 +166,7 @@ export const HistoryTable = React.memo(function HistoryTable({
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value as ExecutionRecordStatus | 'all'); resetPage(); }}
-          className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-sm text-[var(--avs-text-primary)] outline-none focus:border-[var(--avs-brand-primary)]"
+          className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-small text-[var(--avs-text-primary)] outline-none focus:border-[var(--avs-brand-primary)]"
           aria-label="Filter by status"
           data-testid="history-status-filter"
         >
@@ -181,7 +181,7 @@ export const HistoryTable = React.memo(function HistoryTable({
         <select
           value={sourceFilter}
           onChange={(e) => { setSourceFilter(e.target.value as ExecutionSource | 'all'); resetPage(); }}
-          className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-sm text-[var(--avs-text-primary)] outline-none focus:border-[var(--avs-brand-primary)]"
+          className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-small text-[var(--avs-text-primary)] outline-none focus:border-[var(--avs-brand-primary)]"
           aria-label="Filter by source"
           data-testid="history-source-filter"
         >
@@ -197,7 +197,7 @@ export const HistoryTable = React.memo(function HistoryTable({
 
       {/* Table */}
       <div className="overflow-x-auto rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)]">
-        <table className="w-full text-sm" role="table" data-testid="history-table-grid">
+        <table className="w-full text-small" role="table" data-testid="history-table-grid">
           <thead className="bg-[var(--avs-surface-muted)]">
             <tr>
               <SortHeader field="startTime" label="Date" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
@@ -280,7 +280,7 @@ export const HistoryTable = React.memo(function HistoryTable({
       {/* Pagination */}
       {filtered.length > PAGE_SIZE && (
         <div className="flex items-center justify-between" data-testid="history-pagination">
-          <span className="text-xs text-[var(--avs-text-muted)]">
+          <span className="text-caption text-[var(--avs-text-muted)]">
             Showing {currentPage * PAGE_SIZE + 1}–{Math.min((currentPage + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}
           </span>
           <div className="flex items-center gap-2">
@@ -293,7 +293,7 @@ export const HistoryTable = React.memo(function HistoryTable({
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </button>
-            <span className="text-xs text-[var(--avs-text-secondary)]">
+            <span className="text-caption text-[var(--avs-text-secondary)]">
               {currentPage + 1} / {totalPages}
             </span>
             <button

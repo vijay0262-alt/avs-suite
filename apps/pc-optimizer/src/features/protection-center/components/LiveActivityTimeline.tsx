@@ -44,7 +44,7 @@ export function LiveActivityTimeline({ activities }: LiveActivityTimelineProps) 
   if (activities.length === 0) {
     return (
       <div className="rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-gradient-surface p-6 text-center">
-        <p className="text-sm text-[var(--avs-text-muted)]">
+        <p className="text-small text-[var(--avs-text-muted)]">
           No recent activity. Run a scan or optimization to see events here.
         </p>
       </div>
@@ -70,17 +70,17 @@ export function LiveActivityTimeline({ activities }: LiveActivityTimelineProps) 
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm font-medium text-[var(--avs-text-primary)] truncate">
+                  <span className="text-small font-medium text-[var(--avs-text-primary)] truncate">
                     {event.title}
                   </span>
-                  <span className="text-xs text-[var(--avs-text-muted)] shrink-0">
+                  <span className="text-caption text-[var(--avs-text-muted)] shrink-0">
                     {timeAgo(event.timestamp)}
                   </span>
                 </div>
                 {event.metric && (
-                  <p className="text-xs text-[var(--avs-text-secondary)] mt-0.5">{event.metric}</p>
+                  <p className="text-caption text-[var(--avs-text-secondary)] mt-0.5">{event.metric}</p>
                 )}
-                <p className="text-xs text-[var(--avs-text-muted)] mt-0.5">{event.description}</p>
+                <p className="text-caption text-[var(--avs-text-muted)] mt-0.5">{event.description}</p>
               </div>
             </li>
           );

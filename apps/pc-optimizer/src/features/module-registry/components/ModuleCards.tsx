@@ -52,7 +52,7 @@ function ModuleCard({ entry, onNavigate }: { entry: ModuleRegistryEntry; onNavig
         </div>
         <div className="flex items-center gap-2">
           <span
-            className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusConfig.colorClass} ${statusConfig.bgClass}`}
+            className={`text-caption font-medium px-2 py-0.5 rounded-full ${statusConfig.colorClass} ${statusConfig.bgClass}`}
             data-testid={`module-lifecycle-${metadata.moduleId}`}
           >
             {lifecycleConfig.label}
@@ -60,10 +60,10 @@ function ModuleCard({ entry, onNavigate }: { entry: ModuleRegistryEntry; onNavig
         </div>
       </div>
 
-      <div className="text-sm text-text-secondary mb-3">{metadata.description}</div>
+      <div className="text-small text-text-secondary mb-3">{metadata.description}</div>
 
       {locked && (
-        <div className="mb-3 flex items-center gap-2 text-xs text-brand-primary" data-testid={`module-upgrade-${metadata.moduleId}`}>
+        <div className="mb-3 flex items-center gap-2 text-caption text-brand-primary" data-testid={`module-upgrade-${metadata.moduleId}`}>
           <LockClosedIcon className="h-3.5 w-3.5" aria-hidden />
           <span>Available with Professional</span>
         </div>

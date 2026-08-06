@@ -168,8 +168,8 @@ export default function SecurityDashboardPage() {
             onClick={() => handleTabChange(tab.id)}
             className={
               state.activeTab === tab.id
-                ? 'px-4 py-2 text-sm font-medium text-white rounded-[var(--avs-radius-sm)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]'
-                : 'px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary rounded-[var(--avs-radius-sm)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]'
+                ? 'px-4 py-2 text-small font-medium text-white rounded-[var(--avs-radius-sm)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]'
+                : 'px-4 py-2 text-small font-medium text-text-secondary hover:text-text-primary rounded-[var(--avs-radius-sm)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]'
             }
             style={state.activeTab === tab.id ? { background: 'var(--avs-gradient-brand)' } : undefined}
             data-testid={`tab-btn-${tab.id}`}

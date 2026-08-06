@@ -153,7 +153,7 @@ export const LiveChart = React.memo(function LiveChart({ title, data, maxDataPoi
           <span className="text-3xl font-bold text-text-primary tabular-nums" aria-live="polite" aria-atomic="true">
             {currentValue.toFixed(1)}
           </span>
-          <span className="text-sm text-text-muted">{unit}</span>
+          <span className="text-small text-text-muted">{unit}</span>
         </div>
         <div className="relative" style={{ height }}>
           <canvas

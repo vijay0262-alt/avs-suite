@@ -15,8 +15,11 @@ body {
   background: var(--avs-bg);
   color: var(--avs-text-primary);
   font-family: 'Segoe UI Variable', 'Segoe UI', Inter, system-ui, -apple-system, sans-serif;
+  font-size: var(--avs-text-body);
+  line-height: var(--avs-text-body-lh);
   font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
@@ -26,15 +29,47 @@ body {
   outline: none;
 }
 
-/* Custom scrollbars — match theme without breaking accessibility. */
+/* Text selection — brand-tinted */
+::selection {
+  background: color-mix(in srgb, var(--avs-brand-primary) 25%, transparent);
+  color: var(--avs-text-primary);
+}
+
+/* Smooth scrolling for in-page navigation */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbars — refined, subtle, match theme */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--avs-border);
+  background: color-mix(in srgb, var(--avs-text-muted) 30%, transparent);
   border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--avs-text-muted);
+  background: color-mix(in srgb, var(--avs-text-muted) 50%, transparent);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Shimmer effect for skeleton loading */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--avs-surface-muted) 0%,
+    color-mix(in srgb, var(--avs-surface-muted) 50%, var(--avs-surface)) 50%,
+    var(--avs-surface-muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
 }

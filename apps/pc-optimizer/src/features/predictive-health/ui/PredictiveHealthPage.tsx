@@ -166,14 +166,14 @@ export default function PredictiveHealthPage() {
                   {dashboard.upcomingRisks.slice(0, 8).map((entry) => (
                     <div key={entry.id} className="border-l-2 border-semantic-danger pl-4 py-1">
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-sm font-semibold text-text-primary">{entry.title}</span>
+                        <span className="text-small font-semibold text-text-primary">{entry.title}</span>
                         <div className="flex items-center gap-2">
                           <Badge tone={riskTone(entry.risk)}>{entry.risk}</Badge>
                           <Badge tone={urgencyTone(entry.urgency)}>{entry.urgency}</Badge>
                         </div>
                       </div>
-                      <p className="text-sm text-text-secondary">{entry.summary}</p>
-                      <div className="flex items-center gap-4 text-xs text-text-muted mt-1">
+                      <p className="text-small text-text-secondary">{entry.summary}</p>
+                      <div className="flex items-center gap-4 text-caption text-text-muted mt-1">
                         <span>Projected: {entry.projectedValue}</span>
                         {entry.timeToEvent && (
                           <span className="flex items-center gap-1"><ClockIcon className="h-3 w-3" />{entry.timeToEvent}</span>
@@ -192,11 +192,11 @@ export default function PredictiveHealthPage() {
                   {dashboard.improvingTrends.slice(0, 8).map((entry) => (
                     <div key={entry.id} className="border-l-2 border-semantic-success pl-4 py-1">
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-sm font-semibold text-text-primary">{entry.title}</span>
+                        <span className="text-small font-semibold text-text-primary">{entry.title}</span>
                         <Badge tone="success">{entry.behavior.replace(/_/g, ' ')}</Badge>
                       </div>
-                      <p className="text-sm text-text-secondary">{entry.summary}</p>
-                      <div className="flex items-center gap-4 text-xs text-text-muted mt-1">
+                      <p className="text-small text-text-secondary">{entry.summary}</p>
+                      <div className="flex items-center gap-4 text-caption text-text-muted mt-1">
                         <span>Projected: {entry.projectedValue}</span>
                         <span>Confidence: {(entry.confidence * 100).toFixed(0)}%</span>
                       </div>
@@ -221,20 +221,20 @@ export default function PredictiveHealthPage() {
             <Card title="Health Score Forecast" variant="glass" data-testid="predictive-health-forecast">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <p className="text-xs text-text-muted">Projected Health Score</p>
-                  <p className="text-2xl font-bold text-text-primary mt-1">{dashboard.healthForecast.projectedHealthScore.toFixed(0)}</p>
+                  <p className="text-caption text-text-muted">Projected Health Score</p>
+                  <p className="text-statistic font-bold text-text-primary mt-1">{dashboard.healthForecast.projectedHealthScore.toFixed(0)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-text-muted">Trend</p>
-                  <p className="text-sm text-text-primary mt-1">
+                  <p className="text-caption text-text-muted">Trend</p>
+                  <p className="text-small text-text-primary mt-1">
                     <Badge tone={trajectoryTone(dashboard.healthForecast.healthScoreTrend)}>
                       {dashboard.healthForecast.healthScoreTrend.replace(/_/g, ' ')}
                     </Badge>
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-text-muted">Time to Threshold</p>
-                  <p className="text-sm text-text-primary mt-1">
+                  <p className="text-caption text-text-muted">Time to Threshold</p>
+                  <p className="text-small text-text-primary mt-1">
                     {dashboard.healthForecast.estimatedTimeToThreshold
                       ? `${Math.round(dashboard.healthForecast.estimatedTimeToThreshold / (24 * 60 * 60 * 1000))} days`
                       : 'N/A'}
@@ -248,20 +248,20 @@ export default function PredictiveHealthPage() {
             <Card title="Storage Forecast" variant="glass" data-testid="predictive-storage-forecast">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <p className="text-xs text-text-muted">Projected Free Space</p>
-                  <p className="text-2xl font-bold text-text-primary mt-1">
+                  <p className="text-caption text-text-muted">Projected Free Space</p>
+                  <p className="text-statistic font-bold text-text-primary mt-1">
                     {(dashboard.storageForecast.projectedFreeSpaceMB / 1024).toFixed(1)} GB
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-text-muted">Growth Rate</p>
-                  <p className="text-sm text-text-primary mt-1">
+                  <p className="text-caption text-text-muted">Growth Rate</p>
+                  <p className="text-small text-text-primary mt-1">
                     {dashboard.storageForecast.growthRateMBPerDay.toFixed(0)} MB/day
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-text-muted">Time to Full</p>
-                  <p className="text-sm text-text-primary mt-1">
+                  <p className="text-caption text-text-muted">Time to Full</p>
+                  <p className="text-small text-text-primary mt-1">
                     {dashboard.storageForecast.estimatedTimeToFull
                       ? `${Math.round(dashboard.storageForecast.estimatedTimeToFull / (24 * 60 * 60 * 1000))} days`
                       : 'N/A'}
@@ -275,7 +275,7 @@ export default function PredictiveHealthPage() {
 
       {!dashboard && (
         <Card variant="glass">
-          <div className="py-8 text-center text-sm text-text-secondary">
+          <div className="py-8 text-center text-small text-text-secondary">
             No predictions available. Click &quot;Refresh&quot; to generate forecasts.
           </div>
         </Card>
@@ -290,19 +290,19 @@ function NotificationRow({ notification, onDismiss }: { notification: Prediction
       <ExclamationTriangleIcon className={`h-5 w-5 shrink-0 ${notification.risk === 'severe' || notification.risk === 'high' ? 'text-semantic-danger' : 'text-semantic-warning'}`} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-semibold text-text-primary">{notification.title}</span>
+          <span className="text-small font-semibold text-text-primary">{notification.title}</span>
           <div className="flex items-center gap-2">
             <Badge tone={riskTone(notification.risk)}>{notification.risk}</Badge>
             <button
               onClick={onDismiss}
-              className="text-xs text-text-muted hover:text-text-primary"
+              className="text-caption text-text-muted hover:text-text-primary"
               data-testid={`btn-dismiss-${notification.id}`}
             >
               Dismiss
             </button>
           </div>
         </div>
-        <p className="text-xs text-text-secondary mt-0.5">{notification.message}</p>
+        <p className="text-caption text-text-secondary mt-0.5">{notification.message}</p>
       </div>
     </div>
   );
@@ -312,22 +312,22 @@ function PredictionRow({ prediction }: { prediction: Prediction }) {
   return (
     <div className="border-l-2 border-[var(--avs-border)] pl-4 py-1">
       <div className="flex items-center justify-between gap-2 mb-1">
-        <span className="text-sm font-semibold text-text-primary">{prediction.title}</span>
+        <span className="text-small font-semibold text-text-primary">{prediction.title}</span>
         <div className="flex items-center gap-2">
           <Badge tone={riskTone(prediction.risk)}>{prediction.risk}</Badge>
           <Badge tone={confidenceTone(prediction.confidenceLabel)}>{prediction.confidenceLabel.replace(/_/g, ' ')}</Badge>
         </div>
       </div>
-      <p className="text-sm text-text-secondary mb-1">{prediction.summary}</p>
+      <p className="text-small text-text-secondary mb-1">{prediction.summary}</p>
       {prediction.explanation && (
-        <div className="text-xs text-text-muted mt-2 space-y-1">
+        <div className="text-caption text-text-muted mt-2 space-y-1">
           <p><strong>Why:</strong> {prediction.explanation.why}</p>
           <p><strong>What to do:</strong> {prediction.explanation.whatUserShouldDo}</p>
           <p><strong>If ignored:</strong> {prediction.explanation.whatHappensIfIgnored}</p>
         </div>
       )}
       {prediction.recommendation && (
-        <p className="text-xs text-brand-primary mt-1 font-medium">→ {prediction.recommendation.action}</p>
+        <p className="text-caption text-brand-primary mt-1 font-medium">→ {prediction.recommendation.action}</p>
       )}
     </div>
   );

@@ -47,7 +47,7 @@ export function AlertsPanel({ alerts, onDismiss, onNavigate }: AlertsPanelProps)
       <div className="rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-gradient-surface p-4 text-center">
         <div className="flex items-center justify-center gap-2">
           <InformationCircleIcon className="h-5 w-5 text-[var(--avs-success)]" />
-          <p className="text-sm text-[var(--avs-text-secondary)]">No active alerts. Your system is running smoothly.</p>
+          <p className="text-small text-[var(--avs-text-secondary)]">No active alerts. Your system is running smoothly.</p>
         </div>
       </div>
     );
@@ -76,12 +76,12 @@ export function AlertsPanel({ alerts, onDismiss, onNavigate }: AlertsPanelProps)
             <div className="flex items-start gap-2">
               <Icon className={clsx('h-5 w-5 shrink-0 mt-0.5', sc.iconColor)} />
               <div className="flex-1 min-w-0">
-                <h4 className={clsx('text-sm font-semibold', sc.titleColor)}>{alert.title}</h4>
-                <p className="text-xs text-[var(--avs-text-secondary)] mt-0.5">{alert.message}</p>
+                <h4 className={clsx('text-small font-semibold', sc.titleColor)}>{alert.title}</h4>
+                <p className="text-caption text-[var(--avs-text-secondary)] mt-0.5">{alert.message}</p>
                 {alert.actionLabel && alert.actionPath && (
                   <button
                     onClick={() => onNavigate(alert.actionPath!)}
-                    className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[var(--avs-brand-primary)] hover:underline"
+                    className="mt-2 inline-flex items-center gap-1 text-caption font-medium text-[var(--avs-brand-primary)] hover:underline"
                   >
                     {alert.actionLabel}
                     <ArrowRightIcon className="h-3 w-3" />

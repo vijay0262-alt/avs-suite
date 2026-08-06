@@ -71,7 +71,7 @@ function AnimatedCounter({
     >
       <div className="flex items-center gap-1.5 text-text-muted mb-1">
         {icon}
-        <span className="text-xs truncate">{def.label}</span>
+        <span className="text-caption truncate">{def.label}</span>
       </div>
       <div className="text-base font-bold tabular-nums text-text-primary" aria-live="polite">
         {displayValue}

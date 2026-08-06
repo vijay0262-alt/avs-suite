@@ -10,7 +10,7 @@ export function ProtectionHealth({ coverage }: ProtectionHealthProps) {
   if (coverage.length === 0) {
     return (
       <div className="rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-gradient-surface p-4 text-center">
-        <p className="text-sm text-[var(--avs-text-muted)]">Loading coverage data…</p>
+        <p className="text-small text-[var(--avs-text-muted)]">Loading coverage data…</p>
       </div>
     );
   }
@@ -26,12 +26,12 @@ export function ProtectionHealth({ coverage }: ProtectionHealthProps) {
       aria-label="Protection coverage"
     >
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-semibold text-[var(--avs-text-primary)]">
+        <span className="text-small font-semibold text-[var(--avs-text-primary)]">
           {covered} of {total} layers covered
         </span>
         <span
           className={clsx(
-            'text-sm font-bold',
+            'text-small font-bold',
             pct === 100
               ? 'text-[var(--avs-success)]'
               : pct >= 50
@@ -66,14 +66,14 @@ export function ProtectionHealth({ coverage }: ProtectionHealthProps) {
             <div className="flex-1 min-w-0">
               <span
                 className={clsx(
-                  'text-sm',
+                  'text-small',
                   item.covered ? 'text-[var(--avs-text-primary)]' : 'text-[var(--avs-text-primary)]',
                 )}
               >
                 {item.label}
               </span>
               {!item.covered && item.reason && (
-                <p className="text-xs text-[var(--avs-text-muted)] mt-0.5">{item.reason}</p>
+                <p className="text-caption text-[var(--avs-text-muted)] mt-0.5">{item.reason}</p>
               )}
             </div>
           </li>

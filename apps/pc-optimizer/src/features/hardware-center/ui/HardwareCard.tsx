@@ -24,7 +24,7 @@ export function HardwareCard({ title, model, badge, badgeTone, children, ...rest
       }
       {...rest}
     >
-      <div className="mb-3 text-sm font-medium text-text-primary">{model}</div>
+      <div className="mb-3 text-small font-medium text-text-primary">{model}</div>
       <div className="divide-y divide-[var(--avs-border)]">{children}</div>
     </Card>
   );

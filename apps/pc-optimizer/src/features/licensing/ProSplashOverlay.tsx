@@ -107,7 +107,7 @@ export function ProSplashOverlay() {
               className="flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-semantic-success/10 border border-semantic-success/20 px-3 py-2"
             >
               <ind.icon className="h-4 w-4 text-semantic-success shrink-0" />
-              <span className="text-xs font-medium text-semantic-success text-left">{ind.label}</span>
+              <span className="text-caption font-medium text-semantic-success text-left">{ind.label}</span>
               <CheckCircleIcon className="h-3.5 w-3.5 text-semantic-success ml-auto shrink-0" />
             </div>
           ))}
@@ -115,12 +115,12 @@ export function ProSplashOverlay() {
 
         {/* Greeting */}
         <div className="mt-8">
-          <p className="text-lg font-semibold text-text-primary">{getGreeting()}</p>
-          <p className="mt-1 text-sm text-text-secondary">Your PC is protected and optimized.</p>
+          <p className="text-section-title font-semibold text-text-primary">{getGreeting()}</p>
+          <p className="mt-1 text-small text-text-secondary">Your PC is protected and optimized.</p>
         </div>
 
         {/* Skip hint */}
-        <p className="mt-8 text-xs text-text-muted">
+        <p className="mt-8 text-caption text-text-muted">
           Click or press Escape to continue
         </p>
       </div>

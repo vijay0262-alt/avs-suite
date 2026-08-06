@@ -4,7 +4,7 @@
  * Replaces the inline `fixed inset-0` modals scattered across modules
  * (DiskAnalyzer, Uninstaller, Updater, Wiper) with a single consistent component.
  */
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Button } from '@avs/ui';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
@@ -31,6 +31,15 @@ export function SharedConfirmDialog({
   onCancel,
   testId = 'confirm-dialog',
 }: SharedConfirmDialogProps) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [open, onCancel]);
+
   if (!open) return null;
 
   return (
@@ -48,12 +57,12 @@ export function SharedConfirmDialog({
           )}
           <h3
             id={`${testId}-title`}
-            className="text-lg font-semibold text-text-primary"
+            className="text-section-title font-semibold text-text-primary"
           >
             {title}
           </h3>
         </div>
-        <div className="text-sm text-text-secondary mb-6">{message}</div>
+        <div className="text-small text-text-secondary mb-6">{message}</div>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onCancel} data-testid={`${testId}-cancel`}>
             {cancelLabel}

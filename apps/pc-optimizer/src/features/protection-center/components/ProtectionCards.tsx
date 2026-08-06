@@ -61,17 +61,17 @@ export function ProtectionCards({ cards, onNavigate }: ProtectionCardsProps) {
               <Icon className="h-5 w-5 text-[var(--avs-text-muted)]" />
               <div className="flex items-center gap-1.5">
                 <span className={clsx('h-2 w-2 rounded-full', sc.dot)} />
-                <span className={clsx('text-xs font-medium', sc.label)}>{card.statusLabel}</span>
+                <span className={clsx('text-caption font-medium', sc.label)}>{card.statusLabel}</span>
               </div>
             </div>
 
-            <div className="text-2xl font-bold text-[var(--avs-text-primary)] tabular-nums">
+            <div className="text-statistic font-bold text-[var(--avs-text-primary)] tabular-nums">
               {card.primaryValue}
             </div>
             {card.secondaryValue && (
-              <div className="text-xs text-[var(--avs-text-muted)] mt-0.5">{card.secondaryValue}</div>
+              <div className="text-caption text-[var(--avs-text-muted)] mt-0.5">{card.secondaryValue}</div>
             )}
-            <div className="mt-2 text-sm font-semibold text-[var(--avs-text-primary)]">{card.title}</div>
+            <div className="mt-2 text-small font-semibold text-[var(--avs-text-primary)]">{card.title}</div>
           </button>
         );
       })}

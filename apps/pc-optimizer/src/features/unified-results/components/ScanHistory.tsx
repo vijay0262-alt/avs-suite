@@ -24,7 +24,7 @@ export function ScanHistory({ entries, maxEntries = 10, isPro = false }: ScanHis
 
   if (visible.length === 0) {
     return (
-      <div className="text-center py-6 text-sm text-text-muted" data-testid="scan-history-empty">
+      <div className="text-center py-6 text-small text-text-muted" data-testid="scan-history-empty">
         No scan history yet.
       </div>
     );
@@ -42,7 +42,7 @@ export function ScanHistory({ entries, maxEntries = 10, isPro = false }: ScanHis
 
       {!isPro && entries.length > maxEntries && (
         <div className="pt-2 text-center">
-          <span className="text-xs text-text-muted">
+          <span className="text-caption text-text-muted">
             Showing last {maxEntries} scans.{' '}
             <span className="text-brand-primary font-medium">Upgrade to Pro for unlimited history + trend reports.</span>
           </span>
@@ -74,22 +74,22 @@ function HistoryRow({ entry, trend }: { entry: UnifiedScanHistoryEntry; trend: n
     >
       {/* Score */}
       <div className="shrink-0 text-center w-12">
-        <div className={`text-lg font-bold tabular-nums ${scoreColor}`}>{entry.score}</div>
-        <div className="text-[10px] text-text-muted">Score</div>
+        <div className={`text-section-title font-bold tabular-nums ${scoreColor}`}>{entry.score}</div>
+        <div className="text-micro text-text-muted">Score</div>
       </div>
 
       {/* Module + details */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-text-primary truncate">{entry.moduleName}</span>
+          <span className="text-small font-medium text-text-primary truncate">{entry.moduleName}</span>
           {trend !== 0 && (
-            <span className={`flex items-center gap-0.5 text-xs font-medium ${trendColor}`}>
+            <span className={`flex items-center gap-0.5 text-caption font-medium ${trendColor}`}>
               {trendIcon}
               {trend > 0 ? '+' : ''}{trend}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3 text-xs text-text-muted">
+        <div className="flex items-center gap-3 text-caption text-text-muted">
           <span className="flex items-center gap-1">
             <ClockIcon className="h-3 w-3" />
             {formatDuration(entry.durationMs)}
@@ -105,8 +105,8 @@ function HistoryRow({ entry, trend }: { entry: UnifiedScanHistoryEntry; trend: n
       {/* Actions taken */}
       {entry.actionsTaken.length > 0 && (
         <div className="shrink-0 text-right">
-          <div className="text-xs text-text-muted">Actions</div>
-          <div className="text-xs font-medium text-text-secondary">{entry.actionsTaken.length}</div>
+          <div className="text-caption text-text-muted">Actions</div>
+          <div className="text-caption font-medium text-text-secondary">{entry.actionsTaken.length}</div>
         </div>
       )}
     </div>

@@ -11,7 +11,6 @@ import { ModuleEmptyState } from '../../components/ModuleStates';
 import { conversationEngine } from '../ai-assistant';
 import { initAssistantContext } from '../ai-assistant/assistantContextInitializer';
 import type { AssistantDashboardData, AssistantInsight } from '../ai-assistant';
-import { QUICK_QUESTIONS } from '../ai-assistant/types';
 import { ProStatusBanner, ProStatusPill, ProOnlySection } from '../licensing/ProStatusBadge';
 import {
   SparklesIcon,
@@ -78,8 +77,8 @@ export default function AIDailyBriefingPage() {
     <div className="space-y-6">
       <ProStatusBanner compact />
       <PageHeader
-        title="AI Daily Briefing"
-        description="Your daily AI-powered system health summary with insights and recommendations"
+        title="Daily Briefing"
+        description="Your daily system health summary with insights and recommendations"
         actions={
           <div className="flex items-center gap-2">
             <ProStatusPill />
@@ -97,26 +96,26 @@ export default function AIDailyBriefingPage() {
       <div className="flex gap-1 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-1 w-fit">
         <button
           onClick={() => setBriefingTab('today')}
-          className={`rounded-[var(--avs-radius-sm)] px-3 py-1.5 text-sm font-medium transition-all ${briefingTab === 'today' ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)] shadow-[var(--avs-shadow-sm)]' : 'text-[var(--avs-text-secondary)]'}`}
+          className={`rounded-[var(--avs-radius-sm)] px-3 py-1.5 text-small font-medium transition-all ${briefingTab === 'today' ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)] shadow-[var(--avs-shadow-sm)]' : 'text-[var(--avs-text-secondary)]'}`}
         >
           Today
         </button>
         <ProOnlySection>
           <button
             onClick={() => setBriefingTab('yesterday')}
-            className={`rounded-[var(--avs-radius-sm)] px-3 py-1.5 text-sm font-medium transition-all ${briefingTab === 'yesterday' ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)] shadow-[var(--avs-shadow-sm)]' : 'text-[var(--avs-text-secondary)]'}`}
+            className={`rounded-[var(--avs-radius-sm)] px-3 py-1.5 text-small font-medium transition-all ${briefingTab === 'yesterday' ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)] shadow-[var(--avs-shadow-sm)]' : 'text-[var(--avs-text-secondary)]'}`}
           >
             Yesterday
           </button>
           <button
             onClick={() => setBriefingTab('weekly')}
-            className={`rounded-[var(--avs-radius-sm)] px-3 py-1.5 text-sm font-medium transition-all ${briefingTab === 'weekly' ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)] shadow-[var(--avs-shadow-sm)]' : 'text-[var(--avs-text-secondary)]'}`}
+            className={`rounded-[var(--avs-radius-sm)] px-3 py-1.5 text-small font-medium transition-all ${briefingTab === 'weekly' ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)] shadow-[var(--avs-shadow-sm)]' : 'text-[var(--avs-text-secondary)]'}`}
           >
             Weekly Summary
           </button>
           <button
             onClick={() => setBriefingTab('monthly')}
-            className={`rounded-[var(--avs-radius-sm)] px-3 py-1.5 text-sm font-medium transition-all ${briefingTab === 'monthly' ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)] shadow-[var(--avs-shadow-sm)]' : 'text-[var(--avs-text-secondary)]'}`}
+            className={`rounded-[var(--avs-radius-sm)] px-3 py-1.5 text-small font-medium transition-all ${briefingTab === 'monthly' ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)] shadow-[var(--avs-shadow-sm)]' : 'text-[var(--avs-text-secondary)]'}`}
           >
             Monthly Trends
           </button>
@@ -127,7 +126,7 @@ export default function AIDailyBriefingPage() {
         <Card variant="glass">
           <div className="flex items-center gap-3 py-8 justify-center">
             <SparklesIcon className="h-6 w-6 text-[var(--avs-brand-primary)] animate-pulse" />
-            <span className="text-sm text-[var(--avs-text-secondary)]">Generating your daily briefing...</span>
+            <span className="text-small text-[var(--avs-text-secondary)]">Generating your daily briefing...</span>
           </div>
         </Card>
       ) : (
@@ -139,13 +138,13 @@ export default function AIDailyBriefingPage() {
                 <SparklesIcon className="h-8 w-8 text-white" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-[var(--avs-text-primary)]">
+                <h2 className="text-section-title font-bold text-[var(--avs-text-primary)]">
                   {briefingTab === 'today' ? "Today's Briefing"
                     : briefingTab === 'yesterday' ? "Yesterday's Briefing"
                     : briefingTab === 'weekly' ? "Weekly Summary"
                     : "Monthly Trends"}
                 </h2>
-                <p className="text-sm text-[var(--avs-text-secondary)]">
+                <p className="text-small text-[var(--avs-text-secondary)]">
                   {insights.length > 0
                     ? `${insights.length} insights generated from your system data`
                     : 'No insights available — run a health scan to generate insights'}
@@ -159,23 +158,23 @@ export default function AIDailyBriefingPage() {
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <Card variant="glass" className="p-4">
                 <ShieldCheckIcon className="h-6 w-6 text-[var(--avs-success)]" />
-                <p className="mt-2 text-2xl font-bold text-[var(--avs-text-primary)]">{dashboardData.healthScore ?? '—'}</p>
-                <p className="text-xs text-[var(--avs-text-muted)]">Health Score</p>
+                <p className="mt-2 text-statistic font-bold text-[var(--avs-text-primary)]">{dashboardData.healthScore ?? '—'}</p>
+                <p className="text-caption text-[var(--avs-text-muted)]">Health Score</p>
               </Card>
               <Card variant="glass" className="p-4">
                 <LightBulbIcon className="h-6 w-6 text-[var(--avs-warning)]" />
-                <p className="mt-2 text-2xl font-bold text-[var(--avs-text-primary)]">{insights.length}</p>
-                <p className="text-xs text-[var(--avs-text-muted)]">AI Insights</p>
+                <p className="mt-2 text-statistic font-bold text-[var(--avs-text-primary)]">{insights.length}</p>
+                <p className="text-caption text-[var(--avs-text-muted)]">Insights</p>
               </Card>
               <Card variant="glass" className="p-4">
                 <ChartBarIcon className="h-6 w-6 text-[var(--avs-info)]" />
-                <p className="mt-2 text-2xl font-bold text-[var(--avs-text-primary)]">{dashboardData.recommendedActions.length}</p>
-                <p className="text-xs text-[var(--avs-text-muted)]">Recommendations</p>
+                <p className="mt-2 text-statistic font-bold text-[var(--avs-text-primary)]">{dashboardData.recommendedActions.length}</p>
+                <p className="text-caption text-[var(--avs-text-muted)]">Recommendations</p>
               </Card>
               <Card variant="glass" className="p-4">
                 <ChatBubbleLeftRightIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
-                <p className="mt-2 text-2xl font-bold text-[var(--avs-text-primary)]">{dashboardData.isAvailable ? 'Active' : 'N/A'}</p>
-                <p className="text-xs text-[var(--avs-text-muted)]">AI Status</p>
+                <p className="mt-2 text-statistic font-bold text-[var(--avs-text-primary)]">{dashboardData.isAvailable ? 'Active' : 'N/A'}</p>
+                <p className="text-caption text-[var(--avs-text-muted)]">Status</p>
               </Card>
             </div>
           )}
@@ -186,8 +185,8 @@ export default function AIDailyBriefingPage() {
               <div className="space-y-2">
                 {dashboardData.recommendedActions.map((rec, i) => (
                   <div key={i} className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
-                    <p className="text-sm font-medium text-[var(--avs-text-primary)]">{rec.label}</p>
-                    <p className="text-xs text-[var(--avs-text-muted)]">{rec.description} · {rec.benefit}</p>
+                    <p className="text-small font-medium text-[var(--avs-text-primary)]">{rec.label}</p>
+                    <p className="text-caption text-[var(--avs-text-muted)]">{rec.description} · {rec.benefit}</p>
                   </div>
                 ))}
               </div>
@@ -218,15 +217,15 @@ export default function AIDailyBriefingPage() {
                           }}
                         />
                         <div>
-                          <p className="text-sm font-medium text-[var(--avs-text-primary)]">
+                          <p className="text-small font-medium text-[var(--avs-text-primary)]">
                             {new Date(entry.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                           </p>
-                          <p className="text-xs text-[var(--avs-text-muted)]">
+                          <p className="text-caption text-[var(--avs-text-muted)]">
                             {entry.issueCount} issues · {entry.scoreZone}
                           </p>
                         </div>
                       </div>
-                      <span className="text-lg font-bold text-[var(--avs-text-primary)]">{entry.score}</span>
+                      <span className="text-section-title font-bold text-[var(--avs-text-primary)]">{entry.score}</span>
                     </div>
                   ))}
                 </div>
@@ -252,19 +251,19 @@ export default function AIDailyBriefingPage() {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
-                            <p className="text-sm font-semibold text-[var(--avs-text-primary)]">{insight.title}</p>
+                            <p className="text-small font-semibold text-[var(--avs-text-primary)]">{insight.title}</p>
                             <div className="flex items-center gap-2">
                               <Badge tone={insight.severity === 'high' ? 'danger' : insight.severity === 'medium' ? 'warning' : 'neutral'}>
                                 {insight.severity}
                               </Badge>
-                              <span className="text-xs font-bold text-[var(--avs-brand-primary)]">{(insight.confidence * 100).toFixed(0)}%</span>
+                              <span className="text-caption font-bold text-[var(--avs-brand-primary)]">{(insight.confidence * 100).toFixed(0)}%</span>
                             </div>
                           </div>
-                          <p className="mt-1 text-sm text-[var(--avs-text-secondary)]">{insight.description}</p>
-                          <p className="mt-2 text-xs text-[var(--avs-text-muted)]">
+                          <p className="mt-1 text-small text-[var(--avs-text-secondary)]">{insight.description}</p>
+                          <p className="mt-2 text-caption text-[var(--avs-text-muted)]">
                             <span className="font-medium text-[var(--avs-text-secondary)]">Evidence:</span> {insight.evidence}
                           </p>
-                          <p className="mt-1 text-xs text-[var(--avs-text-muted)]">
+                          <p className="mt-1 text-caption text-[var(--avs-text-muted)]">
                             <span className="font-medium text-[var(--avs-text-secondary)]">Suggested:</span> {insight.suggestedAction}
                           </p>
                         </div>
@@ -275,22 +274,7 @@ export default function AIDailyBriefingPage() {
               </div>
             )}
           </Card>
-          )}
-
-          {/* Quick Questions */}
-          <Card title="Ask AI" variant="glass">
-            <div className="flex flex-wrap gap-2">
-              {QUICK_QUESTIONS.map((q) => (
-                <button
-                  key={q.type}
-                  onClick={() => navigate('/ai-assistant')}
-                  className="rounded-full border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-1.5 text-xs font-medium text-[var(--avs-text-secondary)] transition-all hover:border-[var(--avs-brand-primary)] hover:text-[var(--avs-text-primary)]"
-                >
-                  {q.label}
-                </button>
-              ))}
-            </div>
-          </Card>
+        )}
         </>
       )}
     </div>

@@ -151,10 +151,10 @@ export default function ProcessIntelligencePage() {
                     <div key={entry.pid} className="flex items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-medium text-text-primary truncate">{entry.displayName}</span>
+                          <span className="text-small font-medium text-text-primary truncate">{entry.displayName}</span>
                           <Badge tone={impactTone(entry.impactLevel)}>{entry.impactLevel}</Badge>
                         </div>
-                        <div className="flex items-center gap-4 mt-1 text-xs text-text-muted">
+                        <div className="flex items-center gap-4 mt-1 text-caption text-text-muted">
                           <span className="flex items-center gap-1"><CpuChipIcon className="h-3 w-3" />{entry.cpuUsagePercent.toFixed(1)}%</span>
                           <span className="flex items-center gap-1"><CircleStackIcon className="h-3 w-3" />{entry.memoryMB} MB</span>
                         </div>
@@ -173,10 +173,10 @@ export default function ProcessIntelligencePage() {
                       <ExclamationTriangleIcon className={`h-5 w-5 shrink-0 ${alert.severity === 'critical' ? 'text-semantic-danger' : alert.severity === 'high' ? 'text-semantic-warning' : 'text-text-muted'}`} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-medium text-text-primary">{alert.name}</span>
+                          <span className="text-small font-medium text-text-primary">{alert.name}</span>
                           <Badge tone={alert.severity === 'critical' ? 'danger' : alert.severity === 'high' ? 'warning' : 'neutral'}>{alert.severity}</Badge>
                         </div>
-                        <p className="text-xs text-text-secondary mt-0.5">{alert.message}</p>
+                        <p className="text-caption text-text-secondary mt-0.5">{alert.message}</p>
                       </div>
                     </div>
                   ))}
@@ -209,10 +209,10 @@ export default function ProcessIntelligencePage() {
             <Card title="Risk Assessment" variant="glass" data-testid="process-risk-assessment">
               <div className="space-y-3">
                 <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">System Risk Factors</h4>
+                  <h4 className="text-caption font-semibold uppercase tracking-wider text-text-muted mb-2">System Risk Factors</h4>
                   <ul className="space-y-1">
                     {risk.systemRiskFactors.map((factor, i) => (
-                      <li key={i} className="text-sm text-text-secondary flex items-start gap-2">
+                      <li key={i} className="text-small text-text-secondary flex items-start gap-2">
                         <ExclamationTriangleIcon className="h-4 w-4 text-semantic-warning shrink-0 mt-0.5" />
                         {factor}
                       </li>
@@ -221,10 +221,10 @@ export default function ProcessIntelligencePage() {
                 </div>
                 {risk.mitigatingFactors.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Mitigating Factors</h4>
+                    <h4 className="text-caption font-semibold uppercase tracking-wider text-text-muted mb-2">Mitigating Factors</h4>
                     <ul className="space-y-1">
                       {risk.mitigatingFactors.map((factor, i) => (
-                        <li key={i} className="text-sm text-text-secondary flex items-start gap-2">
+                        <li key={i} className="text-small text-text-secondary flex items-start gap-2">
                           <CheckCircleIcon className="h-4 w-4 text-semantic-success shrink-0 mt-0.5" />
                           {factor}
                         </li>
@@ -240,7 +240,7 @@ export default function ProcessIntelligencePage() {
 
       {!dashboard && (
         <Card variant="glass">
-          <div className="py-8 text-center text-sm text-text-secondary">
+          <div className="py-8 text-center text-small text-text-secondary">
             No process data available. Click &quot;Scan Now&quot; to analyze running processes.
           </div>
         </Card>
@@ -253,18 +253,18 @@ function ProcessInsightRow({ insight }: { insight: ProcessInsight }) {
   return (
     <div className="border-l-2 border-[var(--avs-border)] pl-4 py-1">
       <div className="flex items-center justify-between gap-2 mb-1">
-        <span className="text-sm font-semibold text-text-primary">{insight.title}</span>
+        <span className="text-small font-semibold text-text-primary">{insight.title}</span>
         <div className="flex items-center gap-2">
           <Badge tone={severityTone(insight.severity)}>{insight.severity}</Badge>
           <Badge tone={confidenceTone(insight.confidenceLabel)}>{insight.confidenceLabel}</Badge>
         </div>
       </div>
-      <p className="text-sm text-text-secondary mb-1">{insight.summary}</p>
+      <p className="text-small text-text-secondary mb-1">{insight.summary}</p>
       {insight.explanation && (
-        <p className="text-xs text-text-muted mt-1">{insight.explanation}</p>
+        <p className="text-caption text-text-muted mt-1">{insight.explanation}</p>
       )}
       {insight.recommendation && (
-        <p className="text-xs text-brand-primary mt-1 font-medium">→ {insight.recommendation}</p>
+        <p className="text-caption text-brand-primary mt-1 font-medium">→ {insight.recommendation}</p>
       )}
     </div>
   );
@@ -274,11 +274,11 @@ function ProcessRecommendationRow({ rec }: { rec: ProcessRecommendation }) {
   return (
     <div className="border-l-2 border-brand-primary pl-4 py-1">
       <div className="flex items-center justify-between gap-2 mb-1">
-        <span className="text-sm font-semibold text-text-primary">{rec.title}</span>
+        <span className="text-small font-semibold text-text-primary">{rec.title}</span>
         <Badge tone={priorityTone(rec.priority)}>{rec.priority}</Badge>
       </div>
-      <p className="text-sm text-text-secondary mb-1">{rec.reason}</p>
-      <div className="flex items-center gap-4 text-xs text-text-muted mt-1">
+      <p className="text-small text-text-secondary mb-1">{rec.reason}</p>
+      <div className="flex items-center gap-4 text-caption text-text-muted mt-1">
         <span>Expected: {rec.expectedImprovement}</span>
         <span>Risk: {rec.risk}</span>
         <span>Confidence: {(rec.confidence * 100).toFixed(0)}%</span>

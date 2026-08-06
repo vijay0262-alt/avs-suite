@@ -71,12 +71,12 @@ export default function UninstallerPage() {
               placeholder="Search by name or publisher…"
               value={state.search}
               onChange={(e) => vm.setSearch(e.target.value)}
-              className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-sm text-text-primary outline-none focus:border-brand-primary"
+              className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-small text-text-primary outline-none focus:border-brand-primary"
             />
             <select
               value={state.sortBy}
               onChange={(e) => vm.setSortBy(e.target.value as SortKey)}
-              className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-sm text-text-primary"
+              className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-small text-text-primary"
             >
               <option value="name">Sort: Name</option>
               <option value="size">Sort: Size</option>
@@ -105,14 +105,14 @@ export default function UninstallerPage() {
               {programs.map((p) => (
                 <div key={p.id} className="flex items-center gap-4 py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-text-primary truncate">{p.name}</p>
-                    <p className="text-xs text-text-muted truncate">
+                    <p className="text-small font-medium text-text-primary truncate">{p.name}</p>
+                    <p className="text-caption text-text-muted truncate">
                       {p.publisher || 'Unknown publisher'}
                       {p.version ? ` · v${p.version}` : ''}
                       {p.installDate ? ` · ${p.installDate}` : ''}
                     </p>
                   </div>
-                  <div className="w-20 text-right text-sm text-text-secondary tabular-nums">
+                  <div className="w-20 text-right text-small text-text-secondary tabular-nums">
                     {formatBytes(p.sizeBytes)}
                   </div>
                   <Button

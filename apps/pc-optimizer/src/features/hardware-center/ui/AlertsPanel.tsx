@@ -58,11 +58,11 @@ export function AlertsPanel({ alerts, onAcknowledge, onClear }: AlertsPanelProps
             <span className="text-base shrink-0" aria-hidden>{severityIcon(alert.severity)}</span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-text-primary">{alert.title}</span>
+                <span className="text-small font-medium text-text-primary">{alert.title}</span>
                 <Badge tone={severityTone(alert.severity)}>{alert.severity}</Badge>
               </div>
-              <p className="text-xs text-text-secondary mt-0.5">{alert.message}</p>
-              <p className="text-xs text-text-muted mt-0.5">
+              <p className="text-caption text-text-secondary mt-0.5">{alert.message}</p>
+              <p className="text-caption text-text-muted mt-0.5">
                 {new Date(alert.timestamp).toLocaleTimeString()} · {alert.category}
               </p>
             </div>

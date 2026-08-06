@@ -58,7 +58,7 @@ export default function RegistryCleanerPage() {
       >
         <div className="flex items-start gap-2">
           <ShieldCheckIcon className="h-5 w-5 text-brand-primary shrink-0 mt-0.5" />
-          <div className="text-xs text-text-secondary">
+          <div className="text-caption text-text-secondary">
             <span className="font-semibold text-text-primary">Safety Guardrails:</span>{' '}
             Registry cleaning is{' '}
             <strong>manual review only</strong> — no automatic deletion. Every fix is
@@ -81,8 +81,8 @@ export default function RegistryCleanerPage() {
         <>
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-lg font-semibold text-text-primary">Registry Scan</h2>
-              <p className="text-sm text-text-secondary">
+              <h2 className="text-section-title text-text-primary">Registry Scan</h2>
+              <p className="text-small text-text-secondary">
                 {state.issues.length > 0
                   ? `${state.issues.length} issues found`
                   : 'Scan your registry to find invalid entries.'}
@@ -183,7 +183,7 @@ export default function RegistryCleanerPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ClockIcon className="h-4 w-4 text-text-secondary shrink-0" />
-                  <span className="text-xs text-text-secondary">
+                  <span className="text-caption text-text-secondary">
                     Free edition: <strong className="text-text-primary">{selectedCount} of {fixLimit}</strong> issues selected for repair
                     {remainingFixes !== null && remainingFixes > 0 && ` (${remainingFixes} remaining)`}
                     {hasMoreIssues && ` (${issueCount - (fixLimit ?? 0)} more found)`}
@@ -195,7 +195,7 @@ export default function RegistryCleanerPage() {
                       limitDescription: `Free edition repairs up to ${fixLimit} issues per scan. ${issueCount} issues found.`,
                       proBenefit: 'Unlimited repairs + automatic backup + scheduled repair.',
                     })}
-                    className="text-xs font-medium text-brand-primary hover:underline"
+                    className="text-caption font-medium text-brand-primary hover:underline"
                     data-testid="registry-upgrade-link"
                   >
                     Upgrade to Pro →
@@ -210,7 +210,7 @@ export default function RegistryCleanerPage() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 my-6">
               {Object.entries(state.breakdown).map(([cat, count]) => (
                 <Card key={cat} title={CATEGORY_LABELS[cat] ?? cat}>
-                  <p className="text-2xl font-bold text-text-primary">{count}</p>
+                  <p className="text-statistic-sm text-text-primary">{count}</p>
                 </Card>
               ))}
             </div>
@@ -237,7 +237,7 @@ export default function RegistryCleanerPage() {
                   Select None
                 </Button>
                 {!isPro && (
-                  <span className="ml-auto text-xs text-text-muted">
+                  <span className="ml-auto text-caption text-text-muted">
                     {selectedCount}/{fixLimit} selected
                   </span>
                 )}
@@ -257,24 +257,24 @@ export default function RegistryCleanerPage() {
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-text-primary truncate">
+                          <span className="text-small font-medium text-text-primary truncate">
                             {issue.description}
                           </span>
                           <span
                             className={
                               issue.severity === 'medium'
-                                ? 'text-xs text-semantic-warning'
-                                : 'text-xs text-text-muted'
+                                ? 'text-caption text-semantic-warning'
+                                : 'text-caption text-text-muted'
                             }
                           >
                             {issue.severity}
                           </span>
                         </div>
-                        <p className="text-xs text-text-muted truncate">
+                        <p className="text-caption text-text-muted truncate">
                           {issue.hive}\{issue.subkey}
                           {issue.valueName ? ` : ${issue.valueName}` : ''}
                         </p>
-                        <p className="text-xs text-text-secondary truncate">{issue.valueData}</p>
+                        <p className="text-caption text-text-secondary truncate">{issue.valueData}</p>
                       </div>
                     </label>
                   ))}
@@ -287,7 +287,7 @@ export default function RegistryCleanerPage() {
           {state.backups.length > 0 && (
             <div className="mt-8">
               <div className="flex items-center gap-2 mb-3">
-                <h2 className="text-lg font-semibold text-text-primary">Backups</h2>
+                <h2 className="text-section-title text-text-primary">Backups</h2>
                 {isPro && (
                   <ProFeatureIndicator icon={ShieldCheckIcon} label="Automatic Backup" />
                 )}
@@ -300,8 +300,8 @@ export default function RegistryCleanerPage() {
                       className="flex items-center justify-between py-2 border-b border-[var(--avs-border)] last:border-0"
                     >
                       <div>
-                        <p className="text-sm text-text-primary">{b.backupId}</p>
-                        <p className="text-xs text-text-muted">
+                        <p className="text-small text-text-primary">{b.backupId}</p>
+                        <p className="text-caption text-text-muted">
                           {b.count} entries · {b.createdAt ?? 'unknown time'}
                         </p>
                       </div>
@@ -327,10 +327,10 @@ export default function RegistryCleanerPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-text-primary">Scheduled Repair</span>
+                        <span className="text-small font-semibold text-text-primary">Scheduled Repair</span>
                         {!isPro && <ProStatusPill />}
                       </div>
-                      <p className="mt-0.5 text-xs text-text-secondary">
+                      <p className="mt-0.5 text-caption text-text-secondary">
                         Automatically scan and repair registry issues on a schedule — weekly, monthly, or custom.
                       </p>
                     </div>
@@ -363,10 +363,10 @@ export default function RegistryCleanerPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-text-primary">Automatic Backup</span>
+                        <span className="text-small font-semibold text-text-primary">Automatic Backup</span>
                         {isPro && <ProFeatureIndicator icon={ShieldCheckIcon} label="Active" />}
                       </div>
-                      <p className="mt-0.5 text-xs text-text-secondary">
+                      <p className="mt-0.5 text-caption text-text-secondary">
                         Every repair is automatically backed up before changes are applied. Restore anytime.
                       </p>
                     </div>
@@ -381,10 +381,10 @@ export default function RegistryCleanerPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-text-primary">Unlimited Repairs</span>
+                        <span className="text-small font-semibold text-text-primary">Unlimited Repairs</span>
                         {isPro && <ProFeatureIndicator icon={WrenchScrewdriverIcon} label="Unlimited" />}
                       </div>
-                      <p className="mt-0.5 text-xs text-text-secondary">
+                      <p className="mt-0.5 text-caption text-text-secondary">
                         {isPro
                           ? 'Repair all detected registry issues with no limits.'
                           : `Free edition: repair up to ${fixLimit} issues per scan. Upgrade for unlimited.`}

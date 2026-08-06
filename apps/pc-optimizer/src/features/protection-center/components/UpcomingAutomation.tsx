@@ -24,7 +24,7 @@ export function UpcomingAutomation({ tasks, isPro }: UpcomingAutomationProps) {
   if (tasks.length === 0) {
     return (
       <div className="rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-gradient-surface p-4 text-center">
-        <p className="text-sm text-[var(--avs-text-muted)]">No scheduled tasks.</p>
+        <p className="text-small text-[var(--avs-text-muted)]">No scheduled tasks.</p>
       </div>
     );
   }
@@ -52,17 +52,17 @@ export function UpcomingAutomation({ tasks, isPro }: UpcomingAutomationProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-medium text-[var(--avs-text-primary)]">{task.name}</span>
+                  <span className="text-small font-medium text-[var(--avs-text-primary)]">{task.name}</span>
                   {task.proOnly && (
                     <StarIcon className="h-3.5 w-3.5 text-[var(--avs-brand-primary)]" aria-label="Pro feature" />
                   )}
                 </div>
-                <p className="text-xs text-[var(--avs-text-muted)]">{task.recurrence}</p>
+                <p className="text-caption text-[var(--avs-text-muted)]">{task.recurrence}</p>
               </div>
               <div className="shrink-0 text-right">
                 <div
                   className={clsx(
-                    'text-xs font-medium',
+                    'text-caption font-medium',
                     task.enabled ? 'text-[var(--avs-success)]' : 'text-[var(--avs-text-muted)]',
                   )}
                 >
@@ -75,7 +75,7 @@ export function UpcomingAutomation({ tasks, isPro }: UpcomingAutomationProps) {
       </ul>
 
       {!isPro && (
-        <p className="mt-3 pt-3 border-t border-[var(--avs-border)] text-xs text-[var(--avs-text-muted)]">
+        <p className="mt-3 pt-3 border-t border-[var(--avs-border)] text-caption text-[var(--avs-text-muted)]">
           Upgrade to Professional to unlock automated scheduling.
         </p>
       )}

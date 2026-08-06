@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 export interface ModalProps {
@@ -20,16 +20,22 @@ export function Modal({
   size = 'md',
   testId,
 }: ModalProps) {
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') onClose();
+  }, [onClose]);
+
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden';
+      document.addEventListener('keydown', handleKeyDown);
     } else {
       document.body.style.overflow = '';
     }
     return () => {
       document.body.style.overflow = '';
+      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [open]);
+  }, [open, handleKeyDown]);
 
   if (!open) return null;
 
@@ -52,16 +58,16 @@ export function Modal({
       aria-labelledby={titleId}
     >
       <div
-        className={`bg-surface rounded-lg shadow-xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col`}
+        className={`bg-[var(--avs-surface)] rounded-[var(--avs-radius-lg)] shadow-[var(--avs-shadow-xl,var(--avs-shadow-lg))] w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col`}
         onClick={(e) => e.stopPropagation()}
         role="document"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--avs-border)]">
-          <h2 id={titleId} className="text-lg font-semibold text-text-primary">{title}</h2>
+          <h2 id={titleId} className="text-section-title font-semibold text-text-primary">{title}</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-[var(--avs-radius-md)] hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary"
+            className="p-1 rounded-[var(--avs-radius-md)] hover:bg-[var(--avs-surface-muted)] text-text-secondary hover:text-text-primary transition-colors outline-none focus-visible:shadow-focus"
             aria-label="Close dialog"
           >
             <XMarkIcon className="h-5 w-5" aria-hidden="true" />

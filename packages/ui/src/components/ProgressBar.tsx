@@ -19,11 +19,11 @@ const tones: Record<NonNullable<ProgressBarProps['tone']>, string> = {
 export function ProgressBar({ value, label, tone = 'brand', className }: ProgressBarProps) {
   const pct = clamp(value, 0, 100);
   return (
-    <div className={clsx('space-y-1', className)}>
+    <div className={clsx('space-y-1.5', className)}>
       {label && (
-        <div className="flex justify-between text-xs text-[var(--avs-text-secondary)]">
+        <div className="flex justify-between text-caption text-[var(--avs-text-secondary)]">
           <span>{label}</span>
-          <span>{pct.toFixed(0)}%</span>
+          <span className="tabular-nums font-medium">{pct.toFixed(0)}%</span>
         </div>
       )}
       <div
@@ -32,10 +32,13 @@ export function ProgressBar({ value, label, tone = 'brand', className }: Progres
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={label}
-        className="h-2 w-full rounded-full bg-[var(--avs-surface-muted)] overflow-hidden"
+        className="h-1.5 w-full rounded-full bg-[var(--avs-surface-muted)] overflow-hidden"
       >
         <div
-          className={clsx('h-full transition-[width] duration-[var(--avs-duration-normal)]', tones[tone])}
+          className={clsx(
+            'h-full rounded-full transition-[width] duration-[var(--avs-duration-slow)] ease-[var(--avs-easing)]',
+            tones[tone],
+          )}
           style={{ width: `${pct}%` }}
         />
       </div>

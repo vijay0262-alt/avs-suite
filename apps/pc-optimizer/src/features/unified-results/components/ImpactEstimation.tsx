@@ -52,20 +52,20 @@ function ImpactCard({ estimate }: { estimate: UnifiedImpactEstimate }) {
     >
       <div className="flex items-center gap-1.5 text-brand-primary mb-2">
         {icon}
-        <span className="text-xs font-medium text-text-primary truncate">{estimate.label}</span>
+        <span className="text-caption font-medium text-text-primary truncate">{estimate.label}</span>
       </div>
 
       <div className="flex items-end justify-between gap-1">
         <div className="text-center">
-          <div className="text-[10px] uppercase tracking-wide text-text-muted">Current</div>
-          <div className="text-sm font-semibold tabular-nums text-text-muted">
+          <div className="text-micro uppercase tracking-wide text-text-muted">Current</div>
+          <div className="text-small font-semibold tabular-nums text-text-muted">
             {estimate.currentValue}
           </div>
         </div>
         <ArrowTrendingUpIcon className="h-4 w-4 text-semantic-success shrink-0" aria-hidden />
         <div className="text-center">
-          <div className="text-[10px] uppercase tracking-wide text-text-muted">Estimated</div>
-          <div className={`text-sm font-bold tabular-nums ${estimate.positive ? 'text-semantic-success' : 'text-text-primary'}`}>
+          <div className="text-micro uppercase tracking-wide text-text-muted">Estimated</div>
+          <div className={`text-small font-bold tabular-nums ${estimate.positive ? 'text-semantic-success' : 'text-text-primary'}`}>
             {estimate.estimatedValue}
           </div>
         </div>
@@ -73,7 +73,7 @@ function ImpactCard({ estimate }: { estimate: UnifiedImpactEstimate }) {
 
       <div className="mt-2 flex justify-center">
         <span
-          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+          className={`rounded-full px-2 py-0.5 text-micro font-medium ${
             estimate.positive
               ? 'bg-semantic-success/10 text-semantic-success'
               : 'bg-semantic-warning/10 text-semantic-warning'

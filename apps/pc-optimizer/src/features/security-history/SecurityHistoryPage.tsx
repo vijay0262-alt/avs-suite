@@ -208,13 +208,13 @@ export default function SecurityHistoryPage() {
               onChange={(e) => vm.setSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && vm.search()}
               placeholder="Search security history…"
-              className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] pl-9 pr-3 py-2 text-sm text-[var(--avs-text-primary)]"
+              className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] pl-9 pr-3 py-2 text-small text-[var(--avs-text-primary)]"
             />
           </div>
           <select
             value={state.filterType}
             onChange={(e) => vm.setFilterType(e.target.value)}
-            className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-sm text-[var(--avs-text-primary)]"
+            className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-small text-[var(--avs-text-primary)]"
           >
             <option value="">All Types</option>
             {types.map((t) => (
@@ -238,10 +238,10 @@ export default function SecurityHistoryPage() {
               <div key={entry.id} className="flex items-start gap-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-4 py-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-[var(--avs-text-primary)]">{entry.description || entry.action}</span>
+                    <span className="text-small font-medium text-[var(--avs-text-primary)]">{entry.description || entry.action}</span>
                     <Badge tone="neutral">{entry.type}</Badge>
                   </div>
-                  <div className="text-xs text-[var(--avs-text-muted)] mt-0.5">
+                  <div className="text-caption text-[var(--avs-text-muted)] mt-0.5">
                     {entry.timestamp} · {entry.action}
                   </div>
                 </div>
@@ -274,8 +274,8 @@ function StatCard({ label, value, icon: Icon, tone = 'neutral' }: { label: strin
           <Icon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
         </div>
         <div>
-          <p className={`text-2xl font-bold ${colorClass}`}>{value}</p>
-          <p className="text-xs text-[var(--avs-text-muted)]">{label}</p>
+          <p className={`text-statistic font-bold ${colorClass}`}>{value}</p>
+          <p className="text-caption text-[var(--avs-text-muted)]">{label}</p>
         </div>
       </div>
     </Card>

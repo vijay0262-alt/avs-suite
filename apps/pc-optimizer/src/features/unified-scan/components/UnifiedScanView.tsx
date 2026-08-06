@@ -109,11 +109,11 @@ export function UnifiedScanView({
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-text-primary">Scan Failed</h3>
-          <p className="text-sm text-text-secondary max-w-md mx-auto">{error}</p>
+          <h3 className="text-section-title font-semibold text-text-primary">Scan Failed</h3>
+          <p className="text-small text-text-secondary max-w-md mx-auto">{error}</p>
           <button
             onClick={onClose}
-            className="rounded-[var(--avs-radius-md)] bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90 transition-colors"
+            className="rounded-[var(--avs-radius-md)] bg-brand-primary px-4 py-2 text-small font-medium text-white hover:bg-brand-primary/90 transition-colors"
           >
             Close
           </button>
@@ -154,7 +154,7 @@ export function UnifiedScanView({
 
         {/* Live status details */}
         {(liveStatus.currentFolder || liveStatus.currentModule || liveStatus.currentCategory) && isScanning && (
-          <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="grid grid-cols-2 gap-2 text-caption">
             {liveStatus.currentModule && (
               <div className="rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface-muted)] px-2.5 py-1.5">
                 <span className="text-text-muted">Module: </span>
@@ -180,7 +180,7 @@ export function UnifiedScanView({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Scan tree */}
           <div>
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
+            <div className="mb-2 text-caption font-semibold uppercase tracking-wide text-text-muted">
               Scan Phases
             </div>
             <ScanTree nodes={treeNodes} />
@@ -188,7 +188,7 @@ export function UnifiedScanView({
 
           {/* Live counters */}
           <div>
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
+            <div className="mb-2 text-caption font-semibold uppercase tracking-wide text-text-muted">
               Live Counters
             </div>
             <ScanCounters
@@ -203,7 +203,7 @@ export function UnifiedScanView({
 
         {/* Error message */}
         {error && (
-          <div className="rounded-[var(--avs-radius-md)] bg-semantic-danger/10 p-3 text-sm text-semantic-danger">
+          <div className="rounded-[var(--avs-radius-md)] bg-semantic-danger/10 p-3 text-small text-semantic-danger">
             {error}
           </div>
         )}

@@ -16,24 +16,30 @@ export interface EmptyStateProps {
 export function EmptyState({ icon, title, description, action, className, ...rest }: EmptyStateProps) {
   return (
     <div
-      className={clsx('flex flex-col items-center justify-center py-12 text-center', className)}
+      className={clsx(
+        'flex flex-col items-center justify-center py-16 text-center animate-fade-in',
+        className,
+      )}
       {...rest as Record<string, unknown>}
     >
       {icon && (
-        <div className="mb-4 p-4 rounded-[var(--avs-radius-xl)] bg-[var(--avs-surface-muted)] text-[var(--avs-text-muted)]">
+        <div className="mb-5 p-5 rounded-[var(--avs-radius-2xl)] bg-[var(--avs-surface-muted)] text-[var(--avs-text-muted)] shadow-sm">
           {icon}
         </div>
       )}
-      <div className="text-base font-semibold text-[var(--avs-text-primary)]">{title}</div>
+      <div className="text-body font-semibold text-[var(--avs-text-primary)]">{title}</div>
       {description && (
-        <div className="mt-1.5 max-w-sm text-sm text-[var(--avs-text-secondary)]">{description}</div>
+        <div className="mt-2 max-w-sm text-small text-[var(--avs-text-secondary)] leading-relaxed">
+          {description}
+        </div>
       )}
       {action && (
         <button
           onClick={action.onClick}
-          className="mt-4 text-sm font-medium text-[var(--avs-brand-primary)] hover:text-[var(--avs-brand-accent)] transition-colors"
+          className="mt-5 inline-flex items-center gap-1 text-small font-medium text-[var(--avs-brand-primary)] hover:text-[var(--avs-brand-accent)] transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)] focus:outline-none focus-visible:shadow-focus rounded-[var(--avs-radius-sm)] px-2 py-1"
         >
-          {action.label} →
+          {action.label}
+          <span aria-hidden>→</span>
         </button>
       )}
     </div>

@@ -101,10 +101,10 @@ export const ExecutionDetailDialog = React.memo(function ExecutionDetailDialog({
         {/* Header */}
         <div className="mb-4 flex items-start justify-between">
           <div>
-            <h2 id="detail-dialog-title" className="text-lg font-semibold text-[var(--avs-text-primary)]">
+            <h2 id="detail-dialog-title" className="text-section-title font-semibold text-[var(--avs-text-primary)]">
               Execution Details
             </h2>
-            <p className="mt-0.5 text-xs text-[var(--avs-text-muted)] font-mono">{record.id}</p>
+            <p className="mt-0.5 text-caption text-[var(--avs-text-muted)] font-mono">{record.id}</p>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close dialog" data-testid="detail-dialog-close">
             <XMarkIcon className="h-5 w-5" />
@@ -149,18 +149,18 @@ export const ExecutionDetailDialog = React.memo(function ExecutionDetailDialog({
                   <span className="font-medium text-[var(--avs-text-primary)]">{task.taskName}</span>
                   <StatusBadge status={task.status === 'completed' ? 'succeeded' : task.status === 'failed' ? 'failed' : 'cancelled'} />
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-xs text-[var(--avs-text-secondary)]">
+                <div className="grid grid-cols-3 gap-2 text-caption text-[var(--avs-text-secondary)]">
                   <span>Files: {task.filesCleaned}</span>
                   <span>Space: {formatBytes(task.bytesRecovered)}</span>
                   <span>Duration: {formatDuration(task.durationMs)}</span>
                 </div>
                 {task.errors.length > 0 && (
-                  <div className="mt-2 text-xs text-[var(--avs-danger)]" data-testid={`detail-task-errors-${task.taskId}`}>
+                  <div className="mt-2 text-caption text-[var(--avs-danger)]" data-testid={`detail-task-errors-${task.taskId}`}>
                     {task.errors.map((e, i) => <div key={i}>• {e}</div>)}
                   </div>
                 )}
                 {task.warnings.length > 0 && (
-                  <div className="mt-2 text-xs text-[var(--avs-warning)]" data-testid={`detail-task-warnings-${task.taskId}`}>
+                  <div className="mt-2 text-caption text-[var(--avs-warning)]" data-testid={`detail-task-warnings-${task.taskId}`}>
                     {task.warnings.map((w, i) => <div key={i}>• {w}</div>)}
                   </div>
                 )}
@@ -172,7 +172,7 @@ export const ExecutionDetailDialog = React.memo(function ExecutionDetailDialog({
         {/* Warnings */}
         {record.warnings.length > 0 && (
           <Card title="Warnings" className="mb-4" data-testid="detail-warnings">
-            <div className="space-y-1 text-sm text-[var(--avs-warning)]">
+            <div className="space-y-1 text-small text-[var(--avs-warning)]">
               {record.warnings.map((w, i) => <div key={i}>• {w}</div>)}
             </div>
           </Card>
@@ -181,7 +181,7 @@ export const ExecutionDetailDialog = React.memo(function ExecutionDetailDialog({
         {/* Errors */}
         {record.errors.length > 0 && (
           <Card title="Errors" className="mb-4" data-testid="detail-errors">
-            <div className="space-y-1 text-sm text-[var(--avs-danger)]">
+            <div className="space-y-1 text-small text-[var(--avs-danger)]">
               {record.errors.map((e, i) => <div key={i}>• {e}</div>)}
             </div>
           </Card>
@@ -190,18 +190,18 @@ export const ExecutionDetailDialog = React.memo(function ExecutionDetailDialog({
         {/* Restore / Rollback */}
         <Card title="Restore & Rollback" className="mb-4" data-testid="detail-restore">
           {backupsLoading ? (
-            <p className="text-sm text-[var(--avs-text-muted)]">Loading available backups…</p>
+            <p className="text-small text-[var(--avs-text-muted)]">Loading available backups…</p>
           ) : backups.length === 0 ? (
-            <p className="text-sm text-[var(--avs-text-muted)]">No backups available for this execution. Backups are created automatically before cleaning operations.</p>
+            <p className="text-small text-[var(--avs-text-muted)]">No backups available for this execution. Backups are created automatically before cleaning operations.</p>
           ) : (
             <div className="space-y-2">
               {backups.map((backup) => (
                 <div key={backup.id} className="flex items-center justify-between rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] p-3">
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-[var(--avs-text-primary)] truncate">
+                    <div className="text-small font-medium text-[var(--avs-text-primary)] truncate">
                       {backup.backupType === 'restore_point' ? 'System Restore Point' : backup.originalPath}
                     </div>
-                    <div className="text-xs text-[var(--avs-text-muted)]">
+                    <div className="text-caption text-[var(--avs-text-muted)]">
                       {new Date(backup.timestamp).toLocaleString()} · {formatBytes(backup.size)}
                     </div>
                   </div>
@@ -221,18 +221,18 @@ export const ExecutionDetailDialog = React.memo(function ExecutionDetailDialog({
           )}
           {restoreStatus && (
             <div className="mt-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-success-bg,rgba(34,197,94,0.1))] border border-[var(--avs-success-border,rgba(34,197,94,0.3))] px-3 py-2">
-              <p className="text-sm text-semantic-success" data-testid="restore-success">{restoreStatus}</p>
+              <p className="text-small text-semantic-success" data-testid="restore-success">{restoreStatus}</p>
             </div>
           )}
           {restoreError && (
             <div className="mt-3 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 border border-semantic-danger/30 px-3 py-2">
-              <p className="text-sm text-semantic-danger" data-testid="restore-error">{restoreError}</p>
+              <p className="text-small text-semantic-danger" data-testid="restore-error">{restoreError}</p>
             </div>
           )}
         </Card>
 
         {/* Metadata */}
-        <div className="text-xs text-[var(--avs-text-muted)]" data-testid="detail-metadata">
+        <div className="text-caption text-[var(--avs-text-muted)]" data-testid="detail-metadata">
           Logged at: {new Date(record.loggedAt).toLocaleString()}
         </div>
       </div>
@@ -243,8 +243,8 @@ export const ExecutionDetailDialog = React.memo(function ExecutionDetailDialog({
 function DetailItem({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-xs font-medium uppercase tracking-wide text-[var(--avs-text-muted)]">{label}</div>
-      <div className="mt-0.5 text-sm text-[var(--avs-text-primary)]">{children}</div>
+      <div className="text-caption font-medium uppercase tracking-wide text-[var(--avs-text-muted)]">{label}</div>
+      <div className="mt-0.5 text-small text-[var(--avs-text-primary)]">{children}</div>
     </div>
   );
 }

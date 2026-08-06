@@ -43,7 +43,7 @@ export function ScanFooter({
       >
         <div className="flex items-center gap-2">
           <ExclamationTriangleIcon className="h-5 w-5 text-semantic-warning shrink-0" aria-hidden />
-          <span className="text-sm text-text-primary">
+          <span className="text-small text-text-primary">
             Cancel the scan? Results so far will be discarded.
           </span>
         </div>

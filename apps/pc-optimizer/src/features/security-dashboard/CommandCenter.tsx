@@ -91,8 +91,8 @@ export function CommandCenter({
           <div className="flex items-center gap-3">
             <ShieldCheckIcon className="h-6 w-6 text-brand-primary" aria-hidden />
             <div>
-              <h2 className="text-lg font-semibold text-text-primary">Security Command Center</h2>
-              <p className="text-xs text-text-secondary">Quick actions and security controls</p>
+              <h2 className="text-section-title font-semibold text-text-primary">Security Command Center</h2>
+              <p className="text-caption text-text-secondary">Quick actions and security controls</p>
             </div>
           </div>
           <button
@@ -108,7 +108,7 @@ export function CommandCenter({
         {/* Status summary */}
         {overview && (
           <div className="border-b border-[var(--avs-border)] px-6 py-3">
-            <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-4 text-small">
               <span className="text-text-secondary">Score: <span className="font-medium text-text-primary">{overview.securityScore}</span></span>
               <Badge tone={overview.protectionStatus === 'running' ? 'success' : 'warning'}>{overview.protectionStatus}</Badge>
               <span className="text-text-secondary">Mode: <span className="font-medium text-text-primary capitalize">{overview.protectionMode}</span></span>
@@ -131,8 +131,8 @@ export function CommandCenter({
             >
               <action.icon className="h-5 w-5 shrink-0 text-brand-primary" aria-hidden />
               <div className="min-w-0">
-                <div className="text-sm font-medium text-text-primary">{action.label}</div>
-                <div className="text-xs text-text-secondary">{action.description}</div>
+                <div className="text-small font-medium text-text-primary">{action.label}</div>
+                <div className="text-caption text-text-secondary">{action.description}</div>
               </div>
             </button>
           ))}

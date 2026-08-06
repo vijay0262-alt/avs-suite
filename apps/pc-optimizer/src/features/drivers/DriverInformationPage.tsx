@@ -159,12 +159,12 @@ export default function DriverInformationPage() {
             value={state.searchQuery}
             onChange={(e) => vm.setSearch(e.target.value)}
             placeholder="Search drivers…"
-            className="flex-1 min-w-[200px] rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-sm text-[var(--avs-text-primary)]"
+            className="flex-1 min-w-[200px] rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-small text-[var(--avs-text-primary)]"
           />
           <select
             value={state.filterClass}
             onChange={(e) => vm.setFilterClass(e.target.value)}
-            className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-sm text-[var(--avs-text-primary)]"
+            className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-small text-[var(--avs-text-primary)]"
           >
             <option value="">All Classes</option>
             {deviceClasses.map((cls) => (
@@ -194,7 +194,7 @@ export default function DriverInformationPage() {
               <div key={i} className="flex items-start gap-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-4 py-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-[var(--avs-text-primary)] truncate">{driver.DeviceName}</span>
+                    <span className="text-small font-medium text-[var(--avs-text-primary)] truncate">{driver.DeviceName}</span>
                     {driver.IsSigned ? (
                       <Badge tone="success"><ShieldCheckIcon className="h-3 w-3 inline mr-1" />Signed</Badge>
                     ) : (
@@ -202,11 +202,11 @@ export default function DriverInformationPage() {
                     )}
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
-                    <span className="text-xs text-[var(--avs-text-muted)]">Class: {driver.DeviceClass || 'N/A'}</span>
-                    <span className="text-xs text-[var(--avs-text-muted)]">Version: {driver.DriverVersion || 'N/A'}</span>
-                    <span className="text-xs text-[var(--avs-text-muted)]">Provider: {driver.ProviderName || 'N/A'}</span>
-                    <span className="text-xs text-[var(--avs-text-muted)]">Date: {driver.DriverDate || 'N/A'}</span>
-                    {driver.Signer && <span className="text-xs text-[var(--avs-text-muted)]">Signer: {driver.Signer}</span>}
+                    <span className="text-caption text-[var(--avs-text-muted)]">Class: {driver.DeviceClass || 'N/A'}</span>
+                    <span className="text-caption text-[var(--avs-text-muted)]">Version: {driver.DriverVersion || 'N/A'}</span>
+                    <span className="text-caption text-[var(--avs-text-muted)]">Provider: {driver.ProviderName || 'N/A'}</span>
+                    <span className="text-caption text-[var(--avs-text-muted)]">Date: {driver.DriverDate || 'N/A'}</span>
+                    {driver.Signer && <span className="text-caption text-[var(--avs-text-muted)]">Signer: {driver.Signer}</span>}
                   </div>
                 </div>
                 <Badge tone={driver.Status === 'OK' ? 'success' : 'neutral'}>{driver.Status || 'Unknown'}</Badge>
@@ -230,8 +230,8 @@ function SummaryCard({ label, value, icon: Icon, tone = 'neutral' }: { label: st
           <Icon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
         </div>
         <div>
-          <p className={`text-2xl font-bold ${colorClass}`}>{value}</p>
-          <p className="text-xs text-[var(--avs-text-muted)]">{label}</p>
+          <p className={`text-statistic font-bold ${colorClass}`}>{value}</p>
+          <p className="text-caption text-[var(--avs-text-muted)]">{label}</p>
         </div>
       </div>
     </Card>

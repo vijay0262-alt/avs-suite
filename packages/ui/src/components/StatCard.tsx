@@ -18,34 +18,34 @@ export interface StatCardProps {
 
 const toneConfig: Record<StatCardTone, { iconBg: string; iconColor: string; ringColor: string; glow: string }> = {
   brand: {
-    iconBg: 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_15%,transparent)]',
+    iconBg: 'bg-[var(--avs-info-bg)]',
     iconColor: 'text-[var(--avs-brand-primary)]',
     ringColor: 'var(--avs-brand-primary)',
-    glow: 'hover:shadow-[0_0_24px_color-mix(in_srgb,var(--avs-brand-primary)_15%,transparent)]',
+    glow: 'hover:shadow-glow',
   },
   success: {
-    iconBg: 'bg-[color-mix(in_srgb,var(--avs-success)_15%,transparent)]',
+    iconBg: 'bg-[var(--avs-success-bg)]',
     iconColor: 'text-[var(--avs-success)]',
     ringColor: 'var(--avs-success)',
-    glow: 'hover:shadow-[0_0_24px_color-mix(in_srgb,var(--avs-success)_15%,transparent)]',
+    glow: 'hover:shadow-glow',
   },
   warning: {
-    iconBg: 'bg-[color-mix(in_srgb,var(--avs-warning)_15%,transparent)]',
+    iconBg: 'bg-[var(--avs-warning-bg)]',
     iconColor: 'text-[var(--avs-warning)]',
     ringColor: 'var(--avs-warning)',
-    glow: 'hover:shadow-[0_0_24px_color-mix(in_srgb,var(--avs-warning)_15%,transparent)]',
+    glow: 'hover:shadow-glow',
   },
   danger: {
-    iconBg: 'bg-[color-mix(in_srgb,var(--avs-danger)_15%,transparent)]',
+    iconBg: 'bg-[var(--avs-danger-bg)]',
     iconColor: 'text-[var(--avs-danger)]',
     ringColor: 'var(--avs-danger)',
-    glow: 'hover:shadow-[0_0_24px_color-mix(in_srgb,var(--avs-danger)_15%,transparent)]',
+    glow: 'hover:shadow-glow',
   },
   info: {
-    iconBg: 'bg-[color-mix(in_srgb,var(--avs-info)_15%,transparent)]',
+    iconBg: 'bg-[var(--avs-info-bg)]',
     iconColor: 'text-[var(--avs-info)]',
     ringColor: 'var(--avs-info)',
-    glow: 'hover:shadow-[0_0_24px_color-mix(in_srgb,var(--avs-info)_15%,transparent)]',
+    glow: 'hover:shadow-glow',
   },
   neutral: {
     iconBg: 'bg-[var(--avs-surface-muted)]',
@@ -87,7 +87,7 @@ export function StatCard({
       className={clsx(
         'group relative overflow-hidden rounded-[var(--avs-radius-xl)] p-5 text-left',
         'bg-gradient-surface border border-[var(--avs-border)]',
-        'shadow-[var(--avs-shadow-sm)] transition-all duration-[var(--avs-duration-normal)] ease-[var(--avs-easing)]',
+        'shadow-sm transition-all duration-[var(--avs-duration-normal)] ease-[var(--avs-easing)]',
         config.glow,
         onClick && 'cursor-pointer hover:border-[var(--avs-border-hover)]',
         className,
@@ -135,13 +135,13 @@ export function StatCard({
       </div>
 
       <div className="flex items-baseline gap-1.5">
-        <span className="text-3xl font-bold text-[var(--avs-text-primary)] tabular-nums">{value}</span>
-        {unit && <span className="text-sm text-[var(--avs-text-muted)] font-medium">{unit}</span>}
+        <span className="text-statistic text-[var(--avs-text-primary)] tabular-nums">{value}</span>
+        {unit && <span className="text-small text-[var(--avs-text-muted)] font-medium">{unit}</span>}
       </div>
 
-      <div className="mt-1.5 text-sm font-semibold text-[var(--avs-text-primary)]">{label}</div>
+      <div className="mt-1.5 text-small font-semibold text-[var(--avs-text-primary)]">{label}</div>
       {description && (
-        <div className="mt-0.5 text-xs text-[var(--avs-text-secondary)]">{description}</div>
+        <div className="mt-0.5 text-caption text-[var(--avs-text-secondary)]">{description}</div>
       )}
     </Comp>
   );

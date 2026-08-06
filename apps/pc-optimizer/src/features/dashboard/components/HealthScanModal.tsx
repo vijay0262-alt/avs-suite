@@ -111,16 +111,16 @@ export function HealthScanModal({
 
   if (step === 'preparing') {
     return (
-      <Modal open title="AI Smart Optimize — Full System Scan" onClose={onCancel} size="lg" actions={null}>
+      <Modal open title="Smart Optimize — Full System Scan" onClose={onCancel} size="lg" actions={null}>
         <div className="space-y-6" data-testid="health-scan-preparing">
           <div className="text-center">
             <div className="flex justify-center mb-3">
               <SparklesIcon className="h-12 w-12 text-brand-primary animate-pulse" aria-hidden />
             </div>
-            <div className="text-lg font-medium text-text-primary">
+            <div className="text-section-title font-medium text-text-primary">
               Preparing AI Analysis...
             </div>
-            <p className="text-sm text-text-secondary mt-1">
+            <p className="text-small text-text-secondary mt-1">
               Initializing optimization engine and loading analysis modules.
             </p>
           </div>
@@ -154,14 +154,14 @@ export function HealthScanModal({
     };
 
     return (
-      <Modal open title="AI Smart Optimize — Full System Scan" onClose={onCancel} size="lg" actions={null}>
+      <Modal open title="Smart Optimize — Full System Scan" onClose={onCancel} size="lg" actions={null}>
         <div className="space-y-5" data-testid="health-scan-scanning">
           {/* Current phase name + percentage */}
           <div className="text-center">
-            <div className="text-lg font-medium text-text-primary mb-1">
+            <div className="text-section-title font-medium text-text-primary mb-1">
               {currentPhaseInfo?.label ?? 'Scanning...'}
             </div>
-            <div className="text-sm text-text-secondary tabular-nums">{overallPct}% complete</div>
+            <div className="text-small text-text-secondary tabular-nums">{overallPct}% complete</div>
           </div>
 
           {/* Smooth overall progress bar */}
@@ -192,7 +192,7 @@ export function HealthScanModal({
             <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2" data-testid="scan-current-file">
               <div className="flex items-center gap-2">
                 <ArrowPathIcon className="h-4 w-4 text-brand-primary shrink-0 animate-spin" aria-hidden />
-                <span className="text-xs text-text-secondary truncate font-mono">{currentFile}</span>
+                <span className="text-caption text-text-secondary truncate font-mono">{currentFile}</span>
               </div>
               <div className="mt-2 w-full h-1.5 bg-[var(--avs-surface-muted)] rounded-full overflow-hidden">
                 <div
@@ -204,7 +204,7 @@ export function HealthScanModal({
           )}
 
           {/* Elapsed time */}
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
+          <div className="flex items-center gap-2 text-small text-text-secondary">
             <ClockIcon className="h-4 w-4" aria-hidden />
             <span>Elapsed: {formatDuration(elapsed)}</span>
           </div>
@@ -243,7 +243,7 @@ export function HealthScanModal({
     return (
       <Modal
         open
-        title="AI Summary — Scan Complete"
+        title="Summary — Scan Complete"
         onClose={onClose}
         size="lg"
         actions={
@@ -268,21 +268,21 @@ export function HealthScanModal({
             <div className={`text-4xl font-bold ${zoneConfig.textColor}`}>
               {zoneConfig.label}
             </div>
-            <p className="mt-1 text-sm text-text-secondary">{zoneConfig.message}</p>
+            <p className="mt-1 text-small text-text-secondary">{zoneConfig.message}</p>
           </div>
 
           {/* Overall Health Score */}
           <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-5 text-center">
-            <div className="text-xs uppercase tracking-wide text-text-muted mb-2">Overall Health Score</div>
+            <div className="text-caption uppercase tracking-wide text-text-muted mb-2">Overall Health Score</div>
             <div className={`text-5xl font-bold tabular-nums ${scoreToColor(healthScore)}`}>{healthScore}</div>
             <div className="mt-2 flex justify-center gap-4">
               <div className="text-center">
-                <div className={`text-lg font-bold ${scoreToColor(perfScore)}`}>{perfScore}</div>
-                <div className="text-xs text-text-muted">Performance</div>
+                <div className={`text-section-title font-bold ${scoreToColor(perfScore)}`}>{perfScore}</div>
+                <div className="text-caption text-text-muted">Performance</div>
               </div>
               <div className="text-center">
-                <div className={`text-lg font-bold ${scoreToColor(securityScore)}`}>{securityScore}</div>
-                <div className="text-xs text-text-muted">Security</div>
+                <div className={`text-section-title font-bold ${scoreToColor(securityScore)}`}>{securityScore}</div>
+                <div className="text-caption text-text-muted">Security</div>
               </div>
             </div>
           </div>
@@ -292,42 +292,42 @@ export function HealthScanModal({
             <Card>
               <div className="flex items-center gap-2 mb-1">
                 <CircleStackIcon className="h-4 w-4 text-brand-primary" />
-                <span className="text-xs text-text-muted">Recoverable Storage</span>
+                <span className="text-caption text-text-muted">Recoverable Storage</span>
               </div>
               <div className="text-xl font-bold text-text-primary">{formatDataSize(totalRecovery)}</div>
             </Card>
             <Card>
               <div className="flex items-center gap-2 mb-1">
                 <CpuChipIcon className="h-4 w-4 text-brand-primary" />
-                <span className="text-xs text-text-muted">Memory Recovery</span>
+                <span className="text-caption text-text-muted">Memory Recovery</span>
               </div>
               <div className="text-xl font-bold text-text-primary">{formatDataSize(memoryRecovery)}</div>
             </Card>
             <Card>
               <div className="flex items-center gap-2 mb-1">
                 <ClockIcon className="h-4 w-4 text-brand-primary" />
-                <span className="text-xs text-text-muted">Startup Improvement</span>
+                <span className="text-caption text-text-muted">Startup Improvement</span>
               </div>
               <div className="text-xl font-bold text-text-primary">~{estStartupImprovement}s faster</div>
             </Card>
             <Card>
               <div className="flex items-center gap-2 mb-1">
                 <SparklesIcon className="h-4 w-4 text-brand-primary" />
-                <span className="text-xs text-text-muted">Optimization Actions</span>
+                <span className="text-caption text-text-muted">Optimization Actions</span>
               </div>
               <div className="text-xl font-bold text-text-primary">{optimizationActions} found</div>
             </Card>
             <Card>
               <div className="flex items-center gap-2 mb-1">
                 <ClockIcon className="h-4 w-4 text-brand-primary" />
-                <span className="text-xs text-text-muted">Estimated Time</span>
+                <span className="text-caption text-text-muted">Estimated Time</span>
               </div>
               <div className="text-xl font-bold text-text-primary">~{Math.max(1, Math.round(duration / 1000))}s</div>
             </Card>
             <Card>
               <div className="flex items-center gap-2 mb-1">
                 <ArrowPathIcon className="h-4 w-4 text-brand-primary" />
-                <span className="text-xs text-text-muted">Est. Speed Improvement</span>
+                <span className="text-caption text-text-muted">Est. Speed Improvement</span>
               </div>
               <div className="text-xl font-bold text-text-primary">~{estSpeedImprovement}%</div>
             </Card>
@@ -335,20 +335,20 @@ export function HealthScanModal({
 
           {/* Findings */}
           <div className="space-y-2">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Found</h4>
+            <h4 className="text-caption font-semibold uppercase tracking-wide text-text-muted">Found</h4>
             {findings.length === 0 && cleanModules.length > 0 && (
               <div className="rounded-[var(--avs-radius-md)] bg-semantic-success/10 border border-semantic-success/20 p-3">
                 <div className="flex items-center gap-2">
                   <CheckCircleIcon className="h-5 w-5 text-semantic-success" />
-                  <span className="text-sm font-medium text-semantic-success">No issues found — your PC is clean!</span>
+                  <span className="text-small font-medium text-semantic-success">No issues found — your PC is clean!</span>
                 </div>
               </div>
             )}
             {findings.map((m) => (
               <div key={m.moduleId} className="flex items-center gap-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
                 <ExclamationTriangleIcon className={`h-4 w-4 ${SEVERITY_COLORS[m.severity] ?? 'text-text-muted'}`} />
-                <span className="text-sm text-text-secondary flex-1">{m.measuredDetail || m.moduleName}</span>
-                <span className="text-xs text-text-muted tabular-nums">
+                <span className="text-small text-text-secondary flex-1">{m.measuredDetail || m.moduleName}</span>
+                <span className="text-caption text-text-muted tabular-nums">
                   {m.issuesFound} issue{m.issuesFound > 1 ? 's' : ''}
                   {m.recoverableSpace > 0 && ` · ${formatDataSize(m.recoverableSpace)}`}
                 </span>
@@ -358,8 +358,8 @@ export function HealthScanModal({
             {cleanModules.map((m) => (
               <div key={m.moduleId} className="flex items-center gap-3 rounded-[var(--avs-radius-md)] bg-semantic-success/5 px-3 py-2">
                 <CheckCircleIcon className="h-4 w-4 text-semantic-success" />
-                <span className="text-sm text-text-secondary flex-1">{m.moduleName}</span>
-                <span className="text-xs text-semantic-success">Clean</span>
+                <span className="text-small text-text-secondary flex-1">{m.moduleName}</span>
+                <span className="text-caption text-semantic-success">Clean</span>
               </div>
             ))}
           </div>
@@ -371,8 +371,8 @@ export function HealthScanModal({
                 <div className="flex items-center gap-2">
                   <SparklesIcon className="h-5 w-5 text-brand-primary" />
                   <div>
-                    <p className="text-sm font-medium text-text-primary">Recommended: AI Smart Optimize</p>
-                    <p className="text-xs text-text-muted">Safe, evidence-based optimization with rollback</p>
+                    <p className="text-small font-medium text-text-primary">Recommended: AI Smart Optimize</p>
+                    <p className="text-caption text-text-muted">Safe, evidence-based optimization with rollback</p>
                   </div>
                 </div>
               </div>
@@ -380,7 +380,7 @@ export function HealthScanModal({
           )}
 
           {/* Scan duration */}
-          <div className="flex items-center justify-between text-sm text-text-secondary">
+          <div className="flex items-center justify-between text-small text-text-secondary">
             <span>Scan completed in {formatDuration(duration)}</span>
             {error && (
               <span className="text-semantic-danger">{error}</span>
@@ -395,7 +395,7 @@ export function HealthScanModal({
     return (
       <Modal open title="Optimizing" onClose={onCancelExecute} size="lg" actions={null}>
         <div className="space-y-6 text-center" data-testid="health-scan-optimizing">
-          <div className="text-lg font-medium text-text-primary">
+          <div className="text-section-title font-medium text-text-primary">
             {execution?.currentModule || 'Optimizing...'}
           </div>
 
@@ -408,35 +408,35 @@ export function HealthScanModal({
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
-              <div className="text-2xl font-bold text-text-primary tabular-nums">
+              <div className="text-statistic font-bold text-text-primary tabular-nums">
                 {execution?.filesRemoved || 0}
               </div>
-              <div className="text-sm text-text-secondary">Files Removed</div>
+              <div className="text-small text-text-secondary">Files Removed</div>
             </Card>
             <Card>
-              <div className="text-2xl font-bold text-semantic-success tabular-nums">
+              <div className="text-statistic font-bold text-semantic-success tabular-nums">
                 {formatDataSize(execution?.spaceRecovered || 0)}
               </div>
-              <div className="text-sm text-text-secondary">Space Recovered</div>
+              <div className="text-small text-text-secondary">Space Recovered</div>
             </Card>
             <Card>
-              <div className="text-2xl font-bold text-text-primary tabular-nums">
+              <div className="text-statistic font-bold text-text-primary tabular-nums">
                 {execution?.itemsProcessed || 0}
               </div>
-              <div className="text-sm text-text-secondary">Items Processed</div>
+              <div className="text-small text-text-secondary">Items Processed</div>
             </Card>
             <Card>
-              <div className="text-2xl font-bold text-text-primary tabular-nums">
+              <div className="text-statistic font-bold text-text-primary tabular-nums">
                 {execution ? formatDuration(execution.elapsedMs) : '0s'}
               </div>
-              <div className="text-sm text-text-secondary">Elapsed</div>
+              <div className="text-small text-text-secondary">Elapsed</div>
             </Card>
           </div>
 
           {execution?.liveMessages && execution.liveMessages.length > 0 && (
             <div className="text-left space-y-1.5 max-h-32 overflow-y-auto" data-testid="optimization-live-messages">
               {execution.liveMessages.slice(-8).map((msg, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm text-text-secondary">
+                <div key={i} className="flex items-center gap-2 text-small text-text-secondary">
                   {msg.startsWith('✓') ? (
                     <CheckCircleIcon className="h-4 w-4 text-semantic-success shrink-0" aria-hidden />
                   ) : msg.startsWith('✗') ? (
@@ -464,8 +464,8 @@ export function HealthScanModal({
     return (
       <Modal open title="Verifying Results" onClose={onCancelExecute} size="lg" actions={null}>
         <div className="space-y-6 text-center">
-          <div className="text-lg font-medium text-text-primary">{execution?.currentModule || 'Verifying...'}</div>
-          <p className="text-sm text-text-secondary">Running a fresh health scan to measure real changes. Do not close this window.</p>
+          <div className="text-section-title font-medium text-text-primary">{execution?.currentModule || 'Verifying...'}</div>
+          <p className="text-small text-text-secondary">Running a fresh health scan to measure real changes. Do not close this window.</p>
           <div className="w-full h-3 bg-[var(--avs-surface-muted)] rounded-full overflow-hidden">
             <div className="h-full bg-brand-primary transition-all duration-300" style={{ width: `${execution?.progress || 0}%` }} />
           </div>
@@ -486,10 +486,10 @@ export function HealthScanModal({
           <div className="flex justify-center">
             <ArrowPathIcon className="h-12 w-12 text-brand-primary animate-spin" aria-hidden />
           </div>
-          <div className="text-lg font-medium text-text-primary">
+          <div className="text-section-title font-medium text-text-primary">
             {execution?.currentModule || 'Updating Dashboard...'}
           </div>
-          <p className="text-sm text-text-secondary">
+          <p className="text-small text-text-secondary">
             Refreshing health score, issues, and dashboard cards with verified post-optimization data.
           </p>
           <div className="w-full h-3 bg-[var(--avs-surface-muted)] rounded-full overflow-hidden">
@@ -528,7 +528,7 @@ export function HealthScanModal({
               <CheckCircleIcon className="h-10 w-10 text-semantic-success" aria-hidden />
             )}
           </div>
-          <div className="text-sm text-text-secondary">
+          <div className="text-small text-text-secondary">
             {error ? error : 'No optimization was required. Your system is already healthy.'}
           </div>
         </div>
@@ -599,7 +599,7 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
               <CheckCircleIcon className="h-10 w-10 text-semantic-success" aria-hidden />
             )}
           </div>
-          <h3 className="text-lg font-semibold text-text-primary">
+          <h3 className="text-section-title font-semibold text-text-primary">
             {hasFailures ? 'Optimization Completed with Failures' : 'Your PC has been successfully optimized.'}
           </h3>
         </div>
@@ -611,7 +611,7 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
             <div className={`text-4xl font-bold tabular-nums ${beforeColor}`}>
               {beforeOverall}
             </div>
-            <div className="text-xs text-text-muted mt-1">Before</div>
+            <div className="text-caption text-text-muted mt-1">Before</div>
           </div>
 
           {/* Arrow */}
@@ -625,8 +625,8 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
             >
               {displayScore}
             </div>
-            <div className="text-xs text-text-muted mt-1">After</div>
-            <div className={`text-sm font-medium mt-1 ${animatedColor} transition-colors duration-500`}>
+            <div className="text-caption text-text-muted mt-1">After</div>
+            <div className={`text-small font-medium mt-1 ${animatedColor} transition-colors duration-500`}>
               {SCORE_ZONE_CONFIG[scoreToZone(animatedScore)].label}
             </div>
           </div>
@@ -634,20 +634,20 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
 
         {/* Summary metrics grid */}
         <div>
-          <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">Optimization Summary</div>
+          <div className="mb-3 text-caption uppercase tracking-wide text-text-muted">Optimization Summary</div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4" data-testid="celebration-summary">
             <Card>
               <div className="text-xl font-bold text-semantic-success tabular-nums">
                 {formatDataSize(totalBytesRecovered)}
               </div>
-              <div className="text-xs text-text-secondary">Recovered Storage</div>
+              <div className="text-caption text-text-secondary">Recovered Storage</div>
             </Card>
             {totalIssuesFixed > 0 && (
               <Card>
                 <div className="text-xl font-bold text-text-primary tabular-nums">
                   {totalIssuesFixed}
                 </div>
-                <div className="text-xs text-text-secondary">Registry Fixed</div>
+                <div className="text-caption text-text-secondary">Registry Fixed</div>
               </Card>
             )}
             {totalEntriesDisabled > 0 && (
@@ -655,7 +655,7 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
                 <div className="text-xl font-bold text-text-primary tabular-nums">
                   {totalEntriesDisabled}
                 </div>
-                <div className="text-xs text-text-secondary">Startup Optimized</div>
+                <div className="text-caption text-text-secondary">Startup Optimized</div>
               </Card>
             )}
             {totalItemsRemoved > 0 && (
@@ -663,7 +663,7 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
                 <div className="text-xl font-bold text-text-primary tabular-nums">
                   {totalItemsRemoved}
                 </div>
-                <div className="text-xs text-text-secondary">Privacy Files Removed</div>
+                <div className="text-caption text-text-secondary">Privacy Files Removed</div>
               </Card>
             )}
             {totalFilesDeleted > 0 && (
@@ -671,21 +671,21 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
                 <div className="text-xl font-bold text-text-primary tabular-nums">
                   {totalFilesDeleted}
                 </div>
-                <div className="text-xs text-text-secondary">Files Deleted</div>
+                <div className="text-caption text-text-secondary">Files Deleted</div>
               </Card>
             )}
             <Card>
               <div className="text-xl font-bold text-text-primary tabular-nums">
                 {formatDuration(elapsed)}
               </div>
-              <div className="text-xs text-text-secondary">Time Taken</div>
+              <div className="text-caption text-text-secondary">Time Taken</div>
             </Card>
           </div>
         </div>
 
         {/* If nothing changed, say so honestly */}
         {totalBytesRecovered === 0 && totalItemsRemoved === 0 && totalEntriesDisabled === 0 && totalIssuesFixed === 0 && (
-          <div className="flex items-center gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] text-sm text-text-secondary">
+          <div className="flex items-center gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] text-small text-text-secondary">
             <InformationCircleIcon className="h-5 w-5 shrink-0" aria-hidden />
             <span>No measurable improvement detected. Your system may already be optimized.</span>
           </div>
@@ -693,7 +693,7 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
 
         {/* If score didn't change, explain why */}
         {!scoreChanged && (
-          <div className="flex items-center gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] text-sm text-text-secondary">
+          <div className="flex items-center gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] text-small text-text-secondary">
             <InformationCircleIcon className="h-5 w-5 shrink-0" aria-hidden />
             <span>Health score remained at {afterOverall}. This can happen when cleaned files were small relative to overall system state.</span>
           </div>
@@ -702,7 +702,7 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
         {/* Expandable Detailed Results */}
         {showDetails && (
           <div className="space-y-3" data-testid="detailed-results">
-            <div className="text-xs uppercase tracking-wide text-text-muted">Detailed Results</div>
+            <div className="text-caption uppercase tracking-wide text-text-muted">Detailed Results</div>
             {modulesWithActual.map((m) => (
               <DetailedResultSection key={m.moduleId} module={m} />
             ))}
@@ -724,18 +724,18 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
           if (needsAction.length === 0) return null;
           return (
             <div>
-              <div className="mb-3 text-xs uppercase tracking-wide text-text-muted">
+              <div className="mb-3 text-caption uppercase tracking-wide text-text-muted">
                 Still needs your attention
               </div>
               <div className="space-y-2">
                 {needsAction.map((m) => (
                   <div key={m.moduleId} className="p-3 rounded-[var(--avs-radius-md)] bg-semantic-warning/10 border border-semantic-warning/20">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-text-primary">{m.moduleName}</span>
-                      <span className="text-xs font-medium text-semantic-warning">Manual action</span>
+                      <span className="text-small font-medium text-text-primary">{m.moduleName}</span>
+                      <span className="text-caption font-medium text-semantic-warning">Manual action</span>
                     </div>
-                    <div className="text-xs text-text-secondary">{m.measuredDetail}</div>
-                    <div className="text-xs text-text-secondary mt-1">
+                    <div className="text-caption text-text-secondary">{m.measuredDetail}</div>
+                    <div className="text-caption text-text-secondary mt-1">
                       {m.details.groups.flatMap((g) => g.items.map((i) => i.name)).slice(0, 3).join(', ')}
                     </div>
                   </div>
@@ -751,31 +751,31 @@ function CompleteStep({ report, result, execution, error, onClose }: CompleteSte
             <div className="flex items-center gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-semantic-success/10">
               <SparklesIcon className="h-5 w-5 text-semantic-success shrink-0" aria-hidden />
               <div>
-                <div className="text-sm font-medium text-text-primary">Your PC Health is Excellent.</div>
-                <div className="text-xs text-text-secondary">Next optimization recommended in 7 days.</div>
+                <div className="text-small font-medium text-text-primary">Your PC Health is Excellent.</div>
+                <div className="text-caption text-text-secondary">Next optimization recommended in 7 days.</div>
               </div>
             </div>
           ) : afterOverall >= 75 ? (
             <div className="flex items-center gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)]">
               <SparklesIcon className="h-5 w-5 text-text-secondary shrink-0" aria-hidden />
               <div>
-                <div className="text-sm font-medium text-text-primary">Your PC Health is Good.</div>
-                <div className="text-xs text-text-secondary">Next optimization recommended in 3 days.</div>
+                <div className="text-small font-medium text-text-primary">Your PC Health is Good.</div>
+                <div className="text-caption text-text-secondary">Next optimization recommended in 3 days.</div>
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-semantic-warning/10">
               <ExclamationTriangleIcon className="h-5 w-5 text-semantic-warning shrink-0" aria-hidden />
               <div>
-                <div className="text-sm font-medium text-text-primary">Further optimization recommended.</div>
-                <div className="text-xs text-text-secondary">Some issues remain. Consider running optimization again or reviewing manual action items.</div>
+                <div className="text-small font-medium text-text-primary">Further optimization recommended.</div>
+                <div className="text-caption text-text-secondary">Some issues remain. Consider running optimization again or reviewing manual action items.</div>
               </div>
             </div>
           )}
         </div>
 
         {error && (
-          <div className="flex items-start gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 text-sm text-semantic-danger">
+          <div className="flex items-start gap-3 py-3 px-4 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 text-small text-semantic-danger">
             <ExclamationTriangleIcon className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
             <span>{error}</span>
           </div>
@@ -810,19 +810,19 @@ function DetailedResultSection({ module: m }: { module: HealthScanModuleResult }
           <div className="text-text-muted">
             <ModuleIcon id={m.moduleId} />
           </div>
-          <span className="text-sm font-medium text-text-primary">{m.moduleName}</span>
+          <span className="text-small font-medium text-text-primary">{m.moduleName}</span>
         </div>
         <div className="flex items-center gap-3">
           {hasActual && (
-            <span className={`text-xs font-medium ${actual!.success ? 'text-semantic-success' : 'text-semantic-danger'}`}>
+            <span className={`text-caption font-medium ${actual!.success ? 'text-semantic-success' : 'text-semantic-danger'}`}>
               {actual!.success ? 'Verified' : 'Failed'}
             </span>
           )}
           {!hasActual && m.status === 'skipped' && (
-            <span className="text-xs font-medium text-text-muted">Skipped</span>
+            <span className="text-caption font-medium text-text-muted">Skipped</span>
           )}
           {!hasActual && m.status === 'complete' && m.issuesFound === 0 && (
-            <span className="text-xs font-medium text-semantic-success">Clean</span>
+            <span className="text-caption font-medium text-semantic-success">Clean</span>
           )}
           <ChevronDownIcon
             className={`h-4 w-4 text-text-muted transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
@@ -834,7 +834,7 @@ function DetailedResultSection({ module: m }: { module: HealthScanModuleResult }
       {expanded && (
         <div className="px-3 pb-3 space-y-2 border-t border-[var(--avs-border)]/50 pt-2" data-testid={`detail-content-${m.moduleId}`}>
           {/* Scanned / Removed / Skipped / Reason */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-caption">
             <div>
               <div className="text-text-muted">Scanned</div>
               <div className="font-medium text-text-primary tabular-nums">{scanned}</div>
@@ -855,21 +855,21 @@ function DetailedResultSection({ module: m }: { module: HealthScanModuleResult }
 
           {/* Actual measured results */}
           {hasActual && actual!.bytesRecovered !== undefined && actual!.bytesRecovered > 0 && (
-            <div className="text-xs text-text-secondary">
+            <div className="text-caption text-text-secondary">
               {formatDataSize(actual!.bytesRecovered)} recovered
             </div>
           )}
 
           {/* Errors */}
           {hasActual && actual!.errors.length > 0 && (
-            <div className="text-xs text-semantic-danger">
+            <div className="text-caption text-semantic-danger">
               {actual!.errors.slice(0, 3).join('; ')}
             </div>
           )}
 
           {/* Before/After verification if available */}
           {m.verification && (
-            <div className="text-xs text-text-secondary">
+            <div className="text-caption text-text-secondary">
               Score: {m.verification.beforeScore} → {m.verification.afterScore}
               {' · '}
               Issues: {m.verification.beforeIssues} → {m.verification.afterIssues}
@@ -896,7 +896,7 @@ function PhaseIndicator({ currentPhase }: { currentPhase: ScanPhase }) {
         return (
           <div key={phase.id} className="flex items-center gap-1">
             <div
-              className={`flex items-center gap-1.5 px-2 py-1 rounded-[var(--avs-radius-sm)] text-xs transition-colors ${
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-[var(--avs-radius-sm)] text-caption transition-colors ${
                 isCurrent
                   ? 'bg-brand-primary/15 text-brand-primary font-medium'
                   : isComplete
@@ -930,9 +930,9 @@ function LiveStatBox({ label, value, icon }: { label: string; value: string; ico
     <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2" data-testid={`live-stat-${label.replace(/\s+/g, '-').toLowerCase()}`}>
       <div className="flex items-center gap-1.5 text-text-muted mb-0.5">
         {icon}
-        <span className="text-xs">{label}</span>
+        <span className="text-caption">{label}</span>
       </div>
-      <div className="text-sm font-bold text-text-primary tabular-nums">{value}</div>
+      <div className="text-small font-bold text-text-primary tabular-nums">{value}</div>
     </div>
   );
 }

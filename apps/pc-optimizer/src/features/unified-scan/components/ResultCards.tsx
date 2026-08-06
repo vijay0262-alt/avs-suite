@@ -40,14 +40,14 @@ function ResultCard({ card }: { card: UnifiedResultCard }) {
     >
       <div className="flex items-center gap-2 mb-3 text-brand-primary">
         {icon}
-        <span className="text-sm font-medium text-text-primary">{card.title}</span>
+        <span className="text-small font-medium text-text-primary">{card.title}</span>
       </div>
 
       <div className="flex items-end justify-between gap-2">
         {/* Before */}
         <div className="text-center">
-          <div className="text-xs uppercase tracking-wide text-text-muted">Before</div>
-          <div className="text-lg font-semibold tabular-nums text-text-muted">
+          <div className="text-caption uppercase tracking-wide text-text-muted">Before</div>
+          <div className="text-section-title font-semibold tabular-nums text-text-muted">
             {card.currentValue}
           </div>
         </div>
@@ -63,8 +63,8 @@ function ResultCard({ card }: { card: UnifiedResultCard }) {
 
         {/* After */}
         <div className="text-center">
-          <div className="text-xs uppercase tracking-wide text-text-muted">After</div>
-          <div className={`text-lg font-bold tabular-nums ${card.positive ? 'text-semantic-success' : 'text-text-primary'}`}>
+          <div className="text-caption uppercase tracking-wide text-text-muted">After</div>
+          <div className={`text-section-title font-bold tabular-nums ${card.positive ? 'text-semantic-success' : 'text-text-primary'}`}>
             {card.improvedValue}
           </div>
         </div>
@@ -73,7 +73,7 @@ function ResultCard({ card }: { card: UnifiedResultCard }) {
       {/* Difference badge */}
       <div className="mt-3 flex justify-center">
         <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+          className={`rounded-full px-2.5 py-0.5 text-caption font-medium ${
             card.positive
               ? 'bg-semantic-success/10 text-semantic-success'
               : 'bg-semantic-warning/10 text-semantic-warning'

@@ -11,17 +11,17 @@ export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'>
 const variants: Record<NonNullable<CardProps['variant']>, string> = {
   default:
     'bg-[var(--avs-surface)] border border-[var(--avs-border)] ' +
-    'shadow-[var(--avs-shadow-sm)] hover:shadow-[var(--avs-shadow-md)]',
+    'shadow-sm hover:shadow-md hover:border-[var(--avs-border-hover)]',
   glass:
     'bg-[var(--avs-glass-bg)] backdrop-blur-[var(--avs-glass-blur)] ' +
-    'border border-[var(--avs-glass-border)] shadow-[var(--avs-shadow-md)] ' +
-    'hover:shadow-[var(--avs-shadow-lg)]',
+    'border border-[var(--avs-glass-border)] shadow-md ' +
+    'hover:shadow-lg',
   gradient:
     'bg-gradient-surface border border-[var(--avs-border)] ' +
-    'shadow-[var(--avs-shadow-sm)] hover:shadow-[var(--avs-shadow-glow)]',
+    'shadow-sm hover:shadow-glow hover:border-[var(--avs-border-hover)]',
   elevated:
     'bg-[var(--avs-surface-elevated)] border border-[var(--avs-border)] ' +
-    'shadow-[var(--avs-shadow-md)] hover:shadow-[var(--avs-shadow-lg)]',
+    'shadow-md hover:shadow-lg hover:border-[var(--avs-border-hover)]',
 };
 
 /**
@@ -37,7 +37,7 @@ export function Card({
   title,
   actions,
   padded = true,
-  variant = 'glass',
+  variant = 'default',
   className,
   children,
   ...rest
@@ -55,7 +55,7 @@ export function Card({
       {(title || actions) && (
         <div className="flex items-center justify-between px-5 pt-4 pb-2">
           {title && (
-            <h3 className="text-sm font-semibold tracking-tight text-[var(--avs-text-primary)]">
+            <h3 className="text-card-title text-[var(--avs-text-primary)]">
               {title}
             </h3>
           )}

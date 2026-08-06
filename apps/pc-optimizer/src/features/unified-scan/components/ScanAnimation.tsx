@@ -47,7 +47,7 @@ export function ScanAnimation({
       </span>
       <span
         key={message}
-        className="text-sm text-text-secondary animate-[fadeIn_300ms_ease-out]"
+        className="text-small text-text-secondary animate-[fadeIn_300ms_ease-out]"
       >
         {message}
       </span>

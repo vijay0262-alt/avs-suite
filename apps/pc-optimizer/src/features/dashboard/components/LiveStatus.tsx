@@ -21,7 +21,7 @@ export const LiveStatus = React.memo(function LiveStatus({ metrics }: LiveStatus
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {['CPU', 'Memory', 'Disk', 'Network', 'Temperature'].map((label) => (
           <Card key={label}>
-            <div className="text-xs text-text-muted mb-1">{label}</div>
+            <div className="text-caption text-text-muted mb-1">{label}</div>
             <div className="text-xl font-bold text-text-primary">—</div>
           </Card>
         ))}
@@ -92,11 +92,11 @@ const Widget = React.memo(function Widget({ icon: Icon, label, value, subValue, 
     <Card className="p-4">
       <div className="flex items-center gap-2 mb-2">
         <Icon className="h-4 w-4 text-text-muted" aria-hidden="true" />
-        <div className="text-xs text-text-muted">{label}</div>
+        <div className="text-caption text-text-muted">{label}</div>
       </div>
-      <div className={`text-2xl font-bold tabular-nums ${color}`}>{value}</div>
+      <div className={`text-statistic font-bold tabular-nums ${color}`}>{value}</div>
       {subValue && SubIcon && (
-        <div className="mt-1 flex items-center gap-1 text-xs text-text-secondary">
+        <div className="mt-1 flex items-center gap-1 text-caption text-text-secondary">
           <SubIcon className="h-3 w-3" aria-hidden="true" />
           <span>{subValue}</span>
         </div>

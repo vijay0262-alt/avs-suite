@@ -217,7 +217,7 @@ export default function JunkCleanerPage() {
                 )}
                 {exceedsFreeLimit && (
                   <button
-                    className="text-xs text-semantic-warning flex items-center gap-1 hover:underline"
+                    className="text-caption text-semantic-warning flex items-center gap-1 hover:underline"
                     onClick={() => guard('junk.clean_unlimited', 'Junk Cleaner', () => {})}
                   >
                     <ExclamationTriangleIcon className="h-4 w-4" />
@@ -253,7 +253,7 @@ export default function JunkCleanerPage() {
       >
         <div className="flex items-start gap-2">
           <ShieldCheckIcon className="h-5 w-5 text-brand-primary shrink-0 mt-0.5" />
-          <div className="text-xs text-text-secondary">
+          <div className="text-caption text-text-secondary">
             <span className="font-semibold text-text-primary">Safety Guardrails:</span>{' '}
             AVS Shield never touches <strong>C:\Windows\System32</strong>,{' '}
             <strong>Windows Search Index</strong> (Windows.edb), or{' '}
@@ -267,7 +267,7 @@ export default function JunkCleanerPage() {
 
       {state.bootstrap === 'loading' && (
         <Card>
-          <div className="py-6 text-sm text-text-muted" data-testid="junk-bootstrap-loading">
+          <div className="py-6 text-small text-text-muted" data-testid="junk-bootstrap-loading">
             Loading cleaner catalog…
           </div>
         </Card>
@@ -278,10 +278,10 @@ export default function JunkCleanerPage() {
           <div className="flex items-start gap-3 py-4" role="alert" data-testid="junk-bootstrap-error">
             <ExclamationTriangleIcon className="h-5 w-5 text-semantic-danger" />
             <div>
-              <div className="text-sm font-medium text-text-primary">
+              <div className="text-small font-medium text-text-primary">
                 Could not reach the backend service.
               </div>
-              <div className="mt-1 text-xs text-text-muted">
+              <div className="mt-1 text-caption text-text-muted">
                 {state.bootstrapError ?? 'Unknown error.'}
               </div>
             </div>
@@ -293,7 +293,7 @@ export default function JunkCleanerPage() {
         <Card className="mb-4">
           <div
             role="alert"
-            className="flex items-start gap-3 py-1 text-sm text-semantic-danger"
+            className="flex items-start gap-3 py-1 text-small text-semantic-danger"
             data-testid="junk-error-banner"
           >
             <ExclamationTriangleIcon className="h-5 w-5 shrink-0" />
@@ -310,10 +310,10 @@ export default function JunkCleanerPage() {
               <div className="flex items-center gap-2">
                 <ExclamationTriangleIcon className="h-5 w-5 text-semantic-warning shrink-0" />
                 <div>
-                  <span className="text-sm font-medium text-text-primary">
+                  <span className="text-small font-medium text-text-primary">
                     Free edition cleans up to 500 MB per session
                   </span>
-                  <p className="text-xs text-text-secondary mt-0.5">
+                  <p className="text-caption text-text-secondary mt-0.5">
                     {(totalJunkBytes / (1024 * 1024)).toFixed(0)} MB detected. Only the largest categories under 500 MB will be cleaned. Upgrade to Professional for unlimited cleaning.
                   </p>
                 </div>
@@ -342,7 +342,7 @@ export default function JunkCleanerPage() {
           <Card
             title="Categories"
             actions={
-              <label className="flex cursor-pointer select-none items-center gap-2 text-xs text-text-secondary">
+              <label className="flex cursor-pointer select-none items-center gap-2 text-caption text-text-secondary">
                 <input
                   type="checkbox"
                   className="h-4 w-4 accent-brand-primary"
@@ -356,7 +356,7 @@ export default function JunkCleanerPage() {
             }
           >
             {state.catalog.length === 0 ? (
-              <div className="py-6 text-sm text-text-muted" data-testid="junk-empty-catalog">
+              <div className="py-6 text-small text-text-muted" data-testid="junk-empty-catalog">
                 No cleaners registered.
               </div>
             ) : (
@@ -413,7 +413,7 @@ export default function JunkCleanerPage() {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 mb-2">
                     <LightBulbIcon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
-                    <span className="text-sm font-medium text-[var(--avs-text-primary)]">
+                    <span className="text-small font-medium text-[var(--avs-text-primary)]">
                       AI-powered recommendations based on scan results
                     </span>
                   </div>
@@ -425,14 +425,14 @@ export default function JunkCleanerPage() {
                         className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--avs-brand-primary)]/10 text-xs font-bold text-[var(--avs-brand-primary)]">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--avs-brand-primary)]/10 text-caption font-bold text-[var(--avs-brand-primary)]">
                             {idx + 1}
                           </span>
                           <div>
-                            <span className="text-sm font-medium text-[var(--avs-text-primary)]">
+                            <span className="text-small font-medium text-[var(--avs-text-primary)]">
                               {cleaner?.name ?? rec.id}
                             </span>
-                            <p className="text-xs text-[var(--avs-text-muted)]">
+                            <p className="text-caption text-[var(--avs-text-muted)]">
                               {(rec.totalBytes / (1024 * 1024)).toFixed(0)} MB · {rec.totalFiles} files
                             </p>
                           </div>
@@ -462,8 +462,8 @@ export default function JunkCleanerPage() {
                   <div className="flex items-center gap-2">
                     <CalendarDaysIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
                     <div>
-                      <span className="text-xs font-medium text-[var(--avs-text-primary)]">Scheduled Cleaning</span>
-                      <p className="text-xs text-[var(--avs-text-muted)]">Automatically clean junk files on a schedule</p>
+                      <span className="text-caption font-medium text-[var(--avs-text-primary)]">Scheduled Cleaning</span>
+                      <p className="text-caption text-[var(--avs-text-muted)]">Automatically clean junk files on a schedule</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -471,7 +471,7 @@ export default function JunkCleanerPage() {
                       value={scheduleFreq}
                       onChange={(e) => void handleScheduleFreqChange(e.target.value)}
                       disabled={!scheduleEnabled || scheduleLoading}
-                      className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-2 py-1 text-xs text-[var(--avs-text-primary)]"
+                      className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-2 py-1 text-caption text-[var(--avs-text-primary)]"
                       data-testid="junk-schedule-freq"
                     >
                       <option value="daily">Daily</option>
@@ -494,8 +494,8 @@ export default function JunkCleanerPage() {
                   <div className="flex items-center gap-2">
                     <ArrowPathRoundedSquareIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
                     <div>
-                      <span className="text-xs font-medium text-[var(--avs-text-primary)]">Background Cleanup</span>
-                      <p className="text-xs text-[var(--avs-text-muted)]">Continuously clean junk files in the background</p>
+                      <span className="text-caption font-medium text-[var(--avs-text-primary)]">Background Cleanup</span>
+                      <p className="text-caption text-[var(--avs-text-muted)]">Continuously clean junk files in the background</p>
                     </div>
                   </div>
                   <button

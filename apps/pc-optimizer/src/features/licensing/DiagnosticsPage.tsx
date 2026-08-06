@@ -90,9 +90,9 @@ export default function DiagnosticsPage() {
       {/* System Information */}
       <Card title="System Information">
         {loading ? (
-          <div className="text-sm text-text-muted">Loading...</div>
+          <div className="text-small text-text-muted">Loading...</div>
         ) : sysInfo ? (
-          <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 text-small md:grid-cols-2">
             <div>
               <div className="text-text-muted">Windows Version</div>
               <div className="font-medium text-text-primary mt-1">{sysInfo.windows_version}</div>
@@ -111,13 +111,13 @@ export default function DiagnosticsPage() {
             </div>
           </div>
         ) : (
-          <div className="text-sm text-text-muted">System information unavailable.</div>
+          <div className="text-small text-text-muted">System information unavailable.</div>
         )}
       </Card>
 
       {/* Application Info */}
       <Card title="Application">
-        <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 text-small md:grid-cols-2">
           <div>
             <div className="text-text-muted">Version</div>
             <div className="font-medium text-text-primary mt-1">{getVersionString()}</div>
@@ -144,7 +144,7 @@ export default function DiagnosticsPage() {
       {/* License Status */}
       <Card title="License Status">
         {diag ? (
-          <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 text-small md:grid-cols-2">
             <div>
               <div className="text-text-muted">Edition</div>
               <div className="flex items-center gap-2 mt-1">
@@ -164,11 +164,11 @@ export default function DiagnosticsPage() {
             </div>
             <div>
               <div className="text-text-muted">Server URL</div>
-              <div className="font-mono text-xs text-text-secondary mt-1">{diag.server_url}</div>
+              <div className="font-mono text-caption text-text-secondary mt-1">{diag.server_url}</div>
             </div>
             <div>
               <div className="text-text-muted">Device Fingerprint</div>
-              <div className="font-mono text-xs text-text-secondary mt-1">{diag.fingerprint}</div>
+              <div className="font-mono text-caption text-text-secondary mt-1">{diag.fingerprint}</div>
             </div>
             <div>
               <div className="text-text-muted">Last Validated</div>
@@ -180,19 +180,19 @@ export default function DiagnosticsPage() {
             </div>
           </div>
         ) : (
-          <div className="text-sm text-text-muted">No license information available.</div>
+          <div className="text-small text-text-muted">No license information available.</div>
         )}
       </Card>
 
       {/* Export */}
       <Card title="Export Diagnostics">
         <div className="space-y-4">
-          <p className="text-sm text-text-secondary">
+          <p className="text-small text-text-secondary">
             Export a diagnostics package containing system information, license status,
             and application logs. This can be shared with AVS Support for troubleshooting.
           </p>
           {exportResult && (
-            <div className={`rounded-[var(--avs-radius-md)] px-3 py-2 text-sm ${
+            <div className={`rounded-[var(--avs-radius-md)] px-3 py-2 text-small ${
               exportResult.success
                 ? 'bg-semantic-success/10 text-semantic-success'
                 : 'bg-semantic-danger/10 text-semantic-danger'

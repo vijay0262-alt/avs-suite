@@ -62,7 +62,7 @@ export function ScoreGauge({ score, size = 'large', animate = true }: ScoreGauge
       <div className="flex flex-col items-center">
         <span
           className={`font-bold tabular-nums ${scoreColor(displayValue)} ${
-            size === 'large' ? 'text-4xl' : size === 'medium' ? 'text-2xl' : 'text-lg'
+            size === 'large' ? 'text-4xl' : size === 'medium' ? 'text-statistic' : 'text-section-title'
           }`}
           aria-live="polite"
         >
@@ -70,7 +70,7 @@ export function ScoreGauge({ score, size = 'large', animate = true }: ScoreGauge
         </span>
         <span
           className={`text-text-muted ${
-            size === 'large' ? 'text-xs' : 'text-[10px]'
+            size === 'large' ? 'text-caption' : 'text-micro'
           }`}
         >
           {score.label}
@@ -92,7 +92,7 @@ export function ScoreRow({ primary, secondary }: ScoreRowProps) {
       <div className="flex flex-col items-center gap-2">
         <ScoreGauge score={primary} size="large" />
         {primary.description && (
-          <p className="text-xs text-text-muted max-w-xs text-center">{primary.description}</p>
+          <p className="text-caption text-text-muted max-w-xs text-center">{primary.description}</p>
         )}
       </div>
 

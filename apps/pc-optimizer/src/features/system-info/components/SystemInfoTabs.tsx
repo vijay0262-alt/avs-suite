@@ -93,8 +93,8 @@ export function SystemInfoTabs({ info, vm }: SystemInfoTabsProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {pairs.map((p) => (
           <div key={p.label} className="flex justify-between border-b border-[var(--avs-border)] pb-2 last:border-0">
-            <span className="text-sm text-text-secondary">{p.label}</span>
-            <span className="text-sm font-medium text-text-primary text-right">{p.value}</span>
+            <span className="text-small text-text-secondary">{p.label}</span>
+            <span className="text-small font-medium text-text-primary text-right">{p.value}</span>
           </div>
         ))}
       </div>
@@ -128,14 +128,14 @@ export function SystemInfoTabs({ info, vm }: SystemInfoTabsProps) {
             {info.disk.map((disk, index) => (
               <Card key={index} title={`${disk.device} ${disk.mountpoint}`}>
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-small">
                     <span className="text-text-secondary">File system</span>
                     <span className="text-text-primary">{disk.fstype}</span>
                   </div>
                   <div className="w-full h-2 bg-[var(--avs-surface-muted)] rounded overflow-hidden">
                     <div className="h-full bg-brand-primary" style={{ width: `${disk.percent}%` }} />
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-small">
                     <span className="text-text-secondary">{vm.formatBytes(disk.used)} used</span>
                     <span className="text-text-secondary">{vm.formatBytes(disk.free)} free of {vm.formatBytes(disk.total)}</span>
                   </div>
@@ -147,7 +147,7 @@ export function SystemInfoTabs({ info, vm }: SystemInfoTabsProps) {
       case 'graphics':
         return (
           <Card>
-            <p className="text-sm text-text-secondary">GPU information is not yet collected by the backend. This tab is reserved for future graphics metrics.</p>
+            <p className="text-small text-text-secondary">GPU information is not yet collected by the backend. This tab is reserved for future graphics metrics.</p>
           </Card>
         );
       case 'network':
@@ -184,7 +184,7 @@ export function SystemInfoTabs({ info, vm }: SystemInfoTabsProps) {
               role="tab"
               aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-3 py-1.5 text-sm rounded-[var(--avs-radius-md)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
+              className={`px-3 py-1.5 text-small rounded-[var(--avs-radius-md)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
                 activeTab === tab.id
                   ? 'bg-brand-primary text-white'
                   : 'bg-[var(--avs-surface-muted)] text-text-secondary hover:bg-[var(--avs-surface-muted)]'
@@ -213,11 +213,11 @@ export function SystemInfoTabs({ info, vm }: SystemInfoTabsProps) {
 function SpecCard({ title, value, sub }: { title: string; value: string; sub: string }) {
   return (
     <Card>
-      <div className="text-xs uppercase tracking-wide text-text-muted mb-1">{title}</div>
-      <div className="text-lg font-semibold text-text-primary truncate" title={value}>
+      <div className="text-caption uppercase tracking-wide text-text-muted mb-1">{title}</div>
+      <div className="text-section-title font-semibold text-text-primary truncate" title={value}>
         {value}
       </div>
-      <div className="text-xs text-text-secondary truncate">{sub}</div>
+      <div className="text-caption text-text-secondary truncate">{sub}</div>
     </Card>
   );
 }

@@ -43,13 +43,13 @@ export default function UpdaterPage() {
         <>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
-              <h2 className="text-lg font-semibold text-text-primary">Updates</h2>
+              <h2 className="text-section-title font-semibold text-text-primary">Updates</h2>
               {state.available ? (
-                <p className="text-sm text-text-secondary">
+                <p className="text-small text-text-secondary">
                   {state.upgrades.length} update{state.upgrades.length !== 1 ? 's' : ''} available
                 </p>
               ) : (
-                <p className="text-sm text-red-400">{state.reason}</p>
+                <p className="text-small text-red-400">{state.reason}</p>
               )}
             </div>
             <div className="flex gap-2">
@@ -91,8 +91,8 @@ export default function UpdaterPage() {
                 {state.upgrades.map((u) => (
                   <div key={u.packageId} className="flex items-center gap-4 py-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-text-primary truncate">{u.name}</p>
-                      <p className="text-xs text-text-muted">
+                      <p className="text-small font-medium text-text-primary truncate">{u.name}</p>
+                      <p className="text-caption text-text-muted">
                         {u.currentVersion} → {u.availableVersion}
                         {u.source ? ` · ${u.source}` : ''}
                       </p>

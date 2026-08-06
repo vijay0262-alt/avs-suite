@@ -47,7 +47,7 @@ export const Recommendations = React.memo(function Recommendations({ recommendat
   if (recommendations.length === 0) return null;
 
   return (
-    <Card title="AI Recommendations">
+    <Card title="Recommendations">
       <div className="space-y-3" data-testid="recommendations-list">
         {recommendations.map((rec) => {
           const CategoryIcon = CATEGORY_ICONS[rec.category] ?? SparklesIcon;
@@ -64,10 +64,10 @@ export const Recommendations = React.memo(function Recommendations({ recommendat
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-text-primary">{rec.title}</span>
+                  <span className="text-small font-medium text-text-primary">{rec.title}</span>
                   <CategoryIcon className="h-4 w-4 text-text-muted shrink-0" aria-hidden />
                 </div>
-                <div className="text-xs text-text-secondary mt-0.5">{rec.description}</div>
+                <div className="text-caption text-text-secondary mt-0.5">{rec.description}</div>
               </div>
               <Button
                 variant="secondary"

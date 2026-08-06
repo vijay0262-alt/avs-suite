@@ -50,27 +50,25 @@ export function ProtectionCenterPage() {
 
   if (state.loading && !state.protectionState) {
     return (
-      <div className="mx-auto max-w-7xl p-6">
-        <LoadingState message="Loading AI Protection Center…" />
-      </div>
+      <LoadingState message="Loading AI Protection Center…" data-testid="protection-center-loading" />
     );
   }
 
   if (state.error && !state.protectionState) {
     return (
-      <div className="mx-auto max-w-7xl p-6">
-        <EmptyState
-          icon={<ShieldCheckIcon className="h-12 w-12" />}
-          title="Unable to load Protection Center"
-          description={state.error}
-        />
-      </div>
+      <EmptyState
+        icon={<ShieldCheckIcon className="h-10 w-10" />}
+        title="Unable to load Protection Center"
+        description={state.error}
+        action={{ label: 'Retry', onClick: () => vm.refresh() }}
+        data-testid="protection-center-error"
+      />
     );
   }
 
   return (
     <div
-      className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6"
+      className="space-y-7"
       role="main"
       aria-label="AI Protection Center"
     >
@@ -105,14 +103,14 @@ export function ProtectionCenterPage() {
 
       {/* Main grid: Activity Timeline + System Health */}
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-7">
           {/* Live Activity Timeline */}
           <DashboardSection
             title="Live Activity"
             icon={<ClockIcon className="h-5 w-5" />}
             actions={
-              <span className="flex items-center gap-1.5 text-xs text-[var(--avs-text-muted)]">
-                <span className="h-2 w-2 rounded-full bg-[var(--avs-success)] animate-pulse" />
+              <span className="flex items-center gap-1.5 text-caption text-[var(--avs-text-muted)]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--avs-success)] animate-pulse" />
                 Live
               </span>
             }
@@ -138,7 +136,7 @@ export function ProtectionCenterPage() {
         </div>
 
         {/* Right column */}
-        <div className="space-y-6">
+        <div className="space-y-7">
           {/* System Health Snapshot */}
           <DashboardSection
             title="System Health"

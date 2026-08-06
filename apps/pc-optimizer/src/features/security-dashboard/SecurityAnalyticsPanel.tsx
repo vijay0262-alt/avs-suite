@@ -78,26 +78,26 @@ export function SecurityAnalyticsPanel({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card data-testid="analytics-total-events">
           <div className="text-center">
-            <div className="text-2xl font-bold text-text-primary">{statistics?.totalEvents ?? 0}</div>
-            <div className="text-xs text-text-muted">Total Events</div>
+            <div className="text-statistic font-bold text-text-primary">{statistics?.totalEvents ?? 0}</div>
+            <div className="text-caption text-text-muted">Total Events</div>
           </div>
         </Card>
         <Card data-testid="analytics-processed">
           <div className="text-center">
-            <div className="text-2xl font-bold text-text-primary">{statistics?.eventsProcessed ?? 0}</div>
-            <div className="text-xs text-text-muted">Processed</div>
+            <div className="text-statistic font-bold text-text-primary">{statistics?.eventsProcessed ?? 0}</div>
+            <div className="text-caption text-text-muted">Processed</div>
           </div>
         </Card>
         <Card data-testid="analytics-avg-time">
           <div className="text-center">
-            <div className="text-2xl font-bold text-text-primary">{statistics?.averageProcessingTime.toFixed(0) ?? 0}ms</div>
-            <div className="text-xs text-text-muted">Avg Processing</div>
+            <div className="text-statistic font-bold text-text-primary">{statistics?.averageProcessingTime.toFixed(0) ?? 0}ms</div>
+            <div className="text-caption text-text-muted">Avg Processing</div>
           </div>
         </Card>
         <Card data-testid="analytics-events-min">
           <div className="text-center">
-            <div className="text-2xl font-bold text-text-primary">{telemetry?.eventsPerMinute.toFixed(1) ?? 0}</div>
-            <div className="text-xs text-text-muted">Events / Min</div>
+            <div className="text-statistic font-bold text-text-primary">{telemetry?.eventsPerMinute.toFixed(1) ?? 0}</div>
+            <div className="text-caption text-text-muted">Events / Min</div>
           </div>
         </Card>
       </div>
@@ -116,7 +116,7 @@ export function SecurityAnalyticsPanel({
               const percentage = (count / maxCount) * 100;
               return (
                 <div key={category} className="space-y-1" data-testid={`category-bar-${category}`}>
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center justify-between text-caption">
                     <span className="text-text-secondary capitalize">{category.replace(/_/g, ' ')}</span>
                     <span className="font-medium text-text-primary">{count}</span>
                   </div>
@@ -131,7 +131,7 @@ export function SecurityAnalyticsPanel({
             })}
           </div>
         ) : (
-          <p className="text-sm text-text-secondary py-4 text-center">No event data yet.</p>
+          <p className="text-small text-text-secondary py-4 text-center">No event data yet.</p>
         )}
       </Card>
 
@@ -151,8 +151,8 @@ export function SecurityAnalyticsPanel({
                 }}
                 data-testid={`severity-heat-${sev}`}
               >
-                <div className="text-lg font-bold text-text-primary">{count}</div>
-                <div className="text-xs capitalize text-text-muted">{sev}</div>
+                <div className="text-section-title font-bold text-text-primary">{count}</div>
+                <div className="text-caption capitalize text-text-muted">{sev}</div>
               </div>
             );
           })}
@@ -178,13 +178,13 @@ export function SecurityAnalyticsPanel({
       <Card title="Most Active Event Sources" data-testid="analytics-active-sources">
         <div className="space-y-1">
           {history.slice(-10).reverse().map((entry) => (
-            <div key={entry.id} className="flex items-center justify-between text-xs py-1">
+            <div key={entry.id} className="flex items-center justify-between text-caption py-1">
               <span className="text-text-secondary truncate">{entry.target}</span>
               <Badge tone={severityTone(entry.severity)}>{entry.severity}</Badge>
             </div>
           ))}
           {history.length === 0 && (
-            <p className="text-sm text-text-secondary py-4 text-center">No activity yet.</p>
+            <p className="text-small text-text-secondary py-4 text-center">No activity yet.</p>
           )}
         </div>
       </Card>
@@ -200,7 +200,7 @@ function RiskTrendChart({ points }: { points: { x: number; y: number; threat: bo
   const PADDING = { top: 10, right: 10, bottom: 20, left: 35 };
 
   if (points.length === 0) {
-    return <p className="text-sm text-text-secondary py-4 text-center">No trend data yet.</p>;
+    return <p className="text-small text-text-secondary py-4 text-center">No trend data yet.</p>;
   }
 
   const plotW = WIDTH - PADDING.left - PADDING.right;
@@ -221,9 +221,9 @@ function RiskTrendChart({ points }: { points: { x: number; y: number; threat: bo
       <line x1={PADDING.left} y1={PADDING.top} x2={PADDING.left} y2={HEIGHT - PADDING.bottom} stroke="var(--avs-border)" strokeWidth="0.5" />
 
       {/* Y labels */}
-      <text x={PADDING.left - 5} y={PADDING.top + 4} textAnchor="end" className="fill-text-muted text-[10px]">100</text>
-      <text x={PADDING.left - 5} y={HEIGHT / 2} textAnchor="end" className="fill-text-muted text-[10px]">50</text>
-      <text x={PADDING.left - 5} y={HEIGHT - PADDING.bottom} textAnchor="end" className="fill-text-muted text-[10px]">0</text>
+      <text x={PADDING.left - 5} y={PADDING.top + 4} textAnchor="end" className="fill-text-muted text-micro">100</text>
+      <text x={PADDING.left - 5} y={HEIGHT / 2} textAnchor="end" className="fill-text-muted text-micro">50</text>
+      <text x={PADDING.left - 5} y={HEIGHT - PADDING.bottom} textAnchor="end" className="fill-text-muted text-micro">0</text>
 
       {/* Area */}
       <path d={areaPath} fill="color-mix(in srgb, var(--avs-brand-primary) 10%, transparent)" />
@@ -243,7 +243,7 @@ function TrendRow({ label, value, total }: { label: string; value: number; total
   const percentage = total > 0 ? (value / total) * 100 : 0;
   return (
     <div className="space-y-1" data-testid={`trend-row-${label.toLowerCase().replace(/\s+/g, '-')}`}>
-      <div className="flex items-center justify-between text-xs">
+      <div className="flex items-center justify-between text-caption">
         <span className="text-text-secondary">{label}</span>
         <span className="font-medium text-text-primary">{value} ({percentage.toFixed(1)}%)</span>
       </div>

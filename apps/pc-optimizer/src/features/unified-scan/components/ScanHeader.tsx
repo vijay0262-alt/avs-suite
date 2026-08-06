@@ -36,12 +36,12 @@ export function ScanHeader({
 
       {/* Module name + phase */}
       <div className="min-w-0 flex-1">
-        <h3 className="text-lg font-semibold text-text-primary truncate">{moduleName}</h3>
+        <h3 className="text-section-title font-semibold text-text-primary truncate">{moduleName}</h3>
         <div className="mt-0.5 flex items-center gap-2">
           {step === 'scanning' && (
             <ArrowPathIcon className="h-3.5 w-3.5 animate-spin text-brand-primary" aria-hidden />
           )}
-          <p className="text-sm text-text-secondary truncate" aria-live="polite">
+          <p className="text-small text-text-secondary truncate" aria-live="polite">
             {currentPhaseLabel}
           </p>
         </div>
@@ -52,16 +52,16 @@ export function ScanHeader({
         <div>
           <div className="flex items-center gap-1 justify-end text-text-muted">
             <ClockIcon className="h-3.5 w-3.5" aria-hidden />
-            <span className="text-xs uppercase tracking-wide">Elapsed</span>
+            <span className="text-caption uppercase tracking-wide">Elapsed</span>
           </div>
-          <div className="text-sm font-semibold tabular-nums text-text-primary">
+          <div className="text-small font-semibold tabular-nums text-text-primary">
             {formatDuration(elapsedMs)}
           </div>
         </div>
         {step === 'scanning' && remaining !== '—' && (
           <div>
-            <div className="text-xs uppercase tracking-wide text-text-muted">Remaining</div>
-            <div className="text-sm font-semibold tabular-nums text-text-secondary">
+            <div className="text-caption uppercase tracking-wide text-text-muted">Remaining</div>
+            <div className="text-small font-semibold tabular-nums text-text-secondary">
               {remaining}
             </div>
           </div>

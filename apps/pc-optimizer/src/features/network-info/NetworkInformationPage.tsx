@@ -163,8 +163,8 @@ export default function NetworkInformationPage() {
         <Card variant="glass">
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <WifiIcon className="h-12 w-12 text-text-muted mb-4" />
-            <h3 className="text-sm font-semibold text-text-primary mb-2">Network information unavailable</h3>
-            <p className="text-sm text-text-secondary max-w-md mb-4">
+            <h3 className="text-small font-semibold text-text-primary mb-2">Network information unavailable</h3>
+            <p className="text-small text-text-secondary max-w-md mb-4">
               {isBackendMissing
                 ? 'The network diagnostics module could not be loaded. This feature requires the AVS Shield desktop application to be running with the backend service active.'
                 : state.error}
@@ -208,7 +208,7 @@ export default function NetworkInformationPage() {
           <button
             key={tab.id}
             onClick={() => vm.setTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 text-small font-medium transition-colors ${
               state.activeTab === tab.id
                 ? 'text-[var(--avs-brand-primary)] border-b-2 border-[var(--avs-brand-primary)]'
                 : 'text-[var(--avs-text-muted)] hover:text-[var(--avs-text-primary)]'
@@ -229,8 +229,8 @@ export default function NetworkInformationPage() {
                 <div className="flex items-center gap-3">
                   <WifiIcon className={`h-5 w-5 ${adapter.isup ? 'text-[var(--avs-success)]' : 'text-[var(--avs-text-muted)]'}`} />
                   <div>
-                    <p className="text-sm font-medium text-[var(--avs-text-primary)]">{adapter.name}</p>
-                    <p className="text-xs text-[var(--avs-text-muted)]">
+                    <p className="text-small font-medium text-[var(--avs-text-primary)]">{adapter.name}</p>
+                    <p className="text-caption text-[var(--avs-text-muted)]">
                       {adapter.isup ? 'Connected' : 'Disconnected'}
                       {adapter.speedMbps ? ` · ${adapter.speedMbps} Mbps` : ''}
                       {` · MTU ${adapter.mtu}`}
@@ -240,12 +240,12 @@ export default function NetworkInformationPage() {
                 <Badge tone={adapter.isup ? 'success' : 'neutral'}>{adapter.isup ? 'Up' : 'Down'}</Badge>
               </div>
               <div className="grid grid-cols-2 gap-x-6 gap-y-1 mt-3">
-                <div className="text-xs"><span className="text-[var(--avs-text-muted)]">IPv4:</span> <span className="text-[var(--avs-text-primary)]">{adapter.ipv4 || 'N/A'}</span></div>
-                <div className="text-xs"><span className="text-[var(--avs-text-muted)]">IPv6:</span> <span className="text-[var(--avs-text-primary)]">{adapter.ipv6 || 'N/A'}</span></div>
-                <div className="text-xs"><span className="text-[var(--avs-text-muted)]">MAC:</span> <span className="text-[var(--avs-text-primary)]">{adapter.mac || 'N/A'}</span></div>
-                <div className="text-xs"><span className="text-[var(--avs-text-muted)]">Duplex:</span> <span className="text-[var(--avs-text-primary)]">{adapter.duplex}</span></div>
-                <div className="text-xs"><span className="text-[var(--avs-text-muted)]">Sent:</span> <span className="text-[var(--avs-text-primary)]">{formatBytes(adapter.bytesSent)}</span></div>
-                <div className="text-xs"><span className="text-[var(--avs-text-muted)]">Received:</span> <span className="text-[var(--avs-text-primary)]">{formatBytes(adapter.bytesRecv)}</span></div>
+                <div className="text-caption"><span className="text-[var(--avs-text-muted)]">IPv4:</span> <span className="text-[var(--avs-text-primary)]">{adapter.ipv4 || 'N/A'}</span></div>
+                <div className="text-caption"><span className="text-[var(--avs-text-muted)]">IPv6:</span> <span className="text-[var(--avs-text-primary)]">{adapter.ipv6 || 'N/A'}</span></div>
+                <div className="text-caption"><span className="text-[var(--avs-text-muted)]">MAC:</span> <span className="text-[var(--avs-text-primary)]">{adapter.mac || 'N/A'}</span></div>
+                <div className="text-caption"><span className="text-[var(--avs-text-muted)]">Duplex:</span> <span className="text-[var(--avs-text-primary)]">{adapter.duplex}</span></div>
+                <div className="text-caption"><span className="text-[var(--avs-text-muted)]">Sent:</span> <span className="text-[var(--avs-text-primary)]">{formatBytes(adapter.bytesSent)}</span></div>
+                <div className="text-caption"><span className="text-[var(--avs-text-muted)]">Received:</span> <span className="text-[var(--avs-text-primary)]">{formatBytes(adapter.bytesRecv)}</span></div>
               </div>
             </Card>
           ))}
@@ -255,14 +255,14 @@ export default function NetworkInformationPage() {
             {state.dnsServers.length > 0 ? (
               <div className="space-y-1">
                 {state.dnsServers.map((dns, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-[var(--avs-text-primary)]">
+                  <div key={i} className="flex items-center gap-2 text-small text-[var(--avs-text-primary)]">
                     <GlobeAltIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
                     {dns}
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-[var(--avs-text-muted)]">No DNS servers detected</p>
+              <p className="text-caption text-[var(--avs-text-muted)]">No DNS servers detected</p>
             )}
           </Card>
 
@@ -274,7 +274,7 @@ export default function NetworkInformationPage() {
                 onChange={(e) => vm.setPingHost(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && vm.ping()}
                 placeholder="Enter host (e.g. google.com)"
-                className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-sm text-[var(--avs-text-primary)]"
+                className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-small text-[var(--avs-text-primary)]"
               />
               <Button onClick={() => vm.ping()} loading={state.pinging} leftIcon={<CommandLineIcon className="h-4 w-4" />}>
                 Ping
@@ -287,7 +287,7 @@ export default function NetworkInformationPage() {
                 ) : (
                   <ExclamationTriangleIcon className="h-5 w-5 text-[var(--avs-danger)]" />
                 )}
-                <span className="text-sm text-[var(--avs-text-primary)]">
+                <span className="text-small text-[var(--avs-text-primary)]">
                   {state.pingResult.host}: {state.pingResult.reachable ? `Reachable (${state.pingResult.latencyMs}ms)` : 'Unreachable'}
                 </span>
               </div>
@@ -305,9 +305,9 @@ export default function NetworkInformationPage() {
                 <div key={i} className="flex items-center gap-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
                   <Badge tone={conn.type === 'TCP' ? 'brand' : 'neutral'}>{conn.type}</Badge>
                   <div className="flex-1 min-w-0">
-                    <span className="text-xs text-[var(--avs-text-primary)]">{conn.localAddress || '—'} → {conn.remoteAddress || '—'}</span>
+                    <span className="text-caption text-[var(--avs-text-primary)]">{conn.localAddress || '—'} → {conn.remoteAddress || '—'}</span>
                     {conn.processName && (
-                      <span className="text-xs text-[var(--avs-text-muted)] ml-2">({conn.processName})</span>
+                      <span className="text-caption text-[var(--avs-text-muted)] ml-2">({conn.processName})</span>
                     )}
                   </div>
                   <Badge tone={conn.status === 'ESTABLISHED' ? 'success' : 'neutral'}>{conn.status}</Badge>
@@ -343,8 +343,8 @@ function StatBox({ label, value, tone = 'neutral' }: { label: string; value: str
   const colorClass = tone === 'warning' ? 'text-[var(--avs-warning)]' : 'text-[var(--avs-text-primary)]';
   return (
     <Card variant="glass">
-      <p className={`text-lg font-bold ${colorClass}`}>{value}</p>
-      <p className="text-xs text-[var(--avs-text-muted)]">{label}</p>
+      <p className={`text-section-title font-bold ${colorClass}`}>{value}</p>
+      <p className="text-caption text-[var(--avs-text-muted)]">{label}</p>
     </Card>
   );
 }

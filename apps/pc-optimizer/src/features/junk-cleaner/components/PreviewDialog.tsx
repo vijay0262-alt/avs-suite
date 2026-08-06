@@ -46,7 +46,7 @@ export function PreviewDialog({ open, loading, error, preview, onCancel, onProce
       }
     >
       {loading && (
-        <div className="py-8 text-sm text-text-muted" data-testid="cleaning-preview-loading">
+        <div className="py-8 text-small text-text-muted" data-testid="cleaning-preview-loading">
           Validating cleaning candidates…
         </div>
       )}
@@ -54,7 +54,7 @@ export function PreviewDialog({ open, loading, error, preview, onCancel, onProce
       {error && (
         <div
           role="alert"
-          className="flex items-start gap-3 rounded-[var(--avs-radius-md)] border border-semantic-danger/40 bg-[color-mix(in_srgb,var(--avs-danger)_10%,transparent)] p-3 text-sm text-semantic-danger"
+          className="flex items-start gap-3 rounded-[var(--avs-radius-md)] border border-semantic-danger/40 bg-[color-mix(in_srgb,var(--avs-danger)_10%,transparent)] p-3 text-small text-semantic-danger"
         >
           <ExclamationTriangleIcon className="h-5 w-5 shrink-0" />
           <span>{error}</span>
@@ -65,28 +65,28 @@ export function PreviewDialog({ open, loading, error, preview, onCancel, onProce
         <>
           <div className="mb-4 grid grid-cols-3 gap-4 rounded-lg border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-4">
             <div>
-              <div className="text-xs uppercase text-text-muted">Estimated recovery</div>
-              <div className="mt-1 text-2xl font-semibold text-text-primary tabular-nums">
+              <div className="text-caption uppercase text-text-muted">Estimated recovery</div>
+              <div className="mt-1 text-statistic font-semibold text-text-primary tabular-nums">
                 {formatBytes(totalBytes)}
               </div>
             </div>
             <div>
-              <div className="text-xs uppercase text-text-muted">Total files</div>
-              <div className="mt-1 text-2xl font-semibold text-text-primary tabular-nums">
+              <div className="text-caption uppercase text-text-muted">Total files</div>
+              <div className="mt-1 text-statistic font-semibold text-text-primary tabular-nums">
                 {totalFiles.toLocaleString()}
               </div>
             </div>
             <div>
-              <div className="text-xs uppercase text-text-muted">Warnings</div>
-              <div className="mt-1 text-2xl font-semibold text-text-primary tabular-nums">
+              <div className="text-caption uppercase text-text-muted">Warnings</div>
+              <div className="mt-1 text-statistic font-semibold text-text-primary tabular-nums">
                 {preview.warningCount.toLocaleString()}
               </div>
             </div>
           </div>
 
-          <table className="w-full text-sm" data-testid="cleaning-preview-table">
+          <table className="w-full text-small" data-testid="cleaning-preview-table">
             <thead>
-              <tr className="border-b border-[var(--avs-border)] text-xs uppercase text-text-muted">
+              <tr className="border-b border-[var(--avs-border)] text-caption uppercase text-text-muted">
                 <th className="py-2 text-left font-medium">Category</th>
                 <th className="py-2 text-right font-medium">Files</th>
                 <th className="py-2 text-right font-medium">Size</th>
@@ -122,7 +122,7 @@ export function PreviewDialog({ open, loading, error, preview, onCancel, onProce
             </tbody>
           </table>
 
-          <p className="mt-4 text-xs text-text-muted">
+          <p className="mt-4 text-caption text-text-muted">
             Files sitting in protected Windows folders or symlinked paths have been
             excluded automatically. Nothing outside the categories above will be touched.
           </p>

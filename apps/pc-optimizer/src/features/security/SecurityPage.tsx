@@ -43,17 +43,17 @@ const SecurityItem = React.memo(function SecurityItem({ label, description, stat
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-text-primary">{label}</h3>
+          <h3 className="text-small font-semibold text-text-primary">{label}</h3>
           <div className={`flex items-center gap-1.5 ${cfg.color}`}>
             <StatusIcon className="h-4 w-4" aria-hidden="true" />
-            <span className="text-xs font-medium">{cfg.text}</span>
+            <span className="text-caption font-medium">{cfg.text}</span>
           </div>
         </div>
-        <p className="mt-1 text-xs text-text-secondary">{description}</p>
+        <p className="mt-1 text-caption text-text-secondary">{description}</p>
         {actionLabel && onAction && (
           <button
             onClick={onAction}
-            className="mt-2 text-xs font-medium text-primary hover:text-primary-hover"
+            className="mt-2 text-caption font-medium text-primary hover:text-primary-hover"
           >
             {actionLabel}
           </button>
@@ -247,8 +247,8 @@ export default function SecurityPage() {
           <Card>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-text-secondary">Protection Summary</p>
-                <p className="text-2xl font-bold text-text-primary mt-1">
+                <p className="text-small text-text-secondary">Protection Summary</p>
+                <p className="text-statistic font-bold text-text-primary mt-1">
                   {activeCount}/{totalCount} protections active
                 </p>
               </div>
@@ -270,26 +270,26 @@ export default function SecurityPage() {
             <Card title="System Information">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-text-muted">Windows Version</p>
-                  <p className="text-sm text-text-primary mt-1">{windows.version}</p>
+                  <p className="text-caption text-text-muted">Windows Version</p>
+                  <p className="text-small text-text-primary mt-1">{windows.version}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-text-muted">Build</p>
-                  <p className="text-sm text-text-primary mt-1">{windows.build}</p>
+                  <p className="text-caption text-text-muted">Build</p>
+                  <p className="text-small text-text-primary mt-1">{windows.build}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-text-muted">Uptime</p>
-                  <p className="text-sm text-text-primary mt-1">{formatUptime(windows.uptime)}</p>
+                  <p className="text-caption text-text-muted">Uptime</p>
+                  <p className="text-small text-text-primary mt-1">{formatUptime(windows.uptime)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-text-muted">Administrator</p>
-                  <p className="text-sm text-text-primary mt-1">{windows.isAdministrator ? 'Yes' : 'No'}</p>
+                  <p className="text-caption text-text-muted">Administrator</p>
+                  <p className="text-small text-text-primary mt-1">{windows.isAdministrator ? 'Yes' : 'No'}</p>
                 </div>
                 {windows.battery && (
                   <>
                     <div>
-                      <p className="text-xs text-text-muted">Battery</p>
-                      <p className="text-sm text-text-primary mt-1">
+                      <p className="text-caption text-text-muted">Battery</p>
+                      <p className="text-small text-text-primary mt-1">
                         {windows.battery.percent}%{windows.battery.powerPlugged ? ' (Plugged in)' : ''}
                       </p>
                     </div>
@@ -303,20 +303,20 @@ export default function SecurityPage() {
             <Card title="Storage & Performance">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <p className="text-xs text-text-muted">Temp Files</p>
-                  <p className="text-sm text-text-primary mt-1">{formatBytes(metrics.performance.temporaryFilesSize)}</p>
+                  <p className="text-caption text-text-muted">Temp Files</p>
+                  <p className="text-small text-text-primary mt-1">{formatBytes(metrics.performance.temporaryFilesSize)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-text-muted">Recycle Bin</p>
-                  <p className="text-sm text-text-primary mt-1">{formatBytes(metrics.performance.recycleBinSize)}</p>
+                  <p className="text-caption text-text-muted">Recycle Bin</p>
+                  <p className="text-small text-text-primary mt-1">{formatBytes(metrics.performance.recycleBinSize)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-text-muted">Browser Cache</p>
-                  <p className="text-sm text-text-primary mt-1">{formatBytes(metrics.performance.browserCacheSize)}</p>
+                  <p className="text-caption text-text-muted">Browser Cache</p>
+                  <p className="text-small text-text-primary mt-1">{formatBytes(metrics.performance.browserCacheSize)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-text-muted">Startup Apps</p>
-                  <p className="text-sm text-text-primary mt-1">{metrics.performance.startupApps}</p>
+                  <p className="text-caption text-text-muted">Startup Apps</p>
+                  <p className="text-small text-text-primary mt-1">{metrics.performance.startupApps}</p>
                 </div>
               </div>
             </Card>

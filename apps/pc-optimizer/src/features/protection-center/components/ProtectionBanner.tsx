@@ -93,7 +93,7 @@ export function ProtectionBanner({ state, onRefresh, lastRefresh }: ProtectionBa
           <h1 className={clsx('text-xl font-bold', config.titleColor)}>
             {state.headline}
           </h1>
-          <p className="mt-1 text-sm text-[var(--avs-text-secondary)]">
+          <p className="mt-1 text-small text-[var(--avs-text-secondary)]">
             {state.subheadline}
           </p>
         </div>
@@ -101,13 +101,13 @@ export function ProtectionBanner({ state, onRefresh, lastRefresh }: ProtectionBa
         <div className="flex flex-col items-end gap-2 shrink-0">
           <button
             onClick={onRefresh}
-            className="flex items-center gap-1.5 rounded-[var(--avs-radius-md)] px-3 py-1.5 text-xs font-medium text-[var(--avs-text-secondary)] hover:bg-[var(--avs-surface-muted)] transition-colors"
+            className="flex items-center gap-1.5 rounded-[var(--avs-radius-md)] px-3 py-1.5 text-caption font-medium text-[var(--avs-text-secondary)] hover:bg-[var(--avs-surface-muted)] transition-colors"
             aria-label="Refresh protection status"
           >
             <ArrowPathIcon className="h-4 w-4" />
             Refresh
           </button>
-          <span className="text-xs text-[var(--avs-text-muted)]">{refreshLabel}</span>
+          <span className="text-caption text-[var(--avs-text-muted)]">{refreshLabel}</span>
         </div>
       </div>
     </div>

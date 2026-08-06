@@ -35,10 +35,10 @@ export function ScanProgress({ progress, subProgress, step, currentFile }: ScanP
     <div className="space-y-2" data-testid="unified-scan-progress">
       {/* Percentage + label */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-text-secondary">
+        <span className="text-small font-medium text-text-secondary">
           {isComplete ? 'Complete' : isPaused ? 'Paused' : isError ? 'Error' : 'Scanning'}
         </span>
-        <span className="text-2xl font-bold tabular-nums text-text-primary" aria-live="polite">
+        <span className="text-statistic font-bold tabular-nums text-text-primary" aria-live="polite">
           {Math.round(progress)}%
         </span>
       </div>
@@ -77,7 +77,7 @@ export function ScanProgress({ progress, subProgress, step, currentFile }: ScanP
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-primary opacity-75" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand-primary" />
             </span>
-            <span className="text-xs text-text-secondary truncate font-mono" title={currentFile}>
+            <span className="text-caption text-text-secondary truncate font-mono" title={currentFile}>
               {currentFile}
             </span>
           </div>

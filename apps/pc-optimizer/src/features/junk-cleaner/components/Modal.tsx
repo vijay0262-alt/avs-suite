@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 export interface ModalProps {
@@ -22,6 +22,15 @@ const SIZE: Record<NonNullable<ModalProps['size']>, string> = {
  * promoted to `@avs/ui`) until a second consumer exists.
  */
 export function Modal({ open, title, onClose, actions, children, testId, size = 'md' }: ModalProps) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [open, onClose]);
+
   if (!open) return null;
   return (
     <div
@@ -37,13 +46,13 @@ export function Modal({ open, title, onClose, actions, children, testId, size = 
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center justify-between border-b border-[var(--avs-border)] px-6 py-4">
-          <h2 id="modal-title" className="text-lg font-semibold text-text-primary">
+          <h2 id="modal-title" className="text-section-title font-semibold text-text-primary">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-[var(--avs-radius-md)] p-1 text-text-muted hover:bg-[var(--avs-surface-muted)] hover:text-text-primary"
+            className="rounded-[var(--avs-radius-md)] p-1 text-text-muted hover:bg-[var(--avs-surface-muted)] hover:text-text-primary outline-none focus-visible:shadow-focus"
             aria-label="Close"
             data-testid={testId ? `${testId}-close` : undefined}
           >

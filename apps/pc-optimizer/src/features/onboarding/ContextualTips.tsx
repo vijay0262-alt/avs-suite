@@ -115,8 +115,8 @@ export function ContextualTips() {
         >
           <LightBulbIcon className="h-5 w-5 text-semantic-warning shrink-0 mt-0.5" aria-hidden />
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-text-primary">{tip.title}</div>
-            <div className="text-xs text-text-secondary mt-0.5">{tip.body}</div>
+            <div className="text-small font-medium text-text-primary">{tip.title}</div>
+            <div className="text-caption text-text-secondary mt-0.5">{tip.body}</div>
           </div>
           <button
             onClick={() => dismissTip(tip.id)}

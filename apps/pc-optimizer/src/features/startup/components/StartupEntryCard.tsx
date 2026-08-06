@@ -17,10 +17,10 @@ interface StartupEntryCardProps {
 export const StartupEntryCard = React.memo(function StartupEntryCard({ entry, onDisable, onEnable, loading }: StartupEntryCardProps) {
   const getImpactColor = (impact: string) => {
     switch (impact) {
-      case 'high': return 'text-red-500';
-      case 'medium': return 'text-yellow-500';
-      case 'low': return 'text-green-500';
-      default: return 'text-gray-500';
+      case 'high': return 'text-semantic-danger';
+      case 'medium': return 'text-semantic-warning';
+      case 'low': return 'text-semantic-success';
+      default: return 'text-text-muted';
     }
   };
 
@@ -44,13 +44,13 @@ export const StartupEntryCard = React.memo(function StartupEntryCard({ entry, on
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-text-primary truncate">{entry.name}</h3>
-            <span className={`text-xs font-medium ${getImpactColor(entry.impact)}`}>
+            <h3 className="text-small font-semibold text-text-primary truncate">{entry.name}</h3>
+            <span className={`text-caption font-medium ${getImpactColor(entry.impact)}`}>
               {entry.impact.toUpperCase()}
             </span>
           </div>
-          <p className="text-sm text-text-secondary mb-2">{entry.publisher || 'Unknown publisher'}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-text-muted mb-2">
+          <p className="text-small text-text-secondary mb-2">{entry.publisher || 'Unknown publisher'}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-caption text-text-muted mb-2">
             <span>{getSourceLabel(entry.source)} • {entry.location}</span>
             <span className="flex items-center gap-1">
               <ShieldCheckIcon className="h-3.5 w-3.5" />
@@ -64,7 +64,7 @@ export const StartupEntryCard = React.memo(function StartupEntryCard({ entry, on
               </span>
             )}
           </div>
-          <p className="text-xs text-text-muted truncate font-mono">{entry.command}</p>
+          <p className="text-caption text-text-muted truncate font-mono">{entry.command}</p>
         </div>
         <div className="flex flex-col gap-2">
           {entry.enabled ? (
@@ -88,7 +88,7 @@ export const StartupEntryCard = React.memo(function StartupEntryCard({ entry, on
               Enable
             </Button>
           )}
-          <span className={`text-xs text-center ${entry.enabled ? 'text-green-500' : 'text-gray-500'}`}>
+          <span className={`text-caption text-center ${entry.enabled ? 'text-semantic-success' : 'text-text-muted'}`}>
             {entry.enabled ? 'Enabled' : 'Disabled'}
           </span>
         </div>

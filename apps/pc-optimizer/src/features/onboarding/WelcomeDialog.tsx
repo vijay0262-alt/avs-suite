@@ -129,12 +129,12 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
                 <ShieldCheckIcon className="h-8 w-8 text-brand-primary" aria-hidden />
               </div>
               <div>
-                <p className="text-sm text-text-secondary">
+                <p className="text-small text-text-secondary">
                   Your all-in-one PC health and optimization platform.
                 </p>
               </div>
             </div>
-            <p className="text-sm text-text-secondary">
+            <p className="text-small text-text-secondary">
               AVS Shield helps you keep your Windows PC fast, clean, and secure.
               With real-time health monitoring, one-click optimization, and AI-powered
               recommendations, maintaining your PC has never been easier.
@@ -148,7 +148,7 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
                 'Disk Analysis',
                 'Performance Tuning',
               ].map((feature) => (
-                <div key={feature} className="flex items-center gap-1.5 text-xs text-text-secondary">
+                <div key={feature} className="flex items-center gap-1.5 text-caption text-text-secondary">
                   <CheckIcon className="h-3.5 w-3.5 text-semantic-success shrink-0" aria-hidden />
                   <span>{feature}</span>
                 </div>
@@ -164,7 +164,7 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
                 <CpuChipIcon className="h-8 w-8 text-semantic-warning" aria-hidden />
               </div>
               <div>
-                <p className="text-sm text-text-secondary">
+                <p className="text-small text-text-secondary">
                   AVS Shield needs access to system information to provide accurate health monitoring.
                 </p>
               </div>
@@ -179,13 +179,13 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
                 <div key={perm.label} className="flex items-start gap-2 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] p-2.5">
                   <CheckIcon className="h-4 w-4 text-semantic-success shrink-0 mt-0.5" aria-hidden />
                   <div>
-                    <div className="text-sm font-medium text-text-primary">{perm.label}</div>
-                    <div className="text-xs text-text-muted">{perm.desc}</div>
+                    <div className="text-small font-medium text-text-primary">{perm.label}</div>
+                    <div className="text-caption text-text-muted">{perm.desc}</div>
                   </div>
                 </div>
               ))}
             </div>
-            <p className="text-xs text-text-muted">
+            <p className="text-caption text-text-muted">
               All operations are performed locally on your device. No personal data is sent to remote servers.
             </p>
           </div>
@@ -193,7 +193,7 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
 
         {currentStep.id === 'overview' && (
           <div className="space-y-3">
-            <p className="text-sm text-text-secondary">
+            <p className="text-small text-text-secondary">
               The Dashboard gives you a real-time overview of your PC&apos;s health.
               Here&apos;s what you&apos;ll see:
             </p>
@@ -206,8 +206,8 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
                 { label: 'Live Status', desc: 'Real-time CPU, memory, and disk usage metrics' },
               ].map((item) => (
                 <div key={item.label} className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] p-2.5">
-                  <div className="text-sm font-medium text-text-primary">{item.label}</div>
-                  <div className="text-xs text-text-muted mt-0.5">{item.desc}</div>
+                  <div className="text-small font-medium text-text-primary">{item.label}</div>
+                  <div className="text-caption text-text-muted mt-0.5">{item.desc}</div>
                 </div>
               ))}
             </div>
@@ -221,12 +221,12 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
                 <SparklesIcon className="h-8 w-8 text-brand-primary" aria-hidden />
               </div>
               <div>
-                <p className="text-sm text-text-secondary">
+                <p className="text-small text-text-secondary">
                   We recommend running your first health scan to get a baseline.
                 </p>
               </div>
             </div>
-            <p className="text-sm text-text-secondary">
+            <p className="text-small text-text-secondary">
               The scan analyzes your system for junk files, startup issues, privacy traces,
               and performance bottlenecks. It takes about 30 seconds and is completely safe —
               nothing is changed until you approve.
@@ -245,10 +245,10 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
 
         {currentStep.id === 'tour' && (
           <div className="space-y-3">
-            <p className="text-sm text-text-secondary">
+            <p className="text-small text-text-secondary">
               Would you like a quick guided tour of the main features?
             </p>
-            <p className="text-sm text-text-secondary">
+            <p className="text-small text-text-secondary">
               The tour will walk you through the Dashboard, Health Score, Quick Actions,
               and key optimization modules. You can exit the tour at any time.
             </p>
@@ -271,7 +271,7 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
                 No Thanks, I&apos;ll Explore on My Own
               </Button>
             </div>
-            <p className="text-xs text-text-muted text-center">
+            <p className="text-caption text-text-muted text-center">
               You can restart the tour anytime from Settings.
             </p>
           </div>

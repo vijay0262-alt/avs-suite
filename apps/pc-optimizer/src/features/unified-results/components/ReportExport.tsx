@@ -79,7 +79,7 @@ function ExportOption({ icon, label, onClick }: { icon: React.ReactNode; label: 
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-[var(--avs-surface-muted)] transition-colors"
+      className="flex w-full items-center gap-2 px-3 py-2 text-small text-text-secondary hover:bg-[var(--avs-surface-muted)] transition-colors"
     >
       <span className="text-text-muted">{icon}</span>
       <span>{label}</span>

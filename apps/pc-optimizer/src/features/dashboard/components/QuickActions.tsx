@@ -92,8 +92,8 @@ export const QuickActions = React.memo(function QuickActions({ onNavigate }: Qui
               <action.icon className={`h-5 w-5 ${action.color}`} aria-hidden="true" />
             </div>
             <div>
-              <div className="text-sm font-medium text-text-primary">{action.name}</div>
-              <div className="text-xs text-text-secondary mt-1">{action.description}</div>
+              <div className="text-small font-medium text-text-primary">{action.name}</div>
+              <div className="text-caption text-text-secondary mt-1">{action.description}</div>
             </div>
           </button>
         ))}

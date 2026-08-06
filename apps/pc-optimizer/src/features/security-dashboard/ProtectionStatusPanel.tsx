@@ -74,7 +74,7 @@ export function ProtectionStatusPanel({
               ) : (
                 <ShieldExclamationIcon className="h-6 w-6 text-semantic-warning" aria-hidden />
               )}
-              <span className="text-sm font-medium text-text-primary">
+              <span className="text-small font-medium text-text-primary">
                 Protection is {overview?.protectionStatus ?? 'unknown'}
               </span>
             </div>
@@ -93,7 +93,7 @@ export function ProtectionStatusPanel({
 
           {/* Mode selector */}
           <div>
-            <label className="text-xs font-medium uppercase tracking-wide text-text-muted mb-2 block">
+            <label className="text-caption font-medium uppercase tracking-wide text-text-muted mb-2 block">
               Protection Mode
             </label>
             <div className="flex flex-wrap gap-2">
@@ -103,8 +103,8 @@ export function ProtectionStatusPanel({
                   onClick={() => onSetMode(mode)}
                   className={
                     overview?.protectionMode === mode
-                      ? 'rounded-[var(--avs-radius-md)] border border-brand-primary bg-brand-primary/10 px-3 py-1.5 text-sm font-medium text-brand-primary capitalize'
-                      : 'rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-1.5 text-sm text-text-secondary hover:border-[var(--avs-border-hover)] capitalize'
+                      ? 'rounded-[var(--avs-radius-md)] border border-brand-primary bg-brand-primary/10 px-3 py-1.5 text-small font-medium text-brand-primary capitalize'
+                      : 'rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-1.5 text-small text-text-secondary hover:border-[var(--avs-border-hover)] capitalize'
                   }
                   data-testid={`mode-btn-${mode}`}
                 >
@@ -144,12 +144,12 @@ export function ProtectionStatusPanel({
               data-testid={`monitor-${monitor.type}`}
             >
               <div className="flex items-center gap-3">
-                <span className="text-lg" aria-hidden>{MONITOR_ICONS[monitor.type] ?? '📊'}</span>
+                <span className="text-section-title" aria-hidden>{MONITOR_ICONS[monitor.type] ?? '📊'}</span>
                 <div>
-                  <div className="text-sm font-medium text-text-primary capitalize">
+                  <div className="text-small font-medium text-text-primary capitalize">
                     {monitor.type.replace(/_/g, ' ')}
                   </div>
-                  <div className="text-xs text-text-muted">
+                  <div className="text-caption text-text-muted">
                     Events: {monitor.eventsProcessed}
                     {monitor.lastError && ` • Error: ${monitor.lastError}`}
                   </div>
@@ -188,8 +188,8 @@ export function ProtectionStatusPanel({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-text-secondary">CPU Usage (target &lt;1%)</span>
-                <span className="text-xs font-medium text-text-primary">{overview.cpuUsage.toFixed(2)}%</span>
+                <span className="text-caption text-text-secondary">CPU Usage (target &lt;1%)</span>
+                <span className="text-caption font-medium text-text-primary">{overview.cpuUsage.toFixed(2)}%</span>
               </div>
               <ProgressBar
                 value={overview.cpuUsage}
@@ -198,8 +198,8 @@ export function ProtectionStatusPanel({
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-text-secondary">Memory Usage (target &lt;150MB)</span>
-                <span className="text-xs font-medium text-text-primary">{overview.memoryUsage.toFixed(0)}MB</span>
+                <span className="text-caption text-text-secondary">Memory Usage (target &lt;150MB)</span>
+                <span className="text-caption font-medium text-text-primary">{overview.memoryUsage.toFixed(0)}MB</span>
               </div>
               <ProgressBar
                 value={(overview.memoryUsage / 150) * 100}
@@ -217,7 +217,7 @@ function LiveMetric({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex flex-col items-center text-center" data-testid={`live-metric-${label.toLowerCase().replace(/\s+/g, '-')}`}>
       <div className="text-xl font-semibold text-text-primary">{value.toLocaleString()}</div>
-      <div className="text-xs text-text-muted">{label}</div>
+      <div className="text-caption text-text-muted">{label}</div>
     </div>
   );
 }

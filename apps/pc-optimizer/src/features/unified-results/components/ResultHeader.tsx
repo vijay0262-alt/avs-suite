@@ -42,8 +42,8 @@ export function ResultHeader({ report, hasIssues }: ResultHeaderProps) {
       </div>
 
       {/* Title */}
-      <h2 className="text-2xl font-bold text-text-primary">Scan Complete</h2>
-      <p className="text-sm text-text-muted">
+      <h2 className="text-statistic font-bold text-text-primary">Scan Complete</h2>
+      <p className="text-small text-text-muted">
         {report.moduleName} · {formatTimestamp(report.timestamp)}
       </p>
 
@@ -75,8 +75,8 @@ function MetaPill({ icon, label, value }: { icon: React.ReactNode; label: string
   return (
     <div className="flex items-center gap-1.5 rounded-full bg-[var(--avs-surface-muted)] px-3 py-1.5">
       <span className="text-text-muted">{icon}</span>
-      <span className="text-xs text-text-muted">{label}:</span>
-      <span className="text-xs font-semibold tabular-nums text-text-primary">{value}</span>
+      <span className="text-caption text-text-muted">{label}:</span>
+      <span className="text-caption font-semibold tabular-nums text-text-primary">{value}</span>
     </div>
   );
 }

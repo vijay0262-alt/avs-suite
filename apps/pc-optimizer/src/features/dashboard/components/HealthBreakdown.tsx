@@ -21,10 +21,10 @@ export const HealthBreakdown = React.memo(function HealthBreakdown({ categories,
             <div className="flex items-center justify-between mb-2">
               <div className="text-base font-semibold text-text-primary">{category.name}</div>
               <div className="flex items-center gap-2">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusConfig.colorClass} ${statusConfig.bgClass}`} data-testid={`module-status-${category.id}`}>
+                <span className={`text-caption font-medium px-2 py-0.5 rounded-full ${statusConfig.colorClass} ${statusConfig.bgClass}`} data-testid={`module-status-${category.id}`}>
                   {statusConfig.label}
                 </span>
-                <div className={`text-sm font-bold tabular-nums ${severityTextColor(category.severity)}`}>
+                <div className={`text-small font-bold tabular-nums ${severityTextColor(category.severity)}`}>
                   {category.score}%
                 </div>
               </div>
@@ -39,7 +39,7 @@ export const HealthBreakdown = React.memo(function HealthBreakdown({ categories,
               </div>
             </div>
 
-            <div className="text-sm text-text-secondary mb-4">{category.detail}</div>
+            <div className="text-small text-text-secondary mb-4">{category.detail}</div>
 
             <Button
               variant="secondary"

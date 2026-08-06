@@ -59,7 +59,7 @@ export default function SystemInfoPage() {
             />
           )}
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-text-secondary">
+            <p className="text-small text-text-secondary">
               {state.systemInfo && `Captured at ${new Date(state.systemInfo.capturedAt).toLocaleString()}`}
             </p>
             <Button variant="secondary" size="sm" onClick={handleRefresh} disabled={state.loading}>

@@ -187,8 +187,8 @@ export function SecurityCenterPage() {
         <Card>
           <div className="py-8 text-center">
             <ExclamationTriangleIcon className="mx-auto h-10 w-10 text-[var(--avs-danger)]" />
-            <p className="mt-3 text-sm font-medium text-[var(--avs-text-primary)]">Failed to initialize</p>
-            <p className="mt-1 text-xs text-[var(--avs-text-muted)]">{state.bootstrapError}</p>
+            <p className="mt-4 text-body font-medium text-[var(--avs-text-primary)]">Failed to initialize</p>
+            <p className="mt-1 text-caption text-[var(--avs-text-muted)]">{state.bootstrapError}</p>
             <Button className="mt-4" size="sm" onClick={() => vm.bootstrap()} leftIcon={<ArrowPathIcon className="h-4 w-4" />}>
               Retry
             </Button>
@@ -209,8 +209,8 @@ export function SecurityCenterPage() {
             <ProStatusPill />
             <div className="flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-1.5">
               <div className={`h-2 w-2 rounded-full ${state.securityScore >= 80 ? 'bg-[var(--avs-success)]' : state.securityScore >= 60 ? 'bg-[var(--avs-warning)]' : 'bg-[var(--avs-danger)]'}`} />
-              <span className="text-sm font-semibold text-[var(--avs-text-primary)]">{state.securityScore}</span>
-              <span className="text-xs text-[var(--avs-text-muted)]">Security Score</span>
+              <span className="text-small font-semibold text-[var(--avs-text-primary)]">{state.securityScore}</span>
+              <span className="text-caption text-[var(--avs-text-muted)]">Security Score</span>
             </div>
             <Button
               size="sm"
@@ -231,8 +231,8 @@ export function SecurityCenterPage() {
             <ShieldCheckIcon className="h-10 w-10 text-brand-primary" aria-hidden />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-text-primary">AI Smart Security</h2>
-            <p className="mt-2 max-w-2xl text-sm text-text-secondary">
+            <h2 className="text-section-title text-text-primary">AI Smart Security</h2>
+            <p className="mt-2 max-w-2xl text-small text-text-secondary leading-relaxed">
               Protect your PC from <span className="font-medium text-text-primary">viruses, ransomware, spyware, malware, PUPs, trojans, adware, keyloggers, rootkits, backdoors, crypto miners, browser hijackers</span>, and more. AI Smart Security runs a deep system scan to detect, investigate, and safely remove threats with evidence-based remediation.
             </p>
           </div>
@@ -264,16 +264,16 @@ export function SecurityCenterPage() {
             <button
               key={tab.id}
               onClick={() => vm.setActiveTab(tab.id)}
-              className={`flex items-center gap-2 rounded-[var(--avs-radius-md)] px-4 py-2 text-sm font-medium transition-all duration-[var(--avs-duration-fast)] ${
+              className={`flex items-center gap-2 rounded-[var(--avs-radius-md)] px-4 py-2 text-small font-medium transition-all duration-[var(--avs-duration-fast)] ${
                 isActive
-                  ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)] shadow-[var(--avs-shadow-sm)]'
+                  ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)] shadow-sm'
                   : 'text-[var(--avs-text-secondary)] hover:text-[var(--avs-text-primary)]'
               }`}
             >
               <Icon className="h-4 w-4" />
               {tab.label}
               {badge !== null && (
-                <span className="ml-1 rounded-full bg-[var(--avs-danger)] px-1.5 py-0.5 text-xs font-bold text-white">
+                <span className="ml-1 rounded-full bg-[var(--avs-danger)] px-1.5 py-0.5 text-caption font-bold text-white">
                   {badge}
                 </span>
               )}
@@ -318,8 +318,8 @@ function OverviewTab({ vm }: { vm: SecurityCenterViewModel }) {
             <Card key={card.label} variant="glass" className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-[var(--avs-text-muted)]">{card.label}</p>
-                  <p className="mt-1 text-2xl font-bold text-[var(--avs-text-primary)]">{card.value}</p>
+                  <p className="text-caption font-medium text-[var(--avs-text-muted)]">{card.label}</p>
+                  <p className="mt-1 text-statistic text-[var(--avs-text-primary)]">{card.value}</p>
                 </div>
                 <div className="rounded-[var(--avs-radius-md)] p-2.5" style={{ background: `${toneColor}15` }}>
                   <Icon className="h-6 w-6" style={{ color: toneColor }} />
@@ -337,8 +337,8 @@ function OverviewTab({ vm }: { vm: SecurityCenterViewModel }) {
             <ShieldCheckIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-[var(--avs-text-primary)]">What AVS Shield Protects Against</h3>
-            <p className="mt-1 text-sm text-[var(--avs-text-secondary)]">
+            <h3 className="text-card-title text-[var(--avs-text-primary)]">What AVS Shield Protects Against</h3>
+            <p className="mt-1 text-small text-[var(--avs-text-secondary)] leading-relaxed">
               AVS Shield scans your system for a wide range of threats including{' '}
               <span className="font-medium text-[var(--avs-text-primary)]">trojans, worms, PUPs (Potentially Unwanted Programs), malware, spyware, adware, ransomware, keyloggers, rootkits, backdoors, crypto miners, browser hijackers, and suspicious startup entries</span>.
               Detected threats are automatically quarantined and can be safely removed to keep your PC clean and secure.
@@ -374,8 +374,8 @@ function OverviewTab({ vm }: { vm: SecurityCenterViewModel }) {
             {s.capabilities.map((cap) => (
               <div key={cap.name} className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
                 <div>
-                  <p className="text-sm font-medium text-[var(--avs-text-primary)]">{cap.description}</p>
-                  <p className="text-xs text-[var(--avs-text-muted)]">{cap.name}</p>
+                  <p className="text-small font-medium text-[var(--avs-text-primary)]">{cap.description}</p>
+                  <p className="text-caption text-[var(--avs-text-muted)]">{cap.name}</p>
                 </div>
                 <Badge tone={cap.enabled ? 'success' : 'neutral'}>
                   {cap.enabled ? 'Enabled' : 'Disabled'}
@@ -383,7 +383,7 @@ function OverviewTab({ vm }: { vm: SecurityCenterViewModel }) {
               </div>
             ))}
             {s.capabilities.length === 0 && (
-              <p className="py-4 text-center text-sm text-[var(--avs-text-muted)]">No capabilities data</p>
+              <p className="py-4 text-center text-small text-[var(--avs-text-muted)]">No capabilities data</p>
             )}
           </div>
         </Card>
@@ -400,11 +400,11 @@ function OverviewTab({ vm }: { vm: SecurityCenterViewModel }) {
               <div key={cat.key} className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-3">
                 <div className="flex items-center gap-2">
                   <Icon className="h-5 w-5 text-[var(--avs-text-secondary)]" />
-                  <span className="text-sm font-medium text-[var(--avs-text-primary)]">{cat.label}</span>
+                  <span className="text-small font-medium text-[var(--avs-text-primary)]">{cat.label}</span>
                 </div>
                 <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-xl font-bold text-[var(--avs-text-primary)]">{count}</span>
-                  {activeCount > 0 && <span className="text-xs text-[var(--avs-danger)]">{activeCount} active</span>}
+                  <span className="text-statistic-sm text-[var(--avs-text-primary)]">{count}</span>
+                  {activeCount > 0 && <span className="text-caption text-[var(--avs-danger)]">{activeCount} active</span>}
                 </div>
               </div>
             );
@@ -423,16 +423,16 @@ function OverviewTab({ vm }: { vm: SecurityCenterViewModel }) {
                 <div className="flex items-center gap-3">
                   <div className={`h-2 w-2 rounded-full ${entry.status === 'completed' ? 'bg-[var(--avs-success)]' : 'bg-[var(--avs-danger)]'}`} />
                   <div>
-                    <p className="text-sm font-medium text-[var(--avs-text-primary)] capitalize">{entry.scanType} Scan</p>
-                    <p className="text-xs text-[var(--avs-text-muted)]">{formatTimeAgo(entry.timestamp)} · {formatDuration(entry.duration)}</p>
+                    <p className="text-small font-medium text-[var(--avs-text-primary)] capitalize">{entry.scanType} Scan</p>
+                    <p className="text-caption text-[var(--avs-text-muted)]">{formatTimeAgo(entry.timestamp)} · {formatDuration(entry.duration)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-xs text-[var(--avs-text-secondary)]">{entry.itemsScanned} items</span>
-                  <span className={`text-sm font-semibold ${entry.threatsDetected > 0 ? 'text-[var(--avs-danger)]' : 'text-[var(--avs-success)]'}`}>
+                  <span className="text-caption text-[var(--avs-text-secondary)]">{entry.itemsScanned} items</span>
+                  <span className={`text-small font-semibold ${entry.threatsDetected > 0 ? 'text-[var(--avs-danger)]' : 'text-[var(--avs-success)]'}`}>
                     {entry.threatsDetected} threats
                   </span>
-                  <span className="text-sm font-bold text-[var(--avs-text-primary)]">{entry.securityScore}</span>
+                  <span className="text-small font-bold text-[var(--avs-text-primary)]">{entry.securityScore}</span>
                 </div>
               </div>
             ))}
@@ -446,10 +446,10 @@ function OverviewTab({ vm }: { vm: SecurityCenterViewModel }) {
 function StatusRow({ label, value, ok }: { label: string; value: string; ok: boolean }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm text-[var(--avs-text-secondary)]">{label}</span>
+      <span className="text-small text-[var(--avs-text-secondary)]">{label}</span>
       <div className="flex items-center gap-2">
-        <div className={`h-2 w-2 rounded-full ${ok ? 'bg-[var(--avs-success)]' : 'bg-[var(--avs-warning)]'}`} />
-        <span className="text-sm font-medium text-[var(--avs-text-primary)]">{value}</span>
+        <div className={`h-1.5 w-1.5 rounded-full ${ok ? 'bg-[var(--avs-success)]' : 'bg-[var(--avs-warning)]'}`} />
+        <span className="text-small font-medium text-[var(--avs-text-primary)]">{value}</span>
       </div>
     </div>
   );
@@ -466,7 +466,7 @@ function ScanTab({ vm }: { vm: SecurityCenterViewModel }) {
       <div className="w-64 shrink-0 space-y-4">
         <Card variant="glass">
           <div className="space-y-2">
-            <p className="px-1 text-xs font-semibold uppercase tracking-wide text-[var(--avs-text-muted)]">Scan Type</p>
+            <p className="px-1 text-micro font-semibold uppercase tracking-[var(--avs-tracking-widest)] text-[var(--avs-text-muted)]">Scan Type</p>
             {SIDEBAR_SCAN_MODES.map((mode) => {
               const Icon = mode.icon;
               const isSelected = s.scanMode === mode.id;
@@ -483,9 +483,9 @@ function ScanTab({ vm }: { vm: SecurityCenterViewModel }) {
                 >
                   <div className="flex items-center gap-2">
                     <Icon className={`h-5 w-5 ${isSelected ? 'text-[var(--avs-brand-primary)]' : 'text-[var(--avs-text-secondary)]'}`} />
-                    <span className="text-sm font-semibold text-[var(--avs-text-primary)]">{mode.label}</span>
+                    <span className="text-small font-semibold text-[var(--avs-text-primary)]">{mode.label}</span>
                   </div>
-                  <p className="mt-1 text-xs text-[var(--avs-text-muted)]">{mode.description}</p>
+                  <p className="mt-1 text-caption text-[var(--avs-text-muted)]">{mode.description}</p>
                 </button>
               );
             })}
@@ -521,22 +521,22 @@ function ScanTab({ vm }: { vm: SecurityCenterViewModel }) {
           <Card title="Last Scan" variant="glass">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-[var(--avs-text-muted)]">Type</span>
-                <span className="text-sm font-medium text-[var(--avs-text-primary)] capitalize">{s.lastScanResult.scanType}</span>
+                <span className="text-caption text-[var(--avs-text-muted)]">Type</span>
+                <span className="text-small font-medium text-[var(--avs-text-primary)] capitalize">{s.lastScanResult.scanType}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-[var(--avs-text-muted)]">Duration</span>
-                <span className="text-sm font-medium text-[var(--avs-text-primary)]">{formatDuration(s.lastScanResult.duration)}</span>
+                <span className="text-caption text-[var(--avs-text-muted)]">Duration</span>
+                <span className="text-small font-medium text-[var(--avs-text-primary)]">{formatDuration(s.lastScanResult.duration)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-[var(--avs-text-muted)]">Threats</span>
-                <span className={`text-sm font-semibold ${s.lastScanResult.threats.length > 0 ? 'text-[var(--avs-danger)]' : 'text-[var(--avs-success)]'}`}>
+                <span className="text-caption text-[var(--avs-text-muted)]">Threats</span>
+                <span className={`text-small font-semibold ${s.lastScanResult.threats.length > 0 ? 'text-[var(--avs-danger)]' : 'text-[var(--avs-success)]'}`}>
                   {s.lastScanResult.threats.length}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-[var(--avs-text-muted)]">Score</span>
-                <span className="text-lg font-bold text-[var(--avs-text-primary)]">{s.lastScanResult.securityScore}</span>
+                <span className="text-caption text-[var(--avs-text-muted)]">Score</span>
+                <span className="text-statistic-sm text-[var(--avs-text-primary)]">{s.lastScanResult.securityScore}</span>
               </div>
             </div>
           </Card>
@@ -572,10 +572,10 @@ function ScanIdleView({ vm }: { vm: SecurityCenterViewModel }) {
             <ShieldCheckIcon className="h-10 w-10 text-brand-primary" aria-hidden />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-text-primary">
+            <h3 className="text-section-title text-text-primary">
               {s.scanMode === 'full' ? 'Full System Security Scan' : s.scanMode === 'custom' ? 'Custom Scan' : 'Quick Security Scan'}
             </h3>
-            <p className="mt-2 max-w-xl text-sm text-text-secondary">
+            <p className="mt-2 max-w-xl text-small text-text-secondary leading-relaxed">
               {s.scanMode === 'full'
                 ? 'A comprehensive 14-phase security scan covering processes, system directories, user profile, registry, scheduled tasks, services, browser security, PowerShell scripts, persistence, behavior analysis, threat investigation, and AI remediation planning.'
                 : 'A fast scan of critical system areas — processes, registry, scheduled tasks, and behavior analysis.'}
@@ -597,14 +597,14 @@ function ScanIdleView({ vm }: { vm: SecurityCenterViewModel }) {
         <div className="space-y-2">
           {phases.map((phase, idx) => (
             <div key={phase.id} className="flex items-center gap-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--avs-surface)] text-xs font-bold text-[var(--avs-text-muted)]">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--avs-surface)] text-caption font-bold text-[var(--avs-text-muted)]">
                 {idx + 1}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[var(--avs-text-primary)]">{phase.label}</p>
-                <p className="text-xs text-[var(--avs-text-muted)] truncate">{phase.description}</p>
+                <p className="text-small font-medium text-[var(--avs-text-primary)]">{phase.label}</p>
+                <p className="text-caption text-[var(--avs-text-muted)] truncate">{phase.description}</p>
               </div>
-              <span className="text-xs font-medium text-[var(--avs-text-muted)] shrink-0">
+              <span className="text-caption font-medium text-[var(--avs-text-muted)] shrink-0">
                 {phase.startPercent}–{phase.endPercent}%
               </span>
             </div>
@@ -649,16 +649,16 @@ function ScanProgressView({ vm }: { vm: SecurityCenterViewModel }) {
               <span className="relative inline-flex h-3 w-3 rounded-full bg-brand-primary" />
             </span>
             <div>
-              <p className="text-sm font-semibold text-text-primary">
+              <p className="text-small font-semibold text-text-primary">
                 Phase {s.scanPhaseIndex + 1} of {phases.length}: {currentPhase?.label ?? 'Scanning…'}
               </p>
-              <p className="text-xs text-text-muted">{currentPhase?.description}</p>
+              <p className="text-caption text-text-muted">{currentPhase?.description}</p>
             </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <span className="text-xs tabular-nums text-text-muted">{formatDuration(elapsed)}</span>
+            <span className="text-caption tabular-nums text-text-muted">{formatDuration(elapsed)}</span>
             {s.scanEstimatedRemaining != null && s.scanEstimatedRemaining > 0 && (
-              <span className="text-xs text-text-muted">~{formatDuration(s.scanEstimatedRemaining)} left</span>
+              <span className="text-caption text-text-muted">~{formatDuration(s.scanEstimatedRemaining)} left</span>
             )}
           </div>
         </div>
@@ -675,15 +675,15 @@ function ScanProgressView({ vm }: { vm: SecurityCenterViewModel }) {
           />
         </div>
         <div className="mt-1.5 flex items-center justify-between">
-          <span className="text-xs text-text-muted">
+          <span className="text-caption text-text-muted">
             {s.scanCurrentModule} {s.scanCurrentFolder ? `· ${s.scanCurrentFolder}` : ''}
           </span>
-          <span className="text-sm font-bold tabular-nums text-text-primary">{Math.round(displayProgress)}%</span>
+          <span className="text-small font-bold tabular-nums text-text-primary">{Math.round(displayProgress)}%</span>
         </div>
         {s.scanCurrentFile && (
           <div className="mt-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-2 py-1.5">
-            <div className="text-xs text-text-muted mb-0.5">Current file:</div>
-            <div className="text-xs font-mono text-text-secondary truncate" title={s.scanCurrentFile}>
+            <div className="text-caption text-text-muted mb-0.5">Current file:</div>
+            <div className="text-caption font-mono text-text-secondary truncate" title={s.scanCurrentFile}>
               {s.scanCurrentFile}
             </div>
           </div>
@@ -723,7 +723,7 @@ function ScanProgressView({ vm }: { vm: SecurityCenterViewModel }) {
           {s.liveThreats.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-center">
               <ShieldCheckIcon className="h-8 w-8 text-[var(--avs-success)]" />
-              <p className="mt-2 text-sm text-[var(--avs-text-muted)]">No threats detected so far</p>
+              <p className="mt-2 text-small text-[var(--avs-text-muted)]">No threats detected so far</p>
             </div>
           ) : (
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
@@ -758,14 +758,14 @@ function ScanTreeRow({ node }: { node: ScanTreeNode }) {
         }`}
       >
         <span className="shrink-0">{statusIcon[node.status]}</span>
-        <span className={`text-sm ${node.status === 'scanning' ? 'font-medium text-[var(--avs-text-primary)]' : node.status === 'complete' ? 'text-[var(--avs-text-secondary)]' : 'text-[var(--avs-text-muted)]'}`}>
+        <span className={`text-small ${node.status === 'scanning' ? 'font-medium text-[var(--avs-text-primary)]' : node.status === 'complete' ? 'text-[var(--avs-text-secondary)]' : 'text-[var(--avs-text-muted)]'}`}>
           {node.label}
         </span>
         {node.itemsScanned > 0 && (
-          <span className="ml-auto text-xs text-[var(--avs-text-muted)]">{node.itemsScanned} items</span>
+          <span className="ml-auto text-caption text-[var(--avs-text-muted)]">{node.itemsScanned} items</span>
         )}
         {node.threatsFound > 0 && (
-          <span className="text-xs font-medium text-[var(--avs-danger)]">{node.threatsFound} threats</span>
+          <span className="text-caption font-medium text-[var(--avs-danger)]">{node.threatsFound} threats</span>
         )}
         {hasChildren && (
           <ChevronRightIcon className={`h-3 w-3 text-[var(--avs-text-muted)] transition-transform ${expanded ? 'rotate-90' : ''}`} />
@@ -788,19 +788,19 @@ function LiveThreatRow({ threat }: { threat: LiveThreatCard }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ExclamationTriangleIcon className="h-4 w-4 text-[var(--avs-danger)]" />
-          <span className="text-sm font-semibold text-[var(--avs-text-primary)]">{threat.name}</span>
+          <span className="text-small font-semibold text-[var(--avs-text-primary)]">{threat.name}</span>
         </div>
-        <span className="text-xs font-bold text-[var(--avs-danger)]">{threat.confidence}%</span>
+        <span className="text-caption font-bold text-[var(--avs-danger)]">{threat.confidence}%</span>
       </div>
-      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[var(--avs-text-muted)]">
+      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-caption text-[var(--avs-text-muted)]">
         <span><span className="font-medium text-[var(--avs-text-secondary)]">Type:</span> {threat.type}</span>
         <span><span className="font-medium text-[var(--avs-text-secondary)]">Risk:</span> {threat.risk}</span>
         <span><span className="font-medium text-[var(--avs-text-secondary)]">Status:</span> {threat.status}</span>
       </div>
-      <div className="mt-1 text-xs text-[var(--avs-text-muted)] truncate" title={threat.location}>
+      <div className="mt-1 text-caption text-[var(--avs-text-muted)] truncate" title={threat.location}>
         <span className="font-medium text-[var(--avs-text-secondary)]">Location:</span> {threat.location}
       </div>
-      <div className="mt-0.5 text-xs text-[var(--avs-text-muted)]">
+      <div className="mt-0.5 text-caption text-[var(--avs-text-muted)]">
         <span className="font-medium text-[var(--avs-text-secondary)]">Action:</span> {threat.actionPlanned}
       </div>
     </div>
@@ -812,9 +812,9 @@ function LiveStatBox({ label, value, icon: Icon, danger }: { label: string; valu
     <div className={`rounded-[var(--avs-radius-md)] p-3 ${danger ? 'bg-[var(--avs-danger)]/10' : 'bg-[var(--avs-surface-muted)]'}`}>
       <div className="flex items-center gap-1.5">
         <Icon className={`h-3.5 w-3.5 ${danger ? 'text-[var(--avs-danger)]' : 'text-[var(--avs-text-muted)]'}`} />
-        <span className="text-xs text-[var(--avs-text-muted)] truncate">{label}</span>
+        <span className="text-caption text-[var(--avs-text-muted)] truncate">{label}</span>
       </div>
-      <p className={`mt-1 text-lg font-bold tabular-nums ${danger ? 'text-[var(--avs-danger)]' : 'text-[var(--avs-text-primary)]'}`}>
+      <p className={`mt-1 text-statistic-sm tabular-nums ${danger ? 'text-[var(--avs-danger)]' : 'text-[var(--avs-text-primary)]'}`}>
         {typeof value === 'number' ? value.toLocaleString() : value}
       </p>
     </div>
@@ -848,8 +848,8 @@ function ScanAISummary({ vm }: { vm: SecurityCenterViewModel }) {
               />
             </svg>
             <div className="absolute flex flex-col items-center">
-              <span className="text-3xl font-bold" style={{ color: scoreColor }}>{summary.securityScore}</span>
-              <span className="text-xs text-[var(--avs-text-muted)]">Security Score</span>
+              <span className="text-statistic" style={{ color: scoreColor }}>{summary.securityScore}</span>
+              <span className="text-caption text-[var(--avs-text-muted)]">Security Score</span>
             </div>
           </div>
 
@@ -857,9 +857,9 @@ function ScanAISummary({ vm }: { vm: SecurityCenterViewModel }) {
           <div className="text-center max-w-2xl">
             <div className="flex items-center justify-center gap-2 mb-2">
               <SparklesIcon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
-              <h3 className="text-lg font-bold text-text-primary">AI Verdict</h3>
+              <h3 className="text-section-title text-text-primary">AI Verdict</h3>
             </div>
-            <p className="text-sm text-text-secondary">{summary.aiVerdict}</p>
+            <p className="text-small text-text-secondary leading-relaxed">{summary.aiVerdict}</p>
           </div>
 
           {/* Quick Stats */}
@@ -879,7 +879,7 @@ function ScanAISummary({ vm }: { vm: SecurityCenterViewModel }) {
             {summary.protectedAreas.map((area) => (
               <div key={area} className="flex items-center gap-1.5 rounded-full bg-[var(--avs-success)]/10 px-3 py-1.5">
                 <CheckIcon className="h-3.5 w-3.5 text-[var(--avs-success)]" />
-                <span className="text-xs font-medium text-[var(--avs-text-primary)]">{area}</span>
+                <span className="text-caption font-medium text-[var(--avs-text-primary)]">{area}</span>
               </div>
             ))}
           </div>
@@ -888,18 +888,18 @@ function ScanAISummary({ vm }: { vm: SecurityCenterViewModel }) {
         <Card title="Risk Assessment" variant="glass">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[var(--avs-text-secondary)]">Estimated Risk</span>
+              <span className="text-small text-[var(--avs-text-secondary)]">Estimated Risk</span>
               <Badge tone={summary.estimatedRisk === 'Low' ? 'success' : summary.estimatedRisk === 'Moderate' ? 'warning' : 'danger'}>
                 {summary.estimatedRisk}
               </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[var(--avs-text-secondary)]">Files Scanned</span>
-              <span className="text-sm font-medium text-[var(--avs-text-primary)]">{summary.filesScanned.toLocaleString()}</span>
+              <span className="text-small text-[var(--avs-text-secondary)]">Files Scanned</span>
+              <span className="text-small font-medium text-[var(--avs-text-primary)]">{summary.filesScanned.toLocaleString()}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[var(--avs-text-secondary)]">Items Analyzed</span>
-              <span className="text-sm font-medium text-[var(--avs-text-primary)]">{summary.itemsScanned.toLocaleString()}</span>
+              <span className="text-small text-[var(--avs-text-secondary)]">Items Analyzed</span>
+              <span className="text-small font-medium text-[var(--avs-text-primary)]">{summary.itemsScanned.toLocaleString()}</span>
             </div>
           </div>
         </Card>
@@ -917,17 +917,17 @@ function ScanAISummary({ vm }: { vm: SecurityCenterViewModel }) {
                       <ExclamationTriangleIcon className={`h-4 w-4 ${SEVERITY_COLORS[threat.severity]}`} />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-[var(--avs-text-primary)]">{threat.name}</p>
-                      <p className="text-xs text-[var(--avs-text-muted)]">{CATEGORY_LABELS[threat.category] ?? threat.category} · {threat.detectionSource}</p>
+                      <p className="text-small font-semibold text-[var(--avs-text-primary)]">{threat.name}</p>
+                      <p className="text-caption text-[var(--avs-text-muted)]">{CATEGORY_LABELS[threat.category] ?? threat.category} · {threat.detectionSource}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Badge tone={threat.status === 'active' ? 'danger' : 'neutral'}>{threat.status}</Badge>
-                    <span className={`text-xs font-bold ${SEVERITY_COLORS[threat.severity]}`}>{(threat.confidence * 100).toFixed(0)}%</span>
+                    <span className={`text-caption font-bold ${SEVERITY_COLORS[threat.severity]}`}>{(threat.confidence * 100).toFixed(0)}%</span>
                   </div>
                 </div>
                 {threat.affectedAssets.length > 0 && threat.affectedAssets[0] && (
-                  <p className="mt-1.5 text-xs text-[var(--avs-text-muted)] truncate" title={threat.affectedAssets[0].path}>
+                  <p className="mt-1.5 text-caption text-[var(--avs-text-muted)] truncate" title={threat.affectedAssets[0].path}>
                     📁 {threat.affectedAssets[0].path}
                   </p>
                 )}
@@ -995,8 +995,8 @@ function SummaryStatBox({ label, value, icon: Icon, tone }: { label: string; val
   return (
     <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 text-center">
       <Icon className="mx-auto h-5 w-5" style={{ color: toneColor }} />
-      <p className="mt-1.5 text-xl font-bold text-[var(--avs-text-primary)]">{value}</p>
-      <p className="text-xs text-[var(--avs-text-muted)]">{label}</p>
+      <p className="mt-1.5 text-statistic-sm text-[var(--avs-text-primary)]">{value}</p>
+      <p className="text-caption text-[var(--avs-text-muted)]">{label}</p>
     </div>
   );
 }
@@ -1006,9 +1006,9 @@ function StatBox({ label, value, icon: Icon }: { label: string; value: string; i
     <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
       <div className="flex items-center gap-2">
         <Icon className="h-4 w-4 text-[var(--avs-text-muted)]" />
-        <span className="text-xs text-[var(--avs-text-muted)]">{label}</span>
+        <span className="text-caption text-[var(--avs-text-muted)]">{label}</span>
       </div>
-      <p className="mt-1 text-lg font-bold capitalize text-[var(--avs-text-primary)]">{value}</p>
+      <p className="mt-1 text-statistic-sm capitalize text-[var(--avs-text-primary)]">{value}</p>
     </div>
   );
 }
@@ -1028,31 +1028,31 @@ function ThreatsTab({ vm }: { vm: SecurityCenterViewModel }) {
       <Card variant="glass">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-[var(--avs-text-secondary)]">Category:</span>
+            <span className="text-caption font-semibold text-[var(--avs-text-secondary)]">Category:</span>
             <select
               value={s.threatFilter.category}
               onChange={(e) => vm.setThreatFilter({ category: e.target.value as ThreatCategory | 'all' })}
-              className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-2 py-1 text-sm text-[var(--avs-text-primary)]"
+              className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-2 py-1 text-small text-[var(--avs-text-primary)] focus:outline-none focus-visible:shadow-focus"
             >
               {categories.map(c => <option key={c} value={c}>{c === 'all' ? 'All Categories' : CATEGORY_LABELS[c] ?? c}</option>)}
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-[var(--avs-text-secondary)]">Severity:</span>
+            <span className="text-caption font-semibold text-[var(--avs-text-secondary)]">Severity:</span>
             <select
               value={s.threatFilter.severity}
               onChange={(e) => vm.setThreatFilter({ severity: e.target.value as ThreatSeverity | 'all' })}
-              className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-2 py-1 text-sm text-[var(--avs-text-primary)]"
+              className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-2 py-1 text-small text-[var(--avs-text-primary)] focus:outline-none focus-visible:shadow-focus"
             >
               {severities.map(sv => <option key={sv} value={sv}>{sv === 'all' ? 'All Severities' : sv.charAt(0).toUpperCase() + sv.slice(1)}</option>)}
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-[var(--avs-text-secondary)]">Status:</span>
+            <span className="text-caption font-semibold text-[var(--avs-text-secondary)]">Status:</span>
             <select
               value={s.threatFilter.status}
               onChange={(e) => vm.setThreatFilter({ status: e.target.value as Threat['status'] | 'all' })}
-              className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-2 py-1 text-sm text-[var(--avs-text-primary)]"
+              className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-2 py-1 text-small text-[var(--avs-text-primary)] focus:outline-none focus-visible:shadow-focus"
             >
               <option value="all">All Statuses</option>
               <option value="active">Active</option>
@@ -1067,7 +1067,7 @@ function ThreatsTab({ vm }: { vm: SecurityCenterViewModel }) {
             placeholder="Search threats…"
             value={s.threatFilter.searchQuery}
             onChange={(e) => vm.setThreatFilter({ searchQuery: e.target.value })}
-            className="ml-auto rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-1 text-sm text-[var(--avs-text-primary)] placeholder:text-[var(--avs-text-muted)]"
+            className="ml-auto rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-1 text-small text-[var(--avs-text-primary)] placeholder:text-[var(--avs-text-muted)] focus:outline-none focus-visible:shadow-focus"
           />
         </div>
       </Card>
@@ -1107,8 +1107,8 @@ function ThreatCard({ threat, vm }: { threat: Threat; vm: SecurityCenterViewMode
             <ExclamationTriangleIcon className={`h-5 w-5 ${SEVERITY_COLORS[threat.severity]}`} />
           </div>
           <div>
-            <p className="text-sm font-semibold text-[var(--avs-text-primary)]">{threat.name}</p>
-            <p className="text-xs text-[var(--avs-text-muted)]">
+            <p className="text-small font-semibold text-[var(--avs-text-primary)]">{threat.name}</p>
+            <p className="text-caption text-[var(--avs-text-muted)]">
               {CATEGORY_LABELS[threat.category] ?? threat.category} · {threat.detectionSource} · {formatTimeAgo(threat.detectionTime)}
             </p>
           </div>
@@ -1117,7 +1117,7 @@ function ThreatCard({ threat, vm }: { threat: Threat; vm: SecurityCenterViewMode
           <Badge tone={threat.status === 'active' ? 'danger' : threat.status === 'resolved' ? 'success' : 'neutral'}>
             {threat.status}
           </Badge>
-          <span className={`text-xs font-bold ${SEVERITY_COLORS[threat.severity]}`}>
+          <span className={`text-caption font-bold ${SEVERITY_COLORS[threat.severity]}`}>
             {(threat.confidence * 100).toFixed(0)}%
           </span>
           <ChevronRightIcon className={`h-4 w-4 text-[var(--avs-text-muted)] transition-transform ${expanded ? 'rotate-90' : ''}`} />
@@ -1128,23 +1128,23 @@ function ThreatCard({ threat, vm }: { threat: Threat; vm: SecurityCenterViewMode
         <div className="mt-3 space-y-3 border-t border-[var(--avs-border)] pt-3">
           {/* Explanation */}
           <div>
-            <p className="text-xs font-semibold text-[var(--avs-text-secondary)]">AI Explanation</p>
-            <p className="mt-1 text-sm text-[var(--avs-text-primary)]">{threat.explanation}</p>
+            <p className="text-caption font-semibold text-[var(--avs-text-secondary)]">AI Explanation</p>
+            <p className="mt-1 text-small text-[var(--avs-text-primary)]">{threat.explanation}</p>
           </div>
 
           {/* Recommendation */}
           <div>
-            <p className="text-xs font-semibold text-[var(--avs-text-secondary)]">Recommendation</p>
-            <p className="mt-1 text-sm text-[var(--avs-text-primary)]">{threat.recommendation}</p>
+            <p className="text-caption font-semibold text-[var(--avs-text-secondary)]">Recommendation</p>
+            <p className="mt-1 text-small text-[var(--avs-text-primary)]">{threat.recommendation}</p>
           </div>
 
           {/* Evidence */}
           {threat.evidence.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-[var(--avs-text-secondary)]">Evidence ({threat.evidence.length})</p>
+              <p className="text-caption font-semibold text-[var(--avs-text-secondary)]">Evidence ({threat.evidence.length})</p>
               <div className="mt-1 space-y-1">
                 {threat.evidence.map((ev, i) => (
-                  <div key={i} className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-2 py-1 text-xs text-[var(--avs-text-secondary)]">
+                  <div key={i} className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-2 py-1 text-caption text-[var(--avs-text-secondary)]">
                     <span className="font-medium text-[var(--avs-text-primary)]">{ev.type}:</span> {ev.description}
                   </div>
                 ))}
@@ -1155,10 +1155,10 @@ function ThreatCard({ threat, vm }: { threat: Threat; vm: SecurityCenterViewMode
           {/* Affected Assets */}
           {threat.affectedAssets.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-[var(--avs-text-secondary)]">Affected Assets ({threat.affectedAssets.length})</p>
+              <p className="text-caption font-semibold text-[var(--avs-text-secondary)]">Affected Assets ({threat.affectedAssets.length})</p>
               <div className="mt-1 space-y-1">
                 {threat.affectedAssets.map((asset, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs text-[var(--avs-text-secondary)]">
+                  <div key={i} className="flex items-center gap-2 text-caption text-[var(--avs-text-secondary)]">
                     <span className="rounded bg-[var(--avs-surface-muted)] px-1.5 py-0.5 font-medium text-[var(--avs-text-primary)]">{asset.type}</span>
                     <span>{asset.path}</span>
                   </div>
@@ -1170,8 +1170,8 @@ function ThreatCard({ threat, vm }: { threat: Threat; vm: SecurityCenterViewMode
           {/* MITRE */}
           {threat.mitreAttack && (
             <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-danger)]/5 border border-[var(--avs-danger)]/20 p-2">
-              <p className="text-xs font-semibold text-[var(--avs-danger)]">MITRE ATT&CK</p>
-              <p className="mt-0.5 text-xs text-[var(--avs-text-secondary)]">
+              <p className="text-caption font-semibold text-[var(--avs-danger)]">MITRE ATT&CK</p>
+              <p className="mt-0.5 text-caption text-[var(--avs-text-secondary)]">
                 {threat.mitreAttack.tactic} → {threat.mitreAttack.technique}
                 {threat.mitreAttack.subtechnique && ` → ${threat.mitreAttack.subtechnique}`}
               </p>
@@ -1251,13 +1251,13 @@ function InvestigationTab({ vm }: { vm: SecurityCenterViewModel }) {
                   : 'border-[var(--avs-border)] bg-[var(--avs-surface-muted)] hover:border-[var(--avs-border-hover)]'
               }`}
             >
-              <p className="text-sm font-semibold text-[var(--avs-text-primary)]">{inv.summary.title}</p>
-              <p className="mt-0.5 text-xs text-[var(--avs-text-muted)]">{inv.summary.oneLiner}</p>
+              <p className="text-small font-semibold text-[var(--avs-text-primary)]">{inv.summary.title}</p>
+              <p className="mt-0.5 text-caption text-[var(--avs-text-muted)]">{inv.summary.oneLiner}</p>
               <div className="mt-2 flex items-center gap-2">
                 <Badge tone={inv.status === 'open' ? 'warning' : inv.status === 'resolved' ? 'success' : 'neutral'}>
                   {inv.status}
                 </Badge>
-                <span className="text-xs text-[var(--avs-text-muted)]">{inv.threatIds.length} threats</span>
+                <span className="text-caption text-[var(--avs-text-muted)]">{inv.threatIds.length} threats</span>
               </div>
             </button>
           ))}
@@ -1271,7 +1271,7 @@ function InvestigationTab({ vm }: { vm: SecurityCenterViewModel }) {
         <Card variant="glass">
           <div className="py-12 text-center">
             <BeakerIcon className="mx-auto h-10 w-10 text-[var(--avs-text-muted)]" />
-            <p className="mt-3 text-sm text-[var(--avs-text-muted)]">Select an investigation to view details</p>
+            <p className="mt-4 text-small text-[var(--avs-text-muted)]">Select an investigation to view details</p>
           </div>
         </Card>
       )}
@@ -1289,8 +1289,8 @@ function InvestigationDetail({ inv, vm }: { inv: ThreatInvestigation; vm: Securi
       <Card title="Threat Summary" variant="glass">
         <div className="space-y-3">
           <div>
-            <p className="text-sm font-semibold text-[var(--avs-text-primary)]">{inv.summary.title}</p>
-            <p className="mt-1 text-sm text-[var(--avs-text-secondary)]">{inv.summary.oneLiner}</p>
+            <p className="text-small font-semibold text-[var(--avs-text-primary)]">{inv.summary.title}</p>
+            <p className="mt-1 text-small text-[var(--avs-text-secondary)]">{inv.summary.oneLiner}</p>
           </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <StatBox label="Severity" value={inv.severity.level} icon={FireIcon} />
@@ -1305,27 +1305,27 @@ function InvestigationDetail({ inv, vm }: { inv: ThreatInvestigation; vm: Securi
       <Card title="AI Explanation" variant="glass">
         <div className="space-y-3">
           <div>
-            <p className="text-xs font-semibold text-[var(--avs-text-secondary)]">What Happened</p>
-            <p className="mt-1 text-sm text-[var(--avs-text-primary)]">{inv.explanation.whatHappened}</p>
+            <p className="text-caption font-semibold text-[var(--avs-text-secondary)]">What Happened</p>
+            <p className="mt-1 text-small text-[var(--avs-text-primary)]">{inv.explanation.whatHappened}</p>
           </div>
           <div>
-            <p className="text-xs font-semibold text-[var(--avs-text-secondary)]">Why Detected</p>
-            <p className="mt-1 text-sm text-[var(--avs-text-primary)]">{inv.explanation.whyDetected}</p>
+            <p className="text-caption font-semibold text-[var(--avs-text-secondary)]">Why Detected</p>
+            <p className="mt-1 text-small text-[var(--avs-text-primary)]">{inv.explanation.whyDetected}</p>
           </div>
           <div>
-            <p className="text-xs font-semibold text-[var(--avs-text-secondary)]">User-Friendly Explanation</p>
-            <p className="mt-1 text-sm text-[var(--avs-text-primary)]">{inv.explanation.userFriendlyExplanation}</p>
+            <p className="text-caption font-semibold text-[var(--avs-text-secondary)]">User-Friendly Explanation</p>
+            <p className="mt-1 text-small text-[var(--avs-text-primary)]">{inv.explanation.userFriendlyExplanation}</p>
           </div>
           <div>
-            <p className="text-xs font-semibold text-[var(--avs-text-secondary)]">Confidence Reasoning</p>
-            <p className="mt-1 text-sm text-[var(--avs-text-primary)]">{inv.confidence.reasoning}</p>
+            <p className="text-caption font-semibold text-[var(--avs-text-secondary)]">Confidence Reasoning</p>
+            <p className="mt-1 text-small text-[var(--avs-text-primary)]">{inv.confidence.reasoning}</p>
           </div>
           {inv.explanation.possibleFalsePositiveFactors.length > 0 && (
             <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-warning)]/10 border border-[var(--avs-warning)]/20 p-2">
-              <p className="text-xs font-semibold text-[var(--avs-warning)]">Possible False Positive Factors</p>
+              <p className="text-caption font-semibold text-[var(--avs-warning)]">Possible False Positive Factors</p>
               <ul className="mt-1 space-y-0.5">
                 {inv.explanation.possibleFalsePositiveFactors.map((f, i) => (
-                  <li key={i} className="text-xs text-[var(--avs-text-secondary)]">• {f}</li>
+                  <li key={i} className="text-caption text-[var(--avs-text-secondary)]">• {f}</li>
                 ))}
               </ul>
             </div>
@@ -1344,8 +1344,8 @@ function InvestigationDetail({ inv, vm }: { inv: ThreatInvestigation; vm: Securi
                   <div className="h-full w-px bg-[var(--avs-border)]" />
                 </div>
                 <div className="pb-3">
-                  <p className="text-sm font-medium text-[var(--avs-text-primary)]">{event.description}</p>
-                  <p className="text-xs text-[var(--avs-text-muted)]">{event.type} · {formatTimeAgo(event.timestamp)}</p>
+                  <p className="text-small font-medium text-[var(--avs-text-primary)]">{event.description}</p>
+                  <p className="text-caption text-[var(--avs-text-muted)]">{event.type} · {formatTimeAgo(event.timestamp)}</p>
                 </div>
               </div>
             ))}
@@ -1357,7 +1357,7 @@ function InvestigationDetail({ inv, vm }: { inv: ThreatInvestigation; vm: Securi
       {inv.evidence.total > 0 && (
         <Card title={`Evidence (${inv.evidence.total})`} variant="glass">
           <div className="space-y-2">
-            <div className="flex items-center gap-3 text-xs">
+            <div className="flex items-center gap-3 text-caption">
               <Badge tone="neutral">Quality: {inv.evidence.evidenceQuality}</Badge>
               {inv.evidence.strongestEvidence && (
                 <span className="text-[var(--avs-text-muted)]">Strongest: {inv.evidence.strongestEvidence.type}</span>
@@ -1366,10 +1366,10 @@ function InvestigationDetail({ inv, vm }: { inv: ThreatInvestigation; vm: Securi
             {inv.evidence.items.map((item, i) => (
               <div key={i} className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-[var(--avs-text-primary)]">{item.type}</span>
-                  <span className="text-xs text-[var(--avs-text-muted)]">{item.source}</span>
+                  <span className="text-caption font-medium text-[var(--avs-text-primary)]">{item.type}</span>
+                  <span className="text-caption text-[var(--avs-text-muted)]">{item.source}</span>
                 </div>
-                <p className="mt-1 text-xs text-[var(--avs-text-secondary)]">{item.description}</p>
+                <p className="mt-1 text-caption text-[var(--avs-text-secondary)]">{item.description}</p>
               </div>
             ))}
           </div>
@@ -1383,10 +1383,10 @@ function InvestigationDetail({ inv, vm }: { inv: ThreatInvestigation; vm: Securi
             {inv.affectedComponents.map((comp, i) => (
               <div key={i} className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
                 <div>
-                  <span className="rounded bg-[var(--avs-surface)] px-1.5 py-0.5 text-xs font-medium text-[var(--avs-text-primary)]">{comp.type}</span>
-                  <span className="ml-2 text-sm text-[var(--avs-text-primary)]">{comp.name}</span>
+                  <span className="rounded bg-[var(--avs-surface)] px-1.5 py-0.5 text-caption font-medium text-[var(--avs-text-primary)]">{comp.type}</span>
+                  <span className="ml-2 text-small text-[var(--avs-text-primary)]">{comp.name}</span>
                 </div>
-                <span className="text-xs text-[var(--avs-text-muted)]">{comp.status}</span>
+                <span className="text-caption text-[var(--avs-text-muted)]">{comp.status}</span>
               </div>
             ))}
           </div>
@@ -1399,9 +1399,9 @@ function InvestigationDetail({ inv, vm }: { inv: ThreatInvestigation; vm: Securi
           <div className="space-y-2">
             {inv.mitreAttack.map((m, i) => (
               <div key={i} className="rounded-[var(--avs-radius-md)] border border-[var(--avs-danger)]/20 bg-[var(--avs-danger)]/5 p-3">
-                <p className="text-sm font-semibold text-[var(--avs-danger)]">{m.tactic}</p>
-                <p className="text-sm text-[var(--avs-text-primary)]">{m.technique}{m.subtechnique && ` → ${m.subtechnique}`}</p>
-                {m.reference && <p className="mt-1 text-xs text-[var(--avs-text-muted)]">{m.reference}</p>}
+                <p className="text-small font-semibold text-[var(--avs-danger)]">{m.tactic}</p>
+                <p className="text-small text-[var(--avs-text-primary)]">{m.technique}{m.subtechnique && ` → ${m.subtechnique}`}</p>
+                {m.reference && <p className="mt-1 text-caption text-[var(--avs-text-muted)]">{m.reference}</p>}
               </div>
             ))}
           </div>
@@ -1419,8 +1419,8 @@ function InvestigationDetail({ inv, vm }: { inv: ThreatInvestigation; vm: Securi
             </div>
             {inv.relationshipGraph.clusters.map((cluster) => (
               <div key={cluster.id} className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-2">
-                <p className="text-xs font-semibold text-[var(--avs-text-primary)]">{cluster.label}</p>
-                <p className="text-xs text-[var(--avs-text-muted)]">{cluster.description}</p>
+                <p className="text-caption font-semibold text-[var(--avs-text-primary)]">{cluster.label}</p>
+                <p className="text-caption text-[var(--avs-text-muted)]">{cluster.description}</p>
               </div>
             ))}
           </div>
@@ -1434,13 +1434,13 @@ function InvestigationDetail({ inv, vm }: { inv: ThreatInvestigation; vm: Securi
             {inv.recommendedActions.map((action) => (
               <div key={action.id} className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-[var(--avs-text-primary)]">{action.action}</p>
+                  <p className="text-small font-semibold text-[var(--avs-text-primary)]">{action.action}</p>
                   <Badge tone={action.priority === 'immediate' ? 'danger' : action.priority === 'high' ? 'warning' : 'neutral'}>
                     {action.priority}
                   </Badge>
                 </div>
-                <p className="mt-1 text-xs text-[var(--avs-text-secondary)]">{action.reason}</p>
-                <p className="mt-1 text-xs text-[var(--avs-text-muted)]">Difficulty: {action.estimatedDifficulty}</p>
+                <p className="mt-1 text-caption text-[var(--avs-text-secondary)]">{action.reason}</p>
+                <p className="mt-1 text-caption text-[var(--avs-text-muted)]">Difficulty: {action.estimatedDifficulty}</p>
               </div>
             ))}
           </div>
@@ -1497,8 +1497,8 @@ function RemediationTab({ vm }: { vm: SecurityCenterViewModel }) {
           <div className="flex items-center gap-3">
             <LockIconSmall className="h-5 w-5 shrink-0 text-[var(--avs-brand-primary)]" />
             <div>
-              <p className="text-sm font-semibold text-[var(--avs-text-primary)]">Quarantine & Remediation are Pro features</p>
-              <p className="text-xs text-[var(--avs-text-secondary)]">
+              <p className="text-small font-semibold text-[var(--avs-text-primary)]">Quarantine & Remediation are Pro features</p>
+              <p className="text-caption text-[var(--avs-text-secondary)]">
                 You can view detected threats and investigations for free. Upgrade to AVS Shield Pro to quarantine, remove, and remediate threats.
               </p>
             </div>
@@ -1510,23 +1510,23 @@ function RemediationTab({ vm }: { vm: SecurityCenterViewModel }) {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Card variant="glass" className="p-4">
           <LockClosedIcon className="h-6 w-6 text-[var(--avs-warning)]" />
-          <p className="mt-2 text-2xl font-bold text-[var(--avs-text-primary)]">{qs?.activeQuarantine ?? 0}</p>
-          <p className="text-xs text-[var(--avs-text-muted)]">Quarantined Items</p>
+          <p className="mt-2 text-statistic text-[var(--avs-text-primary)]">{qs?.activeQuarantine ?? 0}</p>
+          <p className="text-caption text-[var(--avs-text-muted)]">Quarantined Items</p>
         </Card>
         <Card variant="glass" className="p-4">
           <ArrowUturnLeftIcon className="h-6 w-6 text-[var(--avs-info)]" />
-          <p className="mt-2 text-2xl font-bold text-[var(--avs-text-primary)]">{qs?.restored ?? 0}</p>
-          <p className="text-xs text-[var(--avs-text-muted)]">Restored</p>
+          <p className="mt-2 text-statistic text-[var(--avs-text-primary)]">{qs?.restored ?? 0}</p>
+          <p className="text-caption text-[var(--avs-text-muted)]">Restored</p>
         </Card>
         <Card variant="glass" className="p-4">
           <TrashIcon className="h-6 w-6 text-[var(--avs-danger)]" />
-          <p className="mt-2 text-2xl font-bold text-[var(--avs-text-primary)]">{qs?.deleted ?? 0}</p>
-          <p className="text-xs text-[var(--avs-text-muted)]">Deleted</p>
+          <p className="mt-2 text-statistic text-[var(--avs-text-primary)]">{qs?.deleted ?? 0}</p>
+          <p className="text-caption text-[var(--avs-text-muted)]">Deleted</p>
         </Card>
         <Card variant="glass" className="p-4">
           <WrenchScrewdriverIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
-          <p className="mt-2 text-2xl font-bold text-[var(--avs-text-primary)]">{s.plans.length}</p>
-          <p className="text-xs text-[var(--avs-text-muted)]">Remediation Plans</p>
+          <p className="mt-2 text-statistic text-[var(--avs-text-primary)]">{s.plans.length}</p>
+          <p className="text-caption text-[var(--avs-text-muted)]">Remediation Plans</p>
         </Card>
       </div>
 
@@ -1584,8 +1584,8 @@ function PlanCard({ plan, vm }: { plan: RemediationPlan; vm: SecurityCenterViewM
     <div className="rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold text-[var(--avs-text-primary)]">{plan.summary}</p>
-          <p className="text-xs text-[var(--avs-text-muted)]">{plan.totalActions} actions · {formatTimeAgo(plan.createdAt)}</p>
+          <p className="text-small font-semibold text-[var(--avs-text-primary)]">{plan.summary}</p>
+          <p className="text-caption text-[var(--avs-text-muted)]">{plan.totalActions} actions · {formatTimeAgo(plan.createdAt)}</p>
         </div>
         <Badge tone={plan.status === 'completed' ? 'success' : plan.status === 'executing' ? 'warning' : plan.status === 'failed' ? 'danger' : 'neutral'}>
           {plan.status}
@@ -1604,11 +1604,11 @@ function PlanCard({ plan, vm }: { plan: RemediationPlan; vm: SecurityCenterViewM
                 action.status === 'rolled_back' ? 'bg-[var(--avs-info)]' :
                 'bg-[var(--avs-text-muted)]'
               }`} />
-              <span className="text-xs font-medium text-[var(--avs-text-primary)]">{action.type}</span>
-              <span className="text-xs text-[var(--avs-text-muted)]">{action.target.name}</span>
+              <span className="text-caption font-medium text-[var(--avs-text-primary)]">{action.type}</span>
+              <span className="text-caption text-[var(--avs-text-muted)]">{action.target.name}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-[var(--avs-text-muted)]">{action.riskLevel}</span>
+              <span className="text-caption text-[var(--avs-text-muted)]">{action.riskLevel}</span>
               {action.status === 'completed' && action.reversible && action.rollbackId && (
                 canRemediate ? (
                   <Button size="sm" variant="ghost" onClick={() => vm.rollbackAction(action.id)} leftIcon={<ArrowUturnLeftIcon className="h-3 w-3" />}>
@@ -1712,7 +1712,7 @@ function ReportsTab({ vm }: { vm: SecurityCenterViewModel }) {
                     opacity: 0.3 + (i / s.scoreTrend.length) * 0.7,
                   }}
                 />
-                <span className="text-xs text-[var(--avs-text-muted)]">{point.threatCount}</span>
+                <span className="text-caption text-[var(--avs-text-muted)]">{point.threatCount}</span>
               </div>
             ))}
           </div>
@@ -1728,10 +1728,10 @@ function ReportsTab({ vm }: { vm: SecurityCenterViewModel }) {
               <div key={entry.id} className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
                 <div className="flex items-center gap-3">
                   <div className={`h-2 w-2 rounded-full ${entry.status === 'completed' ? 'bg-[var(--avs-success)]' : 'bg-[var(--avs-danger)]'}`} />
-                  <span className="text-sm font-medium text-[var(--avs-text-primary)] capitalize">{entry.scanType}</span>
-                  <span className="text-xs text-[var(--avs-text-muted)]">{formatTimeAgo(entry.timestamp)}</span>
+                  <span className="text-small font-medium text-[var(--avs-text-primary)] capitalize">{entry.scanType}</span>
+                  <span className="text-caption text-[var(--avs-text-muted)]">{formatTimeAgo(entry.timestamp)}</span>
                 </div>
-                <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-4 text-caption">
                   <span className="text-[var(--avs-text-secondary)]">{formatDuration(entry.duration)}</span>
                   <span className="text-[var(--avs-text-secondary)]">{entry.itemsScanned} items</span>
                   <span className={entry.threatsDetected > 0 ? 'text-[var(--avs-danger)] font-medium' : 'text-[var(--avs-success)]'}>{entry.threatsDetected} threats</span>
@@ -1773,7 +1773,7 @@ function SettingsTab({ vm }: { vm: SecurityCenterViewModel }) {
       </Card>
 
       <Card title="About" variant="glass">
-        <div className="space-y-1 text-sm text-[var(--avs-text-secondary)]">
+        <div className="space-y-1 text-small text-[var(--avs-text-secondary)]">
           <p>AVS Shield v2.0 — AI Smart Security</p>
           <p>Powered by AVS Shield AI Engine</p>
         </div>

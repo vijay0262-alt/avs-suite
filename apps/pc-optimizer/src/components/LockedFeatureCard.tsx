@@ -73,12 +73,12 @@ export function LockedFeatureCard({
         <Badge tone="brand" >
           {requiredEdition === 'ultimate' ? 'Ultimate' : 'Professional'} Edition Required
         </Badge>
-        <p className="mt-3 max-w-md text-sm text-text-secondary">{explanation}</p>
+        <p className="mt-3 max-w-md text-small text-text-secondary">{explanation}</p>
 
         {benefits.length > 0 && (
           <ul className="mt-4 space-y-1.5 text-left">
             {benefits.map((benefit) => (
-              <li key={benefit} className="flex items-start gap-2 text-sm text-text-secondary">
+              <li key={benefit} className="flex items-start gap-2 text-small text-text-secondary">
                 <svg
                   className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-primary"
                   fill="none"

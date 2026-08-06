@@ -45,21 +45,21 @@ export function ExportMenu({ onExport }: ExportMenuProps) {
           data-testid="export-menu"
         >
           <button
-            className="flex w-full items-center px-3 py-2 text-sm text-text-primary hover:bg-surface-muted"
+            className="flex w-full items-center px-3 py-2 text-small text-text-primary hover:bg-surface-muted"
             onClick={() => handleExport('json')}
             data-testid="export-json"
           >
             Export as JSON
           </button>
           <button
-            className="flex w-full items-center px-3 py-2 text-sm text-text-primary hover:bg-surface-muted"
+            className="flex w-full items-center px-3 py-2 text-small text-text-primary hover:bg-surface-muted"
             onClick={() => handleExport('csv')}
             data-testid="export-csv"
           >
             Export as CSV
           </button>
           <button
-            className="flex w-full items-center px-3 py-2 text-sm text-text-primary hover:bg-surface-muted"
+            className="flex w-full items-center px-3 py-2 text-small text-text-primary hover:bg-surface-muted"
             onClick={() => handleExport('pdf')}
             data-testid="export-pdf"
           >

@@ -76,7 +76,7 @@ export const DailyBriefing = React.memo(function DailyBriefing({
     items.push({
       icon: ShieldExclamationIcon,
       iconColor: 'text-semantic-success',
-      title: 'AI Active Protection is Running',
+      title: 'Active Protection is Running',
       detail: `Real-time protection: ${securityStatus}. Your system is being monitored.`,
       actionPath: '/security-dashboard',
       actionLabel: 'View Dashboard',
@@ -89,7 +89,7 @@ export const DailyBriefing = React.memo(function DailyBriefing({
       icon: CircleStackIcon,
       iconColor: 'text-semantic-info',
       title: `${processCount} Processes Analyzed`,
-      detail: 'AI Process Intelligence is monitoring all running processes for resource impact and security risks.',
+      detail: 'Process Intelligence is monitoring all running processes for resource impact and security risks.',
       actionPath: '/process-intelligence',
       actionLabel: 'View Insights',
       severity: 'info',
@@ -103,7 +103,7 @@ export const DailyBriefing = React.memo(function DailyBriefing({
       iconColor: isRisk ? 'text-semantic-warning' : 'text-semantic-success',
       title: isRisk ? 'Predictive Health: Trends Detected' : 'Predictive Health: All Clear',
       detail: isRisk
-        ? `AI Predictive Health detected ${predictionRisk} risk trends. Preventive action recommended.`
+        ? `Predictive Health detected ${predictionRisk} risk trends. Preventive action recommended.`
         : 'No degrading trends detected. Your system health trajectory is stable.',
       actionPath: '/predictive-health',
       actionLabel: 'View Forecasts',
@@ -122,7 +122,7 @@ export const DailyBriefing = React.memo(function DailyBriefing({
   }
 
   return (
-    <Card title="AI Daily Briefing" data-testid="daily-briefing">
+    <Card title="Daily Briefing" data-testid="daily-briefing">
       <div className="space-y-3">
         {items.map((item, i) => (
           <div
@@ -134,13 +134,13 @@ export const DailyBriefing = React.memo(function DailyBriefing({
               <item.icon className={`h-5 w-5 ${item.iconColor}`} aria-hidden />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-text-primary">{item.title}</div>
-              <div className="text-xs text-text-secondary mt-0.5">{item.detail}</div>
+              <div className="text-small font-medium text-text-primary">{item.title}</div>
+              <div className="text-caption text-text-secondary mt-0.5">{item.detail}</div>
             </div>
             {item.actionPath && item.actionLabel && (
               <button
                 onClick={() => navigate(item.actionPath!)}
-                className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-brand-primary hover:text-brand-primary/80 transition-colors"
+                className="shrink-0 inline-flex items-center gap-1 text-caption font-medium text-brand-primary hover:text-brand-primary/80 transition-colors"
                 data-testid={`briefing-action-${i}`}
               >
                 {item.actionLabel}

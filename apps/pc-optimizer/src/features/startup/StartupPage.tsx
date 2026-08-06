@@ -180,16 +180,16 @@ export default function StartupPage() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <Card title="Total Entries">
-              <p className="text-3xl font-bold text-text-primary">{state.entries.length}</p>
-              <p className="text-sm text-text-secondary">Startup items</p>
+              <p className="text-statistic text-text-primary">{state.entries.length}</p>
+              <p className="text-caption text-text-secondary">Startup items</p>
             </Card>
             <Card title="Enabled">
-              <p className="text-3xl font-bold text-semantic-success">{enabledCount}</p>
-              <p className="text-sm text-text-secondary">Currently active</p>
+              <p className="text-statistic text-semantic-success">{enabledCount}</p>
+              <p className="text-caption text-text-secondary">Currently active</p>
             </Card>
             <Card title="High Impact">
-              <p className="text-3xl font-bold text-semantic-danger">{highImpactCount}</p>
-              <p className="text-sm text-text-secondary">Slowing startup</p>
+              <p className="text-statistic text-semantic-danger">{highImpactCount}</p>
+              <p className="text-caption text-text-secondary">Slowing startup</p>
             </Card>
           </div>
 
@@ -206,7 +206,7 @@ export default function StartupPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ClockIcon className="h-4 w-4 text-text-secondary shrink-0" />
-                  <span className="text-xs text-text-secondary">
+                  <span className="text-caption text-text-secondary">
                     Free edition: <strong className="text-text-primary">{state.sessionDisabledCount} of {disableLimit}</strong> entries disabled this session
                     {remainingDisables !== null && remainingDisables > 0 && ` (${remainingDisables} remaining)`}
                   </span>
@@ -217,7 +217,7 @@ export default function StartupPage() {
                       limitDescription: `Free edition allows disabling up to ${disableLimit} startup entries.`,
                       proBenefit: 'Unlimited startup management + AI recommendations + auto-delay + startup history.',
                     })}
-                    className="text-xs font-medium text-brand-primary hover:underline"
+                    className="text-caption font-medium text-brand-primary hover:underline"
                     data-testid="startup-upgrade-link"
                   >
                     Upgrade to Pro →
@@ -235,13 +235,13 @@ export default function StartupPage() {
                 placeholder="Search name, publisher, or command"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="flex-1 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                className="flex-1 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] px-3 py-1.5 text-small text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:shadow-focus"
               />
               <select
                 aria-label="Filter by status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as 'all' | 'enabled' | 'disabled')}
-                className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] px-3 py-1.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] px-3 py-1.5 text-small text-text-primary focus:outline-none focus-visible:shadow-focus"
               >
                 <option value="all">Include Disabled</option>
                 <option value="enabled">Enabled Only</option>
@@ -251,7 +251,7 @@ export default function StartupPage() {
                 aria-label="Filter by impact"
                 value={impactFilter}
                 onChange={(e) => setImpactFilter(e.target.value as typeof impactFilter)}
-                className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] px-3 py-1.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] px-3 py-1.5 text-small text-text-primary focus:outline-none focus-visible:shadow-focus"
               >
                 <option value="all">All impacts</option>
                 <option value="high">High</option>
@@ -263,7 +263,7 @@ export default function StartupPage() {
                 aria-label="Sort startup entries"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortBy)}
-                className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] px-3 py-1.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] px-3 py-1.5 text-small text-text-primary focus:outline-none focus-visible:shadow-focus"
               >
                 <option value="name">Sort by name</option>
                 <option value="impact">Sort by impact</option>
@@ -298,14 +298,14 @@ export default function StartupPage() {
 
           {state.backups.length > 0 && (
             <div className="mt-6">
-              <h2 className="text-lg font-semibold text-text-primary mb-4">Backup History</h2>
+              <h2 className="text-section-title text-text-primary mb-4">Backup History</h2>
               <Card>
                 <div className="space-y-2">
                   {state.backups.map((backup) => (
                     <div key={backup.backupId} className="flex items-center justify-between py-2 border-b border-[var(--avs-border)] last:border-0">
                       <div>
-                        <p className="text-sm text-text-primary">{backup.entryName}</p>
-                        <p className="text-xs text-text-muted">{backup.timestamp}</p>
+                        <p className="text-small text-text-primary">{backup.entryName}</p>
+                        <p className="text-caption text-text-muted">{backup.timestamp}</p>
                       </div>
                       <Button
                         variant="secondary"
@@ -333,11 +333,11 @@ export default function StartupPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-text-primary">AI Startup Recommendations</span>
+                        <span className="text-small font-semibold text-text-primary">AI Startup Recommendations</span>
                         {!isPro && <ProStatusPill />}
                         {isPro && <ProFeatureIndicator icon={SparklesIcon} label="AI-Powered" />}
                       </div>
-                      <p className="mt-0.5 text-xs text-text-secondary">
+                      <p className="mt-0.5 text-caption text-text-secondary">
                         AI analyzes your startup entries and recommends which to disable based on impact, safety, and usage patterns.
                       </p>
                     </div>
@@ -370,11 +370,11 @@ export default function StartupPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-text-primary">Startup Impact Analysis</span>
+                        <span className="text-small font-semibold text-text-primary">Startup Impact Analysis</span>
                         {!isPro && <ProStatusPill />}
                         {isPro && <ProFeatureIndicator icon={ChartBarIcon} label="Detailed" />}
                       </div>
-                      <p className="mt-0.5 text-xs text-text-secondary">
+                      <p className="mt-0.5 text-caption text-text-secondary">
                         Detailed boot impact analysis with CPU, memory, and disk activity estimates for each startup entry.
                       </p>
                     </div>
@@ -407,11 +407,11 @@ export default function StartupPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-text-primary">Auto-Delay</span>
+                        <span className="text-small font-semibold text-text-primary">Auto-Delay</span>
                         {!isPro && <ProStatusPill />}
                         {isPro && <ProFeatureIndicator icon={ArrowPathIcon} label="Active" />}
                       </div>
-                      <p className="mt-0.5 text-xs text-text-secondary">
+                      <p className="mt-0.5 text-caption text-text-secondary">
                         Automatically delay non-critical startup programs to speed up boot time. Launches them gradually after boot.
                       </p>
                     </div>
@@ -444,11 +444,11 @@ export default function StartupPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-text-primary">Startup History</span>
+                        <span className="text-small font-semibold text-text-primary">Startup History</span>
                         {!isPro && <ProStatusPill />}
                         {isPro && <ProFeatureIndicator icon={ClockIcon} label="Full Log" />}
                       </div>
-                      <p className="mt-0.5 text-xs text-text-secondary">
+                      <p className="mt-0.5 text-caption text-text-secondary">
                         Complete audit trail of all startup changes — disable, enable, restore actions with timestamps and estimated boot improvement.
                       </p>
                     </div>
@@ -481,10 +481,10 @@ export default function StartupPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-text-primary">Unlimited Management</span>
+                        <span className="text-small font-semibold text-text-primary">Unlimited Management</span>
                         {isPro && <ProFeatureIndicator icon={ShieldCheckIcon} label="Unlimited" />}
                       </div>
-                      <p className="mt-0.5 text-xs text-text-secondary">
+                      <p className="mt-0.5 text-caption text-text-secondary">
                         {isPro
                           ? 'Disable and enable unlimited startup entries with no session limits.'
                           : `Free edition: disable up to ${disableLimit} entries per session. Upgrade for unlimited management.`}

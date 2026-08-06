@@ -84,7 +84,7 @@ function ResultCard({ card }: { card: UnifiedResultCardData }) {
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <span className="text-brand-primary">{icon}</span>
-        <span className="text-sm font-medium text-text-primary flex-1">{card.title}</span>
+        <span className="text-small font-medium text-text-primary flex-1">{card.title}</span>
         {card.status && (
           <span className={`h-2 w-2 rounded-full ${STATUS_DOT[card.status]}`} aria-hidden />
         )}
@@ -94,8 +94,8 @@ function ResultCard({ card }: { card: UnifiedResultCardData }) {
       <div className="space-y-2">
         {card.metrics.map((metric, i) => (
           <div key={i} className="flex items-center justify-between">
-            <span className="text-xs text-text-muted">{metric.label}</span>
-            <span className={`text-sm font-bold tabular-nums ${METRIC_TONE[metric.tone ?? 'default']}`}>
+            <span className="text-caption text-text-muted">{metric.label}</span>
+            <span className={`text-small font-bold tabular-nums ${METRIC_TONE[metric.tone ?? 'default']}`}>
               {metric.value}
             </span>
           </div>

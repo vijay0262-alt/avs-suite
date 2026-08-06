@@ -126,7 +126,7 @@ export default function DuplicateFinderPage() {
                   <button
                     key={s.id}
                     onClick={() => vm.setScope(s.id as DuplicateScope)}
-                    className={`px-3 py-1.5 text-sm rounded-[var(--avs-radius-md)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
+                    className={`px-3 py-1.5 text-small rounded-[var(--avs-radius-md)] transition-colors focus:outline-none focus-visible:shadow-focus ${
                       state.scope === s.id
                         ? 'bg-brand-primary text-white'
                         : 'bg-[var(--avs-surface-muted)] text-text-secondary hover:bg-[var(--avs-surface-muted)]'
@@ -140,7 +140,7 @@ export default function DuplicateFinderPage() {
               {state.scope === 'entire' && (
                 <div>
                   {state.drives.length === 0 ? (
-                    <p className="text-text-secondary">No drives found</p>
+                    <p className="text-small text-text-secondary">No drives found</p>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {state.drives.map((drive) => (
@@ -154,10 +154,10 @@ export default function DuplicateFinderPage() {
                           onClick={() => vm.selectDrive(drive.mountpoint)}
                         >
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-lg font-semibold text-text-primary">{drive.device}</span>
-                            <span className="text-sm text-text-muted">{drive.fstype}</span>
+                            <span className="text-small font-semibold text-text-primary">{drive.device}</span>
+                            <span className="text-caption text-text-muted">{drive.fstype}</span>
                           </div>
-                          <div className="space-y-1 text-sm">
+                          <div className="space-y-1 text-small">
                             <div className="flex justify-between">
                               <span className="text-text-secondary">Total:</span>
                               <span className="text-text-primary">{vm.formatBytes(drive.total)}</span>
@@ -176,7 +176,7 @@ export default function DuplicateFinderPage() {
 
               {state.scope === 'custom' && (
                 <div>
-                  <label className="block text-sm text-text-secondary mb-2">
+                  <label className="block text-small text-text-secondary mb-2">
                     Enter custom directories (comma-separated)
                   </label>
                   <input
@@ -184,13 +184,13 @@ export default function DuplicateFinderPage() {
                     placeholder="C:\\Users\\YourName\\Documents, C:\\Users\\YourName\\Downloads"
                     value={state.customDirectories}
                     onChange={(e) => vm.setCustomDirectories(e.target.value)}
-                    className="w-full px-3 py-2 bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                    className="w-full px-3 py-2 bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded text-small text-text-primary focus:outline-none focus-visible:shadow-focus"
                   />
                 </div>
               )}
 
               {state.estimate && (
-                <div className="flex flex-wrap gap-4 text-sm">
+                <div className="flex flex-wrap gap-4 text-small">
                   <div>
                     <span className="text-text-secondary">Estimated files:</span>{' '}
                     <span className="font-semibold text-text-primary">{state.estimate.estimatedFiles.toLocaleString()}</span>
@@ -200,7 +200,7 @@ export default function DuplicateFinderPage() {
                     <span className="font-semibold text-text-primary">{vm.formatBytes(state.estimate.estimatedBytes)}</span>
                   </div>
                   {state.estimate.directories.length > 0 && (
-                    <div className="w-full text-xs text-text-muted truncate">
+                    <div className="w-full text-caption text-text-muted truncate">
                       {state.estimate.directories.join(', ')}
                     </div>
                   )}
@@ -265,24 +265,24 @@ export default function DuplicateFinderPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                 <Card title="Total Files">
-                  <p className="text-3xl font-bold text-text-primary">{state.scanResult.totalFiles}</p>
-                  <p className="text-sm text-text-secondary">Scanned</p>
+                  <p className="text-statistic text-text-primary">{state.scanResult.totalFiles}</p>
+                  <p className="text-caption text-text-secondary">Scanned</p>
                 </Card>
                 <Card title="Duplicates">
-                  <p className="text-3xl font-bold text-semantic-danger">{state.scanResult.totalDuplicates}</p>
-                  <p className="text-sm text-text-secondary">Found</p>
+                  <p className="text-statistic text-semantic-danger">{state.scanResult.totalDuplicates}</p>
+                  <p className="text-caption text-text-secondary">Found</p>
                 </Card>
                 <Card title="Recoverable Space">
-                  <p className="text-3xl font-bold text-semantic-success">
+                  <p className="text-statistic text-semantic-success">
                     {vm.formatBytes(state.scanResult.recoverableSpace)}
                   </p>
-                  <p className="text-sm text-text-secondary">Can be freed</p>
+                  <p className="text-caption text-text-secondary">Can be freed</p>
                 </Card>
                 <Card title="Scan Duration">
-                  <p className="text-3xl font-bold text-text-primary">
+                  <p className="text-statistic text-text-primary">
                     {(state.scanResult.scanDurationMs / 1000).toFixed(2)}s
                   </p>
-                  <p className="text-sm text-text-secondary">Time taken</p>
+                  <p className="text-caption text-text-secondary">Time taken</p>
                 </Card>
               </div>
 
@@ -299,7 +299,7 @@ export default function DuplicateFinderPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <ClockIcon className="h-4 w-4 text-text-secondary shrink-0" />
-                      <span className="text-xs text-text-secondary">
+                      <span className="text-caption text-text-secondary">
                         Free edition: <strong className="text-text-primary">{vm.getSelectedCount()} of {deleteLimit}</strong> files selected for deletion
                         {remainingDeletes !== null && remainingDeletes > 0 && ` (${remainingDeletes} remaining)`}
                       </span>
@@ -310,7 +310,7 @@ export default function DuplicateFinderPage() {
                           limitDescription: `Free edition allows deleting up to ${deleteLimit} duplicate files per session.`,
                           proBenefit: 'Unlimited deletion + smart duplicate detection + automatic grouping.',
                         })}
-                        className="text-xs font-medium text-brand-primary hover:underline"
+                        className="text-caption font-medium text-brand-primary hover:underline"
                         data-testid="duplicate-upgrade-link"
                       >
                         Upgrade to Pro →
@@ -321,7 +321,7 @@ export default function DuplicateFinderPage() {
               )}
 
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-text-primary">Duplicate Groups</h2>
+                <h2 className="text-section-title text-text-primary">Duplicate Groups</h2>
                 <div className="flex gap-2">
                   <Button variant="secondary" size="sm" onClick={handleSelectAll}>
                     Select All
@@ -353,15 +353,15 @@ export default function DuplicateFinderPage() {
                             }`}
                           >
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm text-text-primary truncate">{file.name}</p>
-                              <p className="text-xs text-text-muted truncate">{file.path}</p>
-                              <p className="text-xs text-text-muted">
+                              <p className="text-small text-text-primary truncate">{file.name}</p>
+                              <p className="text-caption text-text-muted truncate">{file.path}</p>
+                              <p className="text-caption text-text-muted">
                                 {vm.formatBytes(file.size)} • {new Date(file.modified).toLocaleString()}
                               </p>
                             </div>
                             <div className="flex items-center gap-2">
                               {fileIndex === 0 && (
-                                <span className="text-xs text-green-500 font-semibold">Original</span>
+                                <span className="text-caption text-semantic-success font-semibold">Original</span>
                               )}
                               <input
                                 type="checkbox"
@@ -391,10 +391,10 @@ export default function DuplicateFinderPage() {
                 <Card title="Selected for Deletion" className="mb-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-lg font-semibold text-text-primary">
+                      <p className="text-small font-semibold text-text-primary">
                         {vm.getSelectedCount()} files selected
                       </p>
-                      <p className="text-sm text-text-secondary">
+                      <p className="text-caption text-text-secondary">
                         {vm.formatBytes(vm.getSelectedSize())} will be freed
                       </p>
                     </div>
@@ -429,11 +429,11 @@ export default function DuplicateFinderPage() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-text-primary">Smart Duplicate Detection</span>
+                            <span className="text-small font-semibold text-text-primary">Smart Duplicate Detection</span>
                             {!isPro && <ProStatusPill />}
                             {isPro && <ProFeatureIndicator icon={SparklesIcon} label="AI-Powered" />}
                           </div>
-                          <p className="mt-0.5 text-xs text-text-secondary">
+                          <p className="mt-0.5 text-caption text-text-secondary">
                             AI-powered analysis identifies near-duplicates by content similarity, not just exact hash matches. Detects similar images, documents with minor changes, and redundant backups.
                           </p>
                         </div>
@@ -466,11 +466,11 @@ export default function DuplicateFinderPage() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-text-primary">Automatic Grouping</span>
+                            <span className="text-small font-semibold text-text-primary">Automatic Grouping</span>
                             {!isPro && <ProStatusPill />}
                             {isPro && <ProFeatureIndicator icon={Squares2X2Icon} label="Auto" />}
                           </div>
-                          <p className="mt-0.5 text-xs text-text-secondary">
+                          <p className="mt-0.5 text-caption text-text-secondary">
                             Automatically groups duplicates by file type, size range, and date. Recommends which files to keep and which to delete based on location, recency, and file integrity.
                           </p>
                         </div>
@@ -503,10 +503,10 @@ export default function DuplicateFinderPage() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-text-primary">Unlimited Deletion</span>
+                            <span className="text-small font-semibold text-text-primary">Unlimited Deletion</span>
                             {isPro && <ProFeatureIndicator icon={ClockIcon} label="Unlimited" />}
                           </div>
-                          <p className="mt-0.5 text-xs text-text-secondary">
+                          <p className="mt-0.5 text-caption text-text-secondary">
                             {isPro
                               ? 'Delete unlimited duplicate files with no session limits.'
                               : `Free edition: delete up to ${deleteLimit} files per session. Upgrade for unlimited deletion.`}

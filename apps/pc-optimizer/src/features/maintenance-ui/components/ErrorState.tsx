@@ -23,7 +23,7 @@ export function ErrorState({ message, onRetry, testId }: ErrorStateProps) {
       <h3 className="text-base font-semibold text-[var(--avs-text-primary)]">
         Something went wrong
       </h3>
-      <p className="mt-1 max-w-sm text-sm text-[var(--avs-text-secondary)]">
+      <p className="mt-1 max-w-sm text-small text-[var(--avs-text-secondary)]">
         {message ?? 'An unexpected error occurred while loading data.'}
       </p>
       {onRetry && (

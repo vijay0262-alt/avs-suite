@@ -21,7 +21,7 @@ export const HealthScoreCard = React.memo(function HealthScoreCard({ healthScore
     return (
       <Card title="Health Score">
         <div className="flex items-center justify-center py-12">
-          <div className="text-sm text-text-muted">Calculating health score...</div>
+          <div className="text-small text-text-muted">Calculating health score...</div>
         </div>
       </Card>
     );
@@ -31,7 +31,7 @@ export const HealthScoreCard = React.memo(function HealthScoreCard({ healthScore
     return (
       <Card title="Health Score">
         <div className="flex items-center justify-center py-12">
-          <div className="text-sm text-text-muted">
+          <div className="text-small text-text-muted">
             {error ? error : 'Unable to load health score'}
           </div>
         </div>
@@ -82,20 +82,20 @@ export const HealthScoreCard = React.memo(function HealthScoreCard({ healthScore
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
                 <div className={`text-3xl font-bold ${scoreColor} tabular-nums`}>{displayScore}</div>
-                <div className="text-xs text-text-muted">/ 100</div>
+                <div className="text-caption text-text-muted">/ 100</div>
               </div>
             </div>
           </div>
 
           <div className="flex-1">
             <div className="flex items-center gap-3">
-              <div className={`text-2xl font-semibold ${zoneConfig.textColor}`}>{zoneConfig.label}</div>
+              <div className={`text-statistic font-semibold ${zoneConfig.textColor}`}>{zoneConfig.label}</div>
               <HealthBadge badge={scoreToHealthBadge(displayScore)} size="sm" />
             </div>
-            <div className="mt-1 inline-flex items-center rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-sm font-medium text-text-secondary">
+            <div className="mt-1 inline-flex items-center rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-small font-medium text-text-secondary">
               {issueCount > 0 ? `${issueCount} Issues Found` : 'No Issues Found'}
             </div>
-            <div className="mt-2 text-sm text-text-secondary">
+            <div className="mt-2 text-small text-text-secondary">
               {(() => {
                 const msg = getDashboardMessage(displayScore);
                 return (
@@ -124,8 +124,8 @@ export const HealthScoreCard = React.memo(function HealthScoreCard({ healthScore
 const Stat = React.memo(function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg bg-[var(--avs-surface-muted)] p-3 text-center">
-      <div className="text-lg font-bold text-text-primary tabular-nums">{value}</div>
-      <div className="text-xs text-text-muted">{label}</div>
+      <div className="text-section-title font-bold text-text-primary tabular-nums">{value}</div>
+      <div className="text-caption text-text-muted">{label}</div>
     </div>
   );
 });

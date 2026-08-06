@@ -116,7 +116,7 @@ export function CleaningLog(props: CleaningLogProps) {
             value={localQuery}
             onChange={(e) => setLocalQuery(e.target.value)}
             placeholder="Search cleaner name or error text…"
-            className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] py-2 pl-9 pr-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/40"
+            className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] py-2 pl-9 pr-3 text-small text-text-primary placeholder:text-text-muted focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/40"
             data-testid="cleaning-log-search"
           />
         </div>
@@ -136,7 +136,7 @@ export function CleaningLog(props: CleaningLogProps) {
         />
       </div>
 
-      <div className="mb-2 text-xs text-text-muted">
+      <div className="mb-2 text-caption text-text-muted">
         {loading
           ? 'Loading…'
           : `${entries.length.toLocaleString()} of ${total.toLocaleString()} entries · ${formatBytes(bytesRecoveredTotal)} recovered in view`}
@@ -145,14 +145,14 @@ export function CleaningLog(props: CleaningLogProps) {
       {error && (
         <div
           role="alert"
-          className="mb-2 rounded-[var(--avs-radius-md)] border border-semantic-danger/40 bg-[color-mix(in_srgb,var(--avs-danger)_10%,transparent)] p-2 text-xs text-semantic-danger"
+          className="mb-2 rounded-[var(--avs-radius-md)] border border-semantic-danger/40 bg-[color-mix(in_srgb,var(--avs-danger)_10%,transparent)] p-2 text-caption text-semantic-danger"
         >
           {error}
         </div>
       )}
 
       <div className="overflow-x-auto rounded-[var(--avs-radius-md)] border border-[var(--avs-border)]">
-        <table className="w-full text-xs" data-testid="cleaning-log-table">
+        <table className="w-full text-caption" data-testid="cleaning-log-table">
           <thead>
             <tr className="border-b border-[var(--avs-border)] bg-[var(--avs-surface-muted)] uppercase tracking-wide text-text-muted">
               <th className="px-3 py-2 text-left font-medium">Date</th>
@@ -232,7 +232,7 @@ function FilterSelect({
     <select
       value={value ?? ''}
       onChange={(e) => onChange(e.target.value || null)}
-      className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-sm text-text-primary focus:border-brand-primary focus:outline-none"
+      className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-small text-text-primary focus:border-brand-primary focus:outline-none"
       data-testid={testId}
     >
       <option value="">{placeholder}</option>

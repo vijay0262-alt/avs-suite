@@ -37,10 +37,10 @@ export function ProtectionStatus({ state, coverage }: ProtectionStatusProps) {
       <div className="flex items-start gap-3">
         <InformationCircleIcon className="h-5 w-5 shrink-0 text-[var(--avs-info)] mt-0.5" />
         <div>
-          <h3 className="text-sm font-semibold text-[var(--avs-text-primary)] mb-1">
+          <h3 className="text-small font-semibold text-[var(--avs-text-primary)] mb-1">
             What does &ldquo;{state.headline}&rdquo; mean?
           </h3>
-          <p className="text-sm text-[var(--avs-text-secondary)] leading-relaxed">
+          <p className="text-small text-[var(--avs-text-secondary)] leading-relaxed">
             {explanation}
           </p>
         </div>

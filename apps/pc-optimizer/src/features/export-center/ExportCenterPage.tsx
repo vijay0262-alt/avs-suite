@@ -113,7 +113,7 @@ export default function ExportCenterPage() {
 
       {state.error && (
         <Card variant="glass">
-          <div className="flex items-center gap-2 text-sm text-[var(--avs-danger)]">
+          <div className="flex items-center gap-2 text-small text-[var(--avs-danger)]">
             <ExclamationTriangleIcon className="h-4 w-4" />
             {state.error}
           </div>
@@ -131,8 +131,8 @@ export default function ExportCenterPage() {
                   <Icon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-[var(--avs-text-primary)]">{type.label}</p>
-                  <p className="text-xs text-[var(--avs-text-muted)]">{type.description}</p>
+                  <p className="text-small font-semibold text-[var(--avs-text-primary)]">{type.label}</p>
+                  <p className="text-caption text-[var(--avs-text-muted)]">{type.description}</p>
                   <div className="mt-3 flex gap-2">
                     {FORMATS.map((fmt) => (
                       <Button
@@ -163,10 +163,10 @@ export default function ExportCenterPage() {
               <div key={exp.id} className="flex items-center gap-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-4 py-3">
                 <CheckCircleIcon className="h-5 w-5 text-[var(--avs-success)]" />
                 <div className="flex-1">
-                  <span className="text-sm font-medium text-[var(--avs-text-primary)]">{exp.filename}</span>
+                  <span className="text-small font-medium text-[var(--avs-text-primary)]">{exp.filename}</span>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-[var(--avs-text-muted)]">{new Date(exp.timestamp).toLocaleString()}</span>
-                    <span className="text-xs text-[var(--avs-text-muted)]">({(exp.size / 1024).toFixed(1)} KB)</span>
+                    <span className="text-caption text-[var(--avs-text-muted)]">{new Date(exp.timestamp).toLocaleString()}</span>
+                    <span className="text-caption text-[var(--avs-text-muted)]">({(exp.size / 1024).toFixed(1)} KB)</span>
                   </div>
                 </div>
                 <Badge tone="brand">{exp.format.toUpperCase()}</Badge>

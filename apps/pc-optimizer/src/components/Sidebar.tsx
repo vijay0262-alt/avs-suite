@@ -160,7 +160,6 @@ function NavSectionView({
   t: (key: string) => string;
 }) {
   const entries = section.entries.filter((entry) => {
-    // Hide 'upgrade' entry for Pro users — they're already upgraded
     if (entry.id === 'upgrade' && isPro) return false;
     return true;
   });
@@ -169,10 +168,10 @@ function NavSectionView({
 
   return (
     <div data-testid={`sidebar-section-${section.id}`}>
-      <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted/70">
+      <span className="text-micro font-semibold uppercase tracking-[var(--avs-tracking-widest)] text-text-muted/60 px-3">
         {t(section.labelKey)}
       </span>
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5 mt-1.5">
         {entries.map(({ id, to, labelKey, Icon, proEnhanced }) => (
           <NavLink
             key={id}
@@ -180,9 +179,9 @@ function NavSectionView({
             data-testid={`sidebar-link-${id}`}
             className={({ isActive }) =>
               clsx(
-                'group relative flex items-center gap-3 rounded-[var(--avs-radius-md)] px-3 py-2 text-[13px] font-medium',
+                'group relative flex items-center gap-3 rounded-[var(--avs-radius-md)] px-3 py-2 text-small font-medium',
                 'transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]',
-                'outline-none focus-visible:shadow-[var(--avs-focus-ring)]',
+                'outline-none focus-visible:shadow-focus',
                 isActive
                   ? 'text-text-primary'
                   : 'text-text-secondary hover:text-text-primary hover:bg-[var(--avs-surface-muted)]',
@@ -193,7 +192,7 @@ function NavSectionView({
               <>
                 {isActive && (
                   <span
-                    className="absolute inset-0 rounded-[var(--avs-radius-md)] bg-[var(--avs-glass-bg)] border border-[var(--avs-glass-border)] shadow-[var(--avs-shadow-glow)]"
+                    className="absolute inset-0 rounded-[var(--avs-radius-md)] bg-[var(--avs-glass-bg)] border border-[var(--avs-glass-border)] shadow-glow"
                     aria-hidden
                   />
                 )}
@@ -205,7 +204,7 @@ function NavSectionView({
                 )}
                 <Icon
                   className={clsx(
-                    'relative h-[18px] w-[18px] shrink-0 transition-colors',
+                    'relative h-5 w-5 shrink-0 transition-colors',
                     isActive ? 'text-brand-primary' : 'text-text-muted group-hover:text-text-secondary',
                   )}
                   aria-hidden
@@ -213,7 +212,7 @@ function NavSectionView({
                 <span className="relative truncate flex-1">{t(labelKey)}</span>
                 {proEnhanced && !isPro && (
                   <StarIcon
-                    className="relative h-3 w-3 shrink-0 text-semantic-warning/70"
+                    className="relative h-3.5 w-3.5 shrink-0 text-semantic-warning/70"
                     aria-label="Professional feature"
                     data-testid={`sidebar-pro-badge-${id}`}
                   />
@@ -250,14 +249,14 @@ export function Sidebar() {
 
   return (
     <aside
-      className="w-60 shrink-0 border-r border-[var(--avs-glass-border)] bg-[var(--avs-glass-bg)] backdrop-blur-[var(--avs-glass-blur)] px-3 py-4 overflow-y-auto"
+      className="w-60 shrink-0 border-r border-[var(--avs-border)] bg-[var(--avs-glass-bg)] backdrop-blur-[var(--avs-glass-blur)] px-3 py-4 overflow-y-auto"
       data-testid="app-sidebar"
       aria-label="Sidebar navigation"
     >
-      <div className="mb-4">
+      <div className="mb-5">
         <GlobalSearch entries={allEntries} />
       </div>
-      <nav aria-label="Primary navigation" className="flex flex-col gap-3">
+      <nav aria-label="Primary navigation" className="flex flex-col gap-4">
         {NAV_SECTIONS.map((section) => (
           <NavSectionView
             key={section.id}

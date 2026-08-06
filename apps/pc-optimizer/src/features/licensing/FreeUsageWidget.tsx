@@ -42,9 +42,9 @@ function UsageRow({ icon: Icon, label, current, max, unit }: UsageRowProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon className="h-4 w-4 text-text-muted" />
-          <span className="text-xs font-medium text-text-secondary">{label}</span>
+          <span className="text-caption font-medium text-text-secondary">{label}</span>
         </div>
-        <span className={`text-xs tabular-nums ${isLow ? 'text-semantic-warning font-medium' : 'text-text-muted'}`}>
+        <span className={`text-caption tabular-nums ${isLow ? 'text-semantic-warning font-medium' : 'text-text-muted'}`}>
           {current} / {max}{unit ? ` ${unit}` : ''}
         </span>
       </div>
@@ -96,7 +96,7 @@ export function FreeUsageWidget() {
   return (
     <Card title="Today's Usage" variant="glass" data-testid="free-usage-widget">
       <div className="space-y-4">
-        <p className="text-xs text-text-muted">
+        <p className="text-caption text-text-muted">
           You&apos;re using the Free edition. Here&apos;s what&apos;s remaining today.
         </p>
 
@@ -137,15 +137,15 @@ export function FreeUsageWidget() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ArrowTrendingUpIcon className="h-4 w-4 text-text-muted" />
-              <span className="text-xs font-medium text-text-secondary">Predictive Health Forecast</span>
+              <span className="text-caption font-medium text-text-secondary">Predictive Health Forecast</span>
             </div>
-            <span className="text-xs text-text-muted">{forecastMax} days</span>
+            <span className="text-caption text-text-muted">{forecastMax} days</span>
           </div>
         </div>
 
         <div className="flex items-center gap-2 pt-3 border-t border-[var(--avs-border)]">
           <ClockIcon className="h-3.5 w-3.5 text-text-muted" />
-          <span className="text-xs text-text-muted">Limits reset daily at midnight</span>
+          <span className="text-caption text-text-muted">Limits reset daily at midnight</span>
         </div>
       </div>
     </Card>

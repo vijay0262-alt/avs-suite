@@ -286,7 +286,7 @@ const TABS: { id: WorkspaceTab; label: string; icon: typeof Squares2X2Icon }[] =
   { id: 'command-center', label: 'Command Center', icon: Squares2X2Icon },
   { id: 'aiAssistant', label: 'AVS AI Assistant', icon: ChatBubbleLeftRightIcon },
   { id: 'report-studio', label: 'Report Studio', icon: DocumentChartBarIcon },
-  { id: 'tools', label: 'AI Tools', icon: WrenchScrewdriverIcon },
+  { id: 'tools', label: 'Tools', icon: WrenchScrewdriverIcon },
   { id: 'actions', label: 'Actions', icon: BoltIcon },
   { id: 'personalization', label: 'Personalization', icon: Cog6ToothIcon },
 ];
@@ -303,7 +303,7 @@ export default function AIWorkspacePage() {
   if (state.bootstrap === 'loading') {
     return (
       <div className="px-6 py-6">
-        <PageHeader title="AI Workspace"        description="Unified AI platform: Command Center, AVS AI Assistant, Report Studio, Tools, Actions, and Personalization." />
+        <PageHeader title="Workspace"        description="Unified platform: Command Center, AVS AI Assistant, Report Studio, Tools, Actions, and Personalization." />
         <ModuleLoadingState />
       </div>
     );
@@ -314,8 +314,8 @@ export default function AIWorkspacePage() {
   return (
     <div className="px-6 py-6 space-y-6">
       <PageHeader
-        title="AI Workspace"
-        description="Unified AI platform: Command Center, AVS AI Assistant, Report Studio, Tools, Actions, and Personalization."
+        title="Workspace"
+        description="Unified platform: Command Center, AVS AI Assistant, Report Studio, Tools, Actions, and Personalization."
         actions={
           <Button
             onClick={() => vm.loadDashboard()}
@@ -333,7 +333,7 @@ export default function AIWorkspacePage() {
           <button
             key={tab.id}
             onClick={() => vm.setTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 text-small font-medium transition-colors ${
               s.activeTab === tab.id
                 ? 'text-[var(--avs-brand-primary)] border-b-2 border-[var(--avs-brand-primary)]'
                 : 'text-[var(--avs-text-muted)] hover:text-[var(--avs-text-primary)]'
@@ -357,7 +357,7 @@ export default function AIWorkspacePage() {
         <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-danger)]/10 p-4">
           <div className="flex items-center gap-2">
             <ExclamationTriangleIcon className="h-5 w-5 text-[var(--avs-danger)]" />
-            <span className="text-sm text-[var(--avs-danger)]">{s.error}</span>
+            <span className="text-small text-[var(--avs-danger)]">{s.error}</span>
           </div>
         </div>
       )}
@@ -392,7 +392,7 @@ function CommandCenterTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorksp
               value={s.searchQuery}
               onChange={(e) => vm.search(e.target.value)}
               placeholder="Search widgets, actions, recommendations..."
-              className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] pl-9 pr-3 py-2 text-sm text-[var(--avs-text-primary)]"
+              className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] pl-9 pr-3 py-2 text-small text-[var(--avs-text-primary)]"
             />
           </div>
           <Button onClick={() => vm.refreshAll()} leftIcon={<ArrowPathIcon className="h-4 w-4" />} variant="secondary">
@@ -404,7 +404,7 @@ function CommandCenterTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorksp
             {s.searchResults.slice(0, 10).map((r) => (
               <div key={r.id} className="flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
                 <SparklesIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
-                <span className="text-sm text-[var(--avs-text-primary)]">{r.title}</span>
+                <span className="text-small text-[var(--avs-text-primary)]">{r.title}</span>
                 <Badge tone="neutral" className="ml-auto">{r.type}</Badge>
               </div>
             ))}
@@ -419,10 +419,10 @@ function CommandCenterTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorksp
             {dash.widgets.map((w) => (
               <div key={w.definition.id} className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-[var(--avs-text-primary)]">{w.definition.title}</span>
+                  <span className="text-small font-medium text-[var(--avs-text-primary)]">{w.definition.title}</span>
                   <Badge tone={w.status === 'visible' ? 'success' : w.status === 'error' ? 'danger' : 'neutral'}>{w.status}</Badge>
                 </div>
-                <p className="text-xs text-[var(--avs-text-muted)] mt-1">{w.definition.category}</p>
+                <p className="text-caption text-[var(--avs-text-muted)] mt-1">{w.definition.category}</p>
               </div>
             ))}
           </div>
@@ -463,7 +463,7 @@ function AIAssistantTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorkspac
             onChange={(e) => vm.setAIAssistantInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && vm.processPrompt()}
             placeholder="Ask the AVS AI Assistant..."
-            className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-sm text-[var(--avs-text-primary)]"
+            className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-small text-[var(--avs-text-primary)]"
           />
           <Button onClick={() => vm.processPrompt()} loading={s.isProcessingPrompt} leftIcon={<SparklesIcon className="h-4 w-4" />}>
             Process
@@ -474,23 +474,23 @@ function AIAssistantTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorkspac
       {s.aiAssistantResult && (
         <Card title="Last Response" variant="glass">
           <div className="space-y-3">
-            <p className="text-sm text-[var(--avs-text-primary)]">{s.aiAssistantResult.response.answer}</p>
+            <p className="text-small text-[var(--avs-text-primary)]">{s.aiAssistantResult.response.answer}</p>
             <div className="flex items-center gap-2">
               <Badge tone="brand">{s.aiAssistantResult.response.intent}</Badge>
-              <span className="text-xs text-[var(--avs-text-muted)]">
+              <span className="text-caption text-[var(--avs-text-muted)]">
                 Confidence: {(s.aiAssistantResult.response.confidence * 100).toFixed(0)}%
               </span>
-              <span className="text-xs text-[var(--avs-text-muted)]">
+              <span className="text-caption text-[var(--avs-text-muted)]">
                 {(s.aiAssistantResult.processingTimeMs / 1000).toFixed(2)}s
               </span>
             </div>
             {s.aiAssistantSuggestions.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-1">Suggestions</h4>
+                <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-1">Suggestions</h4>
                 {s.aiAssistantSuggestions.map((sug) => (
                   <div key={sug.id} className="flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2 mt-1">
                     <LightBulbIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
-                    <span className="text-xs text-[var(--avs-text-primary)]">{sug.title}</span>
+                    <span className="text-caption text-[var(--avs-text-primary)]">{sug.title}</span>
                     <Badge tone="neutral" className="ml-auto">{sug.priority}</Badge>
                   </div>
                 ))}
@@ -544,8 +544,8 @@ function ReportStudioTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorkspa
               <div key={report.id} className="flex items-center gap-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
                 <DocumentChartBarIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-[var(--avs-text-primary)]">{report.title}</span>
-                  <span className="text-xs text-[var(--avs-text-muted)] ml-2">{report.type}</span>
+                  <span className="text-small font-medium text-[var(--avs-text-primary)]">{report.title}</span>
+                  <span className="text-caption text-[var(--avs-text-muted)] ml-2">{report.type}</span>
                 </div>
                 <Badge tone={report.status === 'exported' ? 'success' : 'neutral'}>{report.status}</Badge>
                 <Button onClick={() => vm.exportReport(report)} size="sm" variant="ghost" leftIcon={<ArrowDownTrayIcon className="h-3.5 w-3.5" />}>
@@ -564,7 +564,7 @@ function ReportStudioTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorkspa
             {s.scheduledReports.map((sched) => (
               <div key={sched.id} className="flex items-center gap-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
                 <ClockIcon className="h-4 w-4 text-[var(--avs-text-muted)]" />
-                <span className="text-sm text-[var(--avs-text-primary)]">{sched.reportType}</span>
+                <span className="text-small text-[var(--avs-text-primary)]">{sched.reportType}</span>
                 <Badge tone="brand">{sched.frequency}</Badge>
                 <button
                   onClick={() => vm.cancelSchedule(sched.id)}
@@ -585,8 +585,8 @@ function ReportStudioTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorkspa
             {s.reportHistory.slice(0, 10).map((entry) => (
               <div key={entry.id} className="flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
                 <DocumentChartBarIcon className="h-3.5 w-3.5 text-[var(--avs-text-muted)]" />
-                <span className="text-xs text-[var(--avs-text-primary)]">{entry.reportType}</span>
-                <span className="text-xs text-[var(--avs-text-muted)] ml-auto">
+                <span className="text-caption text-[var(--avs-text-primary)]">{entry.reportType}</span>
+                <span className="text-caption text-[var(--avs-text-muted)] ml-auto">
                   {new Date(entry.generatedAt).toLocaleString()}
                 </span>
               </div>
@@ -620,21 +620,21 @@ function ToolsTab({ state }: { state: AIWorkspaceState }) {
             {s.registeredTools.map((tool) => (
               <div key={tool.id} className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-[var(--avs-text-primary)]">{tool.name}</span>
+                  <span className="text-small font-medium text-[var(--avs-text-primary)]">{tool.name}</span>
                   <Badge tone="brand">{tool.category}</Badge>
                 </div>
-                <p className="text-xs text-[var(--avs-text-muted)] mt-1">{tool.description}</p>
+                <p className="text-caption text-[var(--avs-text-muted)] mt-1">{tool.description}</p>
                 <div className="flex items-center gap-2 mt-2">
                   <Badge tone={tool.riskLevel === 'none' ? 'success' : tool.riskLevel === 'low' ? 'success' : 'warning'}>
                     Risk: {tool.riskLevel}
                   </Badge>
-                  <span className="text-xs text-[var(--avs-text-muted)]">{tool.outputType}</span>
+                  <span className="text-caption text-[var(--avs-text-muted)]">{tool.outputType}</span>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <ModuleEmptyState icon={WrenchScrewdriverIcon} title="No tools registered" message="AI tools will appear here when registered." />
+          <ModuleEmptyState icon={WrenchScrewdriverIcon} title="No tools registered" message="Tools will appear here when registered." />
         )}
       </Card>
     </div>
@@ -664,7 +664,7 @@ function ActionsTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorkspaceVie
             onChange={(e) => vm.setActionInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && vm.parseActionRequest()}
             placeholder="Describe an action in natural language..."
-            className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-sm text-[var(--avs-text-primary)]"
+            className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-small text-[var(--avs-text-primary)]"
           />
           <Button onClick={() => vm.parseActionRequest()} leftIcon={<BoltIcon className="h-4 w-4" />}>
             Parse
@@ -678,7 +678,7 @@ function ActionsTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorkspaceVie
             {s.parsedRequest.intent && (
               <div className="flex items-center gap-2">
                 <Badge tone="brand">{s.parsedRequest.intent.intent}</Badge>
-                <span className="text-xs text-[var(--avs-text-muted)]">
+                <span className="text-caption text-[var(--avs-text-muted)]">
                   Confidence: {(s.parsedRequest.intent.confidence * 100).toFixed(0)}%
                 </span>
               </div>
@@ -699,16 +699,16 @@ function ActionsTab({ state, vm }: { state: AIWorkspaceState; vm: AIWorkspaceVie
           <div className="space-y-2">
             <div className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] p-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-[var(--avs-text-primary)]">{s.parsedRequest.actionPlan.estimatedBenefit}</span>
+                <span className="text-small font-medium text-[var(--avs-text-primary)]">{s.parsedRequest.actionPlan.estimatedBenefit}</span>
                 <Badge tone={s.parsedRequest.actionPlan.status === 'approved' ? 'success' : s.parsedRequest.actionPlan.status === 'rejected' ? 'danger' : 'neutral'}>
                   {s.parsedRequest.actionPlan.status}
                 </Badge>
               </div>
-              <p className="text-xs text-[var(--avs-text-muted)] mt-1">{s.parsedRequest.actionPlan.explanation.summary}</p>
+              <p className="text-caption text-[var(--avs-text-muted)] mt-1">{s.parsedRequest.actionPlan.explanation.summary}</p>
               {s.parsedRequest.actionPlan.steps.length > 0 && (
                 <div className="mt-2 space-y-1">
                   {s.parsedRequest.actionPlan.steps.map((step, i) => (
-                    <div key={step.id} className="flex items-center gap-2 text-xs text-[var(--avs-text-secondary)]">
+                    <div key={step.id} className="flex items-center gap-2 text-caption text-[var(--avs-text-secondary)]">
                       <span className="font-medium text-[var(--avs-text-muted)]">{i + 1}.</span>
                       <span>{step.description}</span>
                       <Badge tone="neutral" className="ml-auto">{step.riskLevel}</Badge>
@@ -749,16 +749,16 @@ function PersonalizationTab({ state }: { state: AIWorkspaceState; vm: AIWorkspac
               className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] p-4 transition-all"
             >
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-[var(--avs-text-primary)]">{profile.label}</span>
+                <span className="text-small font-medium text-[var(--avs-text-primary)]">{profile.label}</span>
                 {profile.isBuiltIn && <Badge tone="brand">Built-in</Badge>}
               </div>
-              <p className="text-xs text-[var(--avs-text-muted)] mt-1">{profile.type}</p>
+              <p className="text-caption text-[var(--avs-text-muted)] mt-1">{profile.type}</p>
               {profile.description && (
-                <p className="text-xs text-[var(--avs-text-secondary)] mt-2">{profile.description}</p>
+                <p className="text-caption text-[var(--avs-text-secondary)] mt-2">{profile.description}</p>
               )}
               <div className="flex items-center gap-2 mt-2">
                 <Badge tone="neutral">{profile.aiInteractionStyle}</Badge>
-                <span className="text-xs text-[var(--avs-text-muted)]">{profile.quickActions.length} quick actions</span>
+                <span className="text-caption text-[var(--avs-text-muted)]">{profile.quickActions.length} quick actions</span>
               </div>
             </div>
           ))}
@@ -776,8 +776,8 @@ function StatBox({ label, value, icon: Icon }: { label: string; value: string | 
       <div className="flex items-center gap-2">
         <Icon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
         <div>
-          <p className="text-xs text-[var(--avs-text-muted)]">{label}</p>
-          <p className="text-lg font-bold text-[var(--avs-text-primary)]">{value}</p>
+          <p className="text-caption text-[var(--avs-text-muted)]">{label}</p>
+          <p className="text-section-title font-bold text-[var(--avs-text-primary)]">{value}</p>
         </div>
       </div>
     </Card>
@@ -787,8 +787,8 @@ function StatBox({ label, value, icon: Icon }: { label: string; value: string | 
 function _PrefRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
-      <span className="text-xs font-medium text-[var(--avs-text-muted)]">{label}</span>
-      <span className="text-xs text-[var(--avs-text-primary)] capitalize">{value}</span>
+      <span className="text-caption font-medium text-[var(--avs-text-muted)]">{label}</span>
+      <span className="text-caption text-[var(--avs-text-primary)] capitalize">{value}</span>
     </div>
   );
 }

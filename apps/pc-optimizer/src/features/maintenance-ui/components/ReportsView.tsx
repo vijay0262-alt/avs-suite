@@ -131,23 +131,23 @@ export const ReportsView = React.memo(function ReportsView() {
       {range === 'custom' && (
         <div className="flex flex-wrap items-end gap-4" data-testid="custom-range-inputs">
           <div>
-            <label className="block text-xs font-medium text-[var(--avs-text-muted)] mb-1">From</label>
+            <label className="block text-caption font-medium text-[var(--avs-text-muted)] mb-1">From</label>
             <input
               type="date"
               value={customFrom}
               onChange={(e) => setCustomFrom(e.target.value)}
-              className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-sm text-[var(--avs-text-primary)] outline-none focus:border-[var(--avs-brand-primary)]"
+              className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-small text-[var(--avs-text-primary)] outline-none focus:border-[var(--avs-brand-primary)]"
               aria-label="Start date"
               data-testid="custom-date-from"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--avs-text-muted)] mb-1">To</label>
+            <label className="block text-caption font-medium text-[var(--avs-text-muted)] mb-1">To</label>
             <input
               type="date"
               value={customTo}
               onChange={(e) => setCustomTo(e.target.value)}
-              className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-sm text-[var(--avs-text-primary)] outline-none focus:border-[var(--avs-brand-primary)]"
+              className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-small text-[var(--avs-text-primary)] outline-none focus:border-[var(--avs-brand-primary)]"
               aria-label="End date"
               data-testid="custom-date-to"
             />
@@ -162,13 +162,13 @@ export const ReportsView = React.memo(function ReportsView() {
       {range === 'schedule' && (
         <div className="flex flex-wrap items-end gap-4" data-testid="schedule-inputs">
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-medium text-[var(--avs-text-muted)] mb-1">Schedule ID</label>
+            <label className="block text-caption font-medium text-[var(--avs-text-muted)] mb-1">Schedule ID</label>
             <input
               type="text"
               value={scheduleId}
               onChange={(e) => setScheduleId(e.target.value)}
               placeholder="e.g. daily-junk-clean"
-              className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-sm text-[var(--avs-text-primary)] outline-none focus:border-[var(--avs-brand-primary)]"
+              className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-small text-[var(--avs-text-primary)] outline-none focus:border-[var(--avs-brand-primary)]"
               aria-label="Schedule ID"
               data-testid="schedule-id-input"
             />
@@ -222,7 +222,7 @@ function ReportContent({ report }: { report: ExecutionReport }) {
             <Badge tone={health.tone} className="text-base px-4 py-1" data-testid="report-health-badge">
               {health.label}
             </Badge>
-            <p className="mt-3 text-sm text-[var(--avs-text-secondary)] text-center">
+            <p className="mt-3 text-small text-[var(--avs-text-secondary)] text-center">
               {report.summary.totalExecutions} executions in this period
             </p>
           </div>
@@ -269,10 +269,10 @@ function ReportContent({ report }: { report: ExecutionReport }) {
       {/* Task Statistics */}
       <Card title="Task Statistics" data-testid="report-task-stats">
         {report.taskResults.length === 0 ? (
-          <p className="text-sm text-[var(--avs-text-muted)]">No task data in this period.</p>
+          <p className="text-small text-[var(--avs-text-muted)]">No task data in this period.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm" role="table">
+            <table className="w-full text-small" role="table">
               <thead className="bg-[var(--avs-surface-muted)]">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium text-[var(--avs-text-secondary)]">Task</th>
@@ -307,17 +307,17 @@ function ReportContent({ report }: { report: ExecutionReport }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {report.warnings.length > 0 && (
             <Card title={`Warnings (${report.warnings.length})`} data-testid="report-warnings">
-              <div className="max-h-40 overflow-y-auto space-y-1 text-sm text-[var(--avs-warning)]">
+              <div className="max-h-40 overflow-y-auto space-y-1 text-small text-[var(--avs-warning)]">
                 {report.warnings.slice(0, 20).map((w, i) => <div key={i}>• {w}</div>)}
-                {report.warnings.length > 20 && <div className="text-xs">...and {report.warnings.length - 20} more</div>}
+                {report.warnings.length > 20 && <div className="text-caption">...and {report.warnings.length - 20} more</div>}
               </div>
             </Card>
           )}
           {report.errors.length > 0 && (
             <Card title={`Errors (${report.errors.length})`} data-testid="report-errors">
-              <div className="max-h-40 overflow-y-auto space-y-1 text-sm text-[var(--avs-danger)]">
+              <div className="max-h-40 overflow-y-auto space-y-1 text-small text-[var(--avs-danger)]">
                 {report.errors.slice(0, 20).map((e, i) => <div key={i}>• {e}</div>)}
-                {report.errors.length > 20 && <div className="text-xs">...and {report.errors.length - 20} more</div>}
+                {report.errors.length > 20 && <div className="text-caption">...and {report.errors.length - 20} more</div>}
               </div>
             </Card>
           )}
@@ -330,11 +330,11 @@ function ReportContent({ report }: { report: ExecutionReport }) {
 function SummaryStat({ icon, label, value }: { icon?: React.ReactNode; label: string; value: React.ReactNode }) {
   return (
     <div>
-      <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-[var(--avs-text-muted)]">
+      <div className="flex items-center gap-1.5 text-caption font-medium uppercase tracking-wide text-[var(--avs-text-muted)]">
         {icon}
         {label}
       </div>
-      <div className="mt-1 text-lg font-semibold text-[var(--avs-text-primary)] tabular-nums">{value}</div>
+      <div className="mt-1 text-section-title font-semibold text-[var(--avs-text-primary)] tabular-nums">{value}</div>
     </div>
   );
 }

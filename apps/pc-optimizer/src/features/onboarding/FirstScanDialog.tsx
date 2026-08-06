@@ -65,13 +65,13 @@ export function FirstScanDialog({ open, onClose }: FirstScanDialogProps) {
             <SparklesIcon className="h-8 w-8 text-brand-primary" aria-hidden />
           </div>
           <div>
-            <p className="text-sm text-text-secondary">
+            <p className="text-small text-text-secondary">
               To get the most out of AVS Shield, we recommend running a quick system scan first.
             </p>
           </div>
         </div>
 
-        <p className="text-sm text-text-secondary">
+        <p className="text-small text-text-secondary">
           The scan analyzes your PC for junk files, startup issues, privacy traces,
           performance bottlenecks, and security status. It takes about 30 seconds and is
           completely safe — nothing is changed until you approve.
@@ -90,14 +90,14 @@ export function FirstScanDialog({ open, onClose }: FirstScanDialogProps) {
             >
               <item.icon className="h-5 w-5 text-brand-primary shrink-0 mt-0.5" aria-hidden />
               <div>
-                <div className="text-sm font-medium text-text-primary">{item.label}</div>
-                <div className="text-xs text-text-muted">{item.desc}</div>
+                <div className="text-small font-medium text-text-primary">{item.label}</div>
+                <div className="text-caption text-text-muted">{item.desc}</div>
               </div>
             </div>
           ))}
         </div>
 
-        <p className="text-xs text-text-muted text-center pt-1">
+        <p className="text-caption text-text-muted text-center pt-1">
           After the scan, AI features like Smart Optimize and AI Assistant will have real data to provide personalized recommendations.
         </p>
       </div>

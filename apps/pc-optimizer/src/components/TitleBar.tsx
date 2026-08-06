@@ -22,7 +22,7 @@ export function TitleBar() {
     >
       <div className="flex items-center gap-2.5">
         <div
-          className="h-6 w-6 rounded-[var(--avs-radius-sm)] flex items-center justify-center"
+          className="h-6 w-6 rounded-[var(--avs-radius-sm)] flex items-center justify-center shadow-sm"
           style={{ background: 'var(--avs-gradient-brand)' }}
           aria-hidden
         >
@@ -32,12 +32,12 @@ export function TitleBar() {
           </svg>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-xs font-semibold tracking-wide text-text-primary">
+          <span className="text-small font-semibold tracking-[var(--avs-tracking-wide)] text-text-primary">
             AVS Shield{isPro ? ' Pro' : ' Optimizer'}
           </span>
           {isPro && (
             <span
-              className="inline-flex items-center gap-0.5 rounded-full bg-brand-primary/15 border border-brand-primary/30 px-1.5 py-0.5 text-[10px] font-bold text-brand-primary"
+              className="inline-flex items-center gap-0.5 rounded-full bg-[var(--avs-brand-glow)] border border-[color-mix(in_srgb,var(--avs-brand-primary)_30%,transparent)] px-1.5 py-0.5 text-micro font-bold text-brand-primary"
               data-testid="titlebar-pro-badge"
             >
               <StarIcon className="h-2.5 w-2.5" />
@@ -46,7 +46,7 @@ export function TitleBar() {
           )}
         </div>
       </div>
-      <div className="text-[11px] text-text-muted">Windows 10 / 11 · x64</div>
+      <div className="text-caption text-text-muted">Windows 10 / 11 · x64</div>
     </header>
   );
 }

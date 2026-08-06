@@ -124,12 +124,12 @@ export function LiveScanProgress({
           <span className="relative inline-flex h-3 w-3 rounded-full bg-brand-primary" />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium text-text-primary">
+          <div className="text-small font-medium text-text-primary">
             {scanLabel} Scan in Progress…
           </div>
           {displayItem && (
             <div
-              className="mt-0.5 truncate text-xs text-text-muted font-mono"
+              className="mt-0.5 truncate text-caption text-text-muted font-mono"
               title={displayItem}
               data-testid="live-scan-current-item"
             >
@@ -137,7 +137,7 @@ export function LiveScanProgress({
             </div>
           )}
         </div>
-        <span className="text-xs tabular-nums text-text-muted">
+        <span className="text-caption tabular-nums text-text-muted">
           {formatDuration(effectiveElapsed)}
         </span>
       </div>
@@ -145,8 +145,8 @@ export function LiveScanProgress({
       {/* Progress bar */}
       <div className="mb-3">
         <div className="mb-1 flex items-center justify-between">
-          <span className="text-xs text-text-secondary">Progress</span>
-          <span className="text-xs font-medium tabular-nums text-text-primary">
+          <span className="text-caption text-text-secondary">Progress</span>
+          <span className="text-caption font-medium tabular-nums text-text-primary">
             {effectiveProgress}%
           </span>
         </div>
@@ -166,18 +166,18 @@ export function LiveScanProgress({
         <div className="flex gap-6">
           {itemsScanned !== undefined && (
             <div>
-              <span className="text-xs uppercase tracking-wide text-text-muted">Items Scanned</span>
-              <div className="text-lg font-semibold tabular-nums text-text-primary">
+              <span className="text-caption uppercase tracking-wide text-text-muted">Items Scanned</span>
+              <div className="text-section-title font-semibold tabular-nums text-text-primary">
                 {itemsScanned.toLocaleString()}
               </div>
             </div>
           )}
           {itemsFound !== undefined && (
             <div>
-              <span className="text-xs uppercase tracking-wide text-text-muted">
+              <span className="text-caption uppercase tracking-wide text-text-muted">
                 {scanLabel === 'Security' ? 'Threats Found' : 'Issues Found'}
               </span>
-              <div className="text-lg font-semibold tabular-nums text-text-primary">
+              <div className="text-section-title font-semibold tabular-nums text-text-primary">
                 {itemsFound.toLocaleString()}
               </div>
             </div>
@@ -203,7 +203,7 @@ export function LiveScanProgress({
                   }`}
                 />
                 <span
-                  className={`text-xs ${
+                  className={`text-caption ${
                     isCurrent
                       ? 'font-medium text-text-primary'
                       : isPast

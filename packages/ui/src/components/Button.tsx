@@ -1,8 +1,8 @@
 import clsx from 'clsx';
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-export type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'info';
+export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -15,23 +15,29 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const base =
   'inline-flex items-center justify-center gap-2 font-medium rounded-[var(--avs-radius-md)] ' +
   'transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)] ' +
-  'outline-none focus-visible:shadow-[var(--avs-focus-ring)] ' +
-  'disabled:opacity-50 disabled:cursor-not-allowed select-none';
+  'outline-none focus-visible:shadow-focus ' +
+  'disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none select-none ' +
+  'active:scale-[0.97]';
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    'bg-gradient-brand text-white hover:shadow-glow hover:brightness-110 active:scale-[0.98]',
+    'bg-gradient-brand text-white shadow-sm hover:shadow-glow hover:brightness-110',
   secondary:
-    'bg-[var(--avs-surface-muted)] text-[var(--avs-text-primary)] border border-[var(--avs-border)] hover:border-[var(--avs-border-hover)] hover:bg-[var(--avs-surface-elevated)]',
+    'bg-[var(--avs-surface-muted)] text-[var(--avs-text-primary)] border border-[var(--avs-border)] ' +
+    'hover:border-[var(--avs-border-hover)] hover:bg-[var(--avs-surface-elevated)]',
   ghost:
-    'bg-transparent text-[var(--avs-text-primary)] hover:bg-[var(--avs-surface-muted)]',
-  danger: 'bg-[var(--avs-danger)] text-white hover:brightness-110 active:scale-[0.98] hover:shadow-glow',
+    'bg-transparent text-[var(--avs-text-secondary)] hover:bg-[var(--avs-surface-muted)] hover:text-[var(--avs-text-primary)]',
+  danger:
+    'bg-[var(--avs-danger)] text-white shadow-sm hover:brightness-110 hover:shadow-glow',
+  info:
+    'bg-[var(--avs-info)] text-white shadow-sm hover:brightness-110 hover:shadow-glow',
 };
 
 const sizes: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-sm',
-  md: 'h-10 px-4 text-sm',
-  lg: 'h-12 px-6 text-base',
+  sm: 'h-8 px-3 text-small',
+  md: 'h-10 px-4 text-body',
+  lg: 'h-12 px-6 text-body',
+  icon: 'h-9 w-9 p-0',
 };
 
 /**
@@ -39,7 +45,7 @@ const sizes: Record<ButtonSize, string> = {
  * never re-style base HTML `<button>` elements directly.
  */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = 'primary', size = 'md', leftIcon, rightIcon, loading, className, children, ...rest },
+  { variant = 'primary', size = 'md', leftIcon, rightIcon, loading, className, children, disabled, ...rest },
   ref,
 ) {
   return (
@@ -47,11 +53,16 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       className={clsx(base, variants[variant], sizes[size], className)}
       data-loading={loading || undefined}
+      disabled={disabled || loading}
       {...rest}
     >
-      {leftIcon ? <span className="shrink-0">{leftIcon}</span> : null}
+      {loading ? (
+        <span className="shrink-0 animate-spin h-4 w-4 rounded-full border-2 border-current border-t-transparent" />
+      ) : leftIcon ? (
+        <span className="shrink-0">{leftIcon}</span>
+      ) : null}
       <span>{children}</span>
-      {rightIcon ? <span className="shrink-0">{rightIcon}</span> : null}
+      {!loading && rightIcon ? <span className="shrink-0">{rightIcon}</span> : null}
     </button>
   );
 });

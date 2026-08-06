@@ -119,7 +119,7 @@ export default function SystemHealthOverviewPage() {
       <div className="p-6">
         <PageHeader title="System Health Overview" description="Complete system health at a glance" />
         <Card variant="glass">
-          <div className="flex items-center gap-2 text-sm text-[var(--avs-danger)]">
+          <div className="flex items-center gap-2 text-small text-[var(--avs-danger)]">
             <ExclamationTriangleIcon className="h-4 w-4" />
             {state.error}
           </div>
@@ -160,17 +160,17 @@ export default function SystemHealthOverviewPage() {
                   <span className="text-3xl font-bold tabular-nums text-[var(--avs-text-primary)]">
                     {Math.round(ds.healthScorePanel.overallScore)}
                   </span>
-                  <span className="mt-0.5 rounded-full bg-[var(--avs-surface-muted)] px-2 py-0.5 text-xs font-semibold text-[var(--avs-text-secondary)]">
+                  <span className="mt-0.5 rounded-full bg-[var(--avs-surface-muted)] px-2 py-0.5 text-caption font-semibold text-[var(--avs-text-secondary)]">
                     {ds.healthScorePanel.letterGrade}
                   </span>
                 </div>
               </div>
-              <span className="mt-2 text-xs font-medium text-[var(--avs-text-muted)]">{ds.healthScorePanel.healthLevel}</span>
+              <span className="mt-2 text-caption font-medium text-[var(--avs-text-muted)]">{ds.healthScorePanel.healthLevel}</span>
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <HeartIcon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
-                <span className="text-sm font-semibold text-[var(--avs-text-primary)]">Overall Health</span>
+                <span className="text-small font-semibold text-[var(--avs-text-primary)]">Overall Health</span>
                 {ds.healthScorePanel.scoreChange !== null && (
                   <div className="flex items-center gap-1">
                     {ds.healthScorePanel.scoreChange > 0 ? (
@@ -178,14 +178,14 @@ export default function SystemHealthOverviewPage() {
                     ) : (
                       <ArrowTrendingDownIcon className="h-4 w-4 text-[var(--avs-danger)]" />
                     )}
-                    <span className={`text-xs font-medium tabular-nums ${ds.healthScorePanel.scoreChange > 0 ? 'text-[var(--avs-success)]' : 'text-[var(--avs-danger)]'}`}>
+                    <span className={`text-caption font-medium tabular-nums ${ds.healthScorePanel.scoreChange > 0 ? 'text-[var(--avs-success)]' : 'text-[var(--avs-danger)]'}`}>
                       {ds.healthScorePanel.scoreChange > 0 ? '+' : ''}{Math.round(ds.healthScorePanel.scoreChange)}
                     </span>
                   </div>
                 )}
               </div>
               {ds.healthScorePanel.lastAnalysisTime && (
-                <p className="mt-1 text-xs text-[var(--avs-text-muted)]">
+                <p className="mt-1 text-caption text-[var(--avs-text-muted)]">
                   Last analyzed: {new Date(ds.healthScorePanel.lastAnalysisTime).toLocaleString()}
                 </p>
               )}
@@ -210,14 +210,14 @@ export default function SystemHealthOverviewPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Icon className="h-5 w-5 text-[var(--avs-text-secondary)]" />
-                    <span className="text-sm font-medium text-[var(--avs-text-primary)]">{card.categoryName}</span>
+                    <span className="text-small font-medium text-[var(--avs-text-primary)]">{card.categoryName}</span>
                   </div>
                   <Badge tone={tone}>{Math.round(card.score)}/100</Badge>
                 </div>
                 {card.issues.length > 0 && (
                   <div className="mt-3 space-y-1">
                     {card.issues.slice(0, 3).map((issue, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs text-[var(--avs-text-secondary)]">
+                      <div key={i} className="flex items-center gap-2 text-caption text-[var(--avs-text-secondary)]">
                         <ExclamationTriangleIcon className="h-3 w-3 text-[var(--avs-warning)]" />
                         {issue.title}
                         {issue.autoFixable && <Badge tone="brand">Auto-fixable</Badge>}
@@ -226,7 +226,7 @@ export default function SystemHealthOverviewPage() {
                   </div>
                 )}
                 {card.quickRecommendation && (
-                  <p className="mt-3 text-xs text-[var(--avs-text-muted)]">{card.quickRecommendation}</p>
+                  <p className="mt-3 text-caption text-[var(--avs-text-muted)]">{card.quickRecommendation}</p>
                 )}
               </Card>
             );
@@ -239,19 +239,19 @@ export default function SystemHealthOverviewPage() {
         <Card title="Real-Time Status" variant="glass">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs text-[var(--avs-text-muted)]">CPU Usage</p>
+              <p className="text-caption text-[var(--avs-text-muted)]">CPU Usage</p>
               <p className="text-xl font-bold text-[var(--avs-text-primary)]">{ds.realTimeStatus.cpuUsage.toFixed(1)}%</p>
             </div>
             <div>
-              <p className="text-xs text-[var(--avs-text-muted)]">Memory Usage</p>
+              <p className="text-caption text-[var(--avs-text-muted)]">Memory Usage</p>
               <p className="text-xl font-bold text-[var(--avs-text-primary)]">{ds.realTimeStatus.memoryUsage.toFixed(1)}%</p>
             </div>
             <div>
-              <p className="text-xs text-[var(--avs-text-muted)]">Processes</p>
+              <p className="text-caption text-[var(--avs-text-muted)]">Processes</p>
               <p className="text-xl font-bold text-[var(--avs-text-primary)]">{ds.realTimeStatus.backgroundProcesses}</p>
             </div>
             <div>
-              <p className="text-xs text-[var(--avs-text-muted)]">Startup Programs</p>
+              <p className="text-caption text-[var(--avs-text-muted)]">Startup Programs</p>
               <p className="text-xl font-bold text-[var(--avs-text-primary)]">{ds.realTimeStatus.startupPrograms}</p>
             </div>
           </div>
@@ -266,8 +266,8 @@ export default function SystemHealthOverviewPage() {
               <div key={alert.id} className="flex items-center gap-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-4 py-3">
                 <ExclamationTriangleIcon className={`h-5 w-5 ${alert.severity === 'critical' ? 'text-[var(--avs-danger)]' : alert.severity === 'warning' ? 'text-[var(--avs-warning)]' : 'text-[var(--avs-info)]'}`} />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-[var(--avs-text-primary)]">{alert.title}</p>
-                  <p className="text-xs text-[var(--avs-text-secondary)]">{alert.description}</p>
+                  <p className="text-small font-medium text-[var(--avs-text-primary)]">{alert.title}</p>
+                  <p className="text-caption text-[var(--avs-text-secondary)]">{alert.description}</p>
                 </div>
                 {alert.actionPath && alert.actionLabel && (
                   <Button size="sm" variant="secondary" onClick={() => navigate(alert.actionPath!)}>{alert.actionLabel}</Button>
@@ -289,7 +289,7 @@ export default function SystemHealthOverviewPage() {
               <button
                 key={r}
                 onClick={() => setRange(r)}
-                className={`rounded-[var(--avs-radius-sm)] px-3 py-1 text-xs font-medium ${range === r ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)]' : 'text-[var(--avs-text-secondary)]'}`}
+                className={`rounded-[var(--avs-radius-sm)] px-3 py-1 text-caption font-medium ${range === r ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)]' : 'text-[var(--avs-text-secondary)]'}`}
               >
                 {r === 'today' ? '24 Hours' : r === '7days' ? '7 Days' : '30 Days'}
               </button>
@@ -297,7 +297,7 @@ export default function SystemHealthOverviewPage() {
           </div>
           <div className="space-y-2">
             {ds.timeline.slice(0, 10).map((entry, i) => (
-              <div key={i} className="flex items-center gap-3 text-xs text-[var(--avs-text-secondary)]">
+              <div key={i} className="flex items-center gap-3 text-caption text-[var(--avs-text-secondary)]">
                 <ClockIcon className="h-3 w-3 text-[var(--avs-text-muted)]" />
                 <span>{new Date(entry.timestamp).toLocaleString()}</span>
                 <span className="font-medium text-[var(--avs-text-primary)]">{entry.title}</span>

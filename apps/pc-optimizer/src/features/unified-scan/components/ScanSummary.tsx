@@ -31,7 +31,7 @@ function ScoreGauge({ label, animated }: { score: number; label: string; animate
       <div className={`text-3xl font-bold tabular-nums ${color}`} aria-live="polite">
         {displayScore}
       </div>
-      <div className="text-xs text-text-muted mt-0.5">{label}</div>
+      <div className="text-caption text-text-muted mt-0.5">{label}</div>
     </div>
   );
 }
@@ -67,7 +67,7 @@ export function ScanSummary({ report, actions, onClose }: ScanSummaryProps) {
           )}
         </div>
         <h3 className="text-xl font-semibold text-text-primary">Scan Complete</h3>
-        <p className="mt-1 text-sm text-text-secondary">
+        <p className="mt-1 text-small text-text-secondary">
           Completed in {formatDuration(report.durationMs)} · Report ID: {report.reportId}
         </p>
       </div>
@@ -89,8 +89,8 @@ export function ScanSummary({ report, actions, onClose }: ScanSummaryProps) {
       {/* AI Confidence */}
       <div className="flex items-center justify-center gap-2">
         <SparklesIcon className="h-4 w-4 text-brand-primary" aria-hidden />
-        <span className="text-xs text-text-muted">AI Confidence</span>
-        <span className="text-sm font-semibold tabular-nums text-text-primary">
+        <span className="text-caption text-text-muted">AI Confidence</span>
+        <span className="text-small font-semibold tabular-nums text-text-primary">
           {Math.round(animatedConfidence)}%
         </span>
       </div>
@@ -100,12 +100,12 @@ export function ScanSummary({ report, actions, onClose }: ScanSummaryProps) {
         <div className="flex items-start gap-2.5">
           <SparklesIcon className="h-5 w-5 text-brand-primary shrink-0 mt-0.5" aria-hidden />
           <div className="space-y-1.5">
-            <div className="text-sm font-medium text-text-primary">AI Summary</div>
-            <p className="text-sm text-text-secondary">{report.aiSummary.verdict}</p>
+            <div className="text-small font-medium text-text-primary">AI Summary</div>
+            <p className="text-small text-text-secondary">{report.aiSummary.verdict}</p>
             {report.aiSummary.estimatedImprovements.length > 0 && (
               <ul className="space-y-1 mt-2">
                 {report.aiSummary.estimatedImprovements.map((imp, i) => (
-                  <li key={i} className="text-xs text-text-secondary flex items-center gap-1.5">
+                  <li key={i} className="text-caption text-text-secondary flex items-center gap-1.5">
                     <span className="h-1 w-1 rounded-full bg-brand-primary" />
                     {imp}
                   </li>
@@ -122,27 +122,27 @@ export function ScanSummary({ report, actions, onClose }: ScanSummaryProps) {
           <div className="text-xl font-bold tabular-nums text-text-primary">
             {report.itemsAnalyzed.toLocaleString()}
           </div>
-          <div className="text-xs text-text-muted">Items Analyzed</div>
+          <div className="text-caption text-text-muted">Items Analyzed</div>
         </div>
         <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 text-center">
           <div className="text-xl font-bold tabular-nums text-text-primary">
             {report.issuesFound.toLocaleString()}
           </div>
-          <div className="text-xs text-text-muted">Issues Found</div>
+          <div className="text-caption text-text-muted">Issues Found</div>
         </div>
         {report.threatsFound !== undefined && (
           <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 text-center">
             <div className="text-xl font-bold tabular-nums text-text-primary">
               {report.threatsFound.toLocaleString()}
             </div>
-            <div className="text-xs text-text-muted">Threats Found</div>
+            <div className="text-caption text-text-muted">Threats Found</div>
           </div>
         )}
         <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 text-center">
           <div className="text-xl font-bold tabular-nums text-text-primary">
             {report.aiSummary.modulesAnalyzed}
           </div>
-          <div className="text-xs text-text-muted">Modules Analyzed</div>
+          <div className="text-caption text-text-muted">Modules Analyzed</div>
         </div>
       </div>
 

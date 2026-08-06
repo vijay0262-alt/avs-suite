@@ -19,7 +19,7 @@ export const HealthSummary = React.memo(function HealthSummary({ summary }: Heal
         {summary?.map((item, index) => (
           <li key={index} className="flex items-start gap-3">
             <span className="mt-0.5 shrink-0">{iconForSeverity(item.severity)}</span>
-            <span className={`text-sm ${severityTextColor(item.severity)}`}>{item.text}</span>
+            <span className={`text-small ${severityTextColor(item.severity)}`}>{item.text}</span>
           </li>
         ))}
       </ul>

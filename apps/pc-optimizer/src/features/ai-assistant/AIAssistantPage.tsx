@@ -208,7 +208,7 @@ export function AIAssistantPage() {
             <div className="flex rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-1">
               <button
                 onClick={() => setActiveView('chat')}
-                className={`flex items-center gap-1.5 rounded-[var(--avs-radius-sm)] px-3 py-1.5 text-sm font-medium transition-all ${
+                className={`flex items-center gap-1.5 rounded-[var(--avs-radius-sm)] px-3 py-1.5 text-small font-medium transition-all ${
                   activeView === 'chat' ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)] shadow-[var(--avs-shadow-sm)]' : 'text-[var(--avs-text-secondary)]'
                 }`}
               >
@@ -217,7 +217,7 @@ export function AIAssistantPage() {
               </button>
               <button
                 onClick={() => setActiveView('briefing')}
-                className={`flex items-center gap-1.5 rounded-[var(--avs-radius-sm)] px-3 py-1.5 text-sm font-medium transition-all ${
+                className={`flex items-center gap-1.5 rounded-[var(--avs-radius-sm)] px-3 py-1.5 text-small font-medium transition-all ${
                   activeView === 'briefing' ? 'bg-[var(--avs-surface)] text-[var(--avs-text-primary)] shadow-[var(--avs-shadow-sm)]' : 'text-[var(--avs-text-secondary)]'
                 }`}
               >
@@ -245,8 +245,8 @@ export function AIAssistantPage() {
                   <div className="rounded-[var(--avs-radius-xl)] bg-gradient-brand p-4">
                     <SparklesIcon className="h-8 w-8 text-white" />
                   </div>
-                  <p className="mt-4 text-sm font-medium text-[var(--avs-text-primary)]">Ask me anything about your PC</p>
-                  <p className="mt-1 text-xs text-[var(--avs-text-muted)]">I can explain scores, recommend optimizations, and investigate issues</p>
+                  <p className="mt-4 text-small font-medium text-[var(--avs-text-primary)]">Ask me anything about your PC</p>
+                  <p className="mt-1 text-caption text-[var(--avs-text-muted)]">I can explain scores, recommend optimizations, and investigate issues</p>
                 </div>
               )}
 
@@ -275,7 +275,7 @@ export function AIAssistantPage() {
                   <button
                     key={q.type}
                     onClick={() => handleAsk(q.label)}
-                    className="rounded-full border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-1.5 text-xs font-medium text-[var(--avs-text-secondary)] transition-all hover:border-[var(--avs-brand-primary)] hover:text-[var(--avs-text-primary)]"
+                    className="rounded-full border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-1.5 text-caption font-medium text-[var(--avs-text-secondary)] transition-all hover:border-[var(--avs-brand-primary)] hover:text-[var(--avs-text-primary)]"
                   >
                     {q.label}
                   </button>
@@ -291,7 +291,7 @@ export function AIAssistantPage() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleAsk(input); }}
                 placeholder="Ask about your PC health, scores, optimizations…"
-                className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-4 py-2.5 text-sm text-[var(--avs-text-primary)] placeholder:text-[var(--avs-text-muted)] focus:border-[var(--avs-brand-primary)] focus:outline-none"
+                className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-4 py-2.5 text-small text-[var(--avs-text-primary)] placeholder:text-[var(--avs-text-muted)] focus:border-[var(--avs-brand-primary)] focus:outline-none"
                 disabled={isThinking}
               />
               <Button
@@ -306,10 +306,10 @@ export function AIAssistantPage() {
 
           {/* Sidebar: Insights */}
           <div className="hidden w-72 shrink-0 lg:block">
-            <Card title="AI Insights" variant="glass" padded={false}>
+            <Card title="Insights" variant="glass" padded={false}>
               <div className="max-h-[500px] space-y-2 overflow-y-auto p-3">
                 {insights.length === 0 ? (
-                  <p className="py-4 text-center text-xs text-[var(--avs-text-muted)]">No insights available yet.</p>
+                  <p className="py-4 text-center text-caption text-[var(--avs-text-muted)]">No insights available yet.</p>
                 ) : (
                   insights.map((insight) => <InsightItem key={insight.id} insight={insight} />)
                 )}
@@ -321,13 +321,13 @@ export function AIAssistantPage() {
                 <div className="space-y-2">
                   {dashboardData.healthScore !== null && (
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-[var(--avs-text-secondary)]">Health Score</span>
-                      <span className="text-lg font-bold text-[var(--avs-text-primary)]">{dashboardData.healthScore}</span>
+                      <span className="text-caption text-[var(--avs-text-secondary)]">Health Score</span>
+                      <span className="text-section-title font-bold text-[var(--avs-text-primary)]">{dashboardData.healthScore}</span>
                     </div>
                   )}
                   {dashboardData.healthLevel && (
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-[var(--avs-text-secondary)]">Status</span>
+                      <span className="text-caption text-[var(--avs-text-secondary)]">Status</span>
                       <Badge tone={dashboardData.healthLevel === 'excellent' || dashboardData.healthLevel === 'good' ? 'success' : dashboardData.healthLevel === 'fair' ? 'warning' : 'danger'}>
                         {dashboardData.healthLevel}
                       </Badge>
@@ -335,8 +335,8 @@ export function AIAssistantPage() {
                   )}
                   {dashboardData.recommendedActions.map((rec, i) => (
                     <div key={i} className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-2">
-                      <p className="text-xs font-medium text-[var(--avs-text-primary)]">{rec.label}</p>
-                      <p className="text-xs text-[var(--avs-text-muted)]">{rec.description} · {rec.benefit}</p>
+                      <p className="text-caption font-medium text-[var(--avs-text-primary)]">{rec.label}</p>
+                      <p className="text-caption text-[var(--avs-text-muted)]">{rec.description} · {rec.benefit}</p>
                     </div>
                   ))}
                 </div>
@@ -368,7 +368,7 @@ function MessageBubble({ message, onFollowUp }: { message: ChatMessage; onFollow
       </div>
       <div className={`max-w-[80%] ${isUser ? 'items-end' : ''}`}>
         <div className={`rounded-[var(--avs-radius-lg)] px-4 py-3 ${isUser ? 'bg-[var(--avs-brand-primary)] text-white' : 'bg-[var(--avs-surface)] border border-[var(--avs-border)]'}`}>
-          <p className="whitespace-pre-wrap text-sm text-[var(--avs-text-primary)]">{message.content}</p>
+          <p className="whitespace-pre-wrap text-small text-[var(--avs-text-primary)]">{message.content}</p>
         </div>
 
         {/* Explanation Details */}
@@ -376,11 +376,11 @@ function MessageBubble({ message, onFollowUp }: { message: ChatMessage; onFollow
           <div className="mt-2">
             <button
               onClick={() => setShowDetails(!showDetails)}
-              className="flex items-center gap-1 text-xs text-[var(--avs-text-muted)] hover:text-[var(--avs-text-primary)]"
+              className="flex items-center gap-1 text-caption text-[var(--avs-text-muted)] hover:text-[var(--avs-text-primary)]"
             >
               <ChartBarIcon className="h-3 w-3" />
               {showDetails ? 'Hide' : 'Show'} evidence & reasoning
-              <span className="ml-1 rounded-full bg-[var(--avs-brand-primary)]/10 px-1.5 py-0.5 text-xs font-bold text-[var(--avs-brand-primary)]">
+              <span className="ml-1 rounded-full bg-[var(--avs-brand-primary)]/10 px-1.5 py-0.5 text-caption font-bold text-[var(--avs-brand-primary)]">
                 {(message.explanation.confidence * 100).toFixed(0)}% confidence
               </span>
             </button>
@@ -389,10 +389,10 @@ function MessageBubble({ message, onFollowUp }: { message: ChatMessage; onFollow
               <div className="mt-2 space-y-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
                 {message.explanation.evidence.length > 0 && (
                   <div>
-                    <p className="text-xs font-semibold text-[var(--avs-text-secondary)]">Evidence</p>
+                    <p className="text-caption font-semibold text-[var(--avs-text-secondary)]">Evidence</p>
                     <div className="mt-1 space-y-1">
                       {message.explanation.evidence.map((ev, i) => (
-                        <div key={i} className="text-xs text-[var(--avs-text-secondary)]">
+                        <div key={i} className="text-caption text-[var(--avs-text-secondary)]">
                           <span className="font-medium text-[var(--avs-text-primary)]">{ev.source}:</span> {ev.data}
                         </div>
                       ))}
@@ -400,13 +400,13 @@ function MessageBubble({ message, onFollowUp }: { message: ChatMessage; onFollow
                   </div>
                 )}
                 <div>
-                  <p className="text-xs font-semibold text-[var(--avs-text-secondary)]">Reasoning</p>
-                  <p className="mt-0.5 text-xs text-[var(--avs-text-secondary)]">{message.explanation.reasoning}</p>
+                  <p className="text-caption font-semibold text-[var(--avs-text-secondary)]">Reasoning</p>
+                  <p className="mt-0.5 text-caption text-[var(--avs-text-secondary)]">{message.explanation.reasoning}</p>
                 </div>
                 {message.explanation.recommendedAction && (
                   <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-brand-primary)]/10 p-2">
-                    <p className="text-xs font-semibold text-[var(--avs-brand-primary)]">Recommended: {message.explanation.recommendedAction.title}</p>
-                    <p className="text-xs text-[var(--avs-text-secondary)]">{message.explanation.recommendedAction.description}</p>
+                    <p className="text-caption font-semibold text-[var(--avs-brand-primary)]">Recommended: {message.explanation.recommendedAction.title}</p>
+                    <p className="text-caption text-[var(--avs-text-secondary)]">{message.explanation.recommendedAction.description}</p>
                   </div>
                 )}
               </div>
@@ -419,7 +419,7 @@ function MessageBubble({ message, onFollowUp }: { message: ChatMessage; onFollow
                   <button
                     key={i}
                     onClick={() => onFollowUp(s)}
-                    className="rounded-full border border-[var(--avs-border)] bg-[var(--avs-surface)] px-2.5 py-1 text-xs text-[var(--avs-text-secondary)] transition-all hover:border-[var(--avs-brand-primary)] hover:text-[var(--avs-text-primary)]"
+                    className="rounded-full border border-[var(--avs-border)] bg-[var(--avs-surface)] px-2.5 py-1 text-caption text-[var(--avs-text-secondary)] transition-all hover:border-[var(--avs-brand-primary)] hover:text-[var(--avs-text-primary)]"
                   >
                     {s}
                   </button>
@@ -468,8 +468,8 @@ function DailyBriefingView({
             <SparklesIcon className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-[var(--avs-text-primary)]">AI Daily Briefing</h2>
-            <p className="text-sm text-[var(--avs-text-secondary)]">
+            <h2 className="text-section-title font-bold text-[var(--avs-text-primary)]">AI Daily Briefing</h2>
+            <p className="text-small text-[var(--avs-text-secondary)]">
               {contextLoading
                 ? 'Loading system data…'
                 : insights.length > 0
@@ -485,23 +485,23 @@ function DailyBriefingView({
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Card variant="glass" className="p-4">
             <ShieldCheckIcon className="h-6 w-6 text-[var(--avs-success)]" />
-            <p className="mt-2 text-2xl font-bold text-[var(--avs-text-primary)]">{dashboardData.healthScore}</p>
-            <p className="text-xs text-[var(--avs-text-muted)]">Health Score</p>
+            <p className="mt-2 text-statistic font-bold text-[var(--avs-text-primary)]">{dashboardData.healthScore}</p>
+            <p className="text-caption text-[var(--avs-text-muted)]">Health Score</p>
           </Card>
           <Card variant="glass" className="p-4">
             <LightBulbIcon className="h-6 w-6 text-[var(--avs-warning)]" />
-            <p className="mt-2 text-2xl font-bold text-[var(--avs-text-primary)]">{insights.length}</p>
-            <p className="text-xs text-[var(--avs-text-muted)]">AI Insights</p>
+            <p className="mt-2 text-statistic font-bold text-[var(--avs-text-primary)]">{insights.length}</p>
+            <p className="text-caption text-[var(--avs-text-muted)]">AI Insights</p>
           </Card>
           <Card variant="glass" className="p-4">
             <ChartBarIcon className="h-6 w-6 text-[var(--avs-info)]" />
-            <p className="mt-2 text-2xl font-bold text-[var(--avs-text-primary)]">{dashboardData.recommendedActions.length}</p>
-            <p className="text-xs text-[var(--avs-text-muted)]">Recommendations</p>
+            <p className="mt-2 text-statistic font-bold text-[var(--avs-text-primary)]">{dashboardData.recommendedActions.length}</p>
+            <p className="text-caption text-[var(--avs-text-muted)]">Recommendations</p>
           </Card>
           <Card variant="glass" className="p-4">
             <ChatBubbleLeftRightIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
-            <p className="mt-2 text-2xl font-bold text-[var(--avs-text-primary)]">{QUICK_QUESTIONS.length}</p>
-            <p className="text-xs text-[var(--avs-text-muted)]">Quick Questions</p>
+            <p className="mt-2 text-statistic font-bold text-[var(--avs-text-primary)]">{QUICK_QUESTIONS.length}</p>
+            <p className="text-caption text-[var(--avs-text-muted)]">Quick Questions</p>
           </Card>
         </div>
       )}
@@ -523,19 +523,19 @@ function DailyBriefingView({
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-[var(--avs-text-primary)]">{insight.title}</p>
+                        <p className="text-small font-semibold text-[var(--avs-text-primary)]">{insight.title}</p>
                         <div className="flex items-center gap-2">
                           <Badge tone={insight.severity === 'high' ? 'danger' : insight.severity === 'medium' ? 'warning' : 'neutral'}>
                             {insight.severity}
                           </Badge>
-                          <span className="text-xs font-bold text-[var(--avs-brand-primary)]">{(insight.confidence * 100).toFixed(0)}%</span>
+                          <span className="text-caption font-bold text-[var(--avs-brand-primary)]">{(insight.confidence * 100).toFixed(0)}%</span>
                         </div>
                       </div>
-                      <p className="mt-1 text-sm text-[var(--avs-text-secondary)]">{insight.description}</p>
-                      <p className="mt-2 text-xs text-[var(--avs-text-muted)]">
+                      <p className="mt-1 text-small text-[var(--avs-text-secondary)]">{insight.description}</p>
+                      <p className="mt-2 text-caption text-[var(--avs-text-muted)]">
                         <span className="font-medium text-[var(--avs-text-secondary)]">Evidence:</span> {insight.evidence}
                       </p>
-                      <p className="mt-1 text-xs text-[var(--avs-text-muted)]">
+                      <p className="mt-1 text-caption text-[var(--avs-text-muted)]">
                         <span className="font-medium text-[var(--avs-text-secondary)]">Suggested:</span> {insight.suggestedAction}
                       </p>
                     </div>
@@ -554,7 +554,7 @@ function DailyBriefingView({
             <button
               key={q.type}
               onClick={() => onAsk(q.label)}
-              className="rounded-full border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-1.5 text-xs font-medium text-[var(--avs-text-secondary)] transition-all hover:border-[var(--avs-brand-primary)] hover:text-[var(--avs-text-primary)]"
+              className="rounded-full border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-1.5 text-caption font-medium text-[var(--avs-text-secondary)] transition-all hover:border-[var(--avs-brand-primary)] hover:text-[var(--avs-text-primary)]"
             >
               {q.label}
             </button>
@@ -573,11 +573,11 @@ function InsightItem({ insight }: { insight: AssistantInsight }) {
     <div className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-2">
       <div className="flex items-center gap-2">
         <div className="h-1.5 w-1.5 rounded-full" style={{ background: toneColor }} />
-        <p className="text-xs font-medium text-[var(--avs-text-primary)]">{insight.title}</p>
+        <p className="text-caption font-medium text-[var(--avs-text-primary)]">{insight.title}</p>
       </div>
-      <p className="mt-1 text-xs text-[var(--avs-text-muted)] line-clamp-2">{insight.description}</p>
+      <p className="mt-1 text-caption text-[var(--avs-text-muted)] line-clamp-2">{insight.description}</p>
       <div className="mt-1 flex items-center gap-2">
-        <span className="text-xs font-bold text-[var(--avs-brand-primary)]">{(insight.confidence * 100).toFixed(0)}%</span>
+        <span className="text-caption font-bold text-[var(--avs-brand-primary)]">{(insight.confidence * 100).toFixed(0)}%</span>
         <Badge tone={insight.severity === 'high' ? 'danger' : insight.severity === 'medium' ? 'warning' : 'neutral'}>
           {insight.severity}
         </Badge>

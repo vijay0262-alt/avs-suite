@@ -30,8 +30,8 @@ export default function DiagnosticsPage() {
     <div className="p-6 space-y-6" data-testid="page-diagnostics">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Developer Diagnostics</h1>
-          <p className="text-sm text-text-secondary mt-1">Real-time debugging information (dev-only)</p>
+          <h1 className="text-section-title text-text-primary">Developer Diagnostics</h1>
+          <p className="text-small text-text-secondary mt-1">Real-time debugging information (dev-only)</p>
         </div>
         <button
           onClick={() => vm.refresh()}
@@ -44,13 +44,13 @@ export default function DiagnosticsPage() {
 
       {state.bootstrap === 'loading' && (
         <Card>
-          <div className="py-6 text-sm text-text-muted">Loading diagnostics...</div>
+          <div className="py-6 text-small text-text-muted">Loading diagnostics...</div>
         </Card>
       )}
 
       {state.bootstrap === 'error' && (
         <Card>
-          <div className="py-6 text-sm text-semantic-danger">
+          <div className="py-6 text-small text-semantic-danger">
             {state.bootstrapError || 'Failed to load diagnostics'}
           </div>
         </Card>
@@ -60,7 +60,7 @@ export default function DiagnosticsPage() {
         <div className="space-y-6">
           {/* System Info */}
           <Card title="System Information">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-4 text-small">
               <div>
                 <div className="text-text-secondary">Electron Version</div>
                 <div className="text-text-primary font-medium">{state.electronVersion || 'Unknown'}</div>
@@ -82,7 +82,7 @@ export default function DiagnosticsPage() {
 
           {/* Backend Status */}
           <Card title="Backend Status">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-4 text-small">
               <div>
                 <div className="text-text-secondary">Status</div>
                 <div className={`font-medium ${state.backendConnected ? 'text-semantic-success' : 'text-semantic-danger'}`}>
@@ -106,7 +106,7 @@ export default function DiagnosticsPage() {
 
           {/* Scan State */}
           <Card title="Scan State">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-4 text-small">
               <div>
                 <div className="text-text-secondary">Active Scan</div>
                 <div className={`font-medium ${state.scanRunning ? 'text-semantic-warning' : 'text-text-secondary'}`}>
@@ -130,7 +130,7 @@ export default function DiagnosticsPage() {
 
           {/* Cleaning State */}
           <Card title="Cleaning State">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-4 text-small">
               <div>
                 <div className="text-text-secondary">Active Cleaning</div>
                 <div className={`font-medium ${state.cleaningRunning ? 'text-semantic-warning' : 'text-text-secondary'}`}>
@@ -157,35 +157,35 @@ export default function DiagnosticsPage() {
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => vm.testPing()}
-                className="px-4 py-2 bg-[var(--avs-surface)] hover:bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded-[var(--avs-radius-lg)] text-sm transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
+                className="px-4 py-2 bg-[var(--avs-surface)] hover:bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded-[var(--avs-radius-lg)] text-small transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
                 data-testid="test-ping"
               >
                 Test system.ping
               </button>
               <button
                 onClick={() => vm.testScanStart()}
-                className="px-4 py-2 bg-[var(--avs-surface)] hover:bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded-[var(--avs-radius-lg)] text-sm transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
+                className="px-4 py-2 bg-[var(--avs-surface)] hover:bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded-[var(--avs-radius-lg)] text-small transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
                 data-testid="test-scan-start"
               >
                 Test scan.start
               </button>
               <button
                 onClick={() => vm.testPreview()}
-                className="px-4 py-2 bg-[var(--avs-surface)] hover:bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded-[var(--avs-radius-lg)] text-sm transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
+                className="px-4 py-2 bg-[var(--avs-surface)] hover:bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded-[var(--avs-radius-lg)] text-small transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
                 data-testid="test-preview"
               >
                 Test cleaner.delete.preview
               </button>
               <button
                 onClick={() => vm.testExecute()}
-                className="px-4 py-2 bg-[var(--avs-surface)] hover:bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded-[var(--avs-radius-lg)] text-sm transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
+                className="px-4 py-2 bg-[var(--avs-surface)] hover:bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded-[var(--avs-radius-lg)] text-small transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
                 data-testid="test-execute"
               >
                 Test cleaner.delete.execute
               </button>
             </div>
             {state.lastRpcTest && (
-              <div className="mt-4 p-3 bg-[var(--avs-surface-muted)] rounded text-xs font-mono">
+              <div className="mt-4 p-3 bg-[var(--avs-surface-muted)] rounded text-caption font-mono">
                 <div className="text-text-secondary mb-1">Last RPC Test Result:</div>
                 <div className="text-text-primary">{state.lastRpcTest}</div>
               </div>
@@ -196,11 +196,11 @@ export default function DiagnosticsPage() {
           <Card title="Recent Log Entries (Last 100)">
             <div className="bg-[var(--avs-surface-muted)] rounded p-3 max-h-96 overflow-y-auto">
               {state.logs.length === 0 ? (
-                <div className="text-sm text-text-muted">No logs available</div>
+                <div className="text-small text-text-muted">No logs available</div>
               ) : (
                 <div className="space-y-1">
                   {state.logs.map((log, idx) => (
-                    <div key={idx} className="text-xs font-mono text-text-secondary">
+                    <div key={idx} className="text-caption font-mono text-text-secondary">
                       <span className="text-text-muted">[{log.timestamp}]</span>{' '}
                       <span className={log.level === 'error' ? 'text-semantic-danger' : log.level === 'warn' ? 'text-semantic-warning' : 'text-text-primary'}>
                         [{log.level.toUpperCase()}]

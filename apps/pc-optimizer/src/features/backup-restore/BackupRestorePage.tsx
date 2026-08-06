@@ -190,7 +190,7 @@ export default function BackupRestorePage() {
       {state.successMsg && <ModuleSuccessBanner title={state.successMsg} onDismiss={() => vm.dismissSuccess()} />}
       {state.error && (
         <Card variant="glass">
-          <div className="flex items-center gap-2 text-sm text-[var(--avs-danger)]">
+          <div className="flex items-center gap-2 text-small text-[var(--avs-danger)]">
             <ExclamationTriangleIcon className="h-4 w-4" />
             {state.error}
           </div>
@@ -202,10 +202,10 @@ export default function BackupRestorePage() {
         <div className="flex items-center gap-3">
           <ServerStackIcon className={`h-6 w-6 ${state.systemImageAvailable ? 'text-[var(--avs-success)]' : 'text-[var(--avs-text-muted)]'}`} />
           <div>
-            <p className="text-sm font-medium text-[var(--avs-text-primary)]">
+            <p className="text-small font-medium text-[var(--avs-text-primary)]">
               {state.systemImageAvailable ? 'System image available' : 'No system image found'}
             </p>
-            <p className="text-xs text-[var(--avs-text-muted)]">
+            <p className="text-caption text-[var(--avs-text-muted)]">
               {state.systemImageAvailable ? 'A Windows system backup image is configured.' : 'Configure Windows Backup to create a system image.'}
             </p>
           </div>
@@ -219,7 +219,7 @@ export default function BackupRestorePage() {
             value={state.description}
             onChange={(e) => vm.setDescription(e.target.value)}
             placeholder="Restore point description (optional)"
-            className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-sm text-[var(--avs-text-primary)]"
+            className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-small text-[var(--avs-text-primary)]"
           />
           <Button
             onClick={() => vm.createRestorePoint()}
@@ -239,8 +239,8 @@ export default function BackupRestorePage() {
               <div key={rp.SequenceNumber} className="flex items-center gap-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-4 py-3">
                 <ClockIcon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-[var(--avs-text-primary)]">{rp.Description}</span>
-                  <div className="text-xs text-[var(--avs-text-muted)]">
+                  <span className="text-small font-medium text-[var(--avs-text-primary)]">{rp.Description}</span>
+                  <div className="text-caption text-[var(--avs-text-muted)]">
                     {rp.CreationTime} · Sequence #{rp.SequenceNumber}
                   </div>
                 </div>
@@ -261,8 +261,8 @@ export default function BackupRestorePage() {
               <div key={backup.backupId} className="flex items-center gap-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-4 py-3">
                 <CheckCircleIcon className="h-5 w-5 text-[var(--avs-success)]" />
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-[var(--avs-text-primary)]">{backup.description || backup.type}</span>
-                  <div className="text-xs text-[var(--avs-text-muted)]">
+                  <span className="text-small font-medium text-[var(--avs-text-primary)]">{backup.description || backup.type}</span>
+                  <div className="text-caption text-[var(--avs-text-muted)]">
                     {backup.timestamp} · {(backup.size / 1024).toFixed(1)} KB
                   </div>
                 </div>

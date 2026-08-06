@@ -86,8 +86,8 @@ export default function HelpCenterPage() {
                   <Icon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-[var(--avs-text-primary)]">{link.label}</p>
-                  <p className="text-xs text-[var(--avs-text-muted)]">{link.description}</p>
+                  <p className="text-small font-semibold text-[var(--avs-text-primary)]">{link.label}</p>
+                  <p className="text-caption text-[var(--avs-text-muted)]">{link.description}</p>
                 </div>
                 <ArrowRightIcon className="h-4 w-4 text-[var(--avs-text-muted)]" />
               </div>
@@ -104,8 +104,8 @@ export default function HelpCenterPage() {
               <div className="flex items-start gap-2">
                 <QuestionMarkCircleIcon className="h-5 w-5 text-[var(--avs-brand-primary)] shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-semibold text-[var(--avs-text-primary)]">{faq.q}</p>
-                  <p className="mt-1 text-sm text-[var(--avs-text-secondary)]">{faq.a}</p>
+                  <p className="text-small font-semibold text-[var(--avs-text-primary)]">{faq.q}</p>
+                  <p className="mt-1 text-small text-[var(--avs-text-secondary)]">{faq.a}</p>
                 </div>
               </div>
             </div>
@@ -119,8 +119,8 @@ export default function HelpCenterPage() {
           <div className="flex items-center gap-3">
             <EnvelopeIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
             <div>
-              <p className="text-sm font-semibold text-[var(--avs-text-primary)]">Email Support</p>
-              <a href="mailto:help@avsshield.com" className="text-sm text-[var(--avs-brand-primary)] hover:underline">help@avsshield.com</a>
+              <p className="text-small font-semibold text-[var(--avs-text-primary)]">Email Support</p>
+              <a href="mailto:help@avsshield.com" className="text-small text-[var(--avs-brand-primary)] hover:underline">help@avsshield.com</a>
             </div>
           </div>
         </Card>
@@ -129,8 +129,8 @@ export default function HelpCenterPage() {
           <div className="flex items-center gap-3">
             <GlobeAltIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
             <div>
-              <p className="text-sm font-semibold text-[var(--avs-text-primary)]">Website</p>
-              <a href="https://www.avsshield.com" target="_blank" rel="noopener noreferrer" className="text-sm text-[var(--avs-brand-primary)] hover:underline">www.avsshield.com</a>
+              <p className="text-small font-semibold text-[var(--avs-text-primary)]">Website</p>
+              <a href="https://www.avsshield.com" target="_blank" rel="noopener noreferrer" className="text-small text-[var(--avs-brand-primary)] hover:underline">www.avsshield.com</a>
             </div>
           </div>
         </Card>
@@ -139,8 +139,8 @@ export default function HelpCenterPage() {
           <div className="flex items-center gap-3">
             <LifebuoyIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
             <div>
-              <p className="text-sm font-semibold text-[var(--avs-text-primary)]">Documentation</p>
-              <a href="https://www.avsshield.com/docs" target="_blank" rel="noopener noreferrer" className="text-sm text-[var(--avs-brand-primary)] hover:underline">View Docs</a>
+              <p className="text-small font-semibold text-[var(--avs-text-primary)]">Documentation</p>
+              <a href="https://www.avsshield.com/docs" target="_blank" rel="noopener noreferrer" className="text-small text-[var(--avs-brand-primary)] hover:underline">View Docs</a>
             </div>
           </div>
         </Card>
@@ -151,8 +151,8 @@ export default function HelpCenterPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {SHORTCUTS.map((sc) => (
             <div key={sc.keys} className="flex items-center justify-between rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface-muted)] px-3 py-2">
-              <span className="text-sm text-[var(--avs-text-secondary)]">{sc.action}</span>
-              <kbd className="rounded-[var(--avs-radius-sm)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-2 py-1 text-xs font-mono text-[var(--avs-text-primary)]">{sc.keys}</kbd>
+              <span className="text-small text-[var(--avs-text-secondary)]">{sc.action}</span>
+              <kbd className="rounded-[var(--avs-radius-sm)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-2 py-1 text-caption font-mono text-[var(--avs-text-primary)]">{sc.keys}</kbd>
             </div>
           ))}
         </div>
@@ -165,9 +165,9 @@ export default function HelpCenterPage() {
             <ShieldCheckIcon className="h-8 w-8 text-white" />
           </div>
           <div>
-            <p className="text-sm font-bold text-[var(--avs-text-primary)]">AVS Shield</p>
-            <p className="text-xs text-[var(--avs-text-muted)]">Advanced Vision Software LLC · Sheridan, WY</p>
-            <p className="text-xs text-[var(--avs-text-muted)]">AI-Powered PC Health, Performance & Security Platform</p>
+            <p className="text-small font-bold text-[var(--avs-text-primary)]">AVS Shield</p>
+            <p className="text-caption text-[var(--avs-text-muted)]">Advanced Vision Software LLC · Sheridan, WY</p>
+            <p className="text-caption text-[var(--avs-text-muted)]">AI-Powered PC Health, Performance & Security Platform</p>
           </div>
         </div>
       </Card>

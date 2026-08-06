@@ -72,11 +72,11 @@ export function LoginDialog() {
             <div className="h-8 w-8 rounded-lg bg-brand-primary flex items-center justify-center">
               <ShieldCheckIcon className="h-5 w-5 text-white" aria-hidden />
             </div>
-            <span className="text-lg font-semibold tracking-tight text-text-primary">
+            <span className="text-section-title font-semibold tracking-tight text-text-primary">
               AVS Shield
             </span>
           </div>
-          <p className="text-sm text-text-muted">
+          <p className="text-small text-text-muted">
             Sign in to your AVS Shield account to continue
           </p>
         </div>
@@ -87,7 +87,7 @@ export function LoginDialog() {
           <div>
             <label
               htmlFor="login-identifier"
-              className="block text-xs font-medium text-text-secondary mb-1"
+              className="block text-caption font-medium text-text-secondary mb-1"
             >
               Email or Phone
             </label>
@@ -99,7 +99,7 @@ export function LoginDialog() {
               onChange={(e) => handleIdentifierChange(e.target.value)}
               placeholder="you@avsshield.com"
               disabled={loading}
-              className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-50"
+              className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-small text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-50"
               data-testid="login-identifier"
             />
           </div>
@@ -108,7 +108,7 @@ export function LoginDialog() {
           <div>
             <label
               htmlFor="login-password"
-              className="block text-xs font-medium text-text-secondary mb-1"
+              className="block text-caption font-medium text-text-secondary mb-1"
             >
               Password
             </label>
@@ -121,7 +121,7 @@ export function LoginDialog() {
                 onChange={(e) => handlePasswordChange(e.target.value)}
                 placeholder="••••••••"
                 disabled={loading}
-                className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-surface px-3 py-2 pr-10 text-sm text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-50"
+                className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-surface px-3 py-2 pr-10 text-small text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-50"
                 data-testid="login-password"
               />
               <button
@@ -142,7 +142,7 @@ export function LoginDialog() {
 
           {/* Remember Me + Forgot Password */}
           <div className="flex items-center justify-between">
-            <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
+            <label className="flex items-center gap-2 text-caption text-text-secondary cursor-pointer">
               <input
                 type="checkbox"
                 checked={rememberMe}
@@ -155,7 +155,7 @@ export function LoginDialog() {
             <button
               type="button"
               onClick={() => openExternal(FORGOT_PASSWORD_URL)}
-              className="text-xs text-brand-primary hover:underline"
+              className="text-caption text-brand-primary hover:underline"
               data-testid="login-forgot-password"
             >
               Forgot password?
@@ -165,7 +165,7 @@ export function LoginDialog() {
           {/* Error */}
           {error && (
             <div
-              className="flex items-start gap-2 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 px-3 py-2 text-xs text-semantic-danger"
+              className="flex items-start gap-2 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 px-3 py-2 text-caption text-semantic-danger"
               data-testid="login-error"
               role="alert"
             >
@@ -194,7 +194,7 @@ export function LoginDialog() {
           <button
             type="button"
             onClick={() => openExternal(CREATE_ACCOUNT_URL)}
-            className="inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary"
+            className="inline-flex items-center gap-1.5 text-caption text-text-secondary hover:text-text-primary"
             data-testid="login-create-account"
           >
             <UserPlusIcon className="h-3.5 w-3.5" aria-hidden />
@@ -204,7 +204,7 @@ export function LoginDialog() {
 
         {/* Footer */}
         <div className="text-center">
-          <p className="text-[10px] text-text-muted">
+          <p className="text-micro text-text-muted">
             By signing in, you agree to the AVS Shield Terms of Service and Privacy Policy.
           </p>
         </div>

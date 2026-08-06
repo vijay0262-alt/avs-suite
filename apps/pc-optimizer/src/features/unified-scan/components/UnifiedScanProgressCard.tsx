@@ -90,7 +90,7 @@ export function UnifiedScanProgressCard({
       )}
 
       {currentFolder && (
-        <div className="rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface-muted)] px-2.5 py-1.5 text-xs truncate">
+        <div className="rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface-muted)] px-2.5 py-1.5 text-caption truncate">
           <span className="text-text-muted">Folder: </span>
           <span className="font-mono text-text-secondary">{currentFolder}</span>
         </div>
@@ -98,13 +98,13 @@ export function UnifiedScanProgressCard({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
+          <div className="mb-2 text-caption font-semibold uppercase tracking-wide text-text-muted">
             Scan Phases
           </div>
           <ScanTree nodes={effectiveTreeNodes} />
         </div>
         <div>
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
+          <div className="mb-2 text-caption font-semibold uppercase tracking-wide text-text-muted">
             Live Counters
           </div>
           <ScanCounters definitions={config.counters} values={counters} />

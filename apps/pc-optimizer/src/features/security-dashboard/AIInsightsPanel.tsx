@@ -56,34 +56,34 @@ export function AIInsightsPanel({ insights }: AIInsightsPanelProps) {
               <InsightIcon severity={insight.severity} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-text-primary">{insight.title}</span>
+                  <span className="text-small font-medium text-text-primary">{insight.title}</span>
                   <Badge tone={severityTone(insight.severity)}>{insight.severity}</Badge>
                 </div>
-                <p className="mt-1 text-xs text-text-secondary">{insight.description}</p>
+                <p className="mt-1 text-caption text-text-secondary">{insight.description}</p>
 
                 {/* Confidence and source */}
                 <div className="mt-2 flex items-center gap-4">
                   <div className="flex items-center gap-1.5">
                     <LightBulbIcon className="h-3 w-3 text-text-muted" aria-hidden />
-                    <span className="text-[10px] text-text-muted">Confidence</span>
+                    <span className="text-micro text-text-muted">Confidence</span>
                     <div className="w-16">
                       <ProgressBar
                         value={insight.confidence * 100}
         tone={insight.confidence >= 0.8 ? 'success' : insight.confidence >= 0.6 ? 'warning' : 'danger'}
                       />
                     </div>
-                    <span className="text-[10px] font-medium text-text-primary">
+                    <span className="text-micro font-medium text-text-primary">
                       {(insight.confidence * 100).toFixed(0)}%
                     </span>
                   </div>
-                  <span className="text-[10px] text-text-muted">Source: {insight.source}</span>
+                  <span className="text-micro text-text-muted">Source: {insight.source}</span>
                 </div>
 
                 {/* Recommendation */}
                 {insight.recommendation && (
                   <div className="mt-2 rounded-md bg-brand-primary/5 px-2 py-1.5">
-                    <span className="text-[10px] font-medium text-brand-primary">AI Recommendation: </span>
-                    <span className="text-xs text-text-secondary">{insight.recommendation}</span>
+                    <span className="text-micro font-medium text-brand-primary">AI Recommendation: </span>
+                    <span className="text-caption text-text-secondary">{insight.recommendation}</span>
                   </div>
                 )}
               </div>

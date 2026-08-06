@@ -43,8 +43,8 @@ export function IssuePriorityGroups({ issues }: IssuePriorityGroupsProps) {
         data-testid="no-issues"
       >
         <CheckCircleIcon className="mx-auto h-8 w-8 text-semantic-success" />
-        <p className="mt-2 text-sm font-medium text-semantic-success">No issues found</p>
-        <p className="text-xs text-text-muted">Your system is clean and healthy.</p>
+        <p className="mt-2 text-small font-medium text-semantic-success">No issues found</p>
+        <p className="text-caption text-text-muted">Your system is clean and healthy.</p>
       </div>
     );
   }
@@ -81,10 +81,10 @@ function IssueGroup({ priority, items }: { priority: IssuePriority; items: Unifi
         aria-expanded={expanded}
       >
         <span className={priorityColor(priority)}>{PRIORITY_ICONS[priority]}</span>
-        <span className={`text-sm font-semibold ${priorityColor(priority)}`}>
+        <span className={`text-small font-semibold ${priorityColor(priority)}`}>
           {priorityLabel(priority)}
         </span>
-        <span className="rounded-full bg-[var(--avs-surface)] px-2 py-0.5 text-xs font-medium tabular-nums text-text-secondary">
+        <span className="rounded-full bg-[var(--avs-surface)] px-2 py-0.5 text-caption font-medium tabular-nums text-text-secondary">
           {items.length}
         </span>
         <ChevronRightIcon
@@ -109,24 +109,24 @@ function IssueRow({ issue }: { issue: UnifiedIssue }) {
     <div className="rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface)] p-3" data-testid={`issue-${issue.id}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-text-primary">{issue.title}</p>
-          <p className="mt-0.5 text-xs text-text-secondary">{issue.description}</p>
+          <p className="text-small font-medium text-text-primary">{issue.title}</p>
+          <p className="mt-0.5 text-caption text-text-secondary">{issue.description}</p>
           {issue.location && (
-            <p className="mt-1 text-xs text-text-muted font-mono truncate" title={issue.location}>
+            <p className="mt-1 text-caption text-text-muted font-mono truncate" title={issue.location}>
               {issue.location}
             </p>
           )}
           {issue.evidence.length > 0 && (
             <div className="mt-1.5 flex items-center gap-1">
               <EyeIcon className="h-3 w-3 text-text-muted" aria-hidden />
-              <span className="text-[10px] text-text-muted">
+              <span className="text-micro text-text-muted">
                 Evidence: {issue.evidence.join(', ')}
               </span>
             </div>
           )}
         </div>
         <div className="shrink-0 text-right">
-          <span className={`text-xs font-bold tabular-nums ${priorityColor(issue.priority)}`}>
+          <span className={`text-caption font-bold tabular-nums ${priorityColor(issue.priority)}`}>
             {Math.round(issue.confidence * 100)}%
           </span>
         </div>

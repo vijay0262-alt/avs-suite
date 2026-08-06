@@ -31,7 +31,7 @@ export function ProStatusPill({ className = '' }: ProStatusPillProps) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-brand-primary/15 to-brand-secondary/15 border border-brand-primary/30 px-3 py-1 text-xs font-semibold text-brand-primary ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-brand-primary/15 to-brand-secondary/15 border border-brand-primary/30 px-3 py-1 text-caption font-semibold text-brand-primary ${className}`}
       data-testid="pro-status-pill"
     >
       <StarIcon className="h-3.5 w-3.5" />
@@ -56,7 +56,7 @@ export function ProFeatureIndicator({ icon: Icon, label, className = '' }: ProFe
       data-testid={`pro-indicator-${label.toLowerCase().replace(/\s+/g, '-')}`}
     >
       <Icon className="h-4 w-4 text-semantic-success" />
-      <span className="text-xs font-medium text-semantic-success">{label}</span>
+      <span className="text-caption font-medium text-semantic-success">{label}</span>
       <CheckCircleIcon className="h-3.5 w-3.5 text-semantic-success" />
     </div>
   );
@@ -79,7 +79,7 @@ export function ProStatusBanner({ className = '', compact = false }: ProStatusBa
         data-testid="pro-status-banner-compact"
       >
         <StarIcon className="h-5 w-5 text-brand-primary shrink-0" />
-        <span className="text-sm font-semibold text-brand-primary">AVS Shield Professional</span>
+        <span className="text-small font-semibold text-brand-primary">AVS Shield Professional</span>
         <div className="flex items-center gap-2 ml-auto">
           <ProFeatureIndicator icon={ShieldCheckIcon} label="Real-Time Protection" />
           <ProFeatureIndicator icon={BoltIcon} label="Auto Optimization" />
@@ -98,8 +98,8 @@ export function ProStatusBanner({ className = '', compact = false }: ProStatusBa
           <StarIcon className="h-5 w-5 text-brand-primary" />
         </div>
         <div>
-          <div className="text-sm font-bold text-brand-primary">AVS Shield Professional</div>
-          <div className="text-xs text-text-secondary">Your PC is protected and optimized automatically</div>
+          <div className="text-small font-bold text-brand-primary">AVS Shield Professional</div>
+          <div className="text-caption text-text-secondary">Your PC is protected and optimized automatically</div>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">

@@ -35,7 +35,7 @@ export const IssuesList = React.memo(function IssuesList({ issues, onIssueClick 
           </div>
           <div className="space-y-1">
             <div className="text-base font-medium text-text-primary">Everything looks great.</div>
-            <div className="text-sm text-text-secondary">No optimization required. Your PC is running at peak performance.</div>
+            <div className="text-small text-text-secondary">No optimization required. Your PC is running at peak performance.</div>
           </div>
         </div>
       </Card>
@@ -58,7 +58,7 @@ export const IssuesList = React.memo(function IssuesList({ issues, onIssueClick 
           const categoryIssues = byCategory.get(category)!;
           return (
             <div key={category}>
-              <div className="mb-2 text-xs uppercase tracking-wide text-text-muted">
+              <div className="mb-2 text-caption uppercase tracking-wide text-text-muted">
                 {CATEGORY_LABELS[category]}
               </div>
               <ul className="space-y-1" role="list">
@@ -70,11 +70,11 @@ export const IssuesList = React.memo(function IssuesList({ issues, onIssueClick 
                     >
                       <span className="shrink-0">{iconForSeverity(issue.severity)}</span>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-text-primary">{issue.title}</div>
-                        <div className="text-xs text-text-secondary truncate">{issue.detail}</div>
+                        <div className="text-small font-medium text-text-primary">{issue.title}</div>
+                        <div className="text-caption text-text-secondary truncate">{issue.detail}</div>
                       </div>
                       {issue.canAutoFix && (
-                        <span className="text-xs text-semantic-success shrink-0">Auto-fix</span>
+                        <span className="text-caption text-semantic-success shrink-0">Auto-fix</span>
                       )}
                       <ChevronRightIcon className="h-4 w-4 text-text-muted shrink-0" aria-hidden />
                     </button>

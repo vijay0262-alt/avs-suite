@@ -101,7 +101,7 @@ export function ThreatTimelinePanel({ timeline, history }: ThreatTimelinePanelPr
             placeholder="Search threats…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
+            className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] px-3 py-1.5 text-small text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
             aria-label="Search threats"
           />
         </div>
@@ -123,8 +123,8 @@ export function ThreatTimelinePanel({ timeline, history }: ThreatTimelinePanelPr
         <Card data-testid="timeline-empty">
           <div className="flex flex-col items-center justify-center py-12">
             <CheckCircleIcon className="h-10 w-10 text-semantic-success" aria-hidden />
-            <p className="mt-3 text-sm font-medium text-text-primary">No threats detected</p>
-            <p className="mt-1 text-xs text-text-muted">Your system is clean. Threats will appear here when detected.</p>
+            <p className="mt-3 text-small font-medium text-text-primary">No threats detected</p>
+            <p className="mt-1 text-caption text-text-muted">Your system is clean. Threats will appear here when detected.</p>
           </div>
         </Card>
       ) : (
@@ -135,7 +135,7 @@ export function ThreatTimelinePanel({ timeline, history }: ThreatTimelinePanelPr
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <ExclamationTriangleIcon className="h-5 w-5 text-semantic-warning" aria-hidden />
-                    <span className="text-sm font-semibold text-text-primary">{entries[0]?.threatName ?? threatId}</span>
+                    <span className="text-small font-semibold text-text-primary">{entries[0]?.threatName ?? threatId}</span>
                   </div>
                   <Badge tone="danger">{entries.length} stages</Badge>
                 </div>
@@ -160,11 +160,11 @@ export function ThreatTimelinePanel({ timeline, history }: ThreatTimelinePanelPr
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium text-text-primary">{STAGE_LABELS[entry.stage]}</span>
+                            <span className="text-caption font-medium text-text-primary">{STAGE_LABELS[entry.stage]}</span>
                             <Badge tone={actorTone(entry.actor)}>{entry.actor}</Badge>
                           </div>
-                          <p className="mt-0.5 text-xs text-text-secondary">{entry.description}</p>
-                          <span className="text-[10px] text-text-muted">
+                          <p className="mt-0.5 text-caption text-text-secondary">{entry.description}</p>
+                          <span className="text-micro text-text-muted">
                             {new Date(entry.timestamp).toLocaleString()}
                           </span>
                         </div>
@@ -186,7 +186,7 @@ export function ThreatTimelinePanel({ timeline, history }: ThreatTimelinePanelPr
             {history.slice(-20).reverse().map((entry) => (
               <div
                 key={entry.id}
-                className="flex items-center justify-between rounded px-2 py-1 text-xs hover:bg-[var(--avs-surface-muted)] transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
+                className="flex items-center justify-between rounded px-2 py-1 text-caption hover:bg-[var(--avs-surface-muted)] transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
                 data-testid={`history-entry-${entry.id}`}
               >
                 <span className="text-text-secondary truncate">{entry.target}</span>
@@ -209,8 +209,8 @@ function FilterButton({ active, onClick, label }: { active: boolean; onClick: ()
       onClick={onClick}
       className={
         active
-          ? 'rounded-[var(--avs-radius-md)] bg-brand-primary/10 px-2.5 py-1 text-xs font-medium text-brand-primary'
-          : 'rounded-[var(--avs-radius-md)] px-2.5 py-1 text-xs text-text-secondary hover:bg-[var(--avs-surface-muted)] transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]'
+          ? 'rounded-[var(--avs-radius-md)] bg-brand-primary/10 px-2.5 py-1 text-caption font-medium text-brand-primary'
+          : 'rounded-[var(--avs-radius-md)] px-2.5 py-1 text-caption text-text-secondary hover:bg-[var(--avs-surface-muted)] transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]'
       }
       data-testid={`timeline-filter-${label.toLowerCase().replace(/\s+/g, '-')}`}
     >

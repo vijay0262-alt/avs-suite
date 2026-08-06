@@ -35,12 +35,12 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
               <span className="relative inline-flex h-3 w-3 rounded-full bg-brand-primary" />
             </span>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium text-text-secondary">
+              <div className="text-caption font-medium text-text-secondary">
                 {currentCleaner ? `Scanning: ${currentCleaner}` : 'Starting scan…'}
               </div>
               {currentPath && (
                 <div
-                  className="mt-0.5 truncate text-xs text-text-muted font-mono"
+                  className="mt-0.5 truncate text-caption text-text-muted font-mono"
                   title={currentPath}
                   data-testid="junk-current-file"
                 >
@@ -54,41 +54,41 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
         <div>
-          <div className="text-xs uppercase tracking-wide text-text-muted">Files Scanned</div>
+          <div className="text-caption uppercase tracking-wide text-text-muted">Files Scanned</div>
           <div
-            className="mt-1 text-2xl font-semibold text-text-primary tabular-nums"
+            className="mt-1 text-statistic font-semibold text-text-primary tabular-nums"
             data-testid="junk-total-files"
           >
             {totalFiles.toLocaleString()}
           </div>
         </div>
         <div>
-          <div className="text-xs uppercase tracking-wide text-text-muted">Items Found</div>
+          <div className="text-caption uppercase tracking-wide text-text-muted">Items Found</div>
           <div
-            className="mt-1 text-2xl font-semibold text-text-primary tabular-nums"
+            className="mt-1 text-statistic font-semibold text-text-primary tabular-nums"
             data-testid="junk-total-items"
           >
             {totalItems.toLocaleString()}
           </div>
         </div>
         <div>
-          <div className="text-xs uppercase tracking-wide text-text-muted">Junk Identified</div>
+          <div className="text-caption uppercase tracking-wide text-text-muted">Junk Identified</div>
           <div
-            className="mt-1 text-2xl font-semibold text-text-primary tabular-nums"
+            className="mt-1 text-statistic font-semibold text-text-primary tabular-nums"
             data-testid="junk-total-bytes"
           >
             {formatBytes(totalBytes)}
           </div>
         </div>
         <div>
-          <div className="text-xs uppercase tracking-wide text-text-muted">Elapsed Time</div>
+          <div className="text-caption uppercase tracking-wide text-text-muted">Elapsed Time</div>
           <div
-            className="mt-1 text-lg font-medium text-text-primary tabular-nums"
+            className="mt-1 text-section-title font-medium text-text-primary tabular-nums"
             data-testid="junk-elapsed"
           >
             {formatDuration(snapshot.durationMs ?? 0)}
           </div>
-          <div className="text-xs text-text-muted tabular-nums mt-1">
+          <div className="text-caption text-text-muted tabular-nums mt-1">
             {running ? `Remaining: ${formatDuration(snapshot.etaMs)}` : `Duration: ${formatDuration(snapshot.durationMs ?? 0)}`}
           </div>
         </div>
@@ -96,9 +96,9 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
 
       <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
         <div className="min-w-0">
-          <div className="text-xs uppercase tracking-wide text-text-muted">Current Operation</div>
+          <div className="text-caption uppercase tracking-wide text-text-muted">Current Operation</div>
           <div
-            className="mt-1 truncate text-lg font-medium text-text-primary"
+            className="mt-1 truncate text-section-title font-medium text-text-primary"
             data-testid="junk-current-cleaner"
             title={currentCleaner ?? undefined}
           >
@@ -107,9 +107,9 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
         </div>
         {currentPath && (
           <div className="min-w-0">
-            <div className="text-xs uppercase tracking-wide text-text-muted">Current Path</div>
+            <div className="text-caption uppercase tracking-wide text-text-muted">Current Path</div>
             <div
-              className="mt-1 truncate text-sm font-medium text-text-primary"
+              className="mt-1 truncate text-small font-medium text-text-primary"
               data-testid="junk-current-path"
               title={currentPath}
             >
@@ -141,7 +141,7 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
             .slice(0, 6)
             .map((c) => (
               <div key={c.id} className="flex items-center gap-3">
-                <span className="w-32 shrink-0 truncate text-xs text-text-secondary" title={c.name}>
+                <span className="w-32 shrink-0 truncate text-caption text-text-secondary" title={c.name}>
                   {c.name}
                 </span>
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--avs-surface-muted)]">
@@ -150,7 +150,7 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
                     style={{ width: `${c.progress ?? 0}%` }}
                   />
                 </div>
-                <span className="w-10 shrink-0 text-right text-xs tabular-nums text-text-muted">
+                <span className="w-10 shrink-0 text-right text-caption tabular-nums text-text-muted">
                   {c.progress ?? 0}%
                 </span>
               </div>

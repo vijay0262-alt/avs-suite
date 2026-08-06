@@ -114,25 +114,25 @@ export const CategoryRow = memo(function CategoryRow({
         data-testid={`junk-category-check-${id}`}
       />
 
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--avs-radius-md)] bg-[color-mix(in_srgb,var(--avs-brand-primary)_12%,transparent)] text-brand-primary">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--avs-radius-md)] bg-[var(--avs-info-bg)] text-brand-primary">
         <Icon className="h-5 w-5" aria-hidden />
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-semibold text-text-primary">{name}</span>
+          <span className="truncate text-small font-semibold text-text-primary">{name}</span>
           <Badge tone="neutral" className="uppercase tracking-wide">
             {CATEGORY_LABEL[category]}
           </Badge>
           <Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge>
           {OPT_IN_CLEANERS.has(id) && (
-            <span className="flex items-center gap-1 text-xs text-semantic-warning" title="Opt-in: unchecked by default. Deleting cookies will log you out of websites.">
+            <span className="flex items-center gap-1 text-caption text-semantic-warning" title="Opt-in: unchecked by default. Deleting cookies will log you out of websites.">
               <ExclamationTriangleIcon className="h-3.5 w-3.5" />
               Opt-in
             </span>
           )}
         </div>
-        <p className="mt-0.5 truncate text-xs text-text-secondary">{description}</p>
+        <p className="mt-0.5 truncate text-caption text-text-secondary">{description}</p>
 
         {status === 'running' && (
           <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[var(--avs-surface-muted)]">
@@ -148,14 +148,14 @@ export const CategoryRow = memo(function CategoryRow({
       <div className="hidden shrink-0 flex-col items-end text-right sm:flex">
         <span
           className={clsx(
-            'text-sm font-semibold tabular-nums',
+            'text-small font-semibold tabular-nums',
             bytes > 0 ? 'text-text-primary' : 'text-text-muted',
           )}
           data-testid={`junk-category-bytes-${id}`}
         >
           {formatBytes(bytes)}
         </span>
-        <span className="text-xs text-text-muted tabular-nums">
+        <span className="text-caption text-text-muted tabular-nums">
           {files.toLocaleString()} files
         </span>
       </div>
@@ -165,8 +165,8 @@ export const CategoryRow = memo(function CategoryRow({
         onClick={() => onViewDetails(id)}
         disabled={!detailsAvailable || files === 0}
         className={clsx(
-          'shrink-0 rounded-[var(--avs-radius-md)] px-3 py-1.5 text-xs font-medium transition-colors',
-          'outline-none focus-visible:shadow-[var(--avs-focus-ring)]',
+          'shrink-0 rounded-[var(--avs-radius-md)] px-3 py-1.5 text-caption font-medium transition-colors',
+          'outline-none focus-visible:shadow-focus',
           detailsAvailable && files > 0
             ? 'bg-[var(--avs-surface-muted)] text-text-primary hover:bg-border'
             : 'cursor-not-allowed bg-[var(--avs-surface-muted)] text-text-muted opacity-60',

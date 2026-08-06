@@ -27,7 +27,7 @@ export const AIOverview = React.memo(function AIOverview({
   const tiles = [
     {
       id: 'ai-health',
-      title: 'AI Health',
+      title: 'Health',
       value: healthScore !== null ? `${healthScore}` : '—',
       unit: healthScore !== null ? '/ 100' : '',
       status: healthScore !== null ? (healthScore >= 80 ? 'Excellent' : healthScore >= 60 ? 'Good' : healthScore >= 40 ? 'Fair' : 'Needs Attention') : 'Analyzing',
@@ -40,7 +40,7 @@ export const AIOverview = React.memo(function AIOverview({
     },
     {
       id: 'ai-security',
-      title: 'AI Security',
+      title: 'Security',
       value: securityStatus ?? 'Protected',
       unit: '',
       status: securityStatus ?? 'Real-time protection active',
@@ -53,7 +53,7 @@ export const AIOverview = React.memo(function AIOverview({
     },
     {
       id: 'ai-performance',
-      title: 'AI Performance',
+      title: 'Performance',
       value: processCount !== null ? `${processCount}` : '—',
       unit: processCount !== null ? 'processes' : '',
       status: processCount !== null ? 'Processes analyzed' : 'Monitoring',
@@ -66,7 +66,7 @@ export const AIOverview = React.memo(function AIOverview({
     },
     {
       id: 'ai-predictive',
-      title: 'AI Predictive Health',
+      title: 'Predictive Health',
       value: predictionCount !== null ? `${predictionCount}` : '—',
       unit: predictionCount !== null ? 'predictions' : '',
       status: predictionCount !== null ? 'Forecasts generated' : 'Learning',
@@ -96,11 +96,11 @@ export const AIOverview = React.memo(function AIOverview({
               <ArrowRightIcon className="h-4 w-4 text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden />
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-text-primary tabular-nums">{tile.value}</span>
-              {tile.unit && <span className="text-xs text-text-muted">{tile.unit}</span>}
+              <span className="text-statistic font-bold text-text-primary tabular-nums">{tile.value}</span>
+              {tile.unit && <span className="text-caption text-text-muted">{tile.unit}</span>}
             </div>
-            <div className="text-sm font-medium text-text-primary mt-1">{tile.title}</div>
-            <div className={`text-xs mt-0.5 ${tile.statusColor}`}>{tile.status}</div>
+            <div className="text-small font-medium text-text-primary mt-1">{tile.title}</div>
+            <div className={`text-caption mt-0.5 ${tile.statusColor}`}>{tile.status}</div>
           </Card>
         </button>
       ))}

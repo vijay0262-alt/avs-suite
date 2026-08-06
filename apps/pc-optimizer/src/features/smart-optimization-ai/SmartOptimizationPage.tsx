@@ -307,16 +307,16 @@ export default function SmartOptimizationPage() {
                 <div className="flex items-start gap-2">
                   <LightBulbIcon className="h-5 w-5 text-[var(--avs-brand-primary)] shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[var(--avs-text-primary)]">{insight.title}</p>
-                    <p className="text-xs text-[var(--avs-text-secondary)] mt-1">{insight.explanation}</p>
+                    <p className="text-small font-medium text-[var(--avs-text-primary)]">{insight.title}</p>
+                    <p className="text-caption text-[var(--avs-text-secondary)] mt-1">{insight.explanation}</p>
                     <div className="flex items-center gap-2 mt-2">
                       <Badge tone={IMPACT_BADGES[insight.impactTier]}>{insight.impactTier}</Badge>
-                      <span className="text-xs text-[var(--avs-text-muted)]">{(insight.confidence * 100).toFixed(0)}% confidence</span>
+                      <span className="text-caption text-[var(--avs-text-muted)]">{(insight.confidence * 100).toFixed(0)}% confidence</span>
                     </div>
-                    <p className="text-xs text-[var(--avs-text-muted)] mt-2">
+                    <p className="text-caption text-[var(--avs-text-muted)] mt-2">
                       <span className="font-medium">Why now:</span> {insight.whyNow}
                     </p>
-                    <p className="text-xs text-[var(--avs-text-muted)] mt-1">
+                    <p className="text-caption text-[var(--avs-text-muted)] mt-1">
                       <span className="font-medium">If skipped:</span> {insight.whatHappensIfSkipped}
                     </p>
                   </div>
@@ -331,7 +331,7 @@ export default function SmartOptimizationPage() {
       {s.preview && (
         <Card title="Plan Preview" variant="glass">
           <div className="space-y-4">
-            <p className="text-sm font-medium text-[var(--avs-text-primary)]">{s.preview.headline}</p>
+            <p className="text-small font-medium text-[var(--avs-text-primary)]">{s.preview.headline}</p>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <MetricBox label="Score Improvement" value={`+${s.preview.scoreImprovement}`} icon={ArrowTrendingUpIcon} />
               <MetricBox label="Storage Recovery" value={formatDataSize(s.preview.estimatedStorageRecoveryMB * 1024 * 1024)} icon={CircleStackIcon} />
@@ -343,7 +343,7 @@ export default function SmartOptimizationPage() {
             {s.preview.warnings.length > 0 && (
               <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-warning)]/10 p-3">
                 {s.preview.warnings.map((w, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs text-[var(--avs-warning)]">
+                  <div key={i} className="flex items-center gap-2 text-caption text-[var(--avs-warning)]">
                     <ExclamationTriangleIcon className="h-4 w-4" />
                     <span>{w}</span>
                   </div>
@@ -353,7 +353,7 @@ export default function SmartOptimizationPage() {
 
             {/* Actions Preview */}
             <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--avs-text-muted)]">
+              <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)]">
                 Actions ({visibleActions.length}{s.preview && maxOptimizations !== null && s.preview.actionsPreview.length > maxOptimizations ? ` of ${s.preview.actionsPreview.length}` : ''})
               </h4>
               {visibleActions.map((action) => (
@@ -367,13 +367,13 @@ export default function SmartOptimizationPage() {
                   onClick={() => vm.selectAction(s.selectedActionId === action.id ? null : action.id)}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-[var(--avs-text-primary)]">{action.title}</span>
+                    <span className="text-small font-medium text-[var(--avs-text-primary)]">{action.title}</span>
                     <div className="flex items-center gap-2">
                       <Badge tone={IMPACT_BADGES[action.impactTier]}>{action.impactTier}</Badge>
-                      <span className={`text-xs ${RISK_COLORS[action.riskLevel]}`}>{action.riskLevel}</span>
+                      <span className={`text-caption ${RISK_COLORS[action.riskLevel]}`}>{action.riskLevel}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-[var(--avs-text-muted)]">
+                  <div className="flex items-center gap-3 mt-1 text-caption text-[var(--avs-text-muted)]">
                     <span>{action.estimatedBenefit}</span>
                     <span>{formatDuration(action.estimatedDurationSeconds)}</span>
                     {action.rollbackAvailable && <ShieldCheckIcon className="h-3.5 w-3.5 text-[var(--avs-success)]" />}
@@ -399,7 +399,7 @@ export default function SmartOptimizationPage() {
             {/* Hidden actions notice for Free */}
             {hiddenCount > 0 && (
               <div className="rounded-[var(--avs-radius-md)] bg-semantic-warning/10 border border-semantic-warning/20 px-3 py-2" data-testid="smart-opt-limit-notice">
-                <p className="text-xs text-text-secondary">
+                <p className="text-caption text-text-secondary">
                   {hiddenCount} more optimization{hiddenCount > 1 ? 's' : ''} available with Professional. Showing top {maxOptimizations} of {s.preview!.actionsPreview.length} actions.
                 </p>
               </div>
@@ -417,8 +417,8 @@ export default function SmartOptimizationPage() {
                   <div className="flex items-center gap-2">
                     <CalendarDaysIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
                     <div>
-                      <span className="text-xs font-medium text-[var(--avs-text-primary)]">Scheduled Optimization</span>
-                      <p className="text-xs text-[var(--avs-text-muted)]">Automatically run optimization on a schedule</p>
+                      <span className="text-caption font-medium text-[var(--avs-text-primary)]">Scheduled Optimization</span>
+                      <p className="text-caption text-[var(--avs-text-muted)]">Automatically run optimization on a schedule</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -428,7 +428,7 @@ export default function SmartOptimizationPage() {
                         const style = e.target.value === 'daily' ? 'aggressive' : 'balanced';
                         vm.updateConfig({ preferredStyle: style });
                       }}
-                      className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-2 py-1 text-xs text-[var(--avs-text-primary)]"
+                      className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-2 py-1 text-caption text-[var(--avs-text-primary)]"
                     >
                       <option value="weekly">Weekly</option>
                       <option value="daily">Daily</option>
@@ -441,8 +441,8 @@ export default function SmartOptimizationPage() {
                   <div className="flex items-center gap-2">
                     <ArrowPathIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
                     <div>
-                      <span className="text-xs font-medium text-[var(--avs-text-primary)]">Background Optimization</span>
-                      <p className="text-xs text-[var(--avs-text-muted)]">Continuously optimize in the background</p>
+                      <span className="text-caption font-medium text-[var(--avs-text-primary)]">Background Optimization</span>
+                      <p className="text-caption text-[var(--avs-text-muted)]">Continuously optimize in the background</p>
                     </div>
                   </div>
                   <ConfigToggle
@@ -469,16 +469,16 @@ export default function SmartOptimizationPage() {
             </div>
             {s.simulation.assumptions.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-1">Assumptions</h4>
+                <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-1">Assumptions</h4>
                 {s.simulation.assumptions.map((a, i) => (
-                  <p key={i} className="text-xs text-[var(--avs-text-secondary)]">• {a}</p>
+                  <p key={i} className="text-caption text-[var(--avs-text-secondary)]">• {a}</p>
                 ))}
               </div>
             )}
             {s.simulation.warnings.length > 0 && (
               <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-warning)]/10 p-3">
                 {s.simulation.warnings.map((w, i) => (
-                  <p key={i} className="text-xs text-[var(--avs-warning)]">• {w}</p>
+                  <p key={i} className="text-caption text-[var(--avs-warning)]">• {w}</p>
                 ))}
               </div>
             )}
@@ -490,7 +490,7 @@ export default function SmartOptimizationPage() {
       {s.lastReport && (
         <Card title="Execution Report" variant="glass">
           <div className="space-y-3">
-            <p className="text-sm font-medium text-[var(--avs-text-primary)]">{s.lastReport.summary.headline}</p>
+            <p className="text-small font-medium text-[var(--avs-text-primary)]">{s.lastReport.summary.headline}</p>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <MetricBox label="Health Change" value={`${s.lastReport.summary.healthScoreChange > 0 ? '+' : ''}${s.lastReport.summary.healthScoreChange}`} icon={ArrowTrendingUpIcon} />
               <MetricBox label="Storage Recovered" value={formatDataSize(s.lastReport.summary.storageRecoveredMB * 1024 * 1024)} icon={CircleStackIcon} />
@@ -507,8 +507,8 @@ export default function SmartOptimizationPage() {
                   ) : (
                     <ArrowPathIcon className="h-4 w-4 text-[var(--avs-text-muted)]" />
                   )}
-                  <span className="text-xs font-medium text-[var(--avs-text-primary)]">{result.actionTitle}</span>
-                  <span className="text-xs text-[var(--avs-text-muted)] ml-auto capitalize">{result.status}</span>
+                  <span className="text-caption font-medium text-[var(--avs-text-primary)]">{result.actionTitle}</span>
+                  <span className="text-caption text-[var(--avs-text-muted)] ml-auto capitalize">{result.status}</span>
                 </div>
               ))}
             </div>
@@ -553,21 +553,21 @@ export default function SmartOptimizationPage() {
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-[var(--avs-text-muted)]">Risk Tolerance</label>
+              <label className="text-caption text-[var(--avs-text-muted)]">Risk Tolerance</label>
               <select
                 value={s.config.riskTolerance}
                 onChange={(e) => vm.updateConfig({ riskTolerance: e.target.value as RiskLevel })}
-                className="mt-1 w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-xs text-[var(--avs-text-primary)]"
+                className="mt-1 w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-caption text-[var(--avs-text-primary)]"
               >
                 {['none', 'low', 'moderate', 'high', 'severe'].map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-[var(--avs-text-muted)]">Preferred Style</label>
+              <label className="text-caption text-[var(--avs-text-muted)]">Preferred Style</label>
               <select
                 value={s.config.preferredStyle}
                 onChange={(e) => vm.updateConfig({ preferredStyle: e.target.value as OptimizationConfiguration['preferredStyle'] })}
-                className="mt-1 w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-xs text-[var(--avs-text-primary)]"
+                className="mt-1 w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-caption text-[var(--avs-text-primary)]"
               >
                 {['conservative', 'balanced', 'aggressive', 'minimal'].map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
@@ -597,11 +597,11 @@ export default function SmartOptimizationPage() {
               <LockClosedIcon className="h-8 w-8 text-semantic-warning" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-text-primary">Upgrade to Professional for Full Optimization</h3>
-              <p className="text-sm text-text-secondary max-w-md">
+              <h3 className="text-section-title font-semibold text-text-primary">Upgrade to Professional for Full Optimization</h3>
+              <p className="text-small text-text-secondary max-w-md">
                 You can see the optimization plan and expected improvements. Professional edition unlocks:
               </p>
-              <div className="flex flex-wrap justify-center gap-2 text-xs">
+              <div className="flex flex-wrap justify-center gap-2 text-caption">
                 <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">One-click Auto Optimize</span>
                 <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">Automatic sequencing</span>
                 <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">Risk assessment</span>
@@ -609,7 +609,7 @@ export default function SmartOptimizationPage() {
                 <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">Background optimization</span>
                 <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">Scheduled optimization</span>
               </div>
-              <p className="text-sm text-text-muted pt-2">
+              <p className="text-small text-text-muted pt-2">
                 Or use <span className="font-medium text-text-primary">Manual Optimization</span> —
                 run individual scans and cleaners from the sidebar with your Free edition.
               </p>
@@ -638,7 +638,7 @@ export default function SmartOptimizationPage() {
         <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-danger)]/10 p-4">
           <div className="flex items-center gap-2">
             <ExclamationTriangleIcon className="h-5 w-5 text-[var(--avs-danger)]" />
-            <span className="text-sm text-[var(--avs-danger)]">{s.error}</span>
+            <span className="text-small text-[var(--avs-danger)]">{s.error}</span>
           </div>
         </div>
       )}
@@ -676,8 +676,8 @@ function StatBox({ label, value, icon: Icon }: { label: string; value: string | 
       <div className="flex items-center gap-2">
         <Icon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
         <div>
-          <p className="text-xs text-[var(--avs-text-muted)]">{label}</p>
-          <p className="text-lg font-bold text-[var(--avs-text-primary)]">{value}</p>
+          <p className="text-caption text-[var(--avs-text-muted)]">{label}</p>
+          <p className="text-section-title font-bold text-[var(--avs-text-primary)]">{value}</p>
         </div>
       </div>
     </Card>
@@ -689,9 +689,9 @@ function MetricBox({ label, value, icon: Icon }: { label: string; value: string;
     <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
       <div className="flex items-center gap-2">
         <Icon className="h-4 w-4 text-[var(--avs-text-muted)]" />
-        <span className="text-xs text-[var(--avs-text-muted)]">{label}</span>
+        <span className="text-caption text-[var(--avs-text-muted)]">{label}</span>
       </div>
-      <p className="text-sm font-semibold text-[var(--avs-text-primary)] mt-1">{value}</p>
+      <p className="text-small font-semibold text-[var(--avs-text-primary)] mt-1">{value}</p>
     </div>
   );
 }
@@ -699,7 +699,7 @@ function MetricBox({ label, value, icon: Icon }: { label: string; value: string;
 function ConfigToggle({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
     <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
-      <span className="text-xs font-medium text-[var(--avs-text-primary)]">{label}</span>
+      <span className="text-caption font-medium text-[var(--avs-text-primary)]">{label}</span>
       <button
         onClick={() => onChange(!value)}
         className={`relative h-6 w-11 rounded-full transition-colors ${value ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-glass-border)]'}`}

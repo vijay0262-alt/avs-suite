@@ -81,7 +81,7 @@ export function SecuritySearchPanel({ query, results, onSearchChange }: Security
           placeholder="Search threats, processes, investigations, evidence, timeline, reports, providers…"
           value={query}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
+          className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-small text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary transition-colors duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]"
           aria-label="Search security data"
           autoFocus
           data-testid="security-search-input"
@@ -110,7 +110,7 @@ export function SecuritySearchPanel({ query, results, onSearchChange }: Security
       {/* Results */}
       {query && !results && (
         <Card data-testid="search-loading">
-          <div className="py-4 text-center text-sm text-text-secondary">Searching…</div>
+          <div className="py-4 text-center text-small text-text-secondary">Searching…</div>
         </Card>
       )}
 
@@ -118,8 +118,8 @@ export function SecuritySearchPanel({ query, results, onSearchChange }: Security
         <Card data-testid="search-no-results">
           <div className="py-8 text-center">
             <MagnifyingGlassIcon className="h-10 w-10 text-text-muted mx-auto" aria-hidden />
-            <p className="mt-3 text-sm font-medium text-text-primary">No results found</p>
-            <p className="mt-1 text-xs text-text-muted">Try different keywords or check your spelling.</p>
+            <p className="mt-3 text-small font-medium text-text-primary">No results found</p>
+            <p className="mt-1 text-caption text-text-muted">Try different keywords or check your spelling.</p>
           </div>
         </Card>
       )}
@@ -128,8 +128,8 @@ export function SecuritySearchPanel({ query, results, onSearchChange }: Security
         <Card data-testid="search-empty">
           <div className="py-8 text-center">
             <MagnifyingGlassIcon className="h-10 w-10 text-text-muted mx-auto" aria-hidden />
-            <p className="mt-3 text-sm font-medium text-text-primary">Search Security Data</p>
-            <p className="mt-1 text-xs text-text-muted">
+            <p className="mt-3 text-small font-medium text-text-primary">Search Security Data</p>
+            <p className="mt-1 text-caption text-text-muted">
               Search across threats, processes, investigations, evidence, timeline, reports, and providers.
             </p>
           </div>
@@ -146,11 +146,11 @@ export function SecuritySearchPanel({ query, results, onSearchChange }: Security
                   <Icon className="h-5 w-5 shrink-0 text-brand-primary" aria-hidden />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium text-text-primary truncate">{result.title}</span>
+                      <span className="text-small font-medium text-text-primary truncate">{result.title}</span>
                       <Badge tone={typeTone(result.type)}>{TYPE_LABELS[result.type]}</Badge>
                     </div>
-                    <p className="mt-0.5 text-xs text-text-secondary truncate">{result.description}</p>
-                    <div className="mt-1 flex items-center gap-3 text-[10px] text-text-muted">
+                    <p className="mt-0.5 text-caption text-text-secondary truncate">{result.description}</p>
+                    <div className="mt-1 flex items-center gap-3 text-micro text-text-muted">
                       <span>{new Date(result.timestamp).toLocaleString()}</span>
                       <span>Relevance: {(result.relevance * 100).toFixed(0)}%</span>
                     </div>
@@ -171,8 +171,8 @@ function FilterChip({ active, onClick, label }: { active: boolean; onClick: () =
       onClick={onClick}
       className={
         active
-          ? 'rounded-md bg-brand-primary/10 px-2.5 py-1 text-xs font-medium text-brand-primary'
-          : 'rounded-md px-2.5 py-1 text-xs text-text-secondary hover:bg-surface-muted'
+          ? 'rounded-md bg-brand-primary/10 px-2.5 py-1 text-caption font-medium text-brand-primary'
+          : 'rounded-md px-2.5 py-1 text-caption text-text-secondary hover:bg-surface-muted'
       }
       data-testid={`search-filter-${label.toLowerCase().replace(/[^a-z]/g, '')}`}
     >

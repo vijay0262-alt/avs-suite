@@ -136,7 +136,7 @@ export function LicenseBootstrap({ children }: { children: ReactNode }) {
       <div className="flex h-full items-center justify-center bg-bg">
         <div className="text-center space-y-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent mx-auto" />
-          <p className="text-sm text-text-muted">Initializing licensing…</p>
+          <p className="text-small text-text-muted">Initializing licensing…</p>
         </div>
       </div>
     );
@@ -146,9 +146,9 @@ export function LicenseBootstrap({ children }: { children: ReactNode }) {
     return (
       <div className="flex h-full items-center justify-center bg-bg">
         <div className="text-center space-y-3 max-w-md">
-          <p className="text-sm text-semantic-danger">Licensing initialization failed</p>
-          <p className="text-xs text-text-muted">{state.error}</p>
-          <p className="text-xs text-text-muted">The application will continue in Free mode.</p>
+          <p className="text-small text-semantic-danger">Licensing initialization failed</p>
+          <p className="text-caption text-text-muted">{state.error}</p>
+          <p className="text-caption text-text-muted">The application will continue in Free mode.</p>
         </div>
       </div>
     );

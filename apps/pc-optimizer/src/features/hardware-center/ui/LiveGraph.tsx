@@ -72,7 +72,7 @@ export function LiveGraph({ title, unit, series, windowSeconds, ...rest }: LiveG
   return (
     <div data-testid={testId}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-semibold text-text-primary">{title}</span>
+        <span className="text-small font-semibold text-text-primary">{title}</span>
         <div className="flex items-center gap-3">
           {series.map((s) => (
             <div key={s.name} className="flex items-center gap-1">
@@ -81,7 +81,7 @@ export function LiveGraph({ title, unit, series, windowSeconds, ...rest }: LiveG
                 style={{ backgroundColor: s.color }}
                 aria-hidden
               />
-              <span className="text-xs text-text-secondary">{s.name}</span>
+              <span className="text-caption text-text-secondary">{s.name}</span>
             </div>
           ))}
         </div>
@@ -93,13 +93,13 @@ export function LiveGraph({ title, unit, series, windowSeconds, ...rest }: LiveG
         aria-label={title}
       >
         {/* Y axis labels */}
-        <text x={PADDING.left - 5} y={PADDING.top + 4} textAnchor="end" className="fill-text-muted text-[10px]">
+        <text x={PADDING.left - 5} y={PADDING.top + 4} textAnchor="end" className="fill-text-muted text-micro">
           {yMax.toFixed(0)}
         </text>
-        <text x={PADDING.left - 5} y={HEIGHT - PADDING.bottom} textAnchor="end" className="fill-text-muted text-[10px]">
+        <text x={PADDING.left - 5} y={HEIGHT - PADDING.bottom} textAnchor="end" className="fill-text-muted text-micro">
           {yMin.toFixed(0)}
         </text>
-        <text x={PADDING.left - 5} y={HEIGHT / 2} textAnchor="end" className="fill-text-muted text-[10px]">
+        <text x={PADDING.left - 5} y={HEIGHT / 2} textAnchor="end" className="fill-text-muted text-micro">
           {unit}
         </text>
 
@@ -110,7 +110,7 @@ export function LiveGraph({ title, unit, series, windowSeconds, ...rest }: LiveG
 
         {/* X axis labels */}
         {xLabels.map((label, i) => (
-          <text key={i} x={label.x} y={HEIGHT - 5} textAnchor="middle" className="fill-text-muted text-[10px]">
+          <text key={i} x={label.x} y={HEIGHT - 5} textAnchor="middle" className="fill-text-muted text-micro">
             {label.label}
           </text>
         ))}

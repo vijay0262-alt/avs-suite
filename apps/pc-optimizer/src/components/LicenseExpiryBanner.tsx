@@ -31,7 +31,7 @@ export function LicenseExpiryBanner() {
       >
         <div className="flex items-center gap-3">
           <Badge tone="danger">Expired</Badge>
-          <p className="text-sm text-semantic-danger">
+          <p className="text-small text-semantic-danger">
             Your license has expired. Renew to continue using premium features.
           </p>
         </div>
@@ -50,7 +50,7 @@ export function LicenseExpiryBanner() {
       >
         <div className="flex items-center gap-3">
           <Badge tone="danger">{licenseStatus === 'REVOKED' ? 'Revoked' : 'Invalid'}</Badge>
-          <p className="text-sm text-semantic-danger">
+          <p className="text-small text-semantic-danger">
             Your license is {licenseStatus.toLowerCase()}. Please contact support to restore premium features.
           </p>
         </div>
@@ -72,7 +72,7 @@ export function LicenseExpiryBanner() {
         >
           <div className="flex items-center gap-3">
             <Badge tone="warning">Offline</Badge>
-            <p className="text-sm text-semantic-warning">
+            <p className="text-small text-semantic-warning">
               Your subscription expired on {expiry.toLocaleDateString()}. Reconnect to sync your license status.
             </p>
           </div>

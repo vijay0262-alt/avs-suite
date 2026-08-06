@@ -105,7 +105,7 @@ export function ActionPanel({
           >
             {action.label}
             {action.requiresPro && (
-              <span className="ml-1 text-[10px] opacity-70">Pro</span>
+              <span className="ml-1 text-micro opacity-70">Pro</span>
             )}
           </Button>
         ))}

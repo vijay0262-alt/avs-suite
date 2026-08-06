@@ -74,23 +74,23 @@ export const ImprovementSummaryCard = React.memo(function ImprovementSummaryCard
           </div>
           <div>
             <div className="text-xl font-bold text-text-primary">Optimization Complete</div>
-            <div className="text-sm text-text-secondary">Your PC has been optimized successfully.</div>
+            <div className="text-small text-text-secondary">Your PC has been optimized successfully.</div>
           </div>
         </div>
 
         {/* Health Score before → after */}
         <div className="flex items-center justify-center gap-6 py-4 rounded-lg bg-[var(--avs-surface-muted)]">
           <div className="text-center">
-            <div className="text-xs uppercase tracking-wide text-text-muted">Before</div>
+            <div className="text-caption uppercase tracking-wide text-text-muted">Before</div>
             <div className="text-3xl font-bold text-text-secondary tabular-nums">{summary.healthBefore}</div>
           </div>
-          <div className="text-2xl text-text-muted" aria-hidden>→</div>
+          <div className="text-statistic text-text-muted" aria-hidden>→</div>
           <div className="text-center">
-            <div className="text-xs uppercase tracking-wide text-text-muted">After</div>
+            <div className="text-caption uppercase tracking-wide text-text-muted">After</div>
             <div className="text-3xl font-bold text-semantic-success tabular-nums">{summary.healthAfter}</div>
           </div>
           {scoreImproved && (
-            <div className="inline-flex items-center rounded-full bg-semantic-success/10 px-3 py-1 text-sm font-medium text-semantic-success">
+            <div className="inline-flex items-center rounded-full bg-semantic-success/10 px-3 py-1 text-small font-medium text-semantic-success">
               +{summary.healthAfter - summary.healthBefore}
             </div>
           )}
@@ -106,8 +106,8 @@ export const ImprovementSummaryCard = React.memo(function ImprovementSummaryCard
             >
               <stat.icon className="h-5 w-5 text-semantic-primary" aria-hidden />
               <div>
-                <div className="text-xs text-text-muted">{stat.label}</div>
-                <div className="text-sm font-semibold text-text-primary tabular-nums">{stat.value}</div>
+                <div className="text-caption text-text-muted">{stat.label}</div>
+                <div className="text-small font-semibold text-text-primary tabular-nums">{stat.value}</div>
               </div>
             </div>
           ))}

@@ -32,7 +32,7 @@ export function BackgroundMonitors({ monitors }: BackgroundMonitorsProps) {
           )}
         >
           <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-medium text-[var(--avs-text-primary)]">{mon.name}</span>
+            <span className="text-small font-medium text-[var(--avs-text-primary)]">{mon.name}</span>
             <div className="flex items-center gap-1.5">
               <span
                 className={clsx(
@@ -45,7 +45,7 @@ export function BackgroundMonitors({ monitors }: BackgroundMonitorsProps) {
               />
               <span
                 className={clsx(
-                  'text-xs font-medium',
+                  'text-caption font-medium',
                   mon.active ? 'text-[var(--avs-success)]' : 'text-[var(--avs-text-muted)]',
                 )}
               >
@@ -54,9 +54,9 @@ export function BackgroundMonitors({ monitors }: BackgroundMonitorsProps) {
             </div>
           </div>
           {mon.detail && (
-            <p className="text-xs text-[var(--avs-text-secondary)]">{mon.detail}</p>
+            <p className="text-caption text-[var(--avs-text-secondary)]">{mon.detail}</p>
           )}
-          <p className="text-xs text-[var(--avs-text-muted)] mt-1">
+          <p className="text-caption text-[var(--avs-text-muted)] mt-1">
             Last heartbeat: {timeAgo(mon.lastHeartbeat)}
           </p>
         </div>
