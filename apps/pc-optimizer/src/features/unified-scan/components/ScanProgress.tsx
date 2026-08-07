@@ -15,9 +15,11 @@ export interface ScanProgressProps {
   subProgress?: number; // 0-100 for current file/operation
   step: UnifiedScanStep;
   currentFile?: string | null;
+  /** When true, shows 'Optimizing' instead of 'Scanning' */
+  isOptimizing?: boolean;
 }
 
-export function ScanProgress({ progress, subProgress, step, currentFile }: ScanProgressProps) {
+export function ScanProgress({ progress, subProgress, step, currentFile, isOptimizing = false }: ScanProgressProps) {
   const isActive = step === 'scanning' || step === 'preparing';
   const isComplete = step === 'complete';
   const isError = step === 'error';
@@ -31,12 +33,14 @@ export function ScanProgress({ progress, subProgress, step, currentFile }: ScanP
         ? 'bg-semantic-warning'
         : 'bg-brand-primary';
 
+  const activeLabel = isOptimizing ? 'Optimizing' : 'Scanning';
+
   return (
     <div className="space-y-2" data-testid="unified-scan-progress">
       {/* Percentage + label */}
       <div className="flex items-center justify-between">
         <span className="text-small font-medium text-text-secondary">
-          {isComplete ? 'Complete' : isPaused ? 'Paused' : isError ? 'Error' : 'Scanning'}
+          {isComplete ? 'Complete' : isPaused ? 'Paused' : isError ? 'Error' : activeLabel}
         </span>
         <span className="text-statistic font-bold tabular-nums text-text-primary" aria-live="polite">
           {Math.round(progress)}%
@@ -50,7 +54,7 @@ export function ScanProgress({ progress, subProgress, step, currentFile }: ScanP
         aria-valuenow={Math.round(progress)}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label="Scan progress"
+        aria-label={`${activeLabel} progress`}
       >
         <div
           className={`h-full rounded-full transition-[width] duration-500 ease-out ${barColor}`}

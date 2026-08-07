@@ -19,6 +19,8 @@ export type {
   UnifiedResultsReport,
   UnifiedResultAction,
   UnifiedSystemInfo,
+  UnifiedFileDetailItem,
+  UnifiedFileDetailGroup,
   ReportExportFormat,
 } from './unifiedResultsTypes';
 
@@ -44,6 +46,8 @@ export { AIVerdict } from './components/AIVerdict';
 export { IssuePriorityGroups } from './components/IssuePriorityGroups';
 export { ImpactEstimation } from './components/ImpactEstimation';
 export { ResultCardsGrid } from './components/ResultCardsGrid';
+export { FileDetailsSection } from './components/FileDetailsSection';
+export type { FileDetailsSectionProps } from './components/FileDetailsSection';
 export { Recommendations } from './components/Recommendations';
 export { ActionPanel } from './components/ActionPanel';
 export { ReportExport } from './components/ReportExport';

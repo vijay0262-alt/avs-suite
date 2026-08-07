@@ -65,6 +65,8 @@ export interface UnifiedScanViewProps {
   onResume: () => void;
   onCancel: () => void;
   onClose: () => void;
+  /** When true, shows 'Optimizing' instead of 'Scanning' */
+  isOptimizing?: boolean;
   /** Optional custom content below the scan tree */
   children?: ReactNode;
 }
@@ -84,6 +86,7 @@ export function UnifiedScanView({
   onResume,
   onCancel,
   onClose,
+  isOptimizing = false,
   children,
 }: UnifiedScanViewProps) {
   const elapsed = useElapsedTimer(startTime);
@@ -142,6 +145,7 @@ export function UnifiedScanView({
           subProgress={liveStatus.subProgress}
           step={step}
           currentFile={liveStatus.currentFile}
+          isOptimizing={isOptimizing}
         />
 
         {/* Activity message */}

@@ -32,6 +32,7 @@ import type {
   UnifiedImpactEstimate,
   UnifiedResultCardData,
   UnifiedRecommendation,
+  UnifiedFileDetailGroup,
   IssuePriority,
 } from '../../unified-results/unifiedResultsTypes';
 import type { DashboardViewModel } from '../DashboardViewModel';
@@ -58,6 +59,7 @@ import {
   CpuChipIcon,
   BoltIcon,
 } from '@heroicons/react/24/outline';
+import { FileDetailsSection } from '../../unified-results/components/FileDetailsSection';
 
 export interface UnifiedOptimizeFlowProps {
   vm: DashboardViewModel;
@@ -153,6 +155,7 @@ export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptim
         error={s.healthScanError}
         report={null}
         actions={[]}
+        isOptimizing={isFixing}
         onPause={() => {}}
         onResume={() => {}}
         onCancel={() => {
@@ -194,7 +197,8 @@ export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptim
         history={history}
         isPro={isPro}
         onClose={onClose}
-        extraActions={[optimizeAction, rescanAction]}
+        headerAction={optimizeAction}
+        extraActions={[rescanAction]}
       />
     );
   }
@@ -220,12 +224,18 @@ export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptim
 
   // Complete — verification screen with detailed results
   if (s.healthScanStep === 'complete') {
+    // Use the verified report score (computed locally from actual cleaning results)
+    // as the primary source — dashboard healthScore may still be loading from
+    // the backend metrics refresh.
+    const verifiedAfterScore = s.healthScanReport?.overallScore ?? s.healthScore?.overallScore ?? 0;
     return (
       <VerificationScreen
         verificationReport={s.verificationReport}
         optimizationSummary={s.optimizationSummary}
         healthBefore={s.healthScanBeforeReport?.overallScore ?? 0}
-        healthAfter={s.healthScore?.overallScore ?? s.healthScanReport?.overallScore ?? 0}
+        healthAfter={verifiedAfterScore}
+        beforeModules={s.healthScanBeforeReport?.modules ?? []}
+        afterModules={s.healthScanReport?.modules ?? []}
         onClose={onClose}
         onScanAgain={() => {
           vm.closeHealthScan();
@@ -479,6 +489,23 @@ function buildResultsReport(
         },
       ];
 
+  // Build file details from module scan groups
+  const fileDetails: UnifiedFileDetailGroup[] = report.modules
+    .filter((m) => m.details?.groups?.some((g) => g.items.length > 0))
+    .flatMap((m) =>
+      m.details.groups
+        .filter((g) => g.items.length > 0)
+        .map((g) => ({
+          moduleLabel: m.moduleName,
+          title: g.title,
+          items: g.items.map((item) => ({
+            name: item.name,
+            size: item.size,
+          })),
+          totalSize: g.totalSize,
+        })),
+    );
+
   return {
     reportId: `opt-${Date.now()}`,
     moduleId: 'optimize',
@@ -496,6 +523,7 @@ function buildResultsReport(
     impactEstimates,
     resultCards,
     recommendations,
+    fileDetails,
     actions,
   };
 }
@@ -522,6 +550,8 @@ interface VerificationScreenProps {
   optimizationSummary: OptimizationSummary | null;
   healthBefore: number;
   healthAfter: number;
+  beforeModules: HealthScanModuleResult[];
+  afterModules: HealthScanModuleResult[];
   onClose: () => void;
   onScanAgain: () => void;
 }
@@ -531,6 +561,8 @@ function VerificationScreen({
   optimizationSummary,
   healthBefore,
   healthAfter,
+  beforeModules,
+  afterModules,
   onClose,
   onScanAgain,
 }: VerificationScreenProps) {
@@ -624,10 +656,55 @@ function VerificationScreen({
         <h3 className="text-section-title font-semibold text-[var(--avs-text-primary)] mb-4">
           Score Improvement
         </h3>
-        <div className="flex items-center justify-center gap-8">
+        <div className="flex items-center justify-center gap-8 mb-6">
           <ScoreCircle label="Health Score" before={healthBefore} after={healthAfter} />
         </div>
+        {beforeModules.length > 0 && afterModules.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 border-t border-[var(--avs-border)] pt-4">
+            {afterModules.map((afterMod) => {
+              const beforeMod = beforeModules.find((m) => m.moduleId === afterMod.moduleId);
+              if (!beforeMod) return null;
+              return (
+                <ModuleScoreTransition
+                  key={afterMod.moduleId}
+                  label={afterMod.moduleName}
+                  before={beforeMod.score}
+                  after={afterMod.score}
+                />
+              );
+            })}
+          </div>
+        )}
       </Card>
+
+      {/* Files Cleaned */}
+      {afterModules.length > 0 && (() => {
+        const cleanedGroups = afterModules
+          .filter((m) => m.actual?.success && m.details?.groups?.some((g) => g.items.length > 0))
+          .flatMap((m) =>
+            m.details.groups
+              .filter((g) => g.items.length > 0)
+              .map((g) => ({
+                moduleLabel: m.moduleName,
+                title: g.title,
+                items: g.items.map((item) => ({
+                  name: item.name,
+                  size: item.size,
+                })),
+                totalSize: g.totalSize,
+              })),
+          );
+        if (cleanedGroups.length === 0) return null;
+        return (
+          <Card variant="glass" className="p-6">
+            <FileDetailsSection
+              groups={cleanedGroups}
+              title="Files Cleaned"
+              variant="cleaned"
+            />
+          </Card>
+        );
+      })()}
 
       {/* Detailed Cleaning Breakdown */}
       {cleaningSummary && cleaningSummary.breakdown.length > 0 && (
@@ -775,16 +852,29 @@ function VerificationStat({
 function ScoreCircle({ label, before, after }: { label: string; before: number; after: number }) {
   const improved = after > before;
   const diff = after - before;
+
+  const beforeColor = before >= 80
+    ? 'text-[var(--avs-success)]'
+    : before >= 60
+    ? 'text-[var(--avs-warning)]'
+    : 'text-[var(--avs-danger)]';
+
+  const afterColor = after >= 80
+    ? 'text-[var(--avs-success)]'
+    : after >= 60
+    ? 'text-[var(--avs-warning)]'
+    : 'text-[var(--avs-danger)]';
+
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="flex items-center gap-4">
         <div className="flex flex-col items-center">
-          <div className="text-3xl font-bold text-[var(--avs-text-muted)]">{before}</div>
+          <div className={`text-3xl font-bold ${beforeColor}`}>{before}</div>
           <div className="text-caption text-[var(--avs-text-muted)]">Before</div>
         </div>
         <ArrowPathIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
         <div className="flex flex-col items-center">
-          <div className={`text-3xl font-bold ${improved ? 'text-[var(--avs-success)]' : 'text-[var(--avs-text-primary)]'}`}>
+          <div className={`text-3xl font-bold ${afterColor}`}>
             {after}
           </div>
           <div className="text-caption text-[var(--avs-text-muted)]">After</div>
@@ -805,6 +895,39 @@ function SummaryStat({ label, value }: { label: string; value: string | number }
     <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 text-center">
       <div className="text-body font-bold text-[var(--avs-text-primary)]">{value}</div>
       <div className="text-caption text-[var(--avs-text-muted)] mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+function ModuleScoreTransition({ label, before, after }: { label: string; before: number; after: number }) {
+  const improved = after > before;
+  const diff = after - before;
+
+  const beforeColor = before >= 80
+    ? 'text-[var(--avs-success)]'
+    : before >= 60
+    ? 'text-[var(--avs-warning)]'
+    : 'text-[var(--avs-danger)]';
+
+  const afterColor = after >= 80
+    ? 'text-[var(--avs-success)]'
+    : after >= 60
+    ? 'text-[var(--avs-warning)]'
+    : 'text-[var(--avs-danger)]';
+
+  return (
+    <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 text-center">
+      <div className="text-caption text-[var(--avs-text-muted)] mb-1 truncate" title={label}>{label}</div>
+      <div className="flex items-center justify-center gap-2">
+        <span className={`text-body font-bold ${beforeColor}`}>{before}</span>
+        <ArrowPathIcon className="h-3 w-3 text-[var(--avs-text-muted)]" />
+        <span className={`text-body font-bold ${afterColor}`}>{after}</span>
+      </div>
+      {improved && (
+        <div className="text-micro font-semibold text-[var(--avs-success)] mt-1">
+          +{diff}
+        </div>
+      )}
     </div>
   );
 }

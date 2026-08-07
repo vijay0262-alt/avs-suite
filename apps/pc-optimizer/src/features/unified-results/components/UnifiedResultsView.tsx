@@ -23,6 +23,7 @@ import { ScoreRow } from './ScoreGauge';
 import { AIVerdict } from './AIVerdict';
 import { ImpactEstimation } from './ImpactEstimation';
 import { ResultCardsGrid } from './ResultCardsGrid';
+import { FileDetailsSection } from './FileDetailsSection';
 import { IssuePriorityGroups } from './IssuePriorityGroups';
 import { Recommendations } from './Recommendations';
 import { ReportExport } from './ReportExport';
@@ -42,6 +43,8 @@ export interface UnifiedResultsViewProps {
   onApplyAllSafe?: (ids: string[]) => void;
   onReviewDetails?: () => void;
   extraActions?: UnifiedResultAction[];
+  /** Prominent action rendered right after the header + scores */
+  headerAction?: UnifiedResultAction;
   children?: ReactNode;
 }
 
@@ -54,6 +57,7 @@ export function UnifiedResultsView({
   onApplyAllSafe,
   onReviewDetails,
   extraActions = [],
+  headerAction,
   children,
 }: UnifiedResultsViewProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
@@ -106,6 +110,20 @@ export function UnifiedResultsView({
         {/* Scores */}
         <ScoreRow primary={report.primaryScore} secondary={report.secondaryScores} />
 
+        {/* Prominent header action (e.g. Optimize Now) */}
+        {headerAction && (
+          <div className="flex justify-center pt-2">
+            <button
+              onClick={headerAction.action}
+              data-testid="header-action-btn"
+              data-action-id={headerAction.id}
+              className="inline-flex items-center gap-2 rounded-[var(--avs-radius-lg)] bg-[var(--avs-brand-primary)] px-8 py-3 text-body font-semibold text-white shadow-[var(--avs-shadow-md)] transition-all hover:bg-[var(--avs-brand-primary)] hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              {headerAction.label}
+            </button>
+          </div>
+        )}
+
         {/* AI Verdict */}
         <AIVerdict verdict={report.aiVerdict} />
 
@@ -120,6 +138,17 @@ export function UnifiedResultsView({
         {report.resultCards.length > 0 && (
           <Section title="Result Summary">
             <ResultCardsGrid cards={report.resultCards} />
+          </Section>
+        )}
+
+        {/* File Details (detected or cleaned files) */}
+        {report.fileDetails && report.fileDetails.length > 0 && (
+          <Section title="Files Detected">
+            <FileDetailsSection
+              groups={report.fileDetails}
+              title="Files Needing Cleanup"
+              variant="detected"
+            />
           </Section>
         )}
 

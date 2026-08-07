@@ -703,6 +703,31 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
 
   cancelHealthScan(): void {
     this.setState({ healthScanCancelled: true });
+    // Reset immediately — don't wait for the scan loop to notice the flag
+    this.setState({
+      healthScanStep: 'idle',
+      healthScanModules: [],
+      healthScanReport: null,
+      healthScanBeforeReport: null,
+      healthScanError: null,
+      healthScanExecution: null,
+      healthScanResult: null,
+      healthScanCurrentFile: null,
+      healthScanSubProgress: 0,
+      scanPhase: null,
+      scanOverallProgress: 0,
+      scanLiveStats: {
+        filesScanned: 0,
+        registryEntries: 0,
+        startupItems: 0,
+        privacyItems: 0,
+        estimatedStorageRecovery: 0,
+        estimatedMemoryRecovery: 0,
+        estimatedStartupImprovement: 0,
+        recommendationsFound: 0,
+      },
+      scanStartTime: null,
+    });
   }
 
   resetHealthScan(): void {
@@ -929,13 +954,32 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         const status = await junkCleanerService.getStatus(task.taskId);
         const totalSize = status.totalBytes || 0;
         const issues = status.totalFiles || 0;
-        const groups = (status.cleaners || cleaners).map((c) => ({
-          title: (c as { name?: string }).name || String(c),
-          totalSize: (c as { totalBytes?: number }).totalBytes,
-          safeToRemove: true,
-          why: 'Temporary files and caches are safe to remove and free disk space.',
-          items: [] as { name: string; size?: number }[],
-        }));
+        // Fetch actual file items for each cleaner
+        const groups = await Promise.all(
+          (status.cleaners || cleaners).map(async (c) => {
+            const cleanerId = (c as { id?: string }).id ?? String(c);
+            const cleanerName = (c as { name?: string }).name ?? String(c);
+            const cleanerBytes = (c as { totalBytes?: number }).totalBytes ?? 0;
+            let items: { name: string; size?: number }[] = [];
+            try {
+              const resultsPage = await junkCleanerService.getResults(task.taskId, cleanerId, 0, 10);
+              items = resultsPage.items.map((item) => ({
+                name: item.path || item.name,
+                size: item.size,
+              }));
+            } catch {
+              // getResults may fail if scan was partial — use cleaner name as fallback
+              items = [];
+            }
+            return {
+              title: cleanerName,
+              totalSize: cleanerBytes,
+              safeToRemove: true,
+              why: 'Temporary files and caches are safe to remove and free disk space.',
+              items,
+            };
+          }),
+        );
         return {
           score: Math.max(0, 100 - Math.min(issues / 100, 100)),
           issuesFound: issues,
@@ -1375,9 +1419,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       await Promise.all([this.loadMetrics(), this.loadPrivacyRisks(), this.loadHardwareSensors()]);
 
       // Part 7: Build improvement summary from health scan results
-      // Use the verified report score as fallback since dashboard metrics
-      // may not reflect changes immediately after cleaning
-      const summaryHealthAfter = this.state.healthScore?.overallScore ?? verifiedReport.overallScore;
+      // Prefer the verified report score (computed locally from actual cleaning results)
+      // over dashboard healthScore which may still be stale from the backend metrics refresh.
+      const summaryHealthAfter = verifiedReport.overallScore;
       const totalRecovered = [...actualMap.values()].reduce((s, a) => s + (a.bytesRecovered || 0), 0);
       const registryFixed = [...actualMap.values()].reduce((s, a) => s + (a.issuesFixed || 0), 0);
       const startupOptimized = [...actualMap.values()].reduce((s, a) => s + (a.entriesDisabled || 0), 0);
@@ -1656,7 +1700,24 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   }
 
   cancelHealthScanOptimizations(): void {
-    this.setState({ healthScanStep: 'report' });
+    // Cancel immediately — reset to idle, don't go back to report
+    this.setState({
+      healthScanStep: 'idle',
+      healthScanModules: [],
+      healthScanReport: null,
+      healthScanBeforeReport: null,
+      healthScanError: null,
+      healthScanExecution: null,
+      healthScanResult: null,
+      healthScanCurrentFile: null,
+      healthScanSubProgress: 0,
+      scanPhase: null,
+      scanOverallProgress: 0,
+      scanStartTime: null,
+    });
+    // Refresh metrics so scores reflect any partial optimizations that were applied
+    invalidateMetricsCache();
+    void this.loadMetrics();
   }
 
   closeHealthScan(): void {
@@ -1686,7 +1747,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     });
     // Refresh metrics so scores reflect any optimizations that were applied
     invalidateMetricsCache();
-    void this.loadMetrics();
+    void Promise.all([this.loadMetrics(), this.loadPrivacyRisks(), this.loadHardwareSensors()]);
     clearSession();
   }
 

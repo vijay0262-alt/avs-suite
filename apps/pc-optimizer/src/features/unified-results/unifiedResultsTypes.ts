@@ -120,6 +120,20 @@ export interface UnifiedScanHistoryEntry {
   reportId: string;
 }
 
+// ── File Details (per-module file names/paths) ──────────────────
+
+export interface UnifiedFileDetailItem {
+  name: string;
+  size?: number;
+}
+
+export interface UnifiedFileDetailGroup {
+  moduleLabel: string;
+  title: string;
+  items: UnifiedFileDetailItem[];
+  totalSize?: number;
+}
+
 // ── Results Report ──────────────────────────────────────────────
 
 export interface UnifiedResultsReport {
@@ -152,6 +166,9 @@ export interface UnifiedResultsReport {
 
   // Recommendations
   recommendations: UnifiedRecommendation[];
+
+  // File details (file names/paths found or cleaned)
+  fileDetails?: UnifiedFileDetailGroup[];
 
   // Actions
   actions: UnifiedResultAction[];
@@ -245,15 +262,13 @@ export function riskColor(risk: UnifiedRecommendation['riskLevel']): string {
 }
 
 export function scoreColor(score: number): string {
-  if (score >= 90) return 'text-semantic-success';
-  if (score >= 75) return 'text-brand-primary';
+  if (score >= 80) return 'text-semantic-success';
   if (score >= 60) return 'text-semantic-warning';
   return 'text-semantic-danger';
 }
 
 export function scoreStrokeColor(score: number): string {
-  if (score >= 90) return 'var(--avs-success)';
-  if (score >= 75) return 'var(--avs-brand-primary)';
+  if (score >= 80) return 'var(--avs-success)';
   if (score >= 60) return 'var(--avs-warning)';
   return 'var(--avs-danger)';
 }
