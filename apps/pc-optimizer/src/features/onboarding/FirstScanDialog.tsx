@@ -3,7 +3,7 @@
  * their first system health scan yet.
  *
  * Prompts the user to run a full system scan so the AI features
- * (Assistant, Daily Briefing, Smart Optimize) have real data to work with.
+ * (Smart Optimize, Process Intelligence) have real data to work with.
  *
  * On "Start Scan", navigates to /dashboard and triggers the health scan
  * via a URL state parameter. The Dashboard page detects this and auto-starts.
@@ -98,7 +98,7 @@ export function FirstScanDialog({ open, onClose }: FirstScanDialogProps) {
         </div>
 
         <p className="text-caption text-text-muted text-center pt-1">
-          After the scan, AI features like Smart Optimize and AI Assistant will have real data to provide personalized recommendations.
+          After the scan, AI features like Smart Optimize and Process Intelligence will have real data to provide personalized recommendations.
         </p>
       </div>
     </Modal>

@@ -1,12 +1,13 @@
 import clsx from 'clsx';
-import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XCircleIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/outline';
 import type { CoverageItem } from '../protectionCenter.types';
 
 export interface ProtectionHealthProps {
   coverage: CoverageItem[];
+  onFix?: (item: CoverageItem) => void;
 }
 
-export function ProtectionHealth({ coverage }: ProtectionHealthProps) {
+export function ProtectionHealth({ coverage, onFix }: ProtectionHealthProps) {
   if (coverage.length === 0) {
     return (
       <div className="rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-gradient-surface p-4 text-center">
@@ -64,14 +65,26 @@ export function ProtectionHealth({ coverage }: ProtectionHealthProps) {
               <XCircleIcon className="h-5 w-5 shrink-0 text-[var(--avs-danger)]" />
             )}
             <div className="flex-1 min-w-0">
-              <span
-                className={clsx(
-                  'text-small',
-                  item.covered ? 'text-[var(--avs-text-primary)]' : 'text-[var(--avs-text-primary)]',
+              <div className="flex items-center justify-between gap-2">
+                <span
+                  className={clsx(
+                    'text-small',
+                    item.covered ? 'text-[var(--avs-text-primary)]' : 'text-[var(--avs-text-primary)]',
+                  )}
+                >
+                  {item.label}
+                </span>
+                {!item.covered && item.fixAction && onFix && (
+                  <button
+                    type="button"
+                    onClick={() => onFix(item)}
+                    className="inline-flex items-center gap-1 rounded-md bg-[var(--avs-brand)] px-2 py-0.5 text-caption font-medium text-white hover:opacity-90 transition-opacity shrink-0"
+                  >
+                    <WrenchScrewdriverIcon className="h-3.5 w-3.5" />
+                    {item.fixAction.label}
+                  </button>
                 )}
-              >
-                {item.label}
-              </span>
+              </div>
               {!item.covered && item.reason && (
                 <p className="text-caption text-[var(--avs-text-muted)] mt-0.5">{item.reason}</p>
               )}

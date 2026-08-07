@@ -2,6 +2,7 @@
  * Performance Monitor service
  */
 
+import { RPC_METHODS } from '@avs/shared/rpc';
 import type { PerformanceMetrics, GraphHistory, ProcessInfo, Alert } from './performance.types';
 
 function client() {
@@ -11,6 +12,23 @@ function client() {
   return window.avs.rpc;
 }
 
+export interface ProcessOptimizeResult {
+  detected: Array<{
+    pid: number;
+    name: string;
+    cpuPercent: number;
+    memoryMB: number;
+    diskMBps: number;
+    reason: string;
+    critical: boolean;
+  }>;
+  killed: Array<{ pid: number; name: string; terminated: boolean }>;
+  errors: string[];
+  totalDetected: number;
+  totalKilled: number;
+  thresholds: { cpuPercent: number; memoryPercent: number; diskMBps: number };
+}
+
 export interface IPerformanceService {
   getMetrics(): Promise<PerformanceMetrics>;
   getGraphHistory(): Promise<GraphHistory>;
@@ -18,6 +36,7 @@ export interface IPerformanceService {
   getTopProcesses(sortBy?: string, limit?: number, search?: string): Promise<{ processes: ProcessInfo[] }>;
   getAlerts(): Promise<{ alerts: Alert[] }>;
   optimizeMemory(): Promise<MemoryOptimizeResult>;
+  optimizeProcesses(params?: { kill?: boolean; cpuThreshold?: number; memThresholdPercent?: number; diskThreshold?: number }): Promise<ProcessOptimizeResult>;
 }
 
 export interface MemoryOptimizeResult {
@@ -54,6 +73,10 @@ class PerformanceService implements IPerformanceService {
 
   async optimizeMemory(): Promise<MemoryOptimizeResult> {
     return await client().call('performance.memory.optimize');
+  }
+
+  async optimizeProcesses(params?: { kill?: boolean; cpuThreshold?: number; memThresholdPercent?: number; diskThreshold?: number }): Promise<ProcessOptimizeResult> {
+    return await client().call(RPC_METHODS.PERFORMANCE_OPTIMIZE_PROCESSES, params ?? {});
   }
 }
 

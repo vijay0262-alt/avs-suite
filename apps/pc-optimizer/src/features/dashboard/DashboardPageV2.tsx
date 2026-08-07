@@ -19,8 +19,6 @@ import {
   StarIcon,
   EyeIcon,
   WrenchScrewdriverIcon,
-  ChatBubbleLeftRightIcon,
-  SunIcon,
   FireIcon,
   Battery50Icon,
 } from '@heroicons/react/24/outline';
@@ -31,6 +29,7 @@ import { generateRecommendations } from './dashboard.utils';
 import type { DashboardMetrics, LiveMetrics, HardwareSensorReading } from './dashboard.types';
 import { UnifiedHealthScanModal } from './components/UnifiedHealthScanModal';
 import { UnifiedHealthScanResults } from './components/UnifiedHealthScanResults';
+import { LastScanResults } from '../protection-center/components/LastScanResults';
 import { useIsPro } from '../sync/syncStore';
 import { useEditionLimits } from '../licensing/editionLimits';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
@@ -136,8 +135,6 @@ function getAIModules(isPro: boolean): AIModuleCard[] {
     { id: 'active-protection', name: 'Active Protection', description: 'Real-time monitoring and behavior analysis', icon: <ShieldExclamationIcon className="h-5 w-5" />, path: '/ai-active-protection', status: 'active' },
     { id: 'threat-investigation', name: 'Threat Investigation', description: 'Explainable threat timeline and correlation', icon: <EyeIcon className="h-5 w-5" />, path: '/threat-investigation', status: isPro ? 'active' : 'pro' },
     { id: 'remediation', name: 'Remediation', description: 'Safe quarantine, rollback, and recovery', icon: <WrenchScrewdriverIcon className="h-5 w-5" />, path: '/quarantine', status: isPro ? 'active' : 'pro' },
-    { id: 'ai-assistant', name: 'AVS AI Assistant', description: 'Your AI assistant for PC health and security', icon: <ChatBubbleLeftRightIcon className="h-5 w-5" />, path: '/ai-assistant', status: 'active' },
-    { id: 'daily-briefing', name: 'Daily Briefing', description: 'Daily summary and system highlights', icon: <SunIcon className="h-5 w-5" />, path: '/ai-daily-briefing', status: 'active' },
   ];
 }
 
@@ -322,8 +319,8 @@ export default function DashboardPage() {
         </div>
       </DashboardSection>
 
-      {/* Daily Briefing */}
-      <DashboardSection title="Daily Briefing" icon={<SparklesIcon className="h-5 w-5" />}>
+      {/* Health Insights */}
+      <DashboardSection title="Health Insights" icon={<SparklesIcon className="h-5 w-5" />}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {healthScore >= 80 ? (
             <InsightCard
@@ -391,7 +388,6 @@ export default function DashboardPage() {
             { id: 'ai-smart-optimize', name: 'AI Smart Optimize', icon: SparklesIcon, color: 'text-brand-primary', path: '/ai-smart-optimize', proEnhanced: false },
             { id: 'quick-scan', name: 'Quick Scan', icon: ShieldExclamationIcon, color: 'text-semantic-success', path: '/quick-scan', proEnhanced: false },
             { id: 'full-scan', name: 'Full Scan', icon: ShieldExclamationIcon, color: 'text-semantic-danger', path: '/full-scan', proEnhanced: false },
-            { id: 'ai-assistant', name: 'AVS AI Assistant', icon: ChatBubbleLeftRightIcon, color: 'text-brand-primary', path: '/ai-assistant', proEnhanced: false },
             { id: 'junk-cleaner', name: 'Junk Cleaner', icon: CircleStackIcon, color: 'text-brand-primary', path: '/junk-cleaner', proEnhanced: false },
             { id: 'startup-manager', name: 'Startup Manager', icon: BoltIcon, color: 'text-semantic-success', path: '/startup-manager', proEnhanced: false },
             { id: 'privacy-cleaner', name: 'Privacy Cleaner', icon: ShieldExclamationIcon, color: 'text-semantic-warning', path: '/privacy-cleaner', proEnhanced: true },
@@ -481,6 +477,14 @@ export default function DashboardPage() {
             <Sparkline data={memHistory.length > 1 ? memHistory : [0, 0]} width={280} height={60} stroke="var(--avs-success)" fill="var(--avs-success)" />
           </ChartCard>
         </div>
+      </DashboardSection>
+
+      {/* Last Scan Results */}
+      <DashboardSection title="Last Scan Results" icon={<CheckCircleIcon className="h-5 w-5" />}>
+        <LastScanResults
+          lastScan={state.healthScanHistory[0] ?? null}
+          lastOptimizeResult={state.healthScanResult}
+        />
       </DashboardSection>
 
       {/* Recent Activity & Security Events */}

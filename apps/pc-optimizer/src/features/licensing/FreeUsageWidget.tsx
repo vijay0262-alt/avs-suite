@@ -1,7 +1,7 @@
 /**
  * FreeUsageWidget — transparent usage tracker for Free edition users.
  *
- * Shows remaining limits for AVS AI Assistant, Smart Optimize, Junk Cleaner,
+ * Shows remaining limits for Smart Optimize, Junk Cleaner,
  * Registry Cleaner, and Predictive Health forecast.
  *
  * In Professional edition, renders nothing — Pro has unlimited usage.
@@ -13,7 +13,6 @@ import { useIsPro } from '../sync/syncStore';
 import { useEditionLimits } from './editionLimits';
 import { Card } from '@avs/ui';
 import {
-  SparklesIcon,
   BoltIcon,
   TrashIcon,
   WrenchScrewdriverIcon,
@@ -67,23 +66,6 @@ export function FreeUsageWidget() {
   // Don't render for Professional users
   if (isPro) return null;
 
-  // Read current usage from localStorage
-  const getAIAssistantUsage = (): number => {
-    try {
-      const raw = localStorage.getItem('avs-AIAssistant-questions');
-      if (!raw) return 0;
-      const data = JSON.parse(raw) as { date: string; count: number };
-      const today = new Date().toISOString().split('T')[0];
-      if (data.date !== today) return 0;
-      return data.count;
-    } catch {
-      return 0;
-    }
-  };
-
-  const aiAssistantUsed = getAIAssistantUsage();
-  const aiAssistantMax = limits.getLimit('aiAssistantQuestionsPerDay') ?? 0;
-
   const smartOptMax = limits.getLimit('aiSmartOptimizePerRun') ?? 0;
 
   const junkMax = limits.getLimit('junkCleanerBytesPerRun') ?? 0;
@@ -99,14 +81,6 @@ export function FreeUsageWidget() {
         <p className="text-caption text-text-muted">
           You&apos;re using the Free edition. Here&apos;s what&apos;s remaining today.
         </p>
-
-        <UsageRow
-          icon={SparklesIcon}
-          label="AVS AI Assistant"
-          current={aiAssistantUsed}
-          max={aiAssistantMax}
-          unit="questions"
-        />
 
         <UsageRow
           icon={BoltIcon}

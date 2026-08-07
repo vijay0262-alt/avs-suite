@@ -232,3 +232,126 @@ def performance_monitor_get_alerts(_params: dict[str, Any] | None) -> dict[str, 
     except Exception as e:
         logger.error(f"Failed to get alerts: {e}")
         raise
+
+
+# ── Process Optimization: detect and kill high-resource processes ─────
+
+_CRITICAL_PROCESSES = {
+    "System", "System Idle Process", "Registry", "smss.exe", "csrss.exe",
+    "wininit.exe", "services.exe", "lsass.exe", "svchost.exe", "winlogon.exe",
+    "fontdrvhost.exe", "dwm.exe", "explorer.exe", "Taskmgr.exe",
+    "AVS Shield Optimizer.exe", "electron.exe", "node.exe",
+    "powershell.exe", "python.exe", "pwsh.exe",
+}
+
+_CPU_THRESHOLD = 50.0
+_MEM_THRESHOLD_PERCENT = 10.0
+_DISK_THRESHOLD = 50.0
+
+
+@register("performance.optimizeProcesses")
+def performance_optimize_processes(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Detect and optionally terminate processes consuming excessive resources.
+
+    Params:
+        kill: bool — if True, terminate detected processes (default: False)
+        cpuThreshold: float — CPU % above which a process is flagged (default: 50)
+        memThresholdPercent: float — memory % above which a process is flagged (default: 10)
+        diskThreshold: float — disk I/O MB/s above which a process is flagged (default: 50)
+
+    Returns list of detected processes and which were terminated.
+    Critical system processes are never killed.
+    """
+    try:
+        import psutil
+
+        should_kill = params.get("kill", False) if params else False
+        cpu_thresh = params.get("cpuThreshold", _CPU_THRESHOLD) if params else _CPU_THRESHOLD
+        mem_thresh_pct = params.get("memThresholdPercent", _MEM_THRESHOLD_PERCENT) if params else _MEM_THRESHOLD_PERCENT
+        disk_thresh = params.get("diskThreshold", _DISK_THRESHOLD) if params else _DISK_THRESHOLD
+
+        total_mem = psutil.virtual_memory().total
+        mem_thresh_bytes = total_mem * (mem_thresh_pct / 100.0)
+
+        detected: list[dict[str, Any]] = []
+        killed: list[dict[str, Any]] = []
+        errors: list[str] = []
+
+        # Get disk I/O counters per process if available
+        disk_io_before: dict[int, tuple[float, float]] = {}
+        try:
+            for p in psutil.process_iter(["pid"]):
+                try:
+                    io = p.io_counters()
+                    disk_io_before[p.pid] = (io.read_bytes, io.write_bytes)
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+        except Exception:
+            pass
+
+        import time as _t
+        _t.sleep(0.5)
+
+        for proc in psutil.process_iter(["pid", "name", "cpu_percent", "memory_info", "io_counters"]):
+            try:
+                info = proc.info
+                name = info.get("name", "unknown")
+                pid = info.get("pid", 0)
+                cpu = info.get("cpu_percent", 0.0) or 0.0
+                mem_info = info.get("memory_info")
+                mem_bytes = mem_info.rss if mem_info else 0
+
+                # Disk I/O rate
+                disk_mbps = 0.0
+                io = info.get("io_counters")
+                if io and pid in disk_io_before:
+                    prev_read, prev_write = disk_io_before[pid]
+                    delta = (io.read_bytes - prev_read) + (io.write_bytes - prev_write)
+                    disk_mbps = (delta / 0.5) / (1024 * 1024)  # MB/s
+
+                is_high = cpu >= cpu_thresh or mem_bytes >= mem_thresh_bytes or disk_mbps >= disk_thresh
+                if not is_high:
+                    continue
+
+                is_critical = name in _CRITICAL_PROCESSES
+                entry = {
+                    "pid": pid,
+                    "name": name,
+                    "cpuPercent": round(cpu, 1),
+                    "memoryMB": round(mem_bytes / (1024 * 1024), 1),
+                    "diskMBps": round(disk_mbps, 1),
+                    "reason": (
+                        "high CPU" if cpu >= cpu_thresh else
+                        "high memory" if mem_bytes >= mem_thresh_bytes else
+                        "high disk I/O"
+                    ),
+                    "critical": is_critical,
+                }
+                detected.append(entry)
+
+                if should_kill and not is_critical:
+                    try:
+                        proc.terminate()
+                        killed.append({"pid": pid, "name": name, "terminated": True})
+                    except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+                        errors.append(f"Cannot terminate {name} (PID {pid}): {e}")
+                        killed.append({"pid": pid, "name": name, "terminated": False})
+
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+
+        return {
+            "detected": detected,
+            "killed": killed,
+            "errors": errors,
+            "totalDetected": len(detected),
+            "totalKilled": len([k for k in killed if k.get("terminated")]),
+            "thresholds": {
+                "cpuPercent": cpu_thresh,
+                "memoryPercent": mem_thresh_pct,
+                "diskMBps": disk_thresh,
+            },
+        }
+    except Exception as e:
+        logger.error(f"Failed to optimize processes: {e}")
+        raise

@@ -1517,6 +1517,9 @@ def _query_wsc_products() -> dict[str, list[dict[str, Any]]]:
         return {"antivirus": [], "firewall": []}
 
 
+_last_good_defender: dict[str, Any] | None = None
+
+
 @_ttl_cache(60.0)
 def _get_defender_status() -> dict[str, Any]:
     """Get antivirus protection status using Windows Security Center.
@@ -1527,7 +1530,11 @@ def _get_defender_status() -> dict[str, Any]:
     has taken over.
 
     Only reports an issue if NO antivirus product is registered and active.
+
+    If all detection methods fail (WSC timeout, registry inaccessible),
+    falls back to the last known good status to avoid false "off" reports.
     """
+    global _last_good_defender
     if not IS_WINDOWS:
         return {}
 
@@ -1547,12 +1554,14 @@ def _get_defender_status() -> dict[str, Any]:
                     third_party_active = name
 
     if active_avs:
-        return {
+        result = {
             "enabled": True,
             "realTimeProtection": True,
             "thirdPartyAV": third_party_active,
             "activeProducts": active_avs,
         }
+        _last_good_defender = result
+        return result
 
     # Fallback: check Defender registry
     try:
@@ -1570,11 +1579,22 @@ def _get_defender_status() -> dict[str, Any]:
             av_value, _ = winreg.QueryValueEx(key, "DisableAntiSpyware")
             enabled = av_value == 0
         if enabled:
-            return {"enabled": True, "realTimeProtection": rtp, "thirdPartyAV": None, "activeProducts": ["Windows Defender"]}
+            result = {"enabled": True, "realTimeProtection": rtp, "thirdPartyAV": None, "activeProducts": ["Windows Defender"]}
+            _last_good_defender = result
+            return result
     except (FileNotFoundError, OSError):
         pass
 
+    # If we have a last known good status, return it instead of reporting false.
+    # This prevents transient WSC/registry query failures from flipping RTP to "off".
+    if _last_good_defender is not None:
+        log.debug("Defender status query failed — returning last known good status")
+        return _last_good_defender
+
     return {"enabled": False, "realTimeProtection": False, "thirdPartyAV": None, "activeProducts": []}
+
+
+_last_good_firewall: dict[str, Any] | None = None
 
 
 @_ttl_cache(60.0)
@@ -1587,7 +1607,11 @@ def _get_firewall_status() -> dict[str, Any]:
 
     Only reports disabled if NO firewall is active (neither third-party
     nor Windows Firewall).
+
+    If all detection methods fail, falls back to the last known good
+    status to avoid false "off" reports.
     """
+    global _last_good_firewall
     if not IS_WINDOWS:
         return {}
 
@@ -1599,7 +1623,9 @@ def _get_firewall_status() -> dict[str, Any]:
         state = product.get("state", 0)
         status, _ = _decode_wsc_product_state(state)
         if status == "active" and "windows" not in name.lower() and "microsoft" not in name.lower():
-            return {"enabled": True, "thirdPartyFirewall": name}
+            result = {"enabled": True, "thirdPartyFirewall": name}
+            _last_good_firewall = result
+            return result
 
     # Check Windows Firewall via registry
     try:
@@ -1614,11 +1640,18 @@ def _get_firewall_status() -> dict[str, Any]:
                 with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, profile_path) as key:
                     value, _ = winreg.QueryValueEx(key, "EnableFirewall")
                     if value == 1:
-                        return {"enabled": True, "thirdPartyFirewall": None}
+                        result = {"enabled": True, "thirdPartyFirewall": None}
+                        _last_good_firewall = result
+                        return result
             except (FileNotFoundError, OSError):
                 continue
     except OSError:
         pass
+
+    # Fall back to last known good to avoid transient failures flipping firewall off
+    if _last_good_firewall is not None:
+        log.debug("Firewall status query failed — returning last known good status")
+        return _last_good_firewall
 
     return {"enabled": False, "thirdPartyFirewall": None}
 

@@ -104,6 +104,9 @@ export const RPC_METHODS = {
   PERFORMANCE_MEMORY_PROCESSES: 'performance.memory.getProcesses',
   PERFORMANCE_MEMORY_CHECK_PERMISSIONS: 'performance.memory.checkPermissions',
 
+  // Performance Optimization — detect and kill high resource processes
+  PERFORMANCE_OPTIMIZE_PROCESSES: 'performance.optimizeProcesses',
+
   // System Information
   SYSTEM_COMPREHENSIVE: 'system.comprehensive',
   SYSTEM_STATIC: 'system.static',
@@ -161,6 +164,11 @@ export const RPC_METHODS = {
   REALTIME_PROTECTION_STOP: 'realtime.stop',
   REALTIME_PROTECTION_EVENTS: 'realtime.events',
   REALTIME_PROTECTION_ALERTS: 'realtime.alerts',
+
+  // Security Remediation — enable protection features
+  SECURITY_ENABLE_SMARTSCREEN: 'security.enableSmartScreen',
+  SECURITY_ENABLE_DEFENDER: 'security.enableDefender',
+  SECURITY_ENABLE_FIREWALL: 'security.enableFirewall',
 
   // Hardware Monitoring
   HARDWARE_SENSORS: 'hardware.sensors',

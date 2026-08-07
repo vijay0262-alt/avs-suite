@@ -27,6 +27,7 @@ import logging
 import os
 import platform
 import shutil
+import subprocess
 import threading
 import time
 from datetime import datetime, timezone
@@ -396,5 +397,118 @@ def rollback_remediation(params: dict[str, Any] | None = None) -> dict[str, Any]
         "restored": restored,
         "total": len(q_ids),
         "results": results,
+        "timestamp": _now_iso(),
+    }
+
+
+# =====================================================================
+# Security Feature Enable RPCs
+# =====================================================================
+
+def _run_powershell(script: str, timeout: int = 15) -> tuple[bool, str]:
+    """Run a PowerShell script and return (success, output)."""
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+        output = (result.stdout or "").strip()
+        if result.returncode != 0:
+            output = (result.stderr or "").strip() or output
+        return result.returncode == 0, output
+    except Exception as e:
+        return False, str(e)
+
+
+@register("security.enableSmartScreen")
+def enable_smartscreen(_params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Enable Windows SmartScreen filter for Explorer and Edge.
+
+    Sets the relevant registry keys to enable SmartScreen.
+    Requires admin privileges.
+    """
+    if os.name != "nt":
+        return {"enabled": False, "error": "Not supported on this platform"}
+
+    ps_script = r"""
+    # Enable SmartScreen for Windows Explorer
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer' -Name 'SmartScreenEnabled' -Value 'On' -ErrorAction SilentlyContinue
+    # Enable SmartScreen for Edge
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\System' -Name 'EnableSmartScreen' -Value 1 -Type DWord -ErrorAction SilentlyContinue
+    # Enable SmartScreen for Edge (per-user policy)
+    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost' -Name 'EnableWebContentEvaluation' -Value 1 -Type DWord -ErrorAction SilentlyContinue
+    Write-Output 'OK'
+"""
+    success, output = _run_powershell(ps_script)
+    return {
+        "enabled": success,
+        "message": "SmartScreen enabled" if success else f"Failed: {output}",
+        "timestamp": _now_iso(),
+    }
+
+
+@register("security.enableDefender")
+def enable_defender(_params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Enable Windows Defender and real-time protection.
+
+    Uses Set-MpPreference cmdlet to re-enable Defender.
+    Requires admin privileges.
+    """
+    if os.name != "nt":
+        return {"enabled": False, "error": "Not supported on this platform"}
+
+    ps_script = r"""
+    try {
+        # Re-enable Defender anti-spyware
+        Set-MpPreference -DisableAntiSpyware $false -ErrorAction SilentlyContinue
+        # Re-enable real-time protection
+        Set-MpPreference -DisableRealtimeMonitoring $false -ErrorAction SilentlyContinue
+        Write-Output 'OK'
+    } catch {
+        # Fallback: try registry approach
+        try {
+            $path = 'HKLM:\SOFTWARE\Microsoft\Windows Defender'
+            Set-ItemProperty -Path $path -Name 'DisableAntiSpyware' -Value 0 -Type DWord -ErrorAction SilentlyContinue
+            $rtpPath = 'HKLM:\SOFTWARE\Microsoft\Windows Defender\Real-Time Protection'
+            Set-ItemProperty -Path $rtpPath -Name 'DisableRealtimeMonitoring' -Value 0 -Type DWord -ErrorAction SilentlyContinue
+            Write-Output 'OK'
+        } catch {
+            Write-Output $_.Exception.Message
+        }
+    }
+"""
+    success, output = _run_powershell(ps_script)
+    return {
+        "enabled": success,
+        "message": "Windows Defender enabled" if success else f"Failed: {output}",
+        "timestamp": _now_iso(),
+    }
+
+
+@register("security.enableFirewall")
+def enable_firewall(_params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Enable Windows Firewall for all profiles.
+
+    Uses netsh advfirewall to enable firewall.
+    Requires admin privileges.
+    """
+    if os.name != "nt":
+        return {"enabled": False, "error": "Not supported on this platform"}
+
+    ps_script = r"""
+    try {
+        netsh advfirewall set allprofiles state on
+        Write-Output 'OK'
+    } catch {
+        Write-Output $_.Exception.Message
+    }
+"""
+    success, output = _run_powershell(ps_script)
+    return {
+        "enabled": success,
+        "message": "Firewall enabled" if success else f"Failed: {output}",
         "timestamp": _now_iso(),
     }

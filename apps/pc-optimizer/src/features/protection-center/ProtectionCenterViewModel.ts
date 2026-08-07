@@ -31,6 +31,8 @@ import {
 import type { OptimizationEvent } from '../health';
 import type { HealthNotification } from '../health/HealthNotificationService';
 import type { OptimizationHistoryEntry } from '../health/OptimizationHistoryService';
+import { performanceService } from '../performance/performance.service';
+import type { ProcessOptimizeResult } from '../performance/performance.service';
 import type {
   ProtectionCenterState,
   ProtectionState,
@@ -370,23 +372,28 @@ export class ProtectionCenterViewModel extends ViewModel<ProtectionCenterState> 
       ]);
       if (!this.isMounted) return;
 
+      const effectiveMetrics = metrics ?? this.state.metrics;
+      const effectiveLive = liveMetrics ?? this.state.liveMetrics;
+
       this.setState((prev) => ({
         ...prev,
-        liveMetrics,
-        metrics: metrics ?? prev.metrics,
+        liveMetrics: effectiveLive,
+        metrics: effectiveMetrics,
+        protectionState: this.deriveProtectionState(effectiveMetrics, prev.healthScore),
+        coverage: this.deriveCoverage(effectiveMetrics, prev.healthScore),
         systemHealth: this.deriveSystemHealth(
-          metrics ?? prev.metrics,
-          liveMetrics ?? prev.liveMetrics,
+          effectiveMetrics,
+          effectiveLive,
           prev.hardwareSensors,
           prev.healthScore,
         ),
         cards: this.deriveCards(
-          metrics ?? prev.metrics,
-          liveMetrics ?? prev.liveMetrics,
+          effectiveMetrics,
+          effectiveLive,
           prev.hardwareSensors,
           prev.healthScore,
         ),
-        monitors: this.deriveMonitors(metrics ?? prev.metrics, liveMetrics ?? prev.liveMetrics),
+        monitors: this.deriveMonitors(effectiveMetrics, effectiveLive),
         lastRefresh: Date.now(),
       }));
     } catch {
@@ -439,7 +446,8 @@ export class ProtectionCenterViewModel extends ViewModel<ProtectionCenterState> 
     }
 
     const sec = metrics.security;
-    const hasRTP = sec.realTimeProtection && sec.defender.enabled;
+    const hasThirdPartyAV = !!sec.defender.thirdPartyAV || !!sec.firewall.thirdPartyFirewall;
+    const hasRTP = sec.realTimeProtection || hasThirdPartyAV;
     const hasFirewall = sec.firewall.enabled;
     const hasUpdates = sec.updates.pendingUpdates === 0;
     const hasSmartScreen = sec.smartScreen;
@@ -488,12 +496,18 @@ export class ProtectionCenterViewModel extends ViewModel<ProtectionCenterState> 
     // Realtime Protection
     const rtpActive = metrics?.security.realTimeProtection ?? false;
     const defenderOn = metrics?.security.defender.enabled ?? false;
+    const thirdPartyAV = metrics?.security.defender.thirdPartyAV ?? null;
+    const avActive = rtpActive || defenderOn || !!thirdPartyAV;
+    const avLabel = thirdPartyAV
+      ? thirdPartyAV
+      : defenderOn ? 'Windows Defender' : 'None';
     cards.push({
       id: 'realtime-protection',
       title: 'Realtime Protection',
-      status: rtpActive && defenderOn ? 'active' : rtpActive || defenderOn ? 'warning' : 'inactive',
-      statusLabel: rtpActive && defenderOn ? 'Active' : 'Needs attention',
-      primaryValue: rtpActive && defenderOn ? 'Protected' : 'At risk',
+      status: avActive ? 'active' : 'inactive',
+      statusLabel: avActive ? 'Active' : 'Disabled',
+      primaryValue: avActive ? 'Protected' : 'At risk',
+      secondaryValue: avActive ? avLabel : undefined,
       iconName: 'ShieldCheckIcon',
       actionPath: '/security-center',
       lastUpdated: now,
@@ -541,9 +555,14 @@ export class ProtectionCenterViewModel extends ViewModel<ProtectionCenterState> 
       lastUpdated: now,
     });
 
-    // Hardware Health
-    const cpuTemp = sensors?.temperature.sensors.find((s) => s.name.toLowerCase().includes('cpu'));
-    const tempValue = cpuTemp?.value ?? null;
+    // Hardware Health — try hardware sensors first, then live CPU temp, then dashboard CPU temp
+    const cpuTempSensor = sensors?.temperature.sensors.find((s) =>
+      s.name.toLowerCase().includes('cpu') || s.name.toLowerCase().includes('core') || s.name.toLowerCase().includes('package'),
+    );
+    const tempValue = cpuTempSensor?.value
+      ?? live?.cpu.temperature
+      ?? metrics?.cpu.temperature
+      ?? null;
     const tempStatus: CardStatus = tempValue === null ? 'pending' : tempValue < 70 ? 'active' : tempValue < 85 ? 'warning' : 'inactive';
     cards.push({
       id: 'hardware-health',
@@ -551,7 +570,7 @@ export class ProtectionCenterViewModel extends ViewModel<ProtectionCenterState> 
       status: tempStatus,
       statusLabel: tempValue === null ? 'No sensor' : tempValue < 70 ? 'Normal' : tempValue < 85 ? 'Warm' : 'Hot',
       primaryValue: tempValue !== null ? `${Math.round(tempValue)}°C` : 'N/A',
-      secondaryValue: 'CPU Temp',
+      secondaryValue: tempValue !== null ? 'CPU Temp' : 'Click to view details',
       iconName: 'CpuChipIcon',
       actionPath: '/hardware-center',
       lastUpdated: now,
@@ -696,30 +715,58 @@ export class ProtectionCenterViewModel extends ViewModel<ProtectionCenterState> 
     if (!metrics) return [];
     const sec = metrics.security;
 
+    const thirdPartyAV = sec.defender.thirdPartyAV ?? null;
+    const activeProducts = sec.defender.activeProducts ?? [];
+    const avLabel = thirdPartyAV
+      ? thirdPartyAV
+      : activeProducts.length > 0
+        ? activeProducts.join(', ')
+        : sec.defender.enabled ? 'Windows Defender' : 'None';
+
     return [
       {
         id: 'rtp',
         label: 'Real-time Protection',
-        covered: sec.realTimeProtection,
-        reason: sec.realTimeProtection ? undefined : 'Windows Defender real-time protection is off',
+        covered: sec.realTimeProtection || !!thirdPartyAV,
+        reason: (sec.realTimeProtection || !!thirdPartyAV) ? undefined : 'Real-time protection is off',
+        fixAction: (sec.realTimeProtection || !!thirdPartyAV) ? undefined : {
+          label: 'Enable',
+          action: 'security.enableDefender',
+          type: 'rpc' as const,
+        },
       },
       {
         id: 'defender',
-        label: 'Antivirus (Defender)',
-        covered: sec.defender.enabled,
-        reason: sec.defender.enabled ? undefined : 'Windows Defender is disabled',
+        label: `Antivirus (${avLabel})`,
+        covered: sec.defender.enabled || !!thirdPartyAV,
+        reason: (sec.defender.enabled || !!thirdPartyAV) ? undefined : 'No active antivirus detected',
+        fixAction: (sec.defender.enabled || !!thirdPartyAV) ? undefined : {
+          label: 'Enable',
+          action: 'security.enableDefender',
+          type: 'rpc' as const,
+        },
       },
       {
         id: 'firewall',
-        label: 'Firewall',
+        label: sec.firewall.thirdPartyFirewall ? `Firewall (${sec.firewall.thirdPartyFirewall})` : 'Firewall',
         covered: sec.firewall.enabled,
-        reason: sec.firewall.enabled ? undefined : 'Windows Firewall is disabled',
+        reason: sec.firewall.enabled ? undefined : 'Firewall is disabled',
+        fixAction: sec.firewall.enabled ? undefined : {
+          label: 'Enable',
+          action: 'security.enableFirewall',
+          type: 'rpc' as const,
+        },
       },
       {
         id: 'smart-screen',
         label: 'Smart Screen',
         covered: sec.smartScreen,
         reason: sec.smartScreen ? undefined : 'Smart Screen filter is disabled',
+        fixAction: sec.smartScreen ? undefined : {
+          label: 'Enable',
+          action: 'security.enableSmartScreen',
+          type: 'rpc' as const,
+        },
       },
       {
         id: 'updates',
@@ -728,6 +775,11 @@ export class ProtectionCenterViewModel extends ViewModel<ProtectionCenterState> 
         reason: sec.updates.pendingUpdates === 0
           ? undefined
           : `${sec.updates.pendingUpdates} pending update${sec.updates.pendingUpdates > 1 ? 's' : ''}`,
+        fixAction: sec.updates.pendingUpdates === 0 ? undefined : {
+          label: 'Update',
+          action: '/software-updater',
+          type: 'navigate' as const,
+        },
       },
       {
         id: 'secure-boot',
@@ -748,6 +800,11 @@ export class ProtectionCenterViewModel extends ViewModel<ProtectionCenterState> 
         reason: (health?.overallScore ?? 0) >= 80
           ? undefined
           : `Current score is ${health?.overallScore ?? 'unknown'}`,
+        fixAction: (health?.overallScore ?? 0) >= 80 ? undefined : {
+          label: 'Optimize',
+          action: '/ai-smart-optimize',
+          type: 'navigate' as const,
+        },
       },
     ];
   }
@@ -762,9 +819,12 @@ export class ProtectionCenterViewModel extends ViewModel<ProtectionCenterState> 
 
     const cpuUsage = live?.cpu.usage ?? metrics?.cpu.usage ?? 0;
     const cpuTempSensor = sensors?.temperature.sensors.find((s) =>
-      s.name.toLowerCase().includes('cpu'),
+      s.name.toLowerCase().includes('cpu') || s.name.toLowerCase().includes('core') || s.name.toLowerCase().includes('package'),
     );
-    const cpuTemp = cpuTempSensor?.value ?? null;
+    const cpuTemp = cpuTempSensor?.value
+      ?? live?.cpu.temperature
+      ?? metrics?.cpu.temperature
+      ?? null;
     const memoryUsage = live?.memory.usage ?? metrics?.memory.usage ?? 0;
     const primaryDrive = metrics?.storage?.[0] ?? live?.storage?.[0];
     const storageUsage = primaryDrive?.usage ?? 0;
@@ -971,5 +1031,34 @@ export class ProtectionCenterViewModel extends ViewModel<ProtectionCenterState> 
 
   refresh(): void {
     void this.refreshAll();
+  }
+
+  async optimizeProcesses(kill: boolean): Promise<ProcessOptimizeResult | null> {
+    try {
+      const result = await performanceService.optimizeProcesses({ kill });
+      if (result.totalDetected > 0) {
+        const activity: ActivityEvent = {
+          id: `act-opt-proc-${Date.now()}`,
+          kind: 'optimization',
+          title: kill
+            ? `Terminated ${result.totalKilled} high-resource process${result.totalKilled > 1 ? 'es' : ''}`
+            : `Detected ${result.totalDetected} high-resource process${result.totalDetected > 1 ? 'es' : ''}`,
+          description: result.detected
+            .slice(0, 3)
+            .map((p) => `${p.name} (${p.reason})`)
+            .join(', '),
+          timestamp: new Date().toISOString(),
+          metric: `${result.totalDetected} detected${kill ? ` · ${result.totalKilled} terminated` : ''}`,
+        };
+        this.setState((prev) => ({
+          ...prev,
+          activities: [activity, ...prev.activities].slice(0, MAX_ACTIVITIES),
+        }));
+      }
+      void this.refreshMetrics();
+      return result;
+    } catch {
+      return null;
+    }
   }
 }

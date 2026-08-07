@@ -88,6 +88,14 @@ export interface CoverageItem {
   covered: boolean;
   /** Optional explanation when not covered. */
   reason?: string;
+  /** Optional fix action for remediating the issue. */
+  fixAction?: {
+    label: string;
+    /** RPC method or navigation path to trigger. */
+    action: string;
+    /** Whether this is a navigation (path) or RPC call. */
+    type: 'navigate' | 'rpc';
+  };
 }
 
 // ─── System Health Snapshot ────────────────────────────────────────

@@ -32,6 +32,9 @@ export interface DashboardService {
   getOptimizePreview(): Promise<OptimizePreview>;
   executeOptimize(): Promise<OptimizeExecuteResponse>;
   getHardwareSensors(): Promise<HardwareSensors>;
+  enableSmartScreen(): Promise<{ enabled: boolean; message: string }>;
+  enableDefender(): Promise<{ enabled: boolean; message: string }>;
+  enableFirewall(): Promise<{ enabled: boolean; message: string }>;
 }
 
 export const dashboardService: DashboardService = {
@@ -42,4 +45,7 @@ export const dashboardService: DashboardService = {
   getOptimizePreview: () => client().call(RPC_METHODS.DASHBOARD_OPTIMIZE_PREVIEW),
   executeOptimize: () => client().call(RPC_METHODS.DASHBOARD_OPTIMIZE_EXECUTE),
   getHardwareSensors: () => client().call(RPC_METHODS.HARDWARE_SENSORS),
+  enableSmartScreen: () => client().call(RPC_METHODS.SECURITY_ENABLE_SMARTSCREEN),
+  enableDefender: () => client().call(RPC_METHODS.SECURITY_ENABLE_DEFENDER),
+  enableFirewall: () => client().call(RPC_METHODS.SECURITY_ENABLE_FIREWALL),
 };

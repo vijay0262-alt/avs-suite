@@ -12,6 +12,7 @@ import {
   InformationCircleIcon,
   BellAlertIcon,
   ArrowPathIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ProtectionCenterViewModel } from '../ProtectionCenterViewModel';
@@ -30,6 +31,8 @@ import { UpcomingAutomation } from './UpcomingAutomation';
 import { QuickActions } from './QuickActions';
 import { ProtectionStatus } from './ProtectionStatus';
 import { AlertsPanel } from './AlertsPanel';
+import { ProcessOptimizer } from './ProcessOptimizer';
+import { LastScanResults } from './LastScanResults';
 
 export function ProtectionCenterPage() {
   const navigate = useNavigate();
@@ -67,6 +70,32 @@ export function ProtectionCenterPage() {
   const handleScanNow = useCallback(() => {
     dashVm.startHealthScan();
   }, [dashVm]);
+
+  const handleFixCoverage = useCallback(
+    (item: { id: string; fixAction?: { action: string; type: 'navigate' | 'rpc' } }) => {
+      if (!item.fixAction) return;
+      if (item.fixAction.type === 'navigate') {
+        navigate(item.fixAction.action);
+      } else if (item.fixAction.type === 'rpc') {
+        const action = item.fixAction.action;
+        const rpcCall =
+          action === 'security.enableSmartScreen'
+            ? dashboardService.enableSmartScreen()
+            : action === 'security.enableDefender'
+              ? dashboardService.enableDefender()
+              : action === 'security.enableFirewall'
+                ? dashboardService.enableFirewall()
+                : null;
+        if (rpcCall) {
+          void rpcCall.then(() => {
+            void dashboardService.refreshCache();
+            void vm.refreshAll();
+          });
+        }
+      }
+    },
+    [navigate, vm],
+  );
 
   const isScanning = dashState.healthScanStep !== 'idle' && dashState.healthScanStep !== 'complete';
 
@@ -173,6 +202,17 @@ export function ProtectionCenterPage() {
 
         {/* Right column */}
         <div className="space-y-7">
+          {/* Last Scan Results */}
+          <DashboardSection
+            title="Last Scan Results"
+            icon={<CheckCircleIcon className="h-5 w-5" />}
+          >
+            <LastScanResults
+              lastScan={dashState.healthScanHistory[0] ?? null}
+              lastOptimizeResult={dashState.healthScanResult}
+            />
+          </DashboardSection>
+
           {/* System Health Snapshot */}
           <DashboardSection
             title="System Health"
@@ -186,7 +226,15 @@ export function ProtectionCenterPage() {
             title="Protection Coverage"
             icon={<ShieldCheckIcon className="h-5 w-5" />}
           >
-            <ProtectionHealth coverage={state.coverage} />
+            <ProtectionHealth coverage={state.coverage} onFix={handleFixCoverage} />
+          </DashboardSection>
+
+          {/* Process Optimizer */}
+          <DashboardSection
+            title="Process Optimizer"
+            icon={<BoltIcon className="h-5 w-5" />}
+          >
+            <ProcessOptimizer onOptimize={(kill) => void vm.optimizeProcesses(kill)} />
           </DashboardSection>
         </div>
       </div>

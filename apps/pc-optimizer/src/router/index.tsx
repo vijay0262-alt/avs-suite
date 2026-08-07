@@ -33,9 +33,6 @@ const ReportsPage = lazy(() => import('../pages/ReportsPage'));
 const OptimizationReportsPage = lazy(() => import('../pages/OptimizationReportsPage'));
 const SmartOptimizationPage = lazy(() => import('../pages/SmartOptimizationPage'));
 
-// AI Workspace disabled — kept in codebase for future use
-// const AIWorkspacePage = lazy(() => import('../pages/AIWorkspacePage'));
-
 // v2.0 security sub-pages and new route wrappers
 import {
   QuickScanPage,
