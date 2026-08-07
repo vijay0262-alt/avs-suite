@@ -187,7 +187,9 @@ export function RecoveryCenterPage() {
                 <ShieldCheckIcon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
                 <div className="flex-1 min-w-0">
                   <span className="text-small font-medium text-[var(--avs-text-primary)]">
-                    {backup.details || backup.operation || backup.id}
+                    {typeof backup.details === 'string'
+                      ? backup.details
+                      : (backup.details?.description as string) || backup.operation || backup.id}
                   </span>
                   <div className="flex items-center gap-2 mt-0.5">
                     <ClockIcon className="h-3 w-3 text-[var(--avs-text-muted)]" />

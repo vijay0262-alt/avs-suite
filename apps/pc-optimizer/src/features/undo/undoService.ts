@@ -26,7 +26,7 @@ export interface BackupEntry {
   operation: string;
   module: string;
   size: number;
-  details?: string;
+  details?: Record<string, unknown> | string;
 }
 
 export interface RestoreResult {
