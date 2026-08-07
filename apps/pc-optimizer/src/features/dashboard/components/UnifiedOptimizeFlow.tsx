@@ -12,7 +12,7 @@
  *   complete           → Success screen with before/after scores
  */
 import { useMemo } from 'react';
-import { Card } from '@avs/ui';
+import { Card, Button } from '@avs/ui';
 import { UnifiedScanView } from '../../unified-scan/components/UnifiedScanView';
 import { UnifiedResultsView } from '../../unified-results/components/UnifiedResultsView';
 import { useScanHistory } from '../../unified-results/useScanHistory';
@@ -43,7 +43,20 @@ import type {
 } from '../dashboard.types';
 import type { OptimizationSummary } from '../OptimizationSummary.types';
 import {
+  buildCleaningSummary,
+  buildRegistrySummary,
+  formatBytes,
+} from '../../health/VerificationEngine';
+import type { VerificationReport, ModuleVerificationResult } from '../../health/VerificationEngine';
+import {
   ArrowPathIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  XCircleIcon,
+  ClockIcon,
+  CircleStackIcon,
+  CpuChipIcon,
+  BoltIcon,
 } from '@heroicons/react/24/outline';
 
 export interface UnifiedOptimizeFlowProps {
@@ -205,26 +218,19 @@ export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptim
     );
   }
 
-  // Complete — success screen
-  if (s.healthScanStep === 'complete' && resultsReport) {
+  // Complete — verification screen with detailed results
+  if (s.healthScanStep === 'complete') {
     return (
-      <UnifiedResultsView
-        report={resultsReport}
-        history={history}
-        isPro={isPro}
+      <VerificationScreen
+        verificationReport={s.verificationReport}
+        optimizationSummary={s.optimizationSummary}
+        healthBefore={s.healthScanBeforeReport?.overallScore ?? 0}
+        healthAfter={s.healthScore?.overallScore ?? s.healthScanReport?.overallScore ?? 0}
         onClose={onClose}
-        extraActions={[
-          {
-            id: 'rescan',
-            label: 'Scan Again',
-            icon: 'ArrowPathIcon',
-            variant: 'ghost',
-            action: () => {
-              vm.closeHealthScan();
-              vm.startHealthScan();
-            },
-          },
-        ]}
+        onScanAgain={() => {
+          vm.closeHealthScan();
+          vm.startHealthScan();
+        }}
       />
     );
   }
@@ -509,10 +515,363 @@ function buildHistoryEntry(report: UnifiedResultsReport): UnifiedScanHistoryEntr
   };
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes <= 0) return '0 B';
-  if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
-  if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(0)} MB`;
-  if (bytes >= 1_000) return `${(bytes / 1_000).toFixed(0)} KB`;
-  return `${bytes} B`;
+// ── Verification Screen ──────────────────────────────────────────
+
+interface VerificationScreenProps {
+  verificationReport: VerificationReport | null;
+  optimizationSummary: OptimizationSummary | null;
+  healthBefore: number;
+  healthAfter: number;
+  onClose: () => void;
+  onScanAgain: () => void;
+}
+
+function VerificationScreen({
+  verificationReport,
+  optimizationSummary,
+  healthBefore,
+  healthAfter,
+  onClose,
+  onScanAgain,
+}: VerificationScreenProps) {
+  const isVerified = verificationReport?.overallStatus === 'verified';
+  const isPartial = verificationReport?.overallStatus === 'partially_verified';
+
+  const cleaningSummary = verificationReport
+    ? buildCleaningSummary(verificationReport)
+    : null;
+  const registrySummary = verificationReport
+    ? buildRegistrySummary(verificationReport)
+    : null;
+
+  const statusIcon = isVerified
+    ? <CheckCircleIcon className="h-10 w-10 text-[var(--avs-success)]" />
+    : isPartial
+    ? <ExclamationTriangleIcon className="h-10 w-10 text-[var(--avs-warning)]" />
+    : <XCircleIcon className="h-10 w-10 text-[var(--avs-danger)]" />;
+
+  const statusColor = isVerified
+    ? 'text-[var(--avs-success)]'
+    : isPartial
+    ? 'text-[var(--avs-warning)]'
+    : 'text-[var(--avs-danger)]';
+
+  const statusBg = isVerified
+    ? 'bg-[color-mix(in_srgb,var(--avs-success)_8%,transparent)]'
+    : isPartial
+    ? 'bg-[color-mix(in_srgb,var(--avs-warning)_8%,transparent)]'
+    : 'bg-[color-mix(in_srgb,var(--avs-danger)_8%,transparent)]';
+
+  return (
+    <div className="space-y-4" data-testid="verification-screen">
+      {/* Verification Header */}
+      <Card variant="glass" className="overflow-hidden">
+        <div className={`flex items-center gap-4 p-6 ${statusBg}`}>
+          <div className="shrink-0">
+            <div className="rounded-full bg-[var(--avs-surface)] p-3 shadow-[var(--avs-shadow-sm)]">
+              {statusIcon}
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className={`text-xl font-bold ${statusColor}`}>
+              {verificationReport?.headline ?? 'Verification Complete'}
+            </h2>
+            <p className="mt-1 text-small text-[var(--avs-text-secondary)]">
+              {verificationReport?.subheadline ?? 'All actions verified successfully.'}
+            </p>
+          </div>
+          <div className="shrink-0 text-right">
+            <div className="text-caption text-[var(--avs-text-muted)]">Duration</div>
+            <div className="text-body font-semibold text-[var(--avs-text-primary)]">
+              {verificationReport ? `${(verificationReport.durationMs / 1000).toFixed(1)}s` : '--'}
+            </div>
+          </div>
+        </div>
+
+        {/* Verification checklist */}
+        <div className="border-t border-[var(--avs-border)] p-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <VerificationStat
+              label="Completed"
+              value={verificationReport?.completed ?? 0}
+              icon={<CheckCircleIcon className="h-5 w-5 text-[var(--avs-success)]" />}
+              color="text-[var(--avs-success)]"
+            />
+            <VerificationStat
+              label="Skipped"
+              value={verificationReport?.skipped ?? 0}
+              icon={<ClockIcon className="h-5 w-5 text-[var(--avs-text-muted)]" />}
+              color="text-[var(--avs-text-muted)]"
+            />
+            <VerificationStat
+              label="Failed"
+              value={verificationReport?.failed ?? 0}
+              icon={<XCircleIcon className="h-5 w-5 text-[var(--avs-danger)]" />}
+              color="text-[var(--avs-danger)]"
+            />
+            <VerificationStat
+              label="Manual Review"
+              value={verificationReport?.manualReview ?? 0}
+              icon={<ExclamationTriangleIcon className="h-5 w-5 text-[var(--avs-warning)]" />}
+              color="text-[var(--avs-warning)]"
+            />
+          </div>
+        </div>
+      </Card>
+
+      {/* Score Transition */}
+      <Card variant="glass" className="p-6">
+        <h3 className="text-section-title font-semibold text-[var(--avs-text-primary)] mb-4">
+          Score Improvement
+        </h3>
+        <div className="flex items-center justify-center gap-8">
+          <ScoreCircle label="Health Score" before={healthBefore} after={healthAfter} />
+        </div>
+      </Card>
+
+      {/* Detailed Cleaning Breakdown */}
+      {cleaningSummary && cleaningSummary.breakdown.length > 0 && (
+        <Card variant="glass" className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <CircleStackIcon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
+            <h3 className="text-section-title font-semibold text-[var(--avs-text-primary)]">
+              Storage Recovered
+            </h3>
+            <span className="ml-auto text-body font-bold text-[var(--avs-success)]">
+              {formatBytes(cleaningSummary.totalRecovered)}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {cleaningSummary.breakdown.map((item) => (
+              <div
+                key={item.label}
+                className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-4 py-2.5"
+              >
+                <span className="text-small text-[var(--avs-text-secondary)]">{item.label}</span>
+                <span className="text-small font-semibold text-[var(--avs-text-primary)]">
+                  {formatBytes(item.bytes)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Registry Summary */}
+      {registrySummary && (registrySummary.brokenEntriesRemoved > 0 || registrySummary.startupEntriesFixed > 0) && (
+        <Card variant="glass" className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <BoltIcon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
+            <h3 className="text-section-title font-semibold text-[var(--avs-text-primary)]">
+              Registry & Startup Summary
+            </h3>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <SummaryStat label="Broken Entries Removed" value={registrySummary.brokenEntriesRemoved} />
+            <SummaryStat label="Startup Entries Fixed" value={registrySummary.startupEntriesFixed} />
+            <SummaryStat
+              label="Rollback Created"
+              value={registrySummary.rollbackCreated ? 'Yes' : 'No'}
+            />
+          </div>
+        </Card>
+      )}
+
+      {/* Optimization Summary */}
+      {optimizationSummary && (
+        <Card variant="glass" className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <CpuChipIcon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
+            <h3 className="text-section-title font-semibold text-[var(--avs-text-primary)]">
+              Optimization Summary
+            </h3>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <SummaryStat label="Storage Recovered" value={formatBytes(optimizationSummary.storageRecovered)} />
+            <SummaryStat label="Registry Fixed" value={optimizationSummary.registryFixed} />
+            <SummaryStat label="Startup Optimized" value={optimizationSummary.startupOptimized} />
+            <SummaryStat label="Privacy Cleaned" value={optimizationSummary.privacyCleaned} />
+          </div>
+        </Card>
+      )}
+
+      {/* Per-Module Verification Results */}
+      {verificationReport && verificationReport.modules.length > 0 && (
+        <Card variant="glass" className="p-6">
+          <h3 className="text-section-title font-semibold text-[var(--avs-text-primary)] mb-4">
+            Verification Details
+          </h3>
+          <div className="space-y-2">
+            {verificationReport.modules.map((mod) => (
+              <ModuleVerificationRow key={mod.moduleId} mod={mod} />
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Verification Checklist */}
+      <Card variant="glass" className="p-6">
+        <h3 className="text-section-title font-semibold text-[var(--avs-text-primary)] mb-4">
+          Verification Checklist
+        </h3>
+        <div className="space-y-2">
+          <ChecklistItem
+            checked={isVerified || isPartial}
+            label="Optimization Verified"
+          />
+          <ChecklistItem
+            checked={isVerified || isPartial}
+            label="Scores Updated"
+          />
+          <ChecklistItem
+            checked={isVerified || isPartial}
+            label="History Saved"
+          />
+          <ChecklistItem
+            checked={isVerified || isPartial}
+            label="Protection Refreshed"
+          />
+        </div>
+      </Card>
+
+      {/* Actions */}
+      <div className="flex justify-center gap-3 pb-4">
+        <Button
+          size="lg"
+          variant="ghost"
+          onClick={onScanAgain}
+          leftIcon={<ArrowPathIcon className="h-4 w-4" />}
+        >
+          Scan Again
+        </Button>
+        <Button size="lg" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function VerificationStat({
+  label,
+  value,
+  icon,
+  color,
+}: {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  color: string;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-1 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
+      {icon}
+      <span className={`text-body font-bold ${color}`}>{value}</span>
+      <span className="text-caption text-[var(--avs-text-muted)]">{label}</span>
+    </div>
+  );
+}
+
+function ScoreCircle({ label, before, after }: { label: string; before: number; after: number }) {
+  const improved = after > before;
+  const diff = after - before;
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="flex items-center gap-4">
+        <div className="flex flex-col items-center">
+          <div className="text-3xl font-bold text-[var(--avs-text-muted)]">{before}</div>
+          <div className="text-caption text-[var(--avs-text-muted)]">Before</div>
+        </div>
+        <ArrowPathIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
+        <div className="flex flex-col items-center">
+          <div className={`text-3xl font-bold ${improved ? 'text-[var(--avs-success)]' : 'text-[var(--avs-text-primary)]'}`}>
+            {after}
+          </div>
+          <div className="text-caption text-[var(--avs-text-muted)]">After</div>
+        </div>
+      </div>
+      <span className="text-small font-medium text-[var(--avs-text-secondary)]">{label}</span>
+      {improved && (
+        <span className="text-caption font-semibold text-[var(--avs-success)]">
+          +{diff} points
+        </span>
+      )}
+    </div>
+  );
+}
+
+function SummaryStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 text-center">
+      <div className="text-body font-bold text-[var(--avs-text-primary)]">{value}</div>
+      <div className="text-caption text-[var(--avs-text-muted)] mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+function ModuleVerificationRow({ mod }: { mod: ModuleVerificationResult }) {
+  const statusIcon = mod.status === 'completed'
+    ? <CheckCircleIcon className="h-5 w-5 text-[var(--avs-success)]" />
+    : mod.status === 'skipped'
+    ? <ClockIcon className="h-5 w-5 text-[var(--avs-text-muted)]" />
+    : mod.status === 'failed'
+    ? <XCircleIcon className="h-5 w-5 text-[var(--avs-danger)]" />
+    : <ExclamationTriangleIcon className="h-5 w-5 text-[var(--avs-warning)]" />;
+
+  const statusLabel = mod.status === 'completed'
+    ? 'Completed'
+    : mod.status === 'skipped'
+    ? 'Skipped'
+    : mod.status === 'failed'
+    ? 'Failed'
+    : 'Manual Review';
+
+  const statusColor = mod.status === 'completed'
+    ? 'text-[var(--avs-success)]'
+    : mod.status === 'skipped'
+    ? 'text-[var(--avs-text-muted)]'
+    : mod.status === 'failed'
+    ? 'text-[var(--avs-danger)]'
+    : 'text-[var(--avs-warning)]';
+
+  return (
+    <div className="flex items-start gap-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
+      <div className="shrink-0 mt-0.5">{statusIcon}</div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-small font-semibold text-[var(--avs-text-primary)]">
+            {mod.moduleName}
+          </span>
+          <span className={`text-caption font-medium ${statusColor}`}>{statusLabel}</span>
+        </div>
+        <p className="text-caption text-[var(--avs-text-muted)] mt-0.5">{mod.reason}</p>
+        <div className="flex flex-wrap gap-3 mt-1.5 text-caption text-[var(--avs-text-muted)]">
+          {mod.itemsProcessed > 0 && <span>Items: {mod.itemsProcessed}</span>}
+          {mod.bytesRecovered > 0 && <span>Recovered: {formatBytes(mod.bytesRecovered)}</span>}
+          {mod.itemsFailed > 0 && <span className="text-[var(--avs-danger)]">Failed: {mod.itemsFailed}</span>}
+          {mod.rollbackAvailable && <span>Rollback: Available</span>}
+        </div>
+        {mod.errors.length > 0 && (
+          <div className="mt-1.5 space-y-0.5">
+            {mod.errors.slice(0, 3).map((err, i) => (
+              <p key={i} className="text-caption text-[var(--avs-danger)]">• {err}</p>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ChecklistItem({ checked, label }: { checked: boolean; label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      {checked ? (
+        <CheckCircleIcon className="h-5 w-5 text-[var(--avs-success)]" />
+      ) : (
+        <XCircleIcon className="h-5 w-5 text-[var(--avs-danger)]" />
+      )}
+      <span className="text-small text-[var(--avs-text-secondary)]">{label}</span>
+    </div>
+  );
 }

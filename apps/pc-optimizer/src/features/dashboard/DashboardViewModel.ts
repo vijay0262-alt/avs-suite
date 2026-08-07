@@ -56,6 +56,9 @@ import { HardwareManager } from '../hardware-center/HardwareManager';
 import { hardwareRegistry } from '../hardware-center/HardwareRegistry';
 import { createMockHardwareProvider } from '../hardware-center/MockHardwareProvider';
 import { hardwareSnapshotToSensors, getCpuTempFromSnapshot } from './hardwareAdapter';
+import { buildVerificationReport } from '../health/VerificationEngine';
+import type { VerificationReport } from '../health/VerificationEngine';
+import { useLiveSync } from '../health/LiveSyncService';
 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
 
@@ -189,6 +192,9 @@ export interface DashboardState {
   // Improvement Summary (Part 7)
   optimizationSummary: OptimizationSummary | null;
 
+  // Phase 9 — Verification Report
+  verificationReport: VerificationReport | null;
+
   // Quick actions
   quickActionsOpen: boolean;
 
@@ -270,6 +276,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
 
       quickActionsOpen: false,
       optimizationSummary: null,
+      verificationReport: null,
 
       hardwareSensors: null,
       hardwareSensorsLoading: false,
@@ -613,6 +620,14 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         perf ? perf.temporaryFilesSize + perf.recycleBinSize + perf.browserCacheSize : 0,
         perf?.startupApps ?? 0,
       );
+      // Phase 9 — Broadcast scores globally so all modules stay synchronized
+      useLiveSync.getState().broadcastScores({
+        healthScore: score.overallScore,
+        performanceScore: score.categoryScores.performance,
+        storageScore: score.categoryScores.storage,
+        privacyScore: score.categoryScores.privacy,
+        protectionStatus: score.overallScore >= 80 ? 'fully_protected' : score.overallScore >= 60 ? 'partially_protected' : 'at_risk',
+      });
     } catch (err) {
       this.setState({
         healthScoreLoading: false,
@@ -1410,9 +1425,39 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         modulesUsed,
       });
 
+      // Phase 9 — Build verification report from actual backend results
+      const verificationReport = buildVerificationReport(
+        beforeReport.modules,
+        actualMap,
+        start,
+      );
+
       this.setState({
         healthScanStep: 'complete',
         healthScanError: null,
+        verificationReport,
+      });
+
+      // Phase 9 — Broadcast scores globally via LiveSyncService
+      const liveSync = useLiveSync.getState();
+      const catScores = this.state.healthScore?.categoryScores;
+      liveSync.broadcastScores({
+        healthScore: summaryHealthAfter,
+        performanceScore: catScores?.performance ?? summaryHealthAfter,
+        storageScore: catScores?.storage ?? 0,
+        privacyScore: catScores?.privacy ?? 0,
+        protectionStatus: summaryHealthAfter >= 80 ? 'fully_protected' : summaryHealthAfter >= 60 ? 'partially_protected' : 'at_risk',
+      });
+      liveSync.broadcastOptimizationComplete({
+        healthScoreBefore: this.state.healthScanBeforeReport?.overallScore ?? 0,
+        healthScoreAfter: summaryHealthAfter,
+        storageRecovered: totalRecovered,
+        registryFixed,
+        startupOptimized,
+        privacyCleaned,
+        durationMs: elapsedMs,
+        success: verificationReport.overallStatus === 'verified',
+        moduleIds: modulesUsed,
       });
 
       // Refresh metrics so health score reflects the optimization just performed
@@ -1624,6 +1669,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanExecution: null,
       healthScanResult: null,
       optimizationSummary: null,
+      verificationReport: null,
       scanPhase: null,
       scanOverallProgress: 0,
       scanLiveStats: {
@@ -1751,6 +1797,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       optimizeResult: null,
       optimizeError: null,
       optimizationSummary: null,
+      verificationReport: null,
     });
   }
 

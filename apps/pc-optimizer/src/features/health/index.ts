@@ -78,3 +78,24 @@ export {
   setHealthEngineConfig,
   resetHealthEngineConfig,
 } from './HealthEngineConfig';
+
+// Phase 9 — Verification & Synchronization
+export type {
+  VerificationStatus,
+  ActionStatus,
+  ModuleVerificationResult,
+  VerificationReport,
+  CleaningBreakdownItem,
+  CleaningSummary,
+  RegistrySummary,
+  OptimizationSummaryData,
+} from './VerificationEngine';
+export {
+  buildVerificationReport,
+  buildCleaningSummary,
+  buildRegistrySummary,
+  buildOptimizationSummary,
+  formatBytes as formatVerificationBytes,
+} from './VerificationEngine';
+export type { LiveScoreState, OptimizationCompletePayload } from './LiveSyncService';
+export { useLiveSync, useLiveScores } from './LiveSyncService';

@@ -35,6 +35,7 @@ import {
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import { useIsPro } from '../features/sync/syncStore';
+import { useLiveScores } from '../features/health/LiveSyncService';
 
 interface NavEntry {
   id: NavItemId;
@@ -237,6 +238,7 @@ function NavSectionView({
 export function Sidebar() {
   const { t } = useTranslation();
   const isPro = useIsPro();
+  const liveScores = useLiveScores();
 
   const allEntries = useMemo(
     () => NAV_SECTIONS.flatMap((s) => s.entries).map((e) => ({
@@ -247,6 +249,12 @@ export function Sidebar() {
     })),
     [],
   );
+
+  const scoreColor = liveScores.healthScore >= 80
+    ? 'text-[var(--avs-success)]'
+    : liveScores.healthScore >= 60
+    ? 'text-[var(--avs-warning)]'
+    : 'text-[var(--avs-danger)]';
 
   return (
     <aside
@@ -267,6 +275,16 @@ export function Sidebar() {
           />
         ))}
       </nav>
+      {liveScores.healthScore > 0 && (
+        <div className="mt-4 border-t border-[var(--avs-border)] pt-3">
+          <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
+            <span className="text-caption text-[var(--avs-text-muted)]">PC Health</span>
+            <span className={`text-body font-bold ${scoreColor}`} data-testid="sidebar-health-score">
+              {liveScores.healthScore}
+            </span>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
