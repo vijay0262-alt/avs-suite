@@ -300,13 +300,10 @@ app.whenReady().then(async () => {
     log.warn('[startup] Notifications not supported on this platform');
   }
 
-  // Auto-elevate to administrator on Windows for full functionality
-  const needsRelaunch = await checkAndRelaunchAsAdmin();
-  if (needsRelaunch) {
-    setTimeout(() => app.quit(), 1000);
-    return;
-  }
-  log.info(`[startup] Admin check passed (${Date.now() - appStart}ms)`);
+  // Auto-elevation disabled — app works without admin privileges.
+  // UAC prompt was causing the app to appear not to open when users
+  // dismissed or didn't see the elevation prompt.
+  log.info(`[startup] Admin check skipped (${Date.now() - appStart}ms)`);
 
   // Show splash screen while the backend boots
   splashWindow = createSplashWindow();
