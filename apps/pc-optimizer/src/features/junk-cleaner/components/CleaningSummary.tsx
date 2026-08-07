@@ -1,7 +1,8 @@
 import { Button, Badge } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
-import { CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon, ArrowUturnLeftIcon, ShieldExclamationIcon } from '@heroicons/react/24/outline';
 import { Modal } from './Modal';
+import { useElevation } from '../../../hooks/useElevation';
 import type { CleaningStatusSnapshot } from '../junkCleaner.types';
 
 export interface CleaningSummaryProps {
@@ -39,6 +40,7 @@ function fmtSpeed(bytesPerSec: number): string {
  * as completed / cancelled / failed. Per-category rollup + aggregate.
  */
 export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSummaryProps) {
+  const { isAdmin, relaunchAsAdmin } = useElevation();
   const overall = snapshot.status ?? 'completed';
   const Icon =
     overall === 'completed'
@@ -162,8 +164,26 @@ export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSum
         {/* Errors/warnings if any */}
         {(snapshot.totalFilesFailed ?? 0) > 0 && (
           <div className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-3 text-caption text-text-secondary">
-            Some files could not be cleaned due to locks, permissions, or other errors. 
-            These files were skipped for safety.
+            <div className="mb-1">
+              Some files could not be cleaned due to locks, permissions, or other errors.
+              These files were skipped for safety.
+            </div>
+            {!isAdmin && (filesFailed > 0 || filesSkipped > 0) && (
+              <div className="mt-2 flex items-center gap-2">
+                <ShieldExclamationIcon className="h-4 w-4 shrink-0 text-[color-mix(in_srgb,var(--avs-warning)_85%,black)]" />
+                <span className="flex-1">
+                  {filesFailed + filesSkipped} file(s) were skipped — some may require administrator privileges.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void relaunchAsAdmin()}
+                  className="flex items-center gap-1.5 rounded-[var(--avs-radius-sm)] bg-[color-mix(in_srgb,var(--avs-warning)_85%,black)] px-2.5 py-1 text-caption font-medium text-white transition-opacity hover:opacity-90"
+                  data-testid="cleaning-summary-elevate-btn"
+                >
+                  Restart as Admin
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

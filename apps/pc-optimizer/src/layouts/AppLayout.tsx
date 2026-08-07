@@ -5,6 +5,7 @@ import { Breadcrumbs } from '../components/Breadcrumbs';
 import { useKeyboardShortcuts } from '../components/useKeyboardShortcuts';
 import { ProSplashOverlay } from '../features/licensing/ProSplashOverlay';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { ElevationBanner } from '../components/ElevationBanner';
 
 /**
  * AppLayout — the persistent shell for every page.
@@ -47,6 +48,7 @@ export function AppLayout() {
           data-testid="app-main-content"
         >
           <Breadcrumbs />
+          <ElevationBanner />
           <ErrorBoundary resetKey={location.pathname}>
             <Outlet />
           </ErrorBoundary>
