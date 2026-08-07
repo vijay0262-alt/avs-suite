@@ -234,7 +234,7 @@ export function ProtectionCenterPage() {
             title="Process Optimizer"
             icon={<BoltIcon className="h-5 w-5" />}
           >
-            <ProcessOptimizer onOptimize={(kill) => void vm.optimizeProcesses(kill)} />
+            <ProcessOptimizer onOptimize={(kill) => vm.optimizeProcesses(kill)} />
           </DashboardSection>
         </div>
       </div>
