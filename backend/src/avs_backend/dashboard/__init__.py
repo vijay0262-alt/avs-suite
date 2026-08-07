@@ -594,7 +594,6 @@ def dashboard_optimize_preview(_params: dict[str, Any] | None) -> dict[str, Any]
     # Always include these non-size actions
     actions.extend([
         {"name": "Flush DNS", "size": 0, "description": "Clear DNS resolver cache"},
-        {"name": "Refresh Explorer", "size": 0, "description": "Restart Windows Explorer"},
     ])
     
     return {
@@ -619,7 +618,6 @@ def dashboard_optimize_execute(_params: dict[str, Any] | None) -> dict[str, Any]
         "prefetchFiles": {"cleaned": False, "size": 0, "error": None},
         "windowsUpdateCache": {"cleaned": False, "size": 0, "error": None},
         "flushDNS": {"cleaned": False, "error": None},
-        "refreshExplorer": {"cleaned": False, "error": None},
         "memoryTrim": {"cleaned": False, "error": None},
     }
     
@@ -699,13 +697,9 @@ def dashboard_optimize_execute(_params: dict[str, Any] | None) -> dict[str, Any]
         results["flushDNS"]["error"] = str(e)
         log.warning("Failed to flush DNS: %s", e)
     
-    # Refresh Explorer
-    try:
-        _refresh_explorer()
-        results["refreshExplorer"] = {"cleaned": True, "error": None}
-    except Exception as e:
-        results["refreshExplorer"]["error"] = str(e)
-        log.warning("Failed to refresh Explorer: %s", e)
+    # Refresh Explorer — skipped to avoid taskbar disappearing.
+    # Windows rebuilds icon/thumbnail caches naturally on next reboot.
+    results["refreshExplorer"] = {"cleaned": False, "error": None}
     
     # Memory trim (optional, Windows only)
     if os.name == "nt":

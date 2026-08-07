@@ -1263,19 +1263,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         });
       }
 
-      this.setState({
-        healthScanStep: 'verifying',
-        healthScanExecution: {
-          ...this.state.healthScanExecution!,
-          currentModule: 'Verifying',
-          progress: 90,
-          liveMessages: [...this.state.healthScanExecution!.liveMessages, 'Verifying results...'],
-        },
-      });
-
-      await this.runHealthScan('verify');
-
-      // Transition to updating_dashboard before refreshing metrics
+      // Skip full verify re-scan — compute after-scores from cleaning results
+      // instead of re-scanning all modules. This eliminates the second scan
+      // that users see after clicking "Optimize Now".
       this.setState({
         healthScanStep: 'updating_dashboard',
         healthScanExecution: {
@@ -1285,7 +1275,47 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           liveMessages: [...this.state.healthScanExecution!.liveMessages, 'Refreshing Health Score...', 'Updating Dashboard cards...'],
         },
       });
-      const modulesWithActual = this.state.healthScanModules.map((m) => (actualMap.has(m.moduleId) ? { ...m, actual: actualMap.get(m.moduleId) } : m));
+
+      // Compute estimated after-scores based on cleaning results
+      const beforeById = new Map(beforeReport.modules.map((m) => [m.moduleId, m]));
+      const verifiedModules = beforeReport.modules.map((m) => {
+        const actual = actualMap.get(m.moduleId);
+        if (!actual) return m;
+        const before = beforeById.get(m.moduleId);
+        const beforeScore = before?.score ?? m.score;
+        const beforeIssues = before?.issuesFound ?? 0;
+        const itemsFixed = (actual.itemsRemoved || 0) + (actual.entriesDisabled || 0) + (actual.issuesFixed || 0);
+        const afterIssues = Math.max(0, beforeIssues - itemsFixed);
+        const afterScore = itemsFixed > 0
+          ? Math.min(100, Math.round(beforeScore + (itemsFixed / Math.max(1, beforeIssues)) * (100 - beforeScore)))
+          : beforeScore;
+        const afterRecoverable = Math.max(0, (before?.recoverableSpace ?? 0) - (actual.bytesRecovered || 0));
+        return {
+          ...m,
+          actual,
+          score: afterScore,
+          issuesFound: afterIssues,
+          recoverableSpace: afterRecoverable,
+          verification: {
+            beforeScore,
+            beforeIssues,
+            beforeRecoverable: before?.recoverableSpace ?? 0,
+            afterScore,
+            afterIssues,
+            afterRecoverable,
+          },
+        };
+      });
+
+      const verifiedReport: HealthScanReport = {
+        ...beforeReport,
+        modules: verifiedModules,
+        overallScore: Math.round(verifiedModules.reduce((s, m) => s + m.score, 0) / verifiedModules.length),
+        issuesFound: verifiedModules.reduce((s, m) => s + m.issuesFound, 0),
+        recoverableSpace: verifiedModules.reduce((s, m) => s + m.recoverableSpace, 0),
+      };
+
+      const modulesWithActual = verifiedModules;
       this.setState({
         healthScanModules: modulesWithActual,
         healthScanResult: {
@@ -1296,30 +1326,24 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           completedAt: new Date().toISOString(),
         } as OptimizeExecuteResponse,
       });
-      // Also update healthScanReport so the complete step can show actual results
-      const currentReport = this.state.healthScanReport;
-      if (currentReport) {
-        // Update modules with actual results and fix modulesUsed in history
-        const updatedModules = currentReport.modules.map((m) => {
-          const updated = modulesWithActual.find((u) => u.moduleId === m.moduleId);
-          return updated ? { ...m, actual: updated.actual } : m;
-        });
-        this.setState({
-          healthScanReport: {
-            ...currentReport,
-            modules: updatedModules,
-          },
-        });
-        // Fix the history entry to correctly list modules that were actually used
-        const modulesUsed = [...actualMap.keys()];
-        if (this.state.healthScanHistory.length > 0) {
-          this.setState({
-            healthScanHistory: this.state.healthScanHistory.map((h, i) =>
-              i === 0 ? { ...h, modulesUsed } : h
-            ),
-          });
-        }
-      }
+      // Update healthScanReport with verified results so the complete step shows before/after comparison
+      const recoveredSpace = (beforeReport.recoverableSpace || 0) - verifiedReport.recoverableSpace;
+      const scoreBefore = beforeReport.overallScore;
+      const scoreAfter = verifiedReport.overallScore;
+      this.setState({
+        healthScanReport: verifiedReport,
+        healthScanBeforeReport: beforeReport,
+        healthScanHistory: [{
+          id: `${Date.now()}`,
+          date: new Date().toISOString(),
+          healthBefore: scoreBefore,
+          healthAfter: scoreAfter,
+          recoveredSpace: Math.max(0, recoveredSpace),
+          modulesUsed: [...actualMap.keys()],
+          durationMs: Date.now() - start,
+          result: scoreAfter > scoreBefore && recoveredSpace >= 0 ? 'success' : 'partial',
+        } as HealthScanHistoryEntry, ...this.state.healthScanHistory].slice(0, 20),
+      });
 
       // The backend caches dashboard.metrics for 15s. Real actions just
       // ran (junk cleaned, startup entries disabled, privacy items removed,
@@ -1336,7 +1360,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       await Promise.all([this.loadMetrics(), this.loadPrivacyRisks(), this.loadHardwareSensors()]);
 
       // Part 7: Build improvement summary from health scan results
-      const healthAfter = this.state.healthScore?.overallScore ?? 100;
+      // Use the verified report score as fallback since dashboard metrics
+      // may not reflect changes immediately after cleaning
+      const summaryHealthAfter = this.state.healthScore?.overallScore ?? verifiedReport.overallScore;
       const totalRecovered = [...actualMap.values()].reduce((s, a) => s + (a.bytesRecovered || 0), 0);
       const registryFixed = [...actualMap.values()].reduce((s, a) => s + (a.issuesFixed || 0), 0);
       const startupOptimized = [...actualMap.values()].reduce((s, a) => s + (a.entriesDisabled || 0), 0);
@@ -1347,7 +1373,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
 
       const summary: OptimizationSummary = {
         healthBefore: this.state.healthScanBeforeReport?.overallScore ?? 0,
-        healthAfter,
+        healthAfter: summaryHealthAfter,
         storageRecovered: totalRecovered,
         registryFixed,
         startupOptimized,
@@ -1362,7 +1388,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       // Part 15: Persist session for restart recovery
       saveSession({
         optimizationSummary: summary,
-        healthScore: healthAfter,
+        healthScore: summaryHealthAfter,
         healthZone: this.state.healthScore?.scoreZone ?? null,
         recommendations: [],
         lastOptimizationAt: completedAt,
@@ -1373,7 +1399,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       optimizationHistoryService.recordOptimization({
         timestamp: completedAt,
         healthBefore: this.state.healthScanBeforeReport?.overallScore ?? 0,
-        healthAfter,
+        healthAfter: summaryHealthAfter,
         storageRecovered: totalRecovered,
         registryFixed,
         startupOptimized,
