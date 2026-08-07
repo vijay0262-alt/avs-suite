@@ -22,7 +22,7 @@ import { useIsPro } from '../sync/syncStore';
 import { ProStatusBanner, ProStatusPill, ProOnlySection, ProFeatureIndicator } from '../licensing/ProStatusBadge';
 import { DashboardViewModel } from '../dashboard/DashboardViewModel';
 import { dashboardService } from '../dashboard/dashboard.service';
-import { HealthScanModal } from '../dashboard/components/HealthScanModal';
+import { UnifiedOptimizeFlow } from '../dashboard/components/UnifiedOptimizeFlow';
 import { formatDataSize } from '@avs/shared/utils';
 import {
   SmartOptimizationEngine,
@@ -280,7 +280,7 @@ export default function SmartOptimizationPage() {
               size="lg"
               data-testid="ai-smart-optimize-btn"
             >
-              {isScanning ? 'Scanning...' : 'AI Smart Optimize'}
+              {isScanning ? 'Scanning...' : 'Optimize Now'}
             </Button>
           </div>
         }
@@ -643,25 +643,12 @@ export default function SmartOptimizationPage() {
         </div>
       )}
 
-      {/* Health Scan Modal — triggered by AI Smart Optimize button */}
+      {/* Unified Optimize Flow — triggered by AI Smart Optimize button */}
       {dashState.healthScanStep !== 'idle' && (
-        <HealthScanModal
-          step={dashState.healthScanStep}
-          modules={dashState.healthScanModules}
-          report={dashState.healthScanReport}
-          execution={dashState.healthScanExecution}
-          result={dashState.healthScanResult}
-          error={dashState.healthScanError}
-          currentFile={dashState.healthScanCurrentFile}
-          subProgress={dashState.healthScanSubProgress}
-          scanPhase={dashState.scanPhase}
-          scanOverallProgress={dashState.scanOverallProgress}
-          scanLiveStats={dashState.scanLiveStats}
-          scanStartTime={dashState.scanStartTime}
-          onCancel={() => dashVm.cancelHealthScan()}
+        <UnifiedOptimizeFlow
+          vm={dashVm}
+          isPro={isPro}
           onClose={() => dashVm.closeHealthScan()}
-          onOptimize={() => dashVm.executeHealthScanOptimizations()}
-          onCancelExecute={() => dashVm.cancelHealthScanOptimizations()}
         />
       )}
     </div>

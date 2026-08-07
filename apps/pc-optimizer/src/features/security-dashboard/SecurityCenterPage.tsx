@@ -244,7 +244,7 @@ export function SecurityCenterPage() {
             leftIcon={state.isScanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <SparklesIcon className="h-5 w-5" />}
             data-testid="ai-smart-security-scan-btn"
           >
-            {state.isScanning ? 'Scanning…' : 'AI Smart Security'}
+            {state.isScanning ? 'Scanning…' : 'Security Scan'}
           </Button>
         </div>
       </Card>

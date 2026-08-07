@@ -1414,6 +1414,10 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         healthScanStep: 'complete',
         healthScanError: null,
       });
+
+      // Refresh metrics so health score reflects the optimization just performed
+      invalidateMetricsCache();
+      void this.loadMetrics();
     } catch (err) {
       this.setState({
         healthScanStep: 'complete',
@@ -1634,6 +1638,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       },
       scanStartTime: null,
     });
+    // Refresh metrics so scores reflect any optimizations that were applied
+    invalidateMetricsCache();
+    void this.loadMetrics();
     clearSession();
   }
 

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DashboardSection, LoadingState, EmptyState } from '@avs/ui';
+import { DashboardSection, LoadingState, EmptyState, Button } from '@avs/ui';
 import {
   ShieldCheckIcon,
   ClockIcon,
@@ -11,10 +11,14 @@ import {
   BoltIcon,
   InformationCircleIcon,
   BellAlertIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ProtectionCenterViewModel } from '../ProtectionCenterViewModel';
 import { useIsPro } from '../../sync/syncStore';
+import { DashboardViewModel } from '../../dashboard/DashboardViewModel';
+import { dashboardService } from '../../dashboard/dashboard.service';
+import { UnifiedOptimizeFlow } from '../../dashboard/components/UnifiedOptimizeFlow';
 import { ProtectionBanner } from './ProtectionBanner';
 import { ProtectionCards } from './ProtectionCards';
 import { LiveActivityTimeline } from './LiveActivityTimeline';
@@ -38,15 +42,33 @@ export function ProtectionCenterPage() {
   const vm = vmRef.current;
   const state = useViewModel(vm);
 
+  // Dashboard ViewModel for unified scan flow
+  const dashVmRef = useRef<DashboardViewModel | null>(null);
+  if (!dashVmRef.current) {
+    dashVmRef.current = new DashboardViewModel(dashboardService);
+  }
+  const dashVm = dashVmRef.current;
+  const dashState = useViewModel(dashVm);
+
   useEffect(() => {
     void vm.init();
-    return () => vm.dispose();
-  }, [vm]);
+    void dashVm.bootstrap();
+    return () => {
+      vm.dispose();
+      dashVm.dispose();
+    };
+  }, [vm, dashVm]);
 
   const handleNavigate = useMemo(
     () => (path: string) => navigate(path),
     [navigate],
   );
+
+  const handleScanNow = useCallback(() => {
+    dashVm.startHealthScan();
+  }, [dashVm]);
+
+  const isScanning = dashState.healthScanStep !== 'idle' && dashState.healthScanStep !== 'complete';
 
   if (state.loading && !state.protectionState) {
     return (
@@ -72,12 +94,26 @@ export function ProtectionCenterPage() {
       role="main"
       aria-label="AI Protection Center"
     >
-      {/* Top Status Banner */}
-      <ProtectionBanner
-        state={state.protectionState!}
-        onRefresh={() => vm.refresh()}
-        lastRefresh={state.lastRefresh}
-      />
+      {/* Top Status Banner with Scan Now button */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <ProtectionBanner
+            state={state.protectionState!}
+            onRefresh={() => vm.refresh()}
+            lastRefresh={state.lastRefresh}
+          />
+        </div>
+        <Button
+          onClick={handleScanNow}
+          disabled={isScanning}
+          loading={isScanning}
+          leftIcon={isScanning ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <ShieldCheckIcon className="h-4 w-4" />}
+          size="lg"
+          data-testid="protection-center-scan-now"
+        >
+          {isScanning ? 'Scanning...' : 'Scan Now'}
+        </Button>
+      </div>
 
       {/* Alerts (only show if there are any) */}
       {state.alerts.length > 0 && (
@@ -183,6 +219,15 @@ export function ProtectionCenterPage() {
       >
         <ProtectionStatus state={state.protectionState!} coverage={state.coverage} />
       </DashboardSection>
+
+      {/* Unified Scan Flow — triggered by Scan Now button */}
+      {dashState.healthScanStep !== 'idle' && (
+        <UnifiedOptimizeFlow
+          vm={dashVm}
+          isPro={isPro}
+          onClose={() => dashVm.closeHealthScan()}
+        />
+      )}
     </div>
   );
 }
