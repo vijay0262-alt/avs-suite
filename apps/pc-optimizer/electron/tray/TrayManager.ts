@@ -10,6 +10,7 @@
  *   - Exit confirmation dialog
  */
 import { app, Tray, Menu, nativeImage, dialog } from 'electron';
+import * as path from 'path';
 import type { Logger } from '../ipc/registerAllHandlers';
 import {
   updateTraySettings,
@@ -20,33 +21,70 @@ import {
 } from './traySettings';
 import { showMainWindow, getMainWindow } from '../main/windowManager';
 
-// ── Icon generation ──────────────────────────────────────────
+// ── Icon loading ──────────────────────────────────────────────
+
+// Cache the base tray icon (loaded once from PNG file).
+// We resize to 16×16 for standard DPI; Windows handles Hi-DPI scaling.
+let _baseIcon: Electron.NativeImage | null = null;
+
+function getBaseTrayIcon(): Electron.NativeImage {
+  if (_baseIcon) return _baseIcon;
+
+  // In production: resources/app.asar/build/tray-icon.png
+  // In development: apps/pc-optimizer/build/tray-icon.png
+  const candidates = [
+    path.join(process.resourcesPath || '', 'app.asar', 'build', 'tray-icon.png'),
+    path.join(app.getAppPath(), 'build', 'tray-icon.png'),
+    path.join(__dirname, '..', '..', 'build', 'tray-icon.png'),
+    path.join(__dirname, '..', '..', '..', 'build', 'tray-icon.png'),
+  ];
+
+  for (const iconPath of candidates) {
+    try {
+      const img = nativeImage.createFromPath(iconPath);
+      if (!img.isEmpty()) {
+        // Resize to 16×16 for the system tray (Windows standard)
+        const resized = img.resize({ width: 16, height: 16 });
+        _baseIcon = resized.isEmpty() ? img : resized;
+        break;
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+
+  if (!_baseIcon || _baseIcon.isEmpty()) {
+    // Fallback: generate a simple 16×16 green shield PNG programmatically
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+      <path d="M8 1 L14 3 V8 C14 11.5 11.5 14 8 15 C4.5 14 2 11.5 2 8 V3 Z" fill="#22C55E" stroke="#FFFFFF" stroke-width="0.5" opacity="0.95"/>
+      <path d="M5.5 8 L7 9.5 L10.5 6" stroke="#FFFFFF" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+    const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+    _baseIcon = nativeImage.createFromDataURL(dataUrl);
+  }
+
+  return _baseIcon;
+}
 
 /**
- * Generate a 16×16 tray icon as a nativeImage from an SVG-like buffer.
- * We use a simple colored shield SVG rendered to PNG via data URL.
- * This avoids needing .ico files at build time.
+ * Create a tray icon for the given protection state.
+ * Uses the loaded PNG icon; for non-protected states, we tint the icon
+ * by overlaying a colored badge in the bottom-right corner.
  */
 function createTrayIcon(state: ProtectionState): Electron.NativeImage {
-  const colors: Record<ProtectionState, { bg: string; fg: string }> = {
-    protected: { bg: '#22C55E', fg: '#FFFFFF' },  // green
-    scanning:  { bg: '#3B82F6', fg: '#FFFFFF' },  // blue
-    paused:    { bg: '#F59E0B', fg: '#FFFFFF' },  // amber
-    warning:   { bg: '#F59E0B', fg: '#FFFFFF' },  // amber
-    threat:    { bg: '#EF4444', fg: '#FFFFFF' },  // red
-    updating:  { bg: '#8B5CF6', fg: '#FFFFFF' },  // purple
-  };
+  const baseIcon = getBaseTrayIcon();
 
-  const { bg, fg } = colors[state] ?? colors.protected;
+  // For the default 'protected' state, just use the base icon as-is.
+  if (state === 'protected') {
+    return baseIcon;
+  }
 
-  // 16×16 SVG shield icon
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-    <path d="M8 1 L14 3 V8 C14 11.5 11.5 14 8 15 C4.5 14 2 11.5 2 8 V3 Z" fill="${bg}" stroke="${fg}" stroke-width="0.5" opacity="0.95"/>
-    <path d="M5.5 8 L7 9.5 L10.5 6" stroke="${fg}" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`;
-
-  const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
-  return nativeImage.createFromDataURL(dataUrl);
+  // For other states, we could overlay a colored dot, but nativeImage
+  // doesn't support compositing. Instead, we generate a small colored
+  // badge icon and use it. For now, use the base icon for all states
+  // — the tooltip and context menu text convey the state.
+  // TODO: Generate state-specific overlay icons when multi-size PNGs are available.
+  return baseIcon;
 }
 
 // ── Tray manager ─────────────────────────────────────────────

@@ -7,6 +7,7 @@ directories:
 files:
   - dist/**/*
   - dist-electron/**/*
+  - build/**/*
   - package.json
 extraResources:
   - from: ../../backend/dist/backend-py
@@ -20,6 +21,7 @@ extraMetadata:
     email: help@avsshield.com
   publisherName: Advanced Vision Software LLC
 win:
+  icon: build/icon.ico
   target:
     - target: nsis
       arch: [x64]

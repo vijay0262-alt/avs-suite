@@ -11,7 +11,7 @@
  *   - Optional: exit application (with confirmation dialog)
  *   - The background protection service runs independently of the window
  */
-import { app, BrowserWindow, shell, Notification } from 'electron';
+import { app, BrowserWindow, shell, Notification, nativeImage } from 'electron';
 import { exec } from 'child_process';
 import path from 'node:path';
 import { installCrashHandler } from '../crash/crashReporter';
@@ -86,6 +86,22 @@ let trayManager: TrayManager | null = null;
 let bgProtection: BackgroundProtectionService | null = null;
 let isQuitting = false;
 
+function getAppIcon(): Electron.NativeImage | undefined {
+  const candidates = [
+    path.join(process.resourcesPath || '', 'app.asar', 'build', 'tray-icon.png'),
+    path.join(app.getAppPath(), 'build', 'tray-icon.png'),
+    path.join(__dirname, '..', '..', 'build', 'tray-icon.png'),
+    path.join(__dirname, '..', '..', '..', 'build', 'tray-icon.png'),
+  ];
+  for (const iconPath of candidates) {
+    try {
+      const img = nativeImage.createFromPath(iconPath);
+      if (!img.isEmpty()) return img;
+    } catch { /* try next */ }
+  }
+  return undefined;
+}
+
 function createSplashWindow(): BrowserWindow {
   const splash = new BrowserWindow({
     width: 400,
@@ -97,6 +113,7 @@ function createSplashWindow(): BrowserWindow {
     center: true,
     alwaysOnTop: true,
     backgroundColor: '#0F172A',
+    icon: getAppIcon(),
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
@@ -170,6 +187,7 @@ async function createMainWindow(): Promise<void> {
     show: false,
     autoHideMenuBar: true,
     backgroundColor: '#0EA5E9',
+    icon: getAppIcon(),
     titleBarStyle: 'hidden',
     titleBarOverlay: {
       color: '#0EA5E9',
