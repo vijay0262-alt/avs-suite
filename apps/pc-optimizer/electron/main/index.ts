@@ -238,7 +238,7 @@ async function createMainWindow(): Promise<void> {
   setMainWindow(mainWindow);
 }
 
-function checkAndRelaunchAsAdmin(): Promise<boolean> {
+function _checkAndRelaunchAsAdmin(): Promise<boolean> {
   if (process.platform !== 'win32') return Promise.resolve(false);
   if (process.env.AVS_NO_ELEVATE) return Promise.resolve(false);
 
