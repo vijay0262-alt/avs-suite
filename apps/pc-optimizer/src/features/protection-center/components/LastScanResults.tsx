@@ -36,7 +36,7 @@ export function LastScanResults({ lastScan, lastOptimizeResult }: LastScanResult
   if (!lastScan && !lastOptimizeResult) {
     return (
       <div className="rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-gradient-surface p-4 text-center">
-        <p className="text-small text-[var(--avs-text-muted)]">No scans run yet. Click "Scan Now" to get started.</p>
+        <p className="text-small text-[var(--avs-text-muted)]">No scans run yet. Click &ldquo;Scan Now&rdquo; to get started.</p>
       </div>
     );
   }
