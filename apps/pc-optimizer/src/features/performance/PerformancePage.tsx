@@ -96,7 +96,7 @@ export default function PerformancePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <Card title="CPU Usage">
               <p className="text-3xl font-bold text-text-primary">
-                {state.metrics?.cpu.usage.toFixed(1)}%
+                {(state.metrics?.cpu.usage ?? 0).toFixed(1)}%
               </p>
               <p className="text-small text-text-secondary mb-2">
                 {state.metrics?.cpu.processorName}
@@ -108,7 +108,7 @@ export default function PerformancePage() {
 
             <Card title="Memory Usage">
               <p className="text-3xl font-bold text-text-primary">
-                {state.metrics?.memory.usage.toFixed(1)}%
+                {(state.metrics?.memory.usage ?? 0).toFixed(1)}%
               </p>
               <p className="text-small text-text-secondary mb-2">
                 {vm.formatBytes(state.metrics?.memory.used || 0)} / {vm.formatBytes(state.metrics?.memory.total || 0)}
@@ -120,7 +120,7 @@ export default function PerformancePage() {
 
             <Card title="Disk Activity">
               <p className="text-3xl font-bold text-text-primary">
-                {state.metrics?.disk.activeTime.toFixed(1)}%
+                {(state.metrics?.disk.activeTime ?? 0).toFixed(1)}%
               </p>
               <p className="text-small text-text-secondary mb-2">
                 Read: {vm.formatBytes(state.metrics?.disk.readSpeed || 0)}/s
@@ -175,14 +175,14 @@ export default function PerformancePage() {
 
             <Card title="CPU Temperature">
               <p className="text-3xl font-bold text-text-primary mb-2">
-                {state.metrics?.cpu.temperatureCelsius.toFixed(1)}°C
+                {(state.metrics?.cpu.temperatureCelsius ?? 0).toFixed(1)}°C
               </p>
               <p className="text-small text-text-secondary mb-4">
                 Processor temperature
               </p>
               <div className="space-y-1">
                 <p className="text-caption text-text-muted">Per-Core Usage:</p>
-                {state.metrics?.cpu.perCoreUsage.slice(0, 8).map((usage, i) => (
+                {(state.metrics?.cpu.perCoreUsage ?? []).slice(0, 8).map((usage, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <span className="text-caption text-text-secondary w-8">Core {i}</span>
                     <div className="flex-1 h-2 bg-[var(--avs-surface-muted)] rounded overflow-hidden">
@@ -191,7 +191,7 @@ export default function PerformancePage() {
                         style={{ width: `${usage}%` }}
                       />
                     </div>
-                    <span className="text-caption text-text-primary w-12 text-right">{usage.toFixed(1)}%</span>
+                    <span className="text-caption text-text-primary w-12 text-right">{(usage ?? 0).toFixed(1)}%</span>
                   </div>
                 ))}
               </div>
@@ -215,7 +215,7 @@ export default function PerformancePage() {
                         <p className="text-small">{alert.message}</p>
                       </div>
                       <p className="text-small">
-                        {alert.value.toFixed(1)} / {alert.threshold}
+                        {(alert.value ?? 0).toFixed(1)} / {alert.threshold ?? 0}
                       </p>
                     </div>
                   </div>
@@ -262,7 +262,7 @@ export default function PerformancePage() {
                     </div>
                     <div className="flex gap-4 text-right">
                       <div>
-                        <p className="text-small font-semibold text-text-primary">{process.cpuPercent.toFixed(1)}%</p>
+                        <p className="text-small font-semibold text-text-primary">{(process.cpuPercent ?? 0).toFixed(1)}%</p>
                         <p className="text-caption text-text-muted">CPU</p>
                       </div>
                       <div>
@@ -314,13 +314,13 @@ export default function PerformancePage() {
                   <div>
                     <p className="text-caption text-text-muted">Time Taken</p>
                     <p className="text-small font-semibold text-text-primary mt-1">
-                      {(state.optimizeResult.optimizationTimeMs / 1000).toFixed(2)}s
+                      {((state.optimizeResult.optimizationTimeMs ?? 0) / 1000).toFixed(2)}s
                     </p>
                   </div>
                   <div>
                     <p className="text-caption text-text-muted">Health Improvement</p>
                     <p className="text-small font-semibold text-text-primary mt-1">
-                      +{state.optimizeResult.healthImprovement.toFixed(1)}%
+                      +{(state.optimizeResult.healthImprovement ?? 0).toFixed(1)}%
                     </p>
                   </div>
                 </div>
@@ -329,20 +329,20 @@ export default function PerformancePage() {
                     <div>
                       <p className="text-caption text-text-muted">Memory Before</p>
                       <p className="text-small text-text-primary mt-1">
-                        {vm.formatBytes(state.optimizeResult.beforeMemory.usedRam)} ({state.optimizeResult.beforeMemory.memoryLoadPercent.toFixed(1)}%)
+                        {vm.formatBytes(state.optimizeResult.beforeMemory.usedRam)} ({(state.optimizeResult.beforeMemory.memoryLoadPercent ?? 0).toFixed(1)}%)
                       </p>
                     </div>
                     <div>
                       <p className="text-caption text-text-muted">Memory After</p>
                       <p className="text-small text-text-primary mt-1">
-                        {vm.formatBytes(state.optimizeResult.afterMemory.usedRam)} ({state.optimizeResult.afterMemory.memoryLoadPercent.toFixed(1)}%)
+                        {vm.formatBytes(state.optimizeResult.afterMemory.usedRam)} ({(state.optimizeResult.afterMemory.memoryLoadPercent ?? 0).toFixed(1)}%)
                       </p>
                     </div>
                   </div>
                 )}
-                {state.optimizeResult.errors.length > 0 && (
+                {(state.optimizeResult.errors ?? []).length > 0 && (
                   <div className="text-caption text-semantic-warning">
-                    {state.optimizeResult.errors.length} warning(s) during optimization
+                    {(state.optimizeResult.errors ?? []).length} warning(s) during optimization
                   </div>
                 )}
                 <Button variant="ghost" onClick={() => vm.clearOptimizeResult()}>
