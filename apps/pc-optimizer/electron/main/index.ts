@@ -238,7 +238,7 @@ async function createMainWindow(): Promise<void> {
   setMainWindow(mainWindow);
 }
 
-function _checkAndRelaunchAsAdmin(): Promise<boolean> {
+function checkAndRelaunchAsAdmin(): Promise<boolean> {
   if (process.platform !== 'win32') return Promise.resolve(false);
   if (process.env.AVS_NO_ELEVATE) return Promise.resolve(false);
 
@@ -263,10 +263,13 @@ function _checkAndRelaunchAsAdmin(): Promise<boolean> {
           `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`,
           (relaunchErr) => {
             if (relaunchErr) {
-              log.error('Failed to relaunch as admin', relaunchErr);
+              // User declined UAC or error — continue without admin
+              log.warn('Admin relaunch declined or failed — continuing without admin', relaunchErr);
               resolve(false);
             } else {
-              log.info('Admin relaunch triggered, exiting current instance');
+              log.info('Admin relaunch triggered — releasing lock and exiting current instance');
+              // Release the single instance lock so the elevated instance can acquire it
+              app.releaseSingleInstanceLock();
               resolve(true);
             }
           }
@@ -300,10 +303,14 @@ app.whenReady().then(async () => {
     log.warn('[startup] Notifications not supported on this platform');
   }
 
-  // Auto-elevation disabled — app works without admin privileges.
-  // UAC prompt was causing the app to appear not to open when users
-  // dismissed or didn't see the elevation prompt.
-  log.info(`[startup] Admin check skipped (${Date.now() - appStart}ms)`);
+  // Request admin elevation via UAC prompt on startup.
+  // If the user declines, the app continues without admin (some files may be skipped during cleaning).
+  const needsRelaunch = await checkAndRelaunchAsAdmin();
+  if (needsRelaunch) {
+    app.quit();
+    return;
+  }
+  log.info(`[startup] Admin check passed (${Date.now() - appStart}ms)`);
 
   // Show splash screen while the backend boots
   splashWindow = createSplashWindow();
