@@ -18,7 +18,16 @@ interface OnboardingProviderProps {
 }
 
 export function OnboardingProvider({ children }: OnboardingProviderProps) {
-  const [welcomeOpen, setWelcomeOpen] = useState(() => onboardingService.shouldShowWelcome());
+  const [welcomeOpen, setWelcomeOpen] = useState(() => {
+    try {
+      const sessionSeen = sessionStorage.getItem('avs-welcome-session-seen');
+      if (sessionSeen) return false;
+      sessionStorage.setItem('avs-welcome-session-seen', '1');
+      return true;
+    } catch {
+      return false;
+    }
+  });
   const [firstScanOpen, setFirstScanOpen] = useState(false);
 
   const closeWelcome = useCallback(() => {

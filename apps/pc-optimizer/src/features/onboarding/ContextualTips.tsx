@@ -100,6 +100,9 @@ export function ContextualTips() {
 
   if (!shouldShow || visibleTips.length === 0) return null;
 
+  // Contextual tips disabled — user requested no notifications on top of pages.
+  return null;
+
   const dismissTip = (tipId: string) => {
     onboardingService.dismissTip(tipId);
     setDismissedRefresh((n) => n + 1);

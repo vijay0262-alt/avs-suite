@@ -169,11 +169,11 @@ async function createMainWindow(): Promise<void> {
     minHeight: 680,
     show: false,
     autoHideMenuBar: true,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0EA5E9',
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      color: '#0F172A',
-      symbolColor: '#F1F5F9',
+      color: '#0EA5E9',
+      symbolColor: '#FFFFFF',
       height: 40,
     },
     webPreferences: {
