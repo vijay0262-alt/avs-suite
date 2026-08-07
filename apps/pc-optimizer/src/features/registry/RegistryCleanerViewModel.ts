@@ -12,6 +12,7 @@ import type {
 import { optimizationEventBus, OptimizationEventType } from '../health';
 import { currentEdition, canUse } from '../licensing/FeatureGate';
 import { getEditionLimit } from '../licensing/editionLimits';
+import { useSyncStore, planToEdition } from '../sync/syncStore';
 
 const FREE_ISSUE_LIMIT = 20;
 
@@ -148,8 +149,18 @@ export class RegistryCleanerViewModel extends ViewModel<RegistryState> {
     if (toFix.length === 0) return;
 
     // Enforce Free edition limit: max 20 issues per scan
-    const isFree = currentEdition() === 'free';
-    const hasUnlimited = canUse('registry.fix');
+    // Read edition directly from sync store to avoid stale FeatureGate state
+    let isFree = currentEdition() === 'free';
+    let hasUnlimited = canUse('registry.fix');
+    try {
+      const syncData = useSyncStore.getState().data;
+      if (syncData) {
+        isFree = planToEdition(syncData.subscription.plan, syncData.license?.edition) !== 'PROFESSIONAL';
+        hasUnlimited = !isFree; // Pro users have unlimited repairs
+      }
+    } catch {
+      // sync store not available — fall back to FeatureGate
+    }
     if (isFree && !hasUnlimited && toFix.length > FREE_ISSUE_LIMIT) {
       this.setState({
         cleanError: `Free edition repairs up to ${FREE_ISSUE_LIMIT} issues per scan. Upgrade to Professional for unlimited repairs.`,

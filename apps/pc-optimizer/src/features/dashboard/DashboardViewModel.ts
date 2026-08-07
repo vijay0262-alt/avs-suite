@@ -49,8 +49,9 @@ import { healthTimelineService } from '../health/HealthTimelineService';
 import { healthNotificationService } from '../health/HealthNotificationService';
 import type { OptimizationSummary } from './OptimizationSummary.types';
 import { saveSession, loadSession, clearSession } from './sessionPersistence';
-import { canUse as featureGateCanUse } from '../licensing/FeatureGate';
+import { canUse as featureGateCanUse, currentEdition as getFeatureGateEdition } from '../licensing/FeatureGate';
 import type { ManagedFeature } from '@avs/licensing';
+import { useSyncStore, planToEdition } from '../sync/syncStore';
 import { onboardingService } from '../onboarding/OnboardingService';
 import { HardwareManager } from '../hardware-center/HardwareManager';
 import { hardwareRegistry } from '../hardware-center/HardwareRegistry';
@@ -212,6 +213,33 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   private optimizationUnsub: (() => void) | null = null;
   private optimizationRefreshTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingEventModuleId: string | null = null;
+
+  /**
+   * Check if the current user has Professional edition.
+   * Reads directly from the sync store to avoid stale FeatureGate module-level state.
+   * Falls back to FeatureGate's currentEdition() if sync store is unavailable.
+   */
+  private isProEdition(): boolean {
+    try {
+      const syncData = useSyncStore.getState().data;
+      if (syncData) {
+        return planToEdition(syncData.subscription.plan, syncData.license?.edition) === 'PROFESSIONAL';
+      }
+    } catch {
+      // sync store not available
+    }
+    return getFeatureGateEdition() === 'professional';
+  }
+
+  /**
+   * Check if a feature is available, using live sync store edition.
+   */
+  private canUseFeature(feature: string): boolean {
+    // If sync store says Pro, all features are available
+    if (this.isProEdition()) return true;
+    // Otherwise fall back to FeatureGate (which checks the feature flag registry for Free edition)
+    return featureGateCanUse(feature as ManagedFeature);
+  }
 
   constructor(
     private readonly service: DashboardService,
@@ -1253,7 +1281,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         if (m.status !== 'complete' || !m.canAutoFix) return false;
         if (m.recoverableSpace <= 0 && m.issuesFound <= 0) return false;
         const feature = moduleFeatureMap[m.moduleId];
-        if (feature && !featureGateCanUse(feature as ManagedFeature)) return false;
+        if (feature && !this.canUseFeature(feature)) return false;
         return true;
       }
     );
@@ -1345,10 +1373,25 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         const beforeIssues = before?.issuesFound ?? 0;
         const itemsFixed = (actual.itemsRemoved || 0) + (actual.entriesDisabled || 0) + (actual.issuesFixed || 0);
         const afterIssues = Math.max(0, beforeIssues - itemsFixed);
-        const afterScore = itemsFixed > 0
-          ? Math.min(100, Math.round(beforeScore + (itemsFixed / Math.max(1, beforeIssues)) * (100 - beforeScore)))
-          : beforeScore;
         const afterRecoverable = Math.max(0, (before?.recoverableSpace ?? 0) - (actual.bytesRecovered || 0));
+        // Improved score calculation:
+        // - If all issues fixed and no remaining recoverable space → 100
+        // - If items fixed but some remain → proportional improvement with a minimum +10 boost
+        // - If nothing was fixed → keep before score
+        let afterScore: number;
+        if (itemsFixed > 0 && afterIssues === 0 && afterRecoverable === 0) {
+          afterScore = 100;
+        } else if (itemsFixed > 0) {
+          const ratio = itemsFixed / Math.max(1, beforeIssues);
+          const boost = Math.max(10, Math.round(ratio * (100 - beforeScore)));
+          afterScore = Math.min(100, beforeScore + boost);
+        } else {
+          afterScore = beforeScore;
+        }
+        // If the action succeeded but recovered space, give at least a small boost
+        if (actual.success && actual.bytesRecovered && actual.bytesRecovered > 0 && afterScore === beforeScore) {
+          afterScore = Math.min(100, beforeScore + 5);
+        }
         return {
           ...m,
           actual,
@@ -1567,7 +1610,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       performance: 'performance.optimize',
     };
     const requiredFeature = moduleFeatureMap[module.moduleId];
-    if (requiredFeature && !featureGateCanUse(requiredFeature as ManagedFeature)) {
+    if (requiredFeature && !this.canUseFeature(requiredFeature)) {
       log('blocked', 'feature-gate', undefined, undefined, false, `Feature ${requiredFeature} not available in current edition`);
       return { success: false, errors: [`This feature requires a higher edition.`], reason: 'Feature not available in Free edition' };
     }
@@ -1599,12 +1642,13 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         try {
           const result = await this.privacyService.clean(items as unknown as PrivacyItem[]);
           const removed = result.itemsCleaned || 0;
-          log('clean', 'privacy.clean', module.issuesFound, module.issuesFound - removed, true);
+          const errors = result.errors || [];
+          log('clean', 'privacy.clean', module.issuesFound, module.issuesFound - removed, errors.length === 0);
           return {
-            success: result.errors.length === 0,
+            success: errors.length === 0,
             itemsRemoved: removed,
             bytesRecovered: result.spaceFreed || 0,
-            errors: result.errors || [],
+            errors,
           };
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
@@ -1638,8 +1682,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         }
         try {
           const result = await registryService.clean(issues as unknown as RegistryIssue[]);
-          log('clean', 'registry.clean', module.issuesFound, module.issuesFound - result.fixed, result.errors.length === 0);
-          return { success: result.errors.length === 0, issuesFixed: result.fixed, errors: result.errors || [] };
+          const regErrors = result.errors || [];
+          log('clean', 'registry.clean', module.issuesFound, module.issuesFound - result.fixed, regErrors.length === 0);
+          return { success: regErrors.length === 0, issuesFixed: result.fixed, errors: regErrors };
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           log('clean', 'registry.clean', module.issuesFound, undefined, false, msg);
@@ -1649,12 +1694,14 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       case 'performance': {
         try {
           const result = await performanceService.optimizeMemory();
-          log('optimize', 'performance.memory.optimize', undefined, result.memoryFreed, result.status === 'completed');
+          const errors = result.errors || [];
+          const success = result.status === 'completed' || result.status === 'success' || (errors.length === 0 && (result.memoryFreed > 0 || result.processesOptimized > 0));
+          log('optimize', 'performance.memory.optimize', undefined, result.memoryFreed, success);
           return {
-            success: result.status === 'completed',
-            bytesRecovered: result.memoryFreed,
-            issuesFixed: result.processesOptimized,
-            errors: result.errors || [],
+            success,
+            bytesRecovered: result.memoryFreed || 0,
+            issuesFixed: result.processesOptimized || 0,
+            errors,
           };
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);

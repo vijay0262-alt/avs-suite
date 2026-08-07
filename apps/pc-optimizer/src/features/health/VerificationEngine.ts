@@ -103,7 +103,7 @@ export function buildVerificationReport(
         executionTimeMs: 0,
         reason: mod.canAutoFix
           ? 'No issues requiring action'
-          : 'Feature not available in current edition',
+          : 'No auto-fix available — manual review required',
         errors: [],
       });
       continue;

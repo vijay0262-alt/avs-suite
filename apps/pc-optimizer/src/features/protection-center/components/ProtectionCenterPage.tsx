@@ -158,6 +158,15 @@ export function ProtectionCenterPage() {
         </DashboardSection>
       )}
 
+      {/* Unified Scan Flow — shown near top so user can see scan running */}
+      {dashState.healthScanStep !== 'idle' && (
+        <UnifiedOptimizeFlow
+          vm={dashVm}
+          isPro={isPro}
+          onClose={() => dashVm.closeHealthScan()}
+        />
+      )}
+
       {/* Live Protection Cards */}
       <DashboardSection
         title="Live Protection"
@@ -268,14 +277,6 @@ export function ProtectionCenterPage() {
         <ProtectionStatus state={state.protectionState!} coverage={state.coverage} />
       </DashboardSection>
 
-      {/* Unified Scan Flow — triggered by Scan Now button */}
-      {dashState.healthScanStep !== 'idle' && (
-        <UnifiedOptimizeFlow
-          vm={dashVm}
-          isPro={isPro}
-          onClose={() => dashVm.closeHealthScan()}
-        />
-      )}
     </div>
   );
 }
