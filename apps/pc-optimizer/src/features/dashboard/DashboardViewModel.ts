@@ -62,7 +62,7 @@ import { buildVerificationReport } from '../health/VerificationEngine';
 import type { VerificationReport } from '../health/VerificationEngine';
 import { useLiveSync } from '../health/LiveSyncService';
 import { orchestratorService } from '../orchestrator/orchestrator.service';
-import type { OrchestratorFullResponse, OrchestratorModuleResult } from '../orchestrator/orchestrator.service';
+import type { OrchestratorFullResponse, OrchestratorModuleResult, ScanProfile, HealthModel } from '../orchestrator/orchestrator.service';
 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
 
@@ -682,7 +682,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   // ------------------------------------------------------------------
   // Health Scan
   // ------------------------------------------------------------------
-  startHealthScan(): void {
+  startHealthScan(profile: ScanProfile = 'dashboard'): void {
     const defaultDetails: OptimizationDetails = {
       summary: 'Scanning...',
       impact: 'low',
@@ -696,7 +696,14 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       why: 'This check helps identify optimization opportunities.',
     };
 
-    const modules: HealthScanModuleResult[] = [
+    // Determine which modules to show based on profile
+    const profileModules = profile === 'optimize'
+      ? ['junk', 'privacy', 'registry', 'startup', 'performance', 'disk']
+      : profile === 'protection'
+        ? ['security', 'system', 'junk', 'privacy', 'registry']
+        : ['junk', 'startup', 'privacy', 'performance', 'disk', 'registry', 'security', 'system'];
+
+    const allModules: HealthScanModuleResult[] = [
       { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning temporary files and browser caches', details: defaultDetails, canAutoFix: true },
       { moduleId: 'startup', moduleName: 'Startup Manager', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking startup applications', details: defaultDetails, canAutoFix: true },
       { moduleId: 'privacy', moduleName: 'Privacy Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning browsing traces and activity history', details: defaultDetails, canAutoFix: true },
@@ -706,6 +713,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       { moduleId: 'security', moduleName: 'Security Check', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking security features and updates', details: defaultDetails, canAutoFix: false },
       { moduleId: 'system', moduleName: 'System Information', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Validating hardware and OS health', details: defaultDetails, canAutoFix: false },
     ];
+    const modules = allModules.filter((m) => profileModules.includes(m.moduleId));
 
     this.setState({
       healthScanStep: 'preparing',
@@ -746,7 +754,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         return;
       }
       this.setState({ healthScanStep: 'scanning' });
-      void this.runOrchestratorFullScan();
+      void this.runOrchestratorFullScan(profile);
     }, 600);
   }
 
@@ -1341,7 +1349,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
    * Pipeline: start → scan → optimize → verify → score → history → done
    * No simulated progress — all results come from real backend execution.
    */
-  async runOrchestratorFullScan(): Promise<void> {
+  async runOrchestratorFullScan(profile: ScanProfile = 'dashboard'): Promise<void> {
     const startedAt = Date.now();
 
     const defaultDetails = {
@@ -1353,7 +1361,14 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       why: 'Preparing system scan...',
     };
 
-    const modules: HealthScanModuleResult[] = [
+    // Determine which modules to show based on profile
+    const profileModules = profile === 'optimize'
+      ? ['junk', 'privacy', 'registry', 'startup', 'performance', 'disk']
+      : profile === 'protection'
+        ? ['security', 'system', 'junk', 'privacy', 'registry']
+        : ['junk', 'startup', 'privacy', 'performance', 'disk', 'registry', 'security', 'system'];
+
+    const allModules: HealthScanModuleResult[] = [
       { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning temporary files and browser caches', details: defaultDetails, canAutoFix: true },
       { moduleId: 'startup', moduleName: 'Startup Manager', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking startup applications', details: defaultDetails, canAutoFix: true },
       { moduleId: 'privacy', moduleName: 'Privacy Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning browsing traces and activity history', details: defaultDetails, canAutoFix: true },
@@ -1363,6 +1378,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       { moduleId: 'security', moduleName: 'Security Check', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking security features and updates', details: defaultDetails, canAutoFix: false },
       { moduleId: 'system', moduleName: 'System Information', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Validating hardware and OS health', details: defaultDetails, canAutoFix: false },
     ];
+    const modules = allModules.filter((m) => profileModules.includes(m.moduleId));
 
     this.setState({
       healthScanStep: 'scanning',
@@ -1399,7 +1415,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
 
     try {
       // Start async pipeline in background thread
-      const startResp = await orchestratorService.fullAsync();
+      const startResp = await orchestratorService.fullAsync(profile);
       sessionId = startResp.sessionId;
 
       // Poll status until complete, error, or cancelled
@@ -1665,16 +1681,17 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       verificationReport,
     });
 
-    // Broadcast scores globally via LiveSyncService
-    // Use the performance module's after-score for performanceScore, falling
-    // back to the overall average if the performance module is missing.
-    const perfModule = dashModules.find((m) => m.moduleId === 'performance');
-    const perfScore = perfModule?.score ?? overallAfter;
+    // Broadcast scores globally via LiveSyncService using the unified health model
+    const healthModelAfter = response.optimize.healthModelAfter;
     const liveSync = useLiveSync.getState();
     liveSync.broadcastScores({
-      healthScore: overallAfter,
-      performanceScore: perfScore,
-      protectionStatus: overallAfter >= 80 ? 'fully_protected' : overallAfter >= 60 ? 'partially_protected' : 'at_risk',
+      healthScore: healthModelAfter?.overallHealth ?? overallAfter,
+      optimizationScore: healthModelAfter?.optimizationScore ?? overallAfter,
+      securityScore: healthModelAfter?.protectionScore ?? 0,
+      performanceScore: healthModelAfter?.performanceScore ?? dashModules.find((m) => m.moduleId === 'performance')?.score ?? overallAfter,
+      storageScore: healthModelAfter?.storageScore ?? 0,
+      hardwareHealth: healthModelAfter?.hardwareHealth ?? 0,
+      protectionStatus: (healthModelAfter?.protectionScore ?? overallAfter) >= 80 ? 'fully_protected' : (healthModelAfter?.protectionScore ?? overallAfter) >= 60 ? 'partially_protected' : 'at_risk',
     });
     liveSync.broadcastOptimizationComplete({
       healthScoreBefore: overallBefore,

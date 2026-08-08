@@ -29,6 +29,7 @@ import { healthNotificationService } from './HealthNotificationService';
 export interface LiveScoreState {
   // Core scores (0-100)
   healthScore: number;
+  optimizationScore: number;
   securityScore: number;
   performanceScore: number;
   storageScore: number;
@@ -64,6 +65,7 @@ export interface OptimizationCompletePayload {
 
 export const useLiveSync = create<LiveScoreState>((set) => ({
   healthScore: 0,
+  optimizationScore: 0,
   securityScore: 0,
   performanceScore: 0,
   storageScore: 0,
@@ -163,6 +165,7 @@ function updateTrayStatus(result: OptimizationCompletePayload): void {
 export function useLiveScores() {
   return useLiveSync((s) => ({
     healthScore: s.healthScore,
+    optimizationScore: s.optimizationScore,
     securityScore: s.securityScore,
     performanceScore: s.performanceScore,
     storageScore: s.storageScore,

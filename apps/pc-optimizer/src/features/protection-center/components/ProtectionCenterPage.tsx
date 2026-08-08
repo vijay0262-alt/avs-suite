@@ -64,7 +64,7 @@ export function ProtectionCenterPage() {
   );
 
   const handleScanNow = useCallback(() => {
-    dashVm.startHealthScan();
+    dashVm.startHealthScan('protection');
   }, [dashVm]);
 
   const handleFixCoverage = useCallback(

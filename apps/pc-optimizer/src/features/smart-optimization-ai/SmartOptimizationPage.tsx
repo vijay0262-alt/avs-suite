@@ -236,7 +236,7 @@ export default function SmartOptimizationPage() {
 
   const handleSmartOptimize = useCallback(() => {
     setShowUpgradeMessage(false);
-    dashVm.startHealthScan();
+    dashVm.startHealthScan('optimize');
   }, [dashVm]);
 
   const handleExecutePlan = useCallback(() => {

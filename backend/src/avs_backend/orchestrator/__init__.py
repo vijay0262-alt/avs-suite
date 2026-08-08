@@ -30,6 +30,13 @@ from datetime import datetime, timezone
 from typing import Any
 
 from avs_backend.api.registry import register
+from avs_backend.orchestrator.health_model import (
+    calculate_health_model,
+    calculate_after_health_model,
+    get_profile_modules,
+    get_optimize_modules,
+    SCAN_PROFILES,
+)
 
 log = logging.getLogger("avs.orchestrator")
 
@@ -66,6 +73,9 @@ def _new_session() -> dict[str, Any]:
         "error": None,
         "cancelled": False,
         "history": None,        # history entry dict once complete
+        "profile": "dashboard",  # scan profile: dashboard | optimize | protection
+        "healthModel": None,     # unified health model (before)
+        "healthModelAfter": None, # unified health model (after)
         # Real-time streaming data
         "activityLog": [],      # list of {ts, module, action, detail, operation?, path?}
         "counters": {           # live counters updated during scan/optimize
@@ -722,8 +732,13 @@ def orchestrator_start(_params: dict[str, Any] | None) -> dict[str, Any]:
 
 @register("orchestrator.scan")
 def orchestrator_scan(params: dict[str, Any] | None) -> dict[str, Any]:
-    """Run all module scans sequentially. Returns full scan results."""
+    """Run module scans sequentially. Returns full scan results.
+
+    Accepts optional 'profile' param: 'dashboard' | 'optimize' | 'protection'
+    to control which modules are scanned.
+    """
     session_id = params.get("sessionId") if params else None
+    profile = params.get("profile", "dashboard") if params else "dashboard"
     if not session_id:
         session = _new_session()
         session_id = session["sessionId"]
@@ -737,20 +752,22 @@ def orchestrator_scan(params: dict[str, Any] | None) -> dict[str, Any]:
     if session.get("cancelled"):
         return {"error": "Session cancelled", "sessionId": session_id}
 
-    _update_session(session_id, {"phase": "scanning", "progress": 0, "currentOperation": "Preparing"})
-    _add_activity(session_id, "orchestrator", "preparing", "Initializing optimization engine...", operation="Preparing")
+    # Determine which modules to scan based on profile
+    scan_modules = get_profile_modules(profile)
+    _update_session(session_id, {"phase": "scanning", "progress": 0, "currentOperation": "Preparing", "profile": profile})
+    _add_activity(session_id, "orchestrator", "preparing", f"Initializing optimization engine (profile: {profile})...", operation="Preparing")
 
     modules_result = {}
     total_issues = 0
     total_recoverable = 0
     scores = []
 
-    for i, mid in enumerate(MODULE_ORDER):
+    for i, mid in enumerate(scan_modules):
         session = _get_session(session_id)
         if session and session.get("cancelled"):
             break
 
-        progress = int((i / len(MODULE_ORDER)) * 100)
+        progress = int((i / len(scan_modules)) * 100)
         mod_name = _module_name(mid)
         _update_session(session_id, {
             "currentModule": mid,
@@ -795,7 +812,7 @@ def orchestrator_scan(params: dict[str, Any] | None) -> dict[str, Any]:
                 "canAutoFix": _can_auto_fix(mid),
                 "scanResult": result,
             }
-            _set_module_status(session_id, mid, "complete", int(((i + 1) / len(MODULE_ORDER)) * 100), issues, issues)
+            _set_module_status(session_id, mid, "complete", int(((i + 1) / len(scan_modules)) * 100), issues, issues)
         except Exception as e:
             log.error("Scan failed for module %s: %s", mid, e)
             modules_result[mid] = {
@@ -813,6 +830,12 @@ def orchestrator_scan(params: dict[str, Any] | None) -> dict[str, Any]:
             scores.append(100)  # Don't penalize for scan failure
 
     overall = int(sum(scores) / len(scores)) if scores else 0
+
+    # Calculate unified health model from per-module scores
+    module_scores = {mid: m.get("score", 100) for mid, m in modules_result.items()}
+    module_issues_map = {mid: m.get("issues", 0) for mid, m in modules_result.items()}
+    health_model = calculate_health_model(module_scores, module_issues_map)
+
     _update_session(session_id, {
         "phase": "scanned",
         "progress": 100,
@@ -821,6 +844,7 @@ def orchestrator_scan(params: dict[str, Any] | None) -> dict[str, Any]:
         "issuesBefore": total_issues,
         "recoverableSpace": total_recoverable,
         "overallScoreBefore": overall,
+        "healthModel": health_model,
         "currentModule": None,
         "currentOperation": None,
         "currentPath": None,
@@ -834,6 +858,8 @@ def orchestrator_scan(params: dict[str, Any] | None) -> dict[str, Any]:
         "overallScore": overall,
         "totalIssues": total_issues,
         "recoverableSpace": total_recoverable,
+        "healthModel": health_model,
+        "profile": profile,
     }
 
 
@@ -841,7 +867,11 @@ def orchestrator_scan(params: dict[str, Any] | None) -> dict[str, Any]:
 
 @register("orchestrator.optimize")
 def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
-    """Run all module optimizations sequentially. Returns full results."""
+    """Run module optimizations sequentially. Returns full results.
+
+    Uses the scan profile stored in the session to determine which
+    modules to optimize.
+    """
     session_id = params.get("sessionId") if params else None
     if not session_id:
         return {"error": "sessionId required"}
@@ -855,6 +885,9 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
 
     modules = session.get("modules", {})
     scan_results = session.get("scanResults", {})
+    profile = session.get("profile", "dashboard")
+    # Get modules to optimize based on profile
+    profile_optimize_modules = get_optimize_modules(profile)
     _update_session(session_id, {"phase": "optimizing", "progress": 0, "currentOperation": "Analyzing"})
     _add_activity(session_id, "orchestrator", "analyzing", "Analyzing scan results and preparing optimizations...", operation="Analyzing")
 
@@ -865,7 +898,7 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
     total_issues_fixed = 0
     all_errors: list[str] = []
 
-    fixable = [mid for mid in MODULE_ORDER
+    fixable = [mid for mid in profile_optimize_modules
                if mid in modules and modules[mid].get("canAutoFix")
                and modules[mid].get("status") == "complete"
                and (modules[mid].get("issues", 0) > 0 or modules[mid].get("size", 0) > 0)]
@@ -945,6 +978,12 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
         opt_result = optimize_results.get(mid)
         scan_result = scan_results.get(mid, {})
         verify_result = verification_results.get(mid)
+        # Skip modules not in this profile
+        if mid not in get_profile_modules(profile):
+            after_scores.append(before_score)
+            mod["scoreAfter"] = before_score
+            mod["issuesAfter"] = before_issues
+            continue
 
         if opt_result:
             after_score = _calculate_after_score(mid, before_score, scan_result, opt_result)
@@ -988,6 +1027,16 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
     overall_after = int(sum(after_scores) / len(after_scores)) if after_scores else 0
     overall_before = session.get("overallScoreBefore", 0)
 
+    # Calculate unified health model (after) from per-module after-scores
+    after_module_scores = {}
+    after_module_issues = {}
+    for mid in MODULE_ORDER:
+        mod = modules.get(mid, {})
+        after_module_scores[mid] = mod.get("scoreAfter", mod.get("score", 100))
+        after_module_issues[mid] = mod.get("issuesAfter", mod.get("issues", 0))
+    before_health_model = session.get("healthModel", calculate_health_model(after_module_scores, after_module_issues))
+    after_health_model = calculate_after_health_model(before_health_model, after_module_scores, after_module_issues)
+
     _update_session(session_id, {
         "phase": "verifying",
         "progress": 95,
@@ -996,6 +1045,7 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
         "overallScoreAfter": overall_after,
         "issuesAfter": after_issues,
         "spaceRecovered": total_recovered,
+        "healthModelAfter": after_health_model,
         "currentModule": None,
         "currentOperation": "Verifying",
         "currentPath": None,
@@ -1082,6 +1132,9 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
         "errors": all_errors[:10],
         "history": history_entry,
         "success": len(all_errors) == 0,
+        "healthModel": before_health_model,
+        "healthModelAfter": after_health_model,
+        "profile": profile,
     }
 
 
@@ -1114,6 +1167,9 @@ def orchestrator_status(params: dict[str, Any] | None) -> dict[str, Any]:
         "completedAt": session.get("completedAt"),
         "error": session.get("error"),
         "cancelled": session.get("cancelled"),
+        "profile": session.get("profile"),
+        "healthModel": session.get("healthModel"),
+        "healthModelAfter": session.get("healthModelAfter"),
         # Real-time streaming data
         "activityLog": list(session.get("activityLog", [])),
         "counters": dict(session.get("counters", {})),
@@ -1149,6 +1205,9 @@ def orchestrator_result(params: dict[str, Any] | None) -> dict[str, Any]:
         "completedAt": session.get("completedAt"),
         "error": session.get("error"),
         "cancelled": session.get("cancelled"),
+        "profile": session.get("profile"),
+        "healthModel": session.get("healthModel"),
+        "healthModelAfter": session.get("healthModelAfter"),
     }
 
 
@@ -1167,13 +1226,17 @@ def orchestrator_cancel(params: dict[str, Any] | None) -> dict[str, Any]:
 # ── RPC: orchestrator.full (scan + optimize in one call) ─────────────
 
 @register("orchestrator.full")
-def orchestrator_full(_params: dict[str, Any] | None) -> dict[str, Any]:
+def orchestrator_full(params: dict[str, Any] | None) -> dict[str, Any]:
     """Run full scan + optimize pipeline in a single call.
 
     This is the one-click workflow:
     start → scan → optimize → verify → score → history → done
+
+    Accepts optional 'profile' param: 'dashboard' | 'optimize' | 'protection'
     """
+    profile = params.get("profile", "dashboard") if params else "dashboard"
     session = _new_session()
+    session["profile"] = profile
     session_id = session["sessionId"]
     with _sessions_lock:
         _sessions[session_id] = session
@@ -1181,7 +1244,7 @@ def orchestrator_full(_params: dict[str, Any] | None) -> dict[str, Any]:
     start_time = time.monotonic()
 
     # Phase 1: Scan
-    scan_response = orchestrator_scan({"sessionId": session_id})
+    scan_response = orchestrator_scan({"sessionId": session_id, "profile": profile})
     if scan_response.get("error"):
         return scan_response
 
@@ -1209,6 +1272,7 @@ def orchestrator_full(_params: dict[str, Any] | None) -> dict[str, Any]:
             "overallScore": scan_response.get("overallScore"),
             "totalIssues": scan_response.get("totalIssues"),
             "recoverableSpace": scan_response.get("recoverableSpace"),
+            "healthModel": scan_response.get("healthModel"),
         },
         "optimize": {
             "optimizeResults": opt_response.get("optimizeResults"),
@@ -1221,24 +1285,31 @@ def orchestrator_full(_params: dict[str, Any] | None) -> dict[str, Any]:
             "issuesAfter": opt_response.get("issuesAfter"),
             "errors": opt_response.get("errors"),
             "success": opt_response.get("success"),
+            "healthModel": opt_response.get("healthModel"),
+            "healthModelAfter": opt_response.get("healthModelAfter"),
         },
         "history": history,
         "elapsedMs": elapsed_ms,
         "completedAt": _now_iso(),
+        "profile": profile,
     }
 
 
 # ── RPC: orchestrator.fullAsync (background thread + status polling) ─
 
 @register("orchestrator.fullAsync")
-def orchestrator_full_async(_params: dict[str, Any] | None) -> dict[str, Any]:
+def orchestrator_full_async(params: dict[str, Any] | None) -> dict[str, Any]:
     """Start full pipeline in a background thread.
 
     Returns immediately with sessionId. Frontend polls orchestrator.status
     to get real-time progress, activity log, counters, and module statuses.
     When phase == 'complete', frontend calls orchestrator.result for final data.
+
+    Accepts optional 'profile' param: 'dashboard' | 'optimize' | 'protection'
     """
+    profile = params.get("profile", "dashboard") if params else "dashboard"
     session = _new_session()
+    session["profile"] = profile
     session_id = session["sessionId"]
     with _sessions_lock:
         _sessions[session_id] = session
@@ -1247,8 +1318,8 @@ def orchestrator_full_async(_params: dict[str, Any] | None) -> dict[str, Any]:
         start_time = time.monotonic()
         try:
             # Phase 1: Scan
-            _add_activity(session_id, "orchestrator", "preparing", "Starting optimization session...", operation="Preparing")
-            scan_response = orchestrator_scan({"sessionId": session_id})
+            _add_activity(session_id, "orchestrator", "preparing", f"Starting optimization session (profile: {profile})...", operation="Preparing")
+            scan_response = orchestrator_scan({"sessionId": session_id, "profile": profile})
             if scan_response.get("error"):
                 _update_session(session_id, {"phase": "error", "error": scan_response["error"]})
                 return

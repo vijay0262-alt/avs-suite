@@ -18,6 +18,30 @@ function client() {
 
 // ── Types ───────────────────────────────────────────────────────────
 
+export type ScanProfile = 'dashboard' | 'optimize' | 'protection';
+
+export interface HealthModel {
+  overallHealth: number;
+  optimizationScore: number;
+  protectionScore: number;
+  performanceScore: number;
+  storageScore: number;
+  hardwareHealth: number;
+  moduleScores: Record<string, number>;
+  moduleIssues: Record<string, number>;
+  // After-only fields (present in healthModelAfter)
+  overallBefore?: number;
+  overallAfter?: number;
+  optimizationBefore?: number;
+  optimizationAfter?: number;
+  protectionBefore?: number;
+  protectionAfter?: number;
+  performanceBefore?: number;
+  performanceAfter?: number;
+  storageBefore?: number;
+  storageAfter?: number;
+}
+
 export interface OrchestratorModuleResult {
   moduleId: string;
   moduleName: string;
@@ -38,6 +62,8 @@ export interface OrchestratorScanResponse {
   overallScore: number;
   totalIssues: number;
   recoverableSpace: number;
+  healthModel?: HealthModel;
+  profile?: ScanProfile;
 }
 
 export interface OrchestratorOptimizeResult {
@@ -63,6 +89,9 @@ export interface OrchestratorOptimizeResponse {
   errors: string[];
   history: OrchestratorHistoryEntry;
   success: boolean;
+  healthModel?: HealthModel;
+  healthModelAfter?: HealthModel;
+  profile?: ScanProfile;
 }
 
 export interface OrchestratorHistoryEntry {
@@ -126,6 +155,9 @@ export interface OrchestratorStatus {
   completedAt: string | null;
   error: string | null;
   cancelled: boolean;
+  profile?: ScanProfile;
+  healthModel?: HealthModel | null;
+  healthModelAfter?: HealthModel | null;
   // Real-time streaming data
   activityLog: OrchestratorActivityEntry[];
   counters: OrchestratorCounters;
@@ -139,6 +171,7 @@ export interface OrchestratorFullResponse {
     overallScore: number;
     totalIssues: number;
     recoverableSpace: number;
+    healthModel?: HealthModel;
   };
   optimize: {
     optimizeResults: Record<string, OrchestratorOptimizeResult>;
@@ -151,32 +184,35 @@ export interface OrchestratorFullResponse {
     issuesAfter: number;
     errors: string[];
     success: boolean;
+    healthModel?: HealthModel;
+    healthModelAfter?: HealthModel;
   };
   history: OrchestratorHistoryEntry;
   elapsedMs: number;
   completedAt: string;
+  profile?: ScanProfile;
 }
 
 // ── Service interface ───────────────────────────────────────────────
 
 export interface IOrchestratorService {
   start(): Promise<{ sessionId: string; startedAt: string }>;
-  scan(sessionId: string): Promise<OrchestratorScanResponse>;
+  scan(sessionId: string, profile?: ScanProfile): Promise<OrchestratorScanResponse>;
   optimize(sessionId: string): Promise<OrchestratorOptimizeResponse>;
   status(sessionId: string): Promise<OrchestratorStatus>;
   result(sessionId: string): Promise<Record<string, unknown>>;
   cancel(sessionId: string): Promise<{ sessionId: string; cancelled: boolean }>;
-  full(): Promise<OrchestratorFullResponse>;
-  fullAsync(): Promise<{ sessionId: string; startedAt: string }>;
+  full(profile?: ScanProfile): Promise<OrchestratorFullResponse>;
+  fullAsync(profile?: ScanProfile): Promise<{ sessionId: string; startedAt: string }>;
 }
 
 export const orchestratorService: IOrchestratorService = {
   start: () => client().call(RPC_METHODS.ORCHESTRATOR_START),
-  scan: (sessionId: string) => client().call(RPC_METHODS.ORCHESTRATOR_SCAN, { sessionId }),
+  scan: (sessionId: string, profile?: ScanProfile) => client().call(RPC_METHODS.ORCHESTRATOR_SCAN, { sessionId, profile }),
   optimize: (sessionId: string) => client().call(RPC_METHODS.ORCHESTRATOR_OPTIMIZE, { sessionId }),
   status: (sessionId: string) => client().call(RPC_METHODS.ORCHESTRATOR_STATUS, { sessionId }),
   result: (sessionId: string) => client().call(RPC_METHODS.ORCHESTRATOR_RESULT, { sessionId }),
   cancel: (sessionId: string) => client().call(RPC_METHODS.ORCHESTRATOR_CANCEL, { sessionId }),
-  full: () => client().call(RPC_METHODS.ORCHESTRATOR_FULL),
-  fullAsync: () => client().call(RPC_METHODS.ORCHESTRATOR_FULL_ASYNC),
+  full: (profile?: ScanProfile) => client().call(RPC_METHODS.ORCHESTRATOR_FULL, { profile }),
+  fullAsync: (profile?: ScanProfile) => client().call(RPC_METHODS.ORCHESTRATOR_FULL_ASYNC, { profile }),
 };

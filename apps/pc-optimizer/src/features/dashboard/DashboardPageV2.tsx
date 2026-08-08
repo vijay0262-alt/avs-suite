@@ -213,7 +213,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <ProStatusPill />
           <Button
-            onClick={() => vm.startHealthScan()}
+            onClick={() => vm.startHealthScan('dashboard')}
             disabled={isScanning}
             size="lg"
             leftIcon={isScanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <SparklesIcon className="h-5 w-5" />}
