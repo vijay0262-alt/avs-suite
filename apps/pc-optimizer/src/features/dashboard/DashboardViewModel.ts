@@ -60,6 +60,8 @@ import { hardwareSnapshotToSensors, getCpuTempFromSnapshot } from './hardwareAda
 import { buildVerificationReport } from '../health/VerificationEngine';
 import type { VerificationReport } from '../health/VerificationEngine';
 import { useLiveSync } from '../health/LiveSyncService';
+import { orchestratorService } from '../orchestrator/orchestrator.service';
+import type { OrchestratorFullResponse, OrchestratorModuleResult } from '../orchestrator/orchestrator.service';
 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
 
@@ -718,14 +720,14 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       scanStartTime: Date.now(),
     });
 
-    // Brief preparing phase for UX feedback, then start scanning
+    // Brief preparing phase for UX feedback, then start the unified orchestrator pipeline
     setTimeout(() => {
       if (this.state.healthScanCancelled) {
         this.resetHealthScan();
         return;
       }
       this.setState({ healthScanStep: 'scanning' });
-      void this.runHealthScan('scan');
+      void this.runOrchestratorFullScan();
     }, 600);
   }
 
@@ -1263,6 +1265,260 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     }
 
     this.finishHealthScan(this.state.healthScanModules, startedAt, phase);
+  }
+
+  /**
+   * Unified optimization pipeline via backend OptimizationOrchestrator.
+   *
+   * This is the ONE entry point for Dashboard, AI Smart Optimize, and
+   * Protection Center. It calls orchestrator.full on the backend which:
+   *   1. Scans all real backend modules
+   *   2. Optimizes all fixable modules
+   *   3. Verifies completion
+   *   4. Calculates final scores
+   *   5. Saves history
+   *   6. Returns complete results
+   *
+   * No simulated progress — all results come from real backend execution.
+   */
+  async runOrchestratorFullScan(): Promise<void> {
+    const startedAt = Date.now();
+
+    const defaultDetails = {
+      summary: 'Initializing...',
+      impact: 'low' as OptimizationDetails['impact'],
+      safeToRemove: true,
+      groups: [],
+      notChanged: [],
+      why: 'Preparing system scan...',
+    };
+
+    const modules: HealthScanModuleResult[] = [
+      { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning temporary files and browser caches', details: defaultDetails, canAutoFix: true },
+      { moduleId: 'startup', moduleName: 'Startup Manager', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking startup applications', details: defaultDetails, canAutoFix: true },
+      { moduleId: 'privacy', moduleName: 'Privacy Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning browsing traces and activity history', details: defaultDetails, canAutoFix: true },
+      { moduleId: 'performance', moduleName: 'Performance', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking memory and CPU usage', details: defaultDetails, canAutoFix: true },
+      { moduleId: 'disk', moduleName: 'Disk Analyzer', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Analyzing disk space usage', details: defaultDetails, canAutoFix: false },
+      { moduleId: 'registry', moduleName: 'Registry Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning for invalid registry entries', details: defaultDetails, canAutoFix: true },
+      { moduleId: 'security', moduleName: 'Security Check', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking security features and updates', details: defaultDetails, canAutoFix: false },
+      { moduleId: 'system', moduleName: 'System Information', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Validating hardware and OS health', details: defaultDetails, canAutoFix: false },
+    ];
+
+    this.setState({
+      healthScanStep: 'scanning',
+      healthScanModules: modules,
+      healthScanReport: null,
+      healthScanError: null,
+      healthScanCancelled: false,
+      healthScanExecution: null,
+      healthScanResult: null,
+      healthScanCurrentFile: null,
+      healthScanSubProgress: 0,
+      scanPhase: 'preparing',
+      scanOverallProgress: 0,
+      scanLiveStats: {
+        filesScanned: 0,
+        registryEntries: 0,
+        startupItems: 0,
+        privacyItems: 0,
+        estimatedStorageRecovery: 0,
+        estimatedMemoryRecovery: 0,
+        estimatedStartupImprovement: 0,
+        recommendationsFound: 0,
+      },
+      scanStartTime: startedAt,
+    });
+
+    try {
+      // Call backend orchestrator.full — runs real scan + optimize + verify + score + history
+      const response: OrchestratorFullResponse = await orchestratorService.full();
+
+      if (this.state.healthScanCancelled) {
+        this.resetHealthScan();
+        return;
+      }
+
+      // Map orchestrator modules to DashboardViewModel module format
+      const orchModules = response.scan.modules;
+      const optResults = response.optimize.optimizeResults;
+
+      const dashModules: HealthScanModuleResult[] = modules.map((m) => {
+        const orch: OrchestratorModuleResult | undefined = orchModules[m.moduleId];
+        if (!orch) return m;
+
+        const optResult = optResults[m.moduleId];
+        const afterScore = orch.scoreAfter ?? orch.score;
+        const afterIssues = orch.issuesAfter ?? orch.issues;
+
+        return {
+          ...m,
+          status: orch.status === 'complete' ? 'complete' : orch.status === 'error' ? 'error' : 'skipped',
+          score: afterScore,
+          issuesFound: afterIssues,
+          recoverableSpace: orch.size - (optResult?.bytesRecovered ?? 0),
+          severity: orch.issues > 50 ? 'high' : orch.issues > 10 ? 'medium' : 'low',
+          measuredDetail: orch.status === 'complete'
+            ? `${orch.issues} issues found, score ${orch.score}`
+            : orch.error ?? 'Scan skipped',
+          canAutoFix: orch.canAutoFix,
+          actual: optResult ? {
+            success: optResult.success,
+            bytesRecovered: optResult.bytesRecovered ?? 0,
+            itemsRemoved: optResult.itemsRemoved ?? 0,
+            entriesDisabled: optResult.entriesDisabled ?? 0,
+            issuesFixed: optResult.issuesFixed ?? 0,
+            errors: optResult.errors ?? [],
+          } : undefined,
+          verification: {
+            beforeScore: orch.score,
+            beforeIssues: orch.issues,
+            beforeRecoverable: orch.size,
+            afterScore,
+            afterIssues,
+            afterRecoverable: orch.size - (optResult?.bytesRecovered ?? 0),
+          },
+        };
+      });
+
+      const overallAfter = response.optimize.overallScoreAfter;
+      const overallBefore = response.optimize.overallScoreBefore;
+
+      const report: HealthScanReport = {
+        overallScore: overallAfter,
+        issuesFound: response.optimize.issuesAfter,
+        recoverableSpace: dashModules.reduce((s, m) => s + m.recoverableSpace, 0),
+        modules: dashModules,
+        startedAt,
+        finishedAt: Date.now(),
+      };
+
+      // Build optimization summary
+      const summary: OptimizationSummary = {
+        healthBefore: overallBefore,
+        healthAfter: overallAfter,
+        storageRecovered: response.optimize.spaceRecovered,
+        registryFixed: response.optimize.issuesFixed,
+        startupOptimized: response.optimize.entriesDisabled,
+        privacyCleaned: response.optimize.itemsFixed,
+        duplicateFilesRemoved: 0,
+        durationMs: response.elapsedMs,
+        completedAt: response.completedAt,
+        success: response.optimize.success,
+      };
+
+      // Build verification report
+      const actualMap = new Map<string, HealthScanModuleActual>();
+      for (const [mid, opt] of Object.entries(optResults)) {
+        actualMap.set(mid, {
+          success: opt.success,
+          bytesRecovered: opt.bytesRecovered ?? 0,
+          itemsRemoved: opt.itemsRemoved ?? 0,
+          entriesDisabled: opt.entriesDisabled ?? 0,
+          issuesFixed: opt.issuesFixed ?? 0,
+          errors: opt.errors ?? [],
+        });
+      }
+      const verificationReport = buildVerificationReport(dashModules, actualMap, startedAt);
+
+      this.setState({
+        healthScanStep: 'complete',
+        healthScanModules: dashModules,
+        healthScanReport: report,
+        healthScanBeforeReport: {
+          ...report,
+          overallScore: overallBefore,
+          modules: dashModules.map((m) => ({
+            ...m,
+            score: m.verification?.beforeScore ?? m.score,
+            issuesFound: m.verification?.beforeIssues ?? m.issuesFound,
+            recoverableSpace: m.verification?.beforeRecoverable ?? m.recoverableSpace,
+          })),
+        },
+        healthScanError: null,
+        healthScanResult: {
+          success: response.optimize.success,
+          totalRecovered: response.optimize.spaceRecovered,
+          results: {} as unknown as OptimizeExecuteResponse['results'],
+          elapsedMs: response.elapsedMs,
+          completedAt: response.completedAt,
+        } as OptimizeExecuteResponse,
+        healthScanExecution: {
+          currentModule: 'Complete',
+          progress: 100,
+          itemsProcessed: response.optimize.itemsFixed + response.optimize.entriesDisabled + response.optimize.issuesFixed,
+          spaceRecovered: response.optimize.spaceRecovered,
+          elapsedMs: response.elapsedMs,
+          liveMessages: ['Optimization complete'],
+          filesRemoved: response.optimize.itemsFixed,
+        },
+        optimizationSummary: summary,
+        scanPhase: 'finalizing',
+        scanOverallProgress: 100,
+        verificationReport,
+      });
+
+      // Broadcast scores globally via LiveSyncService
+      const liveSync = useLiveSync.getState();
+      liveSync.broadcastScores({
+        healthScore: overallAfter,
+        performanceScore: overallAfter,
+        protectionStatus: overallAfter >= 80 ? 'fully_protected' : overallAfter >= 60 ? 'partially_protected' : 'at_risk',
+      });
+      liveSync.broadcastOptimizationComplete({
+        healthScoreBefore: overallBefore,
+        healthScoreAfter: overallAfter,
+        storageRecovered: response.optimize.spaceRecovered,
+        registryFixed: response.optimize.issuesFixed,
+        startupOptimized: response.optimize.entriesDisabled,
+        privacyCleaned: response.optimize.itemsFixed,
+        durationMs: response.elapsedMs,
+        success: response.optimize.success,
+        moduleIds: Object.keys(optResults),
+      });
+
+      // Record optimization history (frontend)
+      optimizationHistoryService.recordOptimization({
+        timestamp: response.completedAt,
+        healthBefore: overallBefore,
+        healthAfter: overallAfter,
+        storageRecovered: response.optimize.spaceRecovered,
+        registryFixed: response.optimize.issuesFixed,
+        startupOptimized: response.optimize.entriesDisabled,
+        privacyCleaned: response.optimize.itemsFixed,
+        duplicateFilesRemoved: 0,
+        durationMs: response.elapsedMs,
+        result: response.optimize.success ? 'success' : 'partial',
+        modulesUsed: Object.keys(optResults),
+      });
+
+      // Persist session
+      saveSession({
+        optimizationSummary: summary,
+        healthScore: overallAfter,
+        healthZone: this.state.healthScore?.scoreZone ?? null,
+        recommendations: [],
+        lastOptimizationAt: response.completedAt,
+        savedAt: new Date().toISOString(),
+      });
+
+      // Refresh metrics from backend
+      try {
+        await this.service.refreshCache();
+      } catch {
+        // non-fatal
+      }
+      void this.loadMetrics();
+
+      // Mark first scan as complete
+      onboardingService.completeFirstScan();
+
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.setState({
+        healthScanStep: 'complete',
+        healthScanError: msg,
+      });
+    }
   }
 
   async executeHealthScanOptimizations(): Promise<void> {

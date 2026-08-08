@@ -184,6 +184,15 @@ export const RPC_METHODS = {
   SCHEDULER_DELETE: 'scheduler.delete',
   SCHEDULER_RUN_NOW: 'scheduler.runNow',
   SCHEDULER_STATUS: 'scheduler.status',
+
+  // Optimization Orchestrator — unified pipeline
+  ORCHESTRATOR_START: 'orchestrator.start',
+  ORCHESTRATOR_SCAN: 'orchestrator.scan',
+  ORCHESTRATOR_OPTIMIZE: 'orchestrator.optimize',
+  ORCHESTRATOR_STATUS: 'orchestrator.status',
+  ORCHESTRATOR_RESULT: 'orchestrator.result',
+  ORCHESTRATOR_CANCEL: 'orchestrator.cancel',
+  ORCHESTRATOR_FULL: 'orchestrator.full',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

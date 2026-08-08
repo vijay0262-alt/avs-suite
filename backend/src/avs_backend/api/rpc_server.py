@@ -69,6 +69,7 @@ _FEATURE_MODULES = [
     "avs_backend.predictive_health",
     "avs_backend.realtime_protection",
     "avs_backend.system_restore",
+    "avs_backend.orchestrator",
 ]
 
 # Track which modules have finished importing (success or failure)
