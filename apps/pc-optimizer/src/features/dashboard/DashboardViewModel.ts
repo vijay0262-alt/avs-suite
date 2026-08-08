@@ -62,7 +62,7 @@ import { buildVerificationReport } from '../health/VerificationEngine';
 import type { VerificationReport } from '../health/VerificationEngine';
 import { useLiveSync } from '../health/LiveSyncService';
 import { orchestratorService } from '../orchestrator/orchestrator.service';
-import type { OrchestratorFullResponse, OrchestratorModuleResult, ScanProfile, HealthModel } from '../orchestrator/orchestrator.service';
+import type { OrchestratorFullResponse, OrchestratorModuleResult, ScanProfile } from '../orchestrator/orchestrator.service';
 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
 
