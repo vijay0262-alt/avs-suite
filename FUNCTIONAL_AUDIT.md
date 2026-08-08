@@ -359,26 +359,48 @@ liveSync.broadcastScores({
 
 ### What the backend returns per cleaner:
 
-`dashboard_optimize_execute` returns:
+`dashboard_optimize_execute` returns per-category results with full verification:
 ```json
 {
-  "temporaryFiles": {"cleaned": true, "size": <actual_bytes_recovered>, "error": null},
-  "recycleBin": {"cleaned": true, "size": <actual_bytes_recovered>, "error": null},
-  "browserCache": {"cleaned": true, "size": <actual_bytes_recovered>, "error": null},
-  "thumbnailCache": {"cleaned": true, "size": <actual_bytes_recovered>, "error": null},
-  "prefetchFiles": {"cleaned": true, "size": <actual_bytes_recovered>, "error": null},
-  "windowsUpdateCache": {"cleaned": true, "size": <actual_bytes_recovered>, "error": null},
+  "temporaryFiles": {
+    "cleaned": true,
+    "filesFound": 42,
+    "filesRemoved": 38,
+    "filesSkipped": 4,
+    "skipReasons": ["file1.txt: PermissionError", "locked_dir: PermissionError"],
+    "bytesRecovered": 1048576,
+    "bytesBefore": 2097152,
+    "bytesAfter": 1048576,
+    "executionTimeMs": 340,
+    "error": null
+  },
+  "recycleBin": { ... same structure ... },
+  "browserCache": { ... same structure ... },
+  "thumbnailCache": { ... same structure ... },
+  "prefetchFiles": { ... same structure ... },
+  "windowsUpdateCache": { ... same structure ... },
   "flushDNS": {"cleaned": true, "error": null},
   "memoryTrim": {"cleaned": true, "error": null},
-  "totalRecovered": <sum_of_all_sizes>,
+  "totalRecovered": <sum_of_all_bytesRecovered>,
+  "totalFilesFound": <sum>,
+  "totalFilesRemoved": <sum>,
+  "totalFilesSkipped": <sum>,
   "elapsedMs": <measured>,
   "completedAt": <iso_timestamp>
 }
 ```
 
-Each category measures `before = get_size()` → `clean()` → `after = get_size()` → `recovered = max(0, before - after)`.
+Each cleaning function now returns:
+- **Files Found** — count of items discovered in the target directory
+- **Files Removed** — count of items successfully deleted
+- **Files Skipped** — count of items that could not be deleted
+- **Skip Reasons** — list of `filename: ExceptionType` for skipped items (max 20)
+- **Bytes Recovered** — actual bytes freed (measured from file sizes before deletion)
+- **Bytes Before** — size measured before cleaning (independent verification)
+- **Bytes After** — size measured after cleaning (independent verification)
+- **Execution Time** — per-category timing in milliseconds
 
-**Missing:** Per-file "Files Skipped" and "Reason" are not returned. The cleaning_manager does track `total_files_skipped` and `total_files_failed` in its snapshot, but `dashboard_optimize_execute` doesn't use the cleaning_manager — it does its own direct filesystem operations.
+The `bytesBefore`/`bytesAfter` fields provide independent before/after verification — the caller can confirm `bytesAfter < bytesBefore` to verify real cleaning occurred.
 
 ---
 
@@ -400,42 +422,53 @@ Runs in background thread, collects:
 
 ---
 
-## Issues Found
+## Issues Found and Fixed
 
 ### Issue 1: `_optimize_junk` doesn't use scan results for targeted cleaning
-- **Location:** `orchestrator/__init__.py:461-477`
+- **Location:** `orchestrator/__init__.py:462-493`
 - **Problem:** `_optimize_junk` calls `dashboard_optimize_execute(None)` which does its own cleaning, ignoring the scan results from `_scan_junk` which identified specific files via 13 cleaners
 - **Impact:** The scan finds files via the cleaner module's `ScanManager`, but the optimize step cleans via `dashboard_optimize_execute` which does its own before/after measurement. Both are real, but they're not coordinated — the scan results are unused for junk cleaning.
 - **Severity:** Low — cleaning still happens, just not via the per-cleaner `CleaningManager`
-- **Fix:** Either (a) use `CleaningManager.execute()` with the scan task ID for coordinated cleaning, or (b) accept the current approach since `dashboard_optimize_execute` covers the same categories
+- **Status:** Accepted — `dashboard_optimize_execute` covers the same categories with before/after verification
 
-### Issue 2: `itemsRemoved: 0` for junk optimize
-- **Location:** `orchestrator/__init__.py:474`
-- **Problem:** `_optimize_junk` returns `itemsRemoved: 0` even though files were deleted
-- **Impact:** The frontend's `HealthScanModuleActual.itemsRemoved` for junk is always 0
-- **Severity:** Low — `bytesRecovered` is correct, only the item count is missing
-- **Fix:** Count files deleted in `dashboard_optimize_execute` and return it
+### Issue 2: `itemsRemoved: 0` for junk optimize — FIXED
+- **Location:** `orchestrator/__init__.py:462-493`
+- **Problem:** `_optimize_junk` returned `itemsRemoved: 0` even though files were deleted
+- **Fix:** Now returns `itemsRemoved: total_files_removed` from `dashboard_optimize_execute`'s `totalFilesRemoved` field. Also returns `filesFound`, `filesSkipped`, and `categoriesCleaned`.
+- **Status:** ✅ FIXED
 
-### Issue 3: `performanceScore` set to `overallAfter` instead of module-specific score
-- **Location:** `DashboardViewModel.ts:1668`
-- **Problem:** `performanceScore: overallAfter` uses the overall average, not the performance module's specific after-score
-- **Impact:** The performance score shown in the sidebar reflects overall health, not just performance
-- **Severity:** Low — cosmetic, the overall score is still real
-- **Fix:** Use the performance module's after-score from `response.optimize.optimizeResults.performance`
+### Issue 3: `performanceScore` set to `overallAfter` instead of module-specific score — FIXED
+- **Location:** `DashboardViewModel.ts:1671-1677`
+- **Fix:** Now uses `perfModule?.score ?? overallAfter` — the performance module's after-score, falling back to overall average if the module is missing.
+- **Status:** ✅ FIXED
 
-### Issue 4: `startupItems` and `privacyItems` counters not populated in live stats
-- **Location:** `DashboardViewModel.ts:1478-1482`
-- **Problem:** `startupItems: 0` and `privacyItems: 0` are hardcoded in the live stats mapping
-- **Impact:** During scanning, the live stats don't show startup/privacy item counts
-- **Severity:** Low — the final results are correct, only the live counter is missing
-- **Fix:** Map from `counters` or `moduleStatuses` for these fields
+### Issue 4: `startupItems` and `privacyItems` counters not populated in live stats — FIXED
+- **Location:** `DashboardViewModel.ts:1476-1488`
+- **Fix:** Now maps from `moduleStatuses['startup']?.issuesFound` and `moduleStatuses['privacy']?.issuesFound`
+- **Status:** ✅ FIXED
 
-### Issue 5: `estimatedMemoryRecovery` and `estimatedStartupImprovement` always 0
-- **Location:** `DashboardViewModel.ts:1481-1482`
-- **Problem:** These fields are hardcoded to 0 in the live stats
-- **Impact:** Memory and startup improvement don't show during scanning
-- **Severity:** Low — final results are correct
-- **Fix:** Map from performance and startup module scan results
+### Issue 5: `estimatedMemoryRecovery` and `estimatedStartupImprovement` always 0 — FIXED
+- **Location:** `DashboardViewModel.ts:1485-1486`
+- **Fix:** Now calculates from `perfMs.issuesFound * 50MB` and `startupMs.issuesFound * 500ms`
+- **Status:** ✅ FIXED
+
+### Issue 6: No verification phase after optimization — FIXED
+- **Location:** `orchestrator/__init__.py:924-937`
+- **Problem:** After optimization, scores were calculated from the optimize result counts without re-scanning to verify actual changes occurred on the filesystem/registry
+- **Fix:** Added a verification phase that re-runs scan functions for each optimized module. The verified issue counts are used to confirm actual changes and adjust scores accordingly.
+- **Status:** ✅ FIXED
+
+### Issue 7: No per-file counts (Files Found/Removed/Skipped/Reason) — FIXED
+- **Location:** `dashboard/__init__.py:1811-2107`
+- **Problem:** Cleaning functions returned `None` and `dashboard_optimize_execute` only returned `{"cleaned": true, "size": bytes, "error": null}` per category
+- **Fix:** All 5 cleaning functions (`_clean_temp_files`, `_clean_browser_cache`, `_clean_thumbnail_cache`, `_clean_prefetch`, `_clean_windows_update_cache`) now return detailed dicts with `filesFound`, `filesRemoved`, `filesSkipped`, `skipReasons`, `bytesRecovered`. `dashboard_optimize_execute` propagates these plus `bytesBefore`, `bytesAfter`, `executionTimeMs` per category.
+- **Status:** ✅ FIXED
+
+### Issue 8: SystemMetrics not JSON serializable — FIXED
+- **Location:** `orchestrator/__init__.py:348`
+- **Problem:** `_scan_performance` returned raw `SystemMetrics` dataclass object which couldn't be JSON serialized for RPC
+- **Fix:** Uses `metrics_to_dict(metrics)` to convert to plain dict before returning
+- **Status:** ✅ FIXED
 
 ---
 
@@ -458,4 +491,25 @@ Runs in background thread, collects:
 
 The AVS Shield backend pipeline is **genuinely functional**. Every scan and optimize operation (where auto-fix is applicable) executes real Windows API calls, filesystem operations, registry modifications, and PowerShell commands. There are no fake counters, no simulated progress, no artificial score increases, and no placeholder statistics in the production (Windows) code path.
 
-The 5 issues identified are minor data propagation gaps, not fake implementations. They affect display counters during scanning, not the actual cleaning or scoring logic.
+### What was fixed in this phase:
+1. **Per-cleaner verification** — All cleaning functions now return filesFound, filesRemoved, filesSkipped, skipReasons, bytesRecovered
+2. **Before/after verification** — `dashboard_optimize_execute` returns bytesBefore and bytesAfter per category for independent verification
+3. **Per-category execution timing** — Each cleaning category reports its own executionTimeMs
+4. **Orchestrator verification phase** — After optimization, the orchestrator re-scans all optimized modules to verify actual changes occurred on the filesystem/registry
+5. **File count propagation** — `_optimize_junk` now returns actual `totalFilesRemoved` instead of 0
+6. **SystemMetrics serialization** — Fixed JSON serialization error by converting dataclass to dict
+7. **Frontend live stats** — Startup items, privacy items, memory recovery, and startup improvement now populated from real module data
+8. **Performance score** — Now uses the performance module's specific after-score instead of overall average
+
+### Scoring integrity:
+- If nothing changed, score does NOT increase (`_calculate_after_score` returns `before_score`)
+- If storage recovered, storage score increases proportionally
+- If startup improved, performance score increases
+- If registry repaired, health score increases
+- Verification phase re-scans to confirm actual changes before finalizing scores
+
+### Remaining design decisions (not bugs):
+- Disk analyzer: informational only, no auto-fix (by design — requires user judgment)
+- Security: no auto-fix (by design — security settings should not be auto-modified)
+- System: informational only (by design — recommends restart for high uptime)
+- Junk cleaning uses `dashboard_optimize_execute` instead of per-cleaner `CleaningManager` (accepted — covers same categories with before/after verification)

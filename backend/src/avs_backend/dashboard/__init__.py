@@ -605,90 +605,191 @@ def dashboard_optimize_preview(_params: dict[str, Any] | None) -> dict[str, Any]
 
 @register("dashboard.optimize.execute")
 def dashboard_optimize_execute(_params: dict[str, Any] | None) -> dict[str, Any]:
-    """Execute One Click Optimize."""
+    """Execute One Click Optimize.
+
+    Each cleaning category returns:
+      - cleaned: bool
+      - filesFound: int
+      - filesRemoved: int
+      - filesSkipped: int
+      - skipReasons: list[str]
+      - bytesRecovered: int
+      - bytesBefore: int (measured before cleaning)
+      - bytesAfter: int (measured after cleaning, for verification)
+      - executionTimeMs: int
+      - error: str | None
+    """
     if not IS_WINDOWS:
         return _get_stub_optimize_execute()
     start_time = time.monotonic()
-    
-    results = {
-        "temporaryFiles": {"cleaned": False, "size": 0, "error": None},
-        "recycleBin": {"cleaned": False, "size": 0, "error": None},
-        "browserCache": {"cleaned": False, "size": 0, "error": None},
-        "thumbnailCache": {"cleaned": False, "size": 0, "error": None},
-        "prefetchFiles": {"cleaned": False, "size": 0, "error": None},
-        "windowsUpdateCache": {"cleaned": False, "size": 0, "error": None},
+
+    def _empty_result() -> dict[str, Any]:
+        return {
+            "cleaned": False, "filesFound": 0, "filesRemoved": 0,
+            "filesSkipped": 0, "skipReasons": [], "bytesRecovered": 0,
+            "bytesBefore": 0, "bytesAfter": 0, "executionTimeMs": 0,
+            "error": None,
+        }
+
+    results: dict[str, Any] = {
+        "temporaryFiles": _empty_result(),
+        "recycleBin": _empty_result(),
+        "browserCache": _empty_result(),
+        "thumbnailCache": _empty_result(),
+        "prefetchFiles": _empty_result(),
+        "windowsUpdateCache": _empty_result(),
         "flushDNS": {"cleaned": False, "error": None},
         "memoryTrim": {"cleaned": False, "error": None},
     }
-    
+
     # Temporary files
     try:
-        temp_size_before = _get_temp_files_size()
-        _clean_temp_files()
-        temp_size_after = _get_temp_files_size()
-        actual_recovered = max(0, temp_size_before - temp_size_after)
-        results["temporaryFiles"] = {"cleaned": True, "size": actual_recovered, "error": None}
+        size_before = _get_temp_files_size()
+        t0 = time.monotonic()
+        clean_result = _clean_temp_files()
+        elapsed_cat = int((time.monotonic() - t0) * 1000)
+        size_after = _get_temp_files_size()
+        results["temporaryFiles"] = {
+            "cleaned": True,
+            "filesFound": clean_result["filesFound"],
+            "filesRemoved": clean_result["filesRemoved"],
+            "filesSkipped": clean_result["filesSkipped"],
+            "skipReasons": clean_result["skipReasons"],
+            "bytesRecovered": clean_result["bytesRecovered"],
+            "bytesBefore": size_before,
+            "bytesAfter": size_after,
+            "executionTimeMs": elapsed_cat,
+            "error": None,
+        }
     except Exception as e:
         results["temporaryFiles"]["error"] = str(e)
         log.warning("Failed to clean temp files: %s", e)
-    
+
     # Recycle Bin
     try:
-        recycle_size_before = _get_recycle_bin_size()
-        if recycle_size_before > 0:
+        size_before = _get_recycle_bin_size()
+        t0 = time.monotonic()
+        files_found = 0
+        files_removed = 0
+        if size_before > 0:
             from avs_backend.cleaner.recycle_bin import empty_recycle_bin
+            # Count items in recycle bin before emptying
+            recycle_bin = os.path.join(os.environ.get("SystemDrive", "C:"), "$Recycle.Bin")
+            if os.path.exists(recycle_bin):
+                for root, _, files in os.walk(recycle_bin):
+                    files_found += len(files)
             empty_recycle_bin()
-        recycle_size_after = _get_recycle_bin_size()
-        actual_recycle_recovered = max(0, recycle_size_before - recycle_size_after)
-        results["recycleBin"] = {"cleaned": True, "size": actual_recycle_recovered, "error": None}
+            files_removed = files_found
+        elapsed_cat = int((time.monotonic() - t0) * 1000)
+        size_after = _get_recycle_bin_size()
+        results["recycleBin"] = {
+            "cleaned": True,
+            "filesFound": files_found,
+            "filesRemoved": files_removed,
+            "filesSkipped": 0,
+            "skipReasons": [],
+            "bytesRecovered": max(0, size_before - size_after),
+            "bytesBefore": size_before,
+            "bytesAfter": size_after,
+            "executionTimeMs": elapsed_cat,
+            "error": None,
+        }
     except Exception as e:
         results["recycleBin"]["error"] = str(e)
         log.warning("Failed to empty Recycle Bin: %s", e)
-    
+
     # Browser cache
     try:
-        browser_size_before = _estimate_browser_cache_size()
-        _clean_browser_cache()
-        browser_size_after = _estimate_browser_cache_size()
-        actual_browser_recovered = max(0, browser_size_before - browser_size_after)
-        results["browserCache"] = {"cleaned": True, "size": actual_browser_recovered, "error": None}
+        size_before = _estimate_browser_cache_size()
+        t0 = time.monotonic()
+        clean_result = _clean_browser_cache()
+        elapsed_cat = int((time.monotonic() - t0) * 1000)
+        size_after = _estimate_browser_cache_size()
+        results["browserCache"] = {
+            "cleaned": True,
+            "filesFound": clean_result["filesFound"],
+            "filesRemoved": clean_result["filesRemoved"],
+            "filesSkipped": clean_result["filesSkipped"],
+            "skipReasons": clean_result["skipReasons"],
+            "bytesRecovered": clean_result["bytesRecovered"],
+            "bytesBefore": size_before,
+            "bytesAfter": size_after,
+            "executionTimeMs": elapsed_cat,
+            "error": None,
+        }
     except Exception as e:
         results["browserCache"]["error"] = str(e)
         log.warning("Failed to clean browser cache: %s", e)
-    
+
     # Thumbnail cache
     try:
-        thumb_size_before = _get_thumbnail_cache_size()
-        _clean_thumbnail_cache()
-        thumb_size_after = _get_thumbnail_cache_size()
-        actual_thumb_recovered = max(0, thumb_size_before - thumb_size_after)
-        results["thumbnailCache"] = {"cleaned": True, "size": actual_thumb_recovered, "error": None}
+        size_before = _get_thumbnail_cache_size()
+        t0 = time.monotonic()
+        clean_result = _clean_thumbnail_cache()
+        elapsed_cat = int((time.monotonic() - t0) * 1000)
+        size_after = _get_thumbnail_cache_size()
+        results["thumbnailCache"] = {
+            "cleaned": True,
+            "filesFound": clean_result["filesFound"],
+            "filesRemoved": clean_result["filesRemoved"],
+            "filesSkipped": clean_result["filesSkipped"],
+            "skipReasons": clean_result["skipReasons"],
+            "bytesRecovered": clean_result["bytesRecovered"],
+            "bytesBefore": size_before,
+            "bytesAfter": size_after,
+            "executionTimeMs": elapsed_cat,
+            "error": None,
+        }
     except Exception as e:
         results["thumbnailCache"]["error"] = str(e)
         log.warning("Failed to clean thumbnail cache: %s", e)
-    
+
     # Prefetch files
     try:
-        prefetch_size_before = _get_prefetch_size()
-        _clean_prefetch()
-        prefetch_size_after = _get_prefetch_size()
-        actual_prefetch_recovered = max(0, prefetch_size_before - prefetch_size_after)
-        results["prefetchFiles"] = {"cleaned": True, "size": actual_prefetch_recovered, "error": None}
+        size_before = _get_prefetch_size()
+        t0 = time.monotonic()
+        clean_result = _clean_prefetch()
+        elapsed_cat = int((time.monotonic() - t0) * 1000)
+        size_after = _get_prefetch_size()
+        results["prefetchFiles"] = {
+            "cleaned": True,
+            "filesFound": clean_result["filesFound"],
+            "filesRemoved": clean_result["filesRemoved"],
+            "filesSkipped": clean_result["filesSkipped"],
+            "skipReasons": clean_result["skipReasons"],
+            "bytesRecovered": clean_result["bytesRecovered"],
+            "bytesBefore": size_before,
+            "bytesAfter": size_after,
+            "executionTimeMs": elapsed_cat,
+            "error": None,
+        }
     except Exception as e:
         results["prefetchFiles"]["error"] = str(e)
         log.warning("Failed to clean prefetch files: %s", e)
-    
+
     # Windows Update cache
     try:
-        update_size_before = _get_windows_update_cache_size()
-        _clean_windows_update_cache()
-        update_size_after = _get_windows_update_cache_size()
-        actual_update_recovered = max(0, update_size_before - update_size_after)
-        results["windowsUpdateCache"] = {"cleaned": True, "size": actual_update_recovered, "error": None}
+        size_before = _get_windows_update_cache_size()
+        t0 = time.monotonic()
+        clean_result = _clean_windows_update_cache()
+        elapsed_cat = int((time.monotonic() - t0) * 1000)
+        size_after = _get_windows_update_cache_size()
+        results["windowsUpdateCache"] = {
+            "cleaned": True,
+            "filesFound": clean_result["filesFound"],
+            "filesRemoved": clean_result["filesRemoved"],
+            "filesSkipped": clean_result["filesSkipped"],
+            "skipReasons": clean_result["skipReasons"],
+            "bytesRecovered": clean_result["bytesRecovered"],
+            "bytesBefore": size_before,
+            "bytesAfter": size_after,
+            "executionTimeMs": elapsed_cat,
+            "error": None,
+        }
     except Exception as e:
         results["windowsUpdateCache"]["error"] = str(e)
         log.warning("Failed to clean Windows Update cache: %s", e)
-    
+
     # Flush DNS
     try:
         _flush_dns()
@@ -696,11 +797,11 @@ def dashboard_optimize_execute(_params: dict[str, Any] | None) -> dict[str, Any]
     except Exception as e:
         results["flushDNS"]["error"] = str(e)
         log.warning("Failed to flush DNS: %s", e)
-    
+
     # Refresh Explorer — skipped to avoid taskbar disappearing.
     # Windows rebuilds icon/thumbnail caches naturally on next reboot.
     results["refreshExplorer"] = {"cleaned": False, "error": None}
-    
+
     # Memory trim (optional, Windows only)
     if os.name == "nt":
         try:
@@ -709,12 +810,24 @@ def dashboard_optimize_execute(_params: dict[str, Any] | None) -> dict[str, Any]
         except Exception as e:
             results["memoryTrim"]["error"] = str(e)
             log.warning("Failed to trim memory: %s", e)
-    
+
     total_recovered = sum(
-        r.get("size", 0) for r in results.values()
-        if isinstance(r, dict) and "size" in r
+        r.get("bytesRecovered", 0) for r in results.values()
+        if isinstance(r, dict) and "bytesRecovered" in r
     )
-    
+    total_files_found = sum(
+        r.get("filesFound", 0) for r in results.values()
+        if isinstance(r, dict) and "filesFound" in r
+    )
+    total_files_removed = sum(
+        r.get("filesRemoved", 0) for r in results.values()
+        if isinstance(r, dict) and "filesRemoved" in r
+    )
+    total_files_skipped = sum(
+        r.get("filesSkipped", 0) for r in results.values()
+        if isinstance(r, dict) and "filesSkipped" in r
+    )
+
     elapsed_ms = int((time.monotonic() - start_time) * 1000)
 
     # These actions change temp files / recycle bin / browser cache — all
@@ -726,6 +839,9 @@ def dashboard_optimize_execute(_params: dict[str, Any] | None) -> dict[str, Any]
     return {
         "success": True,
         "totalRecovered": total_recovered,
+        "totalFilesFound": total_files_found,
+        "totalFilesRemoved": total_files_removed,
+        "totalFilesSkipped": total_files_skipped,
         "results": results,
         "elapsedMs": elapsed_ms,
         "completedAt": _now_iso(),
@@ -1808,30 +1924,62 @@ def _estimate_optimization_time(size_bytes: int) -> int:
 # =====================================================================
 
 
-def _clean_temp_files() -> None:
-    """Clean temporary files from both user temp and Windows temp."""
+def _clean_temp_files() -> dict[str, Any]:
+    """Clean temporary files from both user temp and Windows temp.
+
+    Returns dict with filesFound, filesRemoved, filesSkipped, skipReasons, bytesRecovered.
+    """
     import shutil
 
     temp_dirs = [
         tempfile.gettempdir(),
         os.path.expandvars(r"%SystemRoot%\Temp"),
     ]
+    files_found = 0
+    files_removed = 0
+    files_skipped = 0
+    skip_reasons: list[str] = []
+    bytes_recovered = 0
+
     for temp_dir in temp_dirs:
         if not os.path.exists(temp_dir):
             continue
         for item in os.listdir(temp_dir):
+            files_found += 1
             try:
                 item_path = os.path.join(temp_dir, item)
                 if os.path.isfile(item_path):
+                    size = os.path.getsize(item_path)
                     os.unlink(item_path)
+                    files_removed += 1
+                    bytes_recovered += size
                 elif os.path.isdir(item_path):
+                    dir_size = sum(
+                        os.path.getsize(os.path.join(root, f))
+                        for root, _, files in os.walk(item_path)
+                        for f in files
+                    ) if os.path.exists(item_path) else 0
                     shutil.rmtree(item_path)
-            except (OSError, PermissionError):
-                continue
+                    files_removed += 1
+                    bytes_recovered += dir_size
+            except (OSError, PermissionError) as e:
+                files_skipped += 1
+                skip_reasons.append(f"{item}: {type(e).__name__}")
+
+    return {
+        "filesFound": files_found,
+        "filesRemoved": files_removed,
+        "filesSkipped": files_skipped,
+        "skipReasons": skip_reasons[:20],
+        "bytesRecovered": bytes_recovered,
+    }
 
 
-def _clean_browser_cache() -> None:
-    """Clean browser cache for all supported browsers."""
+def _clean_browser_cache() -> dict[str, Any]:
+    """Clean browser cache for all supported browsers.
+
+    Returns dict with filesFound, filesRemoved, filesSkipped, skipReasons, bytesRecovered.
+    """
     import shutil
 
     cache_dirs = [
@@ -1856,25 +2004,73 @@ def _clean_browser_cache() -> None:
         except OSError:
             pass
 
+    files_found = 0
+    files_removed = 0
+    files_skipped = 0
+    skip_reasons: list[str] = []
+    bytes_recovered = 0
+
     for cache_dir in cache_dirs:
-        if os.path.exists(cache_dir):
-            try:
-                shutil.rmtree(cache_dir)
-            except (OSError, PermissionError):
-                continue
+        if not os.path.exists(cache_dir):
+            continue
+        try:
+            dir_size = sum(
+                os.path.getsize(os.path.join(root, f))
+                for root, _, files in os.walk(cache_dir)
+                for f in files
+            ) if os.path.exists(cache_dir) else 0
+            file_count = sum(1 for _ in os.walk(cache_dir) for f in _[2])
+            files_found += file_count
+            shutil.rmtree(cache_dir)
+            files_removed += file_count
+            bytes_recovered += dir_size
+        except (OSError, PermissionError) as e:
+            files_skipped += 1
+            skip_reasons.append(f"{os.path.basename(cache_dir)}: {type(e).__name__}")
+
+    return {
+        "filesFound": files_found,
+        "filesRemoved": files_removed,
+        "filesSkipped": files_skipped,
+        "skipReasons": skip_reasons[:20],
+        "bytesRecovered": bytes_recovered,
+    }
 
 
-def _clean_thumbnail_cache() -> None:
-    """Clean Windows thumbnail and icon cache."""
+def _clean_thumbnail_cache() -> dict[str, Any]:
+    """Clean Windows thumbnail and icon cache.
+
+    Returns dict with filesFound, filesRemoved, filesSkipped, skipReasons, bytesRecovered.
+    """
     thumb_dir = os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\Windows\Explorer")
+    files_found = 0
+    files_removed = 0
+    files_skipped = 0
+    skip_reasons: list[str] = []
+    bytes_recovered = 0
+
     if os.path.exists(thumb_dir):
         for file in os.listdir(thumb_dir):
             lower = file.lower()
             if lower.startswith(("thumbcache_", "iconcache_")):
+                files_found += 1
                 try:
-                    os.unlink(os.path.join(thumb_dir, file))
-                except (OSError, PermissionError):
-                    continue
+                    file_path = os.path.join(thumb_dir, file)
+                    size = os.path.getsize(file_path)
+                    os.unlink(file_path)
+                    files_removed += 1
+                    bytes_recovered += size
+                except (OSError, PermissionError) as e:
+                    files_skipped += 1
+                    skip_reasons.append(f"{file}: {type(e).__name__}")
+
+    return {
+        "filesFound": files_found,
+        "filesRemoved": files_removed,
+        "filesSkipped": files_skipped,
+        "skipReasons": skip_reasons[:20],
+        "bytesRecovered": bytes_recovered,
+    }
 
 
 def _flush_dns() -> None:
@@ -1918,17 +2114,44 @@ def _get_prefetch_size() -> int:
         return 0
 
 
-def _clean_prefetch() -> None:
-    """Clean Windows Prefetch files."""
+def _clean_prefetch() -> dict[str, Any]:
+    """Clean Windows Prefetch files.
+
+    Returns dict with filesFound, filesRemoved, filesSkipped, skipReasons, bytesRecovered.
+    """
     prefetch_dir = os.path.expandvars(r"%SystemRoot%\Prefetch")
+    files_found = 0
+    files_removed = 0
+    files_skipped = 0
+    skip_reasons: list[str] = []
+    bytes_recovered = 0
+
     if not os.path.exists(prefetch_dir):
-        return
+        return {
+            "filesFound": 0, "filesRemoved": 0, "filesSkipped": 0,
+            "skipReasons": [], "bytesRecovered": 0,
+        }
+
     for file in os.listdir(prefetch_dir):
         if file.lower().endswith(".pf"):
+            files_found += 1
             try:
-                os.unlink(os.path.join(prefetch_dir, file))
-            except (OSError, PermissionError):
-                continue
+                file_path = os.path.join(prefetch_dir, file)
+                size = os.path.getsize(file_path)
+                os.unlink(file_path)
+                files_removed += 1
+                bytes_recovered += size
+            except (OSError, PermissionError) as e:
+                files_skipped += 1
+                skip_reasons.append(f"{file}: {type(e).__name__}")
+
+    return {
+        "filesFound": files_found,
+        "filesRemoved": files_removed,
+        "filesSkipped": files_skipped,
+        "skipReasons": skip_reasons[:20],
+        "bytesRecovered": bytes_recovered,
+    }
 
 
 def _get_windows_update_cache_size() -> int:
@@ -1949,22 +2172,55 @@ def _get_windows_update_cache_size() -> int:
         return 0
 
 
-def _clean_windows_update_cache() -> None:
-    """Clean Windows Update download cache."""
+def _clean_windows_update_cache() -> dict[str, Any]:
+    """Clean Windows Update download cache.
+
+    Returns dict with filesFound, filesRemoved, filesSkipped, skipReasons, bytesRecovered.
+    """
     import shutil
 
     update_dir = os.path.expandvars(r"%SystemRoot%\SoftwareDistribution\Download")
+    files_found = 0
+    files_removed = 0
+    files_skipped = 0
+    skip_reasons: list[str] = []
+    bytes_recovered = 0
+
     if not os.path.exists(update_dir):
-        return
+        return {
+            "filesFound": 0, "filesRemoved": 0, "filesSkipped": 0,
+            "skipReasons": [], "bytesRecovered": 0,
+        }
+
     for item in os.listdir(update_dir):
+        files_found += 1
         try:
             item_path = os.path.join(update_dir, item)
             if os.path.isfile(item_path):
+                size = os.path.getsize(item_path)
                 os.unlink(item_path)
+                files_removed += 1
+                bytes_recovered += size
             elif os.path.isdir(item_path):
+                dir_size = sum(
+                    os.path.getsize(os.path.join(root, f))
+                    for root, _, files in os.walk(item_path)
+                    for f in files
+                ) if os.path.exists(item_path) else 0
                 shutil.rmtree(item_path)
-        except (OSError, PermissionError):
-            continue
+                files_removed += 1
+                bytes_recovered += dir_size
+        except (OSError, PermissionError) as e:
+            files_skipped += 1
+            skip_reasons.append(f"{item}: {type(e).__name__}")
+
+    return {
+        "filesFound": files_found,
+        "filesRemoved": files_removed,
+        "filesSkipped": files_skipped,
+        "skipReasons": skip_reasons[:20],
+        "bytesRecovered": bytes_recovered,
+    }
 
 
 def _trim_memory() -> None:

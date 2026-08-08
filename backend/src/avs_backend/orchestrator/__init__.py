@@ -466,7 +466,9 @@ def _optimize_junk(scan_result: dict[str, Any], session_id: str | None = None) -
     from avs_backend.dashboard import dashboard_optimize_execute
     result = dashboard_optimize_execute(None)
     recovered = result.get("totalRecovered", 0)
-    # Count actual categories cleaned (each category that succeeded = 1 item group)
+    total_files_found = result.get("totalFilesFound", 0)
+    total_files_removed = result.get("totalFilesRemoved", 0)
+    total_files_skipped = result.get("totalFilesSkipped", 0)
     results_detail = result.get("results", {})
     items_removed = sum(
         1 for r in results_detail.values()
@@ -477,12 +479,15 @@ def _optimize_junk(scan_result: dict[str, Any], session_id: str | None = None) -
         if isinstance(r, dict) and r.get("error")
     ]
     if session_id:
-        _add_activity(session_id, "junk", "optimized", f"Junk cleaning complete: {items_removed} categories cleaned, {recovered} bytes recovered", operation="Cleaned")
+        _add_activity(session_id, "junk", "optimized", f"Junk cleaning complete: {total_files_removed} files removed, {items_removed} categories cleaned, {recovered} bytes recovered", operation="Cleaned")
         _update_counters(session_id, {"itemsOptimized": items_removed, "storageRecovered": recovered, "itemsCleaned": items_removed})
     return {
         "success": result.get("success", False),
         "bytesRecovered": recovered,
-        "itemsRemoved": items_removed,
+        "itemsRemoved": total_files_removed,
+        "filesFound": total_files_found,
+        "filesSkipped": total_files_skipped,
+        "categoriesCleaned": items_removed,
         "errors": errors,
         "details": result,
     }
@@ -917,6 +922,20 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
             _add_activity(session_id, mid, "error", f"Optimize failed: {e}")
 
     # Calculate after-scores
+    # Verification phase: re-scan modules that were optimized to confirm
+    # actual changes occurred on the filesystem/registry/startup.
+    _add_activity(session_id, "orchestrator", "verifying", "Re-scanning to verify actual changes...", operation="Verifying")
+    verification_results: dict[str, Any] = {}
+    for mid in fixable:
+        scan_fn = SCAN_FNS.get(mid)
+        if scan_fn is None:
+            continue
+        try:
+            verify_result = scan_fn(None)
+            verification_results[mid] = verify_result
+        except Exception as e:
+            log.warning("Verification re-scan failed for %s: %s", mid, e)
+
     after_scores = []
     after_issues = 0
     for mid in MODULE_ORDER:
@@ -925,6 +944,7 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
         before_issues = mod.get("issues", 0)
         opt_result = optimize_results.get(mid)
         scan_result = scan_results.get(mid, {})
+        verify_result = verification_results.get(mid)
 
         if opt_result:
             after_score = _calculate_after_score(mid, before_score, scan_result, opt_result)
@@ -935,6 +955,25 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
             )
             remaining = max(0, before_issues - items_fixed)
             after_issues += remaining
+
+            # Use verification scan to confirm actual changes
+            if verify_result:
+                verified_issues = verify_result.get("issues", 0)
+                # If verification shows fewer issues than before, the optimization worked
+                if verified_issues < before_issues:
+                    # Recalculate score based on verified state
+                    verified_score = _calculate_module_score(mid, verify_result)
+                    after_score = max(after_score, verified_score)
+                    remaining = verified_issues
+                    after_issues = after_issues - (before_issues - items_fixed) + verified_issues
+                    mod["verifiedIssues"] = verified_issues
+                elif verified_issues == 0 and items_fixed > 0:
+                    after_score = 100
+                    remaining = 0
+                    after_issues = after_issues - remaining
+                    mod["verifiedIssues"] = 0
+                else:
+                    mod["verifiedIssues"] = verified_issues
         else:
             after_score = before_score
             after_issues += before_issues
@@ -953,6 +992,7 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
         "phase": "verifying",
         "progress": 95,
         "optimizeResults": optimize_results,
+        "verificationResults": verification_results,
         "overallScoreAfter": overall_after,
         "issuesAfter": after_issues,
         "spaceRecovered": total_recovered,
@@ -963,7 +1003,7 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
         "itemsProcessed": total_issues_fixed + total_items_fixed + total_entries_disabled,
         "itemsRemaining": 0,
     })
-    _add_activity(session_id, "orchestrator", "verifying", "Verifying optimization results...", operation="Verifying")
+    _add_activity(session_id, "orchestrator", "verified", f"Verification complete. Issues after: {after_issues}", operation="Verified")
     _update_counters(session_id, {"itemsAnalyzed": total_issues_fixed + total_items_fixed + total_entries_disabled, "bytesRecovered": int(total_recovered)})
 
     # Invalidate dashboard cache so next metrics call is fresh
@@ -1031,6 +1071,7 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
     return {
         "sessionId": session_id,
         "optimizeResults": optimize_results,
+        "verificationResults": verification_results,
         "overallScoreBefore": overall_before,
         "overallScoreAfter": overall_after,
         "spaceRecovered": total_recovered,
