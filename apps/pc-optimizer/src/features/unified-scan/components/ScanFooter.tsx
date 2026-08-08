@@ -40,6 +40,8 @@ export function ScanFooter({
       <div
         className="flex items-center justify-between gap-3 rounded-[var(--avs-radius-md)] border border-semantic-warning/30 bg-semantic-warning/10 p-3"
         data-testid="unified-scan-cancel-confirm"
+        role="alertdialog"
+        aria-label="Cancel scan confirmation"
       >
         <div className="flex items-center gap-2">
           <ExclamationTriangleIcon className="h-5 w-5 text-semantic-warning shrink-0" aria-hidden />

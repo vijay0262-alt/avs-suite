@@ -156,6 +156,7 @@ export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptim
         report={null}
         actions={[]}
         isOptimizing={isFixing}
+        activityLog={s.scanActivityLog}
         onPause={() => {}}
         onResume={() => {}}
         onCancel={() => {
@@ -271,6 +272,7 @@ function mapModulesToTreeNodes(modules: HealthScanModuleResult[]): UnifiedScanTr
     status: m.status as UnifiedScanTreeNode['status'],
     itemsScanned: m.issuesFound > 0 ? m.issuesFound : 0,
     issuesFound: m.issuesFound,
+    reason: m.status === 'error' ? (m.measuredDetail || 'Scan failed') : m.status === 'skipped' ? (m.measuredDetail || 'No issues found') : undefined,
   }));
 }
 
@@ -281,6 +283,7 @@ function mapModulesToFixTreeNodes(modules: HealthScanModuleResult[]): UnifiedSca
     status: (m.actual ? (m.actual.success ? 'complete' : 'error') : 'pending') as UnifiedScanTreeNode['status'],
     itemsScanned: m.actual?.filesDeleted ?? m.actual?.itemsRemoved ?? m.actual?.issuesFixed ?? 0,
     issuesFound: m.actual?.errors.length ?? 0,
+    reason: m.actual && !m.actual.success ? (m.actual.errors[0] || 'Optimization failed') : undefined,
   }));
 }
 

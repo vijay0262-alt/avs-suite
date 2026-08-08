@@ -79,6 +79,29 @@ export interface OrchestratorHistoryEntry {
   result: string;
 }
 
+export interface OrchestratorActivityEntry {
+  ts: string;
+  module: string;
+  action: string;
+  detail: string;
+}
+
+export interface OrchestratorCounters {
+  itemsScanned: number;
+  itemsAnalyzed: number;
+  itemsOptimized: number;
+  itemsSkipped: number;
+  storageRecovered: number;
+  elapsedMs: number;
+}
+
+export interface OrchestratorModuleStatus {
+  status: string;
+  progress: number;
+  itemsScanned: number;
+  issuesFound: number;
+}
+
 export interface OrchestratorStatus {
   sessionId: string;
   phase: string;
@@ -92,6 +115,10 @@ export interface OrchestratorStatus {
   completedAt: string | null;
   error: string | null;
   cancelled: boolean;
+  // Real-time streaming data
+  activityLog: OrchestratorActivityEntry[];
+  counters: OrchestratorCounters;
+  moduleStatuses: Record<string, OrchestratorModuleStatus>;
 }
 
 export interface OrchestratorFullResponse {
@@ -129,6 +156,7 @@ export interface IOrchestratorService {
   result(sessionId: string): Promise<Record<string, unknown>>;
   cancel(sessionId: string): Promise<{ sessionId: string; cancelled: boolean }>;
   full(): Promise<OrchestratorFullResponse>;
+  fullAsync(): Promise<{ sessionId: string; startedAt: string }>;
 }
 
 export const orchestratorService: IOrchestratorService = {
@@ -139,4 +167,5 @@ export const orchestratorService: IOrchestratorService = {
   result: (sessionId: string) => client().call(RPC_METHODS.ORCHESTRATOR_RESULT, { sessionId }),
   cancel: (sessionId: string) => client().call(RPC_METHODS.ORCHESTRATOR_CANCEL, { sessionId }),
   full: () => client().call(RPC_METHODS.ORCHESTRATOR_FULL),
+  fullAsync: () => client().call(RPC_METHODS.ORCHESTRATOR_FULL_ASYNC),
 };

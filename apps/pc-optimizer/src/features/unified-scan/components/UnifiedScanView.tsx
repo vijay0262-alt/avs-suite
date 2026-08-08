@@ -40,6 +40,8 @@ import { ScanTree } from './ScanTree';
 import { ScanAnimation } from './ScanAnimation';
 import { ScanFooter } from './ScanFooter';
 import { ScanSummary } from './ScanSummary';
+import { ActivityStream } from './ActivityStream';
+import type { ActivityEntry } from './ActivityStream';
 import { useElapsedTimer } from '../useAnimatedCounter';
 import type {
   UnifiedScanStep,
@@ -69,6 +71,8 @@ export interface UnifiedScanViewProps {
   isOptimizing?: boolean;
   /** Optional custom content below the scan tree */
   children?: ReactNode;
+  /** Real-time activity log entries from backend */
+  activityLog?: ActivityEntry[];
 }
 
 export function UnifiedScanView({
@@ -88,6 +92,7 @@ export function UnifiedScanView({
   onClose,
   isOptimizing = false,
   children,
+  activityLog = [],
 }: UnifiedScanViewProps) {
   const elapsed = useElapsedTimer(startTime);
   const currentPhase = config.phases[currentPhaseIndex];
@@ -127,7 +132,7 @@ export function UnifiedScanView({
 
   // Scanning / preparing / paused view
   return (
-    <Card variant="glass" data-testid="unified-scan-view-active">
+    <Card variant="glass" data-testid="unified-scan-view-active" role="region" aria-label="System scan in progress">
       <div className="space-y-5">
         {/* Header */}
         <ScanHeader
@@ -201,6 +206,11 @@ export function UnifiedScanView({
             />
           </div>
         </div>
+
+        {/* Real-time activity stream from backend */}
+        {isScanning && activityLog.length > 0 && (
+          <ActivityStream entries={activityLog} />
+        )}
 
         {/* Custom module content */}
         {children}

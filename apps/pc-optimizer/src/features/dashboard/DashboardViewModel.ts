@@ -26,6 +26,7 @@ import type {
   HardwareSensors,
   ScanPhase,
   ScanLiveStats,
+  ScanActivityEntry,
 } from './dashboard.types';
 import { SCAN_PHASES } from './dashboard.types';
 import type { DashboardService } from './dashboard.service';
@@ -187,6 +188,7 @@ export interface DashboardState {
   scanOverallProgress: number; // 0-100 smooth overall progress
   scanLiveStats: ScanLiveStats;
   scanStartTime: number | null;
+  scanActivityLog: ScanActivityEntry[];
 
   // Verification / developer logs
   verificationLogs: VerificationLog[];
@@ -301,6 +303,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         recommendationsFound: 0,
       },
       scanStartTime: null,
+      scanActivityLog: [],
       verificationLogs: [],
       developerMode: false,
 
@@ -718,6 +721,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         recommendationsFound: 0,
       },
       scanStartTime: Date.now(),
+      scanActivityLog: [],
     });
 
     // Brief preparing phase for UX feedback, then start the unified orchestrator pipeline
@@ -757,7 +761,41 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         recommendationsFound: 0,
       },
       scanStartTime: null,
+      scanActivityLog: [],
     });
+  }
+
+  cancelHealthScanOptimizations(): void {
+    this.setState({
+      healthScanStep: 'idle',
+      healthScanModules: [],
+      healthScanReport: null,
+      healthScanBeforeReport: null,
+      healthScanError: null,
+      healthScanCancelled: false,
+      healthScanExecution: null,
+      healthScanResult: null,
+      healthScanCurrentFile: null,
+      healthScanSubProgress: 0,
+
+      scanPhase: null,
+      scanOverallProgress: 0,
+      scanLiveStats: {
+        filesScanned: 0,
+        registryEntries: 0,
+        startupItems: 0,
+        privacyItems: 0,
+        estimatedStorageRecovery: 0,
+        estimatedMemoryRecovery: 0,
+        estimatedStartupImprovement: 0,
+        recommendationsFound: 0,
+      },
+      scanStartTime: null,
+      scanActivityLog: [],
+    });
+    // Refresh metrics so scores reflect any partial optimizations that were applied
+    invalidateMetricsCache();
+    void this.loadMetrics();
   }
 
   resetHealthScan(): void {
@@ -1271,14 +1309,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
    * Unified optimization pipeline via backend OptimizationOrchestrator.
    *
    * This is the ONE entry point for Dashboard, AI Smart Optimize, and
-   * Protection Center. It calls orchestrator.full on the backend which:
-   *   1. Scans all real backend modules
-   *   2. Optimizes all fixable modules
-   *   3. Verifies completion
-   *   4. Calculates final scores
-   *   5. Saves history
-   *   6. Returns complete results
+   * Protection Center. It calls orchestrator.fullAsync on the backend
+   * which runs in a background thread, then polls orchestrator.status
+   * to get real-time progress, activity log, counters, and module statuses.
    *
+   * Pipeline: start → scan → optimize → verify → score → history → done
    * No simulated progress — all results come from real backend execution.
    */
   async runOrchestratorFullScan(): Promise<void> {
@@ -1327,198 +1362,324 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         recommendationsFound: 0,
       },
       scanStartTime: startedAt,
+      scanActivityLog: [],
     });
 
+    let sessionId: string | null = null;
+
     try {
-      // Call backend orchestrator.full — runs real scan + optimize + verify + score + history
-      const response: OrchestratorFullResponse = await orchestratorService.full();
+      // Start async pipeline in background thread
+      const startResp = await orchestratorService.fullAsync();
+      sessionId = startResp.sessionId;
 
-      if (this.state.healthScanCancelled) {
-        this.resetHealthScan();
-        return;
-      }
+      // Poll status until complete, error, or cancelled
+      const POLL_INTERVAL_MS = 300;
+      let lastActivityCount = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        if (this.state.healthScanCancelled) {
+          try { await orchestratorService.cancel(sessionId); } catch { /* ignore */ }
+          this.resetHealthScan();
+          return;
+        }
 
-      // Map orchestrator modules to DashboardViewModel module format
-      const orchModules = response.scan.modules;
-      const optResults = response.optimize.optimizeResults;
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
 
-      const dashModules: HealthScanModuleResult[] = modules.map((m) => {
-        const orch: OrchestratorModuleResult | undefined = orchModules[m.moduleId];
-        if (!orch) return m;
+        const status = await orchestratorService.status(sessionId);
 
-        const optResult = optResults[m.moduleId];
-        const afterScore = orch.scoreAfter ?? orch.score;
-        const afterIssues = orch.issuesAfter ?? orch.issues;
+        // Check for error — keep current step, don't jump to complete
+        if (status.error) {
+          this.setState({
+            healthScanError: status.error,
+          });
+          return;
+        }
 
-        return {
-          ...m,
-          status: orch.status === 'complete' ? 'complete' : orch.status === 'error' ? 'error' : 'skipped',
-          score: afterScore,
-          issuesFound: afterIssues,
-          recoverableSpace: orch.size - (optResult?.bytesRecovered ?? 0),
-          severity: orch.issues > 50 ? 'high' : orch.issues > 10 ? 'medium' : 'low',
-          measuredDetail: orch.status === 'complete'
-            ? `${orch.issues} issues found, score ${orch.score}`
-            : orch.error ?? 'Scan skipped',
-          canAutoFix: orch.canAutoFix,
-          actual: optResult ? {
-            success: optResult.success,
-            bytesRecovered: optResult.bytesRecovered ?? 0,
-            itemsRemoved: optResult.itemsRemoved ?? 0,
-            entriesDisabled: optResult.entriesDisabled ?? 0,
-            issuesFixed: optResult.issuesFixed ?? 0,
-            errors: optResult.errors ?? [],
-          } : undefined,
-          verification: {
-            beforeScore: orch.score,
-            beforeIssues: orch.issues,
-            beforeRecoverable: orch.size,
-            afterScore,
-            afterIssues,
-            afterRecoverable: orch.size - (optResult?.bytesRecovered ?? 0),
-          },
-        };
-      });
+        // Check for cancellation
+        if (status.cancelled) {
+          this.resetHealthScan();
+          return;
+        }
 
-      const overallAfter = response.optimize.overallScoreAfter;
-      const overallBefore = response.optimize.overallScoreBefore;
+        // Map backend phase to frontend state
+        const phase = status.phase;
+        let scanPhase: ScanPhase = 'preparing';
+        let step: HealthScanStep = 'scanning';
+        if (phase === 'scanning' || phase === 'scanned') {
+          scanPhase = 'junk';
+          step = 'scanning';
+        } else if (phase === 'optimizing') {
+          scanPhase = 'ai_planning';
+          step = 'optimizing';
+        } else if (phase === 'verifying') {
+          scanPhase = 'finalizing';
+          step = 'verifying';
+        } else if (phase === 'complete') {
+          scanPhase = 'finalizing';
+          step = 'verifying';
+        }
 
-      const report: HealthScanReport = {
-        overallScore: overallAfter,
-        issuesFound: response.optimize.issuesAfter,
-        recoverableSpace: dashModules.reduce((s, m) => s + m.recoverableSpace, 0),
-        modules: dashModules,
-        startedAt,
-        finishedAt: Date.now(),
-      };
-
-      // Build optimization summary
-      const summary: OptimizationSummary = {
-        healthBefore: overallBefore,
-        healthAfter: overallAfter,
-        storageRecovered: response.optimize.spaceRecovered,
-        registryFixed: response.optimize.issuesFixed,
-        startupOptimized: response.optimize.entriesDisabled,
-        privacyCleaned: response.optimize.itemsFixed,
-        duplicateFilesRemoved: 0,
-        durationMs: response.elapsedMs,
-        completedAt: response.completedAt,
-        success: response.optimize.success,
-      };
-
-      // Build verification report
-      const actualMap = new Map<string, HealthScanModuleActual>();
-      for (const [mid, opt] of Object.entries(optResults)) {
-        actualMap.set(mid, {
-          success: opt.success,
-          bytesRecovered: opt.bytesRecovered ?? 0,
-          itemsRemoved: opt.itemsRemoved ?? 0,
-          entriesDisabled: opt.entriesDisabled ?? 0,
-          issuesFixed: opt.issuesFixed ?? 0,
-          errors: opt.errors ?? [],
-        });
-      }
-      const verificationReport = buildVerificationReport(dashModules, actualMap, startedAt);
-
-      this.setState({
-        healthScanStep: 'complete',
-        healthScanModules: dashModules,
-        healthScanReport: report,
-        healthScanBeforeReport: {
-          ...report,
-          overallScore: overallBefore,
-          modules: dashModules.map((m) => ({
+        // Update module statuses from backend
+        const moduleStatuses = status.moduleStatuses || {};
+        const updatedModules = modules.map((m) => {
+          const ms = moduleStatuses[m.moduleId];
+          if (!ms) return m;
+          return {
             ...m,
-            score: m.verification?.beforeScore ?? m.score,
-            issuesFound: m.verification?.beforeIssues ?? m.issuesFound,
-            recoverableSpace: m.verification?.beforeRecoverable ?? m.recoverableSpace,
-          })),
-        },
-        healthScanError: null,
-        healthScanResult: {
-          success: response.optimize.success,
-          totalRecovered: response.optimize.spaceRecovered,
-          results: {} as unknown as OptimizeExecuteResponse['results'],
-          elapsedMs: response.elapsedMs,
-          completedAt: response.completedAt,
-        } as OptimizeExecuteResponse,
-        healthScanExecution: {
-          currentModule: 'Complete',
-          progress: 100,
-          itemsProcessed: response.optimize.itemsFixed + response.optimize.entriesDisabled + response.optimize.issuesFixed,
-          spaceRecovered: response.optimize.spaceRecovered,
-          elapsedMs: response.elapsedMs,
-          liveMessages: ['Optimization complete'],
-          filesRemoved: response.optimize.itemsFixed,
-        },
-        optimizationSummary: summary,
-        scanPhase: 'finalizing',
-        scanOverallProgress: 100,
-        verificationReport,
-      });
+            status: ms.status === 'scanning' ? 'scanning' as const
+              : ms.status === 'complete' ? 'complete' as const
+              : ms.status === 'error' ? 'error' as const
+              : ms.status === 'skipped' ? 'skipped' as const
+              : m.status,
+            issuesFound: ms.issuesFound ?? m.issuesFound,
+          };
+        });
 
-      // Broadcast scores globally via LiveSyncService
-      const liveSync = useLiveSync.getState();
-      liveSync.broadcastScores({
-        healthScore: overallAfter,
-        performanceScore: overallAfter,
-        protectionStatus: overallAfter >= 80 ? 'fully_protected' : overallAfter >= 60 ? 'partially_protected' : 'at_risk',
-      });
-      liveSync.broadcastOptimizationComplete({
-        healthScoreBefore: overallBefore,
-        healthScoreAfter: overallAfter,
-        storageRecovered: response.optimize.spaceRecovered,
-        registryFixed: response.optimize.issuesFixed,
-        startupOptimized: response.optimize.entriesDisabled,
-        privacyCleaned: response.optimize.itemsFixed,
-        durationMs: response.elapsedMs,
-        success: response.optimize.success,
-        moduleIds: Object.keys(optResults),
-      });
+        // Update activity log (only new entries)
+        const activityLog = status.activityLog || [];
+        const newActivities = activityLog.slice(lastActivityCount);
+        lastActivityCount = activityLog.length;
 
-      // Record optimization history (frontend)
-      optimizationHistoryService.recordOptimization({
-        timestamp: response.completedAt,
-        healthBefore: overallBefore,
-        healthAfter: overallAfter,
-        storageRecovered: response.optimize.spaceRecovered,
-        registryFixed: response.optimize.issuesFixed,
-        startupOptimized: response.optimize.entriesDisabled,
-        privacyCleaned: response.optimize.itemsFixed,
-        duplicateFilesRemoved: 0,
-        durationMs: response.elapsedMs,
-        result: response.optimize.success ? 'success' : 'partial',
-        modulesUsed: Object.keys(optResults),
-      });
+        // Map counters to scan live stats
+        const counters = status.counters || {};
+        const liveStats: ScanLiveStats = {
+          filesScanned: counters.itemsScanned ?? 0,
+          registryEntries: 0,
+          startupItems: 0,
+          privacyItems: 0,
+          estimatedStorageRecovery: counters.storageRecovered ?? 0,
+          estimatedMemoryRecovery: 0,
+          estimatedStartupImprovement: 0,
+          recommendationsFound: counters.itemsOptimized ?? 0,
+        };
 
-      // Persist session
-      saveSession({
-        optimizationSummary: summary,
-        healthScore: overallAfter,
-        healthZone: this.state.healthScore?.scoreZone ?? null,
-        recommendations: [],
-        lastOptimizationAt: response.completedAt,
-        savedAt: new Date().toISOString(),
-      });
+        // Determine current activity for display
+        const lastActivity = activityLog[activityLog.length - 1];
+        const currentFile = lastActivity?.detail ?? null;
 
-      // Refresh metrics from backend
-      try {
-        await this.service.refreshCache();
-      } catch {
-        // non-fatal
+        const isOptimizing = step === 'optimizing';
+        const isVerifying = step === 'verifying';
+
+        this.setState({
+          scanPhase,
+          scanOverallProgress: status.progress ?? 0,
+          scanLiveStats: liveStats,
+          scanActivityLog: activityLog.slice(-30) as ScanActivityEntry[],
+          healthScanModules: updatedModules,
+          healthScanCurrentFile: currentFile,
+          healthScanSubProgress: 0,
+          healthScanStep: step,
+          healthScanExecution: (isOptimizing || isVerifying) ? {
+            currentModule: status.currentModule ?? (isVerifying ? 'Verifying' : 'Optimizing'),
+            progress: status.progress ?? 0,
+            itemsProcessed: counters.itemsOptimized ?? 0,
+            spaceRecovered: counters.storageRecovered ?? 0,
+            elapsedMs: counters.elapsedMs ?? 0,
+            liveMessages: newActivities.map((a) => a.detail),
+            filesRemoved: counters.itemsOptimized ?? 0,
+          } : null,
+        });
+
+        // Check if complete
+        if (phase === 'complete') {
+          break;
+        }
       }
-      void this.loadMetrics();
 
-      // Mark first scan as complete
-      onboardingService.completeFirstScan();
+      // Pipeline complete — fetch final results
+      const result = await orchestratorService.result(sessionId) as unknown as OrchestratorFullResponse;
+      await this.finalizeOrchestratorResults(result, startedAt, modules);
 
     } catch (err) {
+      // Orchestrator failed (e.g. backend unavailable). Record the error
+      // but do NOT transition to 'complete' — the state machine stays in
+      // its current step until the user retries or cancels.
       const msg = err instanceof Error ? err.message : String(err);
       this.setState({
-        healthScanStep: 'complete',
         healthScanError: msg,
       });
     }
+  }
+
+  /**
+   * Finalize orchestrator results — map to DashboardViewModel state,
+   * broadcast scores, record history, refresh metrics.
+   */
+  private async finalizeOrchestratorResults(
+    response: OrchestratorFullResponse,
+    startedAt: number,
+    modules: HealthScanModuleResult[],
+  ): Promise<void> {
+    const orchModules = response.scan.modules;
+    const optResults = response.optimize.optimizeResults;
+
+    const dashModules: HealthScanModuleResult[] = modules.map((m) => {
+      const orch: OrchestratorModuleResult | undefined = orchModules[m.moduleId];
+      if (!orch) return m;
+
+      const optResult = optResults[m.moduleId];
+      const afterScore = orch.scoreAfter ?? orch.score;
+      const afterIssues = orch.issuesAfter ?? orch.issues;
+
+      return {
+        ...m,
+        status: orch.status === 'complete' ? 'complete' as const : orch.status === 'error' ? 'error' as const : 'skipped' as const,
+        score: afterScore,
+        issuesFound: afterIssues,
+        recoverableSpace: orch.size - (optResult?.bytesRecovered ?? 0),
+        severity: orch.issues > 50 ? 'high' as const : orch.issues > 10 ? 'medium' as const : 'low' as const,
+        measuredDetail: orch.status === 'complete'
+          ? `${orch.issues} issues found, score ${orch.score}`
+          : orch.error ?? 'Scan skipped',
+        canAutoFix: orch.canAutoFix,
+        actual: optResult ? {
+          success: optResult.success,
+          bytesRecovered: optResult.bytesRecovered ?? 0,
+          itemsRemoved: optResult.itemsRemoved ?? 0,
+          entriesDisabled: optResult.entriesDisabled ?? 0,
+          issuesFixed: optResult.issuesFixed ?? 0,
+          errors: optResult.errors ?? [],
+        } : undefined,
+        verification: {
+          beforeScore: orch.score,
+          beforeIssues: orch.issues,
+          beforeRecoverable: orch.size,
+          afterScore,
+          afterIssues,
+          afterRecoverable: orch.size - (optResult?.bytesRecovered ?? 0),
+        },
+      };
+    });
+
+    const overallAfter = response.optimize.overallScoreAfter;
+    const overallBefore = response.optimize.overallScoreBefore;
+
+    const report: HealthScanReport = {
+      overallScore: overallAfter,
+      issuesFound: response.optimize.issuesAfter,
+      recoverableSpace: dashModules.reduce((s, m) => s + m.recoverableSpace, 0),
+      modules: dashModules,
+      startedAt,
+      finishedAt: Date.now(),
+    };
+
+    const summary: OptimizationSummary = {
+      healthBefore: overallBefore,
+      healthAfter: overallAfter,
+      storageRecovered: response.optimize.spaceRecovered,
+      registryFixed: response.optimize.issuesFixed,
+      startupOptimized: response.optimize.entriesDisabled,
+      privacyCleaned: response.optimize.itemsFixed,
+      duplicateFilesRemoved: 0,
+      durationMs: response.elapsedMs,
+      completedAt: response.completedAt,
+      success: response.optimize.success,
+    };
+
+    const actualMap = new Map<string, HealthScanModuleActual>();
+    for (const [mid, opt] of Object.entries(optResults)) {
+      actualMap.set(mid, {
+        success: opt.success,
+        bytesRecovered: opt.bytesRecovered ?? 0,
+        itemsRemoved: opt.itemsRemoved ?? 0,
+        entriesDisabled: opt.entriesDisabled ?? 0,
+        issuesFixed: opt.issuesFixed ?? 0,
+        errors: opt.errors ?? [],
+      });
+    }
+    const verificationReport = buildVerificationReport(dashModules, actualMap, startedAt);
+
+    this.setState({
+      healthScanStep: 'complete',
+      healthScanModules: dashModules,
+      healthScanReport: report,
+      healthScanBeforeReport: {
+        ...report,
+        overallScore: overallBefore,
+        modules: dashModules.map((m) => ({
+          ...m,
+          score: m.verification?.beforeScore ?? m.score,
+          issuesFound: m.verification?.beforeIssues ?? m.issuesFound,
+          recoverableSpace: m.verification?.beforeRecoverable ?? m.recoverableSpace,
+        })),
+      },
+      healthScanError: null,
+      healthScanResult: {
+        success: response.optimize.success,
+        totalRecovered: response.optimize.spaceRecovered,
+        results: {} as unknown as OptimizeExecuteResponse['results'],
+        elapsedMs: response.elapsedMs,
+        completedAt: response.completedAt,
+      } as OptimizeExecuteResponse,
+      healthScanExecution: {
+        currentModule: 'Complete',
+        progress: 100,
+        itemsProcessed: response.optimize.itemsFixed + response.optimize.entriesDisabled + response.optimize.issuesFixed,
+        spaceRecovered: response.optimize.spaceRecovered,
+        elapsedMs: response.elapsedMs,
+        liveMessages: ['Optimization complete'],
+        filesRemoved: response.optimize.itemsFixed,
+      },
+      optimizationSummary: summary,
+      scanPhase: 'finalizing',
+      scanOverallProgress: 100,
+      verificationReport,
+    });
+
+    // Broadcast scores globally via LiveSyncService
+    const liveSync = useLiveSync.getState();
+    liveSync.broadcastScores({
+      healthScore: overallAfter,
+      performanceScore: overallAfter,
+      protectionStatus: overallAfter >= 80 ? 'fully_protected' : overallAfter >= 60 ? 'partially_protected' : 'at_risk',
+    });
+    liveSync.broadcastOptimizationComplete({
+      healthScoreBefore: overallBefore,
+      healthScoreAfter: overallAfter,
+      storageRecovered: response.optimize.spaceRecovered,
+      registryFixed: response.optimize.issuesFixed,
+      startupOptimized: response.optimize.entriesDisabled,
+      privacyCleaned: response.optimize.itemsFixed,
+      durationMs: response.elapsedMs,
+      success: response.optimize.success,
+      moduleIds: Object.keys(optResults),
+    });
+
+    // Record optimization history (frontend)
+    optimizationHistoryService.recordOptimization({
+      timestamp: response.completedAt,
+      healthBefore: overallBefore,
+      healthAfter: overallAfter,
+      storageRecovered: response.optimize.spaceRecovered,
+      registryFixed: response.optimize.issuesFixed,
+      startupOptimized: response.optimize.entriesDisabled,
+      privacyCleaned: response.optimize.itemsFixed,
+      duplicateFilesRemoved: 0,
+      durationMs: response.elapsedMs,
+      result: response.optimize.success ? 'success' : 'partial',
+      modulesUsed: Object.keys(optResults),
+    });
+
+    // Persist session
+    saveSession({
+      optimizationSummary: summary,
+      healthScore: overallAfter,
+      healthZone: this.state.healthScore?.scoreZone ?? null,
+      recommendations: [],
+      lastOptimizationAt: response.completedAt,
+      savedAt: new Date().toISOString(),
+    });
+
+    // Refresh metrics from backend
+    try {
+      await this.service.refreshCache();
+    } catch {
+      // non-fatal
+    }
+    void this.loadMetrics();
+
+    // Mark first scan as complete
+    onboardingService.completeFirstScan();
   }
 
   async executeHealthScanOptimizations(): Promise<void> {
@@ -2002,27 +2163,6 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     }
   }
 
-  cancelHealthScanOptimizations(): void {
-    // Cancel immediately — reset to idle, don't go back to report
-    this.setState({
-      healthScanStep: 'idle',
-      healthScanModules: [],
-      healthScanReport: null,
-      healthScanBeforeReport: null,
-      healthScanError: null,
-      healthScanExecution: null,
-      healthScanResult: null,
-      healthScanCurrentFile: null,
-      healthScanSubProgress: 0,
-      scanPhase: null,
-      scanOverallProgress: 0,
-      scanStartTime: null,
-    });
-    // Refresh metrics so scores reflect any partial optimizations that were applied
-    invalidateMetricsCache();
-    void this.loadMetrics();
-  }
-
   closeHealthScan(): void {
     this.setState({
       healthScanStep: 'idle',
@@ -2047,6 +2187,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         recommendationsFound: 0,
       },
       scanStartTime: null,
+      scanActivityLog: [],
     });
     // Refresh metrics so scores reflect any optimizations that were applied
     invalidateMetricsCache();

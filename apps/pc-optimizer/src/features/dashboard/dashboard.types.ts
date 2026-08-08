@@ -542,6 +542,13 @@ export interface ScanLiveStats {
   recommendationsFound: number;
 }
 
+export interface ScanActivityEntry {
+  ts: string;
+  module: string;
+  action: string;
+  detail: string;
+}
+
 export interface OptimizationDetailItem {
   name: string;
   size?: number;

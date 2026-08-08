@@ -92,6 +92,13 @@ function TreeNode({ node, depth = 0 }: { node: UnifiedScanTreeNode; depth?: numb
         )}
       </div>
 
+      {/* Reason for error/skipped */}
+      {node.reason && (node.status === 'error' || node.status === 'skipped') && (
+        <div className={`ml-7 text-caption ${node.status === 'error' ? 'text-semantic-danger' : 'text-text-muted'}`}>
+          {node.reason}
+        </div>
+      )}
+
       {/* Children */}
       {hasChildren && expanded && (
         <div className="ml-6 space-y-0.5 border-l border-[var(--avs-border)] pl-2" role="group">

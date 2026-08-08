@@ -10,12 +10,14 @@ registry cleaner, startup manager, performance optimizer, disk analyzer,
 security check, system info). No simulated progress.
 
 RPC methods:
-  orchestrator.start    → begin a new session, returns sessionId
-  orchestrator.scan     → run all module scans, return results
-  orchestrator.optimize → run all module optimizations, return results
-  orchestrator.status   → poll session status / progress
-  orchestrator.result   → get final session result (scores, history, summary)
-  orchestrator.cancel   → cancel a running session
+  orchestrator.start      → begin a new session, returns sessionId
+  orchestrator.scan       → run all module scans, return results
+  orchestrator.optimize   → run all module optimizations, return results
+  orchestrator.status     → poll session status / progress / activity / counters
+  orchestrator.result     → get final session result (scores, history, summary)
+  orchestrator.cancel     → cancel a running session
+  orchestrator.full       → synchronous full pipeline (scan + optimize)
+  orchestrator.fullAsync  → async full pipeline in background thread
 """
 
 from __future__ import annotations
@@ -35,6 +37,9 @@ log = logging.getLogger("avs.orchestrator")
 
 _sessions: dict[str, dict[str, Any]] = {}
 _sessions_lock = threading.Lock()
+
+# Maximum activity log entries kept in session state
+_MAX_ACTIVITIES = 50
 
 
 def _now_iso() -> str:
@@ -61,6 +66,17 @@ def _new_session() -> dict[str, Any]:
         "error": None,
         "cancelled": False,
         "history": None,        # history entry dict once complete
+        # Real-time streaming data
+        "activityLog": [],      # list of {ts, module, action, detail}
+        "counters": {           # live counters updated during scan/optimize
+            "itemsScanned": 0,
+            "itemsAnalyzed": 0,
+            "itemsOptimized": 0,
+            "itemsSkipped": 0,
+            "storageRecovered": 0,
+            "elapsedMs": 0,
+        },
+        "moduleStatuses": {},   # moduleId → {status, progress, itemsScanned, issuesFound}
     }
 
 
@@ -74,6 +90,59 @@ def _update_session(session_id: str, patch: dict[str, Any]) -> None:
         s = _sessions.get(session_id)
         if s:
             s.update(patch)
+
+
+def _add_activity(session_id: str, module: str, action: str, detail: str) -> None:
+    """Append an activity entry to the session log (thread-safe, capped)."""
+    entry = {
+        "ts": _now_iso(),
+        "module": module,
+        "action": action,
+        "detail": detail,
+    }
+    with _sessions_lock:
+        s = _sessions.get(session_id)
+        if s:
+            s["activityLog"].append(entry)
+            # Trim to last N entries
+            if len(s["activityLog"]) > _MAX_ACTIVITIES:
+                s["activityLog"] = s["activityLog"][-_MAX_ACTIVITIES:]
+
+
+def _update_counters(session_id: str, counters: dict[str, int]) -> None:
+    """Merge counter updates into the session (thread-safe)."""
+    with _sessions_lock:
+        s = _sessions.get(session_id)
+        if s:
+            for k, v in counters.items():
+                if k == "elapsedMs":
+                    s["counters"][k] = v
+                else:
+                    s["counters"][k] = s["counters"].get(k, 0) + v
+
+
+def _set_module_status(session_id: str, module_id: str, status: str,
+                        progress: int = 0, items_scanned: int = 0,
+                        issues_found: int = 0) -> None:
+    """Update per-module status in the session (thread-safe)."""
+    with _sessions_lock:
+        s = _sessions.get(session_id)
+        if s:
+            s["moduleStatuses"][module_id] = {
+                "status": status,
+                "progress": progress,
+                "itemsScanned": items_scanned,
+                "issuesFound": issues_found,
+            }
+
+
+def _update_elapsed(session_id: str, start_time: float) -> None:
+    """Update the elapsed time counter."""
+    elapsed = int((time.monotonic() - start_time) * 1000)
+    with _sessions_lock:
+        s = _sessions.get(session_id)
+        if s:
+            s["counters"]["elapsedMs"] = elapsed
 
 
 # ── Module definitions ──────────────────────────────────────────────
@@ -113,14 +182,18 @@ def _can_auto_fix(mid: str) -> bool:
 
 # ── Real scan implementations ───────────────────────────────────────
 
-def _scan_junk() -> dict[str, Any]:
+def _scan_junk(session_id: str | None = None) -> dict[str, Any]:
     """Run junk cleaner scan via the cleaner module."""
+    if session_id:
+        _add_activity(session_id, "junk", "scanning", "Scanning temporary files...")
     from avs_backend.cleaner import _ensure_singletons, _scan_manager, _cleaners
     _ensure_singletons()
     cleaners = _cleaners or []
     if _scan_manager is None:
         return {"issues": 0, "size": 0, "error": "Scan manager not ready"}
     cleaner_ids = [c.id for c in cleaners]
+    if session_id:
+        _add_activity(session_id, "junk", "scanning", f"Starting scan with {len(cleaner_ids)} cleaners")
     task_id = _scan_manager.start(only=cleaner_ids)
     # Wait for scan to complete (poll)
     for _ in range(120):  # max 60 seconds
@@ -129,12 +202,17 @@ def _scan_junk() -> dict[str, Any]:
             break
         if snap.status.value in ("completed", "done", "cancelled", "error"):
             break
+        if session_id and snap.total_files > 0:
+            _add_activity(session_id, "junk", "scanning", f"Found {snap.total_files} files ({snap.total_bytes} bytes)")
         time.sleep(0.5)
     snap = _scan_manager.snapshot(task_id)
     if snap is None:
         return {"issues": 0, "size": 0, "error": "Scan snapshot unavailable"}
     total_files = snap.total_files
     total_bytes = snap.total_bytes
+    if session_id:
+        _add_activity(session_id, "junk", "scanned", f"Junk scan complete: {total_files} files, {total_bytes} bytes")
+        _update_counters(session_id, {"itemsScanned": total_files})
     return {
         "issues": total_files,
         "size": total_bytes,
@@ -142,11 +220,16 @@ def _scan_junk() -> dict[str, Any]:
     }
 
 
-def _scan_privacy() -> dict[str, Any]:
+def _scan_privacy(session_id: str | None = None) -> dict[str, Any]:
     """Run privacy cleaner scan."""
+    if session_id:
+        _add_activity(session_id, "privacy", "scanning", "Scanning browser traces and privacy data...")
     from avs_backend.privacy.privacy_cleaner import scan_privacy_items
     from threading import Event
     result = scan_privacy_items(Event(), None, None)
+    if session_id:
+        _add_activity(session_id, "privacy", "scanned", f"Privacy scan complete: {len(result.items)} items found")
+        _update_counters(session_id, {"itemsScanned": len(result.items)})
     return {
         "issues": len(result.items),
         "size": result.total_size,
@@ -166,10 +249,15 @@ def _scan_privacy() -> dict[str, Any]:
     }
 
 
-def _scan_registry() -> dict[str, Any]:
+def _scan_registry(session_id: str | None = None) -> dict[str, Any]:
     """Run registry cleaner scan."""
+    if session_id:
+        _add_activity(session_id, "registry", "scanning", "Scanning registry keys and broken entries...")
     from avs_backend.registry_cleaner.registry_scanner import scan_registry
     result = scan_registry(None)
+    if session_id:
+        _add_activity(session_id, "registry", "scanned", f"Registry scan complete: {len(result.issues)} issues found")
+        _update_counters(session_id, {"itemsScanned": len(result.issues)})
     return {
         "issues": len(result.issues),
         "size": 0,
@@ -178,11 +266,16 @@ def _scan_registry() -> dict[str, Any]:
     }
 
 
-def _scan_startup() -> dict[str, Any]:
+def _scan_startup(session_id: str | None = None) -> dict[str, Any]:
     """Run startup manager scan."""
+    if session_id:
+        _add_activity(session_id, "startup", "scanning", "Scanning startup applications and services...")
     from avs_backend.startup.startup_manager import scan_startup_entries
     entries = scan_startup_entries()
     high_impact = [e for e in entries if e.impact.value == "high" and e.enabled]
+    if session_id:
+        _add_activity(session_id, "startup", "scanned", f"Startup scan complete: {len(entries)} entries, {len(high_impact)} high-impact")
+        _update_counters(session_id, {"itemsScanned": len(entries)})
     return {
         "issues": len(high_impact),
         "size": 0,
@@ -202,8 +295,10 @@ def _scan_startup() -> dict[str, Any]:
     }
 
 
-def _scan_performance() -> dict[str, Any]:
+def _scan_performance(session_id: str | None = None) -> dict[str, Any]:
     """Run performance monitor scan."""
+    if session_id:
+        _add_activity(session_id, "performance", "scanning", "Analyzing CPU, memory, and performance metrics...")
     from avs_backend.performance.live_monitor import get_system_metrics, generate_alerts
     metrics = get_system_metrics()
     alerts = generate_alerts(metrics)
@@ -216,6 +311,9 @@ def _scan_performance() -> dict[str, Any]:
     ram_recovery = 0
     if mem_info:
         ram_recovery = max(0, mem_info.used_ram - mem_info.total_ram * 0.5)
+    if session_id:
+        _add_activity(session_id, "performance", "scanned", f"Performance scan complete: {len(alerts)} alerts, {int(ram_recovery)} bytes recoverable")
+        _update_counters(session_id, {"itemsScanned": len(alerts)})
     return {
         "issues": len(alerts),
         "size": int(ram_recovery),
@@ -229,8 +327,10 @@ def _scan_performance() -> dict[str, Any]:
     }
 
 
-def _scan_disk() -> dict[str, Any]:
+def _scan_disk(session_id: str | None = None) -> dict[str, Any]:
     """Run disk analyzer scan using psutil directly."""
+    if session_id:
+        _add_activity(session_id, "disk", "scanning", "Analyzing disk space usage...")
     import psutil
     drives = []
     try:
@@ -246,11 +346,16 @@ def _scan_disk() -> dict[str, Any]:
                     "free": usage.free,
                     "percent": usage.percent,
                 })
+                if session_id:
+                    _add_activity(session_id, "disk", "scanning", f"{part.device}: {usage.percent}% used")
             except OSError:
                 continue
     except Exception as e:
         log.warning("Disk scan failed: %s", e)
     full = [d for d in drives if d.get("percent", 0) > 80]
+    if session_id:
+        _add_activity(session_id, "disk", "scanned", f"Disk scan complete: {len(drives)} drives, {len(full)} nearly full")
+        _update_counters(session_id, {"itemsScanned": len(drives)})
     return {
         "issues": len(full),
         "size": sum(d.get("used", 0) for d in drives),
@@ -258,14 +363,19 @@ def _scan_disk() -> dict[str, Any]:
     }
 
 
-def _scan_security() -> dict[str, Any]:
+def _scan_security(session_id: str | None = None) -> dict[str, Any]:
     """Run security check via dashboard metrics."""
+    if session_id:
+        _add_activity(session_id, "security", "scanning", "Checking security features and Windows updates...")
     from avs_backend.dashboard import _collect_metrics
     metrics = _collect_metrics()
     sec = metrics.get("security", {}) if isinstance(metrics, dict) else {}
     pending = sec.get("updates", {}).get("pendingUpdates", 0)
     defender = 0 if sec.get("defender", {}).get("enabled") else 1
     firewall = 0 if sec.get("firewall", {}).get("enabled") else 1
+    if session_id:
+        _add_activity(session_id, "security", "scanned", f"Security check complete: {pending + defender + firewall} issues")
+        _update_counters(session_id, {"itemsScanned": 1})
     return {
         "issues": pending + defender + firewall,
         "size": 0,
@@ -273,8 +383,10 @@ def _scan_security() -> dict[str, Any]:
     }
 
 
-def _scan_system() -> dict[str, Any]:
+def _scan_system(session_id: str | None = None) -> dict[str, Any]:
     """Run system info scan using psutil directly."""
+    if session_id:
+        _add_activity(session_id, "system", "scanning", "Gathering system information...")
     import psutil
     import platform as _platform
     boot_time = psutil.boot_time()
@@ -294,6 +406,9 @@ def _scan_system() -> dict[str, Any]:
             "logicalCores": psutil.cpu_count(logical=True),
         },
     }
+    if session_id:
+        _add_activity(session_id, "system", "scanned", f"System info: {_platform.system()} {_platform.release()}, uptime {uptime_days:.1f} days")
+        _update_counters(session_id, {"itemsScanned": 1})
     return {
         "issues": 1 if uptime_days > 30 else 0,
         "size": 0,
@@ -316,25 +431,35 @@ SCAN_FNS = {
 
 # ── Real optimize implementations ───────────────────────────────────
 
-def _optimize_junk(scan_result: dict[str, Any]) -> dict[str, Any]:
+def _optimize_junk(scan_result: dict[str, Any], session_id: str | None = None) -> dict[str, Any]:
     """Execute junk cleaning."""
+    if session_id:
+        _add_activity(session_id, "junk", "optimizing", "Cleaning temporary files and browser caches...")
     from avs_backend.dashboard import dashboard_optimize_execute
     result = dashboard_optimize_execute(None)
+    recovered = result.get("totalRecovered", 0)
+    if session_id:
+        _add_activity(session_id, "junk", "optimized", f"Junk cleaning complete: {recovered} bytes recovered")
+        _update_counters(session_id, {"itemsOptimized": 1, "storageRecovered": recovered})
     return {
         "success": result.get("success", False),
-        "bytesRecovered": result.get("totalRecovered", 0),
+        "bytesRecovered": recovered,
         "itemsRemoved": 0,
         "errors": [],
         "details": result,
     }
 
 
-def _optimize_privacy(scan_result: dict[str, Any]) -> dict[str, Any]:
+def _optimize_privacy(scan_result: dict[str, Any], session_id: str | None = None) -> dict[str, Any]:
     """Execute privacy cleaning."""
+    if session_id:
+        _add_activity(session_id, "privacy", "optimizing", "Cleaning privacy traces...")
     from avs_backend.privacy.privacy_cleaner import PrivacyItem, PrivacyCategory, RiskLevel, clean_privacy_items
     from threading import Event
     items_data = scan_result.get("items", [])
     if not items_data:
+        if session_id:
+            _add_activity(session_id, "privacy", "optimized", "No privacy items to clean")
         return {"success": True, "bytesRecovered": 0, "itemsRemoved": 0, "errors": []}
     items = [
         PrivacyItem(
@@ -350,6 +475,9 @@ def _optimize_privacy(scan_result: dict[str, Any]) -> dict[str, Any]:
     ]
     result = clean_privacy_items(items, Event(), None)
     errors = result.errors or []
+    if session_id:
+        _add_activity(session_id, "privacy", "optimized", f"Privacy cleaning complete: {result.items_cleaned or 0} items cleaned")
+        _update_counters(session_id, {"itemsOptimized": result.items_cleaned or 0})
     return {
         "success": len(errors) == 0,
         "bytesRecovered": result.space_freed or 0,
@@ -358,25 +486,35 @@ def _optimize_privacy(scan_result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _optimize_registry(scan_result: dict[str, Any]) -> dict[str, Any]:
+def _optimize_registry(scan_result: dict[str, Any], session_id: str | None = None) -> dict[str, Any]:
     """Execute registry cleaning."""
+    if session_id:
+        _add_activity(session_id, "registry", "optimizing", "Repairing registry entries...")
     from avs_backend.registry_cleaner.registry_scanner import RegistryIssue, fix_issues
     issues_data = scan_result.get("items", [])
     if not issues_data:
+        if session_id:
+            _add_activity(session_id, "registry", "optimized", "No registry issues to fix")
         return {"success": True, "bytesRecovered": 0, "itemsRemoved": 0, "errors": []}
     issues = [RegistryIssue.from_dict(d) for d in issues_data]
     result = fix_issues(issues)
     errors = result.get("errors", []) or []
+    fixed = result.get("fixed", 0)
+    if session_id:
+        _add_activity(session_id, "registry", "optimized", f"Registry repair complete: {fixed} issues fixed")
+        _update_counters(session_id, {"itemsOptimized": fixed})
     return {
         "success": len(errors) == 0,
         "bytesRecovered": 0,
-        "itemsRemoved": result.get("fixed", 0),
+        "itemsRemoved": fixed,
         "errors": errors,
     }
 
 
-def _optimize_startup(scan_result: dict[str, Any]) -> dict[str, Any]:
+def _optimize_startup(scan_result: dict[str, Any], session_id: str | None = None) -> dict[str, Any]:
     """Execute startup optimization — disable high-impact enabled entries."""
+    if session_id:
+        _add_activity(session_id, "startup", "optimizing", "Disabling high-impact startup entries...")
     from avs_backend.startup.startup_manager import disable_startup_entry, StartupEntry, StartupStatus, StartupImpact, StartupSource
     entries_data = scan_result.get("entries", [])
     to_disable = [e for e in entries_data if e.get("enabled") and e.get("impact") == "high"]
@@ -384,6 +522,8 @@ def _optimize_startup(scan_result: dict[str, Any]) -> dict[str, Any]:
     errors: list[str] = []
     for entry_data in to_disable:
         try:
+            if session_id:
+                _add_activity(session_id, "startup", "optimizing", f"Disabling: {entry_data['name']}")
             entry = StartupEntry(
                 name=entry_data["name"],
                 publisher=entry_data.get("publisher", ""),
@@ -401,6 +541,9 @@ def _optimize_startup(scan_result: dict[str, Any]) -> dict[str, Any]:
                 errors.append(result.get("reason", f"Failed to disable {entry_data['name']}"))
         except Exception as e:
             errors.append(f"{entry_data.get('name', 'unknown')}: {e}")
+    if session_id:
+        _add_activity(session_id, "startup", "optimized", f"Startup optimization complete: {disabled} entries disabled")
+        _update_counters(session_id, {"itemsOptimized": disabled})
     return {
         "success": len(errors) == 0,
         "bytesRecovered": 0,
@@ -410,13 +553,18 @@ def _optimize_startup(scan_result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _optimize_performance(scan_result: dict[str, Any]) -> dict[str, Any]:
+def _optimize_performance(scan_result: dict[str, Any], session_id: str | None = None) -> dict[str, Any]:
     """Execute memory optimization."""
+    if session_id:
+        _add_activity(session_id, "performance", "optimizing", "Optimizing memory and processes...")
     from avs_backend.performance.memory_optimizer import optimize_memory
     from threading import Event
     result = optimize_memory(Event(), None)
     errors = result.errors or []
     success = result.status.value in ("completed", "success") or (len(errors) == 0 and (result.memory_freed > 0 or result.processes_optimized > 0))
+    if session_id:
+        _add_activity(session_id, "performance", "optimized", f"Memory optimization complete: {result.memory_freed or 0} bytes freed")
+        _update_counters(session_id, {"itemsOptimized": result.processes_optimized or 0, "storageRecovered": result.memory_freed or 0})
     return {
         "success": success,
         "bytesRecovered": result.memory_freed or 0,
@@ -426,18 +574,27 @@ def _optimize_performance(scan_result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _optimize_disk(scan_result: dict[str, Any]) -> dict[str, Any]:
+def _optimize_disk(scan_result: dict[str, Any], session_id: str | None = None) -> dict[str, Any]:
     """Disk analyzer is informational — no auto-fix."""
+    if session_id:
+        _add_activity(session_id, "disk", "skipped", "Disk analyzer is informational — no auto-fix")
+        _update_counters(session_id, {"itemsSkipped": 1})
     return {"success": True, "bytesRecovered": 0, "itemsRemoved": 0, "errors": [], "reason": "No auto-fix — use Disk Analyzer page to review"}
 
 
-def _optimize_security(scan_result: dict[str, Any]) -> dict[str, Any]:
+def _optimize_security(scan_result: dict[str, Any], session_id: str | None = None) -> dict[str, Any]:
     """Security check requires manual action."""
+    if session_id:
+        _add_activity(session_id, "security", "skipped", "Security requires manual action via Windows Security")
+        _update_counters(session_id, {"itemsSkipped": 1})
     return {"success": True, "bytesRecovered": 0, "itemsRemoved": 0, "errors": [], "reason": "Requires manual action via Windows Security"}
 
 
-def _optimize_system(scan_result: dict[str, Any]) -> dict[str, Any]:
+def _optimize_system(scan_result: dict[str, Any], session_id: str | None = None) -> dict[str, Any]:
     """System info is informational."""
+    if session_id:
+        _add_activity(session_id, "system", "skipped", "System info is informational — restart if uptime is high")
+        _update_counters(session_id, {"itemsSkipped": 1})
     return {"success": True, "bytesRecovered": 0, "itemsRemoved": 0, "errors": [], "reason": "No changes — restart if uptime is high"}
 
 
@@ -538,6 +695,7 @@ def orchestrator_scan(params: dict[str, Any] | None) -> dict[str, Any]:
         return {"error": "Session cancelled", "sessionId": session_id}
 
     _update_session(session_id, {"phase": "scanning", "progress": 0})
+    _add_activity(session_id, "orchestrator", "preparing", "Initializing optimization engine...")
 
     modules_result = {}
     total_issues = 0
@@ -549,10 +707,12 @@ def orchestrator_scan(params: dict[str, Any] | None) -> dict[str, Any]:
         if session and session.get("cancelled"):
             break
 
+        progress = int((i / len(MODULE_ORDER)) * 100)
         _update_session(session_id, {
             "currentModule": mid,
-            "progress": int((i / len(MODULE_ORDER)) * 100),
+            "progress": progress,
         })
+        _set_module_status(session_id, mid, "scanning", progress)
 
         try:
             scan_fn = SCAN_FNS.get(mid)
@@ -567,9 +727,10 @@ def orchestrator_scan(params: dict[str, Any] | None) -> dict[str, Any]:
                     "canAutoFix": _can_auto_fix(mid),
                     "error": "No scan function",
                 }
+                _set_module_status(session_id, mid, "skipped", progress)
                 continue
 
-            result = scan_fn()
+            result = scan_fn(session_id)
             score = _calculate_module_score(mid, result)
             issues = result.get("issues", 0)
             size = result.get("size", 0)
@@ -587,6 +748,7 @@ def orchestrator_scan(params: dict[str, Any] | None) -> dict[str, Any]:
                 "canAutoFix": _can_auto_fix(mid),
                 "scanResult": result,
             }
+            _set_module_status(session_id, mid, "complete", int(((i + 1) / len(MODULE_ORDER)) * 100), issues, issues)
         except Exception as e:
             log.error("Scan failed for module %s: %s", mid, e)
             modules_result[mid] = {
@@ -599,6 +761,8 @@ def orchestrator_scan(params: dict[str, Any] | None) -> dict[str, Any]:
                 "canAutoFix": _can_auto_fix(mid),
                 "error": str(e),
             }
+            _set_module_status(session_id, mid, "error", progress)
+            _add_activity(session_id, mid, "error", f"Scan failed: {e}")
             scores.append(100)  # Don't penalize for scan failure
 
     overall = int(sum(scores) / len(scores)) if scores else 0
@@ -641,6 +805,7 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
     modules = session.get("modules", {})
     scan_results = session.get("scanResults", {})
     _update_session(session_id, {"phase": "optimizing", "progress": 0})
+    _add_activity(session_id, "orchestrator", "analyzing", "Analyzing scan results and preparing optimizations...")
 
     optimize_results = {}
     total_recovered = 0
@@ -654,22 +819,29 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
                and modules[mid].get("status") == "complete"
                and (modules[mid].get("issues", 0) > 0 or modules[mid].get("size", 0) > 0)]
 
+    # Mark non-fixable modules as skipped
+    for mid in MODULE_ORDER:
+        if mid not in fixable:
+            _set_module_status(session_id, mid, "skipped")
+
     for i, mid in enumerate(fixable):
         session = _get_session(session_id)
         if session and session.get("cancelled"):
             break
 
+        progress = int((i / max(1, len(fixable))) * 100)
         _update_session(session_id, {
             "currentModule": mid,
-            "progress": int((i / max(1, len(fixable))) * 100),
+            "progress": progress,
         })
+        _set_module_status(session_id, mid, "optimizing", progress)
 
         try:
             opt_fn = OPTIMIZE_FNS.get(mid)
             if opt_fn is None:
                 continue
             scan_result = scan_results.get(mid, {})
-            result = opt_fn(scan_result)
+            result = opt_fn(scan_result, session_id)
             optimize_results[mid] = result
             total_recovered += result.get("bytesRecovered", 0)
             total_items_fixed += result.get("itemsRemoved", 0)
@@ -677,6 +849,9 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
             total_issues_fixed += result.get("issuesFixed", 0)
             if result.get("errors"):
                 all_errors.extend(result["errors"][:5])
+                _set_module_status(session_id, mid, "error", int(((i + 1) / max(1, len(fixable))) * 100))
+            else:
+                _set_module_status(session_id, mid, "complete", int(((i + 1) / max(1, len(fixable))) * 100))
         except Exception as e:
             log.error("Optimize failed for module %s: %s", mid, e)
             optimize_results[mid] = {
@@ -686,6 +861,8 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
                 "errors": [str(e)],
             }
             all_errors.append(str(e))
+            _set_module_status(session_id, mid, "error", progress)
+            _add_activity(session_id, mid, "error", f"Optimize failed: {e}")
 
     # Calculate after-scores
     after_scores = []
@@ -729,6 +906,8 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
         "spaceRecovered": total_recovered,
         "currentModule": None,
     })
+    _add_activity(session_id, "orchestrator", "verifying", "Verifying optimization results...")
+    _update_counters(session_id, {"itemsAnalyzed": total_issues_fixed + total_items_fixed + total_entries_disabled})
 
     # Invalidate dashboard cache so next metrics call is fresh
     try:
@@ -759,6 +938,8 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
         "completedAt": _now_iso(),
         "history": history_entry,
     })
+    _add_activity(session_id, "orchestrator", "completed", f"Optimization complete. Score: {overall_before} → {overall_after}")
+    _update_counters(session_id, {"storageRecovered": total_recovered})
 
     # Record in backend history
     try:
@@ -828,6 +1009,10 @@ def orchestrator_status(params: dict[str, Any] | None) -> dict[str, Any]:
         "completedAt": session.get("completedAt"),
         "error": session.get("error"),
         "cancelled": session.get("cancelled"),
+        # Real-time streaming data
+        "activityLog": list(session.get("activityLog", [])),
+        "counters": dict(session.get("counters", {})),
+        "moduleStatuses": dict(session.get("moduleStatuses", {})),
     }
 
 
@@ -936,3 +1121,59 @@ def orchestrator_full(_params: dict[str, Any] | None) -> dict[str, Any]:
         "elapsedMs": elapsed_ms,
         "completedAt": _now_iso(),
     }
+
+
+# ── RPC: orchestrator.fullAsync (background thread + status polling) ─
+
+@register("orchestrator.fullAsync")
+def orchestrator_full_async(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Start full pipeline in a background thread.
+
+    Returns immediately with sessionId. Frontend polls orchestrator.status
+    to get real-time progress, activity log, counters, and module statuses.
+    When phase == 'complete', frontend calls orchestrator.result for final data.
+    """
+    session = _new_session()
+    session_id = session["sessionId"]
+    with _sessions_lock:
+        _sessions[session_id] = session
+
+    def _run_pipeline() -> None:
+        start_time = time.monotonic()
+        try:
+            # Phase 1: Scan
+            _add_activity(session_id, "orchestrator", "preparing", "Starting optimization session...")
+            scan_response = orchestrator_scan({"sessionId": session_id})
+            if scan_response.get("error"):
+                _update_session(session_id, {"phase": "error", "error": scan_response["error"]})
+                return
+
+            session = _get_session(session_id)
+            if session and session.get("cancelled"):
+                return
+
+            # Phase 2: Optimize
+            opt_response = orchestrator_optimize({"sessionId": session_id})
+            if opt_response.get("error"):
+                _update_session(session_id, {"phase": "error", "error": opt_response["error"]})
+                return
+
+            elapsed_ms = int((time.monotonic() - start_time) * 1000)
+            _update_elapsed(session_id, start_time)
+
+            # Update history with duration
+            history = opt_response.get("history", {})
+            if history:
+                history["durationMs"] = elapsed_ms
+                _update_session(session_id, {"history": history})
+
+        except Exception as e:
+            log.error("FullAsync pipeline failed: %s", e)
+            _update_session(session_id, {"phase": "error", "error": str(e)})
+            _add_activity(session_id, "orchestrator", "error", f"Pipeline failed: {e}")
+
+    thread = threading.Thread(target=_run_pipeline, daemon=True, name=f"orchestrator-{session_id}")
+    thread.start()
+
+    log.info("Orchestrator fullAsync started: %s", session_id)
+    return {"sessionId": session_id, "startedAt": session["startedAt"]}

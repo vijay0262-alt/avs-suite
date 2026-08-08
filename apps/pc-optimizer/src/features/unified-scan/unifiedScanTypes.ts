@@ -54,6 +54,7 @@ export interface UnifiedScanTreeNode {
   itemsScanned: number;
   issuesFound: number;
   children?: UnifiedScanTreeNode[];
+  reason?: string;
 }
 
 // ── Result Card ─────────────────────────────────────────────────

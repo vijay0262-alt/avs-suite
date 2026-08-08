@@ -193,6 +193,7 @@ export const RPC_METHODS = {
   ORCHESTRATOR_RESULT: 'orchestrator.result',
   ORCHESTRATOR_CANCEL: 'orchestrator.cancel',
   ORCHESTRATOR_FULL: 'orchestrator.full',
+  ORCHESTRATOR_FULL_ASYNC: 'orchestrator.fullAsync',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];
