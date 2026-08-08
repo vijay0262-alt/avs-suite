@@ -15,7 +15,6 @@ import {
   BoltIcon,
   ClockIcon,
   CpuChipIcon,
-  ChartBarIcon,
   StarIcon,
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
@@ -107,7 +106,6 @@ export function ProStatusBanner({ className = '', compact = false }: ProStatusBa
         <ProFeatureIndicator icon={BoltIcon} label="Auto Optimization" />
         <ProFeatureIndicator icon={ClockIcon} label="Scheduled Maintenance" />
         <ProFeatureIndicator icon={CpuChipIcon} label="Background Monitoring" />
-        <ProFeatureIndicator icon={ChartBarIcon} label="Unlimited Analysis" />
       </div>
     </div>
   );
