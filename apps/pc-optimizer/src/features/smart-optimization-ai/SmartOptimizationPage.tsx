@@ -12,7 +12,7 @@
  */
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Badge } from '@avs/ui';
+import { Card, Button, Badge, CollapsibleSection } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import { PageHeader } from '../../components/PageHeader';
@@ -56,6 +56,7 @@ import {
   EyeIcon,
   LockClosedIcon,
   SparklesIcon,
+  Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 
 // ── ViewModel ──────────────────────────────────────────────────
@@ -264,11 +265,10 @@ export default function SmartOptimizationPage() {
   const hiddenCount = s.preview && maxOptimizations !== null ? Math.max(0, s.preview.actionsPreview.length - maxOptimizations) : 0;
 
   return (
-    <div className="px-6 py-6 space-y-6">
+    <div className="px-6 py-6 space-y-5">
       <ProStatusBanner compact />
       <PageHeader
         title="AI Smart Optimization"
-        description="Evidence-based optimization plans with risk analysis, simulation, and rollback."
         actions={
           <div className="flex items-center gap-2">
             <ProStatusPill />
@@ -286,59 +286,68 @@ export default function SmartOptimizationPage() {
         }
       />
 
-      {/* Dashboard Summary */}
+      {/* ── ABOVE THE FOLD ─────────────────────────────────────────── */}
+      {/* Score Summary: Current vs Potential + Key Metrics */}
       {dash && (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
-          <StatBox label="Current Score" value={dash.summary.currentHealthScore} icon={ChartBarIcon} />
-          <StatBox label="Potential Score" value={dash.summary.potentialHealthScore} icon={ArrowTrendingUpIcon} />
-          <StatBox label="Available Actions" value={dash.summary.totalAvailableActions} icon={BoltIcon} />
-          <StatBox label="High Impact" value={dash.summary.highImpactActions} icon={ExclamationTriangleIcon} />
-          <StatBox label="Est. Recovery" value={formatDataSize(dash.summary.estimatedTotalRecoveryMB * 1024 * 1024)} icon={CircleStackIcon} />
-          <StatBox label="Est. Duration" value={formatDuration(dash.summary.estimatedDurationSeconds)} icon={ClockIcon} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Primary: Current → Potential Score */}
+          <Card variant="glass" className="lg:col-span-2 p-5" data-testid="smart-opt-primary">
+            <div className="flex items-center gap-6">
+              <div className="shrink-0">
+                <div className="relative inline-flex items-center justify-center h-20 w-20 rounded-full bg-brand-primary/10">
+                  <ChartBarIcon className="h-8 w-8 text-brand-primary" />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-caption text-text-muted uppercase tracking-wide">Health Score</div>
+                <div className="flex items-baseline gap-3">
+                  <span className="text-3xl font-bold text-text-primary tabular-nums">{dash.summary.currentHealthScore}</span>
+                  <ArrowTrendingUpIcon className="h-5 w-5 text-semantic-success" />
+                  <span className="text-3xl font-bold text-semantic-success tabular-nums">{dash.summary.potentialHealthScore}</span>
+                </div>
+                <div className="text-caption text-text-muted mt-0.5">
+                  +{dash.summary.potentialHealthScore - dash.summary.currentHealthScore} possible
+                </div>
+              </div>
+              <div className="hidden sm:block shrink-0 text-right">
+                <div className="text-caption text-text-muted">Actions</div>
+                <div className="text-statistic text-text-primary tabular-nums">{dash.summary.totalAvailableActions}</div>
+                <div className="mt-2 text-caption text-text-muted">Recovery</div>
+                <div className="text-small font-semibold text-text-primary">{formatDataSize(dash.summary.estimatedTotalRecoveryMB * 1024 * 1024)}</div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Secondary: Plan Headline */}
+          {s.preview && (
+            <Card variant="glass" className="p-5" data-testid="smart-opt-plan-summary">
+              <div className="text-caption text-text-muted uppercase tracking-wide">Plan</div>
+              <p className="text-small font-medium text-text-primary mt-1">{s.preview.headline}</p>
+              <div className="mt-3 flex items-center gap-4">
+                <div>
+                  <div className="text-caption text-text-muted">Score</div>
+                  <div className="text-small font-bold text-semantic-success">+{s.preview.scoreImprovement}</div>
+                </div>
+                <div>
+                  <div className="text-caption text-text-muted">Storage</div>
+                  <div className="text-small font-bold text-text-primary">{formatDataSize(s.preview.estimatedStorageRecoveryMB * 1024 * 1024)}</div>
+                </div>
+                <div>
+                  <div className="text-caption text-text-muted">Time</div>
+                  <div className="text-small font-bold text-text-primary">{formatDuration(dash.summary.estimatedDurationSeconds)}</div>
+                </div>
+              </div>
+            </Card>
+          )}
         </div>
       )}
 
-      {/* Insights */}
-      {s.insights.length > 0 && (
-        <Card title="AI Insights" variant="glass">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {s.insights.slice(0, 6).map((insight) => (
-              <div key={insight.id} className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-4">
-                <div className="flex items-start gap-2">
-                  <LightBulbIcon className="h-5 w-5 text-[var(--avs-brand-primary)] shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-small font-medium text-[var(--avs-text-primary)]">{insight.title}</p>
-                    <p className="text-caption text-[var(--avs-text-secondary)] mt-1">{insight.explanation}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge tone={IMPACT_BADGES[insight.impactTier]}>{insight.impactTier}</Badge>
-                      <span className="text-caption text-[var(--avs-text-muted)]">{(insight.confidence * 100).toFixed(0)}% confidence</span>
-                    </div>
-                    <p className="text-caption text-[var(--avs-text-muted)] mt-2">
-                      <span className="font-medium">Why now:</span> {insight.whyNow}
-                    </p>
-                    <p className="text-caption text-[var(--avs-text-muted)] mt-1">
-                      <span className="font-medium">If skipped:</span> {insight.whatHappensIfSkipped}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
+      {/* ── COLLAPSIBLE SECONDARY CONTENT ──────────────────────────── */}
 
-      {/* Plan Preview */}
+      {/* Plan Details */}
       {s.preview && (
-        <Card title="Plan Preview" variant="glass">
+        <CollapsibleSection title="Plan Details" icon={<BoltIcon className="h-5 w-5" />} storageKey="smart-opt-plan-details">
           <div className="space-y-4">
-            <p className="text-small font-medium text-[var(--avs-text-primary)]">{s.preview.headline}</p>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <MetricBox label="Score Improvement" value={`+${s.preview.scoreImprovement}`} icon={ArrowTrendingUpIcon} />
-              <MetricBox label="Storage Recovery" value={formatDataSize(s.preview.estimatedStorageRecoveryMB * 1024 * 1024)} icon={CircleStackIcon} />
-              <MetricBox label="RAM Recovery" value={formatDataSize(s.preview.estimatedRamRecoveryMB * 1024 * 1024)} icon={CpuChipIcon} />
-              <MetricBox label="Startup Improvement" value={`${(s.preview.estimatedStartupImprovementMs / 1000).toFixed(1)}s`} icon={ClockIcon} />
-            </div>
-
             {/* Warnings */}
             {s.preview.warnings.length > 0 && (
               <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-warning)]/10 p-3">
@@ -400,12 +409,12 @@ export default function SmartOptimizationPage() {
             {hiddenCount > 0 && (
               <div className="rounded-[var(--avs-radius-md)] bg-semantic-warning/10 border border-semantic-warning/20 px-3 py-2" data-testid="smart-opt-limit-notice">
                 <p className="text-caption text-text-secondary">
-                  {hiddenCount} more optimization{hiddenCount > 1 ? 's' : ''} available with Professional. Showing top {maxOptimizations} of {s.preview!.actionsPreview.length} actions.
+                  {hiddenCount} more optimization{hiddenCount > 1 ? 's' : ''} available with Professional.
                 </p>
               </div>
             )}
 
-            {/* Pro-only automation controls — functional for Pro, visual hint for Free */}
+            {/* Pro-only automation controls */}
             <ProOnlySection>
               <div className="space-y-3 pt-2 border-t border-[var(--avs-border)]">
                 <div className="flex flex-wrap gap-2">
@@ -418,7 +427,7 @@ export default function SmartOptimizationPage() {
                     <CalendarDaysIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
                     <div>
                       <span className="text-caption font-medium text-[var(--avs-text-primary)]">Scheduled Optimization</span>
-                      <p className="text-caption text-[var(--avs-text-muted)]">Automatically run optimization on a schedule</p>
+                      <p className="text-caption text-[var(--avs-text-muted)]">Automatically run on a schedule</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -454,12 +463,35 @@ export default function SmartOptimizationPage() {
               </div>
             </ProOnlySection>
           </div>
-        </Card>
+        </CollapsibleSection>
+      )}
+
+      {/* AI Insights */}
+      {s.insights.length > 0 && (
+        <CollapsibleSection title="AI Insights" icon={<LightBulbIcon className="h-5 w-5" />} storageKey="smart-opt-insights">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {s.insights.slice(0, 6).map((insight) => (
+              <div key={insight.id} className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-4">
+                <div className="flex items-start gap-2">
+                  <LightBulbIcon className="h-5 w-5 text-[var(--avs-brand-primary)] shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-small font-medium text-[var(--avs-text-primary)]">{insight.title}</p>
+                    <p className="text-caption text-[var(--avs-text-secondary)] mt-1">{insight.explanation}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge tone={IMPACT_BADGES[insight.impactTier]}>{insight.impactTier}</Badge>
+                      <span className="text-caption text-[var(--avs-text-muted)]">{(insight.confidence * 100).toFixed(0)}% confidence</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CollapsibleSection>
       )}
 
       {/* Simulation Results */}
       {s.simulation && (
-        <Card title="Simulation Results" variant="glass">
+        <CollapsibleSection title="Simulation Results" icon={<BeakerIcon className="h-5 w-5" />} storageKey="smart-opt-simulation" defaultCollapsed={false}>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <MetricBox label="Simulated Score" value={s.simulation.simulatedHealthScore.toString()} icon={ChartBarIcon} />
@@ -483,12 +515,12 @@ export default function SmartOptimizationPage() {
               </div>
             )}
           </div>
-        </Card>
+        </CollapsibleSection>
       )}
 
       {/* Execution Report */}
       {s.lastReport && (
-        <Card title="Execution Report" variant="glass">
+        <CollapsibleSection title="Execution Report" icon={<CheckCircleIcon className="h-5 w-5" />} storageKey="smart-opt-execution" defaultCollapsed={false}>
           <div className="space-y-3">
             <p className="text-small font-medium text-[var(--avs-text-primary)]">{s.lastReport.summary.headline}</p>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -513,43 +545,19 @@ export default function SmartOptimizationPage() {
               ))}
             </div>
           </div>
-        </Card>
+        </CollapsibleSection>
       )}
 
       {/* Configuration */}
       {s.config && (
-        <Card title="Configuration" variant="glass">
+        <CollapsibleSection title="Configuration" icon={<Cog6ToothIcon className="h-5 w-5" />} storageKey="smart-opt-config">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ConfigToggle
-              label="Enable Rollback"
-              value={s.config.enableRollback}
-              onChange={(v) => vm.updateConfig({ enableRollback: v })}
-            />
-            <ConfigToggle
-              label="Enable Simulation"
-              value={s.config.enableSimulation}
-              onChange={(v) => vm.updateConfig({ enableSimulation: v })}
-            />
-            <ConfigToggle
-              label="Enable Learning"
-              value={s.config.enableLearning}
-              onChange={(v) => vm.updateConfig({ enableLearning: v })}
-            />
-            <ConfigToggle
-              label="Enable Insights"
-              value={s.config.enableInsights}
-              onChange={(v) => vm.updateConfig({ enableInsights: v })}
-            />
-            <ConfigToggle
-              label="Auto-approve Low Risk"
-              value={s.config.autoApproveLowRisk}
-              onChange={(v) => vm.updateConfig({ autoApproveLowRisk: v })}
-            />
-            <ConfigToggle
-              label="Approval Flow"
-              value={s.config.enableApprovalFlow}
-              onChange={(v) => vm.updateConfig({ enableApprovalFlow: v })}
-            />
+            <ConfigToggle label="Enable Rollback" value={s.config.enableRollback} onChange={(v) => vm.updateConfig({ enableRollback: v })} />
+            <ConfigToggle label="Enable Simulation" value={s.config.enableSimulation} onChange={(v) => vm.updateConfig({ enableSimulation: v })} />
+            <ConfigToggle label="Enable Learning" value={s.config.enableLearning} onChange={(v) => vm.updateConfig({ enableLearning: v })} />
+            <ConfigToggle label="Enable Insights" value={s.config.enableInsights} onChange={(v) => vm.updateConfig({ enableInsights: v })} />
+            <ConfigToggle label="Auto-approve Low Risk" value={s.config.autoApproveLowRisk} onChange={(v) => vm.updateConfig({ autoApproveLowRisk: v })} />
+            <ConfigToggle label="Approval Flow" value={s.config.enableApprovalFlow} onChange={(v) => vm.updateConfig({ enableApprovalFlow: v })} />
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div>
@@ -573,7 +581,7 @@ export default function SmartOptimizationPage() {
               </select>
             </div>
           </div>
-        </Card>
+        </CollapsibleSection>
       )}
 
       {/* Empty State */}
@@ -656,20 +664,6 @@ export default function SmartOptimizationPage() {
 }
 
 // ── Sub-components ─────────────────────────────────────────────
-
-function StatBox({ label, value, icon: Icon }: { label: string; value: string | number; icon: typeof ChartBarIcon }) {
-  return (
-    <Card variant="glass" className="p-3">
-      <div className="flex items-center gap-2">
-        <Icon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
-        <div>
-          <p className="text-caption text-[var(--avs-text-muted)]">{label}</p>
-          <p className="text-section-title font-bold text-[var(--avs-text-primary)]">{value}</p>
-        </div>
-      </div>
-    </Card>
-  );
-}
 
 function MetricBox({ label, value, icon: Icon }: { label: string; value: string; icon: typeof ChartBarIcon }) {
   return (

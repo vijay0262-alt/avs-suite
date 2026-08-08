@@ -22,5 +22,6 @@ export * from './components/UpgradeCard';
 export * from './components/Sparkline';
 export * from './components/Skeleton';
 export * from './components/StatusBadge';
+export * from './components/CollapsibleSection';
 export * from './components/ThemeProvider';
 export * from './hooks/useTheme';

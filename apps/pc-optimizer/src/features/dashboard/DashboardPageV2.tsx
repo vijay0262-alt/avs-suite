@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Button, Card, DashboardSection, StatCard, InsightCard, RecommendationCard, ChartCard, TimelineCard, Sparkline, EmptyState, LoadingState } from '@avs/ui';
+import { Button, Card, RecommendationCard, ChartCard, TimelineCard, Sparkline, EmptyState, LoadingState, CollapsibleSection } from '@avs/ui';
 import { ModuleErrorBanner } from '../../components/ModuleStates';
 import {
   SparklesIcon,
@@ -10,17 +10,16 @@ import {
   HeartIcon,
   ArrowPathIcon,
   CheckCircleIcon,
-  ExclamationTriangleIcon,
   ClockIcon,
   BoltIcon,
   ChartBarIcon,
   DocumentTextIcon,
   ArrowRightIcon,
   StarIcon,
-  EyeIcon,
-  WrenchScrewdriverIcon,
   FireIcon,
   Battery50Icon,
+  EyeIcon,
+  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { DashboardViewModel } from './DashboardViewModel';
@@ -29,7 +28,6 @@ import { generateRecommendations } from './dashboard.utils';
 import type { DashboardMetrics, LiveMetrics, HardwareSensorReading } from './dashboard.types';
 import { UnifiedHealthScanModal } from './components/UnifiedHealthScanModal';
 import { UnifiedHealthScanResults } from './components/UnifiedHealthScanResults';
-import { LastScanResults } from '../protection-center/components/LastScanResults';
 import { useIsPro } from '../sync/syncStore';
 import { useEditionLimits } from '../licensing/editionLimits';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
@@ -56,15 +54,6 @@ function getSecurityLabel(metrics: DashboardMetrics | null): string {
   return 'Unprotected';
 }
 
-function getStorageTone(metrics: DashboardMetrics | null): 'success' | 'warning' | 'danger' {
-  if (!metrics?.storage?.length) return 'warning';
-  const firstDrive = metrics.storage[0];
-  if (!firstDrive) return 'warning';
-  if (firstDrive.usage > 90) return 'danger';
-  if (firstDrive.usage > 75) return 'warning';
-  return 'success';
-}
-
 function getStorageValue(metrics: DashboardMetrics | null): string {
   if (!metrics?.storage?.length) return '—';
   const drive = metrics.storage[0];
@@ -72,33 +61,9 @@ function getStorageValue(metrics: DashboardMetrics | null): string {
   return `${Math.round(drive.usage)}%`;
 }
 
-function getPerformanceTone(live: LiveMetrics | null): 'success' | 'warning' | 'danger' {
-  if (!live) return 'warning';
-  const cpu = live.cpu.usage;
-  const mem = live.memory.usage;
-  if (cpu > 85 || mem > 85) return 'danger';
-  if (cpu > 65 || mem > 65) return 'warning';
-  return 'success';
-}
-
 function getPerformanceValue(live: LiveMetrics | null): string {
   if (!live) return '—';
   return `${Math.round(live.cpu.usage)}%`;
-}
-
-function getHardwareTone(live: LiveMetrics | null): 'success' | 'warning' | 'danger' {
-  if (!live) return 'warning';
-  const temp = live.cpu.temperature;
-  if (temp !== null && temp > 80) return 'danger';
-  if (temp !== null && temp > 65) return 'warning';
-  return 'success';
-}
-
-function getHardwareValue(live: LiveMetrics | null): string {
-  if (!live) return '—';
-  const temp = live.cpu.temperature;
-  if (temp === null) return 'Fully Functional';
-  return `${Math.round(temp)}°C`;
 }
 
 function findSensor(sensors: HardwareSensorReading[] | undefined, ...keywords: string[]): HardwareSensorReading | undefined {
@@ -192,7 +157,7 @@ export default function DashboardPage() {
   if (state.bootstrap === 'error') {
     return (
       <EmptyState
-        icon={<ExclamationTriangleIcon className="h-8 w-8" />}
+        icon={<CheckCircleIcon className="h-8 w-8" />}
         title="Failed to load dashboard"
         description={state.bootstrapError || 'An error occurred while loading the dashboard.'}
         action={{ label: 'Retry', onClick: () => vm.bootstrap() }}
@@ -204,11 +169,7 @@ export default function DashboardPage() {
   const healthScore = state.healthScore?.overallScore ?? 0;
   const securityTone = getSecurityTone(state.metrics);
   const securityLabel = getSecurityLabel(state.metrics);
-  const performanceTone = getPerformanceTone(state.liveMetrics);
   const performanceValue = getPerformanceValue(state.liveMetrics);
-  const hardwareTone = getHardwareTone(state.liveMetrics);
-  const hardwareValue = getHardwareValue(state.liveMetrics);
-  const storageTone = getStorageTone(state.metrics);
   const storageValue = getStorageValue(state.metrics);
 
   const recommendations = state.healthScore
@@ -218,7 +179,7 @@ export default function DashboardPage() {
   const visibleRecommendations = recommendations.slice(0, maxRecommendations);
 
   return (
-    <div className="space-y-7" data-testid="page-dashboard">
+    <div className="space-y-5" data-testid="page-dashboard">
       {/* Error banners for data load failures */}
       {state.metricsError && (
         <ModuleErrorBanner
@@ -240,12 +201,13 @@ export default function DashboardPage() {
       {/* Pro Status Banner */}
       <ProStatusBanner />
 
-      {/* Greeting */}
+      {/* ── ABOVE THE FOLD ─────────────────────────────────────────── */}
+      {/* Greeting + Primary Action */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-page-title text-text-primary">{getGreeting()}</h1>
-          <p className="mt-1.5 text-small text-text-secondary">
-            Here&apos;s your AI-powered system overview for today.
+          <p className="mt-1 text-caption text-text-secondary">
+            {healthScore >= 80 ? 'Your PC is healthy.' : healthScore >= 60 ? 'Your PC needs minor attention.' : 'Your PC needs optimization.'}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -262,109 +224,128 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* AI Score Cards Row */}
-      <DashboardSection>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 animate-slide-up">
-          <StatCard
-            label="Health Score"
-            value={healthScore}
-            unit="/ 100"
-            icon={<HeartIcon className="h-5 w-5" />}
-            tone={healthScore >= 80 ? 'success' : healthScore >= 60 ? 'warning' : 'danger'}
-            description={healthScore >= 80 ? 'Excellent' : healthScore >= 60 ? 'Good' : 'Needs Attention'}
-            progress={healthScore}
-            onClick={() => navigate('/system-health')}
-            data-testid="stat-health"
-          />
-          <StatCard
-            label="Security"
-            value={securityLabel}
-            icon={<ShieldExclamationIcon className="h-5 w-5" />}
-            tone={securityTone}
-            description={state.metrics?.security?.realTimeProtection ? 'Real-time active' : 'Check settings'}
-            progress={securityTone === 'success' ? 100 : securityTone === 'warning' ? 50 : 20}
-            onClick={() => navigate('/security-center')}
-            data-testid="stat-security"
-          />
-          <StatCard
-            label="Performance"
-            value={performanceValue}
-            icon={<BoltIcon className="h-5 w-5" />}
-            tone={performanceTone}
-            description={`CPU ${state.liveMetrics ? Math.round(state.liveMetrics.cpu.usage) : '—'}% · RAM ${state.liveMetrics ? Math.round(state.liveMetrics.memory.usage) : '—'}%`}
-            progress={state.liveMetrics ? 100 - Math.round(state.liveMetrics.cpu.usage) : 0}
-            onClick={() => navigate('/process-intelligence')}
-            data-testid="stat-performance"
-          />
-          <StatCard
-            label="Hardware"
-            value={hardwareValue}
-            icon={<CpuChipIcon className="h-5 w-5" />}
-            tone={hardwareTone}
-            description={`CPU ${state.liveMetrics ? state.liveMetrics.cpu.temperature !== null ? Math.round(state.liveMetrics.cpu.temperature) + '°C' : 'Optimized' : '—'}`}
-            progress={hardwareTone === 'success' ? 85 : hardwareTone === 'warning' ? 50 : 20}
-            onClick={() => navigate('/hardware-center')}
-            data-testid="stat-hardware"
-          />
-          <StatCard
-            label="Storage"
-            value={storageValue}
-            icon={<CircleStackIcon className="h-5 w-5" />}
-            tone={storageTone}
-            description={state.metrics?.storage?.[0] ? `${Math.round(state.metrics.storage[0].free / 1_000_000_000)} GB free` : '—'}
-            progress={state.metrics?.storage?.[0] ? 100 - Math.round(state.metrics.storage[0].usage) : 0}
-            onClick={() => navigate('/disk-analyzer')}
-            data-testid="stat-storage"
-          />
-        </div>
-      </DashboardSection>
+      {/* Primary: Health Score + Protection Status (2 large cards) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card variant="glass" className="lg:col-span-2 p-5" data-testid="primary-health-card">
+          <div className="flex items-center gap-6">
+            <div className="shrink-0">
+              <div className={`relative inline-flex items-center justify-center h-24 w-24 rounded-full ${
+                healthScore >= 80 ? 'bg-semantic-success/10' : healthScore >= 60 ? 'bg-semantic-warning/10' : 'bg-semantic-danger/10'
+              }`}>
+                <HeartIcon className={`h-10 w-10 ${
+                  healthScore >= 80 ? 'text-semantic-success' : healthScore >= 60 ? 'text-semantic-warning' : 'text-semantic-danger'
+                }`} />
+              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-caption text-text-muted uppercase tracking-wide">Health Score</div>
+              <div className="text-4xl font-bold text-text-primary tabular-nums">{healthScore}<span className="text-lg text-text-muted">/100</span></div>
+              <div className={`text-small font-medium ${
+                healthScore >= 80 ? 'text-semantic-success' : healthScore >= 60 ? 'text-semantic-warning' : 'text-semantic-danger'
+              }`}>
+                {healthScore >= 80 ? 'Excellent' : healthScore >= 60 ? 'Good' : 'Needs Attention'}
+              </div>
+              {state.healthScore && state.healthScore.issues.length > 0 && (
+                <div className="mt-1 text-caption text-text-muted">
+                  {state.healthScore.issues.length} issues detected
+                </div>
+              )}
+            </div>
+            <div className="hidden sm:block shrink-0">
+              <div className="text-right">
+                <div className="text-caption text-text-muted">Performance</div>
+                <div className="text-statistic text-text-primary tabular-nums">{performanceValue}</div>
+                <div className="mt-2 text-caption text-text-muted">Storage</div>
+                <div className="text-small font-semibold text-text-primary tabular-nums">{storageValue}</div>
+              </div>
+            </div>
+          </div>
+        </Card>
 
-      {/* Health Insights */}
-      <DashboardSection title="Health Insights" icon={<SparklesIcon className="h-5 w-5" />}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {healthScore >= 80 ? (
-            <InsightCard
-              icon={<CheckCircleIcon className="h-5 w-5" />}
-              iconColor="text-semantic-success"
-              title="System Health is Excellent"
-              description={`Your PC health score is ${healthScore}/100. No critical issues detected.`}
-              severity="success"
-            />
-          ) : healthScore >= 60 ? (
-            <InsightCard
-              icon={<ExclamationTriangleIcon className="h-5 w-5" />}
-              iconColor="text-semantic-warning"
-              title="System Health is Good"
-              description={`Health score is ${healthScore}/100. ${state.healthScore?.issues.length ?? 0} issues found that could be optimized.`}
-              action={{ label: 'Optimize Now', onClick: () => vm.startHealthScan() }}
-              severity="warning"
-            />
-          ) : (
-            <InsightCard
-              icon={<ExclamationTriangleIcon className="h-5 w-5" />}
-              iconColor="text-semantic-danger"
-              title="System Health Needs Attention"
-              description={`Health score is ${healthScore}/100. ${state.healthScore?.issues.length ?? 0} issues detected. AI Smart Optimize recommended.`}
-              action={{ label: 'Run AI Smart Optimize', onClick: () => vm.startHealthScan() }}
-              severity="danger"
-            />
-          )}
-          <InsightCard
-            icon={<ShieldExclamationIcon className="h-5 w-5" />}
-            iconColor={securityTone === 'success' ? 'text-semantic-success' : 'text-semantic-warning'}
-            title="Active Protection"
-            description={securityTone === 'success'
-              ? 'Real-time protection is active. Your system is being monitored.'
-              : 'Real-time protection needs attention. Check security settings.'}
-            action={{ label: 'View Security Center', onClick: () => navigate('/security-center') }}
-            severity={securityTone === 'success' ? 'success' : 'warning'}
-          />
-        </div>
-      </DashboardSection>
+        <Card variant="glass" className="p-5" data-testid="primary-protection-card">
+          <div className="flex items-center gap-4">
+            <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-3 ${
+              securityTone === 'success' ? 'bg-semantic-success/10' : securityTone === 'warning' ? 'bg-semantic-warning/10' : 'bg-semantic-danger/10'
+            }`}>
+              <ShieldExclamationIcon className={`h-7 w-7 ${
+                securityTone === 'success' ? 'text-semantic-success' : securityTone === 'warning' ? 'text-semantic-warning' : 'text-semantic-danger'
+              }`} />
+            </div>
+            <div>
+              <div className="text-caption text-text-muted uppercase tracking-wide">Protection</div>
+              <div className="text-section-title font-bold text-text-primary">{securityLabel}</div>
+              <div className="text-caption text-text-secondary mt-0.5">
+                {state.metrics?.security?.realTimeProtection ? 'Real-time active' : 'Check settings'}
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
 
-      {/* Recommendations */}
-      {visibleRecommendations.length > 0 && (
-        <DashboardSection title={`Recommendations${!isPro && recommendations.length > maxRecommendations ? ` (Top ${maxRecommendations})` : ''}`} icon={<ChartBarIcon className="h-5 w-5" />}>
+      {/* Secondary: Last Scan + Top Recommendation (2 compact cards) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card variant="glass" className="p-4" data-testid="primary-last-scan">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CheckCircleIcon className="h-5 w-5 text-text-muted shrink-0" />
+              <div>
+                <div className="text-caption text-text-muted">Last Scan</div>
+                {state.healthScanHistory[0] ? (
+                  <div className="text-small font-medium text-text-primary">
+                    {state.healthScanHistory[0].result === 'success' ? 'Optimized' : 'Partial'} · {new Date(state.healthScanHistory[0].date).toLocaleDateString()}
+                  </div>
+                ) : (
+                  <div className="text-small text-text-muted">No scans yet</div>
+                )}
+              </div>
+            </div>
+            {state.healthScanHistory[0] && (
+              <div className="text-right">
+                <div className="text-caption text-text-muted">Score</div>
+                <div className="text-small font-bold text-text-primary tabular-nums">{state.healthScanHistory[0].healthAfter}</div>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {visibleRecommendations[0] ? (
+          <Card variant="glass" className="p-4" data-testid="primary-recommendation">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <SparklesIcon className="h-5 w-5 text-brand-primary shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-caption text-text-muted">Recommended Action</div>
+                  <div className="text-small font-medium text-text-primary truncate">{visibleRecommendations[0].title}</div>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => navigate(visibleRecommendations[0]?.actionPath ?? '/')}
+                className="shrink-0"
+              >
+                {visibleRecommendations[0].actionLabel}
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <Card variant="glass" className="p-4" data-testid="primary-recommendation">
+            <div className="flex items-center gap-3">
+              <CheckCircleIcon className="h-5 w-5 text-semantic-success shrink-0" />
+              <div>
+                <div className="text-caption text-text-muted">Recommendation</div>
+                <div className="text-small font-medium text-text-primary">No actions needed</div>
+              </div>
+            </div>
+          </Card>
+        )}
+      </div>
+
+      {/* ── COLLAPSIBLE SECONDARY CONTENT ──────────────────────────── */}
+
+      {/* Recommendations (all) */}
+      {visibleRecommendations.length > 1 && (
+        <CollapsibleSection title="All Recommendations" icon={<ChartBarIcon className="h-5 w-5" />} storageKey="dash-recommendations">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {visibleRecommendations.map((rec) => (
               <RecommendationCard
@@ -378,11 +359,11 @@ export default function DashboardPage() {
               />
             ))}
           </div>
-        </DashboardSection>
+        </CollapsibleSection>
       )}
 
       {/* Quick Actions */}
-      <DashboardSection title="Quick Actions" icon={<BoltIcon className="h-5 w-5" />}>
+      <CollapsibleSection title="Quick Actions" icon={<BoltIcon className="h-5 w-5" />} storageKey="dash-quick-actions">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {[
             { id: 'ai-smart-optimize', name: 'AI Smart Optimize', icon: SparklesIcon, color: 'text-brand-primary', path: '/ai-smart-optimize', proEnhanced: false },
@@ -411,10 +392,10 @@ export default function DashboardPage() {
             </button>
           ))}
         </div>
-      </DashboardSection>
+      </CollapsibleSection>
 
       {/* Intelligence Modules */}
-      <DashboardSection title="Intelligence Modules" icon={<SparklesIcon className="h-5 w-5" />}>
+      <CollapsibleSection title="Intelligence Modules" icon={<SparklesIcon className="h-5 w-5" />} storageKey="dash-ai-modules">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {getAIModules(isPro).map((mod) => (
             <Card
@@ -440,19 +421,10 @@ export default function DashboardPage() {
             </Card>
           ))}
         </div>
-      </DashboardSection>
+      </CollapsibleSection>
 
-      {/* Free Edition Usage Tracker */}
-      {!isPro && (
-        <DashboardSection title="Today's Usage" icon={<ChartBarIcon className="h-5 w-5" />}>
-          <div className="max-w-sm">
-            <FreeUsageWidget />
-          </div>
-        </DashboardSection>
-      )}
-
-      {/* Live Charts */}
-      <DashboardSection title="Live System Monitor" icon={<ChartBarIcon className="h-5 w-5" />}>
+      {/* Live System Monitor */}
+      <CollapsibleSection title="System Monitor" icon={<ChartBarIcon className="h-5 w-5" />} storageKey="dash-live-monitor">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
           <ChartCard title="CPU Usage" icon={<CpuChipIcon className="h-4 w-4" />}>
             <div className="flex items-center justify-between mb-2">
@@ -477,57 +449,10 @@ export default function DashboardPage() {
             <Sparkline data={memHistory.length > 1 ? memHistory : [0, 0]} width={280} height={60} stroke="var(--avs-success)" fill="var(--avs-success)" />
           </ChartCard>
         </div>
-      </DashboardSection>
-
-      {/* Last Scan Results */}
-      <DashboardSection title="Last Scan Results" icon={<CheckCircleIcon className="h-5 w-5" />}>
-        <LastScanResults
-          lastScan={state.healthScanHistory[0] ?? null}
-          lastOptimizeResult={state.healthScanResult}
-        />
-      </DashboardSection>
-
-      {/* Recent Activity & Security Events */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-slide-up">
-        <TimelineCard
-          title="Recent Activity"
-          icon={<ClockIcon className="h-4 w-4" />}
-          items={(state.healthScanHistory || []).slice(0, 5).map((h) => ({
-            title: h.result === 'success' ? 'Smart Optimize Completed' : 'Optimization Partial',
-            description: `Health: ${h.healthBefore} → ${h.healthAfter}. Recovered ${Math.round(h.recoveredSpace / 1_000_000)} MB.`,
-            timestamp: new Date(h.date).toLocaleDateString(),
-            severity: h.result === 'success' ? 'success' : 'warning',
-          }))}
-          data-testid="recent-activity"
-        />
-        <TimelineCard
-          title="Security Events"
-          icon={<ShieldExclamationIcon className="h-4 w-4" />}
-          items={[
-            {
-              title: securityLabel,
-              description: state.metrics?.security?.defender?.enabled
-                ? 'Windows Defender is active and protecting your system.'
-                : 'Windows Defender is not active. Enable real-time protection.',
-              timestamp: 'Now',
-              severity: securityTone,
-            },
-            ...(state.metrics?.security?.updates?.pendingUpdates
-              ? [{
-                  title: `${state.metrics.security.updates.pendingUpdates} Pending Updates`,
-                  description: 'Windows updates are available. Install them to keep your system secure.',
-                  timestamp: 'Today',
-                  severity: 'warning' as const,
-                }]
-              : []),
-          ]}
-          data-testid="security-events"
-        />
-      </div>
+      </CollapsibleSection>
 
       {/* Hardware Monitoring */}
-      <DashboardSection title="Hardware Monitoring" icon={<CpuChipIcon className="h-5 w-5" />}>
-
+      <CollapsibleSection title="Hardware Monitoring" icon={<CpuChipIcon className="h-5 w-5" />} storageKey="dash-hardware">
         {state.hardwareSensorsError && (
           <ModuleErrorBanner
             message={`Failed to load hardware sensors: ${state.hardwareSensorsError}`}
@@ -600,29 +525,56 @@ export default function DashboardPage() {
             data-testid="hardware-sensors-empty"
           />
         )}
-      </DashboardSection>
+      </CollapsibleSection>
 
-      {/* System Status */}
-      <DashboardSection title="System Status" icon={<CheckCircleIcon className="h-5 w-5" />}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: 'CPU Temp', value: state.liveMetrics?.cpu.temperature != null ? `${Math.round(state.liveMetrics.cpu.temperature)}°C` : 'Unsupported', icon: CpuChipIcon },
-            { label: 'Memory', value: state.liveMetrics ? `${Math.round(state.liveMetrics.memory.usage)}%` : '—', icon: CircleStackIcon },
-            { label: 'Disk', value: state.metrics?.storage?.[0] ? `${Math.round(state.metrics.storage[0].usage)}%` : '—', icon: CircleStackIcon },
-            { label: 'Network', value: state.liveMetrics?.network ? `${(state.liveMetrics.network.downloadSpeed / 1_000_000).toFixed(1)} MB/s` : '—', icon: ArrowRightIcon },
-          ].map((stat) => (
-            <Card key={stat.label} variant="gradient" className="flex items-center gap-3">
-              <div className="p-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)]">
-                <stat.icon className="h-5 w-5 text-text-muted" />
-              </div>
-              <div>
-                <div className="text-caption text-text-muted">{stat.label}</div>
-                <div className="text-statistic-sm text-text-primary tabular-nums">{stat.value}</div>
-              </div>
-            </Card>
-          ))}
+      {/* History & Events */}
+      <CollapsibleSection title="History & Events" icon={<ClockIcon className="h-5 w-5" />} storageKey="dash-history">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <TimelineCard
+            title="Recent Activity"
+            icon={<ClockIcon className="h-4 w-4" />}
+            items={(state.healthScanHistory || []).slice(0, 5).map((h) => ({
+              title: h.result === 'success' ? 'Smart Optimize Completed' : 'Optimization Partial',
+              description: `Health: ${h.healthBefore} → ${h.healthAfter}. Recovered ${Math.round(h.recoveredSpace / 1_000_000)} MB.`,
+              timestamp: new Date(h.date).toLocaleDateString(),
+              severity: h.result === 'success' ? 'success' : 'warning',
+            }))}
+            data-testid="recent-activity"
+          />
+          <TimelineCard
+            title="Security Events"
+            icon={<ShieldExclamationIcon className="h-4 w-4" />}
+            items={[
+              {
+                title: securityLabel,
+                description: state.metrics?.security?.defender?.enabled
+                  ? 'Windows Defender is active.'
+                  : 'Windows Defender is not active.',
+                timestamp: 'Now',
+                severity: securityTone,
+              },
+              ...(state.metrics?.security?.updates?.pendingUpdates
+                ? [{
+                    title: `${state.metrics.security.updates.pendingUpdates} Pending Updates`,
+                    description: 'Install updates to stay secure.',
+                    timestamp: 'Today',
+                    severity: 'warning' as const,
+                  }]
+                : []),
+            ]}
+            data-testid="security-events"
+          />
         </div>
-      </DashboardSection>
+      </CollapsibleSection>
+
+      {/* Free Edition Usage */}
+      {!isPro && (
+        <CollapsibleSection title="Usage" icon={<ChartBarIcon className="h-5 w-5" />} storageKey="dash-usage">
+          <div className="max-w-sm">
+            <FreeUsageWidget />
+          </div>
+        </CollapsibleSection>
+      )}
 
       {/* Health Scan Modal (scanning/optimizing phases) */}
       {state.healthScanStep !== 'idle' && state.healthScanStep !== 'report' && state.healthScanStep !== 'complete' && (

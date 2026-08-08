@@ -189,6 +189,11 @@ export interface DashboardState {
   scanLiveStats: ScanLiveStats;
   scanStartTime: number | null;
   scanActivityLog: ScanActivityEntry[];
+  scanCurrentOperation: string | null;
+  scanCurrentPath: string | null;
+  scanItemsProcessed: number;
+  scanItemsRemaining: number;
+  scanBytesRecovered: number;
 
   // Verification / developer logs
   verificationLogs: VerificationLog[];
@@ -304,6 +309,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       },
       scanStartTime: null,
       scanActivityLog: [],
+      scanCurrentOperation: null,
+      scanCurrentPath: null,
+      scanItemsProcessed: 0,
+      scanItemsRemaining: 0,
+      scanBytesRecovered: 0,
       verificationLogs: [],
       developerMode: false,
 
@@ -722,6 +732,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       },
       scanStartTime: Date.now(),
       scanActivityLog: [],
+      scanCurrentOperation: null,
+      scanCurrentPath: null,
+      scanItemsProcessed: 0,
+      scanItemsRemaining: 0,
+      scanBytesRecovered: 0,
     });
 
     // Brief preparing phase for UX feedback, then start the unified orchestrator pipeline
@@ -762,6 +777,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       },
       scanStartTime: null,
       scanActivityLog: [],
+      scanCurrentOperation: null,
+      scanCurrentPath: null,
+      scanItemsProcessed: 0,
+      scanItemsRemaining: 0,
+      scanBytesRecovered: 0,
     });
   }
 
@@ -792,6 +812,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       },
       scanStartTime: null,
       scanActivityLog: [],
+      scanCurrentOperation: null,
+      scanCurrentPath: null,
+      scanItemsProcessed: 0,
+      scanItemsRemaining: 0,
+      scanBytesRecovered: 0,
     });
     // Refresh metrics so scores reflect any partial optimizations that were applied
     invalidateMetricsCache();
@@ -1363,6 +1388,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       },
       scanStartTime: startedAt,
       scanActivityLog: [],
+      scanCurrentOperation: null,
+      scanCurrentPath: null,
+      scanItemsProcessed: 0,
+      scanItemsRemaining: 0,
+      scanBytesRecovered: 0,
     });
 
     let sessionId: string | null = null;
@@ -1444,9 +1474,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         const counters = status.counters || {};
         const liveStats: ScanLiveStats = {
           filesScanned: counters.itemsScanned ?? 0,
-          registryEntries: 0,
+          registryEntries: counters.registryFixed ?? 0,
           startupItems: 0,
-          privacyItems: 0,
+          privacyItems: counters.itemsCleaned ?? 0,
           estimatedStorageRecovery: counters.storageRecovered ?? 0,
           estimatedMemoryRecovery: 0,
           estimatedStartupImprovement: 0,
@@ -1465,6 +1495,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           scanOverallProgress: status.progress ?? 0,
           scanLiveStats: liveStats,
           scanActivityLog: activityLog.slice(-30) as ScanActivityEntry[],
+          scanCurrentOperation: status.currentOperation ?? null,
+          scanCurrentPath: status.currentPath ?? null,
+          scanItemsProcessed: status.itemsProcessed ?? 0,
+          scanItemsRemaining: status.itemsRemaining ?? 0,
+          scanBytesRecovered: status.bytesRecovered ?? 0,
           healthScanModules: updatedModules,
           healthScanCurrentFile: currentFile,
           healthScanSubProgress: 0,
@@ -1472,7 +1507,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           healthScanExecution: (isOptimizing || isVerifying) ? {
             currentModule: status.currentModule ?? (isVerifying ? 'Verifying' : 'Optimizing'),
             progress: status.progress ?? 0,
-            itemsProcessed: counters.itemsOptimized ?? 0,
+            itemsProcessed: status.itemsProcessed ?? counters.itemsOptimized ?? 0,
             spaceRecovered: counters.storageRecovered ?? 0,
             elapsedMs: counters.elapsedMs ?? 0,
             liveMessages: newActivities.map((a) => a.detail),
@@ -2188,6 +2223,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       },
       scanStartTime: null,
       scanActivityLog: [],
+      scanCurrentOperation: null,
+      scanCurrentPath: null,
+      scanItemsProcessed: 0,
+      scanItemsRemaining: 0,
+      scanBytesRecovered: 0,
     });
     // Refresh metrics so scores reflect any optimizations that were applied
     invalidateMetricsCache();

@@ -547,6 +547,8 @@ export interface ScanActivityEntry {
   module: string;
   action: string;
   detail: string;
+  operation?: string;
+  path?: string;
 }
 
 export interface OptimizationDetailItem {

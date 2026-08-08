@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Card, Button, Badge } from '@avs/ui';
+import { Card, Button, Badge, CollapsibleSection } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleLoadingState, ModuleEmptyState } from '../../components/ModuleStates';
@@ -199,43 +199,37 @@ export function SecurityCenterPage() {
   }
 
   return (
-    <div className="px-6 py-6">
+    <div className="px-6 py-6 space-y-5">
       <ProStatusBanner compact />
-      <PageHeader
-        title="AI Security Center"
-        description="Unified AI-powered security protection, investigation, and remediation."
-        actions={
-          <div className="flex items-center gap-3">
-            <ProStatusPill />
-            <div className="flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-1.5">
-              <div className={`h-2 w-2 rounded-full ${state.securityScore >= 80 ? 'bg-[var(--avs-success)]' : state.securityScore >= 60 ? 'bg-[var(--avs-warning)]' : 'bg-[var(--avs-danger)]'}`} />
-              <span className="text-small font-semibold text-[var(--avs-text-primary)]">{state.securityScore}</span>
-              <span className="text-caption text-[var(--avs-text-muted)]">Security Score</span>
-            </div>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => vm.refresh()}
-              leftIcon={<ArrowPathIcon className="h-4 w-4" />}
-            >
-              Refresh
-            </Button>
-          </div>
-        }
-      />
 
-      {/* AI Smart Security — Deep System Scan */}
-      <Card variant="glass" className="mb-6">
-        <div className="flex flex-col items-center gap-4 py-6 px-4 text-center">
-          <div className="rounded-full bg-brand-primary/10 p-4">
-            <ShieldCheckIcon className="h-10 w-10 text-brand-primary" aria-hidden />
+      {/* ── ABOVE THE FOLD ─────────────────────────────────────────── */}
+      {/* Security Score + Scan Now */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-3 ${
+            state.securityScore >= 80 ? 'bg-semantic-success/10' : state.securityScore >= 60 ? 'bg-semantic-warning/10' : 'bg-semantic-danger/10'
+          }`}>
+            <ShieldCheckIcon className={`h-8 w-8 ${
+              state.securityScore >= 80 ? 'text-semantic-success' : state.securityScore >= 60 ? 'text-semantic-warning' : 'text-semantic-danger'
+            }`} />
           </div>
           <div>
-            <h2 className="text-section-title text-text-primary">AI Smart Security</h2>
-            <p className="mt-2 max-w-2xl text-small text-text-secondary leading-relaxed">
-              Protect your PC from <span className="font-medium text-text-primary">viruses, ransomware, spyware, malware, PUPs, trojans, adware, keyloggers, rootkits, backdoors, crypto miners, browser hijackers</span>, and more. AI Smart Security runs a deep system scan to detect, investigate, and safely remove threats with evidence-based remediation.
-            </p>
+            <h1 className="text-page-title text-text-primary">AI Security Center</h1>
+            <div className="flex items-center gap-3 mt-1">
+              <span className="text-small font-semibold text-text-primary tabular-nums">{state.securityScore}<span className="text-caption text-text-muted">/100</span></span>
+              <span className={`text-caption font-medium ${
+                state.securityScore >= 80 ? 'text-semantic-success' : state.securityScore >= 60 ? 'text-semantic-warning' : 'text-semantic-danger'
+              }`}>
+                {state.securityScore >= 80 ? 'Protected' : state.securityScore >= 60 ? 'At Risk' : 'Unprotected'}
+              </span>
+              {state.activeThreats.length > 0 && (
+                <span className="text-caption text-semantic-danger">{state.activeThreats.length} active threats</span>
+              )}
+            </div>
           </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <ProStatusPill />
           <Button
             size="lg"
             onClick={() => { vm.setScanMode('full'); vm.startScan('full'); vm.setActiveTab('scan'); }}
@@ -247,10 +241,55 @@ export function SecurityCenterPage() {
             {state.isScanning ? 'Scanning…' : 'Security Scan'}
           </Button>
         </div>
-      </Card>
+      </div>
+
+      {/* Primary: Protection Status + Last Scan (2 compact cards) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card variant="glass" className="p-4" data-testid="security-protection-status">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`h-2 w-2 rounded-full ${state.snapshot?.protectionStatus.realTimeProtection ? 'bg-semantic-success' : 'bg-semantic-warning'}`} />
+              <div>
+                <div className="text-caption text-text-muted">Real-Time Protection</div>
+                <div className="text-small font-medium text-text-primary">
+                  {state.snapshot?.protectionStatus.realTimeProtection ? 'Active' : 'Standby'}
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-caption text-text-muted">Definitions</div>
+              <div className="text-small font-medium text-text-primary">
+                {state.snapshot?.protectionStatus.definitionsActive ? 'Up to Date' : 'Unknown'}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card variant="glass" className="p-4" data-testid="security-last-scan">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ClockIcon className="h-5 w-5 text-text-muted shrink-0" />
+              <div>
+                <div className="text-caption text-text-muted">Last Scan</div>
+                <div className="text-small font-medium text-text-primary">
+                  {state.snapshot?.lastScan ? formatTimeAgo(state.snapshot.lastScan) : 'Never'}
+                </div>
+              </div>
+            </div>
+            {state.scanHistory[0] && (
+              <div className="text-right">
+                <div className="text-caption text-text-muted">Threats</div>
+                <div className={`text-small font-bold ${state.scanHistory[0].threatsDetected > 0 ? 'text-semantic-danger' : 'text-semantic-success'}`}>
+                  {state.scanHistory[0].threatsDetected}
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
 
       {/* Tab Bar */}
-      <div className="mb-6 flex gap-1 overflow-x-auto rounded-[var(--avs-radius-lg)] bg-[var(--avs-surface-muted)] p-1">
+      <div className="mb-2 flex gap-1 overflow-x-auto rounded-[var(--avs-radius-lg)] bg-[var(--avs-surface-muted)] p-1">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = state.activeTab === tab.id;
@@ -300,97 +339,52 @@ function OverviewTab({ vm }: { vm: SecurityCenterViewModel }) {
   const s = vm.state;
   const snapshot = s.snapshot;
 
-  const scoreCards = [
-    { label: 'Security Score', value: s.securityScore, icon: ShieldCheckIcon, tone: s.securityScore >= 80 ? 'success' : s.securityScore >= 60 ? 'warning' : 'danger' },
-    { label: 'Active Threats', value: s.activeThreats.length, icon: ExclamationTriangleIcon, tone: s.activeThreats.length === 0 ? 'success' : 'danger' },
-    { label: 'Providers Active', value: `${s.snapshot?.protectionStatus.providersActive ?? 0}/${s.snapshot?.protectionStatus.providersTotal ?? 0}`, icon: CpuChipIcon, tone: 'info' },
-    { label: 'Investigations', value: s.activeInvestigations.length, icon: BeakerIcon, tone: s.activeInvestigations.length === 0 ? 'success' : 'warning' },
-  ] as const;
-
   return (
-    <div className="space-y-6">
-      {/* Score Cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {scoreCards.map((card) => {
-          const Icon = card.icon;
-          const toneColor = card.tone === 'success' ? 'var(--avs-success)' : card.tone === 'warning' ? 'var(--avs-warning)' : card.tone === 'danger' ? 'var(--avs-danger)' : 'var(--avs-info)';
-          return (
-            <Card key={card.label} variant="glass" className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-caption font-medium text-[var(--avs-text-muted)]">{card.label}</p>
-                  <p className="mt-1 text-statistic text-[var(--avs-text-primary)]">{card.value}</p>
+    <div className="space-y-4">
+      {/* Protection Details */}
+      <CollapsibleSection title="Protection Details" icon={<ShieldCheckIcon className="h-5 w-5" />} storageKey="sec-protection-details">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card variant="glass">
+            <div className="space-y-3">
+              <StatusRow label="Real-Time Protection" value={snapshot?.protectionStatus.realTimeProtection ? 'Active' : 'Standby'} ok={snapshot?.protectionStatus.realTimeProtection ?? false} />
+              <StatusRow label="Definitions" value={snapshot?.protectionStatus.definitionsActive ? 'Up to Date' : 'Unknown'} ok={snapshot?.protectionStatus.definitionsActive ?? false} />
+              <StatusRow label="Overall Protected" value={snapshot?.protectionStatus.overallProtected ? 'Yes' : 'No'} ok={snapshot?.protectionStatus.overallProtected ?? false} />
+              <StatusRow label="Definitions Version" value={snapshot?.definitionsVersion ?? '1.0.0'} ok={true} />
+              <StatusRow label="Last Scan" value={snapshot?.lastScan ? formatTimeAgo(snapshot.lastScan) : 'Never'} ok={!!snapshot?.lastScan} />
+              <ProOnlySection>
+                <div className="pt-3 border-t border-[var(--avs-border)] space-y-2">
+                  <ProFeatureIndicator icon={ShieldCheckIcon} label="Real-Time Protection Active" />
+                  <ProFeatureIndicator icon={ClockIcon} label="Scheduled Scans Enabled" />
+                  <ProFeatureIndicator icon={ArrowPathIcon} label="Automatic Quarantine" />
+                  <ProFeatureIndicator icon={WrenchScrewdriverIcon} label="Automatic Remediation" />
                 </div>
-                <div className="rounded-[var(--avs-radius-md)] p-2.5" style={{ background: `${toneColor}15` }}>
-                  <Icon className="h-6 w-6" style={{ color: toneColor }} />
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+              </ProOnlySection>
+            </div>
+          </Card>
 
-      {/* Threat Protection Description */}
-      <Card variant="glass">
-        <div className="flex items-start gap-4">
-          <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-brand-primary)]/10 p-3 shrink-0">
-            <ShieldCheckIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
-          </div>
-          <div>
-            <h3 className="text-card-title text-[var(--avs-text-primary)]">What AVS Shield Protects Against</h3>
-            <p className="mt-1 text-small text-[var(--avs-text-secondary)] leading-relaxed">
-              AVS Shield scans your system for a wide range of threats including{' '}
-              <span className="font-medium text-[var(--avs-text-primary)]">trojans, worms, PUPs (Potentially Unwanted Programs), malware, spyware, adware, ransomware, keyloggers, rootkits, backdoors, crypto miners, browser hijackers, and suspicious startup entries</span>.
-              Detected threats are automatically quarantined and can be safely removed to keep your PC clean and secure.
-            </p>
-          </div>
+          <Card variant="glass">
+            <div className="space-y-2">
+              {s.capabilities.map((cap) => (
+                <div key={cap.name} className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
+                  <div>
+                    <p className="text-small font-medium text-[var(--avs-text-primary)]">{cap.description}</p>
+                    <p className="text-caption text-[var(--avs-text-muted)]">{cap.name}</p>
+                  </div>
+                  <Badge tone={cap.enabled ? 'success' : 'neutral'}>
+                    {cap.enabled ? 'Enabled' : 'Disabled'}
+                  </Badge>
+                </div>
+              ))}
+              {s.capabilities.length === 0 && (
+                <p className="py-4 text-center text-small text-[var(--avs-text-muted)]">No capabilities data</p>
+              )}
+            </div>
+          </Card>
         </div>
-      </Card>
+      </CollapsibleSection>
 
-      {/* Protection Status & Capabilities */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="Protection Status" variant="glass">
-          <div className="space-y-3">
-            <StatusRow label="Real-Time Protection" value={snapshot?.protectionStatus.realTimeProtection ? 'Active' : 'Standby'} ok={snapshot?.protectionStatus.realTimeProtection ?? false} />
-            <StatusRow label="Definitions" value={snapshot?.protectionStatus.definitionsActive ? 'Up to Date' : 'Unknown'} ok={snapshot?.protectionStatus.definitionsActive ?? false} />
-            <StatusRow label="Overall Protected" value={snapshot?.protectionStatus.overallProtected ? 'Yes' : 'No'} ok={snapshot?.protectionStatus.overallProtected ?? false} />
-            <StatusRow label="Definitions Version" value={snapshot?.definitionsVersion ?? '1.0.0'} ok={true} />
-            <StatusRow label="Last Scan" value={snapshot?.lastScan ? formatTimeAgo(snapshot.lastScan) : 'Never'} ok={!!snapshot?.lastScan} />
-
-            {/* Pro-only security features */}
-            <ProOnlySection>
-              <div className="pt-3 border-t border-[var(--avs-border)] space-y-2">
-                <ProFeatureIndicator icon={ShieldCheckIcon} label="Real-Time Protection Active" />
-                <ProFeatureIndicator icon={ClockIcon} label="Scheduled Scans Enabled" />
-                <ProFeatureIndicator icon={ArrowPathIcon} label="Automatic Quarantine" />
-                <ProFeatureIndicator icon={WrenchScrewdriverIcon} label="Automatic Remediation" />
-              </div>
-            </ProOnlySection>
-          </div>
-        </Card>
-
-        <Card title="Security Capabilities" variant="glass">
-          <div className="space-y-2">
-            {s.capabilities.map((cap) => (
-              <div key={cap.name} className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
-                <div>
-                  <p className="text-small font-medium text-[var(--avs-text-primary)]">{cap.description}</p>
-                  <p className="text-caption text-[var(--avs-text-muted)]">{cap.name}</p>
-                </div>
-                <Badge tone={cap.enabled ? 'success' : 'neutral'}>
-                  {cap.enabled ? 'Enabled' : 'Disabled'}
-                </Badge>
-              </div>
-            ))}
-            {s.capabilities.length === 0 && (
-              <p className="py-4 text-center text-small text-[var(--avs-text-muted)]">No capabilities data</p>
-            )}
-          </div>
-        </Card>
-      </div>
-
-      {/* Threat Categories Grid */}
-      <Card title="Threat Categories" variant="glass">
+      {/* Threat Categories */}
+      <CollapsibleSection title="Threat Categories" icon={<ExclamationTriangleIcon className="h-5 w-5" />} storageKey="sec-threat-categories">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {THREAT_CATEGORIES.map((cat) => {
             const count = s.threats.filter(t => t.category === cat.key).length;
@@ -410,12 +404,12 @@ function OverviewTab({ vm }: { vm: SecurityCenterViewModel }) {
             );
           })}
         </div>
-      </Card>
+      </CollapsibleSection>
 
-      {/* Recent Scans */}
-      <Card title="Recent Scans" variant="glass">
+      {/* Scan History */}
+      <CollapsibleSection title="Scan History" icon={<ClockIcon className="h-5 w-5" />} storageKey="sec-scan-history">
         {s.scanHistory.length === 0 ? (
-          <ModuleEmptyState icon={ClockIcon} title="No scans yet" message="Run your first scan to see security history." />
+          <ModuleEmptyState icon={ClockIcon} title="No scans yet" message="Run your first scan to see history." />
         ) : (
           <div className="space-y-2">
             {s.scanHistory.slice(-5).reverse().map((entry) => (
@@ -438,7 +432,7 @@ function OverviewTab({ vm }: { vm: SecurityCenterViewModel }) {
             ))}
           </div>
         )}
-      </Card>
+      </CollapsibleSection>
     </div>
   );
 }

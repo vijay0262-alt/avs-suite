@@ -35,6 +35,7 @@ import type {
   UnifiedFileDetailGroup,
   IssuePriority,
 } from '../../unified-results/unifiedResultsTypes';
+import type { CurrentOperationCardProps } from '../../unified-scan/components/CurrentOperationCard';
 import type { DashboardViewModel } from '../DashboardViewModel';
 import type {
   HealthScanReport,
@@ -90,6 +91,25 @@ export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptim
     };
   }, [s.scanPhase, s.scanOverallProgress, s.healthScanSubProgress, s.healthScanCurrentFile]);
 
+  // ── Map current operation for CurrentOperationCard ───────────────
+  const currentOperation = useMemo<CurrentOperationCardProps | null>(() => {
+    if (s.healthScanStep === 'complete' || s.healthScanStep === 'idle' || s.healthScanStep === 'report') return null;
+    const moduleName = s.healthScanModules.find((m) => m.moduleId === s.scanPhase)?.moduleName
+      ?? s.healthScanExecution?.currentModule
+      ?? 'Preparing...';
+    return {
+      currentModule: moduleName,
+      currentOperation: s.scanCurrentOperation,
+      currentPath: s.scanCurrentPath,
+      itemsProcessed: s.scanItemsProcessed,
+      itemsRemaining: s.scanItemsRemaining,
+      bytesRecovered: s.scanBytesRecovered,
+      elapsedMs: s.scanStartTime ? Date.now() - s.scanStartTime : 0,
+      overallProgress: s.scanOverallProgress,
+      isOptimizing: s.healthScanStep === 'optimizing' || s.healthScanStep === 'verifying',
+    };
+  }, [s.healthScanStep, s.scanCurrentOperation, s.scanCurrentPath, s.scanItemsProcessed, s.scanItemsRemaining, s.scanBytesRecovered, s.scanStartTime, s.scanOverallProgress, s.healthScanModules, s.scanPhase, s.healthScanExecution]);
+
   // ── Determine unified step ───────────────────────────────────────
   const step = useMemo<UnifiedScanStep>(() => {
     switch (s.healthScanStep) {
@@ -98,8 +118,10 @@ export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptim
         return s.healthScanStep;
       case 'optimizing':
         return 'scanning'; // reuse scanning UI for fix progress
+      case 'verifying':
+        return 'scanning'; // reuse scanning UI for verify phase
       case 'updating_dashboard':
-        return 'complete'; // brief transition
+        return 'scanning'; // brief transition — keep scan UI visible
       case 'complete':
         return 'complete';
       case 'report':
@@ -129,16 +151,21 @@ export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptim
 
   // ── Determine what to render ─────────────────────────────────────
 
-  // Scanning phase
+  // Scanning phase (includes scanning, optimizing, verifying, updating_dashboard)
   if (step === 'preparing' || step === 'scanning') {
     const isFixing = s.healthScanStep === 'optimizing';
-    const fixConfig = isFixing ? buildFixConfig(s.healthScanExecution) : OPTIMIZE_SCAN_CONFIG;
+    const isVerifying = s.healthScanStep === 'verifying' || s.healthScanStep === 'updating_dashboard';
+    const fixConfig = isFixing ? buildFixConfig(s.healthScanExecution) : isVerifying ? buildVerifyConfig() : OPTIMIZE_SCAN_CONFIG;
     const fixLiveStatus = isFixing
       ? buildFixLiveStatus(s.healthScanExecution)
-      : liveStatus;
+      : isVerifying
+        ? buildVerifyLiveStatus(s.scanOverallProgress)
+        : liveStatus;
     const fixCounters = isFixing
       ? buildFixCounters(s.healthScanExecution)
-      : counters;
+      : isVerifying
+        ? buildVerifyCounters(s.scanLiveStats, s.scanBytesRecovered)
+        : counters;
     const fixTreeNodes = isFixing
       ? mapModulesToFixTreeNodes(s.healthScanModules)
       : treeNodes;
@@ -146,7 +173,7 @@ export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptim
     return (
       <UnifiedScanView
         config={fixConfig}
-        step={isFixing ? 'scanning' : step}
+        step={isFixing || isVerifying ? 'scanning' : step}
         liveStatus={fixLiveStatus}
         counters={fixCounters}
         treeNodes={fixTreeNodes}
@@ -155,12 +182,13 @@ export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptim
         error={s.healthScanError}
         report={null}
         actions={[]}
-        isOptimizing={isFixing}
+        isOptimizing={isFixing || isVerifying}
         activityLog={s.scanActivityLog}
+        currentOperation={currentOperation}
         onPause={() => {}}
         onResume={() => {}}
         onCancel={() => {
-          if (isFixing) {
+          if (isFixing || isVerifying) {
             vm.cancelHealthScanOptimizations();
           } else {
             vm.cancelHealthScan();
@@ -201,25 +229,6 @@ export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptim
         headerAction={optimizeAction}
         extraActions={[rescanAction]}
       />
-    );
-  }
-
-  // Updating dashboard — brief verification
-  if (s.healthScanStep === 'updating_dashboard') {
-    return (
-      <Card variant="glass" data-testid="unified-optimize-verifying">
-        <div className="flex flex-col items-center gap-4 py-12 text-center">
-          <div className="relative">
-            <div className="rounded-full bg-brand-primary/10 p-4">
-              <ArrowPathIcon className="h-8 w-8 text-brand-primary animate-spin" />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-section-title font-semibold text-text-primary">Verifying Optimization</h3>
-            <p className="mt-1 text-small text-text-secondary">Confirming all changes were applied successfully...</p>
-          </div>
-        </div>
-      </Card>
     );
   }
 
@@ -301,6 +310,40 @@ function buildFixConfig(execution: OptimizationExecutionProgress | null) {
         activities: execution?.liveMessages ?? ['Optimizing...'],
       },
     ],
+  };
+}
+
+function buildVerifyConfig() {
+  return {
+    ...OPTIMIZE_SCAN_CONFIG,
+    moduleName: 'Verifying',
+    phases: [
+      {
+        id: 'verifying',
+        label: 'Verifying Results',
+        description: 'Confirming all optimizations were applied successfully',
+        startPercent: 0,
+        endPercent: 100,
+        activities: ['Verifying optimizations...', 'Checking results...', 'Updating scores...'],
+      },
+    ],
+  };
+}
+
+function buildVerifyLiveStatus(progress: number): UnifiedScanLiveStatus {
+  return {
+    currentPhase: 'Verifying Results',
+    currentActivity: 'Verifying optimizations...',
+    overallProgress: progress,
+  };
+}
+
+function buildVerifyCounters(stats: ScanLiveStats, bytesRecovered: number): Record<string, number> {
+  return {
+    filesScanned: stats.filesScanned,
+    storageRecovery: stats.estimatedStorageRecovery,
+    itemsProcessed: stats.recommendationsFound,
+    bytesRecovered,
   };
 }
 

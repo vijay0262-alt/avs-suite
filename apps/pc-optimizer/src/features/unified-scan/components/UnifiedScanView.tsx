@@ -41,7 +41,9 @@ import { ScanAnimation } from './ScanAnimation';
 import { ScanFooter } from './ScanFooter';
 import { ScanSummary } from './ScanSummary';
 import { ActivityStream } from './ActivityStream';
+import { CurrentOperationCard } from './CurrentOperationCard';
 import type { ActivityEntry } from './ActivityStream';
+import type { CurrentOperationCardProps } from './CurrentOperationCard';
 import { useElapsedTimer } from '../useAnimatedCounter';
 import type {
   UnifiedScanStep,
@@ -73,6 +75,8 @@ export interface UnifiedScanViewProps {
   children?: ReactNode;
   /** Real-time activity log entries from backend */
   activityLog?: ActivityEntry[];
+  /** Current operation details from backend */
+  currentOperation?: CurrentOperationCardProps | null;
 }
 
 export function UnifiedScanView({
@@ -93,6 +97,7 @@ export function UnifiedScanView({
   isOptimizing = false,
   children,
   activityLog = [],
+  currentOperation = null,
 }: UnifiedScanViewProps) {
   const elapsed = useElapsedTimer(startTime);
   const currentPhase = config.phases[currentPhaseIndex];
@@ -159,6 +164,11 @@ export function UnifiedScanView({
             activities={currentPhase.activities}
             isScanning={isScanning && step !== 'paused'}
           />
+        )}
+
+        {/* Current operation card — large detailed status from backend */}
+        {isScanning && currentOperation && (
+          <CurrentOperationCard {...currentOperation} />
         )}
 
         {/* Live status details */}

@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DashboardSection, LoadingState, EmptyState, Button } from '@avs/ui';
+import { DashboardSection, LoadingState, EmptyState, Button, Card, CollapsibleSection } from '@avs/ui';
 import {
   ShieldCheckIcon,
   ClockIcon,
-  EyeIcon,
   HeartIcon,
-  ArrowTrendingUpIcon,
   CalendarDaysIcon,
-  BoltIcon,
   InformationCircleIcon,
   BellAlertIcon,
   ArrowPathIcon,
@@ -32,7 +29,6 @@ import { QuickActions } from './QuickActions';
 import { ProtectionStatus } from './ProtectionStatus';
 import { AlertsPanel } from './AlertsPanel';
 import { ProcessOptimizer } from './ProcessOptimizer';
-import { LastScanResults } from './LastScanResults';
 
 export function ProtectionCenterPage() {
   const navigate = useNavigate();
@@ -119,11 +115,12 @@ export function ProtectionCenterPage() {
 
   return (
     <div
-      className="space-y-7"
+      className="space-y-5"
       role="main"
       aria-label="AI Protection Center"
     >
-      {/* Top Status Banner with Scan Now button */}
+      {/* ── ABOVE THE FOLD ─────────────────────────────────────────── */}
+      {/* Protection Status + Scan Now */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <ProtectionBanner
@@ -144,7 +141,7 @@ export function ProtectionCenterPage() {
         </Button>
       </div>
 
-      {/* Alerts (only show if there are any) */}
+      {/* Active Alerts (only show if there are any) */}
       {state.alerts.length > 0 && (
         <DashboardSection
           title="Active Alerts"
@@ -167,115 +164,94 @@ export function ProtectionCenterPage() {
         />
       )}
 
+      {/* Primary: Live Protection + Last Scan (2 compact cards) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card variant="glass" className="p-4" data-testid="protection-live-status">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ShieldCheckIcon className="h-5 w-5 text-text-muted shrink-0" />
+              <div>
+                <div className="text-caption text-text-muted">Live Protection</div>
+                <div className="text-small font-medium text-text-primary">
+                  {state.cards.filter(c => c.status === 'active').length} active monitors
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-caption text-text-muted">Coverage</div>
+              <div className="text-small font-bold text-text-primary">
+                {state.coverage.filter(c => c.covered).length}/{state.coverage.length}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card variant="glass" className="p-4" data-testid="protection-last-scan">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CheckCircleIcon className="h-5 w-5 text-text-muted shrink-0" />
+              <div>
+                <div className="text-caption text-text-muted">Last Scan</div>
+                <div className="text-small font-medium text-text-primary">
+                  {dashState.healthScanHistory[0] ? `${dashState.healthScanHistory[0].result === 'success' ? 'Optimized' : 'Partial'} · ${new Date(dashState.healthScanHistory[0].date).toLocaleDateString()}` : 'No scans yet'}
+                </div>
+              </div>
+            </div>
+            {dashState.healthScanHistory[0] && (
+              <div className="text-right">
+                <div className="text-caption text-text-muted">Score</div>
+                <div className="text-small font-bold text-text-primary tabular-nums">{dashState.healthScanHistory[0].healthAfter}</div>
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* ── COLLAPSIBLE SECONDARY CONTENT ──────────────────────────── */}
+
       {/* Live Protection Cards */}
-      <DashboardSection
-        title="Live Protection"
-        icon={<ShieldCheckIcon className="h-5 w-5" />}
-      >
+      <CollapsibleSection title="Protection Monitors" icon={<ShieldCheckIcon className="h-5 w-5" />} storageKey="pc-monitors">
         <ProtectionCards cards={state.cards} onNavigate={handleNavigate} />
-      </DashboardSection>
+      </CollapsibleSection>
 
-      {/* Main grid: Activity Timeline + System Health */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-7">
-          {/* Live Activity Timeline */}
-          <DashboardSection
-            title="Live Activity"
-            icon={<ClockIcon className="h-5 w-5" />}
-            actions={
-              <span className="flex items-center gap-1.5 text-caption text-[var(--avs-text-muted)]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--avs-success)] animate-pulse" />
-                Live
-              </span>
-            }
-          >
-            <LiveActivityTimeline activities={state.activities} />
-          </DashboardSection>
-
-          {/* Background Monitors */}
-          <DashboardSection
-            title="Background Monitors"
-            icon={<EyeIcon className="h-5 w-5" />}
-          >
-            <BackgroundMonitors monitors={state.monitors} />
-          </DashboardSection>
-
-          {/* What Changed */}
-          <DashboardSection
-            title="What Changed"
-            icon={<ArrowTrendingUpIcon className="h-5 w-5" />}
-          >
-            <WhatChanged changes={state.changes} />
-          </DashboardSection>
+      {/* Live Activity + Background Monitors + What Changed */}
+      <CollapsibleSection title="Live Activity" icon={<ClockIcon className="h-5 w-5" />} storageKey="pc-activity">
+        <div className="space-y-5">
+          <LiveActivityTimeline activities={state.activities} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div>
+              <h4 className="text-caption font-semibold uppercase tracking-wide text-text-muted mb-2">Background Monitors</h4>
+              <BackgroundMonitors monitors={state.monitors} />
+            </div>
+            <div>
+              <h4 className="text-caption font-semibold uppercase tracking-wide text-text-muted mb-2">What Changed</h4>
+              <WhatChanged changes={state.changes} />
+            </div>
+          </div>
         </div>
+      </CollapsibleSection>
 
-        {/* Right column */}
-        <div className="space-y-7">
-          {/* Last Scan Results */}
-          <DashboardSection
-            title="Last Scan Results"
-            icon={<CheckCircleIcon className="h-5 w-5" />}
-          >
-            <LastScanResults
-              lastScan={dashState.healthScanHistory[0] ?? null}
-              lastOptimizeResult={dashState.healthScanResult}
-            />
-          </DashboardSection>
-
-          {/* System Health Snapshot */}
-          <DashboardSection
-            title="System Health"
-            icon={<HeartIcon className="h-5 w-5" />}
-          >
-            <SystemHealthSnapshot data={state.systemHealth} />
-          </DashboardSection>
-
-          {/* Protection Coverage */}
-          <DashboardSection
-            title="Protection Coverage"
-            icon={<ShieldCheckIcon className="h-5 w-5" />}
-          >
-            <ProtectionHealth coverage={state.coverage} onFix={handleFixCoverage} />
-          </DashboardSection>
-
-          {/* Process Optimizer */}
-          <DashboardSection
-            title="Process Optimizer"
-            icon={<BoltIcon className="h-5 w-5" />}
-          >
-            <ProcessOptimizer onOptimize={(kill) => vm.optimizeProcesses(kill)} />
-          </DashboardSection>
+      {/* System Health + Protection Coverage + Process Optimizer */}
+      <CollapsibleSection title="System Health" icon={<HeartIcon className="h-5 w-5" />} storageKey="pc-system-health">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <SystemHealthSnapshot data={state.systemHealth} />
+          <ProtectionHealth coverage={state.coverage} onFix={handleFixCoverage} />
+          <ProcessOptimizer onOptimize={(kill) => vm.optimizeProcesses(kill)} />
         </div>
-      </div>
+      </CollapsibleSection>
 
-      {/* Bottom grid: Upcoming Automation + Quick Actions */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <DashboardSection
-          title="Upcoming Automation"
-          icon={<CalendarDaysIcon className="h-5 w-5" />}
-        >
+      {/* Automation + Quick Actions */}
+      <CollapsibleSection title="Automation & Actions" icon={<CalendarDaysIcon className="h-5 w-5" />} storageKey="pc-automation">
+        <div className="grid gap-4 lg:grid-cols-2">
           <UpcomingAutomation tasks={state.scheduledTasks} isPro={state.isPro} />
-        </DashboardSection>
-
-        <DashboardSection
-          title="Quick Actions"
-          icon={<BoltIcon className="h-5 w-5" />}
-        >
-          <QuickActions
-            actions={state.quickActions}
-            onNavigate={handleNavigate}
-            isPro={state.isPro}
-          />
-        </DashboardSection>
-      </div>
+          <QuickActions actions={state.quickActions} onNavigate={handleNavigate} isPro={state.isPro} />
+        </div>
+      </CollapsibleSection>
 
       {/* Protection Status Explanation */}
-      <DashboardSection
-        title="Understanding Your Status"
-        icon={<InformationCircleIcon className="h-5 w-5" />}
-      >
+      <CollapsibleSection title="Understanding Your Status" icon={<InformationCircleIcon className="h-5 w-5" />} storageKey="pc-status-explanation">
         <ProtectionStatus state={state.protectionState!} coverage={state.coverage} />
-      </DashboardSection>
+      </CollapsibleSection>
 
     </div>
   );

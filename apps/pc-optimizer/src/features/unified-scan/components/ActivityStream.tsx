@@ -11,6 +11,8 @@ export interface ActivityEntry {
   module: string;
   action: string;
   detail: string;
+  operation?: string;
+  path?: string;
 }
 
 export interface ActivityStreamProps {

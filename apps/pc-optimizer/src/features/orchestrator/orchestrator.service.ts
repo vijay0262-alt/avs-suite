@@ -84,6 +84,8 @@ export interface OrchestratorActivityEntry {
   module: string;
   action: string;
   detail: string;
+  operation?: string;
+  path?: string;
 }
 
 export interface OrchestratorCounters {
@@ -93,6 +95,10 @@ export interface OrchestratorCounters {
   itemsSkipped: number;
   storageRecovered: number;
   elapsedMs: number;
+  itemsCleaned?: number;
+  registryFixed?: number;
+  threatsChecked?: number;
+  bytesRecovered?: number;
 }
 
 export interface OrchestratorModuleStatus {
@@ -107,6 +113,11 @@ export interface OrchestratorStatus {
   phase: string;
   progress: number;
   currentModule: string | null;
+  currentOperation: string | null;
+  currentPath: string | null;
+  itemsProcessed: number;
+  itemsRemaining: number;
+  bytesRecovered: number;
   overallScoreBefore: number;
   overallScoreAfter: number;
   issuesBefore: number;
