@@ -326,9 +326,10 @@ def _scan_performance(session_id: str | None = None) -> dict[str, Any]:
     """Run performance monitor scan."""
     if session_id:
         _add_activity(session_id, "performance", "scanning", "Analyzing CPU, memory, and performance metrics...", operation="Scanning")
-    from avs_backend.performance.live_monitor import get_system_metrics, generate_alerts
+    from avs_backend.performance.live_monitor import get_system_metrics, generate_alerts, metrics_to_dict
     metrics = get_system_metrics()
     alerts = generate_alerts(metrics)
+    metrics_dict = metrics_to_dict(metrics)
     mem_info = None
     try:
         from avs_backend.performance.memory_optimizer import get_memory_info
@@ -344,7 +345,7 @@ def _scan_performance(session_id: str | None = None) -> dict[str, Any]:
     return {
         "issues": len(alerts),
         "size": int(ram_recovery),
-        "metrics": metrics,
+        "metrics": metrics_dict,
         "alerts": [{"type": a.alert_type, "message": a.message} for a in alerts] if alerts else [],
         "memoryInfo": {
             "total": mem_info.total_ram if mem_info else 0,
@@ -465,14 +466,24 @@ def _optimize_junk(scan_result: dict[str, Any], session_id: str | None = None) -
     from avs_backend.dashboard import dashboard_optimize_execute
     result = dashboard_optimize_execute(None)
     recovered = result.get("totalRecovered", 0)
+    # Count actual categories cleaned (each category that succeeded = 1 item group)
+    results_detail = result.get("results", {})
+    items_removed = sum(
+        1 for r in results_detail.values()
+        if isinstance(r, dict) and r.get("cleaned") and not r.get("error")
+    )
+    errors = [
+        r.get("error") for r in results_detail.values()
+        if isinstance(r, dict) and r.get("error")
+    ]
     if session_id:
-        _add_activity(session_id, "junk", "optimized", f"Junk cleaning complete: {recovered} bytes recovered", operation="Cleaned")
-        _update_counters(session_id, {"itemsOptimized": 1, "storageRecovered": recovered, "itemsCleaned": 1})
+        _add_activity(session_id, "junk", "optimized", f"Junk cleaning complete: {items_removed} categories cleaned, {recovered} bytes recovered", operation="Cleaned")
+        _update_counters(session_id, {"itemsOptimized": items_removed, "storageRecovered": recovered, "itemsCleaned": items_removed})
     return {
         "success": result.get("success", False),
         "bytesRecovered": recovered,
-        "itemsRemoved": 0,
-        "errors": [],
+        "itemsRemoved": items_removed,
+        "errors": errors,
         "details": result,
     }
 

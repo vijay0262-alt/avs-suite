@@ -1472,14 +1472,18 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
 
         // Map counters to scan live stats
         const counters = status.counters || {};
+        // Derive per-module item counts from moduleStatuses
+        const startupMs = moduleStatuses['startup'];
+        const privacyMs = moduleStatuses['privacy'];
+        const perfMs = moduleStatuses['performance'];
         const liveStats: ScanLiveStats = {
           filesScanned: counters.itemsScanned ?? 0,
           registryEntries: counters.registryFixed ?? 0,
-          startupItems: 0,
-          privacyItems: counters.itemsCleaned ?? 0,
+          startupItems: startupMs?.issuesFound ?? 0,
+          privacyItems: privacyMs?.issuesFound ?? counters.itemsCleaned ?? 0,
           estimatedStorageRecovery: counters.storageRecovered ?? 0,
-          estimatedMemoryRecovery: 0,
-          estimatedStartupImprovement: 0,
+          estimatedMemoryRecovery: perfMs?.issuesFound ? perfMs.issuesFound * 50 * 1024 * 1024 : 0,
+          estimatedStartupImprovement: startupMs?.issuesFound ? startupMs.issuesFound * 500 : 0,
           recommendationsFound: counters.itemsOptimized ?? 0,
         };
 
@@ -1662,10 +1666,14 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     });
 
     // Broadcast scores globally via LiveSyncService
+    // Use the performance module's after-score for performanceScore, falling
+    // back to the overall average if the performance module is missing.
+    const perfModule = dashModules.find((m) => m.moduleId === 'performance');
+    const perfScore = perfModule?.score ?? overallAfter;
     const liveSync = useLiveSync.getState();
     liveSync.broadcastScores({
       healthScore: overallAfter,
-      performanceScore: overallAfter,
+      performanceScore: perfScore,
       protectionStatus: overallAfter >= 80 ? 'fully_protected' : overallAfter >= 60 ? 'partially_protected' : 'at_risk',
     });
     liveSync.broadcastOptimizationComplete({
