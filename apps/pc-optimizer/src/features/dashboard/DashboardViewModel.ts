@@ -697,7 +697,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   // ------------------------------------------------------------------
   // Health Scan
   // ------------------------------------------------------------------
-  startHealthScan(profile: ScanProfile = 'dashboard'): void {
+  startHealthScan(profile: ScanProfile = 'dashboard', isPro: boolean = true): void {
     const defaultDetails: OptimizationDetails = {
       summary: 'Scanning...',
       impact: 'low',
@@ -712,21 +712,20 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     };
 
     // Determine which modules to show based on profile
+    // Only show fixable modules — non-fixable modules (disk, security, system)
+    // are informational only and should not appear in scan results.
     const profileModules = profile === 'optimize'
-      ? ['junk', 'privacy', 'registry', 'startup', 'performance', 'disk']
+      ? ['junk', 'privacy', 'registry', 'startup', 'performance']
       : profile === 'protection'
-        ? ['security', 'system', 'junk', 'privacy', 'registry']
-        : ['junk', 'startup', 'privacy', 'performance', 'disk', 'registry', 'security', 'system'];
+        ? ['junk', 'privacy', 'registry']
+        : ['junk', 'startup', 'privacy', 'performance', 'registry'];
 
     const allModules: HealthScanModuleResult[] = [
       { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning temporary files and browser caches', details: defaultDetails, canAutoFix: true },
       { moduleId: 'startup', moduleName: 'Startup Manager', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking startup applications', details: defaultDetails, canAutoFix: true },
       { moduleId: 'privacy', moduleName: 'Privacy Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning browsing traces and activity history', details: defaultDetails, canAutoFix: true },
       { moduleId: 'performance', moduleName: 'Performance', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking memory and CPU usage', details: defaultDetails, canAutoFix: true },
-      { moduleId: 'disk', moduleName: 'Disk Analyzer', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Analyzing disk space usage', details: defaultDetails, canAutoFix: false },
       { moduleId: 'registry', moduleName: 'Registry Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning for invalid registry entries', details: defaultDetails, canAutoFix: true },
-      { moduleId: 'security', moduleName: 'Security Check', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking security features and updates', details: defaultDetails, canAutoFix: false },
-      { moduleId: 'system', moduleName: 'System Information', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Validating hardware and OS health', details: defaultDetails, canAutoFix: false },
     ];
     const modules = allModules.filter((m) => profileModules.includes(m.moduleId));
 
@@ -769,7 +768,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         return;
       }
       this.setState({ healthScanStep: 'scanning' });
-      void this.runOrchestratorFullScan(profile);
+      void this.runOrchestratorFullScan(profile, isPro);
     }, 600);
   }
 
@@ -1364,7 +1363,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
    * Pipeline: start → scan → optimize → verify → score → history → done
    * No simulated progress — all results come from real backend execution.
    */
-  async runOrchestratorFullScan(profile: ScanProfile = 'dashboard'): Promise<void> {
+  async runOrchestratorFullScan(profile: ScanProfile = 'dashboard', isPro: boolean = true): Promise<void> {
     const startedAt = Date.now();
 
     const defaultDetails = {
@@ -1377,21 +1376,20 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     };
 
     // Determine which modules to show based on profile
+    // Only show fixable modules — non-fixable modules (disk, security, system)
+    // are informational only and should not appear in scan results.
     const profileModules = profile === 'optimize'
-      ? ['junk', 'privacy', 'registry', 'startup', 'performance', 'disk']
+      ? ['junk', 'privacy', 'registry', 'startup', 'performance']
       : profile === 'protection'
-        ? ['security', 'system', 'junk', 'privacy', 'registry']
-        : ['junk', 'startup', 'privacy', 'performance', 'disk', 'registry', 'security', 'system'];
+        ? ['junk', 'privacy', 'registry']
+        : ['junk', 'startup', 'privacy', 'performance', 'registry'];
 
     const allModules: HealthScanModuleResult[] = [
       { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning temporary files and browser caches', details: defaultDetails, canAutoFix: true },
       { moduleId: 'startup', moduleName: 'Startup Manager', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking startup applications', details: defaultDetails, canAutoFix: true },
       { moduleId: 'privacy', moduleName: 'Privacy Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning browsing traces and activity history', details: defaultDetails, canAutoFix: true },
       { moduleId: 'performance', moduleName: 'Performance', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking memory and CPU usage', details: defaultDetails, canAutoFix: true },
-      { moduleId: 'disk', moduleName: 'Disk Analyzer', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Analyzing disk space usage', details: defaultDetails, canAutoFix: false },
       { moduleId: 'registry', moduleName: 'Registry Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning for invalid registry entries', details: defaultDetails, canAutoFix: true },
-      { moduleId: 'security', moduleName: 'Security Check', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking security features and updates', details: defaultDetails, canAutoFix: false },
-      { moduleId: 'system', moduleName: 'System Information', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Validating hardware and OS health', details: defaultDetails, canAutoFix: false },
     ];
     const modules = allModules.filter((m) => profileModules.includes(m.moduleId));
 
@@ -1430,7 +1428,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
 
     try {
       // Start async pipeline in background thread
-      const startResp = await orchestratorService.fullAsync(profile);
+      const startResp = await orchestratorService.fullAsync(profile, !isPro);
       sessionId = startResp.sessionId;
 
       // Poll status until complete, error, or cancelled
@@ -1636,6 +1634,50 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       const completedAtMs = new Date(result.completedAt).getTime();
       result.elapsedMs = completedAtMs - startedAtMs;
 
+      // Free version: scan-only mode — show report with issues + upgrade prompt
+      const hasOptimizeResults = optResults && Object.keys(optResults).length > 0;
+      if (!hasOptimizeResults) {
+        // Build a report showing scan results (issues found, no fixes applied)
+        const scanModules = result.scan.modules;
+        const dashModules: HealthScanModuleResult[] = modules.map((m) => {
+          const orch = scanModules[m.moduleId];
+          if (!orch) return m;
+          return {
+            ...m,
+            status: 'complete' as const,
+            score: orch.score,
+            issuesFound: orch.issues,
+            recoverableSpace: orch.size,
+            severity: orch.issues > 50 ? 'high' as const : orch.issues > 10 ? 'medium' as const : 'low' as const,
+            measuredDetail: `${orch.issues} issues found, score ${orch.score}`,
+            canAutoFix: orch.canAutoFix,
+          };
+        });
+
+        const overallScore = result.scan.overallScore;
+        const totalIssues = result.scan.totalIssues;
+
+        const report: HealthScanReport = {
+          overallScore,
+          issuesFound: totalIssues,
+          recoverableSpace: dashModules.reduce((s, m) => s + m.recoverableSpace, 0),
+          modules: dashModules,
+          startedAt,
+          finishedAt: Date.now(),
+        };
+
+        this.setState({
+          healthScanStep: 'report',
+          healthScanModules: dashModules,
+          healthScanReport: report,
+          healthScanBeforeReport: report,
+          healthScanError: null,
+          scanPhase: 'finalizing',
+          scanOverallProgress: 100,
+        });
+        return;
+      }
+
       await this.finalizeOrchestratorResults(result, startedAt, modules);
 
     } catch (err) {
@@ -1759,6 +1801,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         overallScore: overallAfter,
         scoreZone: overallAfter >= 80 ? 'excellent' : overallAfter >= 60 ? 'good' : 'needs_attention',
         lastUpdated: new Date().toISOString(),
+        issues: response.optimize.issuesAfter === 0 ? [] : this.state.healthScore?.issues ?? [],
       } as typeof this.state.healthScore,
       healthScanResult: {
         success: response.optimize.success,

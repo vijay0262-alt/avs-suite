@@ -12,6 +12,7 @@
  *   complete           → Success screen with before/after scores
  */
 import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Button } from '@avs/ui';
 import { Modal } from './Modal';
 import { UnifiedScanView } from '../../unified-scan/components/UnifiedScanView';
@@ -71,6 +72,7 @@ export interface UnifiedOptimizeFlowProps {
 
 export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptimizeFlowProps) {
   const s = vm.state;
+  const navigate = useNavigate();
   const { history, addEntry } = useScanHistory(isPro);
 
   // ── Map scan live stats to counters ──────────────────────────────
@@ -210,14 +212,26 @@ export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptim
 
   // Report phase — show AI summary with Optimize Now button
   if (s.healthScanStep === 'report' && resultsReport) {
-    const optimizeAction: UnifiedResultAction = {
-      id: 'optimize-now',
-      label: isPro ? 'Optimize Now' : 'Optimize Now',
-      icon: 'BoltIcon',
-      variant: 'primary',
-      action: () => vm.executeHealthScanOptimizations(),
-      requiresPro: false,
-    };
+    const optimizeAction: UnifiedResultAction = isPro
+      ? {
+          id: 'optimize-now',
+          label: 'Optimize Now',
+          icon: 'BoltIcon',
+          variant: 'primary',
+          action: () => vm.executeHealthScanOptimizations(),
+          requiresPro: false,
+        }
+      : {
+          id: 'upgrade-to-fix',
+          label: 'Upgrade to Professional to Fix All',
+          icon: 'BoltIcon',
+          variant: 'primary',
+          action: () => {
+            vm.closeHealthScan();
+            navigate('/settings/license');
+          },
+          requiresPro: true,
+        };
     const rescanAction: UnifiedResultAction = {
       id: 'rescan',
       label: 'Scan Again',

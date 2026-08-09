@@ -77,11 +77,12 @@ export function UnifiedHealthScanResults({
         isPro={isPro}
         onClose={onClose}
         extraActions={hasOptimizable ? [{
-          id: 'optimize',
-          label: 'Optimize Now',
+          id: isPro ? 'optimize' : 'upgrade-to-fix',
+          label: isPro ? 'Optimize Now' : 'Upgrade to Professional to Fix All',
           icon: 'SparklesIcon',
           variant: 'primary',
           action: onOptimize,
+          requiresPro: !isPro,
         }] : []}
       />
     </Modal>

@@ -204,6 +204,20 @@ def detect_browsers() -> set[BrowserType]:
     return browsers
 
 
+def _is_file_locked(file_path: str) -> bool:
+    """Check if a file is locked/in-use by another process.
+
+    Uses a non-blocking exclusive open attempt — if it fails with
+    PermissionError or OSError (WinError 32), the file is locked.
+    """
+    try:
+        fd = os.open(file_path, os.O_RDWR | os.O_EXCL)
+        os.close(fd)
+        return False
+    except (OSError, PermissionError):
+        return True
+
+
 def scan_windows_temp() -> list[PrivacyItem]:
     """Scan Windows temporary files."""
     if not IS_WINDOWS:
@@ -225,6 +239,8 @@ def scan_windows_temp() -> list[PrivacyItem]:
                 for file in files:
                     try:
                         file_path = os.path.join(root, file)
+                        if _is_file_locked(file_path):
+                            continue
                         size = os.path.getsize(file_path)
                         items.append(PrivacyItem(
                             category=PrivacyCategory.WINDOWS_TEMP,
@@ -290,8 +306,10 @@ def scan_thumbnail_cache() -> list[PrivacyItem]:
         for root, _, files in os.walk(thumbnail_dir):
             for file in files:
                 if file.startswith("thumbcache") or file.endswith(".db"):
-                    file_path = os.path.join(root, file)
                     try:
+                        file_path = os.path.join(root, file)
+                        if _is_file_locked(file_path):
+                            continue
                         size = os.path.getsize(file_path)
                         items.append(PrivacyItem(
                             category=PrivacyCategory.THUMBNAIL_CACHE,
@@ -407,8 +425,10 @@ def scan_recycle_bin() -> list[PrivacyItem]:
         try:
             for root, _, files in os.walk(recycle_bin):
                 for file in files:
-                    file_path = os.path.join(root, file)
                     try:
+                        file_path = os.path.join(root, file)
+                        if _is_file_locked(file_path):
+                            continue
                         size = os.path.getsize(file_path)
                         items.append(PrivacyItem(
                             category=PrivacyCategory.RECYCLE_BIN,
@@ -480,6 +500,8 @@ def scan_browser_cache(browser_type: BrowserType) -> list[PrivacyItem]:
                     file_path = os.path.join(root, file)
                     try:
                         size = os.path.getsize(file_path)
+                        if _is_file_locked(file_path):
+                            continue
                         category = {
                             BrowserType.CHROME: PrivacyCategory.CHROME_CACHE,
                             BrowserType.EDGE: PrivacyCategory.EDGE_CACHE,
@@ -676,6 +698,8 @@ def scan_browser_session(browser_type: BrowserType) -> list[PrivacyItem]:
                     file_path = os.path.join(root, file)
                     try:
                         size = os.path.getsize(file_path)
+                        if _is_file_locked(file_path):
+                            continue
                         category = {
                             BrowserType.CHROME: PrivacyCategory.CHROME_SESSION,
                             BrowserType.EDGE: PrivacyCategory.EDGE_SESSION,
@@ -755,6 +779,8 @@ def scan_browser_temp(browser_type: BrowserType) -> list[PrivacyItem]:
                     file_path = os.path.join(root, file)
                     try:
                         size = os.path.getsize(file_path)
+                        if _is_file_locked(file_path):
+                            continue
                         category = {
                             BrowserType.CHROME: PrivacyCategory.CHROME_TEMP,
                             BrowserType.EDGE: PrivacyCategory.EDGE_TEMP,
@@ -834,6 +860,8 @@ def scan_browser_site_storage(browser_type: BrowserType) -> list[PrivacyItem]:
                     file_path = os.path.join(root, file)
                     try:
                         size = os.path.getsize(file_path)
+                        if _is_file_locked(file_path):
+                            continue
                         category = {
                             BrowserType.CHROME: PrivacyCategory.CHROME_SITE_STORAGE,
                             BrowserType.EDGE: PrivacyCategory.EDGE_SITE_STORAGE,
@@ -1308,8 +1336,14 @@ def clean_privacy_items(
                             result.space_freed += item.size
                             result.categories_cleaned.add(item.category)
                         except (OSError, PermissionError) as e:
-                            result.errors.append(f"Could not delete {item.path}: {e}")
-                            logger.warning(f"Could not delete {item.path}: {e}")
+                            # WinError 32: file in use by another process —
+                            # not a real error, just skip it
+                            err_str = str(e)
+                            if "32" in err_str or "being used" in err_str.lower():
+                                logger.debug(f"Skipping locked file {item.path}: {e}")
+                            else:
+                                result.errors.append(f"Could not delete {item.path}: {e}")
+                                logger.warning(f"Could not delete {item.path}: {e}")
 
             except Exception as e:
                 result.errors.append(f"Error cleaning {item.path}: {e}")

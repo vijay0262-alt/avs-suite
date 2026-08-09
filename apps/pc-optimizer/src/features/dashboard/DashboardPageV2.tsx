@@ -121,7 +121,7 @@ export default function DashboardPage() {
     if (state.bootstrap === 'ready' && state.healthScanStep === 'idle') {
       const navState = location.state as { action?: string } | null;
       if (navState?.action === 'auto-scan') {
-        vm.startHealthScan();
+        vm.startHealthScan('dashboard', isPro);
         // Clear the location state so it doesn't re-trigger
         navigate('/dashboard', { replace: true, state: {} });
       }
@@ -213,7 +213,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <ProStatusPill />
           <Button
-            onClick={() => vm.startHealthScan('dashboard')}
+            onClick={() => vm.startHealthScan('dashboard', isPro)}
             disabled={isScanning}
             size="lg"
             leftIcon={isScanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <SparklesIcon className="h-5 w-5" />}
@@ -604,11 +604,10 @@ export default function DashboardPage() {
           report={state.healthScanReport}
           result={state.healthScanResult}
           onClose={() => vm.closeHealthScan()}
-          onOptimize={() => vm.executeHealthScanOptimizations()}
+          onOptimize={() => isPro ? vm.executeHealthScanOptimizations() : navigate('/settings/license')}
           isPro={isPro}
         />
       )}
-
     </div>
   );
 }

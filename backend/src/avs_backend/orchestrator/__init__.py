@@ -309,7 +309,13 @@ def _scan_startup(session_id: str | None = None) -> dict[str, Any]:
         _add_activity(session_id, "startup", "scanning", "Scanning startup applications and services...", operation="Scanning")
     from avs_backend.startup.startup_manager import scan_startup_entries
     entries = scan_startup_entries()
-    high_impact = [e for e in entries if e.impact.value == "high" and e.enabled]
+    # Filter out critical system entries — they can't be disabled and
+    # shouldn't count as issues since they can't be fixed.
+    from avs_backend.startup.startup_manager import _is_critical_system_entry
+    high_impact = [e for e in entries if e.impact.value == "high" and e.enabled and not _is_critical_system_entry(e)]
+    skipped_critical = [e for e in entries if e.impact.value == "high" and e.enabled and _is_critical_system_entry(e)]
+    if session_id and skipped_critical:
+        _add_activity(session_id, "startup", "scanning", f"Skipped {len(skipped_critical)} critical system entries", operation="Scanning")
     if session_id:
         _add_activity(session_id, "startup", "scanned", f"Startup scan complete: {len(entries)} entries, {len(high_impact)} high-impact", operation="Scanned")
         _update_counters(session_id, {"itemsScanned": len(entries)})
@@ -327,7 +333,7 @@ def _scan_startup(session_id: str | None = None) -> dict[str, Any]:
                 "command": e.command,
                 "enabled": e.enabled,
             }
-            for e in entries
+            for e in entries if not _is_critical_system_entry(e)
         ],
     }
 
@@ -568,9 +574,26 @@ def _optimize_startup(scan_result: dict[str, Any], session_id: str | None = None
     """Execute startup optimization — disable high-impact enabled entries."""
     if session_id:
         _add_activity(session_id, "startup", "optimizing", "Disabling high-impact startup entries...", operation="Optimizing")
-    from avs_backend.startup.startup_manager import disable_startup_entry, StartupEntry, StartupStatus, StartupImpact, StartupSource
+    from avs_backend.startup.startup_manager import disable_startup_entry, StartupEntry, StartupStatus, StartupImpact, StartupSource, _is_critical_system_entry
     entries_data = scan_result.get("entries", [])
     to_disable = [e for e in entries_data if e.get("enabled") and e.get("impact") == "high"]
+    # Skip critical system entries — they can't be disabled
+    to_disable = [e for e in to_disable if not _is_critical_system_entry(
+        StartupEntry(
+            name=e.get("name", ""),
+            publisher=e.get("publisher", ""),
+            status=StartupStatus(e.get("status", "enabled")),
+            impact=StartupImpact(e.get("impact", "medium")),
+            source=StartupSource(e.get("source", "registry_run")),
+            location=e.get("location", ""),
+            command=e.get("command", ""),
+            enabled=True,
+        )
+    )]
+    if not to_disable:
+        if session_id:
+            _add_activity(session_id, "startup", "optimized", "No safe-to-disable startup entries found", operation="Optimized")
+        return {"success": True, "bytesRecovered": 0, "itemsRemoved": 0, "entriesDisabled": 0, "errors": []}
     disabled = 0
     errors: list[str] = []
     for entry_data in to_disable:
@@ -707,7 +730,7 @@ def _calculate_after_score(mid: str, before_score: int, scan_result: dict[str, A
         if items_fixed >= before_issues:
             return 100
         ratio = items_fixed / before_issues
-        boost = max(10, int(ratio * (100 - before_score)))
+        boost = max(1, int(ratio * (100 - before_score)))
         return min(100, before_score + boost)
 
     if bytes_recovered > 0 and items_fixed == 0:
@@ -762,12 +785,16 @@ def orchestrator_scan(params: dict[str, Any] | None) -> dict[str, Any]:
     total_recoverable = 0
     scores = []
 
-    for i, mid in enumerate(scan_modules):
+    # Only scan fixable modules — non-fixable modules (disk, security, system)
+    # are informational only and should not count toward scores or issues.
+    fixable_scan_modules = [mid for mid in scan_modules if _can_auto_fix(mid)]
+
+    for i, mid in enumerate(fixable_scan_modules):
         session = _get_session(session_id)
         if session and session.get("cancelled"):
             break
 
-        progress = int((i / len(scan_modules)) * 100)
+        progress = int((i / len(fixable_scan_modules)) * 100) if fixable_scan_modules else 100
         mod_name = _module_name(mid)
         _update_session(session_id, {
             "currentModule": mid,
@@ -812,7 +839,7 @@ def orchestrator_scan(params: dict[str, Any] | None) -> dict[str, Any]:
                 "canAutoFix": _can_auto_fix(mid),
                 "scanResult": result,
             }
-            _set_module_status(session_id, mid, "complete", int(((i + 1) / len(scan_modules)) * 100), issues, issues)
+            _set_module_status(session_id, mid, "complete", int(((i + 1) / len(fixable_scan_modules)) * 100) if fixable_scan_modules else 100, issues, issues)
         except Exception as e:
             log.error("Scan failed for module %s: %s", mid, e)
             modules_result[mid] = {
@@ -903,10 +930,7 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
                and modules[mid].get("status") == "complete"
                and (modules[mid].get("issues", 0) > 0 or modules[mid].get("size", 0) > 0)]
 
-    # Mark non-fixable modules as skipped
-    for mid in MODULE_ORDER:
-        if mid not in fixable:
-            _set_module_status(session_id, mid, "skipped")
+    # Non-fixable modules are not shown — don't mark them as skipped
 
     for i, mid in enumerate(fixable):
         session = _get_session(session_id)
@@ -971,19 +995,15 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
 
     after_scores = []
     after_issues = 0
-    for mid in MODULE_ORDER:
+    # Only calculate after-scores for fixable modules that were scanned
+    fixable_modules = [mid for mid in MODULE_ORDER if _can_auto_fix(mid) and mid in get_profile_modules(profile)]
+    for mid in fixable_modules:
         mod = modules.get(mid, {})
         before_score = mod.get("score", 100)
         before_issues = mod.get("issues", 0)
         opt_result = optimize_results.get(mid)
         scan_result = scan_results.get(mid, {})
         verify_result = verification_results.get(mid)
-        # Skip modules not in this profile
-        if mid not in get_profile_modules(profile):
-            after_scores.append(before_score)
-            mod["scoreAfter"] = before_score
-            mod["issuesAfter"] = before_issues
-            continue
 
         if opt_result:
             after_score = _calculate_after_score(mid, before_score, scan_result, opt_result)
@@ -1028,9 +1048,10 @@ def orchestrator_optimize(params: dict[str, Any] | None) -> dict[str, Any]:
     overall_before = session.get("overallScoreBefore", 0)
 
     # Calculate unified health model (after) from per-module after-scores
+    # Only include fixable modules — non-fixable modules don't count toward health
     after_module_scores = {}
     after_module_issues = {}
-    for mid in MODULE_ORDER:
+    for mid in fixable_modules:
         mod = modules.get(mid, {})
         after_module_scores[mid] = mod.get("scoreAfter", mod.get("score", 100))
         after_module_issues[mid] = mod.get("issuesAfter", mod.get("issues", 0))
@@ -1308,6 +1329,7 @@ def orchestrator_full_async(params: dict[str, Any] | None) -> dict[str, Any]:
     Accepts optional 'profile' param: 'dashboard' | 'optimize' | 'protection'
     """
     profile = params.get("profile", "dashboard") if params else "dashboard"
+    scan_only = params.get("scanOnly", False) if params else False
     session = _new_session()
     session["profile"] = profile
     session_id = session["sessionId"]
@@ -1328,7 +1350,18 @@ def orchestrator_full_async(params: dict[str, Any] | None) -> dict[str, Any]:
             if session and session.get("cancelled"):
                 return
 
-            # Phase 2: Optimize
+            # Phase 2: Optimize (skip if scanOnly — Free version)
+            if scan_only:
+                _update_session(session_id, {
+                    "phase": "complete",
+                    "progress": 100,
+                    "completedAt": _now_iso(),
+                    "currentOperation": None,
+                    "currentPath": None,
+                })
+                _add_activity(session_id, "orchestrator", "completed", "Scan complete. Upgrade to Professional to fix all issues automatically.", operation="Completed")
+                return
+
             opt_response = orchestrator_optimize({"sessionId": session_id})
             if opt_response.get("error"):
                 _update_session(session_id, {"phase": "error", "error": opt_response["error"]})

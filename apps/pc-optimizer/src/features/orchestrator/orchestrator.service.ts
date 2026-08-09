@@ -203,7 +203,7 @@ export interface IOrchestratorService {
   result(sessionId: string): Promise<Record<string, unknown>>;
   cancel(sessionId: string): Promise<{ sessionId: string; cancelled: boolean }>;
   full(profile?: ScanProfile): Promise<OrchestratorFullResponse>;
-  fullAsync(profile?: ScanProfile): Promise<{ sessionId: string; startedAt: string }>;
+  fullAsync(profile?: ScanProfile, scanOnly?: boolean): Promise<{ sessionId: string; startedAt: string }>;
 }
 
 export const orchestratorService: IOrchestratorService = {
@@ -214,5 +214,5 @@ export const orchestratorService: IOrchestratorService = {
   result: (sessionId: string) => client().call(RPC_METHODS.ORCHESTRATOR_RESULT, { sessionId }),
   cancel: (sessionId: string) => client().call(RPC_METHODS.ORCHESTRATOR_CANCEL, { sessionId }),
   full: (profile?: ScanProfile) => client().call(RPC_METHODS.ORCHESTRATOR_FULL, { profile }),
-  fullAsync: (profile?: ScanProfile) => client().call(RPC_METHODS.ORCHESTRATOR_FULL_ASYNC, { profile }),
+  fullAsync: (profile?: ScanProfile, scanOnly?: boolean) => client().call(RPC_METHODS.ORCHESTRATOR_FULL_ASYNC, { profile, scanOnly }),
 };

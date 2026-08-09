@@ -58,13 +58,21 @@ export function ProtectionCenterPage() {
     };
   }, [vm, dashVm]);
 
+  // Refresh protection state when dashboard scan completes
+  useEffect(() => {
+    if (dashState.healthScanStep === 'complete') {
+      void dashboardService.refreshCache();
+      void vm.refreshAll();
+    }
+  }, [dashState.healthScanStep, vm]);
+
   const handleNavigate = useMemo(
     () => (path: string) => navigate(path),
     [navigate],
   );
 
   const handleScanNow = useCallback(() => {
-    dashVm.startHealthScan('protection');
+    dashVm.startHealthScan('protection', isPro);
   }, [dashVm]);
 
   const handleFixCoverage = useCallback(

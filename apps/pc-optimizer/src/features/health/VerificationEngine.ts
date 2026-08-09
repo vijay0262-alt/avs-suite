@@ -103,7 +103,7 @@ export function buildVerificationReport(
         executionTimeMs: 0,
         reason: mod.canAutoFix
           ? 'No issues requiring action'
-          : 'No auto-fix available — manual review required',
+          : 'Informational only — no optimization needed',
         errors: [],
       });
       continue;
