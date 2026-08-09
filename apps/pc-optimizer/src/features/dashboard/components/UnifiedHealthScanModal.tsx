@@ -94,7 +94,7 @@ function buildReport(
   const modulesAnalyzed = report.modules.filter((m) => m.status === 'complete').length;
   const totalRecovery = report.recoverableSpace;
   const memoryRecovery = report.modules.find((m) => m.moduleId === 'performance')?.recoverableSpace ?? 0;
-  const startupItems = report.modules.find((m) => m.moduleId === 'startup')?.issuesFound ?? 0;
+  const startupItems = report.modules.find((m) => m.moduleId === 'performance')?.issuesFound ?? 0;
   const estStartupImprovement = Math.min(30, startupItems * 3);
 
   const results: UnifiedResultCard[] = [];

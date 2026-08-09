@@ -416,11 +416,11 @@ export type HealthScanStep =
 
 export type ScanPhase =
   | 'preparing'
-  | 'junk'
-  | 'privacy'
-  | 'registry'
-  | 'startup'
+  | 'system_health'
+  | 'storage'
   | 'performance'
+  | 'privacy'
+  | 'protection'
   | 'ai_planning'
   | 'finalizing';
 
@@ -440,71 +440,59 @@ export const SCAN_PHASES: ScanPhaseInfo[] = [
     endPercent: 5,
     items: [
       'Initializing optimization engine...',
-      'Loading optimization modules...',
-      'Checking configuration...',
+      'Loading analysis modules...',
+      'Checking system configuration...',
     ],
   },
   {
-    id: 'junk',
-    label: 'Junk Analysis',
+    id: 'system_health',
+    label: 'System Health Analysis',
     startPercent: 5,
-    endPercent: 20,
+    endPercent: 25,
     items: [
-      'Temporary files',
-      'Recycle Bin',
-      'Browser cache',
-      'Windows update cache',
-      'Logs',
+      'Scanning registry keys...',
+      'Checking broken entries...',
+      'Inspecting application references...',
+      'Validating file associations...',
     ],
   },
   {
-    id: 'privacy',
-    label: 'Privacy Analysis',
-    startPercent: 20,
-    endPercent: 35,
+    id: 'storage',
+    label: 'Storage Analysis',
+    startPercent: 25,
+    endPercent: 45,
     items: [
-      'Cookies',
-      'History',
-      'Browser cache',
-      'Tracking data',
-      'Recent files',
-    ],
-  },
-  {
-    id: 'registry',
-    label: 'Registry Analysis',
-    startPercent: 35,
-    endPercent: 50,
-    items: [
-      'Registry keys',
-      'Broken entries',
-      'Application references',
-      'Invalid associations',
-    ],
-  },
-  {
-    id: 'startup',
-    label: 'Startup Analysis',
-    startPercent: 50,
-    endPercent: 65,
-    items: [
-      'Startup applications',
-      'Services',
-      'Scheduled tasks',
-      'Boot optimization',
+      'Scanning temporary files...',
+      'Checking Recycle Bin...',
+      'Analyzing browser cache...',
+      'Inspecting Windows update cache...',
+      'Scanning log files...',
     ],
   },
   {
     id: 'performance',
     label: 'Performance Analysis',
+    startPercent: 45,
+    endPercent: 65,
+    items: [
+      'Analyzing startup applications...',
+      'Inspecting Windows services...',
+      'Checking scheduled tasks...',
+      'Evaluating boot optimization...',
+      'Measuring performance metrics...',
+    ],
+  },
+  {
+    id: 'privacy',
+    label: 'Privacy Analysis',
     startPercent: 65,
     endPercent: 80,
     items: [
-      'Processes',
-      'Memory',
-      'Storage',
-      'Drivers',
-      'Performance metrics',
+      'Scanning cookies...',
+      'Analyzing browsing history...',
+      'Checking browser cache...',
+      'Inspecting tracking data...',
+      'Scanning recent files...',
     ],
   },
   {

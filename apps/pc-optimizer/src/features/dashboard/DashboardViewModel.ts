@@ -29,6 +29,7 @@ import type {
   ScanActivityEntry,
 } from './dashboard.types';
 import { SCAN_PHASES } from './dashboard.types';
+import { HEALTH_CATEGORIES, groupModulesToCategories, getCategoryIdForModule } from './healthCategoryMapping';
 import type { DashboardService } from './dashboard.service';
 import { privacyService as defaultPrivacyService } from '../privacy/privacy.service';
 import type { IPrivacyService } from '../privacy/privacy.service';
@@ -711,23 +712,20 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       why: 'This check helps identify optimization opportunities.',
     };
 
-    // Determine which modules to show based on profile
-    // Only show fixable modules — non-fixable modules (disk, security, system)
-    // are informational only and should not appear in scan results.
-    const profileModules = profile === 'optimize'
-      ? ['junk', 'privacy', 'registry', 'startup', 'performance']
-      : profile === 'protection'
-        ? ['junk', 'privacy', 'registry']
-        : ['junk', 'startup', 'privacy', 'performance', 'registry'];
-
-    const allModules: HealthScanModuleResult[] = [
-      { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning temporary files and browser caches', details: defaultDetails, canAutoFix: true },
-      { moduleId: 'startup', moduleName: 'Startup Manager', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking startup applications', details: defaultDetails, canAutoFix: true },
-      { moduleId: 'privacy', moduleName: 'Privacy Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning browsing traces and activity history', details: defaultDetails, canAutoFix: true },
-      { moduleId: 'performance', moduleName: 'Performance', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking memory and CPU usage', details: defaultDetails, canAutoFix: true },
-      { moduleId: 'registry', moduleName: 'Registry Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning for invalid registry entries', details: defaultDetails, canAutoFix: true },
-    ];
-    const modules = allModules.filter((m) => profileModules.includes(m.moduleId));
+    // User-facing categories — always show all 5 regardless of profile.
+    // Internal implementation modules are mapped to these categories.
+    const modules: HealthScanModuleResult[] = HEALTH_CATEGORIES.map((cat) => ({
+      moduleId: cat.categoryId,
+      moduleName: cat.categoryName,
+      status: 'pending' as const,
+      score: 0,
+      issuesFound: 0,
+      recoverableSpace: 0,
+      severity: 'low' as const,
+      measuredDetail: cat.description,
+      details: defaultDetails,
+      canAutoFix: true,
+    }));
 
     this.setState({
       healthScanStep: 'preparing',
@@ -980,16 +978,16 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       });
     };
 
-    // Map module IDs to scan phases
+    // Map backend module IDs to user-facing category scan phases
     const modulePhaseMap: Record<string, ScanPhase> = {
-      junk: 'junk',
+      junk: 'storage',
       privacy: 'privacy',
-      registry: 'registry',
-      startup: 'startup',
+      registry: 'system_health',
+      startup: 'performance',
       performance: 'performance',
-      disk: 'performance',
-      security: 'performance',
-      system: 'performance',
+      disk: 'storage',
+      security: 'protection',
+      system: 'system_health',
     };
 
     // Stats increment per module per simulated step
@@ -1375,23 +1373,20 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       why: 'Preparing system scan...',
     };
 
-    // Determine which modules to show based on profile
-    // Only show fixable modules — non-fixable modules (disk, security, system)
-    // are informational only and should not appear in scan results.
-    const profileModules = profile === 'optimize'
-      ? ['junk', 'privacy', 'registry', 'startup', 'performance']
-      : profile === 'protection'
-        ? ['junk', 'privacy', 'registry']
-        : ['junk', 'startup', 'privacy', 'performance', 'registry'];
-
-    const allModules: HealthScanModuleResult[] = [
-      { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning temporary files and browser caches', details: defaultDetails, canAutoFix: true },
-      { moduleId: 'startup', moduleName: 'Startup Manager', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking startup applications', details: defaultDetails, canAutoFix: true },
-      { moduleId: 'privacy', moduleName: 'Privacy Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning browsing traces and activity history', details: defaultDetails, canAutoFix: true },
-      { moduleId: 'performance', moduleName: 'Performance', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Checking memory and CPU usage', details: defaultDetails, canAutoFix: true },
-      { moduleId: 'registry', moduleName: 'Registry Cleaner', status: 'pending', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Scanning for invalid registry entries', details: defaultDetails, canAutoFix: true },
-    ];
-    const modules = allModules.filter((m) => profileModules.includes(m.moduleId));
+    // User-facing categories — always show all 5 regardless of profile.
+    // Internal implementation modules are mapped to these categories.
+    const modules: HealthScanModuleResult[] = HEALTH_CATEGORIES.map((cat) => ({
+      moduleId: cat.categoryId,
+      moduleName: cat.categoryName,
+      status: 'pending' as const,
+      score: 0,
+      issuesFound: 0,
+      recoverableSpace: 0,
+      severity: 'low' as const,
+      measuredDetail: cat.description,
+      details: defaultDetails,
+      canAutoFix: true,
+    }));
 
     this.setState({
       healthScanStep: 'scanning',
@@ -1465,7 +1460,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         let scanPhase: ScanPhase = 'preparing';
         let step: HealthScanStep = 'scanning';
         if (phase === 'scanning' || phase === 'scanned') {
-          scanPhase = 'junk';
+          // Determine which category is currently being scanned based on the backend module
+          const currentBackendModule = status.currentModule;
+          scanPhase = currentBackendModule ? (getCategoryIdForModule(currentBackendModule) as ScanPhase) : 'system_health';
           step = 'scanning';
         } else if (phase === 'optimizing') {
           scanPhase = 'ai_planning';
@@ -1494,19 +1491,30 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           overallProgress = backendProgress;
         }
 
-        // Update module statuses from backend
+        // Update category statuses by aggregating backend module statuses
         const moduleStatuses = status.moduleStatuses || {};
-        const updatedModules = modules.map((m) => {
-          const ms = moduleStatuses[m.moduleId];
-          if (!ms) return m;
+        const updatedModules = modules.map((cat) => {
+          const catConfig = HEALTH_CATEGORIES.find((c) => c.categoryId === cat.moduleId);
+          if (!catConfig) return cat;
+          const backendModulesForCat = catConfig.modules;
+          const statusesForCat = backendModulesForCat
+            .map((mid) => moduleStatuses[mid])
+            .filter((ms): ms is NonNullable<typeof ms> => ms != null);
+          if (statusesForCat.length === 0) return cat;
+          // Aggregate: if any scanning -> scanning; if all complete -> complete; if any error -> error
+          const anyScanning = statusesForCat.some((ms) => ms.status === 'scanning');
+          const anyError = statusesForCat.some((ms) => ms.status === 'error');
+          const allComplete = statusesForCat.every((ms) => ms.status === 'complete' || ms.status === 'skipped');
+          const aggregatedStatus = anyError ? 'error' as const
+            : anyScanning ? 'scanning' as const
+            : allComplete ? 'complete' as const
+            : cat.status;
+          // Sum issues across backend modules in this category
+          const totalIssues = statusesForCat.reduce((sum, ms) => sum + (ms.issuesFound ?? 0), 0);
           return {
-            ...m,
-            status: ms.status === 'scanning' ? 'scanning' as const
-              : ms.status === 'complete' ? 'complete' as const
-              : ms.status === 'error' ? 'error' as const
-              : ms.status === 'skipped' ? 'skipped' as const
-              : m.status,
-            issuesFound: ms.issuesFound ?? m.issuesFound,
+            ...cat,
+            status: aggregatedStatus,
+            issuesFound: totalIssues,
           };
         });
 
@@ -1637,22 +1645,30 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       // Free version: scan-only mode — show report with issues + upgrade prompt
       const hasOptimizeResults = optResults && Object.keys(optResults).length > 0;
       if (!hasOptimizeResults) {
-        // Build a report showing scan results (issues found, no fixes applied)
+        // Build backend module results from orchestrator scan data
         const scanModules = result.scan.modules;
-        const dashModules: HealthScanModuleResult[] = modules.map((m) => {
-          const orch = scanModules[m.moduleId];
-          if (!orch) return m;
-          return {
-            ...m,
-            status: 'complete' as const,
-            score: orch.score,
-            issuesFound: orch.issues,
-            recoverableSpace: orch.size,
-            severity: orch.issues > 50 ? 'high' as const : orch.issues > 10 ? 'medium' as const : 'low' as const,
-            measuredDetail: `${orch.issues} issues found, score ${orch.score}`,
-            canAutoFix: orch.canAutoFix,
-          };
-        });
+        const backendModuleResults: HealthScanModuleResult[] = Object.entries(scanModules).map(([mid, orch]) => ({
+          moduleId: mid,
+          moduleName: _moduleDisplayName(mid),
+          status: 'complete' as const,
+          score: orch.score,
+          issuesFound: orch.issues,
+          recoverableSpace: orch.size,
+          severity: orch.issues > 50 ? 'high' as const : orch.issues > 10 ? 'medium' as const : 'low' as const,
+          measuredDetail: `${orch.issues} issues found, score ${orch.score}`,
+          details: {
+            summary: `${orch.issues} issues found`,
+            impact: orch.issues > 50 ? 'high' as const : orch.issues > 10 ? 'medium' as const : 'low' as const,
+            safeToRemove: orch.canAutoFix,
+            groups: [],
+            notChanged: [],
+            why: 'Issues detected during scan',
+          },
+          canAutoFix: orch.canAutoFix,
+        }));
+
+        // Group backend modules into user-facing categories
+        const dashModules = groupModulesToCategories(backendModuleResults);
 
         const overallScore = result.scan.overallScore;
         const totalIssues = result.scan.totalIssues;
@@ -1678,7 +1694,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         return;
       }
 
-      await this.finalizeOrchestratorResults(result, startedAt, modules);
+      await this.finalizeOrchestratorResults(result, startedAt);
 
     } catch (err) {
       // Orchestrator failed (e.g. backend unavailable). Record the error
@@ -1698,21 +1714,19 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   private async finalizeOrchestratorResults(
     response: OrchestratorFullResponse,
     startedAt: number,
-    modules: HealthScanModuleResult[],
   ): Promise<void> {
     const orchModules = response.scan.modules;
     const optResults = response.optimize.optimizeResults;
 
-    const dashModules: HealthScanModuleResult[] = modules.map((m) => {
-      const orch: OrchestratorModuleResult | undefined = orchModules[m.moduleId];
-      if (!orch) return m;
-
-      const optResult = optResults[m.moduleId];
+    // Build backend module results from orchestrator scan + optimize data
+    const backendModuleResults: HealthScanModuleResult[] = Object.entries(orchModules).map(([mid, orch]) => {
+      const optResult = optResults[mid];
       const afterScore = orch.scoreAfter ?? orch.score;
       const afterIssues = orch.issuesAfter ?? orch.issues;
 
       return {
-        ...m,
+        moduleId: mid,
+        moduleName: _moduleDisplayName(mid),
         status: orch.status === 'complete' ? 'complete' as const : orch.status === 'error' ? 'error' as const : 'skipped' as const,
         score: afterScore,
         issuesFound: afterIssues,
@@ -1723,6 +1737,14 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
             ? `${(orch.issues ?? 0) - afterIssues} issues fixed, ${afterIssues} remaining, score ${afterScore}`
             : `${orch.issues} issues found, score ${orch.score}`
           : orch.error ?? 'Scan skipped',
+        details: {
+          summary: `${orch.issues} issues found`,
+          impact: afterIssues > 50 ? 'high' as const : afterIssues > 10 ? 'medium' as const : 'low' as const,
+          safeToRemove: orch.canAutoFix,
+          groups: [],
+          notChanged: [],
+          why: 'Issues detected during scan',
+        },
         canAutoFix: orch.canAutoFix,
         actual: optResult ? {
           success: optResult.success,
@@ -1742,6 +1764,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         },
       };
     });
+
+    // Group backend modules into user-facing categories
+    const dashModules = groupModulesToCategories(backendModuleResults);
 
     const overallAfter = response.optimize.overallScoreAfter;
     const overallBefore = response.optimize.overallScoreBefore;
@@ -1769,15 +1794,10 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     };
 
     const actualMap = new Map<string, HealthScanModuleActual>();
-    for (const [mid, opt] of Object.entries(optResults)) {
-      actualMap.set(mid, {
-        success: opt.success,
-        bytesRecovered: opt.bytesRecovered ?? 0,
-        itemsRemoved: opt.itemsRemoved ?? 0,
-        entriesDisabled: opt.entriesDisabled ?? 0,
-        issuesFixed: opt.issuesFixed ?? 0,
-        errors: opt.errors ?? [],
-      });
+    for (const cat of dashModules) {
+      if (cat.actual) {
+        actualMap.set(cat.moduleId, cat.actual);
+      }
     }
     const verificationReport = buildVerificationReport(dashModules, actualMap, startedAt);
 

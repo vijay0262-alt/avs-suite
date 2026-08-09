@@ -5,6 +5,8 @@ import { DashboardViewModel } from '../DashboardViewModel';
 import type { DashboardService } from '../dashboard.service';
 import type { IPrivacyService } from '../../privacy/privacy.service';
 import type { DashboardMetrics, LiveMetrics, OptimizationExecutionProgress } from '../dashboard.types';
+import type { HealthScanModuleResult } from '../dashboard.types';
+import { HEALTH_CATEGORIES, groupModulesToCategories, getCategoryIdForModule } from '../healthCategoryMapping';
 import { dashboardRefreshManager } from '../../health/DashboardRefreshManager';
 import { resetHealthEngineConfig } from '../../health/HealthEngineConfig';
 import { healthNotificationService } from '../../health/HealthNotificationService';
@@ -174,7 +176,10 @@ describe('Smart Optimization Flow', () => {
 
     vm.startHealthScan();
     expect(vm.state.healthScanStep).toBe('preparing');
-    expect(vm.state.healthScanModules).toHaveLength(8);
+    // 5 user-facing categories: System Health, Storage, Performance, Privacy, Protection
+    expect(vm.state.healthScanModules).toHaveLength(5);
+    const categoryIds = vm.state.healthScanModules.map((m) => m.moduleId);
+    expect(categoryIds).toEqual(['system_health', 'storage', 'performance', 'privacy', 'protection']);
   });
 
   it('transitions from preparing to scanning after 600ms', async () => {
@@ -218,44 +223,36 @@ describe('Smart Optimization Flow', () => {
     }
   });
 
-  it('getLiveMessageForModule returns human-readable messages', async () => {
+  it('all 5 categories have status, score, issuesFound, and severity fields', async () => {
     await vm.bootstrap();
     await vi.advanceTimersByTimeAsync(0);
 
-    const vmAny = vm as any;
-    expect(vmAny.getLiveMessageForModule('junk')).toBe('Cleaning Temporary Files...');
-    expect(vmAny.getLiveMessageForModule('privacy')).toBe('Cleaning Browser Cache...');
-    expect(vmAny.getLiveMessageForModule('registry')).toBe('Optimizing Registry...');
-    expect(vmAny.getLiveMessageForModule('startup')).toBe('Checking Startup Items...');
-    expect(vmAny.getLiveMessageForModule('performance')).toBe('Optimizing Memory...');
-    expect(vmAny.getLiveMessageForModule('unknown')).toContain('Optimizing');
+    vm.startHealthScan();
+    for (const mod of vm.state.healthScanModules) {
+      expect(mod.status).toBe('pending');
+      expect(typeof mod.score).toBe('number');
+      expect(typeof mod.issuesFound).toBe('number');
+      expect(['low', 'medium', 'high']).toContain(mod.severity);
+      expect(typeof mod.canAutoFix).toBe('boolean');
+      expect(typeof mod.measuredDetail).toBe('string');
+      expect(mod.details).toBeDefined();
+    }
   });
 
-  it('getDoneMessageForModule formats results correctly', async () => {
+  it('categories do not expose backend implementation module IDs', async () => {
     await vm.bootstrap();
     await vi.advanceTimersByTimeAsync(0);
 
-    const vmAny = vm as any;
-    const msg1 = vmAny.getDoneMessageForModule('junk', { success: true, filesDeleted: 120, bytesRecovered: 500_000_000, errors: [] });
-    expect(msg1).toContain('120 files removed');
-    expect(msg1).toContain('500 MB recovered');
-    expect(msg1).toContain('✓');
-
-    const msg2 = vmAny.getDoneMessageForModule('privacy', { success: true, itemsRemoved: 50, errors: [] });
-    expect(msg2).toContain('50 traces cleaned');
-
-    const msg3 = vmAny.getDoneMessageForModule('startup', { success: true, entriesDisabled: 3, errors: [] });
-    expect(msg3).toContain('3 startup items disabled');
-
-    const msg4 = vmAny.getDoneMessageForModule('registry', { success: true, issuesFixed: 15, errors: [] });
-    expect(msg4).toContain('15 registry issues fixed');
-
-    const msg5 = vmAny.getDoneMessageForModule('disk', { success: true, errors: [] });
-    expect(msg5).toContain('No changes needed');
-
-    const msg6 = vmAny.getDoneMessageForModule('junk', { success: false, errors: ['timeout'], reason: 'timed out' });
-    expect(msg6).toContain('✗');
-    expect(msg6).toContain('timed out');
+    vm.startHealthScan();
+    // The 5 category IDs that should be exposed
+    const expectedCategoryIds = ['system_health', 'storage', 'performance', 'privacy', 'protection'];
+    const actualIds = vm.state.healthScanModules.map((m) => m.moduleId);
+    expect(actualIds).toEqual(expectedCategoryIds);
+    // None of the purely-backend-only module IDs should appear
+    const backendOnlyIds = ['junk', 'registry', 'startup', 'disk', 'security', 'system', 'browser'];
+    for (const mod of vm.state.healthScanModules) {
+      expect(backendOnlyIds).not.toContain(mod.moduleId);
+    }
   });
 });
 
@@ -898,5 +895,117 @@ describe('Future Module Integration (Part 17)', () => {
       expect(config.actionPath).toBeTruthy();
       expect(config.actionPath.startsWith('/')).toBe(true);
     }
+  });
+});
+
+describe('Health Category Grouping Model', () => {
+  it('HEALTH_CATEGORIES exposes exactly 5 user-facing categories', () => {
+    expect(HEALTH_CATEGORIES).toHaveLength(5);
+    const ids = HEALTH_CATEGORIES.map((c) => c.categoryId);
+    expect(ids).toEqual(['system_health', 'storage', 'performance', 'privacy', 'protection']);
+  });
+
+  it('each category has name, description, icon, and modules array', () => {
+    for (const cat of HEALTH_CATEGORIES) {
+      expect(cat.categoryName).toBeTruthy();
+      expect(cat.description).toBeTruthy();
+      expect(cat.icon).toBeTruthy();
+      expect(Array.isArray(cat.modules)).toBe(true);
+      expect(cat.modules.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('getCategoryIdForModule maps backend modules to correct categories', () => {
+    expect(getCategoryIdForModule('junk')).toBe('storage');
+    expect(getCategoryIdForModule('disk')).toBe('storage');
+    expect(getCategoryIdForModule('registry')).toBe('system_health');
+    expect(getCategoryIdForModule('system')).toBe('system_health');
+    expect(getCategoryIdForModule('startup')).toBe('performance');
+    expect(getCategoryIdForModule('performance')).toBe('performance');
+    expect(getCategoryIdForModule('privacy')).toBe('privacy');
+    expect(getCategoryIdForModule('browser')).toBe('privacy');
+    expect(getCategoryIdForModule('security')).toBe('protection');
+  });
+
+  it('getCategoryIdForModule returns undefined for unknown modules', () => {
+    expect(getCategoryIdForModule('nonexistent')).toBeUndefined();
+  });
+
+  it('groupModulesToCategories produces 5 categories with aggregated data', () => {
+    const backendModules: HealthScanModuleResult[] = [
+      { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'complete', score: 80, issuesFound: 120, recoverableSpace: 500_000_000, severity: 'medium', measuredDetail: '120 temp files', details: { summary: '', impact: 'medium', safeToRemove: true, groups: [], notChanged: [], why: '' }, canAutoFix: true, actual: { success: true, filesDeleted: 100, bytesRecovered: 400_000_000, errors: [] } },
+      { moduleId: 'disk', moduleName: 'Disk Analyzer', status: 'complete', score: 90, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'No issues', details: { summary: '', impact: 'low', safeToRemove: false, groups: [], notChanged: [], why: '' }, canAutoFix: false },
+      { moduleId: 'registry', moduleName: 'Registry Cleaner', status: 'complete', score: 70, issuesFound: 15, recoverableSpace: 0, severity: 'low', measuredDetail: '15 registry issues', details: { summary: '', impact: 'low', safeToRemove: true, groups: [], notChanged: [], why: '' }, canAutoFix: true, actual: { success: true, issuesFixed: 15, errors: [] } },
+      { moduleId: 'startup', moduleName: 'Startup Manager', status: 'complete', score: 85, issuesFound: 3, recoverableSpace: 0, severity: 'low', measuredDetail: '3 startup items', details: { summary: '', impact: 'low', safeToRemove: true, groups: [], notChanged: [], why: '' }, canAutoFix: true, actual: { success: true, entriesDisabled: 3, errors: [] } },
+      { moduleId: 'privacy', moduleName: 'Privacy Cleaner', status: 'complete', score: 60, issuesFound: 50, recoverableSpace: 20_000_000, severity: 'medium', measuredDetail: '50 traces', details: { summary: '', impact: 'medium', safeToRemove: true, groups: [], notChanged: [], why: '' }, canAutoFix: true, actual: { success: true, itemsRemoved: 50, errors: [] } },
+    ];
+
+    const grouped = groupModulesToCategories(backendModules);
+    // Only 4 categories because 'protection' has no backend modules in test data
+    expect(grouped).toHaveLength(4);
+
+    // Storage category aggregates junk + disk
+    const storage = grouped.find((c) => c.moduleId === 'storage')!;
+    expect(storage.issuesFound).toBe(120); // 120 + 0
+    expect(storage.recoverableSpace).toBe(500_000_000);
+    expect(storage.status).toBe('complete');
+    expect(storage.actual).toBeDefined();
+    expect(storage.actual!.bytesRecovered).toBe(400_000_000);
+
+    // System Health category aggregates registry + system
+    const systemHealth = grouped.find((c) => c.moduleId === 'system_health')!;
+    expect(systemHealth.issuesFound).toBe(15);
+    expect(systemHealth.actual).toBeDefined();
+    expect(systemHealth.actual!.issuesFixed).toBe(15);
+
+    // Performance category aggregates startup + performance
+    const performance = grouped.find((c) => c.moduleId === 'performance')!;
+    expect(performance.issuesFound).toBe(3);
+    expect(performance.actual).toBeDefined();
+    expect(performance.actual!.entriesDisabled).toBe(3);
+
+    // Privacy category aggregates privacy + browser
+    const privacy = grouped.find((c) => c.moduleId === 'privacy')!;
+    expect(privacy.issuesFound).toBe(50);
+    expect(privacy.actual).toBeDefined();
+    expect(privacy.actual!.itemsRemoved).toBe(50);
+
+    // Protection category — no backend modules in test data, should be absent
+    const protection = grouped.find((c) => c.moduleId === 'protection');
+    expect(protection).toBeUndefined();
+  });
+
+  it('groupModulesToCategories aggregates status correctly', () => {
+    const modules: HealthScanModuleResult[] = [
+      { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'scanning', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: '', details: { summary: '', impact: 'low', safeToRemove: true, groups: [], notChanged: [], why: '' }, canAutoFix: true },
+      { moduleId: 'disk', moduleName: 'Disk Analyzer', status: 'complete', score: 90, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: '', details: { summary: '', impact: 'low', safeToRemove: false, groups: [], notChanged: [], why: '' }, canAutoFix: false },
+    ];
+    const grouped = groupModulesToCategories(modules);
+    const storage = grouped.find((c) => c.moduleId === 'storage')!;
+    expect(storage.status).toBe('scanning'); // any scanning -> scanning
+  });
+
+  it('groupModulesToCategories reports error status when any backend module errors', () => {
+    const modules: HealthScanModuleResult[] = [
+      { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'complete', score: 80, issuesFound: 10, recoverableSpace: 0, severity: 'low', measuredDetail: '', details: { summary: '', impact: 'low', safeToRemove: true, groups: [], notChanged: [], why: '' }, canAutoFix: true },
+      { moduleId: 'disk', moduleName: 'Disk Analyzer', status: 'error', score: 0, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: 'Failed', details: { summary: '', impact: 'low', safeToRemove: false, groups: [], notChanged: [], why: '' }, canAutoFix: false },
+    ];
+    const grouped = groupModulesToCategories(modules);
+    const storage = grouped.find((c) => c.moduleId === 'storage')!;
+    expect(storage.status).toBe('error');
+  });
+
+  it('groupModulesToCategories aggregates verification before/after data', () => {
+    const modules: HealthScanModuleResult[] = [
+      { moduleId: 'junk', moduleName: 'Junk Cleaner', status: 'complete', score: 90, issuesFound: 20, recoverableSpace: 100_000_000, severity: 'low', measuredDetail: '', details: { summary: '', impact: 'low', safeToRemove: true, groups: [], notChanged: [], why: '' }, canAutoFix: true, verification: { beforeScore: 60, beforeIssues: 120, beforeRecoverable: 500_000_000, afterScore: 90, afterIssues: 20, afterRecoverable: 100_000_000 } },
+      { moduleId: 'disk', moduleName: 'Disk Analyzer', status: 'complete', score: 95, issuesFound: 0, recoverableSpace: 0, severity: 'low', measuredDetail: '', details: { summary: '', impact: 'low', safeToRemove: false, groups: [], notChanged: [], why: '' }, canAutoFix: false, verification: { beforeScore: 90, beforeIssues: 0, beforeRecoverable: 0, afterScore: 95, afterIssues: 0, afterRecoverable: 0 } },
+    ];
+    const grouped = groupModulesToCategories(modules);
+    const storage = grouped.find((c) => c.moduleId === 'storage')!;
+    expect(storage.verification).toBeDefined();
+    expect(storage.verification!.beforeIssues).toBe(120); // 120 + 0
+    expect(storage.verification!.afterIssues).toBe(20); // 20 + 0
+    expect(storage.verification!.beforeRecoverable).toBe(500_000_000);
+    expect(storage.verification!.afterRecoverable).toBe(100_000_000);
   });
 });
