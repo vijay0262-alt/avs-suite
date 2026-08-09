@@ -66,6 +66,21 @@ import type { OrchestratorFullResponse, OrchestratorModuleResult, ScanProfile } 
 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
 
+const MODULE_DISPLAY_NAMES: Record<string, string> = {
+  junk: 'Junk Cleaner',
+  privacy: 'Privacy Cleaner',
+  registry: 'Registry Cleaner',
+  startup: 'Startup Manager',
+  performance: 'Performance',
+  disk: 'Disk Analyzer',
+  security: 'Security Check',
+  system: 'System Information',
+};
+
+function _moduleDisplayName(mid: string): string {
+  return MODULE_DISPLAY_NAMES[mid] ?? mid;
+}
+
 const MODULE_SIM_PATHS: Record<string, string[]> = {
   junk: [
     'C:\\Users\\user\\AppData\\Local\\Temp\\~tmp1F3A.tmp',
@@ -1465,6 +1480,22 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           step = 'verifying';
         }
 
+        // Map backend progress to a continuous 0-100 scale across phases
+        // scanning: 0-50%, optimizing: 50-90%, verifying: 90-100%
+        const backendProgress = status.progress ?? 0;
+        let overallProgress: number;
+        if (phase === 'scanning' || phase === 'scanned') {
+          overallProgress = Math.round(backendProgress * 0.5);
+        } else if (phase === 'optimizing') {
+          overallProgress = 50 + Math.round(backendProgress * 0.4);
+        } else if (phase === 'verifying') {
+          overallProgress = 90 + Math.round(backendProgress * 0.1);
+        } else if (phase === 'complete') {
+          overallProgress = 100;
+        } else {
+          overallProgress = backendProgress;
+        }
+
         // Update module statuses from backend
         const moduleStatuses = status.moduleStatuses || {};
         const updatedModules = modules.map((m) => {
@@ -1505,14 +1536,19 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
 
         // Determine current activity for display
         const lastActivity = activityLog[activityLog.length - 1];
-        const currentFile = lastActivity?.detail ?? null;
+        const currentModule = status.currentModule;
+        const currentOp = status.currentOperation;
+        // Show file path if available, otherwise show module + operation for context
+        const currentFile = status.currentPath
+          ?? (currentModule && currentOp ? `${_moduleDisplayName(currentModule)} — ${currentOp}`
+          : lastActivity?.detail ?? null);
 
         const isOptimizing = step === 'optimizing';
         const isVerifying = step === 'verifying';
 
         this.setState({
           scanPhase,
-          scanOverallProgress: status.progress ?? 0,
+          scanOverallProgress: overallProgress,
           scanLiveStats: liveStats,
           scanActivityLog: activityLog.slice(-30) as ScanActivityEntry[],
           scanCurrentOperation: status.currentOperation ?? null,
@@ -1526,7 +1562,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           healthScanStep: step,
           healthScanExecution: (isOptimizing || isVerifying) ? {
             currentModule: status.currentModule ?? (isVerifying ? 'Verifying' : 'Optimizing'),
-            progress: status.progress ?? 0,
+            progress: overallProgress,
             itemsProcessed: status.itemsProcessed ?? counters.itemsOptimized ?? 0,
             spaceRecovered: counters.storageRecovered ?? 0,
             elapsedMs: counters.elapsedMs ?? 0,
@@ -1541,8 +1577,65 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         }
       }
 
-      // Pipeline complete — fetch final results
-      const result = await orchestratorService.result(sessionId) as unknown as OrchestratorFullResponse;
+      // Pipeline complete — fetch final results and map flat structure to nested
+      const rawResult = await orchestratorService.result(sessionId) as unknown as Record<string, unknown>;
+      const result: OrchestratorFullResponse = {
+        sessionId: rawResult.sessionId as string,
+        scan: {
+          modules: (rawResult.modules as Record<string, OrchestratorModuleResult>) ?? {},
+          overallScore: (rawResult.overallScoreBefore as number) ?? 0,
+          totalIssues: (rawResult.issuesBefore as number) ?? 0,
+          recoverableSpace: (rawResult.recoverableSpace as number) ?? 0,
+          healthModel: rawResult.healthModel as never,
+        },
+        optimize: {
+          optimizeResults: (rawResult.optimizeResults as Record<string, never>) ?? {},
+          overallScoreBefore: (rawResult.overallScoreBefore as number) ?? 0,
+          overallScoreAfter: (rawResult.overallScoreAfter as number) ?? 0,
+          spaceRecovered: (rawResult.spaceRecovered as number) ?? 0,
+          itemsFixed: 0,
+          entriesDisabled: 0,
+          issuesFixed: 0,
+          issuesAfter: (rawResult.issuesAfter as number) ?? 0,
+          errors: [],
+          success: !rawResult.error,
+          healthModel: rawResult.healthModel as never,
+          healthModelAfter: rawResult.healthModelAfter as never,
+        },
+        history: rawResult.history as never,
+        elapsedMs: 0,
+        completedAt: (rawResult.completedAt as string) ?? new Date().toISOString(),
+        profile: rawResult.profile as never,
+      };
+
+      // Extract itemsFixed, entriesDisabled, issuesFixed from optimizeResults
+      const optResults = result.optimize.optimizeResults;
+      if (optResults && typeof optResults === 'object') {
+        let itemsFixed = 0;
+        let entriesDisabled = 0;
+        let issuesFixed = 0;
+        let allErrors: string[] = [];
+        for (const [, opt] of Object.entries(optResults)) {
+          const o = opt as unknown as Record<string, unknown>;
+          itemsFixed += (o.itemsRemoved as number) ?? 0;
+          entriesDisabled += (o.entriesDisabled as number) ?? 0;
+          issuesFixed += (o.issuesFixed as number) ?? 0;
+          if (Array.isArray(o.errors)) {
+            allErrors = allErrors.concat(o.errors as string[]);
+          }
+        }
+        result.optimize.itemsFixed = itemsFixed;
+        result.optimize.entriesDisabled = entriesDisabled;
+        result.optimize.issuesFixed = issuesFixed;
+        result.optimize.errors = allErrors.slice(0, 10);
+        result.optimize.success = allErrors.length === 0;
+      }
+
+      // Calculate elapsed time from startedAt/completedAt
+      const startedAtMs = new Date(rawResult.startedAt as string).getTime();
+      const completedAtMs = new Date(result.completedAt).getTime();
+      result.elapsedMs = completedAtMs - startedAtMs;
+
       await this.finalizeOrchestratorResults(result, startedAt, modules);
 
     } catch (err) {
@@ -1659,6 +1752,12 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         })),
       },
       healthScanError: null,
+      healthScore: {
+        ...this.state.healthScore,
+        overallScore: overallAfter,
+        scoreZone: overallAfter >= 80 ? 'excellent' : overallAfter >= 60 ? 'good' : 'needs_attention',
+        lastUpdated: new Date().toISOString(),
+      } as typeof this.state.healthScore,
       healthScanResult: {
         success: response.optimize.success,
         totalRecovered: response.optimize.spaceRecovered,

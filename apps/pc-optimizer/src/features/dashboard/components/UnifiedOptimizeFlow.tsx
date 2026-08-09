@@ -13,6 +13,7 @@
  */
 import { useMemo } from 'react';
 import { Card, Button } from '@avs/ui';
+import { Modal } from './Modal';
 import { UnifiedScanView } from '../../unified-scan/components/UnifiedScanView';
 import { UnifiedResultsView } from '../../unified-results/components/UnifiedResultsView';
 import { useScanHistory } from '../../unified-results/useScanHistory';
@@ -171,31 +172,39 @@ export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptim
       : treeNodes;
 
     return (
-      <UnifiedScanView
-        config={fixConfig}
-        step={isFixing || isVerifying ? 'scanning' : step}
-        liveStatus={fixLiveStatus}
-        counters={fixCounters}
-        treeNodes={fixTreeNodes}
-        currentPhaseIndex={0}
-        startTime={s.scanStartTime ?? Date.now()}
-        error={s.healthScanError}
-        report={null}
-        actions={[]}
-        isOptimizing={isFixing || isVerifying}
-        activityLog={s.scanActivityLog}
-        currentOperation={currentOperation}
-        onPause={() => {}}
-        onResume={() => {}}
-        onCancel={() => {
-          if (isFixing || isVerifying) {
-            vm.cancelHealthScanOptimizations();
-          } else {
-            vm.cancelHealthScan();
-          }
-        }}
+      <Modal
+        open
+        title="AI Smart Optimize — Scanning"
         onClose={onClose}
-      />
+        size="xl"
+        actions={null}
+      >
+        <UnifiedScanView
+          config={fixConfig}
+          step={isFixing || isVerifying ? 'scanning' : step}
+          liveStatus={fixLiveStatus}
+          counters={fixCounters}
+          treeNodes={fixTreeNodes}
+          currentPhaseIndex={0}
+          startTime={s.scanStartTime ?? Date.now()}
+          error={s.healthScanError}
+          report={null}
+          actions={[]}
+          isOptimizing={isFixing || isVerifying}
+          activityLog={s.scanActivityLog}
+          currentOperation={currentOperation}
+          onPause={() => {}}
+          onResume={() => {}}
+          onCancel={() => {
+            if (isFixing || isVerifying) {
+              vm.cancelHealthScanOptimizations();
+            } else {
+              vm.cancelHealthScan();
+            }
+          }}
+          onClose={onClose}
+        />
+      </Modal>
     );
   }
 
@@ -221,14 +230,22 @@ export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptim
     };
 
     return (
-      <UnifiedResultsView
-        report={resultsReport}
-        history={history}
-        isPro={isPro}
+      <Modal
+        open
+        title="AI Smart Optimize — Results"
         onClose={onClose}
-        headerAction={optimizeAction}
-        extraActions={[rescanAction]}
-      />
+        size="xl"
+        actions={null}
+      >
+        <UnifiedResultsView
+          report={resultsReport}
+          history={history}
+          isPro={isPro}
+          onClose={onClose}
+          headerAction={optimizeAction}
+          extraActions={[rescanAction]}
+        />
+      </Modal>
     );
   }
 
@@ -239,8 +256,15 @@ export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptim
     // the backend metrics refresh.
     const verifiedAfterScore = s.healthScanReport?.overallScore ?? s.healthScore?.overallScore ?? 0;
     return (
-      <VerificationScreen
-        verificationReport={s.verificationReport}
+      <Modal
+        open
+        title="AI Smart Optimize — Complete"
+        onClose={onClose}
+        size="xl"
+        actions={null}
+      >
+        <VerificationScreen
+          verificationReport={s.verificationReport}
         optimizationSummary={s.optimizationSummary}
         healthBefore={s.healthScanBeforeReport?.overallScore ?? 0}
         healthAfter={verifiedAfterScore}
@@ -252,6 +276,7 @@ export function UnifiedOptimizeFlow({ vm, isPro = false, onClose }: UnifiedOptim
           vm.startHealthScan();
         }}
       />
+      </Modal>
     );
   }
 
