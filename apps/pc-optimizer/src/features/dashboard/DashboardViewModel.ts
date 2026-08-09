@@ -1675,9 +1675,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         score: afterScore,
         issuesFound: afterIssues,
         recoverableSpace: orch.size - (optResult?.bytesRecovered ?? 0),
-        severity: orch.issues > 50 ? 'high' as const : orch.issues > 10 ? 'medium' as const : 'low' as const,
+        severity: afterIssues > 50 ? 'high' as const : afterIssues > 10 ? 'medium' as const : 'low' as const,
         measuredDetail: orch.status === 'complete'
-          ? `${orch.issues} issues found, score ${orch.score}`
+          ? optResult
+            ? `${(orch.issues ?? 0) - afterIssues} issues fixed, ${afterIssues} remaining, score ${afterScore}`
+            : `${orch.issues} issues found, score ${orch.score}`
           : orch.error ?? 'Scan skipped',
         canAutoFix: orch.canAutoFix,
         actual: optResult ? {

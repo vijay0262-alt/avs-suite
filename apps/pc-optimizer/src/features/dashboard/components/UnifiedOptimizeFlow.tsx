@@ -423,26 +423,32 @@ function buildResultsReport(
         : report.overallScore >= 60
           ? 'Several issues detected. Optimization recommended.'
           : 'Multiple critical issues found. Optimization strongly recommended.',
-    details: report.modules
-      .filter((m) => m.issuesFound > 0)
-      .map((m) => `${m.moduleName}: ${m.issuesFound} issues found (${m.severity} severity)`),
+    details: isComplete
+      ? report.modules
+        .filter((m) => m.actual?.success)
+        .map((m) => `${m.moduleName}: ${(m.verification?.beforeIssues ?? 0) - (m.verification?.afterIssues ?? 0)} issues fixed, score ${m.verification?.beforeScore ?? 0} → ${m.verification?.afterScore ?? m.score}`)
+      : report.modules
+        .filter((m) => m.issuesFound > 0)
+        .map((m) => `${m.moduleName}: ${m.issuesFound} issues found (${m.severity} severity)`),
     confidence: 95,
     evidenceCount: report.modules.length,
     evidenceSources: report.modules.map((m) => m.moduleName),
   };
 
-  const issues: UnifiedIssue[] = report.modules
-    .filter((m) => m.issuesFound > 0)
-    .map((m) => ({
-      id: m.moduleId,
-      title: `${m.moduleName} Issues`,
-      description: m.measuredDetail,
-      priority: (m.severity === 'high' ? 'high' : m.severity === 'medium' ? 'medium' : 'low') as IssuePriority,
-      category: m.moduleId,
-      severity: m.severity === 'high' ? 'danger' : m.severity === 'medium' ? 'warning' : 'info',
-      confidence: 0.9,
-      evidence: [m.measuredDetail],
-    }));
+  const issues: UnifiedIssue[] = isComplete
+    ? []
+    : report.modules
+      .filter((m) => m.issuesFound > 0)
+      .map((m) => ({
+        id: m.moduleId,
+        title: `${m.moduleName} Issues`,
+        description: m.measuredDetail,
+        priority: (m.severity === 'high' ? 'high' : m.severity === 'medium' ? 'medium' : 'low') as IssuePriority,
+        category: m.moduleId,
+        severity: m.severity === 'high' ? 'danger' : m.severity === 'medium' ? 'warning' : 'info',
+        confidence: 0.9,
+        evidence: [m.measuredDetail],
+      }));
 
   const impactEstimates: UnifiedImpactEstimate[] = isComplete
     ? [
@@ -516,28 +522,30 @@ function buildResultsReport(
     status: m.score >= 80 ? 'good' : m.score >= 60 ? 'warning' : 'danger',
   }));
 
-  const recommendations: UnifiedRecommendation[] = report.modules
-    .filter((m) => m.canAutoFix && m.issuesFound > 0)
-    .map((m) => ({
-      id: m.moduleId,
-      title: `Optimize ${m.moduleName}`,
-      summary: m.measuredDetail,
-      description: m.details?.summary ?? m.measuredDetail,
-      priority: (m.severity === 'high' ? 'high' : m.severity === 'medium' ? 'medium' : 'low') as IssuePriority,
-      category: m.moduleId,
-      reason: `${m.issuesFound} issues detected in ${m.moduleName}`,
-      expectedBenefit: m.recoverableSpace > 0 ? `Recover ${formatBytes(m.recoverableSpace)}` : `Fix ${m.issuesFound} issues`,
-      estimatedTime: '< 30s',
-      riskLevel: m.severity === 'high' ? 'low' : 'none',
-      rollbackAvailable: true,
-      requiresConfirmation: false,
-      aiConfidence: 0.9,
-      evidence: [m.measuredDetail],
-      whyItMatters: m.details?.why ?? `${m.moduleName} issues can slow down your PC`,
-      whatHappensIfIgnored: 'Issues may accumulate and further degrade performance',
-      requiresPro: false,
-      selected: true,
-    }));
+  const recommendations: UnifiedRecommendation[] = isComplete
+    ? []
+    : report.modules
+      .filter((m) => m.canAutoFix && m.issuesFound > 0)
+      .map((m) => ({
+        id: m.moduleId,
+        title: `Optimize ${m.moduleName}`,
+        summary: m.measuredDetail,
+        description: m.details?.summary ?? m.measuredDetail,
+        priority: (m.severity === 'high' ? 'high' : m.severity === 'medium' ? 'medium' : 'low') as IssuePriority,
+        category: m.moduleId,
+        reason: `${m.issuesFound} issues detected in ${m.moduleName}`,
+        expectedBenefit: m.recoverableSpace > 0 ? `Recover ${formatBytes(m.recoverableSpace)}` : `Fix ${m.issuesFound} issues`,
+        estimatedTime: '< 30s',
+        riskLevel: m.severity === 'high' ? 'low' : 'none',
+        rollbackAvailable: true,
+        requiresConfirmation: false,
+        aiConfidence: 0.9,
+        evidence: [m.measuredDetail],
+        whyItMatters: m.details?.why ?? `${m.moduleName} issues can slow down your PC`,
+        whatHappensIfIgnored: 'Issues may accumulate and further degrade performance',
+        requiresPro: false,
+        selected: true,
+      }));
 
   const actions: UnifiedResultAction[] = isComplete
     ? [
@@ -585,7 +593,7 @@ function buildResultsReport(
     timestamp: startTime ?? Date.now(),
     durationMs: report.finishedAt - report.startedAt,
     itemsAnalyzed: report.modules.reduce((s, m) => s + m.issuesFound, 0),
-    issuesFound: report.issuesFound,
+    issuesFound: isComplete ? 0 : report.issuesFound,
     aiConfidence: 95,
     primaryScore,
     secondaryScores,
