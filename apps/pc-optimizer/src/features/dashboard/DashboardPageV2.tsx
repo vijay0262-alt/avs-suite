@@ -126,7 +126,7 @@ export default function DashboardPage() {
         navigate('/dashboard', { replace: true, state: {} });
       }
     }
-  }, [state.bootstrap, state.healthScanStep, location.state, navigate, vm]);
+  }, [state.bootstrap, state.healthScanStep, location.state, navigate, vm, isPro]);
 
   const isScanning = state.healthScanStep !== 'idle' && state.healthScanStep !== 'complete';
   const [cpuHistory, setCpuHistory] = useState<number[]>([]);
