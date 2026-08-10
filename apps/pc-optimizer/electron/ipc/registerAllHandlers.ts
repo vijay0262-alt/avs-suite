@@ -430,6 +430,16 @@ export function registerAllHandlers(deps: IpcDependencies): void {
   registerTrayHandlers(logger);
   registerNotificationHandlers(logger);
 
+  // Notify renderer when backend reconnects after crash
+  if (rpc.onReconnect) {
+    rpc.onReconnect(() => {
+      logger.info('[ipc] Backend reconnected — notifying renderer');
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send('avs:rpc:reconnected');
+      }
+    });
+  }
+
   logger.info(`[ipc] All IPC handlers registered (${registeredChannels.size} channels)`);
 }
 

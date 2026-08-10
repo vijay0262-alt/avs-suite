@@ -55,6 +55,11 @@ const api = {
       ipcRenderer.on(`avs:rpc:event:${channel}`, wrapped);
       return () => ipcRenderer.removeListener(`avs:rpc:event:${channel}`, wrapped);
     },
+    onReconnect(listener: () => void): () => void {
+      const wrapped = () => listener();
+      ipcRenderer.on('avs:rpc:reconnected', wrapped);
+      return () => ipcRenderer.removeListener('avs:rpc:reconnected', wrapped);
+    },
   },
   app: {
     getVersion: (): Promise<string> => invokeWithTimeout<string>('avs:app:getVersion'),

@@ -21,6 +21,7 @@
  */
 
 import { create } from 'zustand';
+import { shallow } from 'zustand/shallow';
 import { log } from './LogService';
 import { optimizationEventBus, OptimizationEventType } from './OptimizationEventBus';
 import { healthNotificationService } from './HealthNotificationService';
@@ -169,17 +170,20 @@ function updateTrayStatus(result: OptimizationCompletePayload): void {
  * Returns the current scores and protection status.
  */
 export function useLiveScores() {
-  return useLiveSync((s) => ({
-    healthScore: s.healthScore,
-    optimizationScore: s.optimizationScore,
-    securityScore: s.securityScore,
-    performanceScore: s.performanceScore,
-    storageScore: s.storageScore,
-    privacyScore: s.privacyScore,
-    hardwareHealth: s.hardwareHealth,
-    predictiveHealth: s.predictiveHealth,
-    protectionStatus: s.protectionStatus,
-    lastUpdated: s.lastUpdated,
-    lastOptimizationAt: s.lastOptimizationAt,
-  }));
+  return useLiveSync(
+    (s) => ({
+      healthScore: s.healthScore,
+      optimizationScore: s.optimizationScore,
+      securityScore: s.securityScore,
+      performanceScore: s.performanceScore,
+      storageScore: s.storageScore,
+      privacyScore: s.privacyScore,
+      hardwareHealth: s.hardwareHealth,
+      predictiveHealth: s.predictiveHealth,
+      protectionStatus: s.protectionStatus,
+      lastUpdated: s.lastUpdated,
+      lastOptimizationAt: s.lastOptimizationAt,
+    }),
+    shallow,
+  );
 }

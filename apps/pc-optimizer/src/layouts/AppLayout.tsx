@@ -1,4 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom';
+import { useCallback } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { TitleBar } from '../components/TitleBar';
 import { Breadcrumbs } from '../components/Breadcrumbs';
@@ -6,6 +7,8 @@ import { useKeyboardShortcuts } from '../components/useKeyboardShortcuts';
 import { ProSplashOverlay } from '../features/licensing/ProSplashOverlay';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ElevationBanner } from '../components/ElevationBanner';
+import { useBackendReconnect } from '../hooks/useBackendReconnect';
+import { rpcCache } from '../services/rpcCache';
 
 /**
  * AppLayout — the persistent shell for every page.
@@ -27,6 +30,11 @@ import { ElevationBanner } from '../components/ElevationBanner';
 export function AppLayout() {
   useKeyboardShortcuts();
   const location = useLocation();
+
+  const handleReconnect = useCallback(() => {
+    rpcCache.clear();
+  }, []);
+  useBackendReconnect(handleReconnect);
 
   return (
     <div className="flex h-full flex-col bg-[var(--avs-bg)] text-text-primary">

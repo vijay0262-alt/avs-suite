@@ -341,8 +341,8 @@ function OverviewTab({ vm }: { vm: SecurityCenterViewModel }) {
 
   return (
     <div className="space-y-4">
-      {/* Protection Details */}
-      <CollapsibleSection title="Protection Details" icon={<ShieldCheckIcon className="h-5 w-5" />} storageKey="sec-protection-details">
+      {/* Panel 1: Protection & Threats */}
+      <CollapsibleSection title="Protection & Threats" icon={<ShieldCheckIcon className="h-5 w-5" />} storageKey="sec-protection-threats">
         <div className="grid gap-4 lg:grid-cols-2">
           <Card variant="glass">
             <div className="space-y-3">
@@ -381,11 +381,10 @@ function OverviewTab({ vm }: { vm: SecurityCenterViewModel }) {
             </div>
           </Card>
         </div>
-      </CollapsibleSection>
-
-      {/* Threat Categories */}
-      <CollapsibleSection title="Threat Categories" icon={<ExclamationTriangleIcon className="h-5 w-5" />} storageKey="sec-threat-categories">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {/* Threat Categories (inline) */}
+          <div className="pt-4 border-t border-[var(--avs-border)]">
+            <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-3">Threat Categories</h4>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {THREAT_CATEGORIES.map((cat) => {
             const count = s.threats.filter(t => t.category === cat.key).length;
             const activeCount = s.threats.filter(t => t.category === cat.key && t.status === 'active').length;
@@ -403,10 +402,11 @@ function OverviewTab({ vm }: { vm: SecurityCenterViewModel }) {
               </div>
             );
           })}
-        </div>
+            </div>
+          </div>
       </CollapsibleSection>
 
-      {/* Scan History */}
+      {/* Panel 2: Scan History */}
       <CollapsibleSection title="Scan History" icon={<ClockIcon className="h-5 w-5" />} storageKey="sec-scan-history">
         {s.scanHistory.length === 0 ? (
           <ModuleEmptyState icon={ClockIcon} title="No scans yet" message="Run your first scan to see history." />

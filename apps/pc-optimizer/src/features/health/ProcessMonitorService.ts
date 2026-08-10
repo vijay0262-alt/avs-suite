@@ -45,13 +45,15 @@ const TARGET_PROCESSES: Record<string, string[]> = {
 const WATCH_PATTERNS = Object.values(TARGET_PROCESSES).flat();
 
 const POLL_INTERVAL_MS = 5000;
+const POLL_INTERVAL_HIDDEN_MS = 30000;
 
 class ProcessMonitorServiceImpl {
   private listeners = new Set<ProcessMonitorListener>();
   private runningProcesses = new Map<string, number>(); // processName → pid
-  private intervalId: ReturnType<typeof setInterval> | null = null;
+  private timerId: ReturnType<typeof setTimeout> | null = null;
   private started = false;
   private polling = false;
+  private visibilityHandler: (() => void) | null = null;
 
   /**
    * Start monitoring. Safe to call multiple times — only starts once.
@@ -59,20 +61,47 @@ class ProcessMonitorServiceImpl {
   start(): void {
     if (this.started) return;
     this.started = true;
-    this.intervalId = setInterval(() => {
-      void this.poll();
-    }, POLL_INTERVAL_MS);
-    // Do an immediate poll so we know the initial state
     void this.poll();
+    this.scheduleNext();
+
+    // Adaptive polling — slow down when page is hidden (tray/minimized)
+    if (typeof document !== 'undefined') {
+      this.visibilityHandler = () => {
+        if (this.timerId) {
+          clearTimeout(this.timerId);
+          this.timerId = null;
+        }
+        this.scheduleNext();
+      };
+      document.addEventListener('visibilitychange', this.visibilityHandler);
+    }
+  }
+
+  private getPollInterval(): number {
+    if (typeof document !== 'undefined' && document.hidden) {
+      return POLL_INTERVAL_HIDDEN_MS;
+    }
+    return POLL_INTERVAL_MS;
+  }
+
+  private scheduleNext(): void {
+    if (!this.started) return;
+    this.timerId = setTimeout(() => {
+      void this.poll().finally(() => this.scheduleNext());
+    }, this.getPollInterval());
   }
 
   /**
    * Stop monitoring.
    */
   stop(): void {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+    if (this.timerId) {
+      clearTimeout(this.timerId);
+      this.timerId = null;
+    }
+    if (this.visibilityHandler && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
     }
     this.started = false;
     this.runningProcesses.clear();

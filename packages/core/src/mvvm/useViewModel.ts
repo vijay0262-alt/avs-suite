@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 import type { ViewModel } from './ViewModel';
 
 /**
@@ -17,7 +17,10 @@ import type { ViewModel } from './ViewModel';
  * synchronises the state.
  */
 export function useViewModel<TState>(vm: ViewModel<TState>): TState {
-  const subscribe = (callback: () => void) => vm.subscribe(() => callback());
-  const getSnapshot = () => vm.state;
+  const subscribe = useCallback(
+    (callback: () => void) => vm.subscribe(() => callback()),
+    [vm],
+  );
+  const getSnapshot = useCallback(() => vm.state, [vm]);
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

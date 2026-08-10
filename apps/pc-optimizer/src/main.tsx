@@ -14,11 +14,11 @@ dashboardRefreshManager.init();
 registerAllModules();
 void initializeAllModules();
 
-// Start background deferred cleanup service — monitors for browser/app
-// closures and automatically retries deferred cleanup items.
-backgroundCleanupService.start();
-// On startup, retry any deferred items whose blocking processes are no longer running.
-void backgroundCleanupService.runStartupCleanup();
+// Defer background service startup to after first paint — prioritize main window visibility
+const startBackgroundServices = () => {
+  backgroundCleanupService.start();
+  void backgroundCleanupService.runStartupCleanup();
+};
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -29,3 +29,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
   </React.StrictMode>,
 );
+
+// Start background services after the first paint completes
+if (typeof requestIdleCallback !== 'undefined') {
+  requestIdleCallback(startBackgroundServices, { timeout: 3000 });
+} else {
+  setTimeout(startBackgroundServices, 1500);
+}

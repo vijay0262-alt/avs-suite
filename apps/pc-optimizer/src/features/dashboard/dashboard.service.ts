@@ -2,6 +2,7 @@
  * Dashboard service — RPC wrapper for system health and optimization.
  */
 import { RPC_METHODS } from '@avs/shared/rpc';
+import { rpcCache } from '../../services/rpcCache';
 import type {
   DashboardMetrics,
   LiveMetrics,
@@ -38,13 +39,13 @@ export interface DashboardService {
 }
 
 export const dashboardService: DashboardService = {
-  getMetrics: () => client().call(RPC_METHODS.DASHBOARD_METRICS),
+  getMetrics: () => rpcCache.get('dashboard.metrics', () => client().call<DashboardMetrics>(RPC_METHODS.DASHBOARD_METRICS), 15_000),
   getLiveMetrics: () => client().call(RPC_METHODS.DASHBOARD_LIVE),
   getHealthScore: () => client().call(RPC_METHODS.DASHBOARD_HEALTH),
-  refreshCache: () => client().call(RPC_METHODS.DASHBOARD_REFRESH_CACHE),
+  refreshCache: () => { rpcCache.invalidate('dashboard.metrics'); rpcCache.invalidate('dashboard.health'); return client().call(RPC_METHODS.DASHBOARD_REFRESH_CACHE); },
   getOptimizePreview: () => client().call(RPC_METHODS.DASHBOARD_OPTIMIZE_PREVIEW),
   executeOptimize: () => client().call(RPC_METHODS.DASHBOARD_OPTIMIZE_EXECUTE),
-  getHardwareSensors: () => client().call(RPC_METHODS.HARDWARE_SENSORS),
+  getHardwareSensors: () => rpcCache.get('dashboard.hardware', () => client().call<HardwareSensors>(RPC_METHODS.HARDWARE_SENSORS), 30_000),
   enableSmartScreen: () => client().call(RPC_METHODS.SECURITY_ENABLE_SMARTSCREEN),
   enableDefender: () => client().call(RPC_METHODS.SECURITY_ENABLE_DEFENDER),
   enableFirewall: () => client().call(RPC_METHODS.SECURITY_ENABLE_FIREWALL),

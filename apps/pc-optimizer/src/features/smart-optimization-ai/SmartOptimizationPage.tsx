@@ -342,11 +342,11 @@ export default function SmartOptimizationPage() {
         </div>
       )}
 
-      {/* ── COLLAPSIBLE SECONDARY CONTENT ──────────────────────────── */}
+      {/* ── COLLAPSIBLE SECONDARY CONTENT (2 panels) ─────────────── */}
 
-      {/* Plan Details */}
+      {/* Panel 1: Plan & Insights */}
       {s.preview && (
-        <CollapsibleSection title="Plan Details" icon={<BoltIcon className="h-5 w-5" />} storageKey="smart-opt-plan-details">
+        <CollapsibleSection title="Plan & Insights" icon={<BoltIcon className="h-5 w-5" />} storageKey="smart-opt-plan-insights">
           <div className="space-y-4">
             {/* Warnings */}
             {s.preview.warnings.length > 0 && (
@@ -463,123 +463,123 @@ export default function SmartOptimizationPage() {
               </div>
             </ProOnlySection>
           </div>
+          {s.insights.length > 0 && (
+            <div className="pt-4 border-t border-[var(--avs-border)]">
+              <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-3">AI Insights</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {s.insights.slice(0, 6).map((insight) => (
+                  <div key={insight.id} className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-4">
+                    <div className="flex items-start gap-2">
+                      <LightBulbIcon className="h-5 w-5 text-[var(--avs-brand-primary)] shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-small font-medium text-[var(--avs-text-primary)]">{insight.title}</p>
+                        <p className="text-caption text-[var(--avs-text-secondary)] mt-1">{insight.explanation}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge tone={IMPACT_BADGES[insight.impactTier]}>{insight.impactTier}</Badge>
+                          <span className="text-caption text-[var(--avs-text-muted)]">{(insight.confidence * 100).toFixed(0)}% confidence</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CollapsibleSection>
       )}
 
-      {/* AI Insights */}
-      {s.insights.length > 0 && (
-        <CollapsibleSection title="AI Insights" icon={<LightBulbIcon className="h-5 w-5" />} storageKey="smart-opt-insights">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {s.insights.slice(0, 6).map((insight) => (
-              <div key={insight.id} className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-4">
-                <div className="flex items-start gap-2">
-                  <LightBulbIcon className="h-5 w-5 text-[var(--avs-brand-primary)] shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-small font-medium text-[var(--avs-text-primary)]">{insight.title}</p>
-                    <p className="text-caption text-[var(--avs-text-secondary)] mt-1">{insight.explanation}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge tone={IMPACT_BADGES[insight.impactTier]}>{insight.impactTier}</Badge>
-                      <span className="text-caption text-[var(--avs-text-muted)]">{(insight.confidence * 100).toFixed(0)}% confidence</span>
+      {/* Panel 2: Results & Settings */}
+      {(s.simulation || s.lastReport || s.config) && (
+        <CollapsibleSection title="Results & Settings" icon={<BeakerIcon className="h-5 w-5" />} storageKey="smart-opt-results-settings">
+          <div className="space-y-4">
+            {s.simulation && (
+              <div className="space-y-3">
+                <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)]">Simulation</h4>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                  <MetricBox label="Simulated Score" value={s.simulation.simulatedHealthScore.toString()} icon={ChartBarIcon} />
+                  <MetricBox label="Confidence" value={`${(s.simulation.confidence * 100).toFixed(0)}%`} icon={CheckCircleIcon} />
+                  <MetricBox label="Simulated Risk" value={s.simulation.simulatedRisk} icon={ShieldCheckIcon} />
+                  <MetricBox label="RAM Recovery" value={formatDataSize(s.simulation.simulatedBenefits.ramRecoveryMB * 1024 * 1024)} icon={CpuChipIcon} />
+                </div>
+                {s.simulation.assumptions.length > 0 && (
+                  <div>
+                    <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-1">Assumptions</h4>
+                    {s.simulation.assumptions.map((a, i) => (
+                      <p key={i} className="text-caption text-[var(--avs-text-secondary)]">• {a}</p>
+                    ))}
+                  </div>
+                )}
+                {s.simulation.warnings.length > 0 && (
+                  <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-warning)]/10 p-3">
+                    {s.simulation.warnings.map((w, i) => (
+                      <p key={i} className="text-caption text-[var(--avs-warning)]">• {w}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {s.lastReport && (
+              <div className="space-y-3 pt-4 border-t border-[var(--avs-border)]">
+                <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)]">Execution Report</h4>
+                <p className="text-small font-medium text-[var(--avs-text-primary)]">{s.lastReport.summary.headline}</p>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                  <MetricBox label="Health Change" value={`${s.lastReport.summary.healthScoreChange > 0 ? '+' : ''}${s.lastReport.summary.healthScoreChange}`} icon={ArrowTrendingUpIcon} />
+                  <MetricBox label="Storage Recovered" value={formatDataSize(s.lastReport.summary.storageRecoveredMB * 1024 * 1024)} icon={CircleStackIcon} />
+                  <MetricBox label="Success" value={s.lastReport.successCount.toString()} icon={CheckCircleIcon} />
+                  <MetricBox label="Failed" value={s.lastReport.failureCount.toString()} icon={ExclamationTriangleIcon} />
+                </div>
+                <div className="space-y-1">
+                  {s.lastReport.results.map((result) => (
+                    <div key={result.actionId} className="flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
+                      {result.status === 'completed' ? (
+                        <CheckCircleIcon className="h-4 w-4 text-[var(--avs-success)]" />
+                      ) : result.status === 'failed' ? (
+                        <ExclamationTriangleIcon className="h-4 w-4 text-[var(--avs-danger)]" />
+                      ) : (
+                        <ArrowPathIcon className="h-4 w-4 text-[var(--avs-text-muted)]" />
+                      )}
+                      <span className="text-caption font-medium text-[var(--avs-text-primary)]">{result.actionTitle}</span>
+                      <span className="text-caption text-[var(--avs-text-muted)] ml-auto capitalize">{result.status}</span>
                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {s.config && (
+              <div className="space-y-3 pt-4 border-t border-[var(--avs-border)]">
+                <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)]">Configuration</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <ConfigToggle label="Enable Rollback" value={s.config.enableRollback} onChange={(v) => vm.updateConfig({ enableRollback: v })} />
+                  <ConfigToggle label="Enable Simulation" value={s.config.enableSimulation} onChange={(v) => vm.updateConfig({ enableSimulation: v })} />
+                  <ConfigToggle label="Enable Learning" value={s.config.enableLearning} onChange={(v) => vm.updateConfig({ enableLearning: v })} />
+                  <ConfigToggle label="Enable Insights" value={s.config.enableInsights} onChange={(v) => vm.updateConfig({ enableInsights: v })} />
+                  <ConfigToggle label="Auto-approve Low Risk" value={s.config.autoApproveLowRisk} onChange={(v) => vm.updateConfig({ autoApproveLowRisk: v })} />
+                  <ConfigToggle label="Approval Flow" value={s.config.enableApprovalFlow} onChange={(v) => vm.updateConfig({ enableApprovalFlow: v })} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-caption text-[var(--avs-text-muted)]">Risk Tolerance</label>
+                    <select
+                      value={s.config.riskTolerance}
+                      onChange={(e) => vm.updateConfig({ riskTolerance: e.target.value as RiskLevel })}
+                      className="mt-1 w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-caption text-[var(--avs-text-primary)]"
+                    >
+                      {['none', 'low', 'moderate', 'high', 'severe'].map((r) => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-caption text-[var(--avs-text-muted)]">Preferred Style</label>
+                    <select
+                      value={s.config.preferredStyle}
+                      onChange={(e) => vm.updateConfig({ preferredStyle: e.target.value as OptimizationConfiguration['preferredStyle'] })}
+                      className="mt-1 w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-caption text-[var(--avs-text-primary)]"
+                    >
+                      {['conservative', 'balanced', 'aggressive', 'minimal'].map((r) => <option key={r} value={r}>{r}</option>)}
+                    </select>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {/* Simulation Results */}
-      {s.simulation && (
-        <CollapsibleSection title="Simulation Results" icon={<BeakerIcon className="h-5 w-5" />} storageKey="smart-opt-simulation" defaultCollapsed={false}>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <MetricBox label="Simulated Score" value={s.simulation.simulatedHealthScore.toString()} icon={ChartBarIcon} />
-              <MetricBox label="Confidence" value={`${(s.simulation.confidence * 100).toFixed(0)}%`} icon={CheckCircleIcon} />
-              <MetricBox label="Simulated Risk" value={s.simulation.simulatedRisk} icon={ShieldCheckIcon} />
-              <MetricBox label="RAM Recovery" value={formatDataSize(s.simulation.simulatedBenefits.ramRecoveryMB * 1024 * 1024)} icon={CpuChipIcon} />
-            </div>
-            {s.simulation.assumptions.length > 0 && (
-              <div>
-                <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-1">Assumptions</h4>
-                {s.simulation.assumptions.map((a, i) => (
-                  <p key={i} className="text-caption text-[var(--avs-text-secondary)]">• {a}</p>
-                ))}
-              </div>
             )}
-            {s.simulation.warnings.length > 0 && (
-              <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-warning)]/10 p-3">
-                {s.simulation.warnings.map((w, i) => (
-                  <p key={i} className="text-caption text-[var(--avs-warning)]">• {w}</p>
-                ))}
-              </div>
-            )}
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {/* Execution Report */}
-      {s.lastReport && (
-        <CollapsibleSection title="Execution Report" icon={<CheckCircleIcon className="h-5 w-5" />} storageKey="smart-opt-execution" defaultCollapsed={false}>
-          <div className="space-y-3">
-            <p className="text-small font-medium text-[var(--avs-text-primary)]">{s.lastReport.summary.headline}</p>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <MetricBox label="Health Change" value={`${s.lastReport.summary.healthScoreChange > 0 ? '+' : ''}${s.lastReport.summary.healthScoreChange}`} icon={ArrowTrendingUpIcon} />
-              <MetricBox label="Storage Recovered" value={formatDataSize(s.lastReport.summary.storageRecoveredMB * 1024 * 1024)} icon={CircleStackIcon} />
-              <MetricBox label="Success" value={s.lastReport.successCount.toString()} icon={CheckCircleIcon} />
-              <MetricBox label="Failed" value={s.lastReport.failureCount.toString()} icon={ExclamationTriangleIcon} />
-            </div>
-            <div className="space-y-1">
-              {s.lastReport.results.map((result) => (
-                <div key={result.actionId} className="flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
-                  {result.status === 'completed' ? (
-                    <CheckCircleIcon className="h-4 w-4 text-[var(--avs-success)]" />
-                  ) : result.status === 'failed' ? (
-                    <ExclamationTriangleIcon className="h-4 w-4 text-[var(--avs-danger)]" />
-                  ) : (
-                    <ArrowPathIcon className="h-4 w-4 text-[var(--avs-text-muted)]" />
-                  )}
-                  <span className="text-caption font-medium text-[var(--avs-text-primary)]">{result.actionTitle}</span>
-                  <span className="text-caption text-[var(--avs-text-muted)] ml-auto capitalize">{result.status}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {/* Configuration */}
-      {s.config && (
-        <CollapsibleSection title="Configuration" icon={<Cog6ToothIcon className="h-5 w-5" />} storageKey="smart-opt-config">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ConfigToggle label="Enable Rollback" value={s.config.enableRollback} onChange={(v) => vm.updateConfig({ enableRollback: v })} />
-            <ConfigToggle label="Enable Simulation" value={s.config.enableSimulation} onChange={(v) => vm.updateConfig({ enableSimulation: v })} />
-            <ConfigToggle label="Enable Learning" value={s.config.enableLearning} onChange={(v) => vm.updateConfig({ enableLearning: v })} />
-            <ConfigToggle label="Enable Insights" value={s.config.enableInsights} onChange={(v) => vm.updateConfig({ enableInsights: v })} />
-            <ConfigToggle label="Auto-approve Low Risk" value={s.config.autoApproveLowRisk} onChange={(v) => vm.updateConfig({ autoApproveLowRisk: v })} />
-            <ConfigToggle label="Approval Flow" value={s.config.enableApprovalFlow} onChange={(v) => vm.updateConfig({ enableApprovalFlow: v })} />
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-caption text-[var(--avs-text-muted)]">Risk Tolerance</label>
-              <select
-                value={s.config.riskTolerance}
-                onChange={(e) => vm.updateConfig({ riskTolerance: e.target.value as RiskLevel })}
-                className="mt-1 w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-caption text-[var(--avs-text-primary)]"
-              >
-                {['none', 'low', 'moderate', 'high', 'severe'].map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-caption text-[var(--avs-text-muted)]">Preferred Style</label>
-              <select
-                value={s.config.preferredStyle}
-                onChange={(e) => vm.updateConfig({ preferredStyle: e.target.value as OptimizationConfiguration['preferredStyle'] })}
-                className="mt-1 w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-caption text-[var(--avs-text-primary)]"
-              >
-                {['conservative', 'balanced', 'aggressive', 'minimal'].map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
           </div>
         </CollapsibleSection>
       )}

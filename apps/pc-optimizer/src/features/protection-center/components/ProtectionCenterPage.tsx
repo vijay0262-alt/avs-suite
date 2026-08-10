@@ -3,10 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DashboardSection, LoadingState, EmptyState, Button, Card, CollapsibleSection } from '@avs/ui';
 import {
   ShieldCheckIcon,
-  ClockIcon,
   HeartIcon,
-  CalendarDaysIcon,
-  InformationCircleIcon,
   BellAlertIcon,
   ArrowPathIcon,
   CheckCircleIcon,
@@ -26,7 +23,6 @@ import { SystemHealthSnapshot } from './SystemHealthSnapshot';
 import { WhatChanged } from './WhatChanged';
 import { UpcomingAutomation } from './UpcomingAutomation';
 import { QuickActions } from './QuickActions';
-import { ProtectionStatus } from './ProtectionStatus';
 import { AlertsPanel } from './AlertsPanel';
 import { ProcessOptimizer } from './ProcessOptimizer';
 
@@ -215,16 +211,12 @@ export function ProtectionCenterPage() {
         </Card>
       </div>
 
-      {/* ── COLLAPSIBLE SECONDARY CONTENT ──────────────────────────── */}
+      {/* ── COLLAPSIBLE SECONDARY CONTENT (2 panels) ────────────── */}
 
-      {/* Live Protection Cards */}
-      <CollapsibleSection title="Protection Monitors" icon={<ShieldCheckIcon className="h-5 w-5" />} storageKey="pc-monitors">
-        <ProtectionCards cards={state.cards} onNavigate={handleNavigate} />
-      </CollapsibleSection>
-
-      {/* Live Activity + Background Monitors + What Changed */}
-      <CollapsibleSection title="Live Activity" icon={<ClockIcon className="h-5 w-5" />} storageKey="pc-activity">
+      {/* Panel 1: Protection & Activity */}
+      <CollapsibleSection title="Protection & Activity" icon={<ShieldCheckIcon className="h-5 w-5" />} storageKey="pc-protection-activity">
         <div className="space-y-5">
+          <ProtectionCards cards={state.cards} onNavigate={handleNavigate} />
           <LiveActivityTimeline activities={state.activities} />
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
@@ -239,26 +231,19 @@ export function ProtectionCenterPage() {
         </div>
       </CollapsibleSection>
 
-      {/* System Health + Protection Coverage + Process Optimizer */}
-      <CollapsibleSection title="System Health" icon={<HeartIcon className="h-5 w-5" />} storageKey="pc-system-health">
-        <div className="grid gap-4 lg:grid-cols-3">
-          <SystemHealthSnapshot data={state.systemHealth} />
-          <ProtectionHealth coverage={state.coverage} onFix={handleFixCoverage} />
-          <ProcessOptimizer onOptimize={(kill) => vm.optimizeProcesses(kill)} />
+      {/* Panel 2: System Health & Automation */}
+      <CollapsibleSection title="System Health & Automation" icon={<HeartIcon className="h-5 w-5" />} storageKey="pc-health-automation">
+        <div className="space-y-5">
+          <div className="grid gap-4 lg:grid-cols-3">
+            <SystemHealthSnapshot data={state.systemHealth} />
+            <ProtectionHealth coverage={state.coverage} onFix={handleFixCoverage} />
+            <ProcessOptimizer onOptimize={(kill) => vm.optimizeProcesses(kill)} />
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <UpcomingAutomation tasks={state.scheduledTasks} isPro={state.isPro} />
+            <QuickActions actions={state.quickActions} onNavigate={handleNavigate} isPro={state.isPro} />
+          </div>
         </div>
-      </CollapsibleSection>
-
-      {/* Automation + Quick Actions */}
-      <CollapsibleSection title="Automation & Actions" icon={<CalendarDaysIcon className="h-5 w-5" />} storageKey="pc-automation">
-        <div className="grid gap-4 lg:grid-cols-2">
-          <UpcomingAutomation tasks={state.scheduledTasks} isPro={state.isPro} />
-          <QuickActions actions={state.quickActions} onNavigate={handleNavigate} isPro={state.isPro} />
-        </div>
-      </CollapsibleSection>
-
-      {/* Protection Status Explanation */}
-      <CollapsibleSection title="Understanding Your Status" icon={<InformationCircleIcon className="h-5 w-5" />} storageKey="pc-status-explanation">
-        <ProtectionStatus state={state.protectionState!} coverage={state.coverage} />
       </CollapsibleSection>
 
     </div>

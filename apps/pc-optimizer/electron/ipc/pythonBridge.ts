@@ -43,6 +43,7 @@ export type JsonRpcResponse<T = unknown> = JsonRpcSuccess<T> | JsonRpcError;
 export interface RpcClient {
   call<T>(method: string, params?: unknown, customTimeoutMs?: number): Promise<T>;
   shutdown(): Promise<void>;
+  onReconnect(callback: () => void): void;
 }
 
 interface Logger {
@@ -50,6 +51,8 @@ interface Logger {
   warn(message: string, meta?: unknown): void;
   error(message: string, meta?: unknown): void;
 }
+
+type ReconnectCallback = () => void;
 
 function resolveBackendCommand(): { command: string; args: string[]; cwd?: string; pythonPath?: string } {
   if (app.isPackaged) {
@@ -79,6 +82,12 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
   let nextId = 1;
   let buffer = '';
   let disposed = false;
+  let restarting = false;
+  let restartAttempts = 0;
+  const MAX_RESTART_ATTEMPTS = 5;
+  const RESTART_DELAY_MS = 3000;
+  let reconnectCallbacks: ReconnectCallback[] = [];
+  let activeChild = child;
 
   // Cap buffer size to prevent memory growth from malformed backend output
   const MAX_BUFFER_SIZE = 1024 * 1024; // 1 MB
@@ -115,17 +124,106 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
 
   child.on('exit', (code, signal) => {
     logger.error(`Python backend exited (code=${code}, signal=${signal})`);
-    disposed = true;
     for (const cb of pending.values()) {
       if (cb.timer) clearTimeout(cb.timer);
       cb.reject(new Error('Backend process exited'));
     }
     pending.clear();
+    buffer = '';
+    if (!disposed) attemptRestart();
   });
+
+  function attachChild(c: ChildProcessWithoutNullStreams) {
+    c.stdout.on('data', (chunk: Buffer) => {
+      buffer += chunk.toString('utf8');
+      if (buffer.length > MAX_BUFFER_SIZE) {
+        logger.warn('Python backend stdout buffer overflow — truncating');
+        buffer = buffer.slice(-MAX_BUFFER_SIZE);
+      }
+      let idx: number;
+      while ((idx = buffer.indexOf('\n')) !== -1) {
+        const line = buffer.slice(0, idx).trim();
+        buffer = buffer.slice(idx + 1);
+        if (!line) continue;
+        try {
+          const msg = JSON.parse(line) as JsonRpcResponse;
+          const cb = pending.get(msg.id as string | number);
+          if (!cb) continue;
+          pending.delete(msg.id as string | number);
+          if (cb.timer) clearTimeout(cb.timer);
+          if ('error' in msg) cb.reject(new Error(`${msg.error.code}: ${msg.error.message}`));
+          else cb.resolve(msg.result);
+        } catch {
+          logger.warn('Malformed line from Python backend', { line });
+        }
+      }
+    });
+    c.stderr.on('data', (chunk: Buffer) => {
+      logger.warn(`[py] ${chunk.toString('utf8').trimEnd()}`);
+    });
+    c.on('exit', (code, signal) => {
+      logger.error(`Python backend exited (code=${code}, signal=${signal})`);
+      for (const cb of pending.values()) {
+        if (cb.timer) clearTimeout(cb.timer);
+        cb.reject(new Error('Backend process exited'));
+      }
+      pending.clear();
+      buffer = '';
+      if (!disposed) attemptRestart();
+    });
+  }
+
+  function attemptRestart() {
+    if (restarting || disposed) return;
+    if (restartAttempts >= MAX_RESTART_ATTEMPTS) {
+      logger.error(`[reconnect] Max restart attempts (${MAX_RESTART_ATTEMPTS}) reached — giving up`);
+      return;
+    }
+    restarting = true;
+    restartAttempts++;
+    logger.info(`[reconnect] Attempting restart ${restartAttempts}/${MAX_RESTART_ATTEMPTS} in ${RESTART_DELAY_MS}ms...`);
+    setTimeout(() => {
+      if (disposed) { restarting = false; return; }
+      try {
+        const newChild = spawn(command, args, {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          env: { ...process.env, PYTHONUNBUFFERED: '1', ...(pythonPath ? { PYTHONPATH: pythonPath } : {}) },
+          cwd,
+        });
+        activeChild = newChild;
+        attachChild(newChild);
+        // Health-check the restarted backend
+        const pingId = `ping-${Date.now()}`;
+        const pingReq: JsonRpcRequest = { jsonrpc: '2.0', id: pingId, method: 'system.ping' as never };
+        newChild.stdin.write(JSON.stringify(pingReq) + '\n');
+        // Wait for ping response with timeout
+        const pingTimer = setTimeout(() => {
+          logger.warn('[reconnect] Restarted backend ping timed out — will retry on next exit');
+        }, 60000);
+        const pingHandler = (chunk: Buffer) => {
+          if (chunk.toString('utf8').includes(pingId)) {
+            clearTimeout(pingTimer);
+            newChild.stdout.removeListener('data', pingHandler);
+            restarting = false;
+            restartAttempts = 0;
+            logger.info('[reconnect] Python backend restarted successfully');
+            for (const cb of reconnectCallbacks) {
+              try { cb(); } catch { /* ignore */ }
+            }
+          }
+        };
+        newChild.stdout.on('data', pingHandler);
+      } catch (err) {
+        logger.error(`[reconnect] Restart attempt ${restartAttempts} failed`, err);
+        restarting = false;
+      }
+    }, RESTART_DELAY_MS);
+  }
 
   const client: RpcClient = {
     call<T>(method: string, params?: unknown, customTimeoutMs?: number): Promise<T> {
       if (disposed) return Promise.reject(new Error('Backend process is not running'));
+      if (restarting) return Promise.reject(new Error('Backend is restarting'));
       const doCall = (attempt: number): Promise<T> => new Promise<T>((resolve, reject) => {
         const id = nextId++;
         // Give optimize/clean/analyze operations more time since they do real work
@@ -157,7 +255,7 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
           return;
         }
         const req: JsonRpcRequest = { jsonrpc: '2.0', id, method: method as never, params };
-        child.stdin.write(JSON.stringify(req) + '\n');
+        activeChild.stdin.write(JSON.stringify(req) + '\n');
       });
       return doCall(0);
     },
@@ -167,7 +265,7 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
       // Graceful shutdown: try sending a shutdown command first
       try {
         const req: JsonRpcRequest = { jsonrpc: '2.0', id: nextId++, method: 'system.shutdown' as never };
-        child.stdin.write(JSON.stringify(req) + '\n');
+        activeChild.stdin.write(JSON.stringify(req) + '\n');
         // Give the backend 2 seconds to shut down gracefully
         await new Promise((r) => setTimeout(r, 2000));
       } catch {
@@ -179,7 +277,10 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
         cb.reject(new Error('Backend shutting down'));
       }
       pending.clear();
-      child.kill();
+      activeChild.kill();
+    },
+    onReconnect(callback: () => void): void {
+      reconnectCallbacks.push(callback);
     },
   };
 

@@ -10,6 +10,7 @@ declare global {
   interface AvsRpcClient {
     call<T>(method: string, params?: unknown): Promise<T>;
     subscribe(channel: string, listener: (payload: unknown) => void): () => void;
+    onReconnect(listener: () => void): () => void;
   }
 
   interface AvsAppApi {

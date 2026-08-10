@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button, Card, RecommendationCard, ChartCard, TimelineCard, Sparkline, EmptyState, LoadingState, CollapsibleSection } from '@avs/ui';
 import { ModuleErrorBanner } from '../../components/ModuleStates';
@@ -13,13 +13,8 @@ import {
   ClockIcon,
   BoltIcon,
   ChartBarIcon,
-  DocumentTextIcon,
-  ArrowRightIcon,
-  StarIcon,
   FireIcon,
   Battery50Icon,
-  EyeIcon,
-  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { DashboardViewModel } from './DashboardViewModel';
@@ -30,7 +25,6 @@ import { UnifiedOptimizeFlow } from './components/UnifiedOptimizeFlow';
 import { useIsPro } from '../sync/syncStore';
 import { useEditionLimits } from '../licensing/editionLimits';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
-import { FreeUsageWidget } from '../licensing/FreeUsageWidget';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -80,27 +74,44 @@ function formatClockValue(clock: { current: number; unit: string; name: string }
   return `${Math.round(clock.current)} ${clock.unit === 'mhz' ? 'MHz' : clock.unit}`;
 }
 
-interface AIModuleCard {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  path: string;
-  status: 'active' | 'available' | 'pro';
-}
+const LiveMetricsMonitor = memo(function LiveMetricsMonitor({ liveMetrics }: { liveMetrics: LiveMetrics | null }) {
+  const [cpuHistory, setCpuHistory] = useState<number[]>([]);
+  const [memHistory, setMemHistory] = useState<number[]>([]);
 
-function getAIModules(isPro: boolean): AIModuleCard[] {
-  return [
-    { id: 'hardware-intelligence', name: 'Hardware Intelligence', description: 'Analyze, explain, and monitor hardware health', icon: <CpuChipIcon className="h-5 w-5" />, path: '/hardware-center', status: 'active' },
-    { id: 'process-intelligence', name: 'Process Intelligence', description: 'Understand every running process and its impact', icon: <EyeIcon className="h-5 w-5" />, path: '/process-intelligence', status: 'active' },
-    { id: 'smart-optimization', name: 'AI Smart Optimize', description: 'Evidence-based optimization recommendations', icon: <SparklesIcon className="h-5 w-5" />, path: '/ai-smart-optimize', status: 'active' },
-    { id: 'predictive-health', name: 'Predictive Health', description: 'Detect degrading trends before they become problems', icon: <ChartBarIcon className="h-5 w-5" />, path: '/predictive-health', status: isPro ? 'active' : 'pro' },
-    { id: 'security-center', name: 'Security Center', description: 'Comprehensive security analysis and monitoring', icon: <ShieldExclamationIcon className="h-5 w-5" />, path: '/security-center', status: 'active' },
-    { id: 'active-protection', name: 'Active Protection', description: 'Real-time monitoring and behavior analysis', icon: <ShieldExclamationIcon className="h-5 w-5" />, path: '/ai-active-protection', status: 'active' },
-    { id: 'threat-investigation', name: 'Threat Investigation', description: 'Explainable threat timeline and correlation', icon: <EyeIcon className="h-5 w-5" />, path: '/threat-investigation', status: isPro ? 'active' : 'pro' },
-    { id: 'remediation', name: 'Remediation', description: 'Safe quarantine, rollback, and recovery', icon: <WrenchScrewdriverIcon className="h-5 w-5" />, path: '/quarantine', status: isPro ? 'active' : 'pro' },
-  ];
-}
+  useEffect(() => {
+    if (liveMetrics) {
+      setCpuHistory((prev) => [...prev.slice(-19), liveMetrics.cpu.usage]);
+      setMemHistory((prev) => [...prev.slice(-19), liveMetrics.memory.usage]);
+    }
+  }, [liveMetrics]);
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+      <ChartCard title="CPU Usage" icon={<CpuChipIcon className="h-4 w-4" />}>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-statistic text-text-primary tabular-nums">
+            {liveMetrics ? `${Math.round(liveMetrics.cpu.usage)}%` : '—'}
+          </span>
+          <span className="text-caption text-text-muted">
+            {liveMetrics ? `${liveMetrics.cpu.logicalProcessors} cores` : ''}
+          </span>
+        </div>
+        <Sparkline data={cpuHistory.length > 1 ? cpuHistory : [0, 0]} width={280} height={60} />
+      </ChartCard>
+      <ChartCard title="Memory Usage" icon={<CircleStackIcon className="h-4 w-4" />}>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-statistic text-text-primary tabular-nums">
+            {liveMetrics ? `${Math.round(liveMetrics.memory.usage)}%` : '—'}
+          </span>
+          <span className="text-caption text-text-muted">
+            {liveMetrics ? `${Math.round(liveMetrics.memory.used / 1_000_000_000)} / ${Math.round(liveMetrics.memory.total / 1_000_000_000)} GB` : ''}
+          </span>
+        </div>
+        <Sparkline data={memHistory.length > 1 ? memHistory : [0, 0]} width={280} height={60} stroke="var(--avs-success)" fill="var(--avs-success)" />
+      </ChartCard>
+    </div>
+  );
+});
 
 export default function DashboardPage() {
   const vm = useMemo(() => new DashboardViewModel(dashboardService), []);
@@ -128,15 +139,6 @@ export default function DashboardPage() {
   }, [state.bootstrap, state.healthScanStep, location.state, navigate, vm, isPro]);
 
   const isScanning = state.healthScanStep !== 'idle' && state.healthScanStep !== 'complete';
-  const [cpuHistory, setCpuHistory] = useState<number[]>([]);
-  const [memHistory, setMemHistory] = useState<number[]>([]);
-
-  useEffect(() => {
-    if (state.liveMetrics) {
-      setCpuHistory((prev) => [...prev.slice(-19), state.liveMetrics!.cpu.usage]);
-      setMemHistory((prev) => [...prev.slice(-19), state.liveMetrics!.memory.usage]);
-    }
-  }, [state.liveMetrics]);
 
   const buttonLabel = (() => {
     switch (state.healthScanStep) {
@@ -148,6 +150,21 @@ export default function DashboardPage() {
       default: return '✨ AI Smart Optimize';
     }
   })();
+
+  const healthScore = state.healthScore?.overallScore ?? 0;
+  const securityTone = useMemo(() => getSecurityTone(state.metrics), [state.metrics]);
+  const securityLabel = useMemo(() => getSecurityLabel(state.metrics), [state.metrics]);
+  const performanceValue = useMemo(() => getPerformanceValue(state.liveMetrics), [state.liveMetrics]);
+  const storageValue = useMemo(() => getStorageValue(state.metrics), [state.metrics]);
+
+  const recommendations = useMemo(
+    () => state.healthScore
+      ? generateRecommendations(state.healthScore, state.metrics, isPro ? 'professional' : 'free')
+      : [],
+    [state.healthScore, state.metrics, isPro],
+  );
+  const maxRecommendations = limits.getLimit('dashboardRecommendations') ?? recommendations.length;
+  const visibleRecommendations = recommendations.slice(0, maxRecommendations);
 
   if (state.bootstrap === 'loading') {
     return <LoadingState message="Loading dashboard..." data-testid="dashboard-loading" />;
@@ -164,18 +181,6 @@ export default function DashboardPage() {
       />
     );
   }
-
-  const healthScore = state.healthScore?.overallScore ?? 0;
-  const securityTone = getSecurityTone(state.metrics);
-  const securityLabel = getSecurityLabel(state.metrics);
-  const performanceValue = getPerformanceValue(state.liveMetrics);
-  const storageValue = getStorageValue(state.metrics);
-
-  const recommendations = state.healthScore
-    ? generateRecommendations(state.healthScore, state.metrics, isPro ? 'professional' : 'free')
-    : [];
-  const maxRecommendations = limits.getLimit('dashboardRecommendations') ?? recommendations.length;
-  const visibleRecommendations = recommendations.slice(0, maxRecommendations);
 
   return (
     <div className="space-y-5" data-testid="page-dashboard">
@@ -340,129 +345,23 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* ── COLLAPSIBLE SECONDARY CONTENT ──────────────────────────── */}
+      {/* ── COLLAPSIBLE SECONDARY CONTENT (2 panels) ─────────────── */}
 
-      {/* Recommendations (all) */}
-      {visibleRecommendations.length > 1 && (
-        <CollapsibleSection title="All Recommendations" icon={<ChartBarIcon className="h-5 w-5" />} storageKey="dash-recommendations">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {visibleRecommendations.map((rec) => (
-              <RecommendationCard
-                key={rec.id}
-                icon={<SparklesIcon className="h-5 w-5" />}
-                title={rec.title}
-                description={rec.description}
-                priority={rec.severity === 'danger' ? 'high' : rec.severity === 'warning' ? 'medium' : 'low'}
-                action={{ label: rec.actionLabel, onClick: () => navigate(rec.actionPath) }}
-                data-testid={`recommendation-${rec.id}`}
-              />
-            ))}
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {/* Quick Actions */}
-      <CollapsibleSection title="Quick Actions" icon={<BoltIcon className="h-5 w-5" />} storageKey="dash-quick-actions">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {[
-            { id: 'ai-smart-optimize', name: 'AI Smart Optimize', icon: SparklesIcon, color: 'text-brand-primary', path: '/ai-smart-optimize', proEnhanced: false },
-            { id: 'quick-scan', name: 'Quick Scan', icon: ShieldExclamationIcon, color: 'text-semantic-success', path: '/quick-scan', proEnhanced: false },
-            { id: 'full-scan', name: 'Full Scan', icon: ShieldExclamationIcon, color: 'text-semantic-danger', path: '/full-scan', proEnhanced: false },
-            { id: 'junk-cleaner', name: 'Junk Cleaner', icon: CircleStackIcon, color: 'text-brand-primary', path: '/junk-cleaner', proEnhanced: false },
-            { id: 'startup-manager', name: 'Startup Manager', icon: BoltIcon, color: 'text-semantic-success', path: '/startup-manager', proEnhanced: false },
-            { id: 'privacy-cleaner', name: 'Privacy Cleaner', icon: ShieldExclamationIcon, color: 'text-semantic-warning', path: '/privacy-cleaner', proEnhanced: true },
-            { id: 'disk-analyzer', name: 'Disk Analyzer', icon: ChartBarIcon, color: 'text-semantic-danger', path: '/disk-analyzer', proEnhanced: true },
-            { id: 'duplicate-finder', name: 'Duplicate Finder', icon: DocumentTextIcon, color: 'text-semantic-info', path: '/duplicate-finder', proEnhanced: true },
-            { id: 'process-intelligence', name: 'Process Intelligence', icon: CpuChipIcon, color: 'text-brand-primary', path: '/process-intelligence', proEnhanced: false },
-          ].map((action) => (
-            <button
-              key={action.id}
-              onClick={() => navigate(action.path)}
-              className="group flex flex-col items-center gap-3 p-4 rounded-[var(--avs-radius-xl)] bg-gradient-surface border border-[var(--avs-border)] hover:border-[var(--avs-border-hover)] hover:shadow-glow transition-all duration-[var(--avs-duration-normal)] ease-[var(--avs-easing)]"
-              data-testid={`quick-action-${action.id}`}
-            >
-              <div className="p-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] group-hover:bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)] transition-colors relative">
-                <action.icon className={`h-6 w-6 ${action.color}`} />
-                {action.proEnhanced && !isPro && (
-                  <StarIcon className="absolute -top-1 -right-1 h-3.5 w-3.5 text-semantic-warning/70" data-testid={`quick-action-pro-badge-${action.id}`} />
-                )}
-              </div>
-              <span className="text-small font-medium text-text-primary">{action.name}</span>
-            </button>
-          ))}
-        </div>
-      </CollapsibleSection>
-
-      {/* Intelligence Modules */}
-      <CollapsibleSection title="Intelligence Modules" icon={<SparklesIcon className="h-5 w-5" />} storageKey="dash-ai-modules">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {getAIModules(isPro).map((mod) => (
-            <Card
-              key={mod.id}
-              variant="gradient"
-              className="flex items-start gap-3 cursor-pointer hover:border-[var(--avs-border-hover)] transition-colors"
-              onClick={() => navigate(mod.path)}
-              data-testid={`ai-module-${mod.id}`}
-            >
-              <div className="p-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] shrink-0">
-                {mod.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-small font-medium text-text-primary">{mod.name}</span>
-                  {mod.status === 'pro' && (
-                    <StarIcon className="h-3.5 w-3.5 text-semantic-warning/70" data-testid={`ai-module-pro-badge-${mod.id}`} />
-                  )}
-                </div>
-                <p className="text-caption text-text-secondary mt-0.5">{mod.description}</p>
-              </div>
-              <ArrowRightIcon className="h-4 w-4 text-text-muted shrink-0 mt-1" />
-            </Card>
-          ))}
-        </div>
-      </CollapsibleSection>
-
-      {/* Live System Monitor */}
-      <CollapsibleSection title="System Monitor" icon={<ChartBarIcon className="h-5 w-5" />} storageKey="dash-live-monitor">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
-          <ChartCard title="CPU Usage" icon={<CpuChipIcon className="h-4 w-4" />}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-statistic text-text-primary tabular-nums">
-                {state.liveMetrics ? `${Math.round(state.liveMetrics.cpu.usage)}%` : '—'}
-              </span>
-              <span className="text-caption text-text-muted">
-                {state.liveMetrics ? `${state.liveMetrics.cpu.logicalProcessors} cores` : ''}
-              </span>
-            </div>
-            <Sparkline data={cpuHistory.length > 1 ? cpuHistory : [0, 0]} width={280} height={60} />
-          </ChartCard>
-          <ChartCard title="Memory Usage" icon={<CircleStackIcon className="h-4 w-4" />}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-statistic text-text-primary tabular-nums">
-                {state.liveMetrics ? `${Math.round(state.liveMetrics.memory.usage)}%` : '—'}
-              </span>
-              <span className="text-caption text-text-muted">
-                {state.liveMetrics ? `${Math.round(state.liveMetrics.memory.used / 1_000_000_000)} / ${Math.round(state.liveMetrics.memory.total / 1_000_000_000)} GB` : ''}
-              </span>
-            </div>
-            <Sparkline data={memHistory.length > 1 ? memHistory : [0, 0]} width={280} height={60} stroke="var(--avs-success)" fill="var(--avs-success)" />
-          </ChartCard>
-        </div>
-      </CollapsibleSection>
-
-      {/* Hardware Monitoring */}
-      <CollapsibleSection title="Hardware Monitoring" icon={<CpuChipIcon className="h-5 w-5" />} storageKey="dash-hardware">
-        {state.hardwareSensorsError && (
-          <ModuleErrorBanner
-            message={`Failed to load hardware sensors: ${state.hardwareSensorsError}`}
-            onRetry={() => vm.loadHardwareSensors()}
-            onDismiss={() => vm.clearHardwareSensorsError()}
-            testId="dashboard-hardware-sensors-error"
-          />
-        )}
-        {state.hardwareSensorsLoading && !state.hardwareSensors ? (
-          <LoadingState message="Loading hardware sensors..." data-testid="hardware-sensors-loading" />
-        ) : state.hardwareSensors ? (
+      {/* Panel 1: System Health (live metrics + hardware sensors) */}
+      <CollapsibleSection title="System Health" icon={<ChartBarIcon className="h-5 w-5" />} storageKey="dash-system-health">
+        <div className="space-y-4">
+          <LiveMetricsMonitor liveMetrics={state.liveMetrics} />
+          {state.hardwareSensorsError && (
+            <ModuleErrorBanner
+              message={`Failed to load hardware sensors: ${state.hardwareSensorsError}`}
+              onRetry={() => vm.loadHardwareSensors()}
+              onDismiss={() => vm.clearHardwareSensorsError()}
+              testId="dashboard-hardware-sensors-error"
+            />
+          )}
+          {state.hardwareSensorsLoading && !state.hardwareSensors ? (
+            <LoadingState message="Loading hardware sensors..." data-testid="hardware-sensors-loading" />
+          ) : state.hardwareSensors ? (
           (() => {
             const hw = state.hardwareSensors!;
             const temps = hw.temperature.sensors;
@@ -524,10 +423,26 @@ export default function DashboardPage() {
             data-testid="hardware-sensors-empty"
           />
         )}
+        </div>
       </CollapsibleSection>
 
-      {/* History & Events */}
-      <CollapsibleSection title="History & Events" icon={<ClockIcon className="h-5 w-5" />} storageKey="dash-history">
+      {/* Panel 2: Recommendations & History */}
+      <CollapsibleSection title="Recommendations & History" icon={<ClockIcon className="h-5 w-5" />} storageKey="dash-recommendations-history">
+        {visibleRecommendations.length > 1 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+            {visibleRecommendations.map((rec) => (
+              <RecommendationCard
+                key={rec.id}
+                icon={<SparklesIcon className="h-5 w-5" />}
+                title={rec.title}
+                description={rec.description}
+                priority={rec.severity === 'danger' ? 'high' : rec.severity === 'warning' ? 'medium' : 'low'}
+                action={{ label: rec.actionLabel, onClick: () => navigate(rec.actionPath) }}
+                data-testid={`recommendation-${rec.id}`}
+              />
+            ))}
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <TimelineCard
             title="Recent Activity"
@@ -565,15 +480,6 @@ export default function DashboardPage() {
           />
         </div>
       </CollapsibleSection>
-
-      {/* Free Edition Usage */}
-      {!isPro && (
-        <CollapsibleSection title="Usage" icon={<ChartBarIcon className="h-5 w-5" />} storageKey="dash-usage">
-          <div className="max-w-sm">
-            <FreeUsageWidget />
-          </div>
-        </CollapsibleSection>
-      )}
 
       {/* Unified Scan + Optimize + Verify Flow */}
       {state.healthScanStep !== 'idle' && (

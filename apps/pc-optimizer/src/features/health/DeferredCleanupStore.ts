@@ -25,6 +25,7 @@ export interface DeferredCleanupItem {
 
 const STORAGE_KEY = 'avs-deferred-cleanup-queue';
 const MAX_ITEMS = 500;
+const STALE_ITEM_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 function loadFromStorage(): DeferredCleanupItem[] {
   try {
@@ -32,7 +33,15 @@ function loadFromStorage(): DeferredCleanupItem[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.slice(0, MAX_ITEMS);
+    const now = Date.now();
+    const fresh = parsed.filter((i: DeferredCleanupItem) =>
+      i.timestamp && (now - i.timestamp) < STALE_ITEM_TTL_MS,
+    );
+    // If stale items were removed, persist the cleaned list
+    if (fresh.length !== parsed.length) {
+      saveToStorage(fresh);
+    }
+    return fresh.slice(0, MAX_ITEMS);
   } catch {
     return [];
   }

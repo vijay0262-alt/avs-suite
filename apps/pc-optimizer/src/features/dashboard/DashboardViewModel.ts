@@ -240,6 +240,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   private optimizationUnsub: (() => void) | null = null;
   private optimizationRefreshTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingEventModuleId: string | null = null;
+  private verificationLogFlushTimer: ReturnType<typeof setTimeout> | null = null;
 
   /**
    * Check if the current user has Professional edition.
@@ -429,6 +430,10 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     if (this.optimizationRefreshTimer) {
       clearTimeout(this.optimizationRefreshTimer);
       this.optimizationRefreshTimer = null;
+    }
+    if (this.verificationLogFlushTimer) {
+      clearTimeout(this.verificationLogFlushTimer);
+      this.verificationLogFlushTimer = null;
     }
     // Phase 23: If a scan is in progress, persist its state before dispose
     if (this.state.healthScanStep !== 'idle' && this.state.healthScanStep !== 'complete') {
@@ -2719,13 +2724,18 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   private logVerification(entry: VerificationLog): void {
     const logs = [entry, ...this.state.verificationLogs].slice(0, 500);
     this.setState({ verificationLogs: logs });
-    try {
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('avs-verification-logs', JSON.stringify(logs));
+    // Debounce localStorage write — batch multiple log entries into one write
+    if (this.verificationLogFlushTimer) clearTimeout(this.verificationLogFlushTimer);
+    this.verificationLogFlushTimer = setTimeout(() => {
+      try {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('avs-verification-logs', JSON.stringify(logs));
+        }
+      } catch {
+        // localStorage may not be available
       }
-    } catch {
-      // localStorage may not be available
-    }
+      this.verificationLogFlushTimer = null;
+    }, 500);
   }
 
   setDeveloperMode(enabled: boolean): void {

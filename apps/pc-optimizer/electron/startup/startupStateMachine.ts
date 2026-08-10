@@ -100,6 +100,9 @@ function createMockRpc(): RpcClient {
     shutdown(): Promise<void> {
       return Promise.resolve();
     },
+    onReconnect(_callback: () => void): void {
+      // No-op — mock RPC never reconnects
+    },
   };
 }
 
