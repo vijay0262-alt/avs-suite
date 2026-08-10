@@ -591,7 +591,7 @@ export interface HealthScanModuleResult {
   rawContext?: Record<string, unknown>;
   /** Actual results measured during/after optimization for this module. */
   actual?: HealthScanModuleActual;
-  /** Verification snapshot captured before and after the optimization. */
+  /** Verification snapshot captured before and after the optimization for this module. */
   verification?: {
     beforeScore: number;
     beforeIssues: number;
@@ -599,6 +599,14 @@ export interface HealthScanModuleResult {
     afterScore: number;
     afterIssues: number;
     afterRecoverable: number;
+    /** Issues actually fixed by the optimization (verified by re-scan). */
+    fixed: number;
+    /** Issues deferred (could not be cleaned — locked, permission, browser running). */
+    deferred: number;
+    /** Issues that failed to clean (error, not deferred). */
+    failed: number;
+    /** Issues remaining after optimization (verified by re-scan). */
+    remaining: number;
   };
 }
 

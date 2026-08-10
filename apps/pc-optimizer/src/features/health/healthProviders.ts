@@ -15,6 +15,7 @@
 import type { HealthContribution, HealthContributionProvider, ModuleId } from './HealthContribution';
 import { clampHealth } from './HealthContribution';
 import { healthScoreService } from './HealthScoreService';
+import { getHealthEngineConfig } from './HealthEngineConfig';
 import { dashboardService } from '../dashboard/dashboard.service';
 import { registryService } from '../registry/registry.service';
 import { privacyService } from '../privacy/privacy.service';
@@ -136,13 +137,15 @@ export class PrivacyHealthProvider implements HealthContributionProvider {
     try {
       const result = await privacyService.detectBrowsers();
       const browserCount = result.browsers.length;
-      const penalty = Math.min(15, browserCount * 5);
+      // Use same formula as calculateHealthScore: penaltyPerRisk from config, capped at maxPenalty
+      const cfg = getHealthEngineConfig();
+      const penalty = Math.min(cfg.privacy.maxPenalty, browserCount * cfg.privacy.penaltyPerRisk);
 
       return {
         moduleId: 'privacy' as ModuleId,
         moduleName: 'Privacy Cleaner',
         currentPenalty: clampHealth(penalty),
-        maxPenalty: 15,
+        maxPenalty: cfg.privacy.maxPenalty,
         resolvedPenalty: 0,
         detail: browserCount > 0
           ? `${browserCount} browser(s) with traces`
@@ -155,7 +158,7 @@ export class PrivacyHealthProvider implements HealthContributionProvider {
         moduleId: 'privacy' as ModuleId,
         moduleName: 'Privacy Cleaner',
         currentPenalty: 0,
-        maxPenalty: 15,
+        maxPenalty: 100,
         resolvedPenalty: 0,
         detail: 'Unable to detect privacy risks',
         canAutoFix: true,
@@ -172,14 +175,26 @@ export class PerformanceHealthProvider implements HealthContributionProvider {
     const metrics = await getMetrics();
     const cpuUsage = metrics?.cpu.usage ?? 0;
     const memUsage = metrics?.memory.usage ?? 0;
-    const avgUsage = (cpuUsage + memUsage) / 2;
-    const penalty = Math.min(25, avgUsage * 0.25);
+    // Use same threshold-based formula as calculateHealthScore
+    const cfg = getHealthEngineConfig();
+    let penalty = 0;
+    if (cpuUsage > cfg.performance.cpuCriticalThreshold) {
+      penalty += cfg.performance.cpuCriticalPenalty;
+    } else if (cpuUsage > cfg.performance.cpuWarningThreshold) {
+      penalty += cfg.performance.cpuWarningPenalty;
+    }
+    if (memUsage > cfg.performance.memoryCriticalThreshold) {
+      penalty += cfg.performance.memoryCriticalPenalty;
+    } else if (memUsage > cfg.performance.memoryWarningThreshold) {
+      penalty += cfg.performance.memoryWarningPenalty;
+    }
+    const maxPenalty = cfg.performance.cpuCriticalPenalty + cfg.performance.memoryCriticalPenalty;
 
     return {
       moduleId: 'performance' as ModuleId,
       moduleName: 'Performance',
       currentPenalty: clampHealth(penalty),
-      maxPenalty: 25,
+      maxPenalty,
       resolvedPenalty: 0,
       detail: `CPU ${cpuUsage.toFixed(0)}% / RAM ${memUsage.toFixed(0)}%`,
       canAutoFix: true,
@@ -228,12 +243,16 @@ export class SecurityHealthProvider implements HealthContributionProvider {
   async getContribution(): Promise<HealthContribution> {
     const metrics = await getMetrics();
     const security = metrics?.security;
+    // Use same penalty values as calculateHealthScore from HealthEngineConfig
+    const cfg = getHealthEngineConfig();
+    const maxPenalty = cfg.security.defenderDisabledPenalty + cfg.security.realTimeProtectionDisabledPenalty +
+      cfg.security.firewallDisabledPenalty + cfg.security.smartScreenDisabledPenalty + cfg.security.pendingUpdatesPenalty;
     if (!security) {
       return {
         moduleId: 'security' as ModuleId,
         moduleName: 'Security',
         currentPenalty: 0,
-        maxPenalty: 30,
+        maxPenalty,
         resolvedPenalty: 0,
         detail: 'Security status unavailable',
         canAutoFix: false,
@@ -244,18 +263,18 @@ export class SecurityHealthProvider implements HealthContributionProvider {
     let penalty = 0;
     const thirdPartyAV = security.defender.thirdPartyAV || security.firewall.thirdPartyAV;
     if (!thirdPartyAV) {
-      if (!security.defender.enabled) penalty += 15;
-      if (!security.defender.realTimeProtection) penalty += 10;
-      if (!security.firewall.enabled) penalty += 12;
+      if (!security.defender.enabled) penalty += cfg.security.defenderDisabledPenalty;
+      if (!security.defender.realTimeProtection) penalty += cfg.security.realTimeProtectionDisabledPenalty;
+      if (!security.firewall.enabled) penalty += cfg.security.firewallDisabledPenalty;
     }
-    if (!security.smartScreen) penalty += 5;
-    if (security.updates.pendingUpdates > 0) penalty += 8;
+    if (!security.smartScreen) penalty += cfg.security.smartScreenDisabledPenalty;
+    if (security.updates.pendingUpdates > 0) penalty += cfg.security.pendingUpdatesPenalty;
 
     return {
       moduleId: 'security' as ModuleId,
       moduleName: 'Security',
       currentPenalty: clampHealth(penalty),
-      maxPenalty: 50,
+      maxPenalty,
       resolvedPenalty: 0,
       detail: penalty === 0 ? 'All protections active' : `${penalty.toFixed(0)} points of security issues`,
       canAutoFix: false,

@@ -46,6 +46,7 @@ import { systemInfoService } from '../system-info/system-info.service';
 import type { NavigateFunction } from 'react-router-dom';
 import { calculateHealthScore } from './dashboard.utils';
 import { invalidateMetricsCache, dashboardRefreshManager, useDeferredCleanupStore } from '../health';
+import { getHealthEngineConfig } from '../health/HealthEngineConfig';
 import type { OptimizationEvent } from '../health';
 import { optimizationHistoryService } from '../health/OptimizationHistoryService';
 import { healthTimelineService } from '../health/HealthTimelineService';
@@ -913,6 +914,10 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
             afterScore: m.score,
             afterIssues: m.issuesFound,
             afterRecoverable: m.recoverableSpace,
+            fixed: Math.max(0, before.issuesFound - m.issuesFound),
+            deferred: m.status === 'deferred' ? m.issuesFound : 0,
+            failed: 0,
+            remaining: m.issuesFound,
           },
         };
       });
@@ -1733,6 +1738,10 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           afterScore,
           afterIssues,
           afterRecoverable: orch.size - (optResult?.bytesRecovered ?? 0),
+          fixed: Math.max(0, orch.issues - afterIssues),
+          deferred: 0,
+          failed: optResult && !optResult.success ? Math.max(0, orch.issues - (optResult.itemsRemoved ?? 0)) : 0,
+          remaining: afterIssues,
         },
       };
     });
@@ -2050,17 +2059,31 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         const afterRecoverable = Math.max(0, beforeRecoverable - bytesRecovered);
         let afterScore: number;
         if (itemsFixed === 0 && bytesRecovered === 0) {
-          // Nothing was actually cleaned — score must not increase
+          // Nothing was actually cleaned — score must not change
           afterScore = beforeScore;
         } else if (afterIssues === 0 && afterRecoverable === 0) {
+          // Verification confirmed all issues resolved
           afterScore = 100;
         } else if (verifiedIssues < beforeIssues) {
-          // Verification confirmed fewer issues — use verified score
-          afterScore = Math.max(verifiedScore, beforeScore);
+          // Verification confirmed fewer issues — use verified score directly.
+          // Do NOT use Math.max(verifiedScore, beforeScore) — that would
+          // prevent the score from ever decreasing when issues remain.
+          afterScore = verifiedScore;
+        } else if (verifiedIssues > beforeIssues) {
+          // Verification found MORE issues than before — score may decrease
+          afterScore = verifiedScore;
         } else {
-          // Verification didn't confirm improvement — keep before score
+          // Same issue count — keep before score (no inflation)
           afterScore = beforeScore;
         }
+
+        // Issue accounting: beforeIssues = fixed + deferred + failed + remaining
+        const fixedCount = Math.max(0, beforeIssues - afterIssues);
+        const deferredCount = m.status === 'deferred' ? afterIssues : 0;
+        const failedCount = !actual.success && m.status !== 'deferred'
+          ? Math.max(0, beforeIssues - itemsFixed)
+          : 0;
+        const remainingCount = Math.max(0, afterIssues - deferredCount);
 
         verifiedModules.push({
           ...m,
@@ -2076,6 +2099,10 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
             afterScore,
             afterIssues,
             afterRecoverable,
+            fixed: fixedCount,
+            deferred: deferredCount,
+            failed: failedCount,
+            remaining: remainingCount,
           },
         });
       }
@@ -2259,6 +2286,10 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   }
 
   private async _verifyCategoryCleanup(categoryId: string): Promise<{ issuesFound: number; score: number }> {
+    // Verification re-scans the cleaned location and computes a score
+    // using the SAME formulas as calculateHealthScore in dashboard.utils.ts.
+    // This ensures the post-cleanup score is consistent with the dashboard score.
+    const cfg = getHealthEngineConfig();
     switch (categoryId) {
       case 'storage': {
         const cleaners = await junkCleanerService.list();
@@ -2266,19 +2297,29 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         await new Promise((resolve) => setTimeout(resolve, 500));
         const status = await junkCleanerService.getStatus(task.taskId);
         const issues = status.totalFiles ?? 0;
-        const score = Math.max(0, 100 - Math.min(issues / 100, 100));
+        // Use same formula as calculateHealthScore: log10-based penalty
+        const recoverableMB = (status.totalBytes ?? 0) / (1024 * 1024);
+        const junkPenalty = recoverableMB > 0
+          ? Math.min(cfg.storage.maxJunkPenalty, Math.log10(recoverableMB + 1) * cfg.storage.junkPenaltyMultiplier)
+          : 0;
+        const score = Math.max(0, Math.min(100, 100 - junkPenalty));
         return { issuesFound: issues, score };
       }
       case 'privacy': {
         const result = await this.privacyService.scan();
         const issues = result.items?.length ?? 0;
-        const score = Math.max(0, 100 - issues * 2);
+        // Use same formula as calculateHealthScore: penalty per risk with max cap
+        const privacyPenalty = Math.min(cfg.privacy.maxPenalty, issues * cfg.privacy.penaltyPerRisk);
+        const score = Math.max(0, Math.min(100, 100 - privacyPenalty));
         return { issuesFound: issues, score };
       }
       case 'system_health': {
         const result = await registryService.scan();
         const issues = result.issues?.length ?? 0;
-        const score = Math.max(0, 100 - Math.min(issues * 2, 100));
+        // Registry is part of system_health category. Use a consistent penalty:
+        // 0.5 points per issue, max 20 (matching RegistryHealthProvider maxPenalty)
+        const registryPenalty = Math.min(20, issues * 0.5);
+        const score = Math.max(0, Math.min(100, 100 - registryPenalty));
         return { issuesFound: issues, score };
       }
       case 'performance': {
@@ -2287,7 +2328,19 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         const metrics = await performanceService.getMetrics();
         const alertList = (await performanceService.getAlerts()).alerts;
         const totalIssues = high.length + alertList.length;
-        const score = Math.round(Math.max(0, 100 - high.length * 5 - alertList.length * 10 - (metrics.cpu?.usage || 0) / 2));
+        // Use same formula as calculateHealthScore: threshold-based penalties
+        let perfScore = 100;
+        if ((metrics.cpu?.usage ?? 0) > cfg.performance.cpuCriticalThreshold) {
+          perfScore -= cfg.performance.cpuCriticalPenalty;
+        } else if ((metrics.cpu?.usage ?? 0) > cfg.performance.cpuWarningThreshold) {
+          perfScore -= cfg.performance.cpuWarningPenalty;
+        }
+        if ((metrics.memory?.usage ?? 0) > cfg.performance.memoryCriticalThreshold) {
+          perfScore -= cfg.performance.memoryCriticalPenalty;
+        } else if ((metrics.memory?.usage ?? 0) > cfg.performance.memoryWarningThreshold) {
+          perfScore -= cfg.performance.memoryWarningPenalty;
+        }
+        const score = Math.max(0, Math.min(100, perfScore));
         return { issuesFound: totalIssues, score };
       }
       case 'protection': {
@@ -2297,7 +2350,16 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         const defender = (!thirdPartyAV && !metrics.security.defender.enabled) ? 1 : 0;
         const firewall = (!thirdPartyAV && !metrics.security.firewall.enabled) ? 1 : 0;
         const issues = pending + defender + firewall;
-        const score = Math.max(0, 100 - (issues + (defender + firewall) * 20));
+        // Use same formula as calculateHealthScore: binary penalties per disabled protection
+        let secScore = 100;
+        if (!thirdPartyAV) {
+          if (!metrics.security.defender.enabled) secScore -= cfg.security.defenderDisabledPenalty;
+          if (!metrics.security.defender.realTimeProtection) secScore -= cfg.security.realTimeProtectionDisabledPenalty;
+          if (!metrics.security.firewall.enabled) secScore -= cfg.security.firewallDisabledPenalty;
+        }
+        if (!metrics.security.smartScreen) secScore -= cfg.security.smartScreenDisabledPenalty;
+        if (pending > 0) secScore -= cfg.security.pendingUpdatesPenalty;
+        const score = Math.max(0, Math.min(100, secScore));
         return { issuesFound: issues, score };
       }
       default:

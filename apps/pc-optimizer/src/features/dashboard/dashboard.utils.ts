@@ -183,19 +183,9 @@ function buildPrivacyIssues(metrics: DashboardMetrics, privacyRisks: number | nu
     });
   }
 
-  if (metrics.performance.browserCacheSize > 100 * 1024 * 1024) {
-    issues.push({
-      id: 'privacy-cache',
-      category: 'privacy',
-      title: 'Browser cache can be cleared',
-      detail: `${toMB(metrics.performance.browserCacheSize).toFixed(0)} MB of browser cache data`,
-      severity: 'low',
-      measurableValue: metrics.performance.browserCacheSize,
-      measurableUnit: 'bytes',
-      actionPath: '/privacy-cleaner',
-      canAutoFix: true,
-    });
-  }
+  // NOTE: Browser cache size is NOT counted as a separate privacy issue.
+  // It is already counted in the storage category as 'storage-browser-cache'.
+  // Counting it here too would double-count the same junk in two categories.
 
   return issues;
 }
@@ -522,7 +512,8 @@ export function calculateHealthScore(
   // Privacy score: 100 when no privacy risks. Penalty per risk.
   const privacyCfg = getHealthEngineConfig().privacy;
   const privacy = privacyRisks ?? 0;
-  const privacyScore = clamp(100 - privacy * privacyCfg.penaltyPerRisk);
+  const privacyPenalty = Math.min(privacyCfg.maxPenalty, privacy * privacyCfg.penaltyPerRisk);
+  const privacyScore = clamp(100 - privacyPenalty);
 
   // Performance score: 100 baseline. Only penalized when CPU/memory cross
   // issue thresholds. Normal usage = perfect score.

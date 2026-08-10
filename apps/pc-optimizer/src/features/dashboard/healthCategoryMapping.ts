@@ -132,6 +132,10 @@ export function groupModulesToCategories(
           afterScore: Math.round(verifiedModules.reduce((s, m) => s + m.verification!.afterScore, 0) / verifiedModules.length),
           afterIssues: verifiedModules.reduce((s, m) => s + m.verification!.afterIssues, 0),
           afterRecoverable: verifiedModules.reduce((s, m) => s + m.verification!.afterRecoverable, 0),
+          fixed: verifiedModules.reduce((s, m) => s + m.verification!.fixed, 0),
+          deferred: verifiedModules.reduce((s, m) => s + m.verification!.deferred, 0),
+          failed: verifiedModules.reduce((s, m) => s + m.verification!.failed, 0),
+          remaining: verifiedModules.reduce((s, m) => s + m.verification!.remaining, 0),
         }
       : undefined;
 
