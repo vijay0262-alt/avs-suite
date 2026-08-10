@@ -112,13 +112,13 @@ export const OPTIMIZE_SCAN_CONFIG: UnifiedScanModuleConfig = {
   ],
   counters: [
     { id: 'filesScanned', label: 'Files Scanned', icon: 'DocumentTextIcon', format: 'number' },
-    { id: 'registryEntries', label: 'Registry Entries', icon: 'ServerStackIcon', format: 'number' },
-    { id: 'startupItems', label: 'Startup Items', icon: 'ServerIcon', format: 'number' },
-    { id: 'privacyItems', label: 'Privacy Items', icon: 'EyeSlashIcon', format: 'number' },
-    { id: 'storageRecovery', label: 'Est. Storage Recovery', icon: 'CircleStackIcon', format: 'bytes' },
-    { id: 'memoryRecovery', label: 'Est. Memory Recovery', icon: 'CpuChipIcon', format: 'bytes' },
-    { id: 'startupImprovement', label: 'Est. Startup Improvement', icon: 'ClockIcon', format: 'seconds' },
-    { id: 'recommendations', label: 'Recommendations', icon: 'SparklesIcon', format: 'number' },
+    { id: 'registryEntries', label: 'Registry Repaired', icon: 'ServerStackIcon', format: 'number' },
+    { id: 'startupItems', label: 'Startup Optimized', icon: 'ServerIcon', format: 'number' },
+    { id: 'privacyItems', label: 'Privacy Items Removed', icon: 'EyeSlashIcon', format: 'number' },
+    { id: 'storageRecovery', label: 'Storage Recovered', icon: 'CircleStackIcon', format: 'bytes' },
+    { id: 'memoryRecovery', label: 'Memory Recovered', icon: 'CpuChipIcon', format: 'bytes' },
+    { id: 'startupImprovement', label: 'Startup Improved', icon: 'ClockIcon', format: 'seconds' },
+    { id: 'recommendations', label: 'Threats Checked', icon: 'ShieldCheckIcon', format: 'number' },
   ],
 };
 

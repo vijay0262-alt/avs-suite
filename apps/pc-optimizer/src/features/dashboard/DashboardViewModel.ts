@@ -1964,6 +1964,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
             };
             this.setState({
               deferredCleanupItems: [...this.state.deferredCleanupItems, deferredItem],
+              healthScanModules: this.state.healthScanModules.map((mod) =>
+                mod.moduleId === item.moduleId
+                  ? { ...mod, status: 'deferred' as const, measuredDetail: deferredItem.reason }
+                  : mod,
+              ),
             });
           }
         }
@@ -2047,6 +2052,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         verifiedModules.push({
           ...m,
           actual,
+          status: m.status === 'deferred' ? 'deferred' : m.status,
           score: afterScore,
           issuesFound: afterIssues,
           recoverableSpace: afterRecoverable,

@@ -320,19 +320,31 @@ function mapModulesToTreeNodes(modules: HealthScanModuleResult[]): UnifiedScanTr
     status: m.status as UnifiedScanTreeNode['status'],
     itemsScanned: m.issuesFound > 0 ? m.issuesFound : 0,
     issuesFound: m.issuesFound,
-    reason: m.status === 'error' ? (m.measuredDetail || 'Scan failed') : m.status === 'skipped' ? (m.measuredDetail || 'No issues found') : undefined,
+    reason: m.status === 'error' ? (m.measuredDetail || 'Scan failed') : m.status === 'skipped' ? (m.measuredDetail || 'No issues found') : m.status === 'deferred' ? (m.measuredDetail || 'Deferred — will be applied on next restart') : undefined,
   }));
 }
 
 function mapModulesToFixTreeNodes(modules: HealthScanModuleResult[]): UnifiedScanTreeNode[] {
-  return modules.map((m) => ({
-    id: m.moduleId,
-    label: m.moduleName,
-    status: (m.actual ? (m.actual.success ? 'complete' : 'error') : 'pending') as UnifiedScanTreeNode['status'],
-    itemsScanned: m.actual?.filesDeleted ?? m.actual?.itemsRemoved ?? m.actual?.issuesFixed ?? 0,
-    issuesFound: m.actual?.errors.length ?? 0,
-    reason: m.actual && !m.actual.success ? (m.actual.errors[0] || 'Optimization failed') : undefined,
-  }));
+  return modules.map((m) => {
+    if (m.status === 'deferred') {
+      return {
+        id: m.moduleId,
+        label: m.moduleName,
+        status: 'deferred' as UnifiedScanTreeNode['status'],
+        itemsScanned: m.actual?.filesDeleted ?? m.actual?.itemsRemoved ?? m.actual?.issuesFixed ?? 0,
+        issuesFound: m.actual?.errors.length ?? 0,
+        reason: m.measuredDetail || 'Deferred — will be applied on next restart',
+      };
+    }
+    return {
+      id: m.moduleId,
+      label: m.moduleName,
+      status: (m.actual ? (m.actual.success ? 'complete' : 'error') : 'pending') as UnifiedScanTreeNode['status'],
+      itemsScanned: m.actual?.filesDeleted ?? m.actual?.itemsRemoved ?? m.actual?.issuesFixed ?? 0,
+      issuesFound: m.actual?.errors.length ?? 0,
+      reason: m.actual && !m.actual.success ? (m.actual.errors[0] || 'Optimization failed') : undefined,
+    };
+  });
 }
 
 function buildFixConfig(execution: OptimizationExecutionProgress | null) {

@@ -17,7 +17,7 @@ export type UnifiedScanStep =
   | 'error'
   | 'cancelled';
 
-export type UnifiedScanPhaseStatus = 'pending' | 'scanning' | 'complete' | 'error' | 'skipped';
+export type UnifiedScanPhaseStatus = 'pending' | 'scanning' | 'complete' | 'error' | 'skipped' | 'deferred';
 
 // ── Scan Phase Definition ───────────────────────────────────────
 

@@ -82,11 +82,7 @@ function buildSecurityReport(
     issuesFound: summary.threatsFound,
     threatsFound: summary.threatsFound,
     aiConfidence: 0.95,
-    estimatedImprovements: [
-      summary.aiVerdict,
-      `Protected areas: ${summary.protectedAreas.join(', ')}`,
-      `Estimated risk: ${summary.estimatedRisk}`,
-    ],
+    estimatedImprovements: [],
     verdict: summary.aiVerdict,
     reportId: `SEC-${Date.now()}`,
   };

@@ -89,12 +89,14 @@ export function groupModulesToCategories(
 
     const anyScanning = categoryModules.some((m) => m.status === 'scanning');
     const anyError = categoryModules.some((m) => m.status === 'error');
+    const anyDeferred = categoryModules.some((m) => m.status === 'deferred');
     const allComplete = categoryModules.every((m) => m.status === 'complete');
     const allPending = categoryModules.every((m) => m.status === 'pending');
 
     let status: HealthScanModuleResult['status'];
     if (anyScanning) status = 'scanning';
     else if (anyError) status = 'error';
+    else if (anyDeferred) status = 'deferred';
     else if (allComplete) status = 'complete';
     else if (allPending) status = 'pending';
     else status = 'complete';

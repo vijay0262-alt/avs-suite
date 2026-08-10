@@ -5,13 +5,14 @@
  * animated indicator, and remaining phases in a dimmed state.
  * Supports nested children for sub-phases.
  */
-import { useState } from 'react';
+import { useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import {
   CheckCircleIcon,
   ArrowPathIcon,
   ChevronRightIcon,
   ExclamationCircleIcon,
   MinusCircleIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 import type { UnifiedScanTreeNode } from '../unifiedScanTypes';
 
@@ -29,6 +30,8 @@ function StatusIcon({ status }: { status: UnifiedScanTreeNode['status'] }) {
       return <ExclamationCircleIcon className="h-4 w-4 text-semantic-danger shrink-0" aria-hidden />;
     case 'skipped':
       return <MinusCircleIcon className="h-4 w-4 text-text-muted shrink-0" aria-hidden />;
+    case 'deferred':
+      return <ClockIcon className="h-4 w-4 text-semantic-warning shrink-0" aria-hidden />;
     default:
       return <div className="h-4 w-4 rounded-full border-2 border-[var(--avs-border)] shrink-0" />;
   }
@@ -39,6 +42,17 @@ function TreeNode({ node, depth = 0 }: { node: UnifiedScanTreeNode; depth?: numb
   const hasChildren = node.children && node.children.length > 0;
   const isScanning = node.status === 'scanning';
 
+  const handleKeyDown = (e: ReactKeyboardEvent) => {
+    if (hasChildren && (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+      e.preventDefault();
+      if (e.key === 'ArrowLeft') {
+        setExpanded(false);
+      } else {
+        setExpanded((v) => !v);
+      }
+    }
+  };
+
   return (
     <div className="space-y-0.5">
       <div
@@ -46,8 +60,10 @@ function TreeNode({ node, depth = 0 }: { node: UnifiedScanTreeNode; depth?: numb
           isScanning ? 'bg-brand-primary/10' : 'hover:bg-[var(--avs-surface-muted)]/50'
         }`}
         role="treeitem"
+        tabIndex={0}
         aria-expanded={hasChildren ? expanded : undefined}
         aria-selected={isScanning}
+        onKeyDown={handleKeyDown}
       >
         {/* Expand/collapse toggle */}
         {hasChildren ? (
@@ -93,8 +109,8 @@ function TreeNode({ node, depth = 0 }: { node: UnifiedScanTreeNode; depth?: numb
       </div>
 
       {/* Reason for error/skipped */}
-      {node.reason && (node.status === 'error' || node.status === 'skipped') && (
-        <div className={`ml-7 text-caption ${node.status === 'error' ? 'text-semantic-danger' : 'text-text-muted'}`}>
+      {node.reason && (node.status === 'error' || node.status === 'skipped' || node.status === 'deferred') && (
+        <div className={`ml-7 text-caption ${node.status === 'error' ? 'text-semantic-danger' : node.status === 'deferred' ? 'text-semantic-warning' : 'text-text-muted'}`}>
           {node.reason}
         </div>
       )}

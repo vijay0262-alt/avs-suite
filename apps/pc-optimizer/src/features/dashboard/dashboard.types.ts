@@ -577,7 +577,7 @@ export interface HealthScanModuleActual {
 export interface HealthScanModuleResult {
   moduleId: string;
   moduleName: string;
-  status: 'pending' | 'scanning' | 'complete' | 'error' | 'skipped';
+  status: 'pending' | 'scanning' | 'complete' | 'error' | 'skipped' | 'deferred';
   score: number;
   issuesFound: number;
   recoverableSpace: number;

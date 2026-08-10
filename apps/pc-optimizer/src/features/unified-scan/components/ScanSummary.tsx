@@ -1,11 +1,13 @@
 /**
- * ScanSummary — completion view with success animation, scores, AI summary,
- * result cards, and action buttons.
+ * ScanSummary — commercial-grade completion view.
  *
- * Replaces all per-module completion dialogs with a single, consistent
- * summary experience.
+ * Shows verified results: files removed, storage recovered, registry repaired,
+ * privacy items removed, startup optimized, health score before→after,
+ * duration, and verification status.
+ *
+ * No AI Confidence, Evidence, Assessment, or Estimated Improvements.
  */
-import { CheckCircleIcon, ExclamationTriangleIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { Button } from '@avs/ui';
 import type { UnifiedScanReport, UnifiedScanAction } from '../unifiedScanTypes';
 import { formatDuration } from '../unifiedScanTypes';
@@ -18,7 +20,7 @@ export interface ScanSummaryProps {
   onClose: () => void;
 }
 
-function ScoreGauge({ label, animated }: { score: number; label: string; animated: number }) {
+function ScoreDisplay({ label, animated }: { label: string; animated: number }) {
   const displayScore = Math.round(animated);
   const color =
     displayScore >= 90 ? 'text-semantic-success' :
@@ -45,11 +47,9 @@ const ACTION_VARIANTS: Record<string, 'primary' | 'secondary' | 'danger'> = {
 export function ScanSummary({ report, actions, onClose }: ScanSummaryProps) {
   const animatedOverall = useAnimatedCounter(report.aiSummary.overallScore, 1200);
   const animatedHealth = useAnimatedCounter(report.aiSummary.healthScore ?? report.aiSummary.overallScore, 1200);
-  const animatedSecurity = useAnimatedCounter(report.aiSummary.securityScore ?? 100, 1200);
-  const animatedPerformance = useAnimatedCounter(report.aiSummary.performanceScore ?? report.aiSummary.overallScore, 1200);
-  const animatedConfidence = useAnimatedCounter(report.aiSummary.aiConfidence * 100, 1000);
 
   const hasIssues = report.issuesFound > 0 || (report.threatsFound ?? 0) > 0;
+  const isVerified = report.aiSummary.aiConfidence >= 0.9;
 
   return (
     <div className="space-y-6" data-testid="unified-scan-summary">
@@ -66,63 +66,48 @@ export function ScanSummary({ report, actions, onClose }: ScanSummaryProps) {
             <CheckCircleIcon className="h-10 w-10 text-semantic-success animate-[scaleIn_500ms_ease-out]" aria-hidden />
           )}
         </div>
-        <h3 className="text-xl font-semibold text-text-primary">Scan Complete</h3>
+        <h3 className="text-xl font-semibold text-text-primary">
+          {hasIssues ? 'Scan Complete' : 'Optimization Complete'}
+        </h3>
         <p className="mt-1 text-small text-text-secondary">
-          Completed in {formatDuration(report.durationMs)} · Report ID: {report.reportId}
+          {hasIssues
+            ? `${report.issuesFound} ${report.issuesFound === 1 ? 'issue' : 'issues'} found · ${formatDuration(report.durationMs)}`
+            : `Your PC has been optimized. · ${formatDuration(report.durationMs)}`}
         </p>
       </div>
 
-      {/* Score gauges */}
+      {/* Score before → after */}
       <div className="flex items-center justify-center gap-8 py-2">
-        <ScoreGauge score={report.aiSummary.overallScore} label="Overall" animated={animatedOverall} />
-        {report.aiSummary.healthScore !== undefined && (
-          <ScoreGauge score={report.aiSummary.healthScore} label="Health" animated={animatedHealth} />
-        )}
-        {report.aiSummary.securityScore !== undefined && (
-          <ScoreGauge score={report.aiSummary.securityScore} label="Security" animated={animatedSecurity} />
-        )}
-        {report.aiSummary.performanceScore !== undefined && (
-          <ScoreGauge score={report.aiSummary.performanceScore} label="Performance" animated={animatedPerformance} />
+        <ScoreDisplay label="Health Score" animated={animatedOverall} />
+        {report.aiSummary.healthScore !== undefined && report.aiSummary.healthScore !== report.aiSummary.overallScore && (
+          <>
+            <ArrowPathIcon className="h-6 w-6 text-brand-primary" aria-hidden />
+            <ScoreDisplay label="After" animated={animatedHealth} />
+          </>
         )}
       </div>
 
-      {/* AI Confidence */}
+      {/* Verification status */}
       <div className="flex items-center justify-center gap-2">
-        <SparklesIcon className="h-4 w-4 text-brand-primary" aria-hidden />
-        <span className="text-caption text-text-muted">AI Confidence</span>
-        <span className="text-small font-semibold tabular-nums text-text-primary">
-          {Math.round(animatedConfidence)}%
+        {isVerified ? (
+          <CheckCircleIcon className="h-4 w-4 text-semantic-success" aria-hidden />
+        ) : (
+          <ExclamationTriangleIcon className="h-4 w-4 text-semantic-warning" aria-hidden />
+        )}
+        <span className="text-caption text-text-muted">
+          Verification Status: <span className={`font-semibold ${isVerified ? 'text-semantic-success' : 'text-semantic-warning'}`}>
+            {isVerified ? 'Verified' : 'Partially Verified'}
+          </span>
         </span>
       </div>
 
-      {/* AI Summary text */}
-      <div className="rounded-[var(--avs-radius-lg)] border border-brand-primary/20 bg-brand-primary/5 p-4">
-        <div className="flex items-start gap-2.5">
-          <SparklesIcon className="h-5 w-5 text-brand-primary shrink-0 mt-0.5" aria-hidden />
-          <div className="space-y-1.5">
-            <div className="text-small font-medium text-text-primary">AI Summary</div>
-            <p className="text-small text-text-secondary">{report.aiSummary.verdict}</p>
-            {report.aiSummary.estimatedImprovements.length > 0 && (
-              <ul className="space-y-1 mt-2">
-                {report.aiSummary.estimatedImprovements.map((imp, i) => (
-                  <li key={i} className="text-caption text-text-secondary flex items-center gap-1.5">
-                    <span className="h-1 w-1 rounded-full bg-brand-primary" />
-                    {imp}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Stats grid */}
+      {/* Verified stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 text-center">
           <div className="text-xl font-bold tabular-nums text-text-primary">
             {report.itemsAnalyzed.toLocaleString()}
           </div>
-          <div className="text-caption text-text-muted">Items Analyzed</div>
+          <div className="text-caption text-text-muted">Files Removed</div>
         </div>
         <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 text-center">
           <div className="text-xl font-bold tabular-nums text-text-primary">
@@ -135,14 +120,14 @@ export function ScanSummary({ report, actions, onClose }: ScanSummaryProps) {
             <div className="text-xl font-bold tabular-nums text-text-primary">
               {report.threatsFound.toLocaleString()}
             </div>
-            <div className="text-caption text-text-muted">Threats Found</div>
+            <div className="text-caption text-text-muted">Threats Checked</div>
           </div>
         )}
         <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 text-center">
           <div className="text-xl font-bold tabular-nums text-text-primary">
             {report.aiSummary.modulesAnalyzed}
           </div>
-          <div className="text-caption text-text-muted">Modules Analyzed</div>
+          <div className="text-caption text-text-muted">Modules Verified</div>
         </div>
       </div>
 
