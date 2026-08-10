@@ -99,3 +99,11 @@ export {
 } from './VerificationEngine';
 export type { LiveScoreState, OptimizationCompletePayload } from './LiveSyncService';
 export { useLiveSync, useLiveScores } from './LiveSyncService';
+
+// Phase 21 — Background Deferred Cleanup
+export type { ProcessClosedEvent, ProcessMonitorListener } from './ProcessMonitorService';
+export { processMonitorService, ProcessMonitorServiceImpl } from './ProcessMonitorService';
+export type { DeferredCleanupItem } from './DeferredCleanupStore';
+export { useDeferredCleanupStore } from './DeferredCleanupStore';
+export type { BackgroundCleanupResult, BackgroundCleanupListener } from './BackgroundCleanupService';
+export { backgroundCleanupService, BackgroundCleanupServiceImpl } from './BackgroundCleanupService';

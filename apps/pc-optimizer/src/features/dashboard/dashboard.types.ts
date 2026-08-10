@@ -662,4 +662,6 @@ export interface DeferredCleanupItem {
   reason: string;
   size: number;
   timestamp: number;
+  /** Which application was blocking the cleanup (e.g. 'chrome', 'msedge'). */
+  blockingProcess?: string;
 }

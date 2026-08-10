@@ -45,7 +45,7 @@ import type { RegistryIssue } from '../registry/registry.types';
 import { systemInfoService } from '../system-info/system-info.service';
 import type { NavigateFunction } from 'react-router-dom';
 import { calculateHealthScore } from './dashboard.utils';
-import { invalidateMetricsCache, dashboardRefreshManager } from '../health';
+import { invalidateMetricsCache, dashboardRefreshManager, useDeferredCleanupStore } from '../health';
 import type { OptimizationEvent } from '../health';
 import { optimizationHistoryService } from '../health/OptimizationHistoryService';
 import { healthTimelineService } from '../health/HealthTimelineService';
@@ -1953,6 +1953,16 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
             deferredKeywords.some((kw) => e.toLowerCase().includes(kw)),
           );
           if (isDeferred) {
+            // Detect which process is blocking cleanup
+            const errorText = actual.errors.join(' ').toLowerCase();
+            const blockingProcess =
+              errorText.includes('chrome') ? 'chrome' :
+              errorText.includes('edge') || errorText.includes('msedge') ? 'msedge' :
+              errorText.includes('firefox') ? 'firefox' :
+              errorText.includes('brave') ? 'brave' :
+              errorText.includes('explorer') ? 'explorer' :
+              undefined;
+
             const deferredItem: DeferredCleanupItem = {
               id: `${Date.now()}-${item.moduleId}`,
               moduleId: item.moduleId,
@@ -1961,6 +1971,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
               reason: actual.errors[0] ?? 'File locked or access denied',
               size: moduleResult?.recoverableSpace ?? 0,
               timestamp: Date.now(),
+              blockingProcess,
             };
             this.setState({
               deferredCleanupItems: [...this.state.deferredCleanupItems, deferredItem],
@@ -1970,6 +1981,8 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
                   : mod,
               ),
             });
+            // Persist to the deferred cleanup store for background processing
+            useDeferredCleanupStore.getState().addItem(deferredItem);
           }
         }
 
@@ -2070,7 +2083,12 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       const verifiedReport: HealthScanReport = {
         ...beforeReport,
         modules: verifiedModules,
-        overallScore: Math.round(verifiedModules.reduce((s, m) => s + m.score, 0) / verifiedModules.length),
+        overallScore: Math.round(
+          verifiedModules
+            .filter((m) => m.status !== 'deferred')
+            .reduce((s, m) => s + m.score, 0) /
+          Math.max(1, verifiedModules.filter((m) => m.status !== 'deferred').length),
+        ),
         issuesFound: verifiedModules.reduce((s, m) => s + m.issuesFound, 0),
         recoverableSpace: verifiedModules.reduce((s, m) => s + m.recoverableSpace, 0),
       };
