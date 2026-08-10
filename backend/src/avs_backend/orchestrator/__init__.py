@@ -717,13 +717,17 @@ def _calculate_module_score(mid: str, scan_result: dict[str, Any]) -> int:
 
 
 def _calculate_after_score(mid: str, before_score: int, scan_result: dict[str, Any], optimize_result: dict[str, Any]) -> int:
-    """Calculate post-optimization score."""
+    """Calculate post-optimization score.
+
+    Score only increases when items were actually fixed (removed, disabled, or repaired).
+    Bytes recovered alone without item counts is not enough — the verification
+    re-scan will confirm whether actual changes occurred.
+    """
     items_fixed = (
         optimize_result.get("itemsRemoved", 0)
         + optimize_result.get("entriesDisabled", 0)
         + optimize_result.get("issuesFixed", 0)
     )
-    bytes_recovered = optimize_result.get("bytesRecovered", 0)
     before_issues = scan_result.get("issues", 0)
 
     if items_fixed > 0 and before_issues > 0:
@@ -733,9 +737,10 @@ def _calculate_after_score(mid: str, before_score: int, scan_result: dict[str, A
         boost = max(1, int(ratio * (100 - before_score)))
         return min(100, before_score + boost)
 
-    if bytes_recovered > 0 and items_fixed == 0:
+    if items_fixed > 0 and before_issues == 0:
         return min(100, before_score + 5)
 
+    # Nothing was fixed — score must not increase
     return before_score
 
 

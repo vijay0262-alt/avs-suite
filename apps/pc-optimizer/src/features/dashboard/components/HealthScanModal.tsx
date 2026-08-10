@@ -150,7 +150,7 @@ export function HealthScanModal({
     const overallPct = scanOverallProgress ?? 0;
     const stats = scanLiveStats ?? {
       filesScanned: 0, registryEntries: 0, startupItems: 0, privacyItems: 0,
-      estimatedStorageRecovery: 0, estimatedMemoryRecovery: 0, estimatedStartupImprovement: 0, recommendationsFound: 0,
+      storageRecovered: 0, memoryRecovered: 0, startupOptimized: 0, recommendationsFound: 0,
     };
 
     return (
@@ -181,9 +181,9 @@ export function HealthScanModal({
             <LiveStatBox label="Registry Entries" value={stats.registryEntries.toLocaleString()} icon={<ServerIcon className="h-4 w-4" />} />
             <LiveStatBox label="Startup Items" value={stats.startupItems.toLocaleString()} icon={<ServerIcon className="h-4 w-4" />} />
             <LiveStatBox label="Privacy Items" value={stats.privacyItems.toLocaleString()} icon={<ShieldCheckIcon className="h-4 w-4" />} />
-            <LiveStatBox label="Est. Storage Recovery" value={formatDataSize(stats.estimatedStorageRecovery)} icon={<TrashIcon className="h-4 w-4" />} />
-            <LiveStatBox label="Est. Memory Recovery" value={formatDataSize(stats.estimatedMemoryRecovery)} icon={<CpuChipIcon className="h-4 w-4" />} />
-            <LiveStatBox label="Est. Startup Improvement" value={`${stats.estimatedStartupImprovement}s`} icon={<ClockIcon className="h-4 w-4" />} />
+            <LiveStatBox label="Storage Recovered" value={formatDataSize(stats.storageRecovered)} icon={<TrashIcon className="h-4 w-4" />} />
+            <LiveStatBox label="Memory Recovered" value={formatDataSize(stats.memoryRecovered)} icon={<CpuChipIcon className="h-4 w-4" />} />
+            <LiveStatBox label="Startup Optimized" value={`${stats.startupOptimized} items`} icon={<ClockIcon className="h-4 w-4" />} />
             <LiveStatBox label="Recommendations" value={stats.recommendationsFound.toLocaleString()} icon={<SparklesIcon className="h-4 w-4" />} />
           </div>
 

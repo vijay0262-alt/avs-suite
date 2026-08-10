@@ -64,9 +64,9 @@ function mapStatsToCounters(stats: ScanLiveStats | undefined): Record<string, nu
     registryEntries: stats.registryEntries,
     startupItems: stats.startupItems,
     privacyItems: stats.privacyItems,
-    storageRecovery: stats.estimatedStorageRecovery,
-    memoryRecovery: stats.estimatedMemoryRecovery,
-    startupImprovement: stats.estimatedStartupImprovement,
+    storageRecovery: stats.storageRecovered,
+    memoryRecovery: stats.memoryRecovered,
+    startupImprovement: stats.startupOptimized,
     recommendations: stats.recommendationsFound,
   };
 }

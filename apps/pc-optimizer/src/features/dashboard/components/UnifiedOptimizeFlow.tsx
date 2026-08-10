@@ -306,9 +306,9 @@ function mapLiveStatsToCounters(stats: ScanLiveStats): Record<string, number> {
     registryEntries: stats.registryEntries,
     startupItems: stats.startupItems,
     privacyItems: stats.privacyItems,
-    storageRecovery: stats.estimatedStorageRecovery,
-    memoryRecovery: stats.estimatedMemoryRecovery,
-    startupImprovement: stats.estimatedStartupImprovement,
+    storageRecovery: stats.storageRecovered,
+    memoryRecovery: stats.memoryRecovered,
+    startupImprovement: stats.startupOptimized,
     recommendations: stats.recommendationsFound,
   };
 }
@@ -380,7 +380,7 @@ function buildVerifyLiveStatus(progress: number): UnifiedScanLiveStatus {
 function buildVerifyCounters(stats: ScanLiveStats, bytesRecovered: number): Record<string, number> {
   return {
     filesScanned: stats.filesScanned,
-    storageRecovery: stats.estimatedStorageRecovery,
+    storageRecovery: stats.storageRecovered,
     itemsProcessed: stats.recommendationsFound,
     bytesRecovered,
   };

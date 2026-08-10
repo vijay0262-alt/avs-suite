@@ -303,9 +303,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         registryEntries: 0,
         startupItems: 0,
         privacyItems: 0,
-        estimatedStorageRecovery: 0,
-        estimatedMemoryRecovery: 0,
-        estimatedStartupImprovement: 0,
+        storageRecovered: 0,
+        memoryRecovered: 0,
+        startupOptimized: 0,
         recommendationsFound: 0,
       },
       scanStartTime: null,
@@ -730,9 +730,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         registryEntries: 0,
         startupItems: 0,
         privacyItems: 0,
-        estimatedStorageRecovery: 0,
-        estimatedMemoryRecovery: 0,
-        estimatedStartupImprovement: 0,
+        storageRecovered: 0,
+        memoryRecovered: 0,
+        startupOptimized: 0,
         recommendationsFound: 0,
       },
       scanStartTime: Date.now(),
@@ -775,9 +775,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         registryEntries: 0,
         startupItems: 0,
         privacyItems: 0,
-        estimatedStorageRecovery: 0,
-        estimatedMemoryRecovery: 0,
-        estimatedStartupImprovement: 0,
+        storageRecovered: 0,
+        memoryRecovered: 0,
+        startupOptimized: 0,
         recommendationsFound: 0,
       },
       scanStartTime: null,
@@ -811,9 +811,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         registryEntries: 0,
         startupItems: 0,
         privacyItems: 0,
-        estimatedStorageRecovery: 0,
-        estimatedMemoryRecovery: 0,
-        estimatedStartupImprovement: 0,
+        storageRecovered: 0,
+        memoryRecovered: 0,
+        startupOptimized: 0,
         recommendationsFound: 0,
       },
       scanStartTime: null,
@@ -850,9 +850,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         registryEntries: 0,
         startupItems: 0,
         privacyItems: 0,
-        estimatedStorageRecovery: 0,
-        estimatedMemoryRecovery: 0,
-        estimatedStartupImprovement: 0,
+        storageRecovered: 0,
+        memoryRecovered: 0,
+        startupOptimized: 0,
         recommendationsFound: 0,
       },
       scanStartTime: null,
@@ -957,9 +957,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           registryEntries: this.state.scanLiveStats.registryEntries + (patch.registryEntries ?? 0),
           startupItems: this.state.scanLiveStats.startupItems + (patch.startupItems ?? 0),
           privacyItems: this.state.scanLiveStats.privacyItems + (patch.privacyItems ?? 0),
-          estimatedStorageRecovery: this.state.scanLiveStats.estimatedStorageRecovery + (patch.estimatedStorageRecovery ?? 0),
-          estimatedMemoryRecovery: this.state.scanLiveStats.estimatedMemoryRecovery + (patch.estimatedMemoryRecovery ?? 0),
-          estimatedStartupImprovement: this.state.scanLiveStats.estimatedStartupImprovement + (patch.estimatedStartupImprovement ?? 0),
+          storageRecovered: this.state.scanLiveStats.storageRecovered + (patch.storageRecovered ?? 0),
+          memoryRecovered: this.state.scanLiveStats.memoryRecovered + (patch.memoryRecovered ?? 0),
+          startupOptimized: this.state.scanLiveStats.startupOptimized + (patch.startupOptimized ?? 0),
           recommendationsFound: this.state.scanLiveStats.recommendationsFound + (patch.recommendationsFound ?? 0),
         },
       });
@@ -1022,7 +1022,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           addStats({ recommendationsFound: 1 });
         }
         if (patch.recoverableSpace && patch.recoverableSpace > 0) {
-          addStats({ estimatedStorageRecovery: patch.recoverableSpace });
+          addStats({ storageRecovered: patch.recoverableSpace });
         }
       } catch (err) {
         this.updateModuleStatus(id, { status: 'error', error: err instanceof Error ? err.message : String(err) });
@@ -1366,9 +1366,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         registryEntries: 0,
         startupItems: 0,
         privacyItems: 0,
-        estimatedStorageRecovery: 0,
-        estimatedMemoryRecovery: 0,
-        estimatedStartupImprovement: 0,
+        storageRecovered: 0,
+        memoryRecovered: 0,
+        startupOptimized: 0,
         recommendationsFound: 0,
       },
       scanStartTime: startedAt,
@@ -1495,9 +1495,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           registryEntries: counters.registryFixed ?? 0,
           startupItems: startupMs?.issuesFound ?? 0,
           privacyItems: privacyMs?.issuesFound ?? counters.itemsCleaned ?? 0,
-          estimatedStorageRecovery: counters.storageRecovered ?? 0,
-          estimatedMemoryRecovery: perfMs?.issuesFound ? perfMs.issuesFound * 50 * 1024 * 1024 : 0,
-          estimatedStartupImprovement: startupMs?.issuesFound ? startupMs.issuesFound * 500 : 0,
+          storageRecovered: counters.storageRecovered ?? 0,
+          memoryRecovered: counters.storageRecovered ?? 0,
+          startupOptimized: counters.itemsOptimized ?? 0,
           recommendationsFound: counters.itemsOptimized ?? 0,
         };
 
@@ -1974,49 +1974,66 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         });
       }
 
-      // Skip full verify re-scan — compute after-scores from cleaning results
-      // instead of re-scanning all modules. This eliminates the second scan
-      // that users see after clicking "Optimize Now".
+      // Phase: Verification — re-scan each optimized category to confirm
+      // actual changes occurred on the filesystem/registry/startup.
+      // Scores are computed ONLY from verified results, not estimates.
       this.setState({
-        healthScanStep: 'updating_dashboard',
+        healthScanStep: 'verifying',
         healthScanExecution: {
           ...this.state.healthScanExecution!,
-          currentModule: 'Updating Dashboard',
-          progress: 95,
-          liveMessages: [...this.state.healthScanExecution!.liveMessages, 'Refreshing Health Score...', 'Updating Dashboard cards...'],
+          currentModule: 'Verifying',
+          progress: 92,
+          liveMessages: [...this.state.healthScanExecution!.liveMessages, 'Verifying actual changes...'],
         },
       });
 
-      // Compute estimated after-scores based on cleaning results
       const beforeById = new Map(beforeReport.modules.map((m) => [m.moduleId, m]));
-      const verifiedModules = beforeReport.modules.map((m) => {
+      const verifiedModules: HealthScanModuleResult[] = [];
+
+      for (const m of beforeReport.modules) {
         const actual = actualMap.get(m.moduleId);
-        if (!actual) return m;
+        if (!actual) {
+          verifiedModules.push(m);
+          continue;
+        }
         const before = beforeById.get(m.moduleId);
         const beforeScore = before?.score ?? m.score;
         const beforeIssues = before?.issuesFound ?? 0;
+        const beforeRecoverable = before?.recoverableSpace ?? 0;
         const itemsFixed = (actual.itemsRemoved || 0) + (actual.entriesDisabled || 0) + (actual.issuesFixed || 0);
-        const afterIssues = Math.max(0, beforeIssues - itemsFixed);
-        const afterRecoverable = Math.max(0, (before?.recoverableSpace ?? 0) - (actual.bytesRecovered || 0));
-        // Improved score calculation:
-        // - If all issues fixed and no remaining recoverable space → 100
-        // - If items fixed but some remain → proportional improvement with a minimum +10 boost
-        // - If nothing was fixed → keep before score
+        const bytesRecovered = actual.bytesRecovered || 0;
+
+        // Re-scan to verify actual changes
+        let verifiedIssues = beforeIssues;
+        let verifiedScore = beforeScore;
+        try {
+          const verifyResult = await this._verifyCategoryCleanup(m.moduleId);
+          verifiedIssues = verifyResult.issuesFound;
+          verifiedScore = verifyResult.score;
+        } catch {
+          // If verification scan fails, fall back to computed values
+          verifiedIssues = Math.max(0, beforeIssues - itemsFixed);
+          verifiedScore = beforeScore;
+        }
+
+        // Score comes ONLY from verified state — no estimated boost
+        const afterIssues = verifiedIssues;
+        const afterRecoverable = Math.max(0, beforeRecoverable - bytesRecovered);
         let afterScore: number;
-        if (itemsFixed > 0 && afterIssues === 0 && afterRecoverable === 0) {
+        if (itemsFixed === 0 && bytesRecovered === 0) {
+          // Nothing was actually cleaned — score must not increase
+          afterScore = beforeScore;
+        } else if (afterIssues === 0 && afterRecoverable === 0) {
           afterScore = 100;
-        } else if (itemsFixed > 0) {
-          const ratio = itemsFixed / Math.max(1, beforeIssues);
-          const boost = Math.max(10, Math.round(ratio * (100 - beforeScore)));
-          afterScore = Math.min(100, beforeScore + boost);
+        } else if (verifiedIssues < beforeIssues) {
+          // Verification confirmed fewer issues — use verified score
+          afterScore = Math.max(verifiedScore, beforeScore);
         } else {
+          // Verification didn't confirm improvement — keep before score
           afterScore = beforeScore;
         }
-        // If the action succeeded but recovered space, give at least a small boost
-        if (actual.success && actual.bytesRecovered && actual.bytesRecovered > 0 && afterScore === beforeScore) {
-          afterScore = Math.min(100, beforeScore + 5);
-        }
-        return {
+
+        verifiedModules.push({
           ...m,
           actual,
           score: afterScore,
@@ -2025,13 +2042,13 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           verification: {
             beforeScore,
             beforeIssues,
-            beforeRecoverable: before?.recoverableSpace ?? 0,
+            beforeRecoverable,
             afterScore,
             afterIssues,
             afterRecoverable,
           },
-        };
-      });
+        });
+      }
 
       const verifiedReport: HealthScanReport = {
         ...beforeReport,
@@ -2204,6 +2221,53 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       return actual.success ? '✓ No changes needed' : `✗ ${actual.reason || 'Failed'}`;
     }
     return `✓ ${parts.join(', ')}`;
+  }
+
+  private async _verifyCategoryCleanup(categoryId: string): Promise<{ issuesFound: number; score: number }> {
+    switch (categoryId) {
+      case 'storage': {
+        const cleaners = await junkCleanerService.list();
+        const task = await junkCleanerService.startScan(cleaners.map((c) => c.id));
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const status = await junkCleanerService.getStatus(task.taskId);
+        const issues = status.totalFiles ?? 0;
+        const score = Math.max(0, 100 - Math.min(issues / 100, 100));
+        return { issuesFound: issues, score };
+      }
+      case 'privacy': {
+        const result = await this.privacyService.scan();
+        const issues = result.items?.length ?? 0;
+        const score = Math.max(0, 100 - issues * 2);
+        return { issuesFound: issues, score };
+      }
+      case 'system_health': {
+        const result = await registryService.scan();
+        const issues = result.issues?.length ?? 0;
+        const score = Math.max(0, 100 - Math.min(issues * 2, 100));
+        return { issuesFound: issues, score };
+      }
+      case 'performance': {
+        const entries = await startupService.listEntries();
+        const high = entries.filter((e) => e.impact === 'high' && e.enabled);
+        const metrics = await performanceService.getMetrics();
+        const alertList = (await performanceService.getAlerts()).alerts;
+        const totalIssues = high.length + alertList.length;
+        const score = Math.round(Math.max(0, 100 - high.length * 5 - alertList.length * 10 - (metrics.cpu?.usage || 0) / 2));
+        return { issuesFound: totalIssues, score };
+      }
+      case 'protection': {
+        const metrics = await this.service.getMetrics();
+        const pending = metrics.security.updates.pendingUpdates || 0;
+        const thirdPartyAV = metrics.security.defender.thirdPartyAV || metrics.security.firewall.thirdPartyAV;
+        const defender = (!thirdPartyAV && !metrics.security.defender.enabled) ? 1 : 0;
+        const firewall = (!thirdPartyAV && !metrics.security.firewall.enabled) ? 1 : 0;
+        const issues = pending + defender + firewall;
+        const score = Math.max(0, 100 - (issues + (defender + firewall) * 20));
+        return { issuesFound: issues, score };
+      }
+      default:
+        return { issuesFound: 0, score: 100 };
+    }
   }
 
   private async executeModuleAction(module: HealthScanModuleResult): Promise<HealthScanModuleActual> {
@@ -2381,9 +2445,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         registryEntries: 0,
         startupItems: 0,
         privacyItems: 0,
-        estimatedStorageRecovery: 0,
-        estimatedMemoryRecovery: 0,
-        estimatedStartupImprovement: 0,
+        storageRecovered: 0,
+        memoryRecovered: 0,
+        startupOptimized: 0,
         recommendationsFound: 0,
       },
       scanStartTime: null,

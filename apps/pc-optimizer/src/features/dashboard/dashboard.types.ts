@@ -524,9 +524,9 @@ export interface ScanLiveStats {
   registryEntries: number;
   startupItems: number;
   privacyItems: number;
-  estimatedStorageRecovery: number;
-  estimatedMemoryRecovery: number;
-  estimatedStartupImprovement: number;
+  storageRecovered: number;
+  memoryRecovered: number;
+  startupOptimized: number;
   recommendationsFound: number;
 }
 
