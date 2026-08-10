@@ -47,12 +47,16 @@ import type { NavigateFunction } from 'react-router-dom';
 import { calculateHealthScore } from './dashboard.utils';
 import { invalidateMetricsCache, dashboardRefreshManager, useDeferredCleanupStore } from '../health';
 import { getHealthEngineConfig } from '../health/HealthEngineConfig';
+import { log } from '../health/LogService';
+import { withRetry } from '../health/RpcRetryWrapper';
 import type { OptimizationEvent } from '../health';
 import { optimizationHistoryService } from '../health/OptimizationHistoryService';
 import { healthTimelineService } from '../health/HealthTimelineService';
 import { healthNotificationService } from '../health/HealthNotificationService';
 import type { OptimizationSummary } from './OptimizationSummary.types';
 import { saveSession, loadSession, clearSession } from './sessionPersistence';
+import { saveScanState, clearScanState, detectInterruptedScan } from './ScanStatePersistence';
+import type { PersistedScanState } from './ScanStatePersistence';
 import { canUse as featureGateCanUse, currentEdition as getFeatureGateEdition } from '../licensing/FeatureGate';
 import type { ManagedFeature } from '@avs/licensing';
 import { useSyncStore, planToEdition } from '../sync/syncStore';
@@ -222,6 +226,10 @@ export interface DashboardState {
   hardwareSensors: HardwareSensors | null;
   hardwareSensorsLoading: boolean;
   hardwareSensorsError: string | null;
+
+  // Phase 23 — Interrupted scan recovery
+  interruptedScan: PersistedScanState | null;
+  showInterruptedScanPrompt: boolean;
 }
 
 const LIVE_METRICS_POLL_INTERVAL_MS = 2000;
@@ -338,6 +346,8 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       hardwareSensors: null,
       hardwareSensorsLoading: false,
       hardwareSensorsError: null,
+      interruptedScan: null,
+      showInterruptedScanPrompt: false,
     });
   }
 
@@ -374,6 +384,20 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       });
     }
 
+    // Phase 23: Detect interrupted scan from previous app run
+    const interruptedScan = detectInterruptedScan();
+    if (interruptedScan) {
+      log.warning(
+        `Interrupted scan detected: step=${interruptedScan.step}, progress=${interruptedScan.progress}%`,
+        'dashboard',
+        'bootstrap',
+      );
+      this.setState({
+        interruptedScan,
+        showInterruptedScanPrompt: true,
+      });
+    }
+
     void this.bootstrapData();
   }
 
@@ -406,7 +430,101 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       clearTimeout(this.optimizationRefreshTimer);
       this.optimizationRefreshTimer = null;
     }
+    // Phase 23: If a scan is in progress, persist its state before dispose
+    if (this.state.healthScanStep !== 'idle' && this.state.healthScanStep !== 'complete') {
+      this.persistScanState();
+    }
     super.dispose();
+  }
+
+  // ------------------------------------------------------------------
+  // Phase 23 — Interrupted Scan Recovery
+  // ------------------------------------------------------------------
+
+  /** Resume an interrupted scan from the persisted state. */
+  resumeInterruptedScan(): void {
+    const scan = this.state.interruptedScan;
+    if (!scan) return;
+    log.info(`Resuming interrupted scan: profile=${scan.profile}`, 'dashboard', 'resumeScan');
+    this.setState({
+      showInterruptedScanPrompt: false,
+      healthScanStep: 'scanning' as HealthScanStep,
+      scanPhase: scan.step as ScanPhase | null,
+      scanOverallProgress: scan.progress,
+      scanStartTime: scan.startedAt,
+      healthScanModules: scan.scannedModules.map((m) => ({
+        moduleId: m.moduleId,
+        moduleName: m.moduleName,
+        status: m.status as HealthScanModuleResult['status'],
+        score: m.score,
+        issuesFound: m.issuesFound,
+        recoverableSpace: m.recoverableSpace,
+        severity: 'low' as const,
+        measuredDetail: '',
+        details: { summary: '', impact: 'low', safeToRemove: true, groups: [], notChanged: [], why: '' },
+        canAutoFix: true,
+      })),
+      scanLiveStats: scan.liveStats ?? {
+        filesScanned: 0,
+        registryEntries: 0,
+        startupItems: 0,
+        privacyItems: 0,
+        storageRecovered: 0,
+        memoryRecovered: 0,
+        startupOptimized: 0,
+        recommendationsFound: 0,
+      },
+    });
+    // Restart the scan — the backend will re-scan modules that weren't completed
+    const profile = (['dashboard', 'deep'] as const).includes(scan.profile as 'dashboard' | 'deep')
+      ? scan.profile as ScanProfile
+      : 'dashboard';
+    void this.runOrchestratorFullScan(profile, this.isProEdition());
+  }
+
+  /** Discard the interrupted scan state and start fresh. */
+  discardInterruptedScan(): void {
+    log.info('Discarding interrupted scan', 'dashboard', 'discardScan');
+    clearScanState();
+    this.setState({
+      interruptedScan: null,
+      showInterruptedScanPrompt: false,
+      healthScanStep: 'idle',
+      scanPhase: null,
+      scanOverallProgress: 0,
+      scanStartTime: null,
+    });
+  }
+
+  /** Persist the current scan state to localStorage for recovery on restart. */
+  private persistScanState(): void {
+    const state = this.state;
+    if (state.healthScanStep === 'idle' || state.healthScanStep === 'complete') return;
+    saveScanState({
+      active: true,
+      profile: state.fullScanId ?? 'dashboard',
+      step: state.healthScanStep,
+      progress: state.scanOverallProgress,
+      currentModule: state.healthScanExecution?.currentModule ?? null,
+      currentOperation: state.scanCurrentOperation,
+      startedAt: state.scanStartTime ?? Date.now(),
+      savedAt: Date.now(),
+      scannedModules: state.healthScanModules.map((m) => ({
+        moduleId: m.moduleId,
+        moduleName: m.moduleName,
+        status: m.status,
+        score: m.score,
+        issuesFound: m.issuesFound,
+        recoverableSpace: m.recoverableSpace,
+      })),
+      cancelled: state.healthScanCancelled,
+      liveStats: state.scanLiveStats,
+    });
+  }
+
+  /** Clear persisted scan state after successful completion. */
+  private clearPersistedScanState(): void {
+    clearScanState();
   }
 
   // ------------------------------------------------------------------
@@ -481,7 +599,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   async loadMetrics(): Promise<void> {
     this.setState({ metricsLoading: true, metricsError: null });
     try {
-      const metrics = await this.service.getMetrics();
+      const metrics = await withRetry(() => this.service.getMetrics(), 'dashboard.metrics', { maxAttempts: 3, baseDelayMs: 1000 });
       this.setState({
         metrics,
         metricsLoading: false,
@@ -770,6 +888,8 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
 
   cancelHealthScan(): void {
     this.setState({ healthScanCancelled: true });
+    // Phase 23: Clear persisted scan state on cancel
+    this.clearPersistedScanState();
     // Reset immediately — don't wait for the scan loop to notice the flag
     this.setState({
       healthScanStep: 'idle',
@@ -1952,18 +2072,74 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           },
         });
         const moduleResult = beforeReport.modules.find((m) => m.moduleId === item.moduleId);
-        const actual = moduleResult ? await this.executeModuleAction(moduleResult) : { success: false, errors: ['Module not found in before report'] };
+        let actual: HealthScanModuleActual;
+        try {
+          // Phase 23: Module-level timeout — 60s per module
+          actual = moduleResult
+            ? await this.executeModuleActionWithTimeout(moduleResult, 60000)
+            : { success: false, errors: ['Module not found in before report'] };
+        } catch (err) {
+          // Phase 23: Module failure isolation — don't abort the entire optimization
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          const isTimeout = errorMsg.includes('timed out');
+          log.error(
+            `Module ${item.moduleId} ${isTimeout ? 'timed out' : 'failed'}: ${errorMsg}`,
+            'dashboard',
+            'executeModuleAction',
+            err instanceof Error ? err : new Error(String(err)),
+            `Continuing with remaining ${fixableModules.length - actualMap.size - 1} modules`,
+          );
+          actual = {
+            success: false,
+            errors: [isTimeout ? `Module timed out after 60s` : errorMsg],
+            reason: isTimeout ? 'timeout' : 'module_error',
+          };
+          // Phase 23: Mark module status as timed_out in the UI
+          if (isTimeout) {
+            this.setState({
+              healthScanModules: this.state.healthScanModules.map((mod) =>
+                mod.moduleId === item.moduleId
+                  ? { ...mod, status: 'timed_out' as const, measuredDetail: 'Module timed out — skipped to continue optimization' }
+                  : mod,
+              ),
+            });
+          }
+        }
         actualMap.set(item.moduleId, actual);
 
         // Track deferred cleanup items (locked files, admin-only, permission errors)
         if (!actual.success && actual.errors) {
-          const deferredKeywords = ['locked', 'permission', 'admin', 'access denied', 'in use', 'busy'];
-          const isDeferred = actual.errors.some((e) =>
-            deferredKeywords.some((kw) => e.toLowerCase().includes(kw)),
+          // Phase 23: Distinguish permission errors from locked files
+          const permissionKeywords = ['permission', 'admin', 'access denied', 'elevat'];
+          const lockedKeywords = ['locked', 'in use', 'busy'];
+          const errorText = actual.errors.join(' ').toLowerCase();
+          const isPermission = actual.errors.some((e) =>
+            permissionKeywords.some((kw) => e.toLowerCase().includes(kw)),
           );
-          if (isDeferred) {
+          const isLocked = actual.errors.some((e) =>
+            lockedKeywords.some((kw) => e.toLowerCase().includes(kw)),
+          );
+
+          if (isPermission) {
+            // Phase 23: Permission errors → manual_action, not failed
+            log.warning(
+              `Module ${item.moduleId} requires manual action: ${actual.errors[0]}`,
+              'dashboard',
+              'executeModuleAction',
+            );
+            this.setState({
+              healthScanModules: this.state.healthScanModules.map((mod) =>
+                mod.moduleId === item.moduleId
+                  ? {
+                      ...mod,
+                      status: 'manual_action' as const,
+                      measuredDetail: `Administrator permission required: ${actual.errors[0] ?? 'Access denied'}`,
+                    }
+                  : mod,
+              ),
+            });
+          } else if (isLocked) {
             // Detect which process is blocking cleanup
-            const errorText = actual.errors.join(' ').toLowerCase();
             const blockingProcess =
               errorText.includes('chrome') ? 'chrome' :
               errorText.includes('edge') || errorText.includes('msedge') ? 'msedge' :
@@ -2010,6 +2186,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
             liveMessages: [...currentExec.liveMessages, doneMessage],
           },
         });
+
+        // Phase 23: Persist scan state after each module for crash recovery
+        this.persistScanState();
       }
 
       // Phase: Verification — re-scan each optimized category to confirm
@@ -2228,6 +2407,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         verificationReport,
       });
 
+      // Phase 23: Clear persisted scan state on successful completion
+      this.clearPersistedScanState();
+
       // Phase 9 — Broadcast scores globally via LiveSyncService
       const liveSync = useLiveSync.getState();
       const catScores = this.state.healthScore?.categoryScores;
@@ -2254,6 +2436,14 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       invalidateMetricsCache();
       void this.loadMetrics();
     } catch (err) {
+      // Phase 23: Log the error and clear persisted scan state
+      log.error(
+        `Full scan failed: ${err instanceof Error ? err.message : String(err)}`,
+        'dashboard',
+        'runOrchestratorFullScan',
+        err instanceof Error ? err : new Error(String(err)),
+      );
+      this.clearPersistedScanState();
       this.setState({
         healthScanStep: 'complete',
         healthScanError: err instanceof Error ? err.message : String(err),
@@ -2367,6 +2557,32 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     }
   }
 
+  /**
+   * Phase 23: Execute a module action with a timeout.
+   * If the module doesn't complete within the timeout, it's marked as timed out
+   * and the remaining modules continue.
+   */
+  private async executeModuleActionWithTimeout(
+    module: HealthScanModuleResult,
+    timeoutMs: number,
+  ): Promise<HealthScanModuleActual> {
+    return new Promise<HealthScanModuleActual>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`Module ${module.moduleId} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      this.executeModuleAction(module)
+        .then((result) => {
+          clearTimeout(timer);
+          resolve(result);
+        })
+        .catch((err) => {
+          clearTimeout(timer);
+          reject(err);
+        });
+    });
+  }
+
   private async executeModuleAction(module: HealthScanModuleResult): Promise<HealthScanModuleActual> {
     const ctx = module.rawContext || {};
     const start = Date.now();
@@ -2400,7 +2616,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     switch (module.moduleId) {
       case 'storage': {
         try {
-          const result = await this.service.executeOptimize();
+          const result = await withRetry(() => this.service.executeOptimize(), 'dashboard.optimize.execute', { maxAttempts: 3, baseDelayMs: 1000 });
           log('executeOptimize', 'dashboard.optimize.execute', undefined, result.totalRecovered, result.success);
           return {
             success: result.success,
@@ -2422,7 +2638,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           return { success: false, errors: ['No privacy items found in scan context'], reason: 'No items found' };
         }
         try {
-          const result = await this.privacyService.clean(items as unknown as PrivacyItem[]);
+          const result = await withRetry(() => this.privacyService.clean(items as unknown as PrivacyItem[]), 'privacy.clean', { maxAttempts: 3, baseDelayMs: 1000 });
           const removed = result.itemsCleaned || 0;
           const errors = result.errors || [];
           log('clean', 'privacy.clean', module.issuesFound, module.issuesFound - removed, errors.length === 0);
@@ -2445,7 +2661,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           return { success: false, errors: ['No registry issues found in scan context'], reason: 'No issues found' };
         }
         try {
-          const result = await registryService.clean(issues as unknown as RegistryIssue[]);
+          const result = await withRetry(() => registryService.clean(issues as unknown as RegistryIssue[]), 'registry.clean', { maxAttempts: 3, baseDelayMs: 1000 });
           const regErrors = result.errors || [];
           log('clean', 'registry.clean', module.issuesFound, module.issuesFound - result.fixed, regErrors.length === 0);
           return { success: regErrors.length === 0, issuesFixed: result.fixed, errors: regErrors };

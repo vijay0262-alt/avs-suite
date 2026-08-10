@@ -21,6 +21,7 @@
  */
 
 import { create } from 'zustand';
+import { log } from './LogService';
 import { optimizationEventBus, OptimizationEventType } from './OptimizationEventBus';
 import { healthNotificationService } from './HealthNotificationService';
 
@@ -151,8 +152,13 @@ function updateTrayStatus(result: OptimizationCompletePayload): void {
     }
 
     tray.updateStatus(status, tooltip);
-  } catch {
-    // Tray API not available (e.g. in tests, dev browser)
+  } catch (err) {
+    // Phase 23: Log tray update failure — non-fatal
+    log.warning(
+      `LiveSync: failed to update system tray: ${err instanceof Error ? err.message : String(err)}`,
+      'live-sync',
+      'updateTray',
+    );
   }
 }
 

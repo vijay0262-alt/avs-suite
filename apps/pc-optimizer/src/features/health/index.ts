@@ -107,3 +107,7 @@ export type { DeferredCleanupItem } from './DeferredCleanupStore';
 export { useDeferredCleanupStore } from './DeferredCleanupStore';
 export type { BackgroundCleanupResult, BackgroundCleanupListener } from './BackgroundCleanupService';
 export { backgroundCleanupService, BackgroundCleanupServiceImpl } from './BackgroundCleanupService';
+export type { LogLevel, LogEntry } from './LogService';
+export { log } from './LogService';
+export type { RetryOptions, RetryResult } from './RpcRetryWrapper';
+export { withRetry, withRetrySafe, DEFAULT_RETRY_OPTIONS } from './RpcRetryWrapper';

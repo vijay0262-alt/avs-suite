@@ -735,7 +735,8 @@ describe('Partial failures', () => {
     const priv = makePrivacyService();
     vm = new DashboardViewModel(svc, priv);
     await vm.bootstrap();
-    await vi.advanceTimersByTimeAsync(0);
+    // Phase 23: withRetry uses setTimeout for backoff (1s + 2s = 3s for 3 attempts)
+    await vi.advanceTimersByTimeAsync(4000);
 
     expect(vm.state.bootstrap).toBe('ready');
     expect(vm.state.metricsError).toBeTruthy();

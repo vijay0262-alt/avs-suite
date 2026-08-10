@@ -11,6 +11,7 @@
  */
 
 import { RPC_METHODS } from '@avs/shared/rpc';
+import { log } from './LogService';
 
 function rpcClient() {
   if (typeof window === 'undefined' || !window.avs) {
@@ -145,8 +146,13 @@ class ProcessMonitorServiceImpl {
         };
         this.listeners.forEach((l) => l(event));
       }
-    } catch {
-      // Backend unavailable — non-fatal, retry next poll
+    } catch (err) {
+      // Phase 23: Log polling failure — will retry on next interval
+      log.warning(
+        `Process monitor poll failed: ${err instanceof Error ? err.message : String(err)}`,
+        'process-monitor',
+        'poll',
+      );
     } finally {
       this.polling = false;
     }

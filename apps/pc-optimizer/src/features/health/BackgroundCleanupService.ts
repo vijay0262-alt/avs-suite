@@ -22,6 +22,8 @@ import { healthNotificationService } from './HealthNotificationService';
 import { optimizationHistoryService } from './OptimizationHistoryService';
 import { invalidateMetricsCache } from './healthProviders';
 import { RPC_METHODS } from '@avs/shared/rpc';
+import { log } from './LogService';
+import { withRetry } from './RpcRetryWrapper';
 
 function rpcClient() {
   if (typeof window === 'undefined' || !window.avs) {
@@ -151,11 +153,15 @@ class BackgroundCleanupServiceImpl {
       // Call the backend to retry cleaning for each module group
       for (const [moduleId, moduleItems] of byModule) {
         try {
-          const result = await rpcClient().call(RPC_METHODS.ORCHESTRATOR_OPTIMIZE, {
-            sessionId: `deferred-${Date.now()}`,
-            moduleIds: [moduleId],
-            deferredPaths: moduleItems.map((i) => i.path),
-          }) as {
+          const result = await withRetry(
+            () => rpcClient().call(RPC_METHODS.ORCHESTRATOR_OPTIMIZE, {
+              sessionId: `deferred-${Date.now()}`,
+              moduleIds: [moduleId],
+              deferredPaths: moduleItems.map((i) => i.path),
+            }),
+            'background-cleanup.optimize',
+            { maxAttempts: 3, baseDelayMs: 1000 },
+          ) as {
             success: boolean;
             bytesRecovered?: number;
             itemsRemoved?: number;
@@ -175,8 +181,14 @@ class BackgroundCleanupServiceImpl {
             itemsCleaned += removed;
             cleanedIds.push(...moduleItems.map((i) => i.id));
           }
-        } catch {
-          // Backend call failed — items remain deferred
+        } catch (err) {
+          // Phase 23: Log backend failure — items remain deferred for next retry
+          log.error(
+            `Background cleanup failed for module ${moduleId}: ${err instanceof Error ? err.message : String(err)}`,
+            'background-cleanup',
+            'executeCleanup',
+            err instanceof Error ? err : new Error(String(err)),
+          );
         }
       }
 
@@ -223,8 +235,13 @@ class BackgroundCleanupServiceImpl {
         overallScore?: number;
       };
       newHealthScore = metrics.healthScore ?? metrics.overallScore ?? 0;
-    } catch {
-      // Non-fatal — use current score
+    } catch (err) {
+      // Phase 23: Log metrics fetch failure — non-fatal, use current score
+      log.warning(
+        `Background cleanup: failed to fetch updated metrics: ${err instanceof Error ? err.message : String(err)}`,
+        'background-cleanup',
+        'verifyAndBroadcast',
+      );
     }
 
     const currentScore = useLiveSync.getState().healthScore;
@@ -299,8 +316,13 @@ class BackgroundCleanupServiceImpl {
         const tooltip = `AVS Shield — Background cleanup recovered ${recoveredMB} MB (Score: ${newHealthScore})`;
         tray.updateStatus(status, tooltip);
       }
-    } catch {
-      // Tray not available
+    } catch (err) {
+      // Phase 23: Log tray update failure — non-fatal
+      log.warning(
+        `Background cleanup: failed to update tray: ${err instanceof Error ? err.message : String(err)}`,
+        'background-cleanup',
+        'verifyAndBroadcast',
+      );
     }
   }
 
