@@ -1501,7 +1501,6 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         // Derive per-module item counts from moduleStatuses
         const startupMs = moduleStatuses['startup'];
         const privacyMs = moduleStatuses['privacy'];
-        const perfMs = moduleStatuses['performance'];
         const liveStats: ScanLiveStats = {
           filesScanned: counters.itemsScanned ?? 0,
           registryEntries: counters.registryFixed ?? 0,
