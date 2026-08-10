@@ -653,3 +653,13 @@ export interface VerificationLog {
   success: boolean;
   message?: string;
 }
+
+export interface DeferredCleanupItem {
+  id: string;
+  moduleId: string;
+  moduleName: string;
+  path: string;
+  reason: string;
+  size: number;
+  timestamp: number;
+}

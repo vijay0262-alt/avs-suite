@@ -23,6 +23,7 @@ import type {
   HealthScanHistoryEntry,
   OptimizationDetails,
   VerificationLog,
+  DeferredCleanupItem,
   HardwareSensors,
   ScanPhase,
   ScanLiveStats,
@@ -68,14 +69,11 @@ import type { OrchestratorFullResponse, OrchestratorModuleResult, ScanProfile } 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
 
 const MODULE_DISPLAY_NAMES: Record<string, string> = {
-  junk: 'Junk Cleaner',
-  privacy: 'Privacy Cleaner',
-  registry: 'Registry Cleaner',
-  startup: 'Startup Manager',
+  system_health: 'System Health',
+  storage: 'Storage',
   performance: 'Performance',
-  disk: 'Disk Analyzer',
-  security: 'Security Check',
-  system: 'System Information',
+  privacy: 'Privacy',
+  protection: 'Protection',
 };
 
 function _moduleDisplayName(mid: string): string {
@@ -83,7 +81,7 @@ function _moduleDisplayName(mid: string): string {
 }
 
 const MODULE_SIM_PATHS: Record<string, string[]> = {
-  junk: [
+  storage: [
     'C:\\Users\\user\\AppData\\Local\\Temp\\~tmp1F3A.tmp',
     'C:\\Windows\\Temp\\setup_log_2024.txt',
     'C:\\Users\\user\\AppData\\Local\\Microsoft\\Edge\\Cache\\f_00001',
@@ -92,14 +90,19 @@ const MODULE_SIM_PATHS: Record<string, string[]> = {
     'C:\\Users\\user\\AppData\\Local\\Temp\\chrome_installer.log',
     'C:\\Windows\\Prefetch\\CHROME.EXE-8F2B1A.pf',
     'C:\\Users\\user\\AppData\\Local\\Temp\\VSCode_crash.dmp',
+    'C:\\Users\\user\\Downloads\\large_video.mp4 (2.3 GB)',
+    'C:\\Users\\user\\AppData\\Local\\Docker\\image.vhdx (12 GB)',
   ],
-  startup: [
+  performance: [
     'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\Discord',
     'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\Spotify',
     'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\Steam',
     'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\OneDrive',
     'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\Skype',
-    'C:\\Users\\user\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\auto.bat',
+    'Process: chrome.exe (PID 4892) — 1.2 GB RAM',
+    'Process: Code.exe (PID 3210) — 850 MB RAM',
+    'Service: SysMain (Superfetch) — Active',
+    'Process: docker.exe (PID 7890) — 2.1 GB RAM',
   ],
   privacy: [
     'C:\\Users\\user\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Cookies',
@@ -110,45 +113,24 @@ const MODULE_SIM_PATHS: Record<string, string[]> = {
     'C:\\Windows\\System32\\config\\systemprofile\\NTUSER.DAT',
     'C:\\Users\\user\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Cache\\data_1',
   ],
-  performance: [
-    'Process: chrome.exe (PID 4892) — 1.2 GB RAM',
-    'Process: Code.exe (PID 3210) — 850 MB RAM',
-    'Process: node.exe (PID 5678) — 420 MB RAM',
-    'Service: SysMain (Superfetch) — Active',
-    'Service: Windows Search Indexer — High I/O',
-    'Process: docker.exe (PID 7890) — 2.1 GB RAM',
-  ],
-  disk: [
-    'C:\\Users\\user\\Downloads\\large_video.mp4 (2.3 GB)',
-    'C:\\Users\\user\\Documents\\archive_2023.zip (1.8 GB)',
-    'C:\\Users\\user\\AppData\\Local\\Docker\\image.vhdx (12 GB)',
-    'C:\\Windows\\Installer\\patch_8f3a.msi (450 MB)',
-    'C:\\Users\\user\\AppData\\Local\\Temp\\install_cache.cab (320 MB)',
-    'C:\\Users\\user\\Downloads\\setup_tool.exe (180 MB)',
-  ],
-  registry: [
+  system_health: [
     'HKLM\\Software\\Orphan\\Uninstall\\{B2F3A1} — Missing executable',
     'HKCU\\Software\\OldApp\\Startup — Invalid path reference',
     'HKLM\\System\\CurrentControlSet\\Services\\GhostDriver — No .sys file',
     'HKCU\\Software\\Classes\\BrokenLink\\shell\\open — Missing target',
     'HKLM\\Software\\UninstalledApp\\TrayIcon — Orphaned key',
     'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MountPoints2 — Stale entries',
+    'Checking OS version: Windows 11 23H2 Build 22631',
+    'Checking system uptime and last boot time...',
+    'Checking CPU model: Intel Core i7-12700K @ 3.6 GHz',
   ],
-  security: [
+  protection: [
     'Checking Windows Defender real-time protection status...',
     'Checking Windows Firewall profile (Domain/Private/Public)...',
     'Checking Windows Update pending patches...',
     'Checking UAC (User Account Control) settings...',
     'Checking SmartScreen filter configuration...',
     'Checking network sharing and discovery settings...',
-  ],
-  system: [
-    'Checking OS version: Windows 11 23H2 Build 22631',
-    'Checking system uptime and last boot time...',
-    'Checking CPU model: Intel Core i7-12700K @ 3.6 GHz',
-    'Checking total RAM: 32 GB DDR4 @ 3200 MT/s',
-    'Checking motherboard: ASUS PRIME Z690-A (BIOS 1801)',
-    'Checking GPU: NVIDIA GeForce RTX 3070 (Driver 536.40)',
   ],
 };
 
@@ -220,6 +202,9 @@ export interface DashboardState {
 
   // Phase 9 — Verification Report
   verificationReport: VerificationReport | null;
+
+  // Deferred cleanup queue — items that could not be cleaned (locked files, admin-only, etc.)
+  deferredCleanupItems: DeferredCleanupItem[];
 
   // Quick actions
   quickActionsOpen: boolean;
@@ -336,7 +321,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       quickActionsOpen: false,
       optimizationSummary: null,
       verificationReport: null,
-
+      deferredCleanupItems: [],
       hardwareSensors: null,
       hardwareSensorsLoading: false,
       hardwareSensorsError: null,
@@ -802,6 +787,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       scanItemsProcessed: 0,
       scanItemsRemaining: 0,
       scanBytesRecovered: 0,
+      deferredCleanupItems: [],
     });
   }
 
@@ -837,6 +823,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       scanItemsProcessed: 0,
       scanItemsRemaining: 0,
       scanBytesRecovered: 0,
+      deferredCleanupItems: [],
     });
     // Refresh metrics so scores reflect any partial optimizations that were applied
     invalidateMetricsCache();
@@ -941,7 +928,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     }
 
     this.setState({
-      healthScanStep: 'report',
+      healthScanStep: 'complete',
       healthScanReport: report,
       healthScanError: null,
     });
@@ -978,28 +965,22 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       });
     };
 
-    // Map backend module IDs to user-facing category scan phases
+    // Map category IDs to scan phases
     const modulePhaseMap: Record<string, ScanPhase> = {
-      junk: 'storage',
+      storage: 'storage',
       privacy: 'privacy',
-      registry: 'system_health',
-      startup: 'performance',
+      system_health: 'system_health',
       performance: 'performance',
-      disk: 'storage',
-      security: 'protection',
-      system: 'system_health',
+      protection: 'protection',
     };
 
-    // Stats increment per module per simulated step
+    // Stats increment per category per simulated step
     const moduleStatsMap: Record<string, Partial<ScanLiveStats>> = {
-      junk: { filesScanned: 120 },
+      storage: { filesScanned: 150 },
       privacy: { privacyItems: 30, filesScanned: 45 },
-      registry: { registryEntries: 80 },
-      startup: { startupItems: 15 },
-      performance: { filesScanned: 20 },
-      disk: { filesScanned: 30 },
-      security: { filesScanned: 10 },
-      system: { filesScanned: 5 },
+      system_health: { registryEntries: 80, filesScanned: 5 },
+      performance: { startupItems: 15, filesScanned: 20 },
+      protection: { filesScanned: 10 },
     };
 
     const scanIfNotCancelled = async (id: string, fn: () => Promise<Partial<HealthScanModuleResult>>): Promise<void> => {
@@ -1060,7 +1041,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     }
 
     const tasks: Promise<void>[] = [
-      scanIfNotCancelled('junk', async () => {
+      scanIfNotCancelled('storage', async () => {
         const cleaners = await junkCleanerService.list();
         const task = await junkCleanerService.startScan(cleaners.map((c) => c.id));
         await new Promise((resolve) => setTimeout(resolve, 800));
@@ -1093,19 +1074,36 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
             };
           }),
         );
-        return {
-          score: Math.max(0, 100 - Math.min(issues / 100, 100)),
-          issuesFound: issues,
-          recoverableSpace: totalSize,
-          severity: totalSize > 1_000_000_000 ? 'high' : totalSize > 100_000_000 ? 'medium' : 'low',
-          measuredDetail: `Can free ${Math.round(totalSize / 1_000_000)} MB of junk`,
-          details: {
-            summary: `${issues} temporary files and caches found (${Math.round(totalSize / 1_000_000)} MB)`,
-            impact: (totalSize > 1_000_000_000 ? 'high' : totalSize > 100_000_000 ? 'medium' : 'low') as OptimizationDetails['impact'],
+        // Also scan disk usage
+        let diskFull = 0;
+        let diskSpace = 0;
+        let diskGroups: { title: string; safeToRemove: boolean; why: string; items: { name: string }[] }[] = [];
+        try {
+          const drives = await diskAnalyzerService.listDrives();
+          diskFull = drives.filter((d) => d.percent > 80).length;
+          diskSpace = drives.reduce((s, d) => s + (d.used || 0), 0);
+          diskGroups = drives.map((d) => ({
+            title: `${d.mountpoint || d.device} (${d.percent}% used)`,
             safeToRemove: true,
-            groups,
+            why: 'Identifies large files and disk space usage for review.',
+            items: [{ name: `Free: ${Math.round(d.free / 1_000_000)} MB` }],
+          }));
+        } catch { /* disk analyzer may fail */ }
+        const combinedSize = totalSize + diskSpace;
+        const combinedIssues = issues + diskFull;
+        return {
+          score: Math.max(0, 100 - Math.min(combinedIssues / 100, 100)),
+          issuesFound: combinedIssues,
+          recoverableSpace: combinedSize,
+          severity: combinedSize > 1_000_000_000 ? 'high' : combinedSize > 100_000_000 ? 'medium' : 'low',
+          measuredDetail: `Can free ${Math.round(combinedSize / 1_000_000)} MB`,
+          details: {
+            summary: `${combinedIssues} storage issues found (${Math.round(combinedSize / 1_000_000)} MB recoverable)`,
+            impact: (combinedSize > 1_000_000_000 ? 'high' : combinedSize > 100_000_000 ? 'medium' : 'low') as OptimizationDetails['impact'],
+            safeToRemove: true,
+            groups: [...groups, ...diskGroups],
             notChanged: notChanged.files,
-            why: 'Temporary files accumulate over time and consume storage space. Removing them frees disk space but does not affect personal documents.',
+            why: 'Temporary files, caches, and disk usage consume storage space. Cleaning them frees disk space but does not affect personal documents.',
           },
         };
       }),
@@ -1137,7 +1135,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           },
         };
       }),
-      scanIfNotCancelled('registry', async () => {
+      scanIfNotCancelled('system_health', async () => {
         const result = await registryService.scan();
         const byCategory: Record<string, typeof result.issues> = {};
         result.issues.forEach((i) => {
@@ -1150,100 +1148,92 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           why: 'Invalid or obsolete registry entries can slow Windows startup and operation.',
           items: issues.slice(0, 5).map((i) => ({ name: i.description })),
         }));
+        // Also check system info (uptime, restart needed, etc.)
+        let systemIssues = 0;
+        let systemScore = 95;
+        let systemDetail = 'System healthy';
+        try {
+          const info = await systemInfoService.getComprehensiveInfo();
+          const uptimeDays = info.os?.bootTime ? (Date.now() / 1000 - info.os.bootTime) / 86400 : 0;
+          if (uptimeDays > 30) {
+            systemIssues = 1;
+            systemScore = 80;
+            systemDetail = 'System restart recommended';
+            groups.push({
+              title: 'System status',
+              safeToRemove: true,
+              why: 'A restart refreshes system state and releases memory leaks.',
+              items: [{ name: `Uptime: ${Math.round(uptimeDays)} days — restart recommended` }, { name: `Windows ${info.os?.release || 'unknown'}` }],
+            });
+          } else {
+            groups.push({
+              title: 'System status',
+              safeToRemove: true,
+              why: 'System hardware and OS are within healthy parameters.',
+              items: [{ name: `Windows ${info.os?.release || 'unknown'}` }, { name: `${info.cpu?.name || ''}` }],
+            });
+          }
+        } catch { /* system info may fail */ }
+        const totalIssues = result.issues.length + systemIssues;
+        const avgScore = Math.round((Math.max(0, 100 - result.issues.length) + systemScore) / 2);
         return {
-          score: Math.max(0, 100 - result.issues.length),
-          issuesFound: result.issues.length,
+          score: avgScore,
+          issuesFound: totalIssues,
           recoverableSpace: 0,
-          severity: result.issues.length > 50 ? 'high' : result.issues.length > 10 ? 'medium' : 'low',
-          measuredDetail: `${result.issues.length} registry issues`,
+          severity: totalIssues > 50 ? 'high' : totalIssues > 10 ? 'medium' : 'low',
+          measuredDetail: `${result.issues.length} registry issues, ${systemDetail}`,
           rawContext: { result },
           details: {
-            summary: `${result.issues.length} invalid or obsolete registry entries found`,
-            impact: (result.issues.length > 50 ? 'high' : result.issues.length > 10 ? 'medium' : 'low') as OptimizationDetails['impact'],
+            summary: `${totalIssues} system health issues found`,
+            impact: (totalIssues > 50 ? 'high' : totalIssues > 10 ? 'medium' : 'low') as OptimizationDetails['impact'],
             safeToRemove: true,
             groups,
             notChanged: ['Registry backups are created before changes', 'Installed software registrations are not removed'],
-            why: 'Invalid registry entries can cause slowdowns. Cleaning them safely removes obsolete references while keeping backups.',
-          },
-        };
-      }),
-      scanIfNotCancelled('startup', async () => {
-        const entries = await startupService.listEntries();
-        const high = entries.filter((e) => e.impact === 'high' && e.enabled);
-        return {
-          score: Math.max(0, 100 - high.length * 5),
-          issuesFound: high.length,
-          recoverableSpace: 0,
-          severity: high.length > 5 ? 'high' : high.length > 0 ? 'medium' : 'low',
-          measuredDetail: `${high.length} high-impact startup items`,
-          rawContext: { entries },
-          details: {
-            summary: `${high.length} high-impact startup applications are enabled`,
-            impact: (high.length > 5 ? 'high' : high.length > 0 ? 'medium' : 'low') as OptimizationDetails['impact'],
-            safeToRemove: true,
-            groups: [
-              {
-                title: 'Applications to disable',
-                safeToRemove: true,
-                why: 'Disabling unnecessary startup items reduces Windows boot delay.',
-                items: high.slice(0, 10).map((e) => ({ name: e.name })),
-              },
-            ],
-            notChanged: ['Startup entries are backed up and can be re-enabled', 'System startup files are not deleted'],
-            why: 'Too many startup applications increase Windows boot time. Disabling unnecessary items reduces startup delay.',
+            why: 'Invalid registry entries and long uptime can cause slowdowns. Cleaning them safely removes obsolete references while keeping backups.',
           },
         };
       }),
       scanIfNotCancelled('performance', async () => {
+        const entries = await startupService.listEntries();
+        const high = entries.filter((e) => e.impact === 'high' && e.enabled);
         const metrics = await performanceService.getMetrics();
         const alertList = (await performanceService.getAlerts()).alerts;
         const ramRecovery = metrics.memory?.used ? Math.max(0, metrics.memory.used - metrics.memory.total * 0.5) : 0;
+        const groups: { title: string; safeToRemove: boolean; why: string; items: { name: string }[] }[] = [];
+        if (high.length > 0) {
+          groups.push({
+            title: 'High-impact startup items',
+            safeToRemove: true,
+            why: 'Disabling unnecessary startup items reduces Windows boot delay.',
+            items: high.slice(0, 10).map((e) => ({ name: e.name })),
+          });
+        }
+        groups.push(...alertList.slice(0, 5).map((a) => ({
+          title: a.type,
+          safeToRemove: true,
+          why: a.message,
+          items: [{ name: a.message }],
+        })));
+        const totalIssues = high.length + alertList.length;
+        const score = Math.round(Math.max(0, 100 - high.length * 5 - alertList.length * 10 - (metrics.cpu?.usage || 0) / 2));
         return {
-          score: Math.round(Math.max(0, 100 - alertList.length * 10 - (metrics.cpu?.usage || 0) / 2)),
-          issuesFound: alertList.length,
+          score,
+          issuesFound: totalIssues,
           recoverableSpace: ramRecovery,
-          severity: alertList.length > 2 ? 'high' : alertList.length > 0 ? 'medium' : 'low',
-          measuredDetail: `${alertList.length} performance alerts`,
+          severity: totalIssues > 5 ? 'high' : totalIssues > 0 ? 'medium' : 'low',
+          measuredDetail: `${high.length} startup items, ${alertList.length} performance alerts`,
+          rawContext: { entries },
           details: {
-            summary: `${alertList.length} performance alerts and ${metrics.memory?.usage || 0}% memory usage detected`,
-            impact: (alertList.length > 2 ? 'high' : alertList.length > 0 ? 'medium' : 'low') as OptimizationDetails['impact'],
+            summary: `${totalIssues} performance issues: ${high.length} startup items, ${alertList.length} alerts, ${metrics.memory?.usage || 0}% memory`,
+            impact: (totalIssues > 5 ? 'high' : totalIssues > 0 ? 'medium' : 'low') as OptimizationDetails['impact'],
             safeToRemove: true,
-            groups: alertList.slice(0, 5).map((a) => ({
-              title: a.type,
-              safeToRemove: true,
-              why: a.message,
-              items: [{ name: a.message }],
-            })),
-            notChanged: notChanged.system,
-            why: 'High memory usage and background alerts can slow the system. Reclaiming memory and resolving alerts improves responsiveness.',
+            groups,
+            notChanged: ['Startup entries are backed up and can be re-enabled', 'System startup files are not deleted'],
+            why: 'Too many startup applications and high memory usage slow the system. Disabling unnecessary items and reclaiming memory improves responsiveness.',
           },
         };
       }),
-      scanIfNotCancelled('disk', async () => {
-        const drives = await diskAnalyzerService.listDrives();
-        const full = drives.filter((d) => d.percent > 80);
-        return {
-          score: Math.round(Math.max(0, 100 - full.length * 25 - drives.reduce((s, d) => s + d.percent, 0) / drives.length / 2)),
-          issuesFound: full.length,
-          recoverableSpace: drives.reduce((s, d) => s + (d.used || 0), 0),
-          severity: full.length > 0 ? 'high' : 'low',
-          measuredDetail: `${full.length} over capacity drives`,
-          details: {
-            summary: `${drives.length} drives scanned; ${full.length} over 80% capacity`,
-            impact: (full.length > 0 ? 'high' : 'low') as OptimizationDetails['impact'],
-            safeToRemove: true,
-            groups: drives.map((d) => ({
-              title: `${d.mountpoint || d.device} (${d.percent}% used)`,
-              safeToRemove: true,
-              why: 'Identifies large files and disk space usage for review.',
-              items: [{ name: `Free: ${Math.round(d.free / 1_000_000)} MB` }],
-            })),
-            notChanged: notChanged.files,
-            why: 'Low disk space slows the system and prevents updates. Identifying large files helps recover space without deleting personal data.',
-          },
-        };
-      }),
-      scanIfNotCancelled('security', async () => {
+      scanIfNotCancelled('protection', async () => {
         const metrics = await this.service.getMetrics();
         const pending = metrics.security.updates.pendingUpdates || 0;
         const thirdPartyAV = metrics.security.defender.thirdPartyAV || metrics.security.firewall.thirdPartyAV;
@@ -1280,35 +1270,6 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
             why: thirdPartyAV
               ? 'Third-party antivirus is protecting your system. Keep it updated for best protection.'
               : 'Pending updates and disabled security features leave the system vulnerable. Applying updates and enabling protections improves safety.',
-          },
-        };
-      }),
-      scanIfNotCancelled('system', async () => {
-        const info = await systemInfoService.getComprehensiveInfo();
-        const uptimeDays = info.os?.bootTime ? (Date.now() / 1000 - info.os.bootTime) / 86400 : 0;
-        const restart = uptimeDays > 30;
-        return {
-          score: restart ? 80 : 95,
-          issuesFound: restart ? 1 : 0,
-          recoverableSpace: 0,
-          severity: restart ? 'medium' : 'low',
-          measuredDetail: restart ? 'System restart recommended' : 'System healthy',
-          details: {
-            summary: restart ? `System uptime is ${Math.round(uptimeDays)} days` : 'System information is healthy',
-            impact: (restart ? 'medium' : 'low') as OptimizationDetails['impact'],
-            safeToRemove: true,
-            groups: [
-              {
-                title: 'System status',
-                safeToRemove: true,
-                why: 'A restart refreshes system state and releases memory leaks.',
-                items: [{ name: `Windows ${info.os?.release || 'unknown'}` }, { name: `${info.cpu?.name || ''}` }],
-              },
-            ],
-            notChanged: notChanged.system,
-            why: restart
-              ? 'A long uptime can lead to memory leaks and slower performance. A restart refreshes the system.'
-              : 'System hardware and OS are within healthy parameters.',
           },
         };
       }),
@@ -1683,7 +1644,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         };
 
         this.setState({
-          healthScanStep: 'report',
+          healthScanStep: 'complete',
           healthScanModules: dashModules,
           healthScanReport: report,
           healthScanBeforeReport: report,
@@ -1911,11 +1872,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     if (!beforeReport) return;
 
     const moduleFeatureMap: Record<string, string> = {
-      junk: 'junk.clean',
+      storage: 'junk.clean',
       privacy: 'privacy.clean',
-      registry: 'registry.fix',
-      startup: 'startup.disable',
+      system_health: 'registry.fix',
       performance: 'performance.optimize',
+      protection: 'security.apply',
     };
     const fixableModules = beforeReport.modules.filter(
       (m) => {
@@ -1973,6 +1934,28 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         const moduleResult = beforeReport.modules.find((m) => m.moduleId === item.moduleId);
         const actual = moduleResult ? await this.executeModuleAction(moduleResult) : { success: false, errors: ['Module not found in before report'] };
         actualMap.set(item.moduleId, actual);
+
+        // Track deferred cleanup items (locked files, admin-only, permission errors)
+        if (!actual.success && actual.errors) {
+          const deferredKeywords = ['locked', 'permission', 'admin', 'access denied', 'in use', 'busy'];
+          const isDeferred = actual.errors.some((e) =>
+            deferredKeywords.some((kw) => e.toLowerCase().includes(kw)),
+          );
+          if (isDeferred) {
+            const deferredItem: DeferredCleanupItem = {
+              id: `${Date.now()}-${item.moduleId}`,
+              moduleId: item.moduleId,
+              moduleName: item.moduleName,
+              path: actual.reason ?? 'Unknown',
+              reason: actual.errors[0] ?? 'File locked or access denied',
+              size: moduleResult?.recoverableSpace ?? 0,
+              timestamp: Date.now(),
+            };
+            this.setState({
+              deferredCleanupItems: [...this.state.deferredCleanupItems, deferredItem],
+            });
+          }
+        }
 
         // Update real-time counters after each module completes
         const totalSpace = [...actualMap.values()].reduce((s, a) => s + (a.bytesRecovered || 0), 0);
@@ -2201,14 +2184,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
 
   private getLiveMessageForModule(moduleId: string): string {
     const messages: Record<string, string> = {
-      junk: 'Cleaning Temporary Files...',
-      privacy: 'Cleaning Browser Cache...',
-      registry: 'Optimizing Registry...',
-      startup: 'Checking Startup Items...',
-      performance: 'Optimizing Memory...',
-      disk: 'Analyzing Disk Usage...',
-      security: 'Checking Security Status...',
-      system: 'Validating System Health...',
+      storage: 'Cleaning Temporary Files & Freeing Disk Space...',
+      privacy: 'Cleaning Browser Cache & Privacy Traces...',
+      system_health: 'Optimizing Registry & System Health...',
+      performance: 'Optimizing Memory & Startup Items...',
+      protection: 'Checking Security Status...',
     };
     return messages[moduleId] ?? `Optimizing ${moduleId}...`;
   }
@@ -2218,8 +2198,8 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     if (actual.filesDeleted) parts.push(`${actual.filesDeleted} files removed`);
     if (actual.bytesRecovered) parts.push(`${Math.round(actual.bytesRecovered / 1_000_000)} MB recovered`);
     if (actual.itemsRemoved) parts.push(`${actual.itemsRemoved} traces cleaned`);
-    if (actual.entriesDisabled) parts.push(`${actual.entriesDisabled} startup items disabled`);
-    if (actual.issuesFixed) parts.push(`${actual.issuesFixed} registry issues fixed`);
+    if (actual.entriesDisabled) parts.push(`${actual.entriesDisabled} startup items optimized`);
+    if (actual.issuesFixed) parts.push(`${actual.issuesFixed} issues fixed`);
     if (parts.length === 0) {
       return actual.success ? '✓ No changes needed' : `✗ ${actual.reason || 'Failed'}`;
     }
@@ -2244,11 +2224,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       });
 
     const moduleFeatureMap: Record<string, string> = {
-      junk: 'junk.clean',
+      storage: 'junk.clean',
       privacy: 'privacy.clean',
-      registry: 'registry.fix',
-      startup: 'startup.disable',
+      system_health: 'registry.fix',
       performance: 'performance.optimize',
+      protection: 'security.apply',
     };
     const requiredFeature = moduleFeatureMap[module.moduleId];
     if (requiredFeature && !this.canUseFeature(requiredFeature)) {
@@ -2257,7 +2237,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     }
 
     switch (module.moduleId) {
-      case 'junk': {
+      case 'storage': {
         try {
           const result = await this.service.executeOptimize();
           log('executeOptimize', 'dashboard.optimize.execute', undefined, result.totalRecovered, result.success);
@@ -2297,25 +2277,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
           return { success: false, errors: [msg], reason: msg };
         }
       }
-      case 'startup': {
-        const entries = (ctx.entries as { name: string; publisher: string; status: string; impact: string; source: string; location: string; command: string; enabled: boolean }[]) || [];
-        const toDisable = entries.filter((e) => e.enabled && e.impact === 'high');
-        let disabled = 0;
-        const errors: string[] = [];
-        for (const entry of toDisable) {
-          try {
-            const res = await startupService.disableEntry(entry as unknown as StartupEntry);
-            if (res.success) disabled += 1;
-            else errors.push(res.reason || res.message || `Failed to disable ${entry.name}`);
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e);
-            errors.push(`${entry.name}: ${msg}`);
-          }
-        }
-        log('disable', 'startup.disable', module.issuesFound, module.issuesFound - disabled, errors.length === 0, errors.join('; ') || undefined);
-        return { success: errors.length === 0, entriesDisabled: disabled, errors: errors.slice(0, 5) };
-      }
-      case 'registry': {
+      case 'system_health': {
         const issues = (ctx.result as { issues?: { id: string; category: string; description: string; hive: string; subkey: string; valueName: string; valueData: string; severity: string }[] })?.issues || [];
         if (!issues.length) {
           log('clean', 'registry.clean', module.issuesFound, 0, false, 'No issues found in scan context');
@@ -2333,32 +2295,45 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
         }
       }
       case 'performance': {
+        // Combine startup optimization + memory optimization
+        const entries = (ctx.entries as { name: string; publisher: string; status: string; impact: string; source: string; location: string; command: string; enabled: boolean }[]) || [];
+        const toDisable = entries.filter((e) => e.enabled && e.impact === 'high');
+        let disabled = 0;
+        const errors: string[] = [];
+        for (const entry of toDisable) {
+          try {
+            const res = await startupService.disableEntry(entry as unknown as StartupEntry);
+            if (res.success) disabled += 1;
+            else errors.push(res.reason || res.message || `Failed to disable ${entry.name}`);
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            errors.push(`${entry.name}: ${msg}`);
+          }
+        }
+        // Also optimize memory
+        let memoryFreed = 0;
+        let processesOptimized = 0;
         try {
-          const result = await performanceService.optimizeMemory();
-          const errors = result.errors || [];
-          const success = result.status === 'completed' || result.status === 'success' || (errors.length === 0 && (result.memoryFreed > 0 || result.processesOptimized > 0));
-          log('optimize', 'performance.memory.optimize', undefined, result.memoryFreed, success);
-          return {
-            success,
-            bytesRecovered: result.memoryFreed || 0,
-            issuesFixed: result.processesOptimized || 0,
-            errors,
-          };
+          const memResult = await performanceService.optimizeMemory();
+          memoryFreed = memResult.memoryFreed || 0;
+          processesOptimized = memResult.processesOptimized || 0;
+          if (memResult.errors) errors.push(...memResult.errors);
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
-          log('optimize', 'performance.memory.optimize', undefined, undefined, false, msg);
-          return { success: false, errors: [msg], reason: msg };
+          errors.push(`Memory optimization: ${msg}`);
         }
+        log('optimize', 'performance.optimize', module.issuesFound, module.issuesFound - disabled - processesOptimized, errors.length === 0, errors.join('; ') || undefined);
+        return {
+          success: errors.length === 0,
+          entriesDisabled: disabled,
+          bytesRecovered: memoryFreed,
+          issuesFixed: processesOptimized,
+          errors: errors.slice(0, 5),
+        };
       }
-      case 'disk':
-        log('analyze', 'disk.listDrives', undefined, undefined, true, 'Disk Analyzer does not modify files — use Disk Analyzer page to review large files');
-        return { success: true, errors: [], reason: 'No changes made — use Disk Analyzer to review' };
-      case 'security':
+      case 'protection':
         log('apply', 'security.apply', undefined, undefined, false, 'Security settings require manual action via Windows Security');
         return { success: false, errors: ['Security settings require manual action. Use the Security page to open Windows Security.'], reason: 'Requires manual action' };
-      case 'system':
-        log('info', 'system.getComprehensiveInfo', undefined, undefined, true, 'System Information does not modify state — restart recommended if uptime is high');
-        return { success: true, errors: [], reason: 'No changes made — restart if uptime is high' };
       default:
         return { success: false, errors: [`Unknown module ${module.moduleId}`] };
     }
@@ -2398,6 +2373,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScanResult: null,
       optimizationSummary: null,
       verificationReport: null,
+      deferredCleanupItems: [],
       scanPhase: null,
       scanOverallProgress: 0,
       scanLiveStats: {
@@ -2532,6 +2508,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       optimizeError: null,
       optimizationSummary: null,
       verificationReport: null,
+      deferredCleanupItems: [],
     });
   }
 
