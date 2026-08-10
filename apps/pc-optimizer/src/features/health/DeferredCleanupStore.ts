@@ -10,7 +10,7 @@
  */
 
 import { create } from 'zustand';
-import { idbGetAll, idbPut, idbDelete, idbClear, idbCleanup } from '../../services/avsWithIDB';
+import { idbGetAll, idbPut, idbDelete, idbClear } from '../../services/avsWithIDB';
 
 export interface DeferredCleanupItem {
   id: string;

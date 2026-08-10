@@ -13,7 +13,36 @@
  *
  * @vitest-environment happy-dom
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// Mock avsWithIDB before importing modules that depend on it
+const _idbStore: Record<string, unknown[]> = {};
+vi.mock('../../../services/avsWithIDB', () => ({
+  idbGetAll: vi.fn(async (store: string) => _idbStore[store] ?? []),
+  idbPut: vi.fn(async (store: string, value: any) => {
+    if (!_idbStore[store]) _idbStore[store] = [];
+    const idx = _idbStore[store]!.findIndex((r: any) => (r as any).id === (value as any).id);
+    if (idx >= 0) _idbStore[store]![idx] = value;
+    else _idbStore[store]!.push(value);
+  }),
+  idbDelete: vi.fn(async (store: string, key: string) => {
+    if (!_idbStore[store]) return;
+    _idbStore[store] = _idbStore[store]!.filter((r: any) => (r as any).id !== key);
+  }),
+  idbClear: vi.fn(async (store: string) => { _idbStore[store] = []; }),
+  idbCleanup: vi.fn(async () => {}),
+  idbGetOne: vi.fn(async () => null),
+  idbAdd: vi.fn(async (store: string, value: any) => {
+    if (!_idbStore[store]) _idbStore[store] = [];
+    _idbStore[store]!.push(value);
+  }),
+  idbCount: vi.fn(async (store: string) => (_idbStore[store] ?? []).length),
+  idbRecover: vi.fn(async () => true),
+  idbCleanupAll: vi.fn(async () => {}),
+  idbMigrateFromLocalStorage: vi.fn(async () => ({ migrated: [], errors: [] })),
+}));
+
 import { executionHistoryRepository } from '../executionHistoryRepository';
 import { executionStatisticsService } from '../executionStatisticsService';
 import { executionReportBuilder } from '../executionReportBuilder';
@@ -118,6 +147,7 @@ function createMultipleRecords(count: number): ExecutionRecord[] {
 describe('ExecutionHistoryRepository', () => {
   beforeEach(() => {
     localStorage.clear();
+    for (const k of Object.keys(_idbStore)) _idbStore[k] = [];
     executionHistoryRepository.clear();
     executionHistoryRepository.setRetentionPolicy({ ...DEFAULT_RETENTION_POLICY });
   });
@@ -178,37 +208,32 @@ describe('ExecutionHistoryRepository', () => {
     expect(executionHistoryRepository.count()).toBe(0);
   });
 
-  it('should persist to localStorage', () => {
+  it('should persist to IndexedDB', () => {
     const record = createMockRecord();
     executionHistoryRepository.insert(record);
 
-    const raw = localStorage.getItem('avs_execution_history');
-    expect(raw).not.toBeNull();
-    const parsed = JSON.parse(raw!);
-    expect(parsed).toHaveLength(1);
-    expect(parsed[0].id).toBe('exec-1');
+    const stored = _idbStore['executionHistory'] ?? [];
+    expect(stored).toHaveLength(1);
+    expect((stored[0] as any).id).toBe('exec-1');
   });
 
   it('should persist and reload records across repository instances', () => {
     const record = createMockRecord();
     executionHistoryRepository.insert(record);
 
-    // Verify the record was persisted to localStorage
-    const raw = localStorage.getItem('avs_execution_history');
-    expect(raw).not.toBeNull();
-    const parsed = JSON.parse(raw!);
-    expect(parsed).toHaveLength(1);
-    expect(parsed[0].id).toBe('exec-1');
+    // Verify the record was persisted to IndexedDB
+    const stored = _idbStore['executionHistory'] ?? [];
+    expect(stored).toHaveLength(1);
+    expect((stored[0] as any).id).toBe('exec-1');
 
-    // Simulate a fresh load by clearing the in-memory cache
-    // and setting localStorage to a known value, then reading
-    localStorage.setItem('avs_execution_history', JSON.stringify([
+    // Simulate a fresh load by setting the IDB store to a known value
+    _idbStore['executionHistory'] = [
       createMockRecord({ id: 'fresh-load' }),
-    ]));
+    ];
 
     // The repository is a singleton, so we test the load function indirectly
     // by verifying that the persistence mechanism works correctly
-    expect(JSON.parse(localStorage.getItem('avs_execution_history')!)).toHaveLength(1);
+    expect(_idbStore['executionHistory']).toHaveLength(1);
   });
 
   it('should handle corrupted localStorage gracefully', () => {
@@ -943,6 +968,7 @@ describe('resultToRecord', () => {
 describe('Maintenance History Regression', () => {
   beforeEach(() => {
     localStorage.clear();
+    for (const k of Object.keys(_idbStore)) _idbStore[k] = [];
     maintenanceHistoryService.destroy();
   });
 
@@ -950,7 +976,7 @@ describe('Maintenance History Regression', () => {
     maintenanceHistoryService.destroy();
   });
 
-  it('should use a separate localStorage key from config sync and execution engine', () => {
+  it('should use a separate IndexedDB store from config sync and execution engine', () => {
     localStorage.setItem('avs_config_cache', '{"version":1}');
     localStorage.setItem('avs_sync_cache', '{"data":"test"}');
     localStorage.setItem('avs_execution_state', '{"state":"running"}');
@@ -958,10 +984,13 @@ describe('Maintenance History Regression', () => {
     maintenanceHistoryService.init();
     maintenanceHistoryService.logExecution(createMockExecutionResult());
 
+    // localStorage keys for other systems should be untouched
     expect(localStorage.getItem('avs_config_cache')).not.toBeNull();
     expect(localStorage.getItem('avs_sync_cache')).not.toBeNull();
     expect(localStorage.getItem('avs_execution_state')).not.toBeNull();
-    expect(localStorage.getItem('avs_execution_history')).not.toBeNull();
+    // Execution history should be persisted to IndexedDB, not localStorage
+    expect(localStorage.getItem('avs_execution_history')).toBeNull();
+    expect((_idbStore['executionHistory'] ?? [])).toHaveLength(1);
   });
 
   it('should not modify execution engine state', () => {

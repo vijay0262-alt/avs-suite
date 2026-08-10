@@ -57,25 +57,25 @@ export async function idbGetAll<T>(store: AvsStoreName): Promise<T[]> {
 export async function idbAdd<T>(store: AvsStoreName, value: T): Promise<void> {
   const db = await openDB();
   if (!db) return;
-  try { await pr(tx(db, store, 'readwrite').add(value)); } catch {}
+  try { await pr(tx(db, store, 'readwrite').add(value)); } catch { /* key may already exist */ }
 }
 
 export async function idbPut<T>(store: AvsStoreName, value: T): Promise<void> {
   const db = await openDB();
   if (!db) return;
-  try { await pr(tx(db, store, 'readwrite').put(value)); } catch {}
+  try { await pr(tx(db, store, 'readwrite').put(value)); } catch { /* write failure — non-fatal */ }
 }
 
 export async function idbDelete(store: AvsStoreName, key: IDBValidKey): Promise<void> {
   const db = await openDB();
   if (!db) return;
-  try { await pr(tx(db, store, 'readwrite').delete(key)); } catch {}
+  try { await pr(tx(db, store, 'readwrite').delete(key)); } catch { /* delete failure — non-fatal */ }
 }
 
 export async function idbClear(store: AvsStoreName): Promise<void> {
   const db = await openDB();
   if (!db) return;
-  try { await pr(tx(db, store, 'readwrite').clear()); } catch {}
+  try { await pr(tx(db, store, 'readwrite').clear()); } catch { /* clear failure — non-fatal */ }
 }
 
 export async function idbGetOne<T>(store: AvsStoreName, key: IDBValidKey): Promise<T | null> {
@@ -94,11 +94,11 @@ export async function idbCleanup(store: AvsStoreName): Promise<void> {
   if (!db) return;
   const cfg = CFGS[store];
   try {
-    const all = await idbGetAll<any>(store);
+    const all = await idbGetAll<{ timestamp?: number; savedAt?: number; startedAt?: number } & Record<string, unknown>>(store);
     if (all.length <= cfg.maxRecords) {
       const now = Date.now();
       const fresh = all.filter((r) => {
-        const ts = r.timestamp ?? r.savedAt ?? r.startedAt ?? 0;
+        const ts = (r.timestamp ?? r.savedAt ?? r.startedAt ?? 0) as number;
         return ts && (now - ts) < cfg.maxAgeMs;
       });
       if (fresh.length < all.length) {
@@ -108,14 +108,14 @@ export async function idbCleanup(store: AvsStoreName): Promise<void> {
       return;
     }
     const sorted = all.sort((a, b) => {
-      const ta = a.timestamp ?? a.savedAt ?? a.startedAt ?? 0;
-      const tb = b.timestamp ?? b.savedAt ?? b.startedAt ?? 0;
+      const ta = (a.timestamp ?? a.savedAt ?? a.startedAt ?? 0) as number;
+      const tb = (b.timestamp ?? b.savedAt ?? b.startedAt ?? 0) as number;
       return tb - ta;
     });
     const kept = sorted.slice(0, cfg.maxRecords);
     await idbClear(store);
     for (const r of kept) await idbPut(store, r);
-  } catch {}
+  } catch { /* cleanup failure — non-fatal */ }
 }
 
 export async function idbRecover(): Promise<boolean> {

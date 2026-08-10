@@ -86,7 +86,7 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
   let restartAttempts = 0;
   const MAX_RESTART_ATTEMPTS = 5;
   const RESTART_DELAY_MS = 3000;
-  let reconnectCallbacks: ReconnectCallback[] = [];
+  const reconnectCallbacks: ReconnectCallback[] = [];
   let activeChild = child;
 
   // Cap buffer size to prevent memory growth from malformed backend output

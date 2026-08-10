@@ -13,7 +13,39 @@
  *
  * @vitest-environment happy-dom
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// Mock avsWithIDB before importing modules that depend on it
+const _idbStore: Record<string, unknown[]> = {};
+vi.mock('../../../services/avsWithIDB', () => ({
+  idbGetOne: vi.fn(async (_store: string, key: string) => {
+    const arr = _idbStore['executionState'] ?? [];
+    return (arr.find((r: any) => (r as any).key === key) as any) ?? null;
+  }),
+  idbPut: vi.fn(async (store: string, value: any) => {
+    if (!_idbStore[store]) _idbStore[store] = [];
+    const idx = _idbStore[store]!.findIndex((r: any) => (r as any).key === (value as any).key);
+    if (idx >= 0) _idbStore[store]![idx] = value;
+    else _idbStore[store]!.push(value);
+  }),
+  idbClear: vi.fn(async (store: string) => { _idbStore[store] = []; }),
+  idbCleanup: vi.fn(async () => {}),
+  idbGetAll: vi.fn(async (store: string) => _idbStore[store] ?? []),
+  idbDelete: vi.fn(async (store: string, key: string) => {
+    if (!_idbStore[store]) return;
+    _idbStore[store] = _idbStore[store]!.filter((r: any) => (r as any).key !== key);
+  }),
+  idbAdd: vi.fn(async (store: string, value: any) => {
+    if (!_idbStore[store]) _idbStore[store] = [];
+    _idbStore[store]!.push(value);
+  }),
+  idbCount: vi.fn(async (store: string) => (_idbStore[store] ?? []).length),
+  idbRecover: vi.fn(async () => true),
+  idbCleanupAll: vi.fn(async () => {}),
+  idbMigrateFromLocalStorage: vi.fn(async () => ({ migrated: [], errors: [] })),
+}));
+
 import { executionEvents } from '../executionEvents';
 import {
   registerPauseCondition,
@@ -691,38 +723,41 @@ describe('Crash Recovery', () => {
   beforeEach(() => {
     executionEngine.clear();
     localStorage.clear();
+    for (const k of Object.keys(_idbStore)) _idbStore[k] = [];
   });
 
-  it('should detect interrupted execution on init', () => {
-    localStorage.setItem('avs_execution_state', JSON.stringify({
+  it('should detect interrupted execution on init', async () => {
+    _idbStore['executionState'] = [{
+      key: 'current',
       currentExecutionId: 'exec-interrupted',
       currentScheduleId: 'sched-1',
       startedAt: new Date().toISOString(),
       state: 'running',
-    }));
+    }];
 
-    executionEngine.init();
+    await executionEngine.init();
 
     const snap = executionEngine.getSnapshot();
     expect(snap.lastError).toContain('interrupted');
   });
 
-  it('should clear stale state on init', () => {
-    localStorage.setItem('avs_execution_state', JSON.stringify({
+  it('should clear stale state on init', async () => {
+    _idbStore['executionState'] = [{
+      key: 'current',
       currentExecutionId: 'exec-interrupted',
       currentScheduleId: null,
       startedAt: new Date().toISOString(),
       state: 'running',
-    }));
+    }];
 
-    executionEngine.init();
+    await executionEngine.init();
 
     // The stale state should be cleared
-    expect(localStorage.getItem('avs_execution_state')).toBeNull();
+    expect(_idbStore['executionState']).toHaveLength(0);
   });
 
-  it('should not trigger crash recovery when no persisted state', () => {
-    executionEngine.init();
+  it('should not trigger crash recovery when no persisted state', async () => {
+    await executionEngine.init();
     const snap = executionEngine.getSnapshot();
     expect(snap.lastError).toBeNull();
   });
@@ -749,7 +784,7 @@ describe('ExecutionStore', () => {
   });
 
   it('should update state after job execution', async () => {
-    useExecutionStore.getState().init();
+    await useExecutionStore.getState().init();
 
     const task = new MockTask('t1', 'Task 1');
     const job = createMockJob([task]);
@@ -763,7 +798,7 @@ describe('ExecutionStore', () => {
   });
 
   it('should track execution history', async () => {
-    useExecutionStore.getState().init();
+    await useExecutionStore.getState().init();
 
     const task = new MockTask('t1', 'Task 1');
     const job = createMockJob([task]);
@@ -776,7 +811,7 @@ describe('ExecutionStore', () => {
   });
 
   it('should limit history to 50 entries', async () => {
-    useExecutionStore.getState().init();
+    await useExecutionStore.getState().init();
 
     const task = new MockTask('t1', 'Task 1');
     const job = createMockJob([task]);
@@ -790,7 +825,7 @@ describe('ExecutionStore', () => {
   });
 
   it('should clear state', async () => {
-    useExecutionStore.getState().init();
+    await useExecutionStore.getState().init();
 
     const task = new MockTask('t1', 'Task 1');
     const job = createMockJob([task]);

@@ -56,7 +56,6 @@ import {
   EyeIcon,
   LockClosedIcon,
   SparklesIcon,
-  Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 
 // ── ViewModel ──────────────────────────────────────────────────

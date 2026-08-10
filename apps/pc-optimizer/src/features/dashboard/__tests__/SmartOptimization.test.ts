@@ -1,6 +1,34 @@
 // @vitest-environment happy-dom
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Mock avsWithIDB before importing modules that depend on it
+const _idbStore: Record<string, unknown[]> = {};
+vi.mock('../../../services/avsWithIDB', () => ({
+  idbGetOne: vi.fn(async (store: string, key: string) => {
+    const arr = _idbStore[store] ?? [];
+    return (arr.find((r: any) => (r as any).key === key) as any) ?? null;
+  }),
+  idbPut: vi.fn(async (store: string, value: any) => {
+    if (!_idbStore[store]) _idbStore[store] = [];
+    const idx = _idbStore[store]!.findIndex((r: any) => (r as any).key === (value as any).key);
+    if (idx >= 0) _idbStore[store]![idx] = value;
+    else _idbStore[store]!.push(value);
+  }),
+  idbClear: vi.fn(async (store: string) => { _idbStore[store] = []; }),
+  idbCleanup: vi.fn(async () => {}),
+  idbGetAll: vi.fn(async (store: string) => _idbStore[store] ?? []),
+  idbDelete: vi.fn(async () => {}),
+  idbAdd: vi.fn(async (store: string, value: any) => {
+    if (!_idbStore[store]) _idbStore[store] = [];
+    _idbStore[store]!.push(value);
+  }),
+  idbCount: vi.fn(async (store: string) => (_idbStore[store] ?? []).length),
+  idbRecover: vi.fn(async () => true),
+  idbCleanupAll: vi.fn(async () => {}),
+  idbMigrateFromLocalStorage: vi.fn(async () => ({ migrated: [], errors: [] })),
+}));
+
 import { DashboardViewModel } from '../DashboardViewModel';
 import type { DashboardService } from '../dashboard.service';
 import type { IPrivacyService } from '../../privacy/privacy.service';
@@ -794,7 +822,11 @@ describe('Module Status (Part 14)', () => {
 });
 
 describe('Session Persistence (Part 15)', () => {
-  it('saveSession and loadSession round-trip correctly', () => {
+  beforeEach(() => {
+    for (const k of Object.keys(_idbStore)) _idbStore[k] = [];
+  });
+
+  it('saveSession and loadSession round-trip correctly', async () => {
     clearSession();
     const session = {
       optimizationSummary: { healthBefore: 50, healthAfter: 95 },
@@ -805,7 +837,7 @@ describe('Session Persistence (Part 15)', () => {
       savedAt: '2026-01-01T00:00:01Z',
     };
     saveSession(session);
-    const loaded = loadSession();
+    const loaded = await loadSession();
     expect(loaded).not.toBeNull();
     expect(loaded!.healthScore).toBe(95);
     expect(loaded!.healthZone).toBe('excellent');
@@ -813,13 +845,13 @@ describe('Session Persistence (Part 15)', () => {
     clearSession();
   });
 
-  it('loadSession returns null when no session exists', () => {
+  it('loadSession returns null when no session exists', async () => {
     clearSession();
-    const loaded = loadSession();
+    const loaded = await loadSession();
     expect(loaded).toBeNull();
   });
 
-  it('clearSession removes saved session', () => {
+  it('clearSession removes saved session', async () => {
     saveSession({
       optimizationSummary: null,
       healthScore: 80,
@@ -829,13 +861,12 @@ describe('Session Persistence (Part 15)', () => {
       savedAt: new Date().toISOString(),
     });
     clearSession();
-    expect(loadSession()).toBeNull();
+    expect(await loadSession()).toBeNull();
   });
 
-  it('loadSession handles corrupted data gracefully', () => {
+  it('loadSession handles missing data gracefully', async () => {
     clearSession();
-    window.localStorage.setItem('avs:dashboard:session', '{invalid json');
-    expect(loadSession()).toBeNull();
+    expect(await loadSession()).toBeNull();
     clearSession();
   });
 });
