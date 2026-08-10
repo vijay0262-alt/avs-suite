@@ -1,11 +1,12 @@
 /**
- * SessionPersistence — saves and restores dashboard session state to localStorage.
+ * SessionPersistence — saves and restores dashboard session state to IndexedDB.
  *
  * After restarting the application, the last optimization summary, health score,
  * and recommendations are restored until a new scan is performed.
  */
+import { idbGetOne, idbPut, idbClear } from '../../services/avsWithIDB';
 
-const STORAGE_KEY = 'avs:dashboard:session';
+const SESSION_KEY = 'current';
 
 export interface PersistedSession {
   optimizationSummary: unknown | null;
@@ -16,37 +17,16 @@ export interface PersistedSession {
   savedAt: string;
 }
 
-function isBrowser(): boolean {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-}
-
 export function saveSession(session: PersistedSession): void {
-  if (!isBrowser()) return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-  } catch {
-    // localStorage might be full or disabled — fail silently
-  }
+  idbPut('dashboardSession', { ...session, key: SESSION_KEY });
 }
 
-export function loadSession(): PersistedSession | null {
-  if (!isBrowser()) return null;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as PersistedSession;
-    if (!parsed.savedAt) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+export async function loadSession(): Promise<PersistedSession | null> {
+  const session = await idbGetOne<PersistedSession & { key: string }>('dashboardSession', SESSION_KEY);
+  if (!session || !session.savedAt) return null;
+  return session;
 }
 
 export function clearSession(): void {
-  if (!isBrowser()) return;
-  try {
-    window.localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // fail silently
-  }
+  idbClear('dashboardSession');
 }

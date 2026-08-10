@@ -13,29 +13,14 @@ import type {
   RetentionPolicy,
 } from './types';
 import { DEFAULT_RETENTION_POLICY } from './types';
-
-const STORAGE_KEY = 'avs_execution_history';
+import { idbGetAll, idbPut, idbDelete, idbClear, idbCleanup } from '../../services/avsWithIDB';
 
 // ── Persistence ───────────────────────────────────────────────
 
-function loadFromStorage(): ExecutionRecord[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed as ExecutionRecord[];
-  } catch {
-    return [];
-  }
-}
-
-function saveToStorage(records: ExecutionRecord[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-  } catch {
-    // storage full or unavailable — non-fatal
-  }
+async function loadFromIDB(): Promise<ExecutionRecord[]> {
+  const all = await idbGetAll<ExecutionRecord>('executionHistory');
+  all.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+  return all;
 }
 
 // ── Repository ────────────────────────────────────────────────
@@ -48,18 +33,26 @@ class ExecutionHistoryRepositoryImpl {
   /**
    * Load records from localStorage. Called once on init.
    */
-  load(): void {
+  async init(): Promise<void> {
     if (this._loaded) return;
-    this._records = loadFromStorage();
+    this._records = await loadFromIDB();
     this._loaded = true;
     this._enforceRetention();
+  }
+
+  load(): void {
+    if (this._loaded) return;
+    this._records = [];
+    this._loaded = true;
   }
 
   /**
    * Persist current records to localStorage.
    */
   private _persist(): void {
-    saveToStorage(this._records);
+    idbClear('executionHistory');
+    this._records.forEach((r) => idbPut('executionHistory', r));
+    idbCleanup('executionHistory');
   }
 
   /**
@@ -102,7 +95,7 @@ class ExecutionHistoryRepositoryImpl {
     const idx = this._records.findIndex((r) => r.id === id);
     if (idx < 0) return false;
     this._records.splice(idx, 1);
-    this._persist();
+    idbDelete('executionHistory', id);
     return true;
   }
 
@@ -111,7 +104,7 @@ class ExecutionHistoryRepositoryImpl {
    */
   clear(): void {
     this._records = [];
-    this._persist();
+    idbClear('executionHistory');
   }
 
   /**

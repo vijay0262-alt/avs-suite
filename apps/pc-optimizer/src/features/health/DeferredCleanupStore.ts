@@ -10,6 +10,7 @@
  */
 
 import { create } from 'zustand';
+import { idbGetAll, idbPut, idbDelete, idbClear, idbCleanup } from '../../services/avsWithIDB';
 
 export interface DeferredCleanupItem {
   id: string;
@@ -19,40 +20,17 @@ export interface DeferredCleanupItem {
   reason: string;
   size: number;
   timestamp: number;
-  /** Which application was blocking the cleanup (e.g. 'chrome', 'msedge'). */
   blockingProcess?: string;
 }
 
-const STORAGE_KEY = 'avs-deferred-cleanup-queue';
 const MAX_ITEMS = 500;
-const STALE_ITEM_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const STALE_ITEM_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-function loadFromStorage(): DeferredCleanupItem[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    const now = Date.now();
-    const fresh = parsed.filter((i: DeferredCleanupItem) =>
-      i.timestamp && (now - i.timestamp) < STALE_ITEM_TTL_MS,
-    );
-    // If stale items were removed, persist the cleaned list
-    if (fresh.length !== parsed.length) {
-      saveToStorage(fresh);
-    }
-    return fresh.slice(0, MAX_ITEMS);
-  } catch {
-    return [];
-  }
-}
-
-function saveToStorage(items: DeferredCleanupItem[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items.slice(0, MAX_ITEMS)));
-  } catch {
-    // Storage full or unavailable — non-fatal
-  }
+async function loadFromIDB(): Promise<DeferredCleanupItem[]> {
+  const all = await idbGetAll<DeferredCleanupItem>('deferredCleanup');
+  const now = Date.now();
+  const fresh = all.filter((i) => i.timestamp && (now - i.timestamp) < STALE_ITEM_TTL_MS);
+  return fresh.slice(0, MAX_ITEMS);
 }
 
 interface DeferredCleanupState {
@@ -70,11 +48,11 @@ interface DeferredCleanupState {
 }
 
 export const useDeferredCleanupStore = create<DeferredCleanupState>((set, get) => ({
-  items: loadFromStorage(),
+  items: [],
 
   addItem: (item) => {
     const items = [item, ...get().items.filter((i) => i.id !== item.id)].slice(0, MAX_ITEMS);
-    saveToStorage(items);
+    idbPut('deferredCleanup', item);
     set({ items });
   },
 
@@ -82,20 +60,20 @@ export const useDeferredCleanupStore = create<DeferredCleanupState>((set, get) =
     const existingIds = new Set(get().items.map((i) => i.id));
     const filtered = newItems.filter((i) => !existingIds.has(i.id));
     const items = [...filtered, ...get().items].slice(0, MAX_ITEMS);
-    saveToStorage(items);
+    filtered.forEach((i) => idbPut('deferredCleanup', i));
     set({ items });
   },
 
   removeItem: (id) => {
     const items = get().items.filter((i) => i.id !== id);
-    saveToStorage(items);
+    idbDelete('deferredCleanup', id);
     set({ items });
   },
 
   removeItems: (ids) => {
     const idSet = new Set(ids);
     const items = get().items.filter((i) => !idSet.has(i.id));
-    saveToStorage(items);
+    ids.forEach((id) => idbDelete('deferredCleanup', id));
     set({ items });
   },
 
@@ -112,7 +90,7 @@ export const useDeferredCleanupStore = create<DeferredCleanupState>((set, get) =
   },
 
   clearAll: () => {
-    saveToStorage([]);
+    idbClear('deferredCleanup');
     set({ items: [] });
   },
 
@@ -123,7 +101,13 @@ export const useDeferredCleanupStore = create<DeferredCleanupState>((set, get) =
 
   setItems: (items) => {
     const trimmed = items.slice(0, MAX_ITEMS);
-    saveToStorage(trimmed);
+    idbClear('deferredCleanup');
+    trimmed.forEach((i) => idbPut('deferredCleanup', i));
     set({ items: trimmed });
   },
 }));
+
+export async function initDeferredCleanupStore(): Promise<void> {
+  const items = await loadFromIDB();
+  useDeferredCleanupStore.setState({ items });
+}

@@ -57,6 +57,7 @@ import type { OptimizationSummary } from './OptimizationSummary.types';
 import { saveSession, loadSession, clearSession } from './sessionPersistence';
 import { saveScanState, clearScanState, detectInterruptedScan } from './ScanStatePersistence';
 import type { PersistedScanState } from './ScanStatePersistence';
+import { idbPut } from '../../services/avsWithIDB';
 import { canUse as featureGateCanUse, currentEdition as getFeatureGateEdition } from '../licensing/FeatureGate';
 import type { ManagedFeature } from '@avs/licensing';
 import { useSyncStore, planToEdition } from '../sync/syncStore';
@@ -378,26 +379,28 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     this.recalculateHealth(null, null);
 
     // Part 15: Restore persisted session from previous app run
-    const persisted = loadSession();
-    if (persisted && persisted.healthScore !== null) {
-      this.setState({
-        optimizationSummary: persisted.optimizationSummary as OptimizationSummary | null,
-      });
-    }
+    loadSession().then((persisted) => {
+      if (persisted && persisted.healthScore !== null) {
+        this.setState({
+          optimizationSummary: persisted.optimizationSummary as OptimizationSummary | null,
+        });
+      }
+    });
 
     // Phase 23: Detect interrupted scan from previous app run
-    const interruptedScan = detectInterruptedScan();
-    if (interruptedScan) {
-      log.warning(
-        `Interrupted scan detected: step=${interruptedScan.step}, progress=${interruptedScan.progress}%`,
-        'dashboard',
-        'bootstrap',
-      );
-      this.setState({
-        interruptedScan,
-        showInterruptedScanPrompt: true,
-      });
-    }
+    detectInterruptedScan().then((interruptedScan) => {
+      if (interruptedScan) {
+        log.warning(
+          `Interrupted scan detected: step=${interruptedScan.step}, progress=${interruptedScan.progress}%`,
+          'dashboard',
+          'bootstrap',
+        );
+        this.setState({
+          interruptedScan,
+          showInterruptedScanPrompt: true,
+        });
+      }
+    });
 
     void this.bootstrapData();
   }
@@ -2724,16 +2727,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   private logVerification(entry: VerificationLog): void {
     const logs = [entry, ...this.state.verificationLogs].slice(0, 500);
     this.setState({ verificationLogs: logs });
-    // Debounce localStorage write — batch multiple log entries into one write
     if (this.verificationLogFlushTimer) clearTimeout(this.verificationLogFlushTimer);
     this.verificationLogFlushTimer = setTimeout(() => {
-      try {
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('avs-verification-logs', JSON.stringify(logs));
-        }
-      } catch {
-        // localStorage may not be available
-      }
+      idbPut('verificationLogs', entry);
       this.verificationLogFlushTimer = null;
     }, 500);
   }

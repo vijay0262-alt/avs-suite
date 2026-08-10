@@ -15,7 +15,9 @@
  *   - Before report (if available)
  */
 
-const STORAGE_KEY = 'avs:scan:state';
+import { idbGetOne, idbPut, idbClear } from '../../services/avsWithIDB';
+
+const SCAN_STATE_KEY = 'current';
 
 export interface PersistedScanState {
   /** Whether a scan was in progress when the app was closed. */
@@ -58,51 +60,29 @@ export interface PersistedScanState {
   } | null;
 }
 
-function isBrowser(): boolean {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-}
-
 export function saveScanState(state: PersistedScanState): void {
-  if (!isBrowser()) return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // localStorage might be full or disabled — fail silently
-  }
+  idbPut('scanState', { ...state, key: SCAN_STATE_KEY });
 }
 
-export function loadScanState(): PersistedScanState | null {
-  if (!isBrowser()) return null;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as PersistedScanState;
-    if (!parsed.savedAt) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+export async function loadScanState(): Promise<PersistedScanState | null> {
+  const state = await idbGetOne<PersistedScanState & { key: string }>('scanState', SCAN_STATE_KEY);
+  if (!state || !state.savedAt) return null;
+  return state;
 }
 
 export function clearScanState(): void {
-  if (!isBrowser()) return;
-  try {
-    window.localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // fail silently
-  }
+  idbClear('scanState');
 }
 
 /**
  * Check if there was an interrupted scan on startup.
  * Returns the persisted state if the scan was active and not cancelled.
  */
-export function detectInterruptedScan(): PersistedScanState | null {
-  const state = loadScanState();
+export async function detectInterruptedScan(): Promise<PersistedScanState | null> {
+  const state = await loadScanState();
   if (!state) return null;
   if (!state.active || state.cancelled) return null;
   if (state.step === 'complete') return null;
-  // Only consider it interrupted if it was saved within the last 24 hours
   const ageMs = Date.now() - state.savedAt;
   if (ageMs > 24 * 60 * 60 * 1000) {
     clearScanState();

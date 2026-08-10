@@ -7,12 +7,24 @@ import { initI18n } from './i18n';
 import { dashboardRefreshManager, backgroundCleanupService } from './features/health';
 import { registerAllModules, initializeAllModules } from './features/module-registry';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { idbMigrateFromLocalStorage, idbCleanupAll } from './services/avsWithIDB';
+import { initDeferredCleanupStore } from './features/health/DeferredCleanupStore';
+import { executionHistoryRepository } from './features/maintenance-history/executionHistoryRepository';
 import './styles/index.css';
 
 void initI18n();
 dashboardRefreshManager.init();
 registerAllModules();
 void initializeAllModules();
+
+void idbMigrateFromLocalStorage().then(({ migrated }) => {
+  if (migrated.length > 0) {
+    console.info(`[IndexedDB] Migrated ${migrated.length} localStorage keys: ${migrated.join(', ')}`);
+  }
+  void idbCleanupAll();
+  void initDeferredCleanupStore();
+  void executionHistoryRepository.init();
+});
 
 // Defer background service startup to after first paint — prioritize main window visibility
 const startBackgroundServices = () => {

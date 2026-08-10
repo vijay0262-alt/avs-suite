@@ -6,49 +6,33 @@
  */
 import { useState, useCallback, useEffect } from 'react';
 import type { UnifiedScanHistoryEntry } from './unifiedResultsTypes';
+import { idbGetAll, idbPut, idbClear, idbCleanup } from '../../services/avsWithIDB';
 
-const STORAGE_KEY = 'avs-scan-history';
 const FREE_MAX_ENTRIES = 10;
-
-function loadHistory(): UnifiedScanHistoryEntry[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
-  } catch {
-    return [];
-  }
-}
-
-function saveHistory(entries: UnifiedScanHistoryEntry[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  } catch {
-    // ignore quota errors
-  }
-}
 
 export function useScanHistory(isPro = false) {
   const [history, setHistory] = useState<UnifiedScanHistoryEntry[]>([]);
 
   useEffect(() => {
-    setHistory(loadHistory());
+    idbGetAll<UnifiedScanHistoryEntry>('scanHistory').then((entries) => {
+      entries.sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+      setHistory(entries);
+    });
   }, []);
 
   const addEntry = useCallback((entry: UnifiedScanHistoryEntry) => {
     setHistory((prev) => {
       const next = [entry, ...prev];
       const limited = isPro ? next : next.slice(0, FREE_MAX_ENTRIES);
-      saveHistory(limited);
+      idbPut('scanHistory', entry);
+      idbCleanup('scanHistory');
       return limited;
     });
   }, [isPro]);
 
   const clearHistory = useCallback(() => {
     setHistory([]);
-    saveHistory([]);
+    idbClear('scanHistory');
   }, []);
 
   return { history, addEntry, clearHistory };

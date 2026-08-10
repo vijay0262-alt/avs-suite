@@ -46,34 +46,22 @@ import { jobBuilder, scheduleHasValidTasks } from './jobBuilder';
 import { configManager } from '../config-sync/configManager';
 import { schedulerBackendService } from './schedulerBackendService';
 
+import { idbGetOne, idbPut, idbClear } from '../../services/avsWithIDB';
+
 // ── Crash recovery persistence ────────────────────────────────
 
-const CRASH_RECOVERY_KEY = 'avs_execution_state';
+const EXEC_STATE_KEY = 'current';
 
 function persistExecutionState(state: PersistedExecutionState): void {
-  try {
-    localStorage.setItem(CRASH_RECOVERY_KEY, JSON.stringify(state));
-  } catch {
-    // non-fatal
-  }
+  idbPut('executionState', { ...state, key: EXEC_STATE_KEY });
 }
 
-function loadPersistedState(): PersistedExecutionState | null {
-  try {
-    const raw = localStorage.getItem(CRASH_RECOVERY_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as PersistedExecutionState;
-  } catch {
-    return null;
-  }
+async function loadPersistedState(): Promise<PersistedExecutionState | null> {
+  return idbGetOne<PersistedExecutionState & { key: string }>('executionState', EXEC_STATE_KEY);
 }
 
 function clearPersistedState(): void {
-  try {
-    localStorage.removeItem(CRASH_RECOVERY_KEY);
-  } catch {
-    // ignore
-  }
+  idbClear('executionState');
 }
 
 // ── Schedule due checking ──────────────────────────────────────
@@ -191,11 +179,11 @@ class ExecutionEngineImpl {
    * 1. Check for crash recovery (interrupted execution)
    * 2. Start the scheduler timer
    */
-  init(): void {
+  async init(): Promise<void> {
     if (this._initialized) return;
 
     // Crash recovery: check if a previous execution was interrupted
-    const persisted = loadPersistedState();
+    const persisted = await loadPersistedState();
     if (persisted && persisted.state === 'running' && persisted.currentExecutionId) {
       console.warn(
         `[ExecutionEngine] Crash recovery: previous execution ${persisted.currentExecutionId} was interrupted`,

@@ -16,8 +16,8 @@ import type { TimelineEntry, TimelineRange } from './types';
 import type { ExecutionRecord } from '../maintenance-history/types';
 import type { HealthReport } from '../ai-health-engine/types';
 import { executionHistoryRepository } from '../maintenance-history/executionHistoryRepository';
+import { idbGetAll, idbPut, idbClear, idbCleanup } from '../../services/avsWithIDB';
 
-const STORAGE_KEY = 'avs_health_timeline';
 const MAX_ENTRIES = 500;
 
 export class HealthTimeline {
@@ -173,15 +173,9 @@ export class HealthTimeline {
   /**
    * Load from localStorage.
    */
-  load(): void {
+  async load(): Promise<void> {
     if (!this._persistEnabled) return;
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      this._entries = JSON.parse(raw) as TimelineEntry[];
-    } catch {
-      // non-fatal
-    }
+    this._entries = await idbGetAll<TimelineEntry>('healthTimeline');
   }
 
   // ── Internal ────────────────────────────────────────────────
@@ -198,11 +192,9 @@ export class HealthTimeline {
 
   private _persist(): void {
     if (!this._persistEnabled) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this._entries));
-    } catch {
-      // non-fatal
-    }
+    idbClear('healthTimeline');
+    this._entries.forEach((e) => idbPut('healthTimeline', e));
+    idbCleanup('healthTimeline');
   }
 }
 

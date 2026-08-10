@@ -23,7 +23,7 @@ export interface ExecutionStoreState {
   lastError: string | null;
   history: ExecutionResult[];
 
-  init: () => void;
+  init: () => Promise<void>;
   shutdown: () => void;
   executeJob: (job: MaintenanceJob) => Promise<ExecutionResult | null>;
   quickScan: () => Promise<ExecutionResult | null>;
@@ -107,8 +107,8 @@ export const useExecutionStore = create<ExecutionStoreState>((set, get) => ({
   lastError: null,
   history: [],
 
-  init: () => {
-    executionEngine.init();
+  init: async () => {
+    await executionEngine.init();
     subscribeToEvents(set, get);
     set(syncFromEngine());
   },
