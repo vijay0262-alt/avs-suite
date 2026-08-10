@@ -65,6 +65,8 @@ import type { VerificationReport } from '../health/VerificationEngine';
 import { useLiveSync } from '../health/LiveSyncService';
 import { orchestratorService } from '../orchestrator/orchestrator.service';
 import type { OrchestratorFullResponse, OrchestratorModuleResult, ScanProfile } from '../orchestrator/orchestrator.service';
+import { fullSystemScanService } from '../full-system-scan/fullSystemScan.service';
+import type { FullScanStatus, FullScanResults } from '../full-system-scan/fullSystemScan.types';
 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
 
@@ -193,6 +195,12 @@ export interface DashboardState {
   scanItemsRemaining: number;
   scanBytesRecovered: number;
 
+  // Full System Scan
+  fullScanId: string | null;
+  fullScanStatus: FullScanStatus | null;
+  fullScanResults: FullScanResults | null;
+  fullScanRunning: boolean;
+
   // Verification / developer logs
   verificationLogs: VerificationLog[];
   developerMode: boolean;
@@ -315,6 +323,10 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       scanItemsProcessed: 0,
       scanItemsRemaining: 0,
       scanBytesRecovered: 0,
+      fullScanId: null,
+      fullScanStatus: null,
+      fullScanResults: null,
+      fullScanRunning: false,
       verificationLogs: [],
       developerMode: false,
 
@@ -2462,6 +2474,62 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     invalidateMetricsCache();
     void Promise.all([this.loadMetrics(), this.loadPrivacyRisks(), this.loadHardwareSensors()]);
     clearSession();
+  }
+
+  // ------------------------------------------------------------------
+  // Full System Scan
+  // ------------------------------------------------------------------
+
+  async runFullSystemScan(): Promise<void> {
+    this.setState({
+      fullScanId: null,
+      fullScanStatus: null,
+      fullScanResults: null,
+      fullScanRunning: true,
+    });
+
+    try {
+      const startResp = await fullSystemScanService.start();
+      const scanId = startResp.scanId;
+      this.setState({ fullScanId: scanId });
+
+      const POLL_MS = 300;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        await new Promise((r) => setTimeout(r, POLL_MS));
+        const status = await fullSystemScanService.getStatus(scanId);
+        if (!status.present) break;
+
+        this.setState({ fullScanStatus: status });
+
+        if (status.status === 'completed' || status.status === 'cancelled' || status.status === 'failed') {
+          const result = await fullSystemScanService.getResult(scanId);
+          this.setState({
+            fullScanResults: result.results,
+            fullScanRunning: false,
+          });
+          break;
+        }
+      }
+    } catch (err) {
+      this.setState({
+        fullScanRunning: false,
+        fullScanStatus: null,
+      });
+      console.error('Full system scan error:', err);
+    }
+  }
+
+  async cancelFullSystemScan(): Promise<void> {
+    const scanId = this.state.fullScanId;
+    if (scanId) {
+      try { await fullSystemScanService.cancel(scanId); } catch { /* ignore */ }
+    }
+    this.setState({
+      fullScanRunning: false,
+      fullScanId: null,
+      fullScanStatus: null,
+    });
   }
 
   // ------------------------------------------------------------------

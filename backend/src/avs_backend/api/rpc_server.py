@@ -70,6 +70,7 @@ _FEATURE_MODULES = [
     "avs_backend.realtime_protection",
     "avs_backend.system_restore",
     "avs_backend.orchestrator",
+    "avs_backend.full_system_scan",
 ]
 
 # Track which modules have finished importing (success or failure)
