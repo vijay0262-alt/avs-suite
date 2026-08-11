@@ -127,7 +127,7 @@ class RegexFilter:
     """Include only assets whose path matches the specified regex pattern."""
 
     pattern: str
-    _compiled: re.Pattern = field(default=None, init=False, repr=False)
+    _compiled: Optional[re.Pattern] = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self._compiled = re.compile(self.pattern, re.IGNORECASE)
@@ -139,6 +139,7 @@ class RegexFilter:
         return True  # Regex applies to assets only, not profile filtering
 
     def matches_asset(self, asset: BrowserAsset) -> bool:
+        assert self._compiled is not None
         return bool(self._compiled.search(asset.asset_path))
 
 

@@ -152,18 +152,20 @@ class RegexFilter:
     """
 
     pattern: str
-    _compiled: re.Pattern = field(default=None, init=False, repr=False)
+    _compiled: Optional[re.Pattern] = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self._compiled = re.compile(self.pattern, re.IGNORECASE)
 
     def matches_key(self, key: RegistryKeyAsset) -> bool:
+        assert self._compiled is not None
         return bool(self._compiled.search(key.full_path))
 
     def should_descend(self, key: RegistryKeyAsset) -> bool:
         return True
 
     def matches_value(self, value: RegistryValueAsset) -> bool:
+        assert self._compiled is not None
         return bool(self._compiled.search(value.full_path))
 
 

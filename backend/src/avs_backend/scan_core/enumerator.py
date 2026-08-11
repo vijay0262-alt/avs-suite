@@ -46,7 +46,7 @@ if _is_windows:
     _GetFileAttributesW.restype = ctypes.c_uint32
     _GetFileAttributesW.argtypes = [ctypes.c_wchar_p]
 else:
-    _GetFileAttributesW = None
+    _GetFileAttributesW = None  # type: ignore[assignment]
 
 
 def _get_win_attributes(path: str) -> int:
@@ -70,7 +70,8 @@ def _is_locked(path: str) -> bool:
         return False
     try:
         # Try opening for writing without actually modifying
-        fd = os.open(path, os.O_WRONLY | os.O_NONBLOCK)
+        flags = os.O_WRONLY | getattr(os, "O_NONBLOCK", 0)
+        fd = os.open(path, flags)
         os.close(fd)
         return False
     except (OSError, PermissionError):
@@ -212,7 +213,7 @@ def _enumerate_drives() -> list[DriveEntry]:
                         continue
                     seen.add(mount_point)
                     try:
-                        stat = os.statvfs(mount_point)
+                        stat = os.statvfs(mount_point)  # type: ignore[attr-defined]
                         total = stat.f_blocks * stat.f_frsize
                         free = stat.f_bavail * stat.f_frsize
                         drives.append(DriveEntry(
@@ -263,7 +264,7 @@ def _build_drive_entry(drive_path: str) -> DriveEntry:
             ctypes.pointer(free_bytes),
         )
     else:
-        stat = os.statvfs(drive_path)
+        stat = os.statvfs(drive_path)  # type: ignore[attr-defined]
         total_bytes.value = stat.f_blocks * stat.f_frsize
         free_bytes.value = stat.f_bavail * stat.f_frsize
 
