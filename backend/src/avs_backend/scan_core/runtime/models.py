@@ -6,6 +6,7 @@ No references to cleaners, UI, or any other module.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, Tuple
@@ -125,7 +126,6 @@ class LockedFileAsset:
 
     @property
     def asset_name(self) -> str:
-        import os
         return os.path.basename(self.path)
 
     @property

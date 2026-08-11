@@ -34,3 +34,10 @@ def _shutdown_background_threads():
             _job_manager.shutdown()
     except Exception:
         pass
+
+    # Browser enumerator config cache
+    try:
+        from avs_backend.scan_core.browser.enumerator import _reset_browser_configs_cache
+        _reset_browser_configs_cache()
+    except Exception:
+        pass

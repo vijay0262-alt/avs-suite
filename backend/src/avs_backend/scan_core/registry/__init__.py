@@ -12,6 +12,7 @@ from .models import (
     RegistryValueAsset,
     RegistryValueType,
     RegistryStatistics,
+    PlatformNotSupported,
 )
 from .filters import (
     RegistryFilter,
@@ -40,6 +41,7 @@ __all__ = [
     "RegistryValueAsset",
     "RegistryValueType",
     "RegistryStatistics",
+    "PlatformNotSupported",
     "RegistryFilter",
     "HiveFilter",
     "KeyFilter",

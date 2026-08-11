@@ -9,10 +9,21 @@ in the registry — not what should be done about it.
 from __future__ import annotations
 
 import dataclasses
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Optional, Any
+
+if sys.platform == "win32":
+    import winreg
+else:
+    winreg = None  # type: ignore[assignment]
+
+
+class PlatformNotSupported(Exception):
+    """Raised when a platform-specific feature is used on an unsupported platform."""
+    pass
 
 
 class RegistryHive(Enum):
@@ -35,7 +46,8 @@ class RegistryHive(Enum):
 
     @property
     def winreg_constant(self) -> int:
-        import winreg
+        if winreg is None:
+            raise PlatformNotSupported("winreg is only available on Windows")
         return {
             RegistryHive.HKEY_CLASSES_ROOT: winreg.HKEY_CLASSES_ROOT,
             RegistryHive.HKEY_CURRENT_USER: winreg.HKEY_CURRENT_USER,
@@ -65,7 +77,8 @@ class RegistryValueType(Enum):
 
     @classmethod
     def from_winreg(cls, type_id: int) -> "RegistryValueType":
-        import winreg
+        if winreg is None:
+            raise PlatformNotSupported("winreg is only available on Windows")
         mapping = {
             winreg.REG_NONE: cls.NONE,
             winreg.REG_SZ: cls.SZ,

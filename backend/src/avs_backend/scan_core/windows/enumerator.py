@@ -14,12 +14,16 @@ import os
 import sys
 import time
 import ctypes
-import ctypes.wintypes
 import subprocess
-import winreg
 from datetime import datetime
 from dataclasses import dataclass
 from typing import Generator, Optional, Callable, Any
+
+if sys.platform == "win32":
+    import ctypes.wintypes
+    import winreg
+else:
+    winreg = None  # type: ignore[assignment]
 
 from .models import (
     WindowsAssetType,
@@ -33,6 +37,7 @@ from .models import (
     NetworkAdapterAsset,
     WindowsStatistics,
 )
+from ..registry.models import PlatformNotSupported
 from .filters import WindowsFilterChain, WindowsFilter, AnyWindowsAsset
 
 _is_windows = sys.platform == "win32"
@@ -118,7 +123,10 @@ class WindowsEnumerator:
     ) -> Generator[AnyWindowsAsset, None, None]:
         """Enumerate all Windows assets, yielding incrementally."""
         if not _is_windows:
-            return
+            raise PlatformNotSupported(
+                "Windows Enumerator is only available on Windows. "
+                f"Current platform: {sys.platform}"
+            )
 
         opts = options or WindowsEnumerateOptions()
         filter_chain = opts.filter

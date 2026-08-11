@@ -12,10 +12,14 @@ from __future__ import annotations
 import os
 import sys
 import time
-import winreg
 import dataclasses
 from dataclasses import dataclass, field
 from typing import Generator, Optional, Callable, Union, Any
+
+if sys.platform == "win32":
+    import winreg
+else:
+    winreg = None  # type: ignore[assignment]
 
 from .models import (
     RegistryHive,
@@ -23,6 +27,7 @@ from .models import (
     RegistryValueAsset,
     RegistryValueType,
     RegistryStatistics,
+    PlatformNotSupported,
 )
 from .filters import RegistryFilterChain, RegistryFilter
 
@@ -289,7 +294,10 @@ class RegistryEnumerator:
         Recursively descends into subkeys unless max_depth is reached.
         """
         if not _is_windows:
-            return
+            raise PlatformNotSupported(
+                "Registry Enumerator is only available on Windows. "
+                f"Current platform: {sys.platform}"
+            )
 
         opts = options or RegistryEnumerateOptions()
         filter_chain = opts.filter

@@ -238,6 +238,39 @@ class TestSymlinks:
         # Should still get the symlink as a file entry, just not follow it
         assert any(f.name == "link.txt" for f in files)
 
+    def test_symlink_target_resolved(self, dir_with_symlinks: Path):
+        """Symlink entries should include the target path."""
+        enumerator = FilesystemEnumerator()
+        opts = EnumerateOptions(follow_symlinks=False)
+        entries = list(enumerator.enumerate(str(dir_with_symlinks), options=opts))
+
+        files = [e for e in entries if isinstance(e, FileEntry)]
+        link_entry = next(f for f in files if f.name == "link.txt")
+        assert link_entry.is_symlink is True
+        assert link_entry.symlink_target is not None
+        assert "target.txt" in link_entry.symlink_target
+        assert link_entry.is_broken_symlink is False
+
+    def test_broken_symlink_detected(self, tmp_path: Path):
+        """Broken symlinks should be detected and still emitted."""
+        link = tmp_path / "broken_link.txt"
+        try:
+            os.symlink(str(tmp_path / "nonexistent.txt"), str(link))
+        except (OSError, NotImplementedError):
+            pytest.skip("Symlinks not supported on this platform")
+
+        (tmp_path / "regular.txt").write_text("regular")
+
+        enumerator = FilesystemEnumerator()
+        opts = EnumerateOptions(follow_symlinks=False)
+        entries = list(enumerator.enumerate(str(tmp_path), options=opts))
+
+        files = [e for e in entries if isinstance(e, FileEntry)]
+        link_entry = next(f for f in files if f.name == "broken_link.txt")
+        assert link_entry.is_symlink is True
+        assert link_entry.is_broken_symlink is True
+        assert link_entry.symlink_target is not None
+
     def test_follow_symlinks_option(self, dir_with_symlinks: Path):
         enumerator = FilesystemEnumerator()
         opts = EnumerateOptions(follow_symlinks=True)
@@ -563,3 +596,28 @@ class TestOptions:
         entries = list(enumerator.enumerate(str(tmp_path), options=opts))
         drives = [e for e in entries if isinstance(e, DriveEntry)]
         assert len(drives) == 0
+
+
+# ── Drive enumeration tests ─────────────────────────────────────
+
+class TestDriveEnumeration:
+    def test_enumerate_drives_returns_list(self):
+        """enumerate_drives should return a list of DriveEntry."""
+        enumerator = FilesystemEnumerator()
+        drives = enumerator.enumerate_drives()
+        assert isinstance(drives, list)
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="Linux-specific pseudo filesystem test")
+    def test_pseudo_filesystems_excluded_on_linux(self):
+        """Pseudo filesystems like /proc, /sys, /dev, /run should not appear as drives."""
+        from avs_backend.scan_core.enumerator import _enumerate_drives
+        drives = _enumerate_drives()
+        paths = {d.path for d in drives}
+        # None of these pseudo mount paths should be reported as drives
+        assert "/proc" not in paths
+        assert "/sys" not in paths
+        assert "/dev" not in paths
+        assert "/run" not in paths
+        # Also check fs_type
+        for d in drives:
+            assert d.file_system not in ("proc", "sysfs", "devtmpfs", "devpts", "tmpfs", "overlay", "squashfs")

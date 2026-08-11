@@ -97,8 +97,25 @@ class _BrowserDetectConfig:
     profiles_file: str  # e.g. "" for Chromium, "profiles.ini" for Firefox
 
 
-def _get_browser_configs() -> list[_BrowserDetectConfig]:
-    """Return detection configs for all supported browsers."""
+_cached_browser_configs: Optional[list["_BrowserDetectConfig"]] = None
+
+
+def _reset_browser_configs_cache() -> None:
+    """Reset the cached browser configs. Useful for testing."""
+    global _cached_browser_configs
+    _cached_browser_configs = None
+
+
+def _get_browser_configs() -> list["_BrowserDetectConfig"]:
+    """Return detection configs for all supported browsers.
+
+    Configs are cached after first call so that tests can patch them
+    and enumerate() will see the same patched objects.
+    """
+    global _cached_browser_configs
+    if _cached_browser_configs is not None:
+        return _cached_browser_configs
+
     home = str(Path.home())
     local_appdata = os.environ.get("LOCALAPPDATA", os.path.join(home, "AppData", "Local"))
     appdata = os.environ.get("APPDATA", os.path.join(home, "AppData", "Roaming"))
@@ -227,6 +244,7 @@ def _get_browser_configs() -> list[_BrowserDetectConfig]:
         profiles_file="",
     ))
 
+    _cached_browser_configs = configs
     return configs
 
 

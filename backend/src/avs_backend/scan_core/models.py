@@ -42,6 +42,8 @@ class FileEntry:
     is_locked: bool
     parent_dir: str
     depth: int
+    symlink_target: Optional[str] = None
+    is_broken_symlink: bool = False
 
     @property
     def entry_type(self) -> EntryType:
@@ -122,6 +124,8 @@ def _make_file_entry(
     is_locked: bool,
     parent_dir: str,
     depth: int,
+    symlink_target: Optional[str] = None,
+    is_broken_symlink: bool = False,
 ) -> FileEntry:
     """Factory to build a FileEntry from stat data and attributes."""
     ext = os.path.splitext(name)[1].lower()
@@ -141,6 +145,8 @@ def _make_file_entry(
         is_locked=is_locked,
         parent_dir=parent_dir,
         depth=depth,
+        symlink_target=symlink_target,
+        is_broken_symlink=is_broken_symlink,
     )
 
 

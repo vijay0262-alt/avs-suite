@@ -15,10 +15,13 @@ import sys
 import time
 import ctypes
 import subprocess
+import logging
 from dataclasses import dataclass
 from typing import Generator, Optional, Callable
 
 import psutil
+
+logger = logging.getLogger(__name__)
 
 from .models import (
     ProcessAsset,
@@ -282,15 +285,18 @@ class RuntimeEnumerator:
                         creation_time=create_time,
                     )
 
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
                     self.statistics.permission_errors += 1
+                    logger.debug("Skipped process PID %s: %s", proc.pid, e)
                     continue
-                except Exception:
+                except Exception as e:
                     self.statistics.errors += 1
+                    logger.warning("Unexpected error enumerating process PID %s: %s", proc.pid, e)
                     continue
 
-        except Exception:
+        except Exception as e:
             self.statistics.errors += 1
+            logger.error("Failed to iterate processes: %s", e)
 
     def _enumerate_connections(self) -> Generator[ConnectionAsset, None, None]:
         """Enumerate active network connections via psutil."""
@@ -323,12 +329,14 @@ class RuntimeEnumerator:
                         pid=pid,
                         process_name=process_name,
                     )
-                except Exception:
+                except Exception as e:
                     self.statistics.errors += 1
+                    logger.debug("Skipped connection: %s", e)
                     continue
 
-        except Exception:
+        except Exception as e:
             self.statistics.errors += 1
+            logger.error("Failed to enumerate connections: %s", e)
 
     def _enumerate_sessions(self) -> Generator[SessionAsset, None, None]:
         """Enumerate interactive user sessions."""
@@ -389,12 +397,14 @@ class RuntimeEnumerator:
                         session_type=session_name,
                         state=state,
                     )
-                except Exception:
+                except Exception as e:
                     self.statistics.errors += 1
+                    logger.debug("Skipped session line: %s", e)
                     continue
 
-        except Exception:
+        except Exception as e:
             self.statistics.errors += 1
+            logger.error("Failed to enumerate Windows sessions: %s", e)
 
     def _enumerate_sessions_unix(self) -> Generator[SessionAsset, None, None]:
         """Enumerate sessions on Unix/Linux via who command."""
@@ -421,12 +431,14 @@ class RuntimeEnumerator:
                         session_type=session_type,
                         state="Active",
                     )
-                except Exception:
+                except Exception as e:
                     self.statistics.errors += 1
+                    logger.debug("Skipped session line: %s", e)
                     continue
 
-        except Exception:
+        except Exception as e:
             self.statistics.errors += 1
+            logger.error("Failed to enumerate Unix sessions: %s", e)
 
     def _enumerate_locked_files(
         self, opts: RuntimeEnumerateOptions,
@@ -478,16 +490,19 @@ class RuntimeEnumerator:
                                 pid=None,
                                 process_name="",
                             )
-                        except Exception:
+                        except Exception as e:
                             self.statistics.errors += 1
+                            logger.debug("Error checking locked file %s: %s", file_path, e)
                             continue
 
-                except (PermissionError, OSError):
+                except (PermissionError, OSError) as e:
                     self.statistics.permission_errors += 1
+                    logger.debug("Permission denied scanning %s: %s", dir_path, e)
                     continue
 
-        except Exception:
+        except Exception as e:
             self.statistics.errors += 1
+            logger.error("Failed to enumerate locked files: %s", e)
 
     def _take_resource_snapshot(self) -> Optional[ResourceSnapshot]:
         """Take a point-in-time snapshot of system resource usage."""
@@ -549,8 +564,9 @@ class RuntimeEnumerator:
                 gpu_name=gpu_name,
             )
 
-        except Exception:
+        except Exception as e:
             self.statistics.errors += 1
+            logger.error("Failed to take resource snapshot: %s", e)
             return None
 
     def get_statistics(self) -> RuntimeStatistics:

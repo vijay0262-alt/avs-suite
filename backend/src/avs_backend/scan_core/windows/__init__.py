@@ -18,6 +18,7 @@ from .models import (
     NetworkAdapterAsset,
     WindowsStatistics,
 )
+from ..registry.models import PlatformNotSupported
 from .filters import (
     WindowsFilter,
     AssetTypeFilter,
@@ -38,6 +39,7 @@ from .enumerator import (
 )
 
 __all__ = [
+    "PlatformNotSupported",
     "WindowsAssetType",
     "ServiceAsset",
     "DriverAsset",

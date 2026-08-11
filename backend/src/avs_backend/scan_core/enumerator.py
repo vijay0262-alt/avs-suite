@@ -197,6 +197,19 @@ def _enumerate_drives() -> list[DriveEntry]:
                 continue
     else:
         # Unix: enumerate mount points from /proc/mounts or /etc/mtab
+        # Exclude pseudo filesystems that are not actual storage volumes
+        _PSEUDO_FS_TYPES = frozenset({
+            "proc", "sysfs", "devtmpfs", "devpts", "tmpfs",
+            "overlay", "squashfs", "cgroup", "cgroup2",
+            "pstore", "bpf", "tracefs", "debugfs",
+            "fusectl", "securityfs", "configfs", "ramfs",
+            "rpc_pipefs", "mqueue", "hugetlbfs", "autofs",
+            "binfmt_misc", "fuse.gvfsd-fuse", "fuse.snapfuse",
+        })
+        _PSEUDO_MOUNT_PATHS = frozenset({
+            "/proc", "/sys", "/dev", "/run",
+        })
+
         mounts_file = "/proc/mounts"
         if not os.path.exists(mounts_file):
             mounts_file = "/etc/mtab"
@@ -209,6 +222,13 @@ def _enumerate_drives() -> list[DriveEntry]:
                         continue
                     mount_point = parts[1]
                     fs_type = parts[2]
+
+                    # Skip pseudo filesystems
+                    if fs_type in _PSEUDO_FS_TYPES:
+                        continue
+                    if mount_point in _PSEUDO_MOUNT_PATHS:
+                        continue
+
                     if mount_point in seen:
                         continue
                     seen.add(mount_point)
@@ -501,6 +521,25 @@ class FilesystemEnumerator:
                 entry_path = entry.path
 
                 try:
+                    is_symlink = entry.is_symlink()
+
+                    # Handle symlinks specially: always emit them as entries,
+                    # but only traverse into them if follow_symlinks is True.
+                    if is_symlink and not opts.follow_symlinks:
+                        # Emit the symlink as a file entry without following it.
+                        if opts.include_files:
+                            file_entry = self._build_symlink_entry(
+                                entry, entry_path, depth + 1, opts,
+                            )
+                            if file_entry is not None:
+                                if filter_chain is None or filter_chain.matches(file_entry):
+                                    counters["files"] += 1
+                                    counters["bytes"] += file_entry.size
+                                    on_progress(entry_path)
+                                    yield file_entry
+                        # Do not recurse into symlinked directories when follow_symlinks=False
+                        continue
+
                     if entry.is_dir(follow_symlinks=opts.follow_symlinks):
                         # Recurse into subdirectory
                         yield from self._scan_directory(
@@ -570,6 +609,58 @@ class FilesystemEnumerator:
             is_locked=is_locked,
             parent_dir=parent_dir,
             depth=depth,
+        )
+
+    def _build_symlink_entry(
+        self,
+        scandir_entry: os.DirEntry,
+        path: str,
+        depth: int,
+        opts: EnumerateOptions,
+    ) -> Optional[FileEntry]:
+        """Build a FileEntry for a symlink without following it."""
+        name = scandir_entry.name
+        parent_dir = os.path.dirname(path)
+        attrs = _get_win_attributes(path)
+
+        # Stat the symlink itself (not the target)
+        try:
+            stat_result = scandir_entry.stat(follow_symlinks=False)
+        except (PermissionError, OSError):
+            # If we can't stat the symlink itself, use a zero-size fallback
+            stat_result = os.stat_result((0o120777, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+
+        # Resolve the target path
+        symlink_target = None
+        try:
+            symlink_target = os.readlink(path)
+        except (OSError, ValueError):
+            pass
+
+        # Detect broken symlink: target doesn't exist
+        is_broken = False
+        if symlink_target is not None:
+            target_path = symlink_target
+            if not os.path.isabs(target_path):
+                target_path = os.path.join(os.path.dirname(path), target_path)
+            if not os.path.exists(target_path):
+                is_broken = True
+
+        return _make_file_entry(
+            path=path,
+            name=name,
+            stat_result=stat_result,
+            is_hidden=bool(attrs & FILE_ATTRIBUTE_HIDDEN),
+            is_system=bool(attrs & FILE_ATTRIBUTE_SYSTEM),
+            is_read_only=bool(attrs & FILE_ATTRIBUTE_READONLY),
+            is_archive=bool(attrs & FILE_ATTRIBUTE_ARCHIVE),
+            is_temporary=bool(attrs & FILE_ATTRIBUTE_TEMPORARY),
+            is_symlink=True,
+            is_locked=False,
+            parent_dir=parent_dir,
+            depth=depth,
+            symlink_target=symlink_target,
+            is_broken_symlink=is_broken,
         )
 
     @staticmethod
