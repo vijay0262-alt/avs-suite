@@ -64,7 +64,7 @@ except (ImportError, AttributeError):
 log = logging.getLogger("avs.cleaner")
 
 # How often the walker calls ``on_progress`` (in files processed).
-_PROGRESS_STRIDE = 1000
+_PROGRESS_STRIDE = 100
 # How often the walker checks the cancel event (in directories).
 _CANCEL_CHECK_STRIDE = 4
 # How often the walker notifies the on_file callback (in files processed).
@@ -200,6 +200,9 @@ class BaseCleaner(ICleaner):
                 min_age_cutoff,
                 processed_ref=[processed_files],
                 on_file=on_file,
+                on_progress=on_progress,
+                root_idx=root_idx,
+                n_roots=n_roots,
             )
             # Report per-root progress. Individual walks may have added
             # thousands of files; a coarse tick per root keeps the UI
@@ -219,6 +222,9 @@ class BaseCleaner(ICleaner):
         min_age_cutoff: float,
         processed_ref: list[int],
         on_file: "Callable[[str], None] | None" = None,
+        on_progress: "ProgressCallback | None" = None,
+        root_idx: int = 0,
+        n_roots: int = 1,
     ) -> None:
         # Explicit stack (BFS via deque) — no recursion.
         frontier: deque[str] = deque([str(root)])
@@ -303,8 +309,15 @@ class BaseCleaner(ICleaner):
                             except Exception:  # noqa: BLE001
                                 pass
 
-                        if processed_ref[0] % _PROGRESS_STRIDE == 0 and cancel.is_set():
-                            return
+                        if processed_ref[0] % _PROGRESS_STRIDE == 0:
+                            if on_progress:
+                                base_pct = int((root_idx / n_roots) * 99)
+                                try:
+                                    on_progress(base_pct)
+                                except Exception:  # noqa: BLE001
+                                    pass
+                            if cancel.is_set():
+                                return
                     except PermissionError as e:
                         result.errors.append(f"denied: {entry.path}: {e}")
                     except OSError as e:
