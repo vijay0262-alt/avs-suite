@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
 from typing import Optional, Tuple
+
+from ..utils.path_utils import asset_name as _asset_name, asset_directory as _asset_directory, asset_extension as _asset_extension
 
 
 class RuntimeAssetType(Enum):
@@ -55,13 +56,13 @@ class ProcessAsset:
     def asset_directory(self) -> str:
         if not self.executable_path:
             return ""
-        return str(Path(self.executable_path).parent)
+        return _asset_directory(self.executable_path)
 
     @property
     def asset_extension(self) -> str:
         if not self.executable_path:
             return ""
-        return Path(self.executable_path).suffix.lower()
+        return _asset_extension(self.executable_path)
 
     @property
     def is_running(self) -> bool:
@@ -138,7 +139,7 @@ class LockedFileAsset:
 
     @property
     def asset_name(self) -> str:
-        return Path(self.path).name
+        return _asset_name(self.path)
 
     @property
     def asset_path(self) -> str:

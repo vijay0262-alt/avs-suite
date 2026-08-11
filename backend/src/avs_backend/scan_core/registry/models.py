@@ -15,6 +15,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Any
 
+from ..utils.path_utils import asset_name as _asset_name, asset_directory as _asset_directory
+
 if sys.platform == "win32":
     import winreg
 else:
@@ -116,6 +118,14 @@ class RegistryValueAsset:
             return f"{self.hive.abbrev}\\{self.key_path}\\(Default)"
         return f"{self.hive.abbrev}\\{self.key_path}\\{self.value_name}"
 
+    @property
+    def asset_name(self) -> str:
+        return self.value_name if not self.is_default else "(Default)"
+
+    @property
+    def asset_path(self) -> str:
+        return self.full_path
+
 
 @dataclass(frozen=True, slots=True)
 class RegistryKeyAsset:
@@ -135,6 +145,18 @@ class RegistryKeyAsset:
     @property
     def full_path(self) -> str:
         return f"{self.hive.abbrev}\\{self.key_path}"
+
+    @property
+    def asset_name(self) -> str:
+        return self.key_name
+
+    @property
+    def asset_path(self) -> str:
+        return self.full_path
+
+    @property
+    def asset_directory(self) -> str:
+        return self.parent_path
 
     @property
     def last_write_datetime(self) -> Optional[datetime]:

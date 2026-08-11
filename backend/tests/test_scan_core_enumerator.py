@@ -106,7 +106,6 @@ class TestModelProperties:
     def test_file_entry_asset_name(self):
         """FileEntry.asset_name should return the filename via pathlib."""
         from avs_backend.scan_core.models import FileEntry
-        from pathlib import Path
         path = r"C:\test\file.txt"
         fe = FileEntry(
             path=path, name="file.txt", size=100,
@@ -116,13 +115,12 @@ class TestModelProperties:
             is_locked=False, parent_dir=r"C:\test", depth=1,
         )
         assert fe.asset_name == "file.txt"
-        assert fe.asset_directory == str(Path(path).parent)
+        assert fe.asset_directory == r"C:\test"
         assert fe.asset_extension == ".txt"
 
     def test_file_entry_asset_name_unix(self):
         """FileEntry.asset_name should work with Unix paths."""
         from avs_backend.scan_core.models import FileEntry
-        from pathlib import Path
         path = "/var/log/syslog"
         fe = FileEntry(
             path=path, name="syslog", size=100,
@@ -132,13 +130,12 @@ class TestModelProperties:
             is_locked=False, parent_dir="/var/log", depth=1,
         )
         assert fe.asset_name == "syslog"
-        assert fe.asset_directory == str(Path(path).parent)
+        assert fe.asset_directory == "/var/log"
         assert fe.asset_extension == ""
 
     def test_directory_entry_asset_name(self):
         """DirectoryEntry.asset_name should return the directory name via pathlib."""
         from avs_backend.scan_core.models import DirectoryEntry
-        from pathlib import Path
         path = r"C:\test\subdir"
         de = DirectoryEntry(
             path=path, name="subdir",
@@ -147,7 +144,7 @@ class TestModelProperties:
             is_symlink=False, parent_dir=r"C:\test", depth=1,
         )
         assert de.asset_name == "subdir"
-        assert de.asset_directory == str(Path(path).parent)
+        assert de.asset_directory == r"C:\test"
 
     def test_drive_entry_asset_name(self):
         """DriveEntry.asset_name should return the drive name."""

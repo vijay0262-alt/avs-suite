@@ -14,6 +14,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
+from ..utils.path_utils import asset_name as _asset_name, asset_directory as _asset_directory, asset_extension as _asset_extension
+
 
 class BrowserType(Enum):
     """Supported browser types."""
@@ -99,6 +101,14 @@ class BrowserInstallation:
     @property
     def is_installed(self) -> bool:
         return os.path.isfile(self.executable_path)
+
+    @property
+    def asset_name(self) -> str:
+        return _asset_name(self.executable_path)
+
+    @property
+    def asset_directory(self) -> str:
+        return _asset_directory(self.executable_path)
 
 
 @dataclass(frozen=True, slots=True)

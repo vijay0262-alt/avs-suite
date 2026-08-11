@@ -13,6 +13,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Union
 
+from ..utils.path_utils import asset_name as _asset_name, asset_directory as _asset_directory, asset_extension as _asset_extension
+
 
 class WindowsAssetType(Enum):
     """Type of Windows asset discovered by the enumerator."""
@@ -73,6 +75,14 @@ class ServiceAsset:
         return self.binary_path
 
     @property
+    def asset_directory(self) -> str:
+        return _asset_directory(self.binary_path)
+
+    @property
+    def asset_extension(self) -> str:
+        return _asset_extension(self.binary_path)
+
+    @property
     def is_running(self) -> bool:
         return self.status.lower() == "running"
 
@@ -98,6 +108,14 @@ class DriverAsset:
     @property
     def asset_path(self) -> str:
         return self.path
+
+    @property
+    def asset_directory(self) -> str:
+        return _asset_directory(self.path)
+
+    @property
+    def asset_extension(self) -> str:
+        return _asset_extension(self.path)
 
 
 # ── Scheduled Task ─────────────────────────────────────────────
@@ -160,6 +178,10 @@ class InstalledProgramAsset:
     @property
     def asset_path(self) -> str:
         return self.install_location
+
+    @property
+    def asset_directory(self) -> str:
+        return _asset_directory(self.install_location)
 
     @property
     def size_mb(self) -> float:

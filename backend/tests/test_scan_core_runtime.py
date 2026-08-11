@@ -79,10 +79,9 @@ class TestModels:
 
     def test_process_asset_pathlib_properties(self):
         """ProcessAsset should expose asset_directory and asset_extension via pathlib."""
-        from pathlib import Path
         exe = "/usr/bin/test.exe"
         p = ProcessAsset(pid=1, name="test", executable_path=exe)
-        assert p.asset_directory == str(Path(exe).parent)
+        assert p.asset_directory == "/usr/bin"
         assert p.asset_extension == ".exe"
 
     def test_process_asset_empty_path_properties(self):

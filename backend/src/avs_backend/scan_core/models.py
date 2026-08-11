@@ -13,8 +13,9 @@ import dataclasses
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
 from typing import Optional
+
+from .utils.path_utils import asset_name as _asset_name, asset_directory as _asset_directory, asset_extension as _asset_extension
 
 
 class EntryType(Enum):
@@ -52,15 +53,15 @@ class FileEntry:
 
     @property
     def asset_name(self) -> str:
-        return Path(self.path).name
+        return _asset_name(self.path)
 
     @property
     def asset_directory(self) -> str:
-        return str(Path(self.path).parent)
+        return _asset_directory(self.path)
 
     @property
     def asset_extension(self) -> str:
-        return Path(self.path).suffix.lower()
+        return _asset_extension(self.path)
 
     @property
     def created_datetime(self) -> datetime:
@@ -94,11 +95,11 @@ class DirectoryEntry:
 
     @property
     def asset_name(self) -> str:
-        return Path(self.path).name
+        return _asset_name(self.path)
 
     @property
     def asset_directory(self) -> str:
-        return str(Path(self.path).parent)
+        return _asset_directory(self.path)
 
     @property
     def created_datetime(self) -> datetime:
@@ -153,7 +154,7 @@ def _make_file_entry(
     is_broken_symlink: bool = False,
 ) -> FileEntry:
     """Factory to build a FileEntry from stat data and attributes."""
-    ext = Path(name).suffix.lower()
+    ext = _asset_extension(name)
     return FileEntry(
         path=path,
         name=name,
