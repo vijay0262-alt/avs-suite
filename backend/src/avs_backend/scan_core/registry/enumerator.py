@@ -364,9 +364,11 @@ class RegistryEnumerator:
             if opts.cancel_event and opts.cancel_event.is_cancelled:
                 break
 
+            # Always include the target key itself, even if empty.
+            # An empty registry key is still a discovered asset.
             target_opts = RegistryEnumerateOptions(
                 include_values=opts.include_values,
-                include_keys=opts.include_keys,
+                include_keys=True,
                 max_depth=target.max_depth if target.max_depth >= 0 else opts.max_depth,
                 progress_interval=opts.progress_interval,
                 filter=opts.filter,
@@ -383,7 +385,7 @@ class RegistryEnumerator:
                 # Non-recursive: enumerate just the key and its values, no subkeys
                 target_opts = RegistryEnumerateOptions(
                     include_values=target_opts.include_values,
-                    include_keys=target_opts.include_keys,
+                    include_keys=True,
                     max_depth=0,
                     progress_interval=target_opts.progress_interval,
                     filter=target_opts.filter,

@@ -27,6 +27,7 @@ from .enumerator import (
     RuntimeEnumerateOptions,
     RuntimeProgressEvent,
     RuntimeCancelEvent,
+    RuntimeCapabilities,
     enumerate_runtime,
 )
 
@@ -52,5 +53,6 @@ __all__ = [
     "RuntimeEnumerateOptions",
     "RuntimeProgressEvent",
     "RuntimeCancelEvent",
+    "RuntimeCapabilities",
     "enumerate_runtime",
 ]

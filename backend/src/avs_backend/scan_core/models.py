@@ -13,6 +13,7 @@ import dataclasses
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 from typing import Optional
 
 
@@ -50,6 +51,18 @@ class FileEntry:
         return EntryType.FILE
 
     @property
+    def asset_name(self) -> str:
+        return Path(self.path).name
+
+    @property
+    def asset_directory(self) -> str:
+        return str(Path(self.path).parent)
+
+    @property
+    def asset_extension(self) -> str:
+        return Path(self.path).suffix.lower()
+
+    @property
     def created_datetime(self) -> datetime:
         return datetime.fromtimestamp(self.created_time)
 
@@ -80,6 +93,14 @@ class DirectoryEntry:
         return EntryType.DIRECTORY
 
     @property
+    def asset_name(self) -> str:
+        return Path(self.path).name
+
+    @property
+    def asset_directory(self) -> str:
+        return str(Path(self.path).parent)
+
+    @property
     def created_datetime(self) -> datetime:
         return datetime.fromtimestamp(self.created_time)
 
@@ -106,6 +127,10 @@ class DriveEntry:
         return EntryType.DRIVE
 
     @property
+    def asset_name(self) -> str:
+        return self.name
+
+    @property
     def used_space(self) -> int:
         return self.total_size - self.free_space
 
@@ -128,7 +153,7 @@ def _make_file_entry(
     is_broken_symlink: bool = False,
 ) -> FileEntry:
     """Factory to build a FileEntry from stat data and attributes."""
-    ext = os.path.splitext(name)[1].lower()
+    ext = Path(name).suffix.lower()
     return FileEntry(
         path=path,
         name=name,

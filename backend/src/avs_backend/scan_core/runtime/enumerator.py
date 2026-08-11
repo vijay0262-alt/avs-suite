@@ -35,6 +35,34 @@ from .filters import RuntimeFilterChain, AnyRuntimeAsset
 
 _is_windows = sys.platform == "win32"
 
+
+# ── Platform capabilities ──────────────────────────────────────
+
+class RuntimeCapabilities:
+    """Platform capability flags for runtime enumeration.
+
+    Allows the enumerator to gracefully disable unsupported features
+    instead of crashing or silently returning empty results.
+    """
+    supports_handles: bool
+    supports_gpu: bool
+    supports_locked_files: bool
+    supports_sessions: bool
+
+    def __init__(self) -> None:
+        self.supports_handles = _is_windows
+        self.supports_gpu = True  # nvidia-smi may be available on any platform
+        self.supports_locked_files = _is_windows
+        self.supports_sessions = True  # who/query user works on all platforms
+
+    def __repr__(self) -> str:
+        return (
+            f"RuntimeCapabilities(handles={self.supports_handles}, "
+            f"gpu={self.supports_gpu}, "
+            f"locked_files={self.supports_locked_files}, "
+            f"sessions={self.supports_sessions})"
+        )
+
 # ── Win32 API bindings ─────────────────────────────────────────
 
 if _is_windows:
@@ -106,6 +134,7 @@ class RuntimeEnumerator:
 
     def __init__(self) -> None:
         self.statistics = RuntimeStatistics()
+        self.capabilities = RuntimeCapabilities()
 
     def enumerate(
         self,
@@ -240,63 +269,83 @@ class RuntimeEnumerator:
     def _enumerate_processes(
         self, opts: RuntimeEnumerateOptions,
     ) -> Generator[ProcessAsset, None, None]:
-        """Enumerate running processes via psutil."""
+        """Enumerate running processes via psutil.
+
+        Platform-specific attributes (e.g. num_handles on Windows) are
+        queried per-process with capability checks. One failing process
+        never stops discovery.
+        """
+        # Exclude num_handles from bulk attrs — it's Windows-only and
+        # causes process_iter to abort on Linux.
+        attrs = [
+            "pid", "name", "ppid", "exe", "cmdline", "cwd",
+            "username", "cpu_percent", "memory_percent", "memory_info",
+            "num_threads", "status", "create_time",
+        ]
+
         try:
-            for proc in psutil.process_iter(attrs=[
-                "pid", "name", "ppid", "exe", "cmdline", "cwd",
-                "username", "cpu_percent", "memory_percent", "memory_info",
-                "num_threads", "num_handles", "status", "create_time",
-            ]):
-                try:
-                    info = proc.info
-                    pid = info["pid"]
-                    name = info["name"] or ""
-                    parent_pid = info.get("ppid")
-                    exe = info.get("exe") or ""
-                    cmdline = info.get("cmdline")
-                    cmdline_str = " ".join(cmdline) if cmdline else ""
-                    cwd = info.get("cwd") or ""
-                    username = info.get("username") or ""
-                    cpu_percent = info.get("cpu_percent") or 0.0
-                    memory_percent = info.get("memory_percent") or 0.0
-
-                    mem_info = info.get("memory_info")
-                    memory_bytes = mem_info.rss if mem_info else 0
-
-                    thread_count = info.get("num_threads") or 0
-                    handle_count = info.get("num_handles") or 0
-                    status = info.get("status") or "Unknown"
-                    create_time = info.get("create_time") or 0.0
-
-                    yield ProcessAsset(
-                        pid=pid,
-                        name=name,
-                        parent_pid=parent_pid,
-                        executable_path=exe,
-                        command_line=cmdline_str,
-                        working_directory=cwd,
-                        username=username,
-                        cpu_percent=cpu_percent,
-                        memory_percent=memory_percent,
-                        memory_bytes=memory_bytes,
-                        thread_count=thread_count,
-                        handle_count=handle_count,
-                        status=status,
-                        creation_time=create_time,
-                    )
-
-                except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
-                    self.statistics.permission_errors += 1
-                    logger.debug("Skipped process PID %s: %s", proc.pid, e)
-                    continue
-                except Exception as e:
-                    self.statistics.errors += 1
-                    logger.warning("Unexpected error enumerating process PID %s: %s", proc.pid, e)
-                    continue
-
+            process_iter = psutil.process_iter(attrs=attrs)
         except Exception as e:
             self.statistics.errors += 1
-            logger.error("Failed to iterate processes: %s", e)
+            logger.error("Failed to start process iteration: %s", e)
+            return
+
+        for proc in process_iter:
+            try:
+                info = proc.info
+                pid = info["pid"]
+                name = info["name"] or ""
+                parent_pid = info.get("ppid")
+                exe = info.get("exe") or ""
+                cmdline = info.get("cmdline")
+                cmdline_str = " ".join(cmdline) if cmdline else ""
+                cwd = info.get("cwd") or ""
+                username = info.get("username") or ""
+                cpu_percent = info.get("cpu_percent") or 0.0
+                memory_percent = info.get("memory_percent") or 0.0
+
+                mem_info = info.get("memory_info")
+                memory_bytes = mem_info.rss if mem_info else 0
+
+                thread_count = info.get("num_threads") or 0
+                status = info.get("status") or "Unknown"
+                create_time = info.get("create_time") or 0.0
+
+                # Query num_handles per-process only on Windows
+                handle_count = 0
+                if self.capabilities.supports_handles:
+                    try:
+                        handle_count = proc.num_handles()
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        pass
+                    except Exception:
+                        pass
+
+                yield ProcessAsset(
+                    pid=pid,
+                    name=name,
+                    parent_pid=parent_pid,
+                    executable_path=exe,
+                    command_line=cmdline_str,
+                    working_directory=cwd,
+                    username=username,
+                    cpu_percent=cpu_percent,
+                    memory_percent=memory_percent,
+                    memory_bytes=memory_bytes,
+                    thread_count=thread_count,
+                    handle_count=handle_count,
+                    status=status,
+                    creation_time=create_time,
+                )
+
+            except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+                self.statistics.permission_errors += 1
+                logger.debug("Skipped process: %s", e)
+                continue
+            except Exception as e:
+                self.statistics.errors += 1
+                logger.warning("Unexpected error enumerating process: %s", e)
+                continue
 
     def _enumerate_connections(self) -> Generator[ConnectionAsset, None, None]:
         """Enumerate active network connections via psutil."""
@@ -447,10 +496,9 @@ class RuntimeEnumerator:
         Detect files currently in use.
 
         On Windows, uses the Restart Manager API to detect locked files.
-        On other platforms, reports capability unavailable.
+        On other platforms, gracefully disabled via capability flag.
         """
-        if not _is_windows:
-            self.statistics.errors += 1
+        if not self.capabilities.supports_locked_files:
             return
 
         yield from self._enumerate_locked_files_windows(opts)

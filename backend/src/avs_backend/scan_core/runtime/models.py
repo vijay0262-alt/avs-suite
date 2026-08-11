@@ -6,9 +6,9 @@ No references to cleaners, UI, or any other module.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Optional, Tuple
 
 
@@ -50,6 +50,18 @@ class ProcessAsset:
     @property
     def asset_path(self) -> str:
         return self.executable_path
+
+    @property
+    def asset_directory(self) -> str:
+        if not self.executable_path:
+            return ""
+        return str(Path(self.executable_path).parent)
+
+    @property
+    def asset_extension(self) -> str:
+        if not self.executable_path:
+            return ""
+        return Path(self.executable_path).suffix.lower()
 
     @property
     def is_running(self) -> bool:
@@ -126,7 +138,7 @@ class LockedFileAsset:
 
     @property
     def asset_name(self) -> str:
-        return os.path.basename(self.path)
+        return Path(self.path).name
 
     @property
     def asset_path(self) -> str:

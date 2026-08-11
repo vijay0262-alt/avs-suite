@@ -536,6 +536,37 @@ class TestRegistryTargets:
         for k in keys:
             assert "RunOnce" not in k.key_path
 
+    def test_target_key_always_yielded_even_if_include_keys_false(self):
+        """The target RegistryKeyAsset must always be yielded, even if empty and include_keys=False."""
+        import winreg
+        test_key_path = r"SOFTWARE\\AVS_Shield_Test_TargetEmpty"
+        try:
+            handle = winreg.CreateKey(winreg.HKEY_CURRENT_USER, test_key_path)
+            winreg.CloseKey(handle)
+
+            targets = [
+                RegistryTarget(
+                    hive=RegistryHive.HKEY_CURRENT_USER,
+                    subpath=test_key_path,
+                    label="Empty Target",
+                    recurse=False,
+                ),
+            ]
+            enumerator = RegistryEnumerator()
+            opts = RegistryEnumerateOptions(include_keys=False, include_values=True)
+            entries = list(enumerator.enumerate_targets(targets, options=opts))
+            keys = [e for e in entries if isinstance(e, RegistryKeyAsset)]
+            # The target key must always be yielded, even with include_keys=False
+            assert len(keys) >= 1
+            assert keys[0].key_path == test_key_path
+            assert keys[0].subkey_count == 0
+            assert keys[0].value_count == 0
+        finally:
+            try:
+                winreg.DeleteKey(winreg.HKEY_CURRENT_USER, test_key_path)
+            except Exception:
+                pass
+
 
 # ── Options tests ──────────────────────────────────────────────
 

@@ -30,6 +30,7 @@ from avs_backend.scan_core.runtime import (
     RuntimeEnumerateOptions,
     RuntimeProgressEvent,
     RuntimeCancelEvent,
+    RuntimeCapabilities,
     enumerate_runtime,
 )
 
@@ -75,6 +76,58 @@ class TestModels:
         r = ResourceSnapshot(cpu_percent=50.0, memory_total=1000, memory_used=500)
         assert r.asset_type == RuntimeAssetType.RESOURCE_SNAPSHOT
         assert r.memory_free == 500
+
+    def test_process_asset_pathlib_properties(self):
+        """ProcessAsset should expose asset_directory and asset_extension via pathlib."""
+        from pathlib import Path
+        exe = "/usr/bin/test.exe"
+        p = ProcessAsset(pid=1, name="test", executable_path=exe)
+        assert p.asset_directory == str(Path(exe).parent)
+        assert p.asset_extension == ".exe"
+
+    def test_process_asset_empty_path_properties(self):
+        """ProcessAsset with empty path should return empty dir/extension."""
+        p = ProcessAsset(pid=1, name="test", executable_path="")
+        assert p.asset_directory == ""
+        assert p.asset_extension == ""
+
+    def test_locked_file_asset_name_unix_path(self):
+        """LockedFileAsset.asset_name should return basename for Unix paths."""
+        f = LockedFileAsset(path="/var/log/syslog")
+        assert f.asset_name == "syslog"
+
+    def test_locked_file_asset_name_windows_path(self):
+        """LockedFileAsset.asset_name should return basename for Windows paths."""
+        f = LockedFileAsset(path=r"C:\Users\test\file.txt")
+        assert f.asset_name == "file.txt"
+
+
+# ── Capability tests ───────────────────────────────────────────
+
+class TestCapabilities:
+    def test_capabilities_created(self):
+        """RuntimeEnumerator should have capabilities."""
+        enumerator = RuntimeEnumerator()
+        assert enumerator.capabilities is not None
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-specific")
+    def test_supports_handles_on_windows(self):
+        """supports_handles should be True on Windows."""
+        caps = RuntimeCapabilities()
+        assert caps.supports_handles is True
+        assert caps.supports_locked_files is True
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="Non-Windows specific")
+    def test_does_not_support_handles_on_linux(self):
+        """supports_handles should be False on non-Windows."""
+        caps = RuntimeCapabilities()
+        assert caps.supports_handles is False
+        assert caps.supports_locked_files is False
+
+    def test_supports_sessions_all_platforms(self):
+        """supports_sessions should be True on all platforms."""
+        caps = RuntimeCapabilities()
+        assert caps.supports_sessions is True
 
 
 # ── Statistics tests ───────────────────────────────────────────

@@ -100,6 +100,66 @@ def dir_with_symlinks(tmp_path: Path) -> Path:
     return tmp_path
 
 
+# ── Model property tests ───────────────────────────────────────
+
+class TestModelProperties:
+    def test_file_entry_asset_name(self):
+        """FileEntry.asset_name should return the filename via pathlib."""
+        from avs_backend.scan_core.models import FileEntry
+        from pathlib import Path
+        path = r"C:\test\file.txt"
+        fe = FileEntry(
+            path=path, name="file.txt", size=100,
+            extension=".txt", created_time=0, modified_time=0,
+            is_hidden=False, is_system=False, is_read_only=False,
+            is_archive=False, is_temporary=False, is_symlink=False,
+            is_locked=False, parent_dir=r"C:\test", depth=1,
+        )
+        assert fe.asset_name == "file.txt"
+        assert fe.asset_directory == str(Path(path).parent)
+        assert fe.asset_extension == ".txt"
+
+    def test_file_entry_asset_name_unix(self):
+        """FileEntry.asset_name should work with Unix paths."""
+        from avs_backend.scan_core.models import FileEntry
+        from pathlib import Path
+        path = "/var/log/syslog"
+        fe = FileEntry(
+            path=path, name="syslog", size=100,
+            extension="", created_time=0, modified_time=0,
+            is_hidden=False, is_system=False, is_read_only=False,
+            is_archive=False, is_temporary=False, is_symlink=False,
+            is_locked=False, parent_dir="/var/log", depth=1,
+        )
+        assert fe.asset_name == "syslog"
+        assert fe.asset_directory == str(Path(path).parent)
+        assert fe.asset_extension == ""
+
+    def test_directory_entry_asset_name(self):
+        """DirectoryEntry.asset_name should return the directory name via pathlib."""
+        from avs_backend.scan_core.models import DirectoryEntry
+        from pathlib import Path
+        path = r"C:\test\subdir"
+        de = DirectoryEntry(
+            path=path, name="subdir",
+            created_time=0, modified_time=0,
+            is_hidden=False, is_system=False, is_read_only=False,
+            is_symlink=False, parent_dir=r"C:\test", depth=1,
+        )
+        assert de.asset_name == "subdir"
+        assert de.asset_directory == str(Path(path).parent)
+
+    def test_drive_entry_asset_name(self):
+        """DriveEntry.asset_name should return the drive name."""
+        from avs_backend.scan_core.models import DriveEntry
+        de = DriveEntry(
+            path="C:\\", name="C:", drive_type="local",
+            total_size=1000, free_space=500,
+            is_removable=False, is_network=False, file_system="NTFS",
+        )
+        assert de.asset_name == "C:"
+
+
 # ── Small directory tests ──────────────────────────────────────
 
 class TestSmallDirectory:
