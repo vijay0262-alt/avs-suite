@@ -292,6 +292,7 @@ class RegistryEnumerator:
         """Enumerate a single registry key, yielding assets incrementally.
 
         Recursively descends into subkeys unless max_depth is reached.
+        The target key itself is always yielded first, even if empty.
         """
         if not _is_windows:
             raise PlatformNotSupported(
@@ -300,6 +301,81 @@ class RegistryEnumerator:
             )
 
         opts = options or RegistryEnumerateOptions()
+        yield from self._enumerate_target(
+            hive=hive,
+            subpath=subpath,
+            recurse=True,
+            max_depth=opts.max_depth,
+            opts=opts,
+            on_progress=on_progress,
+            force_include_keys=False,
+        )
+
+    def enumerate_targets(
+        self,
+        targets: list[RegistryTarget],
+        *,
+        options: Optional[RegistryEnumerateOptions] = None,
+        on_progress: Optional[RegistryProgressCallback] = None,
+    ) -> Generator[Union[RegistryKeyAsset, RegistryValueAsset], None, None]:
+        """Enumerate multiple registry targets sequentially.
+
+        Each target key is always yielded first (even if empty),
+        followed by its values, then child keys if recurse=True.
+        """
+        if not _is_windows:
+            raise PlatformNotSupported(
+                "Registry Enumerator is only available on Windows. "
+                f"Current platform: {sys.platform}"
+            )
+
+        opts = options or RegistryEnumerateOptions()
+
+        for target in targets:
+            if not target.enabled:
+                continue
+            if opts.cancel_event and opts.cancel_event.is_cancelled:
+                break
+
+            yield from self._enumerate_target(
+                hive=target.hive,
+                subpath=target.subpath,
+                recurse=target.recurse,
+                max_depth=target.max_depth if target.max_depth >= 0 else opts.max_depth,
+                opts=opts,
+                on_progress=on_progress,
+                force_include_keys=True,
+            )
+
+    def get_statistics(self) -> RegistryStatistics:
+        """Return the current enumeration statistics."""
+        return self.statistics
+
+    # ── Internal traversal ─────────────────────────────────────
+
+    def _enumerate_target(
+        self,
+        hive: RegistryHive,
+        subpath: str,
+        *,
+        recurse: bool,
+        max_depth: int,
+        opts: RegistryEnumerateOptions,
+        on_progress: Optional[RegistryProgressCallback] = None,
+        force_include_keys: bool = False,
+    ) -> Generator[Union[RegistryKeyAsset, RegistryValueAsset], None, None]:
+        """Internal: enumerate a single registry target.
+
+        Contract:
+        1. Open the target key.
+        2. Yield RegistryKeyAsset immediately — always when force_include_keys=True,
+           even if empty. When force_include_keys=False, respects opts.include_keys.
+        3. Enumerate values → yield RegistryValueAssets.
+        4. If recurse=True, enumerate child keys recursively.
+
+        Both enumerate_key() and enumerate_targets() delegate here.
+        No duplicated traversal logic.
+        """
         filter_chain = opts.filter
         cancel = opts.cancel_event
 
@@ -324,17 +400,32 @@ class RegistryEnumerator:
                     keys_per_second=kps,
                 ))
 
+        # Force include_keys=True when the caller requires the target key
+        # to always be yielded (enumerate_targets). For enumerate_key(),
+        # respect the original opts.include_keys.
+        effective_include_keys = True if force_include_keys else opts.include_keys
+        effective_max_depth = 0 if not recurse else max_depth
+        effective_opts = RegistryEnumerateOptions(
+            include_values=opts.include_values,
+            include_keys=effective_include_keys,
+            max_depth=effective_max_depth,
+            progress_interval=opts.progress_interval,
+            filter=opts.filter,
+            cancel_event=opts.cancel_event,
+            skip_permission_errors=opts.skip_permission_errors,
+        )
+
         yield from self._scan_key(
             hive=hive,
             subpath=subpath,
             depth=0,
-            opts=opts,
+            opts=effective_opts,
             filter_chain=filter_chain,
             cancel=cancel,
             on_progress=emit_progress,
         )
 
-        # Final progress event
+        # Final progress event for this target
         if on_progress is not None:
             elapsed = time.monotonic() - start_time
             self.statistics.finalize(elapsed)
@@ -347,61 +438,6 @@ class RegistryEnumerator:
                 keys_per_second=self.statistics.keys_per_second,
                 cancelled=cancel.is_cancelled if cancel else False,
             ))
-
-    def enumerate_targets(
-        self,
-        targets: list[RegistryTarget],
-        *,
-        options: Optional[RegistryEnumerateOptions] = None,
-        on_progress: Optional[RegistryProgressCallback] = None,
-    ) -> Generator[Union[RegistryKeyAsset, RegistryValueAsset], None, None]:
-        """Enumerate multiple registry targets sequentially."""
-        opts = options or RegistryEnumerateOptions()
-
-        for target in targets:
-            if not target.enabled:
-                continue
-            if opts.cancel_event and opts.cancel_event.is_cancelled:
-                break
-
-            # Always include the target key itself, even if empty.
-            # An empty registry key is still a discovered asset.
-            target_opts = RegistryEnumerateOptions(
-                include_values=opts.include_values,
-                include_keys=True,
-                max_depth=target.max_depth if target.max_depth >= 0 else opts.max_depth,
-                progress_interval=opts.progress_interval,
-                filter=opts.filter,
-                cancel_event=opts.cancel_event,
-                skip_permission_errors=opts.skip_permission_errors,
-            )
-
-            if target.recurse:
-                yield from self.enumerate_key(
-                    target.hive, target.subpath,
-                    options=target_opts, on_progress=on_progress,
-                )
-            else:
-                # Non-recursive: enumerate just the key and its values, no subkeys
-                target_opts = RegistryEnumerateOptions(
-                    include_values=target_opts.include_values,
-                    include_keys=True,
-                    max_depth=0,
-                    progress_interval=target_opts.progress_interval,
-                    filter=target_opts.filter,
-                    cancel_event=target_opts.cancel_event,
-                    skip_permission_errors=target_opts.skip_permission_errors,
-                )
-                yield from self.enumerate_key(
-                    target.hive, target.subpath,
-                    options=target_opts, on_progress=on_progress,
-                )
-
-    def get_statistics(self) -> RegistryStatistics:
-        """Return the current enumeration statistics."""
-        return self.statistics
-
-    # ── Internal traversal ─────────────────────────────────────
 
     def _scan_key(
         self,
