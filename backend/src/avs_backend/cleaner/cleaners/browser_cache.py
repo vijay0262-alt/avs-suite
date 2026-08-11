@@ -30,12 +30,26 @@ from ..scanner_base import BaseCleaner, expand
 _CHROMIUM_ROOTS: tuple[str, ...] = (
     r"%LOCALAPPDATA%\Google\Chrome\User Data\Default\Cache",
     r"%LOCALAPPDATA%\Google\Chrome\User Data\Default\Code Cache",
+    r"%LOCALAPPDATA%\Google\Chrome\User Data\Default\GPUCache",
+    r"%LOCALAPPDATA%\Google\Chrome\User Data\Default\Service Worker\CacheStorage",
     r"%LOCALAPPDATA%\Microsoft\Edge\User Data\Default\Cache",
     r"%LOCALAPPDATA%\Microsoft\Edge\User Data\Default\Code Cache",
+    r"%LOCALAPPDATA%\Microsoft\Edge\User Data\Default\GPUCache",
+    r"%LOCALAPPDATA%\Microsoft\Edge\User Data\Default\Service Worker\CacheStorage",
     r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\User Data\Default\Cache",
+    r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\User Data\Default\Code Cache",
+    r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\User Data\Default\GPUCache",
+    r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\User Data\Default\Service Worker\CacheStorage",
     r"%APPDATA%\Opera Software\Opera Stable\Cache",
+    r"%APPDATA%\Opera Software\Opera Stable\Code Cache",
+    r"%APPDATA%\Opera Software\Opera Stable\GPUCache",
     r"%APPDATA%\Opera Software\Opera GX Stable\Cache",
+    r"%APPDATA%\Opera Software\Opera GX Stable\Code Cache",
+    r"%APPDATA%\Opera Software\Opera GX Stable\GPUCache",
     r"%LOCALAPPDATA%\Vivaldi\User Data\Default\Cache",
+    r"%LOCALAPPDATA%\Vivaldi\User Data\Default\Code Cache",
+    r"%LOCALAPPDATA%\Vivaldi\User Data\Default\GPUCache",
+    r"%LOCALAPPDATA%\Vivaldi\User Data\Default\Service Worker\CacheStorage",
 )
 
 _FIREFOX_PROFILE_ROOT = r"%APPDATA%\Mozilla\Firefox\Profiles"

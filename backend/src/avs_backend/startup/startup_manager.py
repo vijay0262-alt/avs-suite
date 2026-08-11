@@ -40,6 +40,7 @@ class StartupSource(str, Enum):
     REGISTRY_RUN_ONCE = "registry_run_once"
     STARTUP_FOLDER = "startup_folder"
     TASK_SCHEDULER = "task_scheduler"
+    STARTUP_SERVICE = "startup_service"
 
 
 class StartupStatus(str, Enum):
@@ -168,6 +169,8 @@ def _restore_backup(backup_id: str) -> bool:
             _restore_startup_folder_entry(location, command, enabled)
         elif source == StartupSource.TASK_SCHEDULER.value:
             _restore_task_scheduler_entry(entry_name, command, enabled)
+        elif source == StartupSource.STARTUP_SERVICE.value:
+            logger.info(f"Service restore not implemented for: {entry_name}")
 
         logger.info(f"Restored startup entry from backup: {entry_name}")
         return True
@@ -246,6 +249,8 @@ def _scan_registry_run() -> list[StartupEntry]:
         (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", StartupSource.REGISTRY_RUN),
         (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\RunOnce", StartupSource.REGISTRY_RUN_ONCE),
         (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\RunOnce", StartupSource.REGISTRY_RUN_ONCE),
+        (winreg.HKEY_LOCAL_MACHINE, r"Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run", StartupSource.REGISTRY_RUN),
+        (winreg.HKEY_LOCAL_MACHINE, r"Software\Wow6432Node\Microsoft\Windows\CurrentVersion\RunOnce", StartupSource.REGISTRY_RUN_ONCE),
     ]
 
     for root_key, sub_key, source in registry_keys:
@@ -457,6 +462,58 @@ def _estimate_startup_impact(command: str) -> StartupImpact:
     return StartupImpact.LOW
 
 
+def _scan_startup_services() -> list[StartupEntry]:
+    """Scan Windows services with Automatic startup type.
+
+    Uses psutil's win_service_iter to enumerate all services and filters
+    for those with start_type == 'auto' or 'auto_delayed'. These services
+    run at boot and impact startup performance.
+    """
+    if not IS_WINDOWS:
+        return []
+
+    entries: list[StartupEntry] = []
+    try:
+        import psutil as _psutil
+        for svc in _psutil.win_service_iter():
+            try:
+                info = svc.as_dict()
+                start_type = info.get("start_type", "")
+                if start_type not in ("auto", "auto_delayed"):
+                    continue
+                name = info.get("name", "")
+                display_name = info.get("display_name", name)
+                status_str = info.get("status", "unknown")
+                binpath = info.get("binpath", "")
+                username = info.get("username", "")
+
+                # Skip critical Windows services
+                name_lower = name.lower()
+                if any(crit in name_lower for crit in CRITICAL_SYSTEM_ENTRIES):
+                    continue
+
+                impact = _estimate_startup_impact(binpath or display_name)
+
+                entry = StartupEntry(
+                    name=display_name or name,
+                    publisher=_extract_publisher_from_path(binpath) if binpath else "Unknown",
+                    status=StartupStatus.ENABLED if status_str == "running" else StartupStatus.DISABLED,
+                    impact=impact,
+                    source=StartupSource.STARTUP_SERVICE,
+                    location=f"Services\\{name}",
+                    command=binpath or "",
+                    enabled=True,
+                )
+                entries.append(entry)
+            except Exception:
+                continue
+        logger.info(f"Found {len(entries)} startup services")
+    except Exception as e:
+        logger.error(f"Failed to scan startup services: {e}")
+
+    return entries
+
+
 def scan_startup_entries() -> list[StartupEntry]:
     """Scan all startup sources for startup entries."""
     logger.info("Scanning startup entries")
@@ -471,6 +528,9 @@ def scan_startup_entries() -> list[StartupEntry]:
 
     # Scan task scheduler
     all_entries.extend(_scan_task_scheduler())
+
+    # Scan startup services
+    all_entries.extend(_scan_startup_services())
 
     logger.info(f"Found {len(all_entries)} startup entries")
     return all_entries

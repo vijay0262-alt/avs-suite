@@ -15,10 +15,13 @@ if platform.system() == "Windows":
     from .crash_dump import CrashDumpCleaner
     from .event_logs import EventLogCleaner
     from .icon_cache import IconCacheCleaner
+    from .installer_cache import InstallerCacheCleaner
     from .log_file import LogFileCleaner
+    from .office_cache import OfficeCacheCleaner
     from .prefetch import PrefetchCleaner
     from .recent_items import RecentItemsCleaner
     from .recycle_bin import RecycleBinCleaner
+    from .shader_cache import ShaderCacheCleaner
     from .thumbnail_cache import ThumbnailCacheCleaner
     from .user_temp import UserTempCleaner
     from .windows_temp import WindowsTempCleaner
@@ -31,10 +34,13 @@ else:
     CrashDumpCleaner = None
     EventLogCleaner = None
     IconCacheCleaner = None
+    InstallerCacheCleaner = None
     LogFileCleaner = None
+    OfficeCacheCleaner = None
     PrefetchCleaner = None
     RecentItemsCleaner = None
     RecycleBinCleaner = None
+    ShaderCacheCleaner = None
     ThumbnailCacheCleaner = None
     UserTempCleaner = None
     WindowsTempCleaner = None
@@ -64,6 +70,10 @@ def all_cleaners() -> list:
         EventLogCleaner(),
         IconCacheCleaner(),
         RecentItemsCleaner(),
+        InstallerCacheCleaner(),
+        # GPU & Application Caches
+        ShaderCacheCleaner(),
+        OfficeCacheCleaner(),
         # Browser Cleaning
         BrowserCacheCleaner(),
         BrowserHistoryCleaner(),
@@ -81,10 +91,13 @@ __all__ = [
     "CrashDumpCleaner",
     "EventLogCleaner",
     "IconCacheCleaner",
+    "InstallerCacheCleaner",
     "LogFileCleaner",
+    "OfficeCacheCleaner",
     "PrefetchCleaner",
     "RecentItemsCleaner",
     "RecycleBinCleaner",
+    "ShaderCacheCleaner",
     "ThumbnailCacheCleaner",
     "UserTempCleaner",
     "WindowsTempCleaner",

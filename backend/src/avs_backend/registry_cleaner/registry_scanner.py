@@ -42,6 +42,7 @@ CATEGORIES: dict[str, str] = {
     "muicache": "Invalid MUICache entries",
     "file_extensions": "Unused file extensions",
     "installer_cache": "Installer cache leftovers",
+    "com_clsid": "Missing COM/CLSID entries",
 }
 
 
@@ -430,6 +431,57 @@ def _scan_installer_cache() -> list[RegistryIssue]:
     return issues
 
 
+def _scan_com_clsid() -> list[RegistryIssue]:
+    """Scan HKCR\\CLSID for COM objects whose InprocServer32/LocalServer32 points to a missing file.
+
+    Each CLSID GUID key under HKCR\\CLSID may have an ``InprocServer32`` or
+    ``LocalServer32`` subkey whose default value is the path to the DLL or EXE
+    that implements the COM object. If that file no longer exists, the CLSID
+    entry is a leftover from an uninstalled application.
+
+    We only flag entries where the server path is a real filesystem path
+    (not a system placeholder like ``mscoree.dll`` or ``oleaut32.dll``).
+    """
+    issues: list[RegistryIssue] = []
+    hive = "HKCR"
+    base = r"CLSID"
+    # System DLLs that are always present — never flag these
+    _SYSTEM_SERVERS = {
+        "mscoree.dll", "oleaut32.dll", "ole32.dll", "actxprxy.dll",
+        "shdocvw.dll", "shell32.dll", "urlmon.dll", "mshtml.dll",
+        "jscript.dll", "vbscript.dll", "scrrun.dll",
+    }
+    for clsid in _iter_subkeys(hive, base):
+        clsid_sub = f"{base}\\{clsid}"
+        for server_type in ("InprocServer32", "LocalServer32", "InprocHandler32"):
+            server_sub = f"{clsid_sub}\\{server_type}"
+            res = _read_value(hive, server_sub, "")
+            if not res:
+                continue
+            server_path, _ = res
+            if not isinstance(server_path, str) or not server_path:
+                continue
+            # Skip system DLLs
+            server_lower = server_path.strip('"').lower()
+            if any(sys_dll in server_lower for sys_dll in _SYSTEM_SERVERS):
+                continue
+            exe = _extract_exe_path(server_path)
+            if exe and not _path_exists(exe):
+                issues.append(
+                    RegistryIssue(
+                        id=str(uuid.uuid4()),
+                        category="com_clsid",
+                        description=f"COM CLSID '{clsid}' {server_type} references missing file",
+                        hive=hive,
+                        subkey=server_sub,
+                        value_name="",
+                        value_data=str(server_path),
+                        severity="low",
+                    )
+                )
+    return issues
+
+
 _SCANNERS = {
     "startup": _scan_startup,
     "app_paths": _scan_app_paths,
@@ -438,6 +490,7 @@ _SCANNERS = {
     "muicache": _scan_muicache,
     "file_extensions": _scan_file_extensions,
     "installer_cache": _scan_installer_cache,
+    "com_clsid": _scan_com_clsid,
 }
 
 
