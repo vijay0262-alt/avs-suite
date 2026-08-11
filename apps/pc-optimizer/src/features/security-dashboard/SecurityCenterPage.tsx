@@ -187,7 +187,7 @@ export function SecurityCenterPage() {
         <Card>
           <div className="py-8 text-center">
             <ExclamationTriangleIcon className="mx-auto h-10 w-10 text-[var(--avs-danger)]" />
-            <p className="mt-4 text-body font-medium text-[var(--avs-text-primary)]">Failed to initialize</p>
+            <p className="mt-4 text-body font-medium text-[var(--avs-text-primary)]">Something went wrong</p>
             <p className="mt-1 text-caption text-[var(--avs-text-muted)]">{state.bootstrapError}</p>
             <Button className="mt-4" size="sm" onClick={() => vm.bootstrap()} leftIcon={<ArrowPathIcon className="h-4 w-4" />}>
               Retry
@@ -235,55 +235,55 @@ export function SecurityCenterPage() {
             onClick={() => { vm.setScanMode('full'); vm.startScan('full'); vm.setActiveTab('scan'); }}
             disabled={state.isScanning}
             loading={state.isScanning}
-            leftIcon={state.isScanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <SparklesIcon className="h-5 w-5" />}
+            leftIcon={state.isScanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <ShieldCheckIcon className="h-5 w-5" />}
             data-testid="ai-smart-security-scan-btn"
           >
-            {state.isScanning ? 'Scanning…' : 'Security Scan'}
+            {state.isScanning ? 'Scanning…' : 'Scan Now'}
           </Button>
         </div>
       </div>
 
-      {/* Primary: Protection Status + Last Scan (2 compact cards) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card variant="glass" className="p-4" data-testid="security-protection-status">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`h-2 w-2 rounded-full ${state.snapshot?.protectionStatus.realTimeProtection ? 'bg-semantic-success' : 'bg-semantic-warning'}`} />
-              <div>
-                <div className="text-caption text-text-muted">Real-Time Protection</div>
-                <div className="text-small font-medium text-text-primary">
-                  {state.snapshot?.protectionStatus.realTimeProtection ? 'Active' : 'Standby'}
-                </div>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-caption text-text-muted">Definitions</div>
-              <div className="text-small font-medium text-text-primary">
-                {state.snapshot?.protectionStatus.definitionsActive ? 'Up to Date' : 'Unknown'}
-              </div>
-            </div>
+      {/* Primary: 4 Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Threat Status */}
+        <Card variant="glass" className="p-4" data-testid="security-threat-status">
+          <div className="text-caption text-text-muted">Threat Status</div>
+          <div className={`mt-1 text-2xl font-bold tabular-nums ${state.activeThreats.length > 0 ? 'text-semantic-danger' : 'text-semantic-success'}`}>
+            {state.activeThreats.length}
+          </div>
+          <div className="text-caption text-text-muted mt-0.5">
+            {state.activeThreats.length > 0 ? 'Active threats' : 'No threats'}
           </div>
         </Card>
 
+        {/* Card 2: Files Scanned */}
+        <Card variant="glass" className="p-4" data-testid="security-files-scanned">
+          <div className="text-caption text-text-muted">Files Scanned</div>
+          <div className="mt-1 text-2xl font-bold text-text-primary tabular-nums">
+            {state.scanHistory[0]?.itemsScanned?.toLocaleString() ?? '0'}
+          </div>
+          <div className="text-caption text-text-muted mt-0.5">
+            {state.scanHistory[0] ? 'Last scan' : 'No scans yet'}
+          </div>
+        </Card>
+
+        {/* Card 3: Threats Removed */}
+        <Card variant="glass" className="p-4" data-testid="security-threats-removed">
+          <div className="text-caption text-text-muted">Threats Removed</div>
+          <div className="mt-1 text-2xl font-bold text-text-primary tabular-nums">
+            {state.scanHistory.reduce((sum, s) => sum + (s.threatsResolved ?? 0), 0)}
+          </div>
+          <div className="text-caption text-text-muted mt-0.5">All time</div>
+        </Card>
+
+        {/* Card 4: Last Scan */}
         <Card variant="glass" className="p-4" data-testid="security-last-scan">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <ClockIcon className="h-5 w-5 text-text-muted shrink-0" />
-              <div>
-                <div className="text-caption text-text-muted">Last Scan</div>
-                <div className="text-small font-medium text-text-primary">
-                  {state.snapshot?.lastScan ? formatTimeAgo(state.snapshot.lastScan) : 'Never'}
-                </div>
-              </div>
-            </div>
-            {state.scanHistory[0] && (
-              <div className="text-right">
-                <div className="text-caption text-text-muted">Threats</div>
-                <div className={`text-small font-bold ${state.scanHistory[0].threatsDetected > 0 ? 'text-semantic-danger' : 'text-semantic-success'}`}>
-                  {state.scanHistory[0].threatsDetected}
-                </div>
-              </div>
-            )}
+          <div className="text-caption text-text-muted">Last Scan</div>
+          <div className="mt-1 text-small font-semibold text-text-primary">
+            {state.snapshot?.lastScan ? formatTimeAgo(state.snapshot.lastScan) : 'Never'}
+          </div>
+          <div className="text-caption text-text-muted mt-0.5">
+            {state.snapshot?.protectionStatus.realTimeProtection ? 'Real-time active' : 'Real-time off'}
           </div>
         </Card>
       </div>

@@ -6,7 +6,6 @@ import {
   HeartIcon,
   BellAlertIcon,
   ArrowPathIcon,
-  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ProtectionCenterViewModel } from '../ProtectionCenterViewModel';
@@ -168,46 +167,48 @@ export function ProtectionCenterPage() {
         />
       )}
 
-      {/* Primary: Live Protection + Last Scan (2 compact cards) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card variant="glass" className="p-4" data-testid="protection-live-status">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <ShieldCheckIcon className="h-5 w-5 text-text-muted shrink-0" />
-              <div>
-                <div className="text-caption text-text-muted">Live Protection</div>
-                <div className="text-small font-medium text-text-primary">
-                  {state.cards.filter(c => c.status === 'active').length} active monitors
-                </div>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-caption text-text-muted">Coverage</div>
-              <div className="text-small font-bold text-text-primary">
-                {state.coverage.filter(c => c.covered).length}/{state.coverage.length}
-              </div>
-            </div>
+      {/* Primary: 4 Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Protection Score */}
+        <Card variant="glass" className="p-4" data-testid="protection-score">
+          <div className="text-caption text-text-muted">Protection Score</div>
+          <div className="mt-1 text-2xl font-bold text-text-primary tabular-nums">
+            {state.coverage.filter(c => c.covered).length}/{state.coverage.length}
+          </div>
+          <div className="text-caption text-text-muted mt-0.5">Coverage areas</div>
+        </Card>
+
+        {/* Card 2: Real-Time Protection */}
+        <Card variant="glass" className="p-4" data-testid="protection-realtime">
+          <div className="text-caption text-text-muted">Real-Time Protection</div>
+          <div className="mt-1 text-small font-semibold text-text-primary">
+            {state.cards.filter(c => c.status === 'active').length} active monitors
+          </div>
+          <div className="text-caption text-text-muted mt-0.5">
+            {state.cards.filter(c => c.status === 'active').length > 0 ? 'Monitoring' : 'Standby'}
           </div>
         </Card>
 
-        <Card variant="glass" className="p-4" data-testid="protection-last-scan">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <CheckCircleIcon className="h-5 w-5 text-text-muted shrink-0" />
-              <div>
-                <div className="text-caption text-text-muted">Last Scan</div>
-                <div className="text-small font-medium text-text-primary">
-                  {dashState.healthScanHistory[0] ? `${dashState.healthScanHistory[0].result === 'success' ? 'Optimized' : 'Partial'} · ${new Date(dashState.healthScanHistory[0].date).toLocaleDateString()}` : 'No scans yet'}
-                </div>
-              </div>
-            </div>
-            {dashState.healthScanHistory[0] && (
-              <div className="text-right">
-                <div className="text-caption text-text-muted">Score</div>
-                <div className="text-small font-bold text-text-primary tabular-nums">{dashState.healthScanHistory[0].healthAfter}</div>
-              </div>
-            )}
+        {/* Card 3: Firewall Status */}
+        <Card variant="glass" className="p-4" data-testid="protection-firewall">
+          <div className="text-caption text-text-muted">Firewall Status</div>
+          <div className="mt-1 text-small font-semibold text-text-primary">
+            {state.cards.find(c => c.id === 'firewall')?.status === 'active' ? 'Active' : 'Inactive'}
           </div>
+          <div className="text-caption text-text-muted mt-0.5">
+            {state.cards.find(c => c.id === 'firewall')?.status === 'active' ? 'Protected' : 'Check settings'}
+          </div>
+        </Card>
+
+        {/* Card 4: Last Security Scan */}
+        <Card variant="glass" className="p-4" data-testid="protection-last-scan">
+          <div className="text-caption text-text-muted">Last Security Scan</div>
+          <div className="mt-1 text-small font-semibold text-text-primary">
+            {dashState.healthScanHistory[0] ? `${dashState.healthScanHistory[0].result === 'success' ? 'Completed' : 'Partial'} · ${new Date(dashState.healthScanHistory[0].date).toLocaleDateString()}` : 'No scans yet'}
+          </div>
+          {dashState.healthScanHistory[0] && (
+            <div className="text-caption text-text-muted mt-0.5">Score: {dashState.healthScanHistory[0].healthAfter}</div>
+          )}
         </Card>
       </div>
 

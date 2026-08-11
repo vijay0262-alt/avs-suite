@@ -147,7 +147,7 @@ export default function DashboardPage() {
       case 'optimizing': return 'Optimizing...';
       case 'verifying': return 'Verifying...';
       case 'updating_dashboard': return 'Updating Dashboard...';
-      default: return '✨ AI Smart Optimize';
+      default: return 'Optimize Now';
     }
   })();
 
@@ -220,7 +220,7 @@ export default function DashboardPage() {
             onClick={() => vm.startHealthScan('dashboard', isPro)}
             disabled={isScanning}
             size="lg"
-            leftIcon={isScanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <SparklesIcon className="h-5 w-5" />}
+            leftIcon={isScanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <BoltIcon className="h-5 w-5" />}
             data-testid="improve-health-button"
           >
             {buttonLabel}

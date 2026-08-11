@@ -17,7 +17,7 @@ export const COMPANY = {
   vendor: 'AVS Shield',
   publisherName: 'AVS Shield',
   copyright: '© 2024-2026 Advanced Vision Software LLC. All rights reserved.',
-  description: 'Windows performance, cleanup, and privacy utility.',
+  description: 'AI-powered PC health, protection, and optimization platform.',
   address: {
     street: '30 N Gould St, Ste 4000',
     city: 'Sheridan',

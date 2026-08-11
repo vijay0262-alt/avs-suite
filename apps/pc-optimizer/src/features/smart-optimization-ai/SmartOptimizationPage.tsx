@@ -55,7 +55,6 @@ import {
   CalendarDaysIcon,
   EyeIcon,
   LockClosedIcon,
-  SparklesIcon,
 } from '@heroicons/react/24/outline';
 
 // ── ViewModel ──────────────────────────────────────────────────
@@ -187,13 +186,6 @@ const RISK_COLORS: Record<RiskLevel, string> = {
   severe: 'text-[var(--avs-danger)]',
 };
 
-const _IMPACT_COLORS: Record<OptimizationImpactTier, string> = {
-  high: 'text-[var(--avs-success)]',
-  medium: 'text-[var(--avs-warning)]',
-  low: 'text-[var(--avs-text-muted)]',
-  informational: 'text-[var(--avs-text-muted)]',
-};
-
 const IMPACT_BADGES: Record<OptimizationImpactTier, 'success' | 'warning' | 'brand' | 'neutral'> = {
   high: 'success',
   medium: 'warning',
@@ -251,7 +243,7 @@ export default function SmartOptimizationPage() {
   if (state.bootstrap === 'loading') {
     return (
       <div className="px-6 py-6">
-        <PageHeader title="AI Smart Optimization" description="Evidence-based optimization plans with risk analysis, simulation, and rollback." />
+        <PageHeader title="AI Smart Optimization" description="Safe, intelligent optimization recommendations tailored to your PC." />
         <ModuleLoadingState />
       </div>
     );
@@ -275,7 +267,7 @@ export default function SmartOptimizationPage() {
               onClick={handleSmartOptimize}
               disabled={isScanning}
               loading={isScanning}
-              leftIcon={isScanning ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <SparklesIcon className="h-4 w-4" />}
+              leftIcon={isScanning ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <BoltIcon className="h-4 w-4" />}
               size="lg"
               data-testid="ai-smart-optimize-btn"
             >
@@ -286,58 +278,48 @@ export default function SmartOptimizationPage() {
       />
 
       {/* ── ABOVE THE FOLD ─────────────────────────────────────────── */}
-      {/* Score Summary: Current vs Potential + Key Metrics */}
+      {/* 4 Summary Cards */}
       {dash && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Primary: Current → Potential Score */}
-          <Card variant="glass" className="lg:col-span-2 p-5" data-testid="smart-opt-primary">
-            <div className="flex items-center gap-6">
-              <div className="shrink-0">
-                <div className="relative inline-flex items-center justify-center h-20 w-20 rounded-full bg-brand-primary/10">
-                  <ChartBarIcon className="h-8 w-8 text-brand-primary" />
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-caption text-text-muted uppercase tracking-wide">Health Score</div>
-                <div className="flex items-baseline gap-3">
-                  <span className="text-3xl font-bold text-text-primary tabular-nums">{dash.summary.currentHealthScore}</span>
-                  <ArrowTrendingUpIcon className="h-5 w-5 text-semantic-success" />
-                  <span className="text-3xl font-bold text-semantic-success tabular-nums">{dash.summary.potentialHealthScore}</span>
-                </div>
-                <div className="text-caption text-text-muted mt-0.5">
-                  +{dash.summary.potentialHealthScore - dash.summary.currentHealthScore} possible
-                </div>
-              </div>
-              <div className="hidden sm:block shrink-0 text-right">
-                <div className="text-caption text-text-muted">Actions</div>
-                <div className="text-statistic text-text-primary tabular-nums">{dash.summary.totalAvailableActions}</div>
-                <div className="mt-2 text-caption text-text-muted">Recovery</div>
-                <div className="text-small font-semibold text-text-primary">{formatDataSize(dash.summary.estimatedTotalRecoveryMB * 1024 * 1024)}</div>
-              </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Card 1: Optimization Score */}
+          <Card variant="glass" className="p-4" data-testid="smart-opt-score">
+            <div className="text-caption text-text-muted">Optimization Score</div>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-text-primary tabular-nums">{dash.summary.currentHealthScore}</span>
+              <ArrowTrendingUpIcon className="h-4 w-4 text-semantic-success" />
+              <span className="text-2xl font-bold text-semantic-success tabular-nums">{dash.summary.potentialHealthScore}</span>
             </div>
+            <div className="text-caption text-text-muted mt-0.5">+{dash.summary.potentialHealthScore - dash.summary.currentHealthScore} possible</div>
           </Card>
 
-          {/* Secondary: Plan Headline */}
-          {s.preview && (
-            <Card variant="glass" className="p-5" data-testid="smart-opt-plan-summary">
-              <div className="text-caption text-text-muted uppercase tracking-wide">Plan</div>
-              <p className="text-small font-medium text-text-primary mt-1">{s.preview.headline}</p>
-              <div className="mt-3 flex items-center gap-4">
-                <div>
-                  <div className="text-caption text-text-muted">Score</div>
-                  <div className="text-small font-bold text-semantic-success">+{s.preview.scoreImprovement}</div>
-                </div>
-                <div>
-                  <div className="text-caption text-text-muted">Storage</div>
-                  <div className="text-small font-bold text-text-primary">{formatDataSize(s.preview.estimatedStorageRecoveryMB * 1024 * 1024)}</div>
-                </div>
-                <div>
-                  <div className="text-caption text-text-muted">Time</div>
-                  <div className="text-small font-bold text-text-primary">{formatDuration(dash.summary.estimatedDurationSeconds)}</div>
-                </div>
-              </div>
-            </Card>
-          )}
+          {/* Card 2: Storage Recovered */}
+          <Card variant="glass" className="p-4" data-testid="smart-opt-storage">
+            <div className="text-caption text-text-muted">Storage Recovered</div>
+            <div className="mt-1 text-2xl font-bold text-text-primary tabular-nums">
+              {s.lastReport ? formatDataSize(s.lastReport.summary.storageRecoveredMB * 1024 * 1024) : formatDataSize(dash.summary.estimatedTotalRecoveryMB * 1024 * 1024)}
+            </div>
+            <div className="text-caption text-text-muted mt-0.5">{s.lastReport ? 'This session' : 'Estimated'}</div>
+          </Card>
+
+          {/* Card 3: Items Fixed */}
+          <Card variant="glass" className="p-4" data-testid="smart-opt-items">
+            <div className="text-caption text-text-muted">Items Fixed</div>
+            <div className="mt-1 text-2xl font-bold text-text-primary tabular-nums">
+              {s.lastReport ? s.lastReport.successCount : dash.summary.totalAvailableActions}
+            </div>
+            <div className="text-caption text-text-muted mt-0.5">{s.lastReport ? `${s.lastReport.failureCount} failed` : 'Available actions'}</div>
+          </Card>
+
+          {/* Card 4: Last Optimization */}
+          <Card variant="glass" className="p-4" data-testid="smart-opt-last">
+            <div className="text-caption text-text-muted">Last Optimization</div>
+            <div className="mt-1 text-small font-semibold text-text-primary">
+              {s.lastReport ? 'Completed' : 'Not yet run'}
+            </div>
+            <div className="text-caption text-text-muted mt-0.5">
+              {s.lastReport ? `${s.lastReport.successCount} of ${s.lastReport.successCount + s.lastReport.failureCount} actions` : `Est. ${formatDuration(dash.summary.estimatedDurationSeconds)}`}
+            </div>
+          </Card>
         </div>
       )}
 
@@ -393,7 +375,7 @@ export default function SmartOptimizationPage() {
             {/* Action Buttons */}
             <div className="flex items-center gap-3">
               <Button onClick={() => vm.runSimulation()} leftIcon={<BeakerIcon className="h-4 w-4" />} variant="secondary">
-                Simulate
+                Preview Results
               </Button>
               <Button
                 onClick={handleExecutePlan}
@@ -493,16 +475,17 @@ export default function SmartOptimizationPage() {
           <div className="space-y-4">
             {s.simulation && (
               <div className="space-y-3">
-                <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)]">Simulation</h4>
+                <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)]">Preview</h4>
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                  <MetricBox label="Simulated Score" value={s.simulation.simulatedHealthScore.toString()} icon={ChartBarIcon} />
+                  <MetricBox label="Expected Score" value={s.simulation.simulatedHealthScore.toString()} icon={ChartBarIcon} />
                   <MetricBox label="Confidence" value={`${(s.simulation.confidence * 100).toFixed(0)}%`} icon={CheckCircleIcon} />
-                  <MetricBox label="Simulated Risk" value={s.simulation.simulatedRisk} icon={ShieldCheckIcon} />
+                  <MetricBox label="Risk Level" value={s.simulation.simulatedRisk} icon={ShieldCheckIcon} />
                   <MetricBox label="RAM Recovery" value={formatDataSize(s.simulation.simulatedBenefits.ramRecoveryMB * 1024 * 1024)} icon={CpuChipIcon} />
                 </div>
                 {s.simulation.assumptions.length > 0 && (
                   <div>
                     <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)] mb-1">Assumptions</h4>
+                {/* Note: These are preview assumptions, not guarantees */}
                     {s.simulation.assumptions.map((a, i) => (
                       <p key={i} className="text-caption text-[var(--avs-text-secondary)]">• {a}</p>
                     ))}
@@ -519,12 +502,12 @@ export default function SmartOptimizationPage() {
             )}
             {s.lastReport && (
               <div className="space-y-3 pt-4 border-t border-[var(--avs-border)]">
-                <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)]">Execution Report</h4>
+                <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)]">Optimization Results</h4>
                 <p className="text-small font-medium text-[var(--avs-text-primary)]">{s.lastReport.summary.headline}</p>
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                  <MetricBox label="Health Change" value={`${s.lastReport.summary.healthScoreChange > 0 ? '+' : ''}${s.lastReport.summary.healthScoreChange}`} icon={ArrowTrendingUpIcon} />
+                  <MetricBox label="Score Change" value={`${s.lastReport.summary.healthScoreChange > 0 ? '+' : ''}${s.lastReport.summary.healthScoreChange}`} icon={ArrowTrendingUpIcon} />
                   <MetricBox label="Storage Recovered" value={formatDataSize(s.lastReport.summary.storageRecoveredMB * 1024 * 1024)} icon={CircleStackIcon} />
-                  <MetricBox label="Success" value={s.lastReport.successCount.toString()} icon={CheckCircleIcon} />
+                  <MetricBox label="Completed" value={s.lastReport.successCount.toString()} icon={CheckCircleIcon} />
                   <MetricBox label="Failed" value={s.lastReport.failureCount.toString()} icon={ExclamationTriangleIcon} />
                 </div>
                 <div className="space-y-1">

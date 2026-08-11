@@ -59,8 +59,8 @@ export default function SettingsPage() {
     <div data-testid="page-settings">
       <PageHeader
         title="Settings"
-        description="Configure appearance, updates, and advanced behaviour."
-        actions={<HelpButton text="Customize the application's appearance, manage updates, review feature entitlements, and access account information. Changes are saved automatically." />}
+        description="Customize appearance, updates, and app preferences."
+        actions={<HelpButton text="Change the app's appearance, manage updates, review your subscription, and access account information. Changes are saved automatically." />}
       />
 
       <div className="space-y-4">
