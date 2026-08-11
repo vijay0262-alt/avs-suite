@@ -85,6 +85,7 @@ const ModulePreloader = () => {
       void import('../pages/PerformancePage');
       void import('../pages/SecurityCenterPage');
       void import('../pages/ProcessIntelligencePage');
+      void import('../pages/ProtectionCenterPage');
     };
 
     // Use requestIdleCallback if available (better than setTimeout)

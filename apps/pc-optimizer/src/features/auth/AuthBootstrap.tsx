@@ -18,13 +18,20 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAuthStore } from './authStore';
+import { tokenStorage } from './tokenStorage';
 import { LoginDialog } from './LoginDialog';
 import { useSyncStore, startPeriodicSync, stopPeriodicSync } from '../sync/syncStore';
 
 export function AuthBootstrap({ children }: { children: ReactNode }) {
   const { phase, restoreSession, logout } = useAuthStore();
   const { sync, restoreFromCache, clear: clearSync } = useSyncStore();
-  const [restored, setRestored] = useState(false);
+  // Check for cached session synchronously — if we have one, render
+  // children immediately instead of blocking with a loading spinner.
+  // restoreSession() will validate in the background.
+  const [restored, setRestored] = useState(() => {
+    const session = tokenStorage.load();
+    return !session; // restored=true if no session (skip waiting)
+  });
   const syncedRef = useRef(false);
 
   useEffect(() => {
@@ -44,13 +51,17 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
     });
   }, [logout, clearSync]);
 
+  // Restore sync cache immediately on mount — gives the UI data
+  // to render with, even before auth phase transitions.
+  useEffect(() => {
+    restoreFromCache();
+  }, [restoreFromCache]);
+
   // Sync with backend after authentication
   useEffect(() => {
     if (phase === 'authenticated' && !syncedRef.current) {
       syncedRef.current = true;
-      // 1. Restore from cache for instant offline startup
-      restoreFromCache();
-      // 2. Sync from backend (non-blocking — UI renders with cache first)
+      // Sync from backend (non-blocking — UI renders with cache first)
       void sync().then(() => {
         startPeriodicSync();
       }).catch(() => {
@@ -63,7 +74,7 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
     }
   }, [phase, sync, restoreFromCache]);
 
-  if (!restored || phase === 'checking') {
+  if (phase === 'checking') {
     return (
       <div
         className="flex h-full items-center justify-center bg-bg"

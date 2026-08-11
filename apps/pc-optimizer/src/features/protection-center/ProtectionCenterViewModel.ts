@@ -76,6 +76,35 @@ function timeAgo(iso: string): string {
   return `${day}d ago`;
 }
 
+const PC_CACHE_KEY = 'avs_protection_center_cache';
+
+function loadCachedState(): Partial<ProtectionCenterState> | null {
+  try {
+    const raw = localStorage.getItem(PC_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed as Partial<ProtectionCenterState>;
+  } catch {
+    return null;
+  }
+}
+
+function saveCachedState(state: ProtectionCenterState): void {
+  try {
+    const snapshot: Partial<ProtectionCenterState> = {
+      protectionState: state.protectionState,
+      cards: state.cards,
+      coverage: state.coverage,
+      monitors: state.monitors,
+      systemHealth: state.systemHealth,
+      healthScore: state.healthScore,
+    };
+    localStorage.setItem(PC_CACHE_KEY, JSON.stringify(snapshot));
+  } catch {
+    // non-fatal
+  }
+}
+
 const initialState: ProtectionCenterState = {
   loading: true,
   error: null,
@@ -95,6 +124,7 @@ const initialState: ProtectionCenterState = {
   healthScore: null,
   isPro: false,
   lastRefresh: null,
+  ...loadCachedState(),
 };
 
 const QUICK_ACTIONS: QuickAction[] = [
@@ -233,6 +263,11 @@ export class ProtectionCenterViewModel extends ViewModel<ProtectionCenterState> 
   async init(): Promise<void> {
     this.isMounted = true;
     this.subscribeToEvents();
+    // Only show loading spinner if we have no cached state.
+    // If cached state exists, render it immediately and refresh in background.
+    if (!this.state.protectionState) {
+      this.setState({ loading: true, error: null });
+    }
     await this.refreshAll();
     this.startPolling();
   }
@@ -323,7 +358,10 @@ export class ProtectionCenterViewModel extends ViewModel<ProtectionCenterState> 
   // ── Data Refresh ─────────────────────────────────────────────────
 
   async refreshAll(): Promise<void> {
-    this.setState({ loading: true, error: null });
+    // Only show loading state if we have no existing data to render
+    if (!this.state.protectionState) {
+      this.setState({ loading: true, error: null });
+    }
     try {
       const [metrics, liveMetrics, healthScore, hardwareSensors] = await Promise.all([
         dashboardService.getMetrics().catch(() => null),
@@ -355,6 +393,7 @@ export class ProtectionCenterViewModel extends ViewModel<ProtectionCenterState> 
         systemHealth: this.deriveSystemHealth(metrics, liveMetrics, hardwareSensors, healthScore),
         lastRefresh: Date.now(),
       }));
+      saveCachedState(this.state);
     } catch (err) {
       if (!this.isMounted) return;
       this.setState({

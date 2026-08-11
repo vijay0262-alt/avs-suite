@@ -373,7 +373,7 @@ app.whenReady().then(async () => {
   bgProtection = new BackgroundProtectionService(log, rpcClient, (state) => {
     trayManager?.setProtectionState(state);
   });
-  await bgProtection.start();
+  void bgProtection.start();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) void createMainWindow();

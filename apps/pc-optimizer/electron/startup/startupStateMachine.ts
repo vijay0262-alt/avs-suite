@@ -5,7 +5,7 @@
  *
  * States:
  *   INITIALIZING → BACKEND_STARTING → BACKEND_READY → IPC_REGISTERED
- *   → LICENSE_READY → RENDERER_READY → APPLICATION_READY
+ *   → (LICENSE_READY ∥ RENDERER_READY) → APPLICATION_READY
  *
  * If any stage fails:
  *   - Log the failure with full context
@@ -175,27 +175,27 @@ export async function runStartup(
     return handleStartupFailure(logger, createMainWindow, closeSplashWindow);
   }
 
-  // ── Stage 3: Initialize License SDK ──────────────────────
-  const t2 = Date.now();
-  try {
-    if (licenseBridge) {
-      const status = await licenseBridge.startup();
-      logger.info(
-        `[startup] License SDK ready: status=${status.status}, edition=${status.edition}, offline=${status.is_offline}`,
-      );
-    }
-    recordTiming('license-init', t2, logger);
-    transition('LICENSE_READY', logger);
-  } catch (err) {
-    // License failure is NOT fatal — continue in free mode
-    logger.warn('[startup] License SDK init failed — continuing in free mode', err);
-    recordTiming('license-init-skipped', t2, logger);
-    // Still transition forward — license is optional
-    transition('LICENSE_READY', logger);
-  }
-
-  // ── Stage 4: Create main window + load renderer ──────────
+  // ── Stage 3+4: License init ∥ Window creation ───────────
+  // License init is non-fatal (falls back to free mode) so it must
+  // not block the renderer. Running in parallel saves ~200-500ms.
   const t3 = Date.now();
+  const licensePromise = (async () => {
+    try {
+      if (licenseBridge) {
+        const status = await licenseBridge.startup();
+        logger.info(
+          `[startup] License SDK ready: status=${status.status}, edition=${status.edition}, offline=${status.is_offline}`,
+        );
+      }
+      recordTiming('license-init', t3, logger);
+      transition('LICENSE_READY', logger);
+    } catch (err) {
+      logger.warn('[startup] License SDK init failed — continuing in free mode', err);
+      recordTiming('license-init-skipped', t3, logger);
+      transition('LICENSE_READY', logger);
+    }
+  })();
+
   try {
     await createMainWindow();
     recordTiming('renderer-create', t3, logger);
@@ -204,8 +204,12 @@ export async function runStartup(
     lastError = err instanceof Error ? err : new Error(String(err));
     logger.error('[startup] FAILED: Renderer window creation', lastError);
     recordTiming('renderer-create-failed', t3, logger);
+    await licensePromise;
     return handleStartupFailure(logger, createMainWindow, closeSplashWindow);
   }
+
+  // Ensure license init completes before declaring application ready
+  await licensePromise;
 
   // ── Stage 5: Application ready ───────────────────────────
   const totalMs = Date.now() - startupStartTime;

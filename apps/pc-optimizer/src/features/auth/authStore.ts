@@ -25,13 +25,24 @@ export interface AuthState {
   clearError: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  phase: 'checking',
-  customer: null,
-  session: null,
-  loading: false,
-  error: null,
-  errorCode: null,
+export const useAuthStore = create<AuthState>((set) => {
+  // Check for cached session synchronously at store creation time.
+  // If a valid session exists, start as 'authenticated' immediately
+  // to avoid a first-render loading spinner. restoreSession() will
+  // still validate in the background.
+  const cachedSession = tokenStorage.load();
+  const initialPhase: AuthPhase = cachedSession && !tokenStorage.isExpired(cachedSession)
+    ? 'authenticated'
+    : 'checking';
+  const initialProfile = cachedSession ? authService.getProfileFromSession(cachedSession) : null;
+
+  return {
+    phase: initialPhase,
+    customer: initialProfile,
+    session: cachedSession,
+    loading: false,
+    error: null,
+    errorCode: null,
 
   login: async (identifier: string, password: string): Promise<boolean> => {
     set({ loading: true, error: null, errorCode: null });
@@ -118,7 +129,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   clearError: () => set({ error: null, errorCode: null }),
-}));
+  };
+});
 
 /**
  * Convenience hook for components that just need auth status.

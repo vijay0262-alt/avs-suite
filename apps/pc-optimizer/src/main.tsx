@@ -12,26 +12,7 @@ import { initDeferredCleanupStore } from './features/health/DeferredCleanupStore
 import { executionHistoryRepository } from './features/maintenance-history/executionHistoryRepository';
 import './styles/index.css';
 
-void initI18n();
-dashboardRefreshManager.init();
-registerAllModules();
-void initializeAllModules();
-
-void idbMigrateFromLocalStorage().then(({ migrated }) => {
-  if (migrated.length > 0) {
-    console.info(`[IndexedDB] Migrated ${migrated.length} localStorage keys: ${migrated.join(', ')}`);
-  }
-  void idbCleanupAll();
-  void initDeferredCleanupStore();
-  void executionHistoryRepository.init();
-});
-
-// Defer background service startup to after first paint — prioritize main window visibility
-const startBackgroundServices = () => {
-  backgroundCleanupService.start();
-  void backgroundCleanupService.runStartupCleanup();
-};
-
+// ── Render immediately ──────────────────────────────────────────
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
@@ -42,9 +23,29 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>,
 );
 
-// Start background services after the first paint completes
-if (typeof requestIdleCallback !== 'undefined') {
-  requestIdleCallback(startBackgroundServices, { timeout: 3000 });
-} else {
-  setTimeout(startBackgroundServices, 1500);
-}
+// ── Deferred init (after first paint) ───────────────────────────
+const deferInit = (fn: () => void) => {
+  if (typeof requestIdleCallback !== 'undefined') {
+    requestIdleCallback(() => fn(), { timeout: 2000 });
+  } else {
+    setTimeout(fn, 100);
+  }
+};
+
+deferInit(() => void initI18n());
+deferInit(() => { registerAllModules(); void initializeAllModules(); });
+deferInit(() => dashboardRefreshManager.init());
+deferInit(() => {
+  void idbMigrateFromLocalStorage().then(({ migrated }) => {
+    if (migrated.length > 0) {
+      console.info(`[IndexedDB] Migrated ${migrated.length} localStorage keys: ${migrated.join(', ')}`);
+    }
+    void idbCleanupAll();
+    void initDeferredCleanupStore();
+    void executionHistoryRepository.init();
+  });
+});
+deferInit(() => {
+  backgroundCleanupService.start();
+  void backgroundCleanupService.runStartupCleanup();
+});

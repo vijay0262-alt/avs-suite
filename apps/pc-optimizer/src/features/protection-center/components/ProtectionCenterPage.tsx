@@ -116,6 +116,9 @@ export function ProtectionCenterPage() {
     );
   }
 
+  // If we have protection state, render immediately even if still loading.
+  // Show a subtle indicator for values being refreshed.
+
   return (
     <div
       className="space-y-5"
@@ -131,6 +134,12 @@ export function ProtectionCenterPage() {
             onRefresh={() => vm.refresh()}
             lastRefresh={state.lastRefresh}
           />
+          {state.loading && (
+            <div className="mt-1 flex items-center gap-1.5 text-caption text-text-muted">
+              <ArrowPathIcon className="h-3 w-3 animate-spin" />
+              <span>Refreshing…</span>
+            </div>
+          )}
         </div>
         <Button
           onClick={handleScanNow}

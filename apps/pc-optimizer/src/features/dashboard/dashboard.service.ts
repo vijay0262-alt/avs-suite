@@ -41,7 +41,7 @@ export interface DashboardService {
 export const dashboardService: DashboardService = {
   getMetrics: () => rpcCache.get('dashboard.metrics', () => client().call<DashboardMetrics>(RPC_METHODS.DASHBOARD_METRICS), 15_000),
   getLiveMetrics: () => client().call(RPC_METHODS.DASHBOARD_LIVE),
-  getHealthScore: () => client().call(RPC_METHODS.DASHBOARD_HEALTH),
+  getHealthScore: () => rpcCache.get('dashboard.health', () => client().call<HealthScore>(RPC_METHODS.DASHBOARD_HEALTH), 15_000),
   refreshCache: () => { rpcCache.invalidate('dashboard.metrics'); rpcCache.invalidate('dashboard.health'); return client().call(RPC_METHODS.DASHBOARD_REFRESH_CACHE); },
   getOptimizePreview: () => client().call(RPC_METHODS.DASHBOARD_OPTIMIZE_PREVIEW),
   executeOptimize: () => client().call(RPC_METHODS.DASHBOARD_OPTIMIZE_EXECUTE),
