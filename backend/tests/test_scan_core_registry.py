@@ -497,11 +497,12 @@ class TestRegistryTargets:
 
     def test_enumerate_targets_works(self):
         """enumerate_targets should yield entries from multiple targets."""
+        # Use SOFTWARE key which is guaranteed to exist on all Windows systems
         targets = [
             RegistryTarget(
                 hive=RegistryHive.HKEY_CURRENT_USER,
-                subpath=r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
-                label="HKCU Run",
+                subpath=r"SOFTWARE",
+                label="HKCU SOFTWARE",
                 recurse=False,
             ),
         ]
@@ -509,6 +510,8 @@ class TestRegistryTargets:
         entries = list(enumerator.enumerate_targets(targets))
         # Should get at least the key itself
         assert len(entries) > 0
+        # Verify we got the SOFTWARE key
+        assert any(isinstance(entry, RegistryKeyAsset) and entry.key_path == "SOFTWARE" for entry in entries)
 
     def test_disabled_target_skipped(self):
         """Disabled targets should be skipped."""
