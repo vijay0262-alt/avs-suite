@@ -14,7 +14,7 @@ Tests cover:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import pytest
 
@@ -199,7 +199,7 @@ class TestAssetMetadata:
     def test_metadata_datetime_serialization(self):
         """Test datetime serialization in metadata."""
         metadata = AssetMetadata()
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         metadata.set("timestamp", now)
 
         data = metadata.to_dict()
@@ -429,7 +429,7 @@ class TestScanAsset:
 class TestSerialization:
     def test_asset_serialization(self):
         """Test asset serialization to dict."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         asset = ScanAsset(
             asset_id="a" * 64,
             asset_type=AssetType.FILE,
@@ -547,7 +547,7 @@ class TestValidation:
 
     def test_invalid_timestamps(self):
         """Test validation with invalid timestamps."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         future = now + timedelta(days=1)
 
         asset = ScanAsset(

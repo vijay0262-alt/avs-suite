@@ -11,10 +11,11 @@ NOT a duplicate of ScanAsset. Stores only observed state.
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass, field
-from datetime import datetime
+from typing import Optional, Dict, Any
+from datetime import datetime, UTC
 from enum import Enum
-from typing import Optional, Any
 
 
 class SnapshotState(Enum):
@@ -126,7 +127,7 @@ class AssetSnapshot:
         return cls(
             asset_id=data["asset_id"],
             scan_id=data["scan_id"],
-            observed_at=datetime.fromisoformat(data["observed_at"]) if data.get("observed_at") else datetime.utcnow(),
+            observed_at=datetime.fromisoformat(data["observed_at"]) if data.get("observed_at") else datetime.now(UTC),
             state=SnapshotState(data.get("state", "discovered")),
             exists=data.get("exists", True),
             accessible=data.get("accessible", True),
@@ -209,7 +210,7 @@ def create_snapshot_from_asset(
     return AssetSnapshot(
         asset_id=asset_id,
         scan_id=scan_id,
-        observed_at=datetime.utcnow(),
+        observed_at=datetime.now(UTC),
         state=state,
         exists=exists,
         accessible=accessible,

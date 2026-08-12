@@ -8,7 +8,7 @@ import pytest
 import tempfile
 import shutil
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, UTC
 
 from avs_backend.scan_core.metadata import (
     MetadataDatabase,
@@ -88,7 +88,7 @@ def test_snapshot_save_and_get(temp_db):
     
     context = ScanContext(
         scan_id="scan1",
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(UTC),
         scan_type=ScanType.FULL,
     )
     context_repo.create(context)
@@ -98,7 +98,7 @@ def test_snapshot_save_and_get(temp_db):
     snapshot = AssetSnapshot(
         asset_id="asset1",
         scan_id="scan1",
-        observed_at=datetime.utcnow(),
+        observed_at=datetime.now(UTC),
         state=SnapshotState.DISCOVERED,
         exists=True,
         accessible=True,
@@ -122,7 +122,7 @@ def test_context_create_and_get(temp_db):
     scan_id = generate_scan_id()
     context = ScanContext(
         scan_id=scan_id,
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(UTC),
         scan_type=ScanType.FULL,
     )
     
@@ -159,7 +159,7 @@ def test_batch_snapshot_insert(temp_db):
     # Create scan context
     context = ScanContext(
         scan_id="batch_scan",
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(UTC),
         scan_type=ScanType.FULL,
     )
     context_repo.create(context)
@@ -170,7 +170,7 @@ def test_batch_snapshot_insert(temp_db):
         AssetSnapshot(
             asset_id=f"asset_{i}",
             scan_id="batch_scan",
-            observed_at=datetime.utcnow(),
+            observed_at=datetime.now(UTC),
             state=SnapshotState.DISCOVERED,
             exists=True,
             accessible=True,

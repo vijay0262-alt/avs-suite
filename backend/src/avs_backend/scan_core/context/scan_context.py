@@ -12,9 +12,9 @@ import hashlib
 import platform
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 
 
 class ScanType(Enum):
@@ -95,7 +95,7 @@ class ScanContext:
         """Mark scan as completed."""
         self.completed = True
         if self.completed_at is None:
-            self.completed_at = datetime.utcnow()
+            self.completed_at = datetime.now(UTC)
         if self.duration_ms == 0 and self.completed_at:
             delta = self.completed_at - self.started_at
             self.duration_ms = int(delta.total_seconds() * 1000)
@@ -105,7 +105,7 @@ class ScanContext:
         self.cancelled = True
         self.completed = True
         if self.completed_at is None:
-            self.completed_at = datetime.utcnow()
+            self.completed_at = datetime.now(UTC)
     
     def to_dict(self) -> dict:
         """Serialize to dictionary."""
@@ -136,7 +136,7 @@ class ScanContext:
         """Deserialize from dictionary."""
         return cls(
             scan_id=data["scan_id"],
-            started_at=datetime.fromisoformat(data["started_at"]) if data.get("started_at") else datetime.utcnow(),
+            started_at=datetime.fromisoformat(data["started_at"]) if data.get("started_at") else datetime.now(UTC),
             completed_at=datetime.fromisoformat(data["completed_at"]) if data.get("completed_at") else None,
             scanner_version=data.get("scanner_version", "3.0.0"),
             machine_id_hash=data.get("machine_id_hash", ""),

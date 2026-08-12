@@ -8,9 +8,9 @@ Future migrations will be added here as the schema evolves.
 
 from __future__ import annotations
 
-from typing import List, Callable
 import logging
-
+from typing import List, Callable
+from datetime import datetime, UTC
 from .database import MetadataDatabase
 
 logger = logging.getLogger(__name__)
@@ -95,7 +95,7 @@ class MigrationManager:
                     cursor.execute("""
                         INSERT INTO schema_migrations (version, applied_at, description)
                         VALUES (?, ?, ?)
-                    """, (migration.version, datetime.utcnow().isoformat(), migration.description))
+                    """, (migration.version, datetime.now(UTC).isoformat(), migration.description))
                     conn.commit()
                     cursor.close()
                     

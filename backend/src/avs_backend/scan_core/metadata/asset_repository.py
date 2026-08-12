@@ -8,10 +8,11 @@ STORAGE ONLY. NO DECISIONS.
 
 from __future__ import annotations
 
-import json
 import sqlite3
+import json
+import logging
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, UTC
 
 from ..assets import ScanAsset, AssetType, AssetCategory
 from .database import MetadataDatabase
@@ -81,7 +82,7 @@ class AssetRepository:
                 asset.canonical_path,
                 asset.created_at.isoformat() if asset.created_at else None,
                 asset.modified_at.isoformat() if asset.modified_at else None,
-                datetime.utcnow().isoformat(),
+                datetime.now(UTC).isoformat(),
                 asset.exists,
                 asset.accessible,
                 asset.locked,

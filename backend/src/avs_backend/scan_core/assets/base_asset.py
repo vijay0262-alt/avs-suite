@@ -10,7 +10,7 @@ must inherit from ScanAsset.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional
 
 from .asset_types import AssetType, AssetCategory, AssetSource, get_category_for_type
@@ -40,7 +40,7 @@ class ScanAsset:
     # ── Timestamps ─────────────────────────────────────────────────
     created_at: Optional[datetime] = None
     modified_at: Optional[datetime] = None
-    discovered_at: datetime = field(default_factory=datetime.utcnow)
+    discovered_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # ── Versioning ─────────────────────────────────────────────────
     metadata_version: int = 1

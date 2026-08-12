@@ -9,8 +9,9 @@ STORAGE ONLY. NO DECISIONS.
 from __future__ import annotations
 
 import sqlite3
+import logging
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, UTC
 
 from ..context import SnapshotDiff
 from .database import MetadataDatabase
@@ -78,7 +79,7 @@ class DiffRepository:
                 len(diff.became_inaccessible),
                 len(diff.became_locked),
                 len(diff.became_available),
-                datetime.utcnow().isoformat(),
+                datetime.now(UTC).isoformat(),
             ))
             
             conn.commit()

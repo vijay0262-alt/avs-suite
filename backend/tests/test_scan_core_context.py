@@ -14,7 +14,7 @@ Tests cover:
 from __future__ import annotations
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from avs_backend.scan_core.context import (
     ScanContext,
@@ -51,7 +51,7 @@ class TestScanContext:
     def test_create_scan_context(self):
         """Test creating a ScanContext."""
         scan_id = generate_scan_id()
-        started_at = datetime.utcnow()
+        started_at = datetime.now(UTC)
         
         context = ScanContext(
             scan_id=scan_id,
@@ -68,7 +68,7 @@ class TestScanContext:
     
     def test_mark_completed(self):
         """Test marking scan as completed."""
-        started = datetime.utcnow()
+        started = datetime.now(UTC)
         context = ScanContext(
             scan_id=generate_scan_id(),
             started_at=started,
@@ -89,7 +89,7 @@ class TestScanContext:
         """Test marking scan as cancelled."""
         context = ScanContext(
             scan_id=generate_scan_id(),
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(UTC),
         )
         
         context.mark_cancelled()
@@ -102,7 +102,7 @@ class TestScanContext:
         """Test ScanContext serialization."""
         context = ScanContext(
             scan_id=generate_scan_id(),
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(UTC),
             scan_type=ScanType.QUICK,
             requested_scope=["C:\\Users", "C:\\Program Files"],
             enumerators_used=["filesystem", "registry"],
@@ -160,7 +160,7 @@ class TestAssetSnapshot:
         snapshot = AssetSnapshot(
             asset_id="abc123",
             scan_id="scan456",
-            observed_at=datetime.utcnow(),
+            observed_at=datetime.now(UTC),
             state=SnapshotState.DISCOVERED,
             exists=True,
             accessible=True,
@@ -179,7 +179,7 @@ class TestAssetSnapshot:
         snapshot1 = AssetSnapshot(
             asset_id="abc123",
             scan_id="scan1",
-            observed_at=datetime.utcnow(),
+            observed_at=datetime.now(UTC),
             state=SnapshotState.DISCOVERED,
             exists=True,
             accessible=True,
@@ -191,7 +191,7 @@ class TestAssetSnapshot:
         snapshot2 = AssetSnapshot(
             asset_id="abc123",
             scan_id="scan2",  # Different scan
-            observed_at=datetime.utcnow(),  # Different observation time
+            observed_at=datetime.now(UTC),  # Different observation time
             state=SnapshotState.DISCOVERED,
             exists=True,
             accessible=True,
@@ -208,7 +208,7 @@ class TestAssetSnapshot:
         snapshot1 = AssetSnapshot(
             asset_id="abc123",
             scan_id="scan1",
-            observed_at=datetime.utcnow(),
+            observed_at=datetime.now(UTC),
             state=SnapshotState.DISCOVERED,
             exists=True,
             accessible=True,
@@ -219,7 +219,7 @@ class TestAssetSnapshot:
         snapshot2 = AssetSnapshot(
             asset_id="abc123",
             scan_id="scan2",
-            observed_at=datetime.utcnow(),
+            observed_at=datetime.now(UTC),
             state=SnapshotState.CHANGED,
             exists=True,
             accessible=True,
@@ -235,7 +235,7 @@ class TestAssetSnapshot:
         snapshot1 = AssetSnapshot(
             asset_id="abc123",
             scan_id="scan1",
-            observed_at=datetime.utcnow(),
+            observed_at=datetime.now(UTC),
             state=SnapshotState.DISCOVERED,
             exists=True,
             accessible=True,
@@ -246,7 +246,7 @@ class TestAssetSnapshot:
         snapshot2 = AssetSnapshot(
             asset_id="abc123",
             scan_id="scan2",
-            observed_at=datetime.utcnow(),
+            observed_at=datetime.now(UTC),
             state=SnapshotState.CHANGED,
             exists=True,
             accessible=True,
@@ -285,7 +285,7 @@ class TestAssetSnapshot:
             accessible=True,
             locked=False,
             size=1024,
-            modified_time=datetime.utcnow(),
+            modified_time=datetime.now(UTC),
             attributes={"extension": ".txt"},
         )
         
@@ -300,7 +300,7 @@ class TestAssetSnapshot:
         snapshot = AssetSnapshot(
             asset_id="abc123",
             scan_id="scan456",
-            observed_at=datetime.utcnow(),
+            observed_at=datetime.now(UTC),
             state=SnapshotState.DISCOVERED,
             exists=True,
             accessible=True,
@@ -419,7 +419,7 @@ class TestSnapshotDiff:
             AssetSnapshot(
                 asset_id="new1",
                 scan_id="scan2",
-                observed_at=datetime.utcnow(),
+                observed_at=datetime.now(UTC),
                 state=SnapshotState.DISCOVERED,
                 exists=True,
                 accessible=True,
@@ -440,7 +440,7 @@ class TestSnapshotDiff:
             AssetSnapshot(
                 asset_id="old1",
                 scan_id="scan1",
-                observed_at=datetime.utcnow(),
+                observed_at=datetime.now(UTC),
                 state=SnapshotState.DISCOVERED,
                 exists=True,
                 accessible=True,
@@ -461,7 +461,7 @@ class TestSnapshotDiff:
             AssetSnapshot(
                 asset_id="file1",
                 scan_id="scan1",
-                observed_at=datetime.utcnow(),
+                observed_at=datetime.now(UTC),
                 state=SnapshotState.DISCOVERED,
                 exists=True,
                 accessible=True,
@@ -473,7 +473,7 @@ class TestSnapshotDiff:
             AssetSnapshot(
                 asset_id="file1",
                 scan_id="scan2",
-                observed_at=datetime.utcnow(),
+                observed_at=datetime.now(UTC),
                 state=SnapshotState.CHANGED,
                 exists=True,
                 accessible=True,
@@ -494,7 +494,7 @@ class TestSnapshotDiff:
             AssetSnapshot(
                 asset_id="file1",
                 scan_id="scan1",
-                observed_at=datetime.utcnow(),
+                observed_at=datetime.now(UTC),
                 state=SnapshotState.DISCOVERED,
                 exists=True,
                 accessible=True,
@@ -506,7 +506,7 @@ class TestSnapshotDiff:
             AssetSnapshot(
                 asset_id="file1",
                 scan_id="scan2",
-                observed_at=datetime.utcnow(),
+                observed_at=datetime.now(UTC),
                 state=SnapshotState.UNCHANGED,
                 exists=True,
                 accessible=True,
@@ -526,7 +526,7 @@ class TestSnapshotDiff:
             AssetSnapshot(
                 asset_id="file1",
                 scan_id="scan1",
-                observed_at=datetime.utcnow(),
+                observed_at=datetime.now(UTC),
                 state=SnapshotState.DISCOVERED,
                 exists=True,
                 accessible=True,
@@ -537,7 +537,7 @@ class TestSnapshotDiff:
             AssetSnapshot(
                 asset_id="file1",
                 scan_id="scan2",
-                observed_at=datetime.utcnow(),
+                observed_at=datetime.now(UTC),
                 state=SnapshotState.INACCESSIBLE,
                 exists=True,
                 accessible=False,  # Changed
@@ -556,7 +556,7 @@ class TestSnapshotDiff:
             AssetSnapshot(
                 asset_id="file1",
                 scan_id="scan1",
-                observed_at=datetime.utcnow(),
+                observed_at=datetime.now(UTC),
                 state=SnapshotState.DISCOVERED,
                 exists=True,
                 accessible=True,
@@ -567,7 +567,7 @@ class TestSnapshotDiff:
             AssetSnapshot(
                 asset_id="file1",
                 scan_id="scan2",
-                observed_at=datetime.utcnow(),
+                observed_at=datetime.now(UTC),
                 state=SnapshotState.LOCKED,
                 exists=True,
                 accessible=True,
@@ -586,7 +586,7 @@ class TestSnapshotDiff:
             AssetSnapshot(
                 asset_id="file1",
                 scan_id="scan1",
-                observed_at=datetime.utcnow(),
+                observed_at=datetime.now(UTC),
                 state=SnapshotState.LOCKED,
                 exists=True,
                 accessible=True,
@@ -597,7 +597,7 @@ class TestSnapshotDiff:
             AssetSnapshot(
                 asset_id="file1",
                 scan_id="scan2",
-                observed_at=datetime.utcnow(),
+                observed_at=datetime.now(UTC),
                 state=SnapshotState.DISCOVERED,
                 exists=True,
                 accessible=True,
@@ -619,7 +619,7 @@ class TestSnapshotDiff:
             AssetSnapshot(
                 asset_id=f"asset{i}",
                 scan_id="scan1",
-                observed_at=datetime.utcnow(),
+                observed_at=datetime.now(UTC),
                 state=SnapshotState.DISCOVERED,
                 exists=True,
                 accessible=True,
@@ -634,7 +634,7 @@ class TestSnapshotDiff:
             AssetSnapshot(
                 asset_id=f"asset{i}",
                 scan_id="scan2",
-                observed_at=datetime.utcnow(),
+                observed_at=datetime.now(UTC),
                 state=SnapshotState.DISCOVERED,
                 exists=True,
                 accessible=True,
@@ -663,7 +663,7 @@ class TestSnapshotDiff:
             AssetSnapshot(
                 asset_id="new1",
                 scan_id="scan2",
-                observed_at=datetime.utcnow(),
+                observed_at=datetime.now(UTC),
                 state=SnapshotState.DISCOVERED,
                 exists=True,
                 accessible=True,

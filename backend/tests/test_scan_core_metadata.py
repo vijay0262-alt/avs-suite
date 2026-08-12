@@ -20,7 +20,7 @@ import pytest
 import tempfile
 import shutil
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from avs_backend.scan_core.metadata import (
     MetadataDatabase,
@@ -60,7 +60,7 @@ def create_test_context(scan_id: str) -> ScanContext:
     """Helper to create test scan context."""
     return ScanContext(
         scan_id=scan_id,
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(UTC),
         scan_type=ScanType.FULL,
     )
 
@@ -70,7 +70,7 @@ def create_test_snapshot(asset_id: str, scan_id: str, **kwargs) -> AssetSnapshot
     defaults = {
         "asset_id": asset_id,
         "scan_id": scan_id,
-        "observed_at": datetime.utcnow(),
+        "observed_at": datetime.now(UTC),
         "state": SnapshotState.DISCOVERED,
         "exists": True,
         "accessible": True,
@@ -379,7 +379,7 @@ class TestContextRepository:
         """Test creating scan context."""
         context = ScanContext(
             scan_id=generate_scan_id(),
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(UTC),
             scan_type=ScanType.FULL,
         )
         
@@ -390,7 +390,7 @@ class TestContextRepository:
         scan_id = generate_scan_id()
         context = ScanContext(
             scan_id=scan_id,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(UTC),
             scan_type=ScanType.QUICK,
         )
         
@@ -407,7 +407,7 @@ class TestContextRepository:
         scan_id = generate_scan_id()
         context = ScanContext(
             scan_id=scan_id,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(UTC),
         )
         
         context_repo.create(context)
@@ -428,8 +428,8 @@ class TestContextRepository:
         # Create multiple contexts
         for i in range(5):
             context = ScanContext(
-                scan_id=generate_scan_id(),
-                started_at=datetime.utcnow() + timedelta(seconds=i),
+                scan_id=f"scan_{i}",
+                started_at=datetime.now(UTC) + timedelta(seconds=i),
             )
             context_repo.create(context)
         
@@ -509,7 +509,7 @@ class TestRetentionPolicy:
         # Create old scan
         old_context = ScanContext(
             scan_id="old_scan",
-            started_at=datetime.utcnow() - timedelta(days=100),
+            started_at=datetime.now(UTC) - timedelta(days=100),
         )
         context_repo.create(old_context)
         
@@ -517,7 +517,7 @@ class TestRetentionPolicy:
         for i in range(5):
             context = ScanContext(
                 scan_id=f"recent_{i}",
-                started_at=datetime.utcnow() - timedelta(days=i),
+                started_at=datetime.now(UTC) - timedelta(days=i),
             )
             context_repo.create(context)
         

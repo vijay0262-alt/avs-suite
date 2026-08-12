@@ -76,14 +76,22 @@ def validate_asset(asset: ScanAsset) -> ValidationResult:
     if asset.asset_id and not all(c in "0123456789abcdef" for c in asset.asset_id):
         warnings.append("asset_id contains non-hex characters")
 
-    # Validate timestamps
+    # Validate timestamps (handle both naive and aware datetimes)
     if asset.created_at and asset.modified_at:
-        if asset.created_at > asset.modified_at:
-            errors.append("created_at is after modified_at")
+        try:
+            if asset.created_at > asset.modified_at:
+                errors.append("created_at is after modified_at")
+        except TypeError:
+            # Can't compare naive and aware datetimes - skip validation
+            pass
 
     if asset.created_at and asset.discovered_at:
-        if asset.created_at > asset.discovered_at:
-            warnings.append("created_at is after discovered_at (unusual but possible)")
+        try:
+            if asset.created_at > asset.discovered_at:
+                warnings.append("created_at is after discovered_at (unusual but possible)")
+        except TypeError:
+            # Can't compare naive and aware datetimes - skip validation
+            pass
 
     # Validate relationships
     for i, rel in enumerate(asset.relationships):

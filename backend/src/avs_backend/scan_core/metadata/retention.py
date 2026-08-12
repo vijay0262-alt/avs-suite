@@ -8,10 +8,10 @@ STORAGE ONLY. NO DECISIONS.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Optional
 import logging
+from typing import Dict
+from datetime import datetime, timedelta, UTC
+from dataclasses import dataclass
 
 from .database import MetadataDatabase
 
@@ -83,7 +83,7 @@ class RetentionPolicy:
             
             # Delete old scan contexts (keeping minimum)
             if self.config.keep_scan_contexts_days > 0:
-                cutoff = datetime.utcnow() - timedelta(days=self.config.keep_scan_contexts_days)
+                cutoff = datetime.now(UTC) - timedelta(days=self.config.keep_scan_contexts_days)
                 
                 # Find scans to delete (excluding most recent N)
                 cursor.execute("""
@@ -110,7 +110,7 @@ class RetentionPolicy:
             
             # Delete old snapshots (keeping latest per asset)
             if self.config.keep_snapshots_days > 0:
-                cutoff = datetime.utcnow() - timedelta(days=self.config.keep_snapshots_days)
+                cutoff = datetime.now(UTC) - timedelta(days=self.config.keep_snapshots_days)
                 
                 if self.config.keep_latest_snapshot:
                     # Delete old snapshots but keep latest per asset
@@ -159,7 +159,7 @@ class RetentionPolicy:
             
             # Delete old diffs
             if self.config.keep_diffs_days > 0:
-                cutoff = datetime.utcnow() - timedelta(days=self.config.keep_diffs_days)
+                cutoff = datetime.now(UTC) - timedelta(days=self.config.keep_diffs_days)
                 
                 if not dry_run:
                     cursor.execute("""
@@ -176,7 +176,7 @@ class RetentionPolicy:
             
             # Delete orphaned assets (no snapshots)
             if self.config.keep_assets_days is not None:
-                cutoff = datetime.utcnow() - timedelta(days=self.config.keep_assets_days)
+                cutoff = datetime.now(UTC) - timedelta(days=self.config.keep_assets_days)
                 
                 if not dry_run:
                     cursor.execute("""

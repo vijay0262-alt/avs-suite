@@ -20,7 +20,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, UTC
 
 logger = logging.getLogger(__name__)
 
@@ -378,7 +378,7 @@ class MetadataDatabase:
             cursor.execute("""
                 INSERT OR IGNORE INTO schema_migrations (version, applied_at, description)
                 VALUES (?, ?, ?)
-            """, (self.SCHEMA_VERSION, datetime.utcnow().isoformat(), "Initial schema"))
+            """, (self.SCHEMA_VERSION, datetime.now(UTC).isoformat(), "Initial schema"))
             
             self._conn.commit()
             logger.info(f"Applied migrations up to version {self.SCHEMA_VERSION}")
