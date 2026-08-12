@@ -319,12 +319,18 @@ class TestSnapshotRepository:
         asset = create_test_asset("asset_3")
         asset_repo.upsert(asset)
         
-        # Create multiple snapshots
+        # Create multiple snapshots with distinct timestamps
         for i in range(3):
             context = create_test_context(f"scan_{i}")
             context_repo.create(context)
             
-            snapshot = create_test_snapshot("asset_3", f"scan_{i}", size=1024 * (i + 1))
+            # Create snapshot with explicit timestamp offset to ensure ordering
+            snapshot = create_test_snapshot(
+                "asset_3", 
+                f"scan_{i}", 
+                size=1024 * (i + 1),
+                observed_at=datetime.now(UTC) + timedelta(seconds=i)
+            )
             snapshot_repo.save(snapshot)
         
         # Get latest
