@@ -140,6 +140,7 @@ class MetadataDatabase:
         Returns:
             True if database is valid
         """
+        conn = None
         try:
             conn = sqlite3.connect(str(self.config.db_path))
             cursor = conn.cursor()
@@ -147,12 +148,20 @@ class MetadataDatabase:
             result = cursor.fetchone()
             cursor.close()
             conn.close()
+            conn = None
             
             return result[0] == "ok"
             
         except Exception as e:
             logger.error(f"Integrity check failed: {e}")
             return False
+        finally:
+            # Ensure connection is closed even on error
+            if conn is not None:
+                try:
+                    conn.close()
+                except:
+                    pass
     
     def _recover_from_corruption(self) -> bool:
         """

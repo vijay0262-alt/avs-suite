@@ -56,6 +56,30 @@ def create_test_asset(asset_id: str, display_name: str = "test.txt") -> ScanAsse
     )
 
 
+def create_test_context(scan_id: str) -> ScanContext:
+    """Helper to create test scan context."""
+    return ScanContext(
+        scan_id=scan_id,
+        started_at=datetime.utcnow(),
+        scan_type=ScanType.FULL,
+    )
+
+
+def create_test_snapshot(asset_id: str, scan_id: str, **kwargs) -> AssetSnapshot:
+    """Helper to create test snapshot with defaults."""
+    defaults = {
+        "asset_id": asset_id,
+        "scan_id": scan_id,
+        "observed_at": datetime.utcnow(),
+        "state": SnapshotState.DISCOVERED,
+        "exists": True,
+        "accessible": True,
+        "locked": False,
+    }
+    defaults.update(kwargs)
+    return AssetSnapshot(**defaults)
+
+
 @pytest.fixture
 def temp_db_path():
     """Create temporary database path."""
@@ -195,12 +219,7 @@ class TestAssetRepository:
     
     def test_upsert_updates_existing(self, asset_repo):
         """Test updating existing asset."""
-        asset = ScanAsset(
-            asset_id="test_asset_2",
-            asset_type=AssetType.FILE,
-            asset_category=AssetCategory.FILESYSTEM,
-            display_name="original.txt",
-        )
+        asset = create_test_asset("test_asset_2", "original.txt")
         
         asset_repo.upsert(asset)
         
@@ -214,12 +233,7 @@ class TestAssetRepository:
     
     def test_delete_asset(self, asset_repo):
         """Test deleting asset."""
-        asset = ScanAsset(
-            asset_id="test_asset_3",
-            asset_type=AssetType.FILE,
-            asset_category=AssetCategory.FILESYSTEM,
-            display_name="delete_me.txt",
-        )
+        asset = create_test_asset("test_asset_3", "delete_me.txt")
         
         asset_repo.upsert(asset)
         assert asset_repo.exists("test_asset_3") is True
@@ -232,12 +246,7 @@ class TestAssetRepository:
         """Test finding assets by type."""
         # Create multiple assets
         for i in range(5):
-            asset = ScanAsset(
-                asset_id=f"file_{i}",
-                asset_type=AssetType.FILE,
-                asset_category=AssetCategory.FILESYSTEM,
-                display_name=f"file_{i}.txt",
-            )
+            asset = create_test_asset(f"file_{i}", f"file_{i}.txt")
             asset_repo.upsert(asset)
         
         # Find by type
@@ -246,21 +255,11 @@ class TestAssetRepository:
     
     def test_find_by_tag(self, asset_repo):
         """Test finding assets by tag."""
-        asset1 = ScanAsset(
-            asset_id="tagged_1",
-            asset_type=AssetType.FILE,
-            asset_category=AssetCategory.FILESYSTEM,
-            display_name="tagged1.txt",
-        )
+        asset1 = create_test_asset("tagged_1", "tagged1.txt")
         asset1.add_tag("important")
         asset_repo.upsert(asset1)
         
-        asset2 = ScanAsset(
-            asset_id="tagged_2",
-            asset_type=AssetType.FILE,
-            asset_category=AssetCategory.FILESYSTEM,
-            display_name="tagged2.txt",
-        )
+        asset2 = create_test_asset("tagged_2", "tagged2.txt")
         asset2.add_tag("important")
         asset_repo.upsert(asset2)
         
@@ -270,15 +269,7 @@ class TestAssetRepository:
     
     def test_batch_upsert(self, asset_repo):
         """Test batch asset insertion."""
-        assets = [
-            ScanAsset(
-                asset_id=f"batch_{i}",
-                asset_type=AssetType.FILE,
-                asset_category=AssetCategory.FILESYSTEM,
-                display_name=f"batch_{i}.txt",
-            )
-            for i in range(100)
-        ]
+        assets = [create_test_asset(f"batch_{i}", f"batch_{i}.txt") for i in range(100)]
         
         count = asset_repo.upsert_many(assets)
         assert count == 100
@@ -289,34 +280,31 @@ class TestAssetRepository:
 
 
 class TestSnapshotRepository:
-    def test_save_snapshot(self, snapshot_repo):
+    def test_save_snapshot(self, snapshot_repo, asset_repo, context_repo):
         """Test saving snapshot."""
-        snapshot = AssetSnapshot(
-            asset_id="asset_1",
-            scan_id="scan_1",
-            observed_at=datetime.utcnow(),
-            state=SnapshotState.DISCOVERED,
-            exists=True,
-            accessible=True,
-            locked=False,
-            size=1024,
-        )
+        # Create parent asset and context first (foreign key constraints)
+        asset = create_test_asset("asset_1")
+        asset_repo.upsert(asset)
+        
+        context = create_test_context("scan_1")
+        context_repo.create(context)
+        
+        # Now create snapshot
+        snapshot = create_test_snapshot("asset_1", "scan_1", size=1024)
         
         assert snapshot_repo.save(snapshot) is True
     
-    def test_get_snapshot(self, snapshot_repo):
+    def test_get_snapshot(self, snapshot_repo, asset_repo, context_repo):
         """Test retrieving snapshot."""
-        snapshot = AssetSnapshot(
-            asset_id="asset_2",
-            scan_id="scan_2",
-            observed_at=datetime.utcnow(),
-            state=SnapshotState.DISCOVERED,
-            exists=True,
-            accessible=True,
-            locked=False,
-            size=2048,
-        )
+        # Create parent asset and context first
+        asset = create_test_asset("asset_2")
+        asset_repo.upsert(asset)
         
+        context = create_test_context("scan_2")
+        context_repo.create(context)
+        
+        # Create and save snapshot
+        snapshot = create_test_snapshot("asset_2", "scan_2", size=2048)
         snapshot_repo.save(snapshot)
         
         # Retrieve
@@ -325,66 +313,61 @@ class TestSnapshotRepository:
         assert retrieved.asset_id == "asset_2"
         assert retrieved.size == 2048
     
-    def test_get_latest_snapshot(self, snapshot_repo):
-        """Test getting latest snapshot for asset."""
-        # Create multiple snapshots for same asset
+    def test_get_latest_snapshot(self, snapshot_repo, asset_repo, context_repo):
+        """Test retrieving latest snapshot for an asset."""
+        # Create parent asset
+        asset = create_test_asset("asset_3")
+        asset_repo.upsert(asset)
+        
+        # Create multiple snapshots
         for i in range(3):
-            snapshot = AssetSnapshot(
-                asset_id="asset_3",
-                scan_id=f"scan_{i}",
-                observed_at=datetime.utcnow() + timedelta(seconds=i),
-                state=SnapshotState.DISCOVERED,
-                exists=True,
-                accessible=True,
-                locked=False,
-                size=1024 * (i + 1),
-            )
+            context = create_test_context(f"scan_{i}")
+            context_repo.create(context)
+            
+            snapshot = create_test_snapshot("asset_3", f"scan_{i}", size=1024 * (i + 1))
             snapshot_repo.save(snapshot)
         
         # Get latest
         latest = snapshot_repo.get_latest("asset_3")
         assert latest is not None
-        assert latest.size == 3072  # Last one
+        assert latest.scan_id == "scan_2"  # Last one
     
-    def test_get_snapshot_history(self, snapshot_repo):
-        """Test getting snapshot history."""
+    def test_get_snapshot_history(self, snapshot_repo, asset_repo, context_repo):
+        """Test retrieving snapshot history."""
+        # Create parent asset
+        asset = create_test_asset("asset_4")
+        asset_repo.upsert(asset)
+        
         # Create multiple snapshots
         for i in range(5):
-            snapshot = AssetSnapshot(
-                asset_id="asset_4",
-                scan_id=f"scan_{i}",
-                observed_at=datetime.utcnow() + timedelta(seconds=i),
-                state=SnapshotState.DISCOVERED,
-                exists=True,
-                accessible=True,
-                locked=False,
-            )
+            context = create_test_context(f"scan_{i}")
+            context_repo.create(context)
+            
+            snapshot = create_test_snapshot("asset_4", f"scan_{i}")
             snapshot_repo.save(snapshot)
         
         # Get history
         history = snapshot_repo.get_history("asset_4", limit=10)
         assert len(history) == 5
     
-    def test_batch_save_snapshots(self, snapshot_repo):
+    def test_batch_save_snapshots(self, snapshot_repo, asset_repo, context_repo):
         """Test batch snapshot saving."""
-        snapshots = [
-            AssetSnapshot(
-                asset_id=f"asset_{i}",
-                scan_id="scan_batch",
-                observed_at=datetime.utcnow(),
-                state=SnapshotState.DISCOVERED,
-                exists=True,
-                accessible=True,
-                locked=False,
-            )
-            for i in range(1000)
-        ]
+        # Create parent context
+        context = create_test_context("batch_scan")
+        context_repo.create(context)
+        
+        # Create parent assets
+        assets = [create_test_asset(f"asset_{i}") for i in range(1000)]
+        asset_repo.upsert_many(assets)
+        
+        # Create snapshots
+        snapshots = [create_test_snapshot(f"asset_{i}", "batch_scan") for i in range(1000)]
         
         count = snapshot_repo.save_many(snapshots)
         assert count == 1000
         
         # Verify count
-        total = snapshot_repo.count_for_scan("scan_batch")
+        total = snapshot_repo.count_for_scan("batch_scan")
         assert total == 1000
 
 
@@ -459,49 +442,44 @@ class TestContextRepository:
 
 
 class TestQueries:
-    def test_find_locked_assets(self, queries, snapshot_repo):
+    def test_find_locked_assets(self, queries, snapshot_repo, asset_repo, context_repo):
         """Test finding locked assets."""
+        # Create parent asset and context
+        asset = create_test_asset("locked_asset")
+        asset_repo.upsert(asset)
+        
+        context = create_test_context("scan_locked")
+        context_repo.create(context)
+        
         # Create locked snapshot
-        snapshot = AssetSnapshot(
-            asset_id="locked_asset",
-            scan_id="scan_locked",
-            observed_at=datetime.utcnow(),
-            state=SnapshotState.LOCKED,
-            exists=True,
-            accessible=True,
-            locked=True,
-        )
+        snapshot = create_test_snapshot("locked_asset", "scan_locked", 
+                                       state=SnapshotState.LOCKED, locked=True)
         snapshot_repo.save(snapshot)
         
         # Query
         results = queries.find_locked_assets(scan_id="scan_locked")
         assert "locked_asset" in results
     
-    def test_find_changed_assets(self, queries, snapshot_repo):
+    def test_find_changed_assets(self, queries, snapshot_repo, asset_repo, context_repo):
         """Test finding changed assets between scans."""
+        # Create parent asset
+        asset = create_test_asset("changing_asset")
+        asset_repo.upsert(asset)
+        
+        # Create contexts
+        context1 = create_test_context("scan_1")
+        context_repo.create(context1)
+        
+        context2 = create_test_context("scan_2")
+        context_repo.create(context2)
+        
         # Create snapshots with different fingerprints
-        snapshot1 = AssetSnapshot(
-            asset_id="changing_asset",
-            scan_id="scan_1",
-            observed_at=datetime.utcnow(),
-            state=SnapshotState.DISCOVERED,
-            exists=True,
-            accessible=True,
-            locked=False,
-            size=1024,
-        )
+        snapshot1 = create_test_snapshot("changing_asset", "scan_1", 
+                                        state=SnapshotState.DISCOVERED, size=1024)
         snapshot_repo.save(snapshot1)
         
-        snapshot2 = AssetSnapshot(
-            asset_id="changing_asset",
-            scan_id="scan_2",
-            observed_at=datetime.utcnow(),
-            state=SnapshotState.CHANGED,
-            exists=True,
-            accessible=True,
-            locked=False,
-            size=2048,  # Different size = different fingerprint
-        )
+        snapshot2 = create_test_snapshot("changing_asset", "scan_2",
+                                        state=SnapshotState.CHANGED, size=2048)
         snapshot_repo.save(snapshot2)
         
         # Query
@@ -564,15 +542,7 @@ class TestPerformance:
         """Test performance with large asset batch."""
         import time
         
-        assets = [
-            ScanAsset(
-                asset_id=f"perf_asset_{i}",
-                asset_type=AssetType.FILE,
-                asset_category=AssetCategory.FILESYSTEM,
-                display_name=f"file_{i}.txt",
-            )
-            for i in range(10000)
-        ]
+        assets = [create_test_asset(f"perf_asset_{i}", f"file_{i}.txt") for i in range(10000)]
         
         start = time.time()
         count = asset_repo.upsert_many(assets)
@@ -581,22 +551,20 @@ class TestPerformance:
         assert count == 10000
         assert elapsed < 30.0  # Should complete in < 30 seconds
     
-    def test_large_snapshot_batch(self, snapshot_repo):
+    def test_large_snapshot_batch(self, snapshot_repo, asset_repo, context_repo):
         """Test performance with large snapshot batch."""
         import time
         
-        snapshots = [
-            AssetSnapshot(
-                asset_id=f"perf_asset_{i}",
-                scan_id="perf_scan",
-                observed_at=datetime.utcnow(),
-                state=SnapshotState.DISCOVERED,
-                exists=True,
-                accessible=True,
-                locked=False,
-            )
-            for i in range(10000)
-        ]
+        # Create parent context
+        context = create_test_context("perf_scan")
+        context_repo.create(context)
+        
+        # Create parent assets
+        assets = [create_test_asset(f"perf_asset_{i}") for i in range(10000)]
+        asset_repo.upsert_many(assets)
+        
+        # Create snapshots
+        snapshots = [create_test_snapshot(f"perf_asset_{i}", "perf_scan") for i in range(10000)]
         
         start = time.time()
         count = snapshot_repo.save_many(snapshots)
