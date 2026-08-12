@@ -14,23 +14,6 @@ It must NOT actually perform the action.
 Architecture:
     Enumerator → ScanAsset → AssetSnapshot → Metadata Cache
         ↓
-    Rule Engine (SC-8A)
-        ↓
-    RuleResult
-        ↓
-    [Future: Action Engine → Verification]
-
-This module provides:
-- Rule identifiers and versioning
-- Rule categories, severity, and priority
-- Evidence collection and confidence scoring
-- Safety assessment and risk evaluation
-- Immutable rule results
-- Serialization support
-
-NO SYSTEM MODIFICATION.
-NO RULE EVALUATION (yet).
-NO ACTUAL DETECTION RULES (yet).
 """
 
 from .enums import (
@@ -43,12 +26,24 @@ from .enums import (
     SafetyBlocker,
     RuleStatus,
 )
-from .evidence import Evidence, EvidenceCollection
-from .confidence import Confidence, ConfidenceScore
-from .safety import SafetyAssessment
-from .result import RuleResult, RuleMatchStatus
-from .rule import Rule, RuleMetadata
+
 from .models import RuleIdentifier, RuleVersion
+
+from .evidence import Evidence, EvidenceCollection
+
+from .confidence import Confidence, ConfidenceScore
+
+from .safety import SafetyAssessment
+
+from .result import RuleResult, RuleMatchStatus
+
+from .rule import Rule, RuleMetadata
+
+from .registry import RuleRegistry, RuleRegistrationError
+
+from .applicability import ApplicabilityEngine, ApplicabilityResult, ApplicabilityStatus
+
+from .context import RuleEvaluationContext
 
 __all__ = [
     # Enums
@@ -60,6 +55,9 @@ __all__ = [
     "ConfidenceFactor",
     "SafetyBlocker",
     "RuleStatus",
+    # Models
+    "RuleIdentifier",
+    "RuleVersion",
     # Evidence
     "Evidence",
     "EvidenceCollection",
@@ -74,7 +72,13 @@ __all__ = [
     # Rule
     "Rule",
     "RuleMetadata",
-    # Models
-    "RuleIdentifier",
-    "RuleVersion",
+    # Registry (SC-8B)
+    "RuleRegistry",
+    "RuleRegistrationError",
+    # Applicability (SC-8B)
+    "ApplicabilityEngine",
+    "ApplicabilityResult",
+    "ApplicabilityStatus",
+    # Context (SC-8B)
+    "RuleEvaluationContext",
 ]
