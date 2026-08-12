@@ -45,6 +45,16 @@ from .applicability import ApplicabilityEngine, ApplicabilityResult, Applicabili
 
 from .context import RuleEvaluationContext
 
+from .evaluation import (
+    EvaluationStatus,
+    EvaluationError,
+    EvaluationResult,
+    EvaluationStatistics,
+    EvaluationBatch,
+)
+
+from .evaluator import RuleEvaluator, CancellationToken
+
 __all__ = [
     # Enums
     "RuleCategory",
@@ -81,4 +91,12 @@ __all__ = [
     "ApplicabilityStatus",
     # Context (SC-8B)
     "RuleEvaluationContext",
+    # Evaluation (SC-8C1)
+    "EvaluationStatus",
+    "EvaluationError",
+    "EvaluationResult",
+    "EvaluationStatistics",
+    "EvaluationBatch",
+    "RuleEvaluator",
+    "CancellationToken",
 ]
