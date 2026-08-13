@@ -25,10 +25,40 @@ class KnownLocations:
     This is evidence for rule evaluation.
     """
 
+    # Hardcoded Windows env-var defaults for non-Windows hosts (Linux CI).
+    # Used only when the corresponding env var is not set in os.environ.
+    _WINDOWS_ENV_DEFAULTS: dict[str, str] = {
+        "SystemRoot": r"C:\Windows",
+        "ProgramFiles": r"C:\Program Files",
+        "ProgramFiles(x86)": r"C:\Program Files (x86)",
+        "LOCALAPPDATA": r"C:\Users\User\AppData\Local",
+        "APPDATA": r"C:\Users\User\AppData\Roaming",
+        "TEMP": r"C:\Users\User\AppData\Local\Temp",
+        "TMP": r"C:\Users\User\AppData\Local\Temp",
+        "USERPROFILE": r"C:\Users\User",
+    }
+
     @staticmethod
     def expand(template: str) -> Path:
-        """Expand environment variables in path template."""
-        return Path(os.path.expandvars(template))
+        """
+        Expand environment variables in path template.
+
+        On Windows, real env vars are used. On non-Windows hosts
+        (e.g. Linux CI), hardcoded defaults are substituted so that
+        Windows-style path templates resolve correctly regardless
+        of the host OS.
+        """
+        result = template
+        for var, default in KnownLocations._WINDOWS_ENV_DEFAULTS.items():
+            placeholder = f"%{var}%"
+            if placeholder in result:
+                env_val = os.environ.get(var)
+                if env_val:
+                    result = result.replace(placeholder, env_val)
+                else:
+                    result = result.replace(placeholder, default)
+        result = os.path.expandvars(result)
+        return Path(result)
 
     @staticmethod
     def get_user_temp_roots() -> list[Path]:
@@ -349,9 +379,38 @@ class KnownLocations:
         return age >= threshold_days
 
     @staticmethod
+    def _normalize_windows_path(path: str) -> list[str]:
+        """
+        Normalize a Windows path into lowercase path components.
+
+        OS-independent — does not rely on pathlib or os.path.
+        Handles forward and backward slashes, drive letters, and
+        trailing separators.
+
+        Args:
+            path: A Windows-style path string.
+
+        Returns:
+            List of lowercase path components (no drive letter,
+            no separators, no empty elements).
+        """
+        normalized = path.replace("/", "\\")
+        if len(normalized) >= 2 and normalized[1] == ":" and normalized[0].isalpha():
+            normalized = normalized[2:]
+        normalized = normalized.strip("\\")
+        return [p.lower() for p in normalized.split("\\") if p]
+
+    @staticmethod
     def is_under_path(asset_path: str, root_path: Path) -> bool:
         """
         Check if asset path is under a root path.
+
+        Uses OS-independent Windows path normalization so that
+        Windows-style paths are compared correctly regardless of
+        the host OS (Windows or Linux CI).
+
+        Boundary-safe: ``C:\\WindowsBackup`` is NOT under ``C:\\Windows``
+        because the comparison is component-by-component, not substring.
 
         Args:
             asset_path: Asset canonical path
@@ -360,29 +419,13 @@ class KnownLocations:
         Returns:
             True if asset is under root
         """
-        try:
-            asset_p = Path(asset_path)
-            root_p = Path(root_path)
+        asset_parts = KnownLocations._normalize_windows_path(asset_path)
+        root_parts = KnownLocations._normalize_windows_path(str(root_path))
 
-            # Normalize paths for comparison (handle case sensitivity on Windows)
-            asset_parts = [p.lower() for p in asset_p.parts]
-            root_parts = [p.lower() for p in root_p.parts]
+        if len(asset_parts) < len(root_parts):
+            return False
 
-            # Check if asset path starts with root path
-            if len(asset_parts) < len(root_parts):
-                return False
-
-            return asset_parts[: len(root_parts)] == root_parts
-        except Exception:
-            # Fallback to string comparison
-            asset_lower = asset_path.lower().replace("/", "\\")
-            root_lower = str(root_path).lower().replace("/", "\\")
-
-            # Ensure root ends with separator for accurate matching
-            if not root_lower.endswith("\\"):
-                root_lower += "\\"
-
-            return asset_lower.startswith(root_lower) or asset_lower == root_lower.rstrip("\\")
+        return asset_parts[: len(root_parts)] == root_parts
 
     @staticmethod
     def is_thumbnail_cache_file(asset_path: str) -> bool:
@@ -425,6 +468,8 @@ class KnownLocations:
             List of protected directory paths
         """
         protected = [
+            # Windows system root itself
+            r"%SystemRoot%",
             # Windows system directories
             r"%SystemRoot%\System32",
             r"%SystemRoot%\SysWOW64",
@@ -433,9 +478,17 @@ class KnownLocations:
             r"%SystemRoot%\Config",
             r"%SystemRoot%\Boot",
             r"%SystemRoot%\Installer",
+            r"%SystemRoot%\Repair",
+            r"%SystemRoot%\Registration",
             # Program Files
             r"%ProgramFiles%",
             r"%ProgramFiles(x86)%",
+            # AVS Shield installation directories
+            r"%ProgramFiles%\AVS Shield",
+            r"%ProgramFiles%\AVS Shield Optimizer",
+            r"%ProgramFiles(x86)%\AVS Shield",
+            r"%ProgramFiles(x86)%\AVS Shield Optimizer",
+            r"%LOCALAPPDATA%\Programs\AVS Shield Optimizer",
             # User personal data
             r"%USERPROFILE%\Documents",
             r"%USERPROFILE%\Desktop",
@@ -474,6 +527,8 @@ class KnownLocations:
         """
         candidates = [
             r"%SystemRoot%\Installer\$PatchCache$",
+            r"%SystemRoot%\Temp",
+            r"%SystemRoot%\SoftwareDistribution\Download",
         ]
         roots: list[Path] = []
         for template in candidates:

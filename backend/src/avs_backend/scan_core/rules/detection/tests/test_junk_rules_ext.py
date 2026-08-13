@@ -1289,3 +1289,165 @@ class TestSafetyPolicy:
         from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
 
         assert SafetyPolicy.should_skip_missing(None) is False
+
+    # --- Regression tests for Windows protected-path detection ---
+
+    def test_system32_dll_blocked(self):
+        """C:\\Windows\\System32\\kernel32.dll must be BLOCKED."""
+        from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
+
+        asset = ExtTestFixtures.create_asset(
+            asset_id="sp-sys32",
+            canonical_path=r"C:\Windows\System32\kernel32.dll",
+        )
+        safety = SafetyPolicy.assess(asset=asset)
+        assert safety.level == SafetyLevel.BLOCKED
+
+    def test_syswow64_dll_blocked(self):
+        """C:\\Windows\\SysWOW64\\ntdll.dll must be BLOCKED."""
+        from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
+
+        asset = ExtTestFixtures.create_asset(
+            asset_id="sp-syswow",
+            canonical_path=r"C:\Windows\SysWOW64\ntdll.dll",
+        )
+        safety = SafetyPolicy.assess(asset=asset)
+        assert safety.level == SafetyLevel.BLOCKED
+
+    def test_winsxs_dll_blocked(self):
+        """C:\\Windows\\WinSxS\\... must be BLOCKED."""
+        from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
+
+        asset = ExtTestFixtures.create_asset(
+            asset_id="sp-winsxs",
+            canonical_path=r"C:\Windows\WinSxS\manifest\test.manifest",
+        )
+        safety = SafetyPolicy.assess(asset=asset)
+        assert safety.level == SafetyLevel.BLOCKED
+
+    def test_program_files_exe_blocked(self):
+        """C:\\Program Files\\... must be BLOCKED."""
+        from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
+
+        asset = ExtTestFixtures.create_asset(
+            asset_id="sp-pf",
+            canonical_path=r"C:\Program Files\MyApp\app.exe",
+        )
+        safety = SafetyPolicy.assess(asset=asset)
+        assert safety.level == SafetyLevel.BLOCKED
+
+    def test_program_files_x86_exe_blocked(self):
+        """C:\\Program Files (x86)\\... must be BLOCKED."""
+        from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
+
+        asset = ExtTestFixtures.create_asset(
+            asset_id="sp-pf86",
+            canonical_path=r"C:\Program Files (x86)\MyApp\app.exe",
+        )
+        safety = SafetyPolicy.assess(asset=asset)
+        assert safety.level == SafetyLevel.BLOCKED
+
+    def test_case_insensitive_windows_path_blocked(self):
+        """c:\\windows\\system32\\kernel32.dll (lowercase) must be BLOCKED."""
+        from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
+
+        asset = ExtTestFixtures.create_asset(
+            asset_id="sp-ci",
+            canonical_path=r"c:\windows\system32\kernel32.dll",
+        )
+        safety = SafetyPolicy.assess(asset=asset)
+        assert safety.level == SafetyLevel.BLOCKED
+
+    def test_forward_slash_windows_path_blocked(self):
+        """C:/Windows/System32/kernel32.dll (forward slashes) must be BLOCKED."""
+        from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
+
+        asset = ExtTestFixtures.create_asset(
+            asset_id="sp-fs",
+            canonical_path=r"C:/Windows/System32/kernel32.dll",
+        )
+        safety = SafetyPolicy.assess(asset=asset)
+        assert safety.level == SafetyLevel.BLOCKED
+
+    def test_windows_backup_not_blocked(self):
+        """C:\\WindowsBackup\\file.txt must NOT be BLOCKED (boundary check)."""
+        from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
+
+        asset = ExtTestFixtures.create_asset(
+            asset_id="sp-wb",
+            canonical_path=r"C:\WindowsBackup\file.txt",
+        )
+        safety = SafetyPolicy.assess(asset=asset)
+        assert safety.level != SafetyLevel.BLOCKED
+
+    def test_similar_prefix_path_not_blocked(self):
+        """C:\\Program FilesBackup\\... must NOT be BLOCKED (boundary check)."""
+        from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
+
+        asset = ExtTestFixtures.create_asset(
+            asset_id="sp-pfb",
+            canonical_path=r"C:\Program FilesBackup\app.exe",
+        )
+        safety = SafetyPolicy.assess(asset=asset)
+        assert safety.level != SafetyLevel.BLOCKED
+
+    def test_patchcache_exception_preserved(self):
+        """$PatchCache$ under Installer must NOT be BLOCKED (exception)."""
+        from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
+
+        asset = ExtTestFixtures.create_asset(
+            asset_id="sp-pc",
+            canonical_path=r"C:\Windows\Installer\$PatchCache$\msi.dll",
+        )
+        safety = SafetyPolicy.assess(asset=asset)
+        assert safety.level != SafetyLevel.BLOCKED
+
+    def test_avs_shield_protected_location_blocked(self):
+        """AVS Shield install dir must be BLOCKED."""
+        from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
+
+        asset = ExtTestFixtures.create_asset(
+            asset_id="sp-avs",
+            canonical_path=r"C:\Program Files\AVS Shield\optimizer.exe",
+        )
+        safety = SafetyPolicy.assess(asset=asset)
+        assert safety.level == SafetyLevel.BLOCKED
+
+    def test_windows_root_itself_blocked(self):
+        """C:\\Windows itself (no subdirectory) must be BLOCKED."""
+        from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
+
+        asset = ExtTestFixtures.create_asset(
+            asset_id="sp-win",
+            canonical_path=r"C:\Windows",
+        )
+        safety = SafetyPolicy.assess(asset=asset)
+        assert safety.level == SafetyLevel.BLOCKED
+
+    def test_trailing_separator_handled(self):
+        """Paths with trailing separators must be handled correctly."""
+        from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
+
+        asset = ExtTestFixtures.create_asset(
+            asset_id="sp-ts",
+            canonical_path=r"C:\Windows\System32" + "\\",
+        )
+        safety = SafetyPolicy.assess(asset=asset)
+        assert safety.level == SafetyLevel.BLOCKED
+
+    def test_boundary_safe_normalization(self):
+        """Verify _normalize_windows_path strips drive and separators."""
+        parts = KnownLocations._normalize_windows_path(
+            r"C:\Windows\System32\kernel32.dll"
+        )
+        assert parts == ["windows", "system32", "kernel32.dll"]
+
+        parts_fs = KnownLocations._normalize_windows_path(
+            r"C:/Windows/Temp/test.tmp"
+        )
+        assert parts_fs == ["windows", "temp", "test.tmp"]
+
+        parts_lower = KnownLocations._normalize_windows_path(
+            r"c:\windows\system32"
+        )
+        assert parts_lower == ["windows", "system32"]

@@ -13,7 +13,8 @@ from avs_backend.scan_core.assets import AssetType
 
 class TestRule(Rule):
     """Test rule implementation."""
-    
+    __test__ = False
+
     def evaluate(self, asset, snapshot=None, context=None):
         raise NotImplementedError("SC-8B: evaluation not implemented")
 
