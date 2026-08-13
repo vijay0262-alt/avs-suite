@@ -1,0 +1,363 @@
+"""
+SC-8C4 Part 1 — Default execution engine.
+
+The DefaultExecutor consumes an ActionPlan, verifies it through a SafetyGate,
+evaluates typed preconditions, and returns structured ExecutionResults.
+
+Dry-run is the default mode. No destructive operations are performed.
+"""
+
+from __future__ import annotations
+
+import uuid
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any
+
+from avs_backend.scan_core.rules.safety_gate import (
+    SafetyGate,
+    SafetyGateResult,
+    create_safety_gate,
+)
+
+from .context import default_context_for_action, normalize_context
+from .ledger import ExecutionLedger
+from .models import (
+    ExecutionCancelledError,
+    ExecutionError,
+    ExecutionRequest,
+    ExecutionResult,
+    ExecutionStatus,
+    ExecutionSummary,
+)
+from .target_executors import get_target_executor
+
+
+@dataclass(frozen=True)
+class DefaultExecutor:
+    """
+    Default remediation execution engine.
+
+    Guarantees:
+    - Dry-run by default
+    - SafetyGate cannot be bypassed
+    - All typed preconditions are evaluated
+    - Deterministic execution order
+    - Cooperative cancellation
+    - Failure isolation
+    - Idempotency via ExecutionLedger
+    """
+
+    safety_gate: SafetyGate = field(default_factory=create_safety_gate)
+    ledger: ExecutionLedger = field(default_factory=ExecutionLedger)
+
+    def execute(self, request: ExecutionRequest) -> ExecutionSummary:
+        """
+        Execute the requested ActionPlan and return an immutable summary.
+
+        Args:
+            request: ExecutionRequest with plan and optional context.
+
+        Returns:
+            ExecutionSummary with one ExecutionResult per action.
+        """
+        execution_id = str(uuid.uuid4())
+        started_at = datetime.now(UTC)
+        results: list[ExecutionResult] = []
+
+        if request.plan.is_stale():
+            return ExecutionSummary(
+                execution_id=execution_id,
+                request_id=request.request_id,
+                status=ExecutionStatus.REJECTED,
+                total=0,
+                completed=0,
+                failed=0,
+                rejected=1,
+                skipped=0,
+                requires_review=0,
+                cancelled=0,
+                dry_run=0,
+                results=(),
+                started_at=started_at,
+                completed_at=datetime.now(UTC),
+                ledger=self.ledger,
+                reason="Action plan is stale and cannot be executed",
+            )
+
+        # Deterministic order: priority desc, then action_id asc
+        sorted_actions = sorted(
+            request.plan.actions,
+            key=lambda a: (-a.priority_score, a.action_id),
+        )
+
+        for action in sorted_actions:
+            if self._is_cancelled(request):
+                result = self._make_cancelled_result(execution_id, action, started_at)
+                results.append(result)
+                self.ledger.record(result)
+                continue
+
+            try:
+                result = self._execute_action(execution_id, action, request)
+            except ExecutionCancelledError:
+                result = self._make_cancelled_result(execution_id, action, started_at)
+            except Exception as exc:
+                result = ExecutionResult(
+                    execution_id=execution_id,
+                    action_id=action.action_id,
+                    finding_id=action.finding_id,
+                    asset_id=action.asset_id,
+                    action_type=action.action_type.value,
+                    target=action.target.to_dict(),
+                    status=ExecutionStatus.FAILED,
+                    reason=f"Unexpected executor failure: {exc}",
+                    timestamp=datetime.now(UTC),
+                    error=ExecutionError(
+                        code="EXECUTOR_EXCEPTION",
+                        message=str(exc),
+                        details={"exception_type": type(exc).__name__},
+                    ),
+                    verification={},
+                    dry_run_info=None,
+                )
+
+            results.append(result)
+            self.ledger.record(result)
+
+        completed_at = datetime.now(UTC)
+        summary = self._build_summary(
+            execution_id,
+            request,
+            tuple(results),
+            self.ledger,
+            started_at,
+            completed_at,
+        )
+        return summary
+
+    def _execute_action(
+        self,
+        execution_id: str,
+        action: Any,
+        request: ExecutionRequest,
+    ) -> ExecutionResult:
+        """Execute a single action through the full safety pipeline."""
+        # 1. Idempotency check
+        if self.ledger.has(action.action_id):
+            return ExecutionResult(
+                execution_id=execution_id,
+                action_id=action.action_id,
+                finding_id=action.finding_id,
+                asset_id=action.asset_id,
+                action_type=action.action_type.value,
+                target=action.target.to_dict(),
+                status=ExecutionStatus.SKIPPED,
+                reason="Action already recorded in execution ledger",
+                timestamp=datetime.now(UTC),
+                error=None,
+                verification={},
+                dry_run_info=None,
+            )
+
+        # Build execution context
+        context = self._resolve_context(action, request)
+
+        # 2. Evaluate typed preconditions for verification information
+        preconditions = getattr(action, "preconditions", None)
+        verification: dict[str, Any] = {}
+        if preconditions is not None and hasattr(preconditions, "evaluate"):
+            passed, failed = preconditions.evaluate(context)
+            all_contracts = preconditions.to_contract_strings()
+            verification = {
+                "all_preconditions": list(all_contracts),
+                "failed_preconditions": failed,
+                "precondition_passed": passed,
+            }
+        else:
+            verification = {"precondition_passed": True}
+
+        # 3. SafetyGate is the authoritative approval step; cannot be bypassed
+        plan_metadata: dict[str, Any] = {
+            "generated_at": request.plan.generated_at,
+            "request_id": request.request_id,
+        }
+        safety_result = self.safety_gate.evaluate(action, context, plan_metadata)
+
+        if safety_result == SafetyGateResult.REJECTED:
+            return ExecutionResult(
+                execution_id=execution_id,
+                action_id=action.action_id,
+                finding_id=action.finding_id,
+                asset_id=action.asset_id,
+                action_type=action.action_type.value,
+                target=action.target.to_dict(),
+                status=ExecutionStatus.REJECTED,
+                reason="Rejected by SafetyGate",
+                timestamp=datetime.now(UTC),
+                error=None,
+                verification=verification,
+                dry_run_info=None,
+            )
+
+        if safety_result == SafetyGateResult.REQUIRES_REVIEW:
+            return ExecutionResult(
+                execution_id=execution_id,
+                action_id=action.action_id,
+                finding_id=action.finding_id,
+                asset_id=action.asset_id,
+                action_type=action.action_type.value,
+                target=action.target.to_dict(),
+                status=ExecutionStatus.REQUIRES_REVIEW,
+                reason="Requires human review before execution",
+                timestamp=datetime.now(UTC),
+                error=None,
+                verification=verification,
+                dry_run_info=None,
+            )
+
+        # 4. Dry-run or live execution through stub target executor
+        target_executor = get_target_executor(action.action_type.value)
+        if target_executor is None:
+            return ExecutionResult(
+                execution_id=execution_id,
+                action_id=action.action_id,
+                finding_id=action.finding_id,
+                asset_id=action.asset_id,
+                action_type=action.action_type.value,
+                target=action.target.to_dict(),
+                status=ExecutionStatus.FAILED,
+                reason=f"No target executor for {action.action_type.value}",
+                timestamp=datetime.now(UTC),
+                error=ExecutionError(
+                    code="NO_TARGET_EXECUTOR",
+                    message=f"No executor registered for {action.action_type.value}",
+                    details={"action_type": action.action_type.value},
+                ),
+                verification=verification,
+                dry_run_info=None,
+            )
+
+        target_result = target_executor.execute(action, context)
+
+        # In Part 1 live mode is not destructive; APPROVED marks it cleared for future work.
+        if request.mode == "live":
+            final_status = ExecutionStatus.APPROVED
+            final_reason = (
+                "SafetyGate approved; live execution is staged"
+                " but not performed in Part 1"
+            )
+        else:
+            final_status = target_result.status
+            final_reason = target_result.reason
+
+        return ExecutionResult(
+            execution_id=execution_id,
+            action_id=action.action_id,
+            finding_id=action.finding_id,
+            asset_id=action.asset_id,
+            action_type=action.action_type.value,
+            target=action.target.to_dict(),
+            status=final_status,
+            reason=final_reason,
+            timestamp=datetime.now(UTC),
+            error=target_result.error,
+            verification=verification,
+            dry_run_info=target_result.dry_run_info,
+        )
+
+    def _resolve_context(
+        self, action: Any, request: ExecutionRequest
+    ) -> dict[str, Any]:
+        """Resolve execution context for an action."""
+        if action.action_id in request.execution_context:
+            return normalize_context(request.execution_context[action.action_id])
+
+        if request.context_provider is not None:
+            provided = request.context_provider(action)
+            if provided is not None:
+                return normalize_context(provided)
+
+        return default_context_for_action(action)
+
+    def _is_cancelled(self, request: ExecutionRequest) -> bool:
+        """Return True if the request has been cancelled."""
+        token = request.cancellation_token
+        if token is not None:
+            return token.is_cancelled()
+        return False
+
+    def _make_cancelled_result(
+        self,
+        execution_id: str,
+        action: Any,
+        started_at: datetime,
+    ) -> ExecutionResult:
+        """Create a CANCELLED result for an action."""
+        return ExecutionResult(
+            execution_id=execution_id,
+            action_id=action.action_id,
+            finding_id=action.finding_id,
+            asset_id=action.asset_id,
+            action_type=action.action_type.value,
+            target=action.target.to_dict(),
+            status=ExecutionStatus.CANCELLED,
+            reason="Execution cancelled before this action",
+            timestamp=datetime.now(UTC),
+            error=None,
+            verification={},
+            dry_run_info=None,
+        )
+
+    def _build_summary(
+        self,
+        execution_id: str,
+        request: ExecutionRequest,
+        results: tuple[ExecutionResult, ...],
+        ledger: ExecutionLedger,
+        started_at: datetime,
+        completed_at: datetime,
+    ) -> ExecutionSummary:
+        """Build an immutable ExecutionSummary from results."""
+        total = len(results)
+        completed = sum(1 for r in results if r.status == ExecutionStatus.COMPLETED)
+        failed = sum(1 for r in results if r.status == ExecutionStatus.FAILED)
+        rejected = sum(1 for r in results if r.status == ExecutionStatus.REJECTED)
+        skipped = sum(1 for r in results if r.status == ExecutionStatus.SKIPPED)
+        requires_review = sum(
+            1 for r in results if r.status == ExecutionStatus.REQUIRES_REVIEW
+        )
+        cancelled = sum(1 for r in results if r.status == ExecutionStatus.CANCELLED)
+        dry_run = sum(1 for r in results if r.status == ExecutionStatus.DRY_RUN)
+
+        if cancelled:
+            batch_status = ExecutionStatus.CANCELLED
+        elif failed:
+            batch_status = ExecutionStatus.FAILED
+        elif rejected == total:
+            batch_status = ExecutionStatus.REJECTED
+        elif requires_review:
+            batch_status = ExecutionStatus.REQUIRES_REVIEW
+        elif dry_run:
+            batch_status = ExecutionStatus.DRY_RUN
+        else:
+            batch_status = ExecutionStatus.APPROVED
+
+        return ExecutionSummary(
+            execution_id=execution_id,
+            request_id=request.request_id,
+            status=batch_status,
+            total=total,
+            completed=completed,
+            failed=failed,
+            rejected=rejected,
+            skipped=skipped,
+            requires_review=requires_review,
+            cancelled=cancelled,
+            dry_run=dry_run,
+            results=results,
+            started_at=started_at,
+            completed_at=completed_at,
+            ledger=ledger,
+            reason=f"Batch executed in {request.mode} mode",
+        )
