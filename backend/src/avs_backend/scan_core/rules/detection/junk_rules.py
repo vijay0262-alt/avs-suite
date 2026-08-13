@@ -8,6 +8,7 @@ DETECTION ONLY - NO ACTION EXECUTION.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
@@ -16,14 +17,13 @@ if TYPE_CHECKING:
 
 from ...assets import AssetType
 from ..confidence import Confidence, ConfidenceScore
-from ..enums import (ActionType, ConfidenceFactor, EvidenceType, RuleCategory,
-                     Severity)
+from ..enums import ActionType, ConfidenceFactor, EvidenceType, RuleCategory, Severity
 from ..evidence import Evidence, EvidenceCollection
 from ..models import RuleIdentifier, RuleVersion
 from ..result import RuleResult
 from ..rule import Rule, RuleMetadata
-from ..safety import SafetyAssessment, SafetyBlocker
 from .locations import KnownLocations
+from .safety_policy import SafetyPolicy
 
 
 class UserTempRule(Rule):
@@ -87,6 +87,15 @@ class UserTempRule(Rule):
 
         assert matched_root is not None
 
+        # Skip missing assets — not actionable
+        if SafetyPolicy.should_skip_missing(snapshot):
+            return RuleResult.create_no_match(
+                rule_id=self.rule_id,
+                rule_version=str(self.version),
+                asset_id=asset.asset_id,
+                reason="Asset no longer exists on filesystem",
+            )
+
         # Build evidence
         evidence_items: list[Evidence] = []
 
@@ -98,6 +107,31 @@ class UserTempRule(Rule):
                 value=matched_root,
             )
         )
+
+        # Extension supporting evidence
+        if KnownLocations.has_temporary_extension(asset.canonical_path):
+            evidence_items.append(
+                Evidence(
+                    evidence_type=EvidenceType.EXTENSION_MATCH,
+                    source=self.rule_id,
+                    description="Asset has a temporary file extension",
+                    value=Path(asset.canonical_path).suffix.lower(),
+                )
+            )
+
+        # Age supporting evidence
+        if KnownLocations.is_asset_old(asset.modified_at):
+            evidence_items.append(
+                Evidence(
+                    evidence_type=EvidenceType.AGE_MATCH,
+                    source=self.rule_id,
+                    description=(
+                        f"Asset is older than "
+                        f"{KnownLocations.get_default_age_threshold_days()} days"
+                    ),
+                    value="old",
+                )
+            )
 
         # Check snapshot state
         if snapshot:
@@ -180,31 +214,12 @@ class UserTempRule(Rule):
             factors=tuple(confidence_factors),
         )
 
-        # Determine safety
-        safety: SafetyAssessment
-
-        # Check for protected locations (should not happen, but safety check)
-        if KnownLocations.is_in_protected_location(asset.canonical_path):
-            safety = SafetyAssessment.create_blocked(
-                reason="Asset is in a protected system location",
-                blockers=[SafetyBlocker.SYSTEM_CRITICAL],
-            )
-        elif snapshot and snapshot.locked:
-            safety = SafetyAssessment.create_review_required(
-                reason="Asset is locked by another process - manual review recommended",
-            )
-        elif snapshot and not snapshot.accessible:
-            safety = SafetyAssessment.create_high_risk(
-                reason="Asset is not accessible - cannot verify safety",
-            )
-        elif snapshot and not snapshot.exists:
-            safety = SafetyAssessment.create_review_required(
-                reason="Asset no longer exists",
-            )
-        else:
-            safety = SafetyAssessment.create_safe(
-                reason="Asset is in user temporary directory and is accessible",
-            )
+        # Determine safety via centralized policy
+        safety = SafetyPolicy.assess(
+            asset=asset,
+            snapshot=snapshot,
+            safe_reason="Asset is in user temporary directory and is accessible",
+        )
 
         # Get file size if available
         estimated_size: Optional[int] = None
@@ -275,6 +290,15 @@ class WindowsTempRule(Rule):
                 reason="Asset is not located in Windows temporary directory",
             )
 
+        # Skip missing assets — not actionable
+        if SafetyPolicy.should_skip_missing(snapshot):
+            return RuleResult.create_no_match(
+                rule_id=self.rule_id,
+                rule_version=str(self.version),
+                asset_id=asset.asset_id,
+                reason="Asset no longer exists on filesystem",
+            )
+
         # Build evidence
         evidence_items: list[Evidence] = []
 
@@ -288,6 +312,31 @@ class WindowsTempRule(Rule):
                 value=str(windows_temp_root),
             )
         )
+
+        # Extension supporting evidence
+        if KnownLocations.has_temporary_extension(asset.canonical_path):
+            evidence_items.append(
+                Evidence(
+                    evidence_type=EvidenceType.EXTENSION_MATCH,
+                    source=self.rule_id,
+                    description="Asset has a temporary file extension",
+                    value=Path(asset.canonical_path).suffix.lower(),
+                )
+            )
+
+        # Age supporting evidence
+        if KnownLocations.is_asset_old(asset.modified_at):
+            evidence_items.append(
+                Evidence(
+                    evidence_type=EvidenceType.AGE_MATCH,
+                    source=self.rule_id,
+                    description=(
+                        f"Asset is older than "
+                        f"{KnownLocations.get_default_age_threshold_days()} days"
+                    ),
+                    value="old",
+                )
+            )
 
         # Check snapshot state
         if snapshot:
@@ -355,25 +404,12 @@ class WindowsTempRule(Rule):
             factors=tuple(confidence_factors),
         )
 
-        # Determine safety
-        safety: SafetyAssessment
-
-        if snapshot and snapshot.locked:
-            safety = SafetyAssessment.create_review_required(
-                reason="Asset is locked - may be in use by system process",
-            )
-        elif snapshot and not snapshot.accessible:
-            safety = SafetyAssessment.create_high_risk(
-                reason="Asset is not accessible",
-            )
-        elif snapshot and not snapshot.exists:
-            safety = SafetyAssessment.create_review_required(
-                reason="Asset no longer exists",
-            )
-        else:
-            safety = SafetyAssessment.create_safe(
-                reason="Asset is in Windows temporary directory and is accessible",
-            )
+        # Determine safety via centralized policy
+        safety = SafetyPolicy.assess(
+            asset=asset,
+            snapshot=snapshot,
+            safe_reason="Asset is in Windows temporary directory and is accessible",
+        )
 
         estimated_size: Optional[int] = None
         size_value = asset.custom_metadata.get("size")
@@ -455,6 +491,15 @@ class ShaderCacheRule(Rule):
 
         assert matched_root is not None
 
+        # Skip missing assets — not actionable
+        if SafetyPolicy.should_skip_missing(snapshot):
+            return RuleResult.create_no_match(
+                rule_id=self.rule_id,
+                rule_version=str(self.version),
+                asset_id=asset.asset_id,
+                reason="Asset no longer exists on filesystem",
+            )
+
         # Build evidence
         evidence_items: list[Evidence] = []
 
@@ -523,21 +568,12 @@ class ShaderCacheRule(Rule):
             factors=tuple(confidence_factors),
         )
 
-        # Determine safety
-        safety: SafetyAssessment
-
-        if snapshot and snapshot.locked:
-            safety = SafetyAssessment.create_review_required(
-                reason="Shader cache file is locked - may be in use by GPU driver",
-            )
-        elif snapshot and not snapshot.accessible:
-            safety = SafetyAssessment.create_review_required(
-                reason="Shader cache file is not accessible",
-            )
-        else:
-            safety = SafetyAssessment.create_safe(
-                reason="Shader cache is safe to delete - regenerated by GPU driver",
-            )
+        # Determine safety via centralized policy
+        safety = SafetyPolicy.assess(
+            asset=asset,
+            snapshot=snapshot,
+            safe_reason="Shader cache is safe to delete - regenerated by GPU driver",
+        )
 
         estimated_size: Optional[int] = None
         size_value = asset.custom_metadata.get("size")
@@ -604,6 +640,15 @@ class ThumbnailCacheRule(Rule):
                 rule_version=str(self.version),
                 asset_id=asset.asset_id,
                 reason="Asset is not a Windows Explorer thumbnail cache file",
+            )
+
+        # Skip missing assets — not actionable
+        if SafetyPolicy.should_skip_missing(snapshot):
+            return RuleResult.create_no_match(
+                rule_id=self.rule_id,
+                rule_version=str(self.version),
+                asset_id=asset.asset_id,
+                reason="Asset no longer exists on filesystem",
             )
 
         # Build evidence
@@ -685,23 +730,12 @@ class ThumbnailCacheRule(Rule):
             factors=tuple(confidence_factors),
         )
 
-        # Determine safety
-        safety: SafetyAssessment
-
-        if snapshot and snapshot.locked:
-            safety = SafetyAssessment.create_review_required(
-                reason=(
-                    "Thumbnail cache is locked by Windows Explorer - may require Explorer restart"
-                ),
-            )
-        elif snapshot and not snapshot.accessible:
-            safety = SafetyAssessment.create_review_required(
-                reason="Thumbnail cache is not accessible",
-            )
-        else:
-            safety = SafetyAssessment.create_safe(
-                reason="Thumbnail cache is safe to delete - rebuilt by Windows Explorer",
-            )
+        # Determine safety via centralized policy
+        safety = SafetyPolicy.assess(
+            asset=asset,
+            snapshot=snapshot,
+            safe_reason="Thumbnail cache is safe to delete - rebuilt by Windows Explorer",
+        )
 
         estimated_size: Optional[int] = None
         size_value = asset.custom_metadata.get("size")
@@ -729,7 +763,23 @@ def register_junk_rules(registry) -> None:
     Args:
         registry: RuleRegistry instance
     """
+    # Original rules
     registry.register(UserTempRule())
     registry.register(WindowsTempRule())
     registry.register(ShaderCacheRule())
     registry.register(ThumbnailCacheRule())
+
+    # Extended rules (SC-8C2 Part 1)
+    from .junk_rules_ext import (
+        ApplicationCacheRule,
+        ApplicationTempRule,
+        BrowserCacheRule,
+        InstallerCacheRule,
+        WindowsUpdateCacheRule,
+    )
+
+    registry.register(ApplicationTempRule())
+    registry.register(BrowserCacheRule())
+    registry.register(InstallerCacheRule())
+    registry.register(WindowsUpdateCacheRule())
+    registry.register(ApplicationCacheRule())

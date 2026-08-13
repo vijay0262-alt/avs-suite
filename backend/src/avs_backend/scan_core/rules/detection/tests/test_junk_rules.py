@@ -11,11 +11,14 @@ from pathlib import Path
 from typing import Optional
 
 import pytest
-from avs_backend.scan_core.assets import (AssetCategory, AssetSource,
-                                          AssetType, ScanAsset)
+from avs_backend.scan_core.assets import AssetCategory, AssetSource, AssetType, ScanAsset
 from avs_backend.scan_core.context import AssetSnapshot, SnapshotState
 from avs_backend.scan_core.rules.detection.junk_rules import (
-    ShaderCacheRule, ThumbnailCacheRule, UserTempRule, WindowsTempRule)
+    ShaderCacheRule,
+    ThumbnailCacheRule,
+    UserTempRule,
+    WindowsTempRule,
+)
 from avs_backend.scan_core.rules.enums import SafetyLevel
 from avs_backend.scan_core.rules.result import RuleMatchStatus
 
@@ -33,8 +36,7 @@ class TestFixtures:
     def get_user_temp_root(cls) -> Path:
         """Get actual user temp root for testing."""
         if cls._user_temp_root is None:
-            from avs_backend.scan_core.rules.detection.locations import \
-                KnownLocations
+            from avs_backend.scan_core.rules.detection.locations import KnownLocations
 
             roots = KnownLocations.get_user_temp_roots()
             assert len(roots) > 0, "No user temp roots found"
@@ -45,8 +47,7 @@ class TestFixtures:
     def get_windows_temp_root(cls) -> Path:
         """Get actual Windows temp root for testing."""
         if cls._windows_temp_root is None:
-            from avs_backend.scan_core.rules.detection.locations import \
-                KnownLocations
+            from avs_backend.scan_core.rules.detection.locations import KnownLocations
 
             cls._windows_temp_root = KnownLocations.get_windows_temp_root()
         return cls._windows_temp_root
@@ -55,8 +56,7 @@ class TestFixtures:
     def get_shader_cache_roots(cls) -> list[Path]:
         """Get actual shader cache roots for testing."""
         if cls._shader_cache_roots is None:
-            from avs_backend.scan_core.rules.detection.locations import \
-                KnownLocations
+            from avs_backend.scan_core.rules.detection.locations import KnownLocations
 
             cls._shader_cache_roots = KnownLocations.get_shader_cache_roots()
         return cls._shader_cache_roots
@@ -65,8 +65,7 @@ class TestFixtures:
     def get_thumbnail_cache_root(cls) -> Path:
         """Get actual thumbnail cache root for testing."""
         if cls._thumbnail_cache_root is None:
-            from avs_backend.scan_core.rules.detection.locations import \
-                KnownLocations
+            from avs_backend.scan_core.rules.detection.locations import KnownLocations
 
             cls._thumbnail_cache_root = KnownLocations.get_thumbnail_cache_root()
         return cls._thumbnail_cache_root
@@ -190,8 +189,8 @@ class TestUserTempRule:
         assert result.safety.level == SafetyLevel.REVIEW_REQUIRED
         assert "locked" in result.safety.reason.lower()
 
-    def test_inaccessible_file_high_risk(self):
-        """Test that inaccessible files get HIGH_RISK safety."""
+    def test_inaccessible_file_review_required(self):
+        """Test that inaccessible files get REVIEW_REQUIRED safety."""
         rule = UserTempRule()
 
         temp_root = TestFixtures.get_user_temp_root()
@@ -209,11 +208,11 @@ class TestUserTempRule:
         result = rule.evaluate(asset, snapshot)
 
         assert result.matched is True
-        assert result.safety.level == SafetyLevel.HIGH_RISK
+        assert result.safety.level == SafetyLevel.REVIEW_REQUIRED
         assert "not accessible" in result.safety.reason.lower()
 
-    def test_missing_file_review_required(self):
-        """Test that missing files get REVIEW_REQUIRED safety."""
+    def test_missing_file_no_match(self):
+        """Test that missing files return NO_MATCH (not actionable)."""
         rule = UserTempRule()
 
         temp_root = TestFixtures.get_user_temp_root()
@@ -230,9 +229,9 @@ class TestUserTempRule:
 
         result = rule.evaluate(asset, snapshot)
 
-        assert result.matched is True
-        assert result.safety.level == SafetyLevel.REVIEW_REQUIRED
-        assert "no longer exists" in result.safety.reason.lower()
+        assert result.matched is False
+        assert result.status == RuleMatchStatus.NO_MATCH
+        assert "no longer exists" in result.reason.lower()
 
     def test_wrong_asset_type_no_match(self):
         """Test rule doesn't match non-FILE assets."""
@@ -596,16 +595,15 @@ class TestRuleRegistration:
 
     def test_register_all_junk_rules(self):
         """Test registering all junk rules."""
-        from avs_backend.scan_core.rules.detection.junk_rules import \
-            register_junk_rules
+        from avs_backend.scan_core.rules.detection.junk_rules import register_junk_rules
         from avs_backend.scan_core.rules.registry import RuleRegistry
 
         registry = RuleRegistry()
         register_junk_rules(registry)
 
-        # Should have 4 rules
+        # Should have 9 rules (4 original + 5 extended)
         all_rules = registry.list_all()
-        assert len(all_rules) == 4
+        assert len(all_rules) == 9
 
         # Check rule IDs
         rule_ids = {r.rule_id for r in all_rules}
@@ -613,18 +611,23 @@ class TestRuleRegistration:
         assert "junk.temp.windows" in rule_ids
         assert "cache.shader" in rule_ids
         assert "cache.thumbnail" in rule_ids
+        # Extended rules
+        assert "junk.temp.application" in rule_ids
+        assert "cache.browser" in rule_ids
+        assert "cache.installer" in rule_ids
+        assert "cache.windows_update" in rule_ids
+        assert "cache.application" in rule_ids
 
     def test_rules_are_enabled_by_default(self):
         """Test that registered rules are enabled."""
-        from avs_backend.scan_core.rules.detection.junk_rules import \
-            register_junk_rules
+        from avs_backend.scan_core.rules.detection.junk_rules import register_junk_rules
         from avs_backend.scan_core.rules.registry import RuleRegistry
 
         registry = RuleRegistry()
         register_junk_rules(registry)
 
         enabled_rules = registry.list_enabled()
-        assert len(enabled_rules) == 4
+        assert len(enabled_rules) == 9
 
 
 class TestDeterminism:
