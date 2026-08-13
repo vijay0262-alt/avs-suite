@@ -1,5 +1,5 @@
 """
-SC-8C1 Rule Evaluator
+SC-8C1 / SC-8C2 Rule Evaluator
 
 Generic rule evaluation engine that executes rules against assets.
 
@@ -9,6 +9,8 @@ The evaluator:
 - Supports cancellation
 - Produces deterministic results
 - Tracks evaluation statistics
+- Evaluates full scans via evaluate_scan() (SC-8C2)
+- Deduplicates results by (asset_id, rule_id, rule_version) (SC-8C2)
 
 NO SYSTEM MODIFICATION.
 READ-ONLY EVALUATION ONLY.
@@ -276,26 +278,151 @@ class RuleEvaluator:
     ) -> EvaluationBatch:
         """
         Evaluate rules against all assets in a scan context.
-        
+
+        Retrieves assets and snapshots from the metadata repositories
+        for the given scan, then evaluates each asset through the
+        standard evaluation pipeline.
+
+        Reuses evaluate_asset() — does NOT create a second engine.
+
         Args:
-            scan_context: Scan context with assets
+            scan_context: Scan context with scan_id
             rules: Optional specific rules (defaults to all enabled)
             cancellation_token: Optional cancellation token
-        
+
         Returns:
             EvaluationBatch with all results and statistics
+
+        Graceful handling:
+            - No repositories → empty batch, 0 assets
+            - No snapshots for scan → empty batch, 0 assets
+            - Missing asset for snapshot → skipped, counted in considered
+            - Cancellation → stops, preserves partial results
         """
-        # This would need to fetch assets from the scan context
-        # For now, return empty batch as placeholder
+        # Use all enabled rules if not specified
+        if rules is None:
+            rules = self.registry.list_enabled()
+
+        # Sort rules for deterministic ordering
+        rules = sorted(rules, key=lambda r: r.rule_id)
+
+        # Initialize statistics
         stats = EvaluationStatistics()
         stats.started_at = datetime.now(UTC)
+        stats.rules_considered = len(rules)
+
+        all_results: list[EvaluationResult] = []
+        all_errors: list[EvaluationError] = []
+
+        # Deduplication tracker: (asset_id, rule_id, rule_version)
+        seen_keys: set[tuple[str, str, str]] = set()
+
+        start_time = time.perf_counter()
+
+        # Fetch asset+snapshot pairs for this scan
+        asset_snapshot_pairs: list[tuple[ScanAsset, Optional[AssetSnapshot]]] = []
+
+        if self.snapshot_repository and self.asset_repository:
+            try:
+                snapshots = self.snapshot_repository.get_for_scan(
+                    scan_context.scan_id,
+                )
+            except Exception:
+                snapshots = []
+
+            for snapshot in snapshots:
+                try:
+                    asset = self.asset_repository.get(snapshot.asset_id)
+                except Exception:
+                    asset = None
+
+                if asset is not None:
+                    asset_snapshot_pairs.append((asset, snapshot))
+                else:
+                    # Asset missing from repository — count as considered
+                    stats.assets_considered += 1
+        else:
+            # No repositories — cannot retrieve scan assets
+            stats.completed_at = datetime.now(UTC)
+            end_time = time.perf_counter()
+            stats.evaluation_duration_ms = (end_time - start_time) * 1000.0
+            return EvaluationBatch(
+                results=[],
+                statistics=stats,
+                errors=[],
+            )
+
+        # Sort pairs by asset_id for deterministic ordering
+        asset_snapshot_pairs.sort(key=lambda pair: pair[0].asset_id)
+
+        for asset, snapshot in asset_snapshot_pairs:
+            stats.assets_considered += 1
+
+            # Cooperative cancellation between assets
+            if cancellation_token and cancellation_token.is_cancelled:
+                break
+
+            # Evaluate asset with its snapshot through the standard pipeline
+            batch = self.evaluate_asset(
+                asset=asset,
+                snapshot=snapshot,
+                scan_context=scan_context,
+                rules=rules,
+                cancellation_token=cancellation_token,
+            )
+
+            stats.assets_evaluated += 1
+
+            # Deduplicate and aggregate results
+            for result in batch.results:
+                result_key = self._result_dedup_key(result)
+                if result_key not in seen_keys:
+                    seen_keys.add(result_key)
+                    all_results.append(result)
+
+            all_errors.extend(batch.errors)
+
+            # Aggregate statistics (don't double-count)
+            stats.rules_applicable += batch.statistics.rules_applicable
+            stats.rules_evaluated += batch.statistics.rules_evaluated
+            stats.matches += batch.statistics.matches
+            stats.no_matches += batch.statistics.no_matches
+            stats.failures += batch.statistics.failures
+            stats.skipped += batch.statistics.skipped
+            stats.cancelled += batch.statistics.cancelled
+
+        end_time = time.perf_counter()
+        stats.evaluation_duration_ms = (end_time - start_time) * 1000.0
         stats.completed_at = datetime.now(UTC)
-        
+
         return EvaluationBatch(
-            results=[],
+            results=all_results,
             statistics=stats,
-            errors=[],
+            errors=all_errors,
         )
+
+    @staticmethod
+    def _result_dedup_key(result: EvaluationResult) -> tuple[str, str, str]:
+        """
+        Build a deduplication key from (asset_id, rule_id, rule_version).
+
+        Ensures that within one evaluation operation, the same
+        asset+rule+version combination cannot produce duplicate results.
+        Different rules on the same asset are legitimate separate results.
+
+        Args:
+            result: EvaluationResult to extract key from.
+
+        Returns:
+            Tuple of (asset_id, rule_id, rule_version).
+        """
+        if result.rule_result is not None:
+            version = result.rule_result.rule_version
+        elif result.error is not None:
+            version = result.error.rule_version
+        else:
+            version = ""
+        return (result.asset_id, result.rule_id, version)
     
     def _evaluate_single_rule(
         self,
