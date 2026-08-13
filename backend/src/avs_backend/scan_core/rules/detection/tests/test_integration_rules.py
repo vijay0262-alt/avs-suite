@@ -39,38 +39,20 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-import pytest
-
-from avs_backend.scan_core.assets import (
-    AssetCategory,
-    AssetSource,
-    AssetType,
-    ScanAsset,
-)
+from avs_backend.scan_core.assets import (AssetCategory, AssetSource,
+                                          AssetType, ScanAsset)
 from avs_backend.scan_core.assets.metadata import AssetMetadata
-from avs_backend.scan_core.context import AssetSnapshot, ScanContext, ScanType, SnapshotState
+from avs_backend.scan_core.context import (AssetSnapshot, ScanContext,
+                                           ScanType, SnapshotState)
 from avs_backend.scan_core.context.scan_context import generate_scan_id
-from avs_backend.scan_core.rules.detection.junk_rules import (
-    ShaderCacheRule,
-    ThumbnailCacheRule,
-    UserTempRule,
-    WindowsTempRule,
-    register_junk_rules,
-)
-from avs_backend.scan_core.rules.detection.junk_rules_ext import (
-    ApplicationCacheRule,
-    ApplicationTempRule,
-    BrowserCacheRule,
-    InstallerCacheRule,
-    WindowsUpdateCacheRule,
-)
+from avs_backend.scan_core.rules.detection.junk_rules import \
+    register_junk_rules
 from avs_backend.scan_core.rules.detection.locations import KnownLocations
 from avs_backend.scan_core.rules.enums import SafetyLevel
 from avs_backend.scan_core.rules.evaluation import EvaluationStatus
-from avs_backend.scan_core.rules.evaluator import CancellationToken, RuleEvaluator
+from avs_backend.scan_core.rules.evaluator import RuleEvaluator
 from avs_backend.scan_core.rules.registry import RuleRegistry
 from avs_backend.scan_core.rules.result import RuleMatchStatus
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -1264,15 +1246,10 @@ class TestAllRulesThroughEvaluator:
 
     def test_failure_isolation_through_pipeline(self):
         """If one rule throws, others continue."""
+        from avs_backend.scan_core.rules.enums import RuleCategory, Severity
+        from avs_backend.scan_core.rules.models import (RuleIdentifier,
+                                                        RuleVersion)
         from avs_backend.scan_core.rules.rule import Rule, RuleMetadata
-        from avs_backend.scan_core.rules.models import (
-            RuleIdentifier,
-            RuleVersion,
-        )
-        from avs_backend.scan_core.rules.enums import (
-            RuleCategory,
-            Severity,
-        )
 
         class ThrowingRule(Rule):
             def __init__(self, metadata):

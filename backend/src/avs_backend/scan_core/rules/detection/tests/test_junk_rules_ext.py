@@ -16,7 +16,12 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-from avs_backend.scan_core.assets import AssetCategory, AssetSource, AssetType, ScanAsset
+from avs_backend.scan_core.assets import (
+    AssetCategory,
+    AssetSource,
+    AssetType,
+    ScanAsset,
+)
 from avs_backend.scan_core.context import AssetSnapshot, SnapshotState
 from avs_backend.scan_core.rules.detection.junk_rules_ext import (
     ApplicationCacheRule,
@@ -166,7 +171,9 @@ class TestApplicationTempRule:
 
         assert result.matched is True
         ext_evidence = [
-            e for e in result.evidence.items if e.evidence_type.value == "extension_match"
+            e
+            for e in result.evidence.items
+            if e.evidence_type.value == "extension_match"
         ]
         assert len(ext_evidence) > 0
 
@@ -185,7 +192,9 @@ class TestApplicationTempRule:
         result = rule.evaluate(asset, snapshot)
 
         assert result.matched is True
-        age_evidence = [e for e in result.evidence.items if e.evidence_type.value == "age_match"]
+        age_evidence = [
+            e for e in result.evidence.items if e.evidence_type.value == "age_match"
+        ]
         assert len(age_evidence) > 0
 
     def test_negative_match_not_app_temp(self):
@@ -341,7 +350,9 @@ class TestBrowserCacheRule:
         result = rule.evaluate(asset, snapshot)
 
         assert result.matched is True
-        age_evidence = [e for e in result.evidence.items if e.evidence_type.value == "age_match"]
+        age_evidence = [
+            e for e in result.evidence.items if e.evidence_type.value == "age_match"
+        ]
         assert len(age_evidence) > 0
 
     def test_negative_match_not_browser_cache(self):
@@ -362,8 +373,12 @@ class TestBrowserCacheRule:
         rule = BrowserCacheRule()
 
         # Construct a path that looks like Chrome user data but is History, not Cache
-        local_appdata = Path(os.environ.get("LOCALAPPDATA", r"C:\Users\TestUser\AppData\Local"))
-        history_path = local_appdata / "Google" / "Chrome" / "User Data" / "Default" / "History"
+        local_appdata = Path(
+            os.environ.get("LOCALAPPDATA", r"C:\Users\TestUser\AppData\Local")
+        )
+        history_path = (
+            local_appdata / "Google" / "Chrome" / "User Data" / "Default" / "History"
+        )
 
         asset = ExtTestFixtures.create_asset(
             asset_id="bc-005",
@@ -429,7 +444,9 @@ class TestBrowserCacheRule:
         result = rule.evaluate(asset, snapshot)
 
         assert result.matched is True
-        regen_evidence = [e for e in result.evidence.items if "regenerat" in e.description.lower()]
+        regen_evidence = [
+            e for e in result.evidence.items if "regenerat" in e.description.lower()
+        ]
         assert len(regen_evidence) > 0
 
 
@@ -550,7 +567,8 @@ class TestInstallerCacheRule:
         reparable_evidence = [
             e
             for e in result.evidence.items
-            if "reparable" in e.description.lower() or "re-download" in e.description.lower()
+            if "reparable" in e.description.lower()
+            or "re-download" in e.description.lower()
         ]
         assert len(reparable_evidence) > 0
 
@@ -669,7 +687,9 @@ class TestWindowsUpdateCacheRule:
         result = rule.evaluate(asset, snapshot)
 
         assert result.matched is True
-        age_evidence = [e for e in result.evidence.items if e.evidence_type.value == "age_match"]
+        age_evidence = [
+            e for e in result.evidence.items if e.evidence_type.value == "age_match"
+        ]
         assert len(age_evidence) > 0
 
 
@@ -746,7 +766,9 @@ class TestApplicationCacheRule:
         """Test no match for file in AppData but not a known cache."""
         rule = ApplicationCacheRule()
 
-        local_appdata = Path(os.environ.get("LOCALAPPDATA", r"C:\Users\TestUser\AppData\Local"))
+        local_appdata = Path(
+            os.environ.get("LOCALAPPDATA", r"C:\Users\TestUser\AppData\Local")
+        )
         asset = ExtTestFixtures.create_asset(
             asset_id="ac-004",
             canonical_path=str(local_appdata / "RandomApp" / "data.bin"),
@@ -810,7 +832,9 @@ class TestApplicationCacheRule:
         result = rule.evaluate(asset, snapshot)
 
         assert result.matched is True
-        regen_evidence = [e for e in result.evidence.items if "regenerat" in e.description.lower()]
+        regen_evidence = [
+            e for e in result.evidence.items if "regenerat" in e.description.lower()
+        ]
         assert len(regen_evidence) > 0
 
 
@@ -839,7 +863,9 @@ class TestExtendedFalsePositives:
 
         for rule in rules:
             result = rule.evaluate(asset)
-            assert result.matched is False, f"{rule.rule_id} incorrectly matched Documents file"
+            assert (
+                result.matched is False
+            ), f"{rule.rule_id} incorrectly matched Documents file"
 
     def test_system32_not_matched(self):
         """Test that System32 files are not matched by new rules."""
@@ -858,7 +884,9 @@ class TestExtendedFalsePositives:
 
         for rule in rules:
             result = rule.evaluate(asset)
-            assert result.matched is False, f"{rule.rule_id} incorrectly matched System32 file"
+            assert (
+                result.matched is False
+            ), f"{rule.rule_id} incorrectly matched System32 file"
 
     def test_program_files_not_matched(self):
         """Test that Program Files are not matched by new rules."""
@@ -898,14 +926,20 @@ class TestExtendedFalsePositives:
 
         for rule in rules:
             result = rule.evaluate(asset)
-            assert result.matched is False, f"{rule.rule_id} incorrectly matched Downloads file"
+            assert (
+                result.matched is False
+            ), f"{rule.rule_id} incorrectly matched Downloads file"
 
     def test_browser_bookmarks_not_matched(self):
         """Test that browser Bookmarks file is not matched as cache."""
         rule = BrowserCacheRule()
 
-        local_appdata = Path(os.environ.get("LOCALAPPDATA", r"C:\Users\TestUser\AppData\Local"))
-        bookmarks_path = local_appdata / "Google" / "Chrome" / "User Data" / "Default" / "Bookmarks"
+        local_appdata = Path(
+            os.environ.get("LOCALAPPDATA", r"C:\Users\TestUser\AppData\Local")
+        )
+        bookmarks_path = (
+            local_appdata / "Google" / "Chrome" / "User Data" / "Default" / "Bookmarks"
+        )
 
         asset = ExtTestFixtures.create_asset(
             asset_id="efp-005",
@@ -919,8 +953,12 @@ class TestExtendedFalsePositives:
         """Test that browser Login Data file is not matched as cache."""
         rule = BrowserCacheRule()
 
-        local_appdata = Path(os.environ.get("LOCALAPPDATA", r"C:\Users\TestUser\AppData\Local"))
-        login_path = local_appdata / "Google" / "Chrome" / "User Data" / "Default" / "Login Data"
+        local_appdata = Path(
+            os.environ.get("LOCALAPPDATA", r"C:\Users\TestUser\AppData\Local")
+        )
+        login_path = (
+            local_appdata / "Google" / "Chrome" / "User Data" / "Default" / "Login Data"
+        )
 
         asset = ExtTestFixtures.create_asset(
             asset_id="efp-006",
@@ -962,7 +1000,9 @@ class TestExtendedFalsePositives:
 
         for rule in rules:
             result = rule.evaluate(asset)
-            assert result.matched is False, f"{rule.rule_id} incorrectly matched .tmp in Documents"
+            assert (
+                result.matched is False
+            ), f"{rule.rule_id} incorrectly matched .tmp in Documents"
 
 
 # ---------------------------------------------------------------------------
@@ -1442,12 +1482,8 @@ class TestSafetyPolicy:
         )
         assert parts == ["windows", "system32", "kernel32.dll"]
 
-        parts_fs = KnownLocations._normalize_windows_path(
-            r"C:/Windows/Temp/test.tmp"
-        )
+        parts_fs = KnownLocations._normalize_windows_path(r"C:/Windows/Temp/test.tmp")
         assert parts_fs == ["windows", "temp", "test.tmp"]
 
-        parts_lower = KnownLocations._normalize_windows_path(
-            r"c:\windows\system32"
-        )
+        parts_lower = KnownLocations._normalize_windows_path(r"c:\windows\system32")
         assert parts_lower == ["windows", "system32"]

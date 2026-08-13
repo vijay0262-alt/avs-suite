@@ -19,8 +19,8 @@ READ-ONLY EVALUATION ONLY.
 from __future__ import annotations
 
 import time
-from typing import Iterable, Optional, TYPE_CHECKING
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Iterable, Optional
 
 if TYPE_CHECKING:
     from ..assets import ScanAsset
@@ -29,27 +29,26 @@ if TYPE_CHECKING:
     from .rule import Rule
     from .registry import RuleRegistry
 
-from .context import RuleEvaluationContext
 from .applicability import ApplicabilityEngine, ApplicabilityStatus
 from .evaluation import (
-    EvaluationResult,
-    EvaluationError,
-    EvaluationStatistics,
     EvaluationBatch,
+    EvaluationError,
+    EvaluationResult,
+    EvaluationStatistics,
     EvaluationStatus,
 )
 
 
 class CancellationToken:
     """Simple cancellation token for cooperative cancellation."""
-    
+
     def __init__(self) -> None:
         self._cancelled = False
-    
+
     def cancel(self) -> None:
         """Request cancellation."""
         self._cancelled = True
-    
+
     @property
     def is_cancelled(self) -> bool:
         """Check if cancellation requested."""
@@ -59,11 +58,11 @@ class CancellationToken:
 class RuleEvaluator:
     """
     Generic rule evaluation engine.
-    
+
     Evaluates rules against assets using the evaluation pipeline:
-    
+
     Asset → Applicability → Context → Rule.evaluate() → RuleResult
-    
+
     Features:
     - Applicability filtering
     - Rule failure isolation
@@ -72,7 +71,7 @@ class RuleEvaluator:
     - Evaluation statistics
     - Batch processing
     """
-    
+
     def __init__(
         self,
         registry: RuleRegistry,
@@ -81,7 +80,7 @@ class RuleEvaluator:
     ) -> None:
         """
         Initialize evaluator.
-        
+
         Args:
             registry: Rule registry
             asset_repository: Optional asset repository for context
@@ -90,7 +89,7 @@ class RuleEvaluator:
         self.registry = registry
         self.asset_repository = asset_repository
         self.snapshot_repository = snapshot_repository
-    
+
     def evaluate_asset(
         self,
         asset: ScanAsset,
@@ -101,37 +100,37 @@ class RuleEvaluator:
     ) -> EvaluationBatch:
         """
         Evaluate all applicable rules against a single asset.
-        
+
         Args:
             asset: Asset to evaluate
             snapshot: Optional snapshot
             scan_context: Optional scan context
             rules: Optional specific rules (defaults to all enabled)
             cancellation_token: Optional cancellation token
-        
+
         Returns:
             EvaluationBatch with results and statistics
         """
         # Use all enabled rules if not specified
         if rules is None:
             rules = self.registry.list_enabled()
-        
+
         # Sort rules for deterministic ordering
         rules = sorted(rules, key=lambda r: r.rule_id)
-        
+
         # Initialize statistics
         stats = EvaluationStatistics()
         stats.started_at = datetime.now(UTC)
         stats.assets_considered = 1
         stats.assets_evaluated = 1
         stats.rules_considered = len(rules)
-        
+
         # Evaluate rules
         results: list[EvaluationResult] = []
         errors: list[EvaluationError] = []
-        
+
         start_time = time.perf_counter()
-        
+
         for rule in rules:
             # Check cancellation
             if cancellation_token and cancellation_token.is_cancelled:
@@ -139,21 +138,25 @@ class RuleEvaluator:
                 results.append(result)
                 stats.record_cancelled()
                 continue
-            
+
             # Check applicability
             applicability = ApplicabilityEngine.check_applicability(rule, asset)
-            
+
             if not applicability.is_applicable:
                 if applicability.status == ApplicabilityStatus.DISABLED:
-                    result = EvaluationResult.skipped_disabled(rule.rule_id, asset.asset_id)
+                    result = EvaluationResult.skipped_disabled(
+                        rule.rule_id, asset.asset_id
+                    )
                 else:
-                    result = EvaluationResult.skipped_not_applicable(rule.rule_id, asset.asset_id)
+                    result = EvaluationResult.skipped_not_applicable(
+                        rule.rule_id, asset.asset_id
+                    )
                 results.append(result)
                 stats.record_skipped()
                 continue
-            
+
             stats.rules_applicable += 1
-            
+
             # Evaluate rule
             result = self._evaluate_single_rule(
                 rule=rule,
@@ -161,9 +164,9 @@ class RuleEvaluator:
                 snapshot=snapshot,
                 scan_context=scan_context,
             )
-            
+
             results.append(result)
-            
+
             # Update statistics
             if result.is_success:
                 stats.rules_evaluated += 1
@@ -175,17 +178,17 @@ class RuleEvaluator:
                 stats.record_failure()
                 if result.error:
                     errors.append(result.error)
-        
+
         end_time = time.perf_counter()
         stats.evaluation_duration_ms = (end_time - start_time) * 1000.0
         stats.completed_at = datetime.now(UTC)
-        
+
         return EvaluationBatch(
             results=results,
             statistics=stats,
             errors=errors,
         )
-    
+
     def evaluate_assets(
         self,
         assets: Iterable[ScanAsset],
@@ -195,47 +198,47 @@ class RuleEvaluator:
     ) -> EvaluationBatch:
         """
         Evaluate rules against multiple assets.
-        
+
         Supports streaming/iterable processing for large collections.
-        
+
         Args:
             assets: Iterable of assets to evaluate
             scan_context: Optional scan context
             rules: Optional specific rules (defaults to all enabled)
             cancellation_token: Optional cancellation token
-        
+
         Returns:
             EvaluationBatch with all results and statistics
         """
         # Use all enabled rules if not specified
         if rules is None:
             rules = self.registry.list_enabled()
-        
+
         # Sort rules for deterministic ordering
         rules = sorted(rules, key=lambda r: r.rule_id)
-        
+
         # Initialize statistics
         stats = EvaluationStatistics()
         stats.started_at = datetime.now(UTC)
         stats.rules_considered = len(rules)
-        
+
         # Collect all results
         all_results: list[EvaluationResult] = []
         all_errors: list[EvaluationError] = []
-        
+
         start_time = time.perf_counter()
-        
+
         # Convert to list and sort for deterministic ordering
         asset_list = list(assets)
         asset_list.sort(key=lambda a: a.asset_id)
-        
+
         for asset in asset_list:
             stats.assets_considered += 1
-            
+
             # Check cancellation between assets
             if cancellation_token and cancellation_token.is_cancelled:
                 break
-            
+
             # Evaluate asset
             batch = self.evaluate_asset(
                 asset=asset,
@@ -244,13 +247,13 @@ class RuleEvaluator:
                 rules=rules,
                 cancellation_token=cancellation_token,
             )
-            
+
             stats.assets_evaluated += 1
-            
+
             # Aggregate results
             all_results.extend(batch.results)
             all_errors.extend(batch.errors)
-            
+
             # Aggregate statistics (don't double-count)
             stats.rules_applicable += batch.statistics.rules_applicable
             stats.rules_evaluated += batch.statistics.rules_evaluated
@@ -259,17 +262,17 @@ class RuleEvaluator:
             stats.failures += batch.statistics.failures
             stats.skipped += batch.statistics.skipped
             stats.cancelled += batch.statistics.cancelled
-        
+
         end_time = time.perf_counter()
         stats.evaluation_duration_ms = (end_time - start_time) * 1000.0
         stats.completed_at = datetime.now(UTC)
-        
+
         return EvaluationBatch(
             results=all_results,
             statistics=stats,
             errors=all_errors,
         )
-    
+
     def evaluate_scan(
         self,
         scan_context: ScanContext,
@@ -320,7 +323,7 @@ class RuleEvaluator:
         start_time = time.perf_counter()
 
         # Fetch asset+snapshot pairs for this scan
-        asset_snapshot_pairs: list[tuple[ScanAsset, Optional[AssetSnapshot]]] = []
+        asset_snapshot_pairs: list[tuple[ScanAsset, AssetSnapshot]] = []
 
         if self.snapshot_repository and self.asset_repository:
             try:
@@ -423,7 +426,7 @@ class RuleEvaluator:
         else:
             version = ""
         return (result.asset_id, result.rule_id, version)
-    
+
     def _evaluate_single_rule(
         self,
         rule: Rule,
@@ -433,20 +436,20 @@ class RuleEvaluator:
     ) -> EvaluationResult:
         """
         Evaluate a single rule against an asset.
-        
+
         Isolates failures - exceptions do not propagate.
-        
+
         Args:
             rule: Rule to evaluate
             asset: Asset to evaluate
             snapshot: Optional snapshot
             scan_context: Optional scan context
-        
+
         Returns:
             EvaluationResult
         """
         start_time = time.perf_counter()
-        
+
         try:
             # Evaluate rule (pass asset, snapshot, context directly)
             rule_result = rule.evaluate(
@@ -454,21 +457,21 @@ class RuleEvaluator:
                 snapshot=snapshot,
                 context=scan_context,
             )
-            
+
             end_time = time.perf_counter()
             duration_ms = (end_time - start_time) * 1000.0
-            
+
             return EvaluationResult.success(
                 rule_id=rule.rule_id,
                 asset_id=asset.asset_id,
                 rule_result=rule_result,
                 duration_ms=duration_ms,
             )
-        
+
         except Exception as e:
             end_time = time.perf_counter()
             duration_ms = (end_time - start_time) * 1000.0
-            
+
             # Create error (no sensitive data)
             error = EvaluationError(
                 rule_id=rule.rule_id,
@@ -478,7 +481,7 @@ class RuleEvaluator:
                 error_message=str(e)[:200],  # Truncate to avoid exposing too much
                 evaluation_stage="rule_evaluation",
             )
-            
+
             return EvaluationResult.failed(
                 rule_id=rule.rule_id,
                 asset_id=asset.asset_id,

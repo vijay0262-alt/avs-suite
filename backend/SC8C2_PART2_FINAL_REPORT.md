@@ -13,7 +13,7 @@
 | 1 | Safety policy regression fix (Windows path normalization) | **COMPLETE** | `locations.py:382-428`, `safety_policy.py:65-70` |
 | 2 | Protected-location boundary logic (no false substring matches) | **COMPLETE** | `locations.py:404-428` |
 | 3 | Safe exceptions preserved ($PatchCache$, Windows Temp, WU Download) | **COMPLETE** | `locations.py:511-567` |
-| 4 | Regression tests for Windows path scenarios | **COMPLETE** | `test_junk_rules_ext.py:1293-1454` (14 tests) |
+| 4 | Regression tests for Windows path scenarios | **COMPLETE** | `test_junk_rules_ext.py:1335-1490` (14 tests) |
 | 5 | `evaluate_scan()` implemented (no longer a stub) | **COMPLETE** | `evaluator.py:273-402` |
 | 6 | Result deduplication in `evaluate_scan()` | **COMPLETE** | `evaluator.py:317-318,377-381,404-425` |
 | 7 | Integration tests: 9 production rules through evaluator pipeline | **COMPLETE** | `test_integration_rules.py` (75 tests) |
@@ -86,7 +86,7 @@ The `is_in_protected_location()` method (`locations.py:542-567`) checks exceptio
 
 ### 1.4 Regression Tests
 
-14 regression tests added in `test_junk_rules_ext.py:1293-1454`:
+14 regression tests added in `test_junk_rules_ext.py:1335-1490`:
 
 | Test | Path | Expected | Scenario |
 |------|------|----------|----------|
