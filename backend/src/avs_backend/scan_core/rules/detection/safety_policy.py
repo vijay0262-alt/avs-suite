@@ -20,7 +20,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
-from ..safety import SafetyAssessment, SafetyBlocker
+from ..enums import SafetyBlocker
+from ..safety import SafetyAssessment
 from .locations import KnownLocations
 
 if TYPE_CHECKING:

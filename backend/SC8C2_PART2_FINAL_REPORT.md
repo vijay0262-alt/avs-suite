@@ -257,6 +257,49 @@ All modified and new files pass static validation:
 
 ---
 
+## 8. Final Re-Verification (2026-08-14)
+
+### 8.1 Test Suite
+
+```
+python -m pytest -q
+760 passed, 9 skipped in 528.43s
+```
+
+- **passed:** 760
+- **failed:** 0
+- **skipped:** 9
+- **errors:** 0
+- **warnings:** 0
+
+No test regression from Part 1 baseline (760 passed, 9 skipped).
+
+### 8.2 Static Checks — SC-8C2 Modified Files Only
+
+| Tool | Modified Files Checked | Result |
+|------|------------------------|--------|
+| **black** | 6 files | **CLEAN** — 0 files need reformatting |
+| **isort** | 6 files | **CLEAN** — 0 import sorting issues |
+| **flake8** | 6 files | **CLEAN** — 0 errors |
+| **mypy** | 6 files | **CLEAN** — 0 errors |
+
+### 8.3 Static Checks — Full Backend Codebase
+
+Full-codebase static scans reveal pre-existing issues in unrelated modules (cleaner, security, startup, etc.). These are **not regressions** introduced by SC-8C2:
+
+- **black:** 135 files would be reformatted (pre-existing)
+- **isort:** 89 files with import sorting issues (pre-existing)
+- **flake8:** 200+ issues (W293 blank-line whitespace, E501 line-too-long, F401 unused imports) across pre-existing files
+- **mypy:** 140 errors in 32 files (pre-existing psutil stubs, type mismatches in legacy modules)
+
+No new static-check failures were introduced in the 6 SC-8C2 modified files.
+
+### 8.4 Verdict
+
+**SC-8C2 Part 2 remains COMPLETE.** Zero test regressions. Zero new static-check warnings in modified files. Full-suite static-check noise is pre-existing and out of scope for this safety-policy fix.
+
+---
+
 ## Final Verdict
 
 **SC-8C2 Part 2 is COMPLETE.** The critical safety policy regression has been fixed with OS-independent Windows path normalization and boundary-safe containment logic. The `evaluate_scan()` stub has been replaced with a full implementation. 103 new tests verify correctness end-to-end. All 760 tests pass with zero failures and zero warnings.

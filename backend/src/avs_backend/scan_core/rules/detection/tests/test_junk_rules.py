@@ -11,7 +11,13 @@ from pathlib import Path
 from typing import Optional
 
 import pytest
-from avs_backend.scan_core.assets import AssetCategory, AssetSource, AssetType, ScanAsset
+
+from avs_backend.scan_core.assets import (
+    AssetCategory,
+    AssetSource,
+    AssetType,
+    ScanAsset,
+)
 from avs_backend.scan_core.context import AssetSnapshot, SnapshotState
 from avs_backend.scan_core.rules.detection.junk_rules import (
     ShaderCacheRule,
@@ -148,7 +154,9 @@ class TestUserTempRule:
         # Check evidence
         assert len(result.evidence.items) > 0
         location_evidence = [
-            e for e in result.evidence.items if "temporary directory" in e.description.lower()
+            e
+            for e in result.evidence.items
+            if "temporary directory" in e.description.lower()
         ]
         assert len(location_evidence) > 0
 
@@ -355,7 +363,9 @@ class TestShaderCacheRule:
         assert "shader cache" in result.reason.lower()
 
         # Check for regeneration evidence
-        regen_evidence = [e for e in result.evidence.items if "regenerat" in e.description.lower()]
+        regen_evidence = [
+            e for e in result.evidence.items if "regenerat" in e.description.lower()
+        ]
         assert len(regen_evidence) > 0
 
     def test_positive_match_nvidia_cache(self):
@@ -461,7 +471,9 @@ class TestThumbnailCacheRule:
         assert "thumbnail" in result.reason.lower()
 
         # Check for pattern evidence
-        pattern_evidence = [e for e in result.evidence.items if "pattern" in e.description.lower()]
+        pattern_evidence = [
+            e for e in result.evidence.items if "pattern" in e.description.lower()
+        ]
         assert len(pattern_evidence) > 0
 
     def test_positive_match_iconcache(self):
@@ -542,7 +554,9 @@ class TestFalsePositives:
 
         for rule in rules:
             result = rule.evaluate(asset)
-            assert result.matched is False, f"{rule.rule_id} incorrectly matched Documents file"
+            assert (
+                result.matched is False
+            ), f"{rule.rule_id} incorrectly matched Documents file"
 
     def test_system32_file(self):
         """Test System32 file is NOT matched."""
@@ -555,7 +569,9 @@ class TestFalsePositives:
 
         for rule in rules:
             result = rule.evaluate(asset)
-            assert result.matched is False, f"{rule.rule_id} incorrectly matched System32 file"
+            assert (
+                result.matched is False
+            ), f"{rule.rule_id} incorrectly matched System32 file"
 
     def test_program_files_binary(self):
         """Test Program Files binary is NOT matched."""

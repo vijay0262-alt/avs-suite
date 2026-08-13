@@ -39,14 +39,21 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-from avs_backend.scan_core.assets import (AssetCategory, AssetSource,
-                                          AssetType, ScanAsset)
+from avs_backend.scan_core.assets import (
+    AssetCategory,
+    AssetSource,
+    AssetType,
+    ScanAsset,
+)
 from avs_backend.scan_core.assets.metadata import AssetMetadata
-from avs_backend.scan_core.context import (AssetSnapshot, ScanContext,
-                                           ScanType, SnapshotState)
+from avs_backend.scan_core.context import (
+    AssetSnapshot,
+    ScanContext,
+    ScanType,
+    SnapshotState,
+)
 from avs_backend.scan_core.context.scan_context import generate_scan_id
-from avs_backend.scan_core.rules.detection.junk_rules import \
-    register_junk_rules
+from avs_backend.scan_core.rules.detection.junk_rules import register_junk_rules
 from avs_backend.scan_core.rules.detection.locations import KnownLocations
 from avs_backend.scan_core.rules.enums import SafetyLevel
 from avs_backend.scan_core.rules.evaluation import EvaluationStatus
@@ -222,11 +229,15 @@ class TestUserTempIntegration:
     def test_positive_detection(self):
         root = IntegrationFixtures.user_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "ut-pos", str(root / "test.tmp"), size=2048,
+            "ut-pos",
+            str(root / "test.tmp"),
+            size=2048,
         )
         snap = IntegrationFixtures.create_snapshot("ut-pos")
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.user", asset, snap,
+            "junk.temp.user",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -238,10 +249,12 @@ class TestUserTempIntegration:
 
     def test_negative_detection(self):
         asset = IntegrationFixtures.create_asset(
-            "ut-neg", r"C:\Users\Test\Documents\report.docx",
+            "ut-neg",
+            r"C:\Users\Test\Documents\report.docx",
         )
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.user", asset,
+            "junk.temp.user",
+            asset,
         )
         assert result.is_success
         assert not result.is_match
@@ -250,20 +263,26 @@ class TestUserTempIntegration:
     def test_wrong_asset_type(self):
         root = IntegrationFixtures.user_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "ut-dir", str(root / "subdir"), asset_type=AssetType.DIRECTORY,
+            "ut-dir",
+            str(root / "subdir"),
+            asset_type=AssetType.DIRECTORY,
         )
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.user", asset,
+            "junk.temp.user",
+            asset,
         )
         assert result.status == EvaluationStatus.SKIPPED_NOT_APPLICABLE
 
     def test_protected_path(self):
         asset = IntegrationFixtures.create_asset(
-            "ut-prot", IntegrationFixtures.protected_path(),
+            "ut-prot",
+            IntegrationFixtures.protected_path(),
         )
         snap = IntegrationFixtures.create_snapshot("ut-prot")
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.user", asset, snap,
+            "junk.temp.user",
+            asset,
+            snap,
         )
         assert result.is_success
         if result.is_match:
@@ -272,13 +291,17 @@ class TestUserTempIntegration:
     def test_locked_asset(self):
         root = IntegrationFixtures.user_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "ut-lock", str(root / "locked.tmp"),
+            "ut-lock",
+            str(root / "locked.tmp"),
         )
         snap = IntegrationFixtures.create_snapshot(
-            "ut-lock", locked=True,
+            "ut-lock",
+            locked=True,
         )
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.user", asset, snap,
+            "junk.temp.user",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -287,13 +310,17 @@ class TestUserTempIntegration:
     def test_inaccessible_asset(self):
         root = IntegrationFixtures.user_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "ut-ina", str(root / "ina.tmp"),
+            "ut-ina",
+            str(root / "ina.tmp"),
         )
         snap = IntegrationFixtures.create_snapshot(
-            "ut-ina", accessible=False,
+            "ut-ina",
+            accessible=False,
         )
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.user", asset, snap,
+            "junk.temp.user",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -302,10 +329,13 @@ class TestUserTempIntegration:
     def test_missing_snapshot(self):
         root = IntegrationFixtures.user_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "ut-miss", str(root / "file.tmp"),
+            "ut-miss",
+            str(root / "file.tmp"),
         )
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.user", asset, snapshot=None,
+            "junk.temp.user",
+            asset,
+            snapshot=None,
         )
         assert result.is_success
         assert result.is_match
@@ -313,13 +343,17 @@ class TestUserTempIntegration:
     def test_snapshot_not_exists(self):
         root = IntegrationFixtures.user_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "ut-ne", str(root / "gone.tmp"),
+            "ut-ne",
+            str(root / "gone.tmp"),
         )
         snap = IntegrationFixtures.create_snapshot(
-            "ut-ne", exists=False,
+            "ut-ne",
+            exists=False,
         )
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.user", asset, snap,
+            "junk.temp.user",
+            asset,
+            snap,
         )
         assert result.is_success
         assert not result.is_match
@@ -327,14 +361,19 @@ class TestUserTempIntegration:
     def test_deterministic_result(self):
         root = IntegrationFixtures.user_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "ut-det", str(root / "det.tmp"),
+            "ut-det",
+            str(root / "det.tmp"),
         )
         snap = IntegrationFixtures.create_snapshot("ut-det")
         _, _, r1 = evaluate_through_pipeline(
-            "junk.temp.user", asset, snap,
+            "junk.temp.user",
+            asset,
+            snap,
         )
         _, _, r2 = evaluate_through_pipeline(
-            "junk.temp.user", asset, snap,
+            "junk.temp.user",
+            asset,
+            snap,
         )
         assert r1.is_match == r2.is_match
         if r1.rule_result and r2.rule_result:
@@ -353,11 +392,15 @@ class TestWindowsTempIntegration:
     def test_positive_detection(self):
         root = IntegrationFixtures.windows_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "wt-pos", str(root / "sys.tmp"), size=4096,
+            "wt-pos",
+            str(root / "sys.tmp"),
+            size=4096,
         )
         snap = IntegrationFixtures.create_snapshot("wt-pos")
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.windows", asset, snap,
+            "junk.temp.windows",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -367,10 +410,12 @@ class TestWindowsTempIntegration:
 
     def test_negative_detection(self):
         asset = IntegrationFixtures.create_asset(
-            "wt-neg", r"C:\Users\Test\Documents\file.txt",
+            "wt-neg",
+            r"C:\Users\Test\Documents\file.txt",
         )
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.windows", asset,
+            "junk.temp.windows",
+            asset,
         )
         assert result.is_success
         assert not result.is_match
@@ -378,21 +423,27 @@ class TestWindowsTempIntegration:
     def test_wrong_asset_type(self):
         root = IntegrationFixtures.windows_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "wt-dir", str(root), asset_type=AssetType.DIRECTORY,
+            "wt-dir",
+            str(root),
+            asset_type=AssetType.DIRECTORY,
         )
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.windows", asset,
+            "junk.temp.windows",
+            asset,
         )
         assert result.status == EvaluationStatus.SKIPPED_NOT_APPLICABLE
 
     def test_locked_asset(self):
         root = IntegrationFixtures.windows_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "wt-lock", str(root / "locked.tmp"),
+            "wt-lock",
+            str(root / "locked.tmp"),
         )
         snap = IntegrationFixtures.create_snapshot("wt-lock", locked=True)
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.windows", asset, snap,
+            "junk.temp.windows",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -401,11 +452,14 @@ class TestWindowsTempIntegration:
     def test_inaccessible_asset(self):
         root = IntegrationFixtures.windows_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "wt-ina", str(root / "ina.tmp"),
+            "wt-ina",
+            str(root / "ina.tmp"),
         )
         snap = IntegrationFixtures.create_snapshot("wt-ina", accessible=False)
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.windows", asset, snap,
+            "junk.temp.windows",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -414,10 +468,13 @@ class TestWindowsTempIntegration:
     def test_missing_snapshot(self):
         root = IntegrationFixtures.windows_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "wt-miss", str(root / "file.tmp"),
+            "wt-miss",
+            str(root / "file.tmp"),
         )
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.windows", asset, snapshot=None,
+            "junk.temp.windows",
+            asset,
+            snapshot=None,
         )
         assert result.is_success
         assert result.is_match
@@ -425,11 +482,14 @@ class TestWindowsTempIntegration:
     def test_snapshot_not_exists(self):
         root = IntegrationFixtures.windows_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "wt-ne", str(root / "gone.tmp"),
+            "wt-ne",
+            str(root / "gone.tmp"),
         )
         snap = IntegrationFixtures.create_snapshot("wt-ne", exists=False)
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.windows", asset, snap,
+            "junk.temp.windows",
+            asset,
+            snap,
         )
         assert result.is_success
         assert not result.is_match
@@ -437,14 +497,19 @@ class TestWindowsTempIntegration:
     def test_deterministic_result(self):
         root = IntegrationFixtures.windows_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "wt-det", str(root / "det.tmp"),
+            "wt-det",
+            str(root / "det.tmp"),
         )
         snap = IntegrationFixtures.create_snapshot("wt-det")
         _, _, r1 = evaluate_through_pipeline(
-            "junk.temp.windows", asset, snap,
+            "junk.temp.windows",
+            asset,
+            snap,
         )
         _, _, r2 = evaluate_through_pipeline(
-            "junk.temp.windows", asset, snap,
+            "junk.temp.windows",
+            asset,
+            snap,
         )
         assert r1.is_match == r2.is_match
 
@@ -460,11 +525,15 @@ class TestApplicationTempIntegration:
     def test_positive_detection(self):
         root = IntegrationFixtures.app_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "at-pos", str(root / "office.tmp"), size=2048,
+            "at-pos",
+            str(root / "office.tmp"),
+            size=2048,
         )
         snap = IntegrationFixtures.create_snapshot("at-pos")
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.application", asset, snap,
+            "junk.temp.application",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -475,10 +544,12 @@ class TestApplicationTempIntegration:
 
     def test_negative_detection(self):
         asset = IntegrationFixtures.create_asset(
-            "at-neg", r"C:\Users\Test\Documents\file.docx",
+            "at-neg",
+            r"C:\Users\Test\Documents\file.docx",
         )
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.application", asset,
+            "junk.temp.application",
+            asset,
         )
         assert result.is_success
         assert not result.is_match
@@ -486,21 +557,27 @@ class TestApplicationTempIntegration:
     def test_wrong_asset_type(self):
         root = IntegrationFixtures.app_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "at-dir", str(root), asset_type=AssetType.DIRECTORY,
+            "at-dir",
+            str(root),
+            asset_type=AssetType.DIRECTORY,
         )
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.application", asset,
+            "junk.temp.application",
+            asset,
         )
         assert result.status == EvaluationStatus.SKIPPED_NOT_APPLICABLE
 
     def test_locked_asset(self):
         root = IntegrationFixtures.app_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "at-lock", str(root / "locked.tmp"),
+            "at-lock",
+            str(root / "locked.tmp"),
         )
         snap = IntegrationFixtures.create_snapshot("at-lock", locked=True)
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.application", asset, snap,
+            "junk.temp.application",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -509,11 +586,14 @@ class TestApplicationTempIntegration:
     def test_inaccessible_asset(self):
         root = IntegrationFixtures.app_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "at-ina", str(root / "ina.tmp"),
+            "at-ina",
+            str(root / "ina.tmp"),
         )
         snap = IntegrationFixtures.create_snapshot("at-ina", accessible=False)
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.application", asset, snap,
+            "junk.temp.application",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -522,10 +602,13 @@ class TestApplicationTempIntegration:
     def test_missing_snapshot(self):
         root = IntegrationFixtures.app_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "at-miss", str(root / "file.tmp"),
+            "at-miss",
+            str(root / "file.tmp"),
         )
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.application", asset, snapshot=None,
+            "junk.temp.application",
+            asset,
+            snapshot=None,
         )
         assert result.is_success
         assert result.is_match
@@ -533,11 +616,14 @@ class TestApplicationTempIntegration:
     def test_snapshot_not_exists(self):
         root = IntegrationFixtures.app_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "at-ne", str(root / "gone.tmp"),
+            "at-ne",
+            str(root / "gone.tmp"),
         )
         snap = IntegrationFixtures.create_snapshot("at-ne", exists=False)
         _, _, result = evaluate_through_pipeline(
-            "junk.temp.application", asset, snap,
+            "junk.temp.application",
+            asset,
+            snap,
         )
         assert result.is_success
         assert not result.is_match
@@ -545,14 +631,19 @@ class TestApplicationTempIntegration:
     def test_deterministic_result(self):
         root = IntegrationFixtures.app_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "at-det", str(root / "det.tmp"),
+            "at-det",
+            str(root / "det.tmp"),
         )
         snap = IntegrationFixtures.create_snapshot("at-det")
         _, _, r1 = evaluate_through_pipeline(
-            "junk.temp.application", asset, snap,
+            "junk.temp.application",
+            asset,
+            snap,
         )
         _, _, r2 = evaluate_through_pipeline(
-            "junk.temp.application", asset, snap,
+            "junk.temp.application",
+            asset,
+            snap,
         )
         assert r1.is_match == r2.is_match
 
@@ -568,11 +659,15 @@ class TestBrowserCacheIntegration:
     def test_positive_detection(self):
         root = IntegrationFixtures.browser_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "bc-pos", str(root / "cache_entry"), size=512,
+            "bc-pos",
+            str(root / "cache_entry"),
+            size=512,
         )
         snap = IntegrationFixtures.create_snapshot("bc-pos")
         _, _, result = evaluate_through_pipeline(
-            "cache.browser", asset, snap,
+            "cache.browser",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -582,10 +677,12 @@ class TestBrowserCacheIntegration:
 
     def test_negative_detection(self):
         asset = IntegrationFixtures.create_asset(
-            "bc-neg", r"C:\Users\Test\Documents\page.html",
+            "bc-neg",
+            r"C:\Users\Test\Documents\page.html",
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.browser", asset,
+            "cache.browser",
+            asset,
         )
         assert result.is_success
         assert not result.is_match
@@ -593,21 +690,27 @@ class TestBrowserCacheIntegration:
     def test_wrong_asset_type(self):
         root = IntegrationFixtures.browser_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "bc-dir", str(root), asset_type=AssetType.REGISTRY_KEY,
+            "bc-dir",
+            str(root),
+            asset_type=AssetType.REGISTRY_KEY,
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.browser", asset,
+            "cache.browser",
+            asset,
         )
         assert result.status == EvaluationStatus.SKIPPED_NOT_APPLICABLE
 
     def test_locked_asset(self):
         root = IntegrationFixtures.browser_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "bc-lock", str(root / "locked_cache"),
+            "bc-lock",
+            str(root / "locked_cache"),
         )
         snap = IntegrationFixtures.create_snapshot("bc-lock", locked=True)
         _, _, result = evaluate_through_pipeline(
-            "cache.browser", asset, snap,
+            "cache.browser",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -616,11 +719,14 @@ class TestBrowserCacheIntegration:
     def test_inaccessible_asset(self):
         root = IntegrationFixtures.browser_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "bc-ina", str(root / "ina_cache"),
+            "bc-ina",
+            str(root / "ina_cache"),
         )
         snap = IntegrationFixtures.create_snapshot("bc-ina", accessible=False)
         _, _, result = evaluate_through_pipeline(
-            "cache.browser", asset, snap,
+            "cache.browser",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -629,10 +735,13 @@ class TestBrowserCacheIntegration:
     def test_missing_snapshot(self):
         root = IntegrationFixtures.browser_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "bc-miss", str(root / "cache_file"),
+            "bc-miss",
+            str(root / "cache_file"),
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.browser", asset, snapshot=None,
+            "cache.browser",
+            asset,
+            snapshot=None,
         )
         assert result.is_success
         assert result.is_match
@@ -640,11 +749,14 @@ class TestBrowserCacheIntegration:
     def test_snapshot_not_exists(self):
         root = IntegrationFixtures.browser_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "bc-ne", str(root / "gone_cache"),
+            "bc-ne",
+            str(root / "gone_cache"),
         )
         snap = IntegrationFixtures.create_snapshot("bc-ne", exists=False)
         _, _, result = evaluate_through_pipeline(
-            "cache.browser", asset, snap,
+            "cache.browser",
+            asset,
+            snap,
         )
         assert result.is_success
         assert not result.is_match
@@ -652,14 +764,19 @@ class TestBrowserCacheIntegration:
     def test_deterministic_result(self):
         root = IntegrationFixtures.browser_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "bc-det", str(root / "det_cache"),
+            "bc-det",
+            str(root / "det_cache"),
         )
         snap = IntegrationFixtures.create_snapshot("bc-det")
         _, _, r1 = evaluate_through_pipeline(
-            "cache.browser", asset, snap,
+            "cache.browser",
+            asset,
+            snap,
         )
         _, _, r2 = evaluate_through_pipeline(
-            "cache.browser", asset, snap,
+            "cache.browser",
+            asset,
+            snap,
         )
         assert r1.is_match == r2.is_match
 
@@ -675,11 +792,15 @@ class TestInstallerCacheIntegration:
     def test_positive_detection(self):
         root = IntegrationFixtures.installer_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "ic-pos", str(root / "patch.msp"), size=8192,
+            "ic-pos",
+            str(root / "patch.msp"),
+            size=8192,
         )
         snap = IntegrationFixtures.create_snapshot("ic-pos")
         _, _, result = evaluate_through_pipeline(
-            "cache.installer", asset, snap,
+            "cache.installer",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -689,10 +810,12 @@ class TestInstallerCacheIntegration:
 
     def test_negative_detection(self):
         asset = IntegrationFixtures.create_asset(
-            "ic-neg", r"C:\Users\Test\Documents\installer.msi",
+            "ic-neg",
+            r"C:\Users\Test\Documents\installer.msi",
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.installer", asset,
+            "cache.installer",
+            asset,
         )
         assert result.is_success
         assert not result.is_match
@@ -700,10 +823,13 @@ class TestInstallerCacheIntegration:
     def test_wrong_asset_type(self):
         root = IntegrationFixtures.installer_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "ic-dir", str(root), asset_type=AssetType.REGISTRY_KEY,
+            "ic-dir",
+            str(root),
+            asset_type=AssetType.REGISTRY_KEY,
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.installer", asset,
+            "cache.installer",
+            asset,
         )
         assert result.status == EvaluationStatus.SKIPPED_NOT_APPLICABLE
 
@@ -711,11 +837,14 @@ class TestInstallerCacheIntegration:
         """$PatchCache$ is under protected Installer but has exception."""
         root = IntegrationFixtures.installer_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "ic-exc", str(root / "data.dat"),
+            "ic-exc",
+            str(root / "data.dat"),
         )
         snap = IntegrationFixtures.create_snapshot("ic-exc")
         _, _, result = evaluate_through_pipeline(
-            "cache.installer", asset, snap,
+            "cache.installer",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -724,11 +853,14 @@ class TestInstallerCacheIntegration:
     def test_locked_asset(self):
         root = IntegrationFixtures.installer_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "ic-lock", str(root / "locked.msp"),
+            "ic-lock",
+            str(root / "locked.msp"),
         )
         snap = IntegrationFixtures.create_snapshot("ic-lock", locked=True)
         _, _, result = evaluate_through_pipeline(
-            "cache.installer", asset, snap,
+            "cache.installer",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -737,11 +869,14 @@ class TestInstallerCacheIntegration:
     def test_inaccessible_asset(self):
         root = IntegrationFixtures.installer_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "ic-ina", str(root / "ina.msp"),
+            "ic-ina",
+            str(root / "ina.msp"),
         )
         snap = IntegrationFixtures.create_snapshot("ic-ina", accessible=False)
         _, _, result = evaluate_through_pipeline(
-            "cache.installer", asset, snap,
+            "cache.installer",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -750,10 +885,13 @@ class TestInstallerCacheIntegration:
     def test_missing_snapshot(self):
         root = IntegrationFixtures.installer_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "ic-miss", str(root / "patch.msp"),
+            "ic-miss",
+            str(root / "patch.msp"),
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.installer", asset, snapshot=None,
+            "cache.installer",
+            asset,
+            snapshot=None,
         )
         assert result.is_success
         assert result.is_match
@@ -761,11 +899,14 @@ class TestInstallerCacheIntegration:
     def test_snapshot_not_exists(self):
         root = IntegrationFixtures.installer_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "ic-ne", str(root / "gone.msp"),
+            "ic-ne",
+            str(root / "gone.msp"),
         )
         snap = IntegrationFixtures.create_snapshot("ic-ne", exists=False)
         _, _, result = evaluate_through_pipeline(
-            "cache.installer", asset, snap,
+            "cache.installer",
+            asset,
+            snap,
         )
         assert result.is_success
         assert not result.is_match
@@ -773,14 +914,19 @@ class TestInstallerCacheIntegration:
     def test_deterministic_result(self):
         root = IntegrationFixtures.installer_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "ic-det", str(root / "det.msp"),
+            "ic-det",
+            str(root / "det.msp"),
         )
         snap = IntegrationFixtures.create_snapshot("ic-det")
         _, _, r1 = evaluate_through_pipeline(
-            "cache.installer", asset, snap,
+            "cache.installer",
+            asset,
+            snap,
         )
         _, _, r2 = evaluate_through_pipeline(
-            "cache.installer", asset, snap,
+            "cache.installer",
+            asset,
+            snap,
         )
         assert r1.is_match == r2.is_match
 
@@ -796,11 +942,15 @@ class TestWindowsUpdateCacheIntegration:
     def test_positive_detection(self):
         root = IntegrationFixtures.windows_update_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "wu-pos", str(root / "update.cab"), size=102400,
+            "wu-pos",
+            str(root / "update.cab"),
+            size=102400,
         )
         snap = IntegrationFixtures.create_snapshot("wu-pos")
         _, _, result = evaluate_through_pipeline(
-            "cache.windows_update", asset, snap,
+            "cache.windows_update",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -810,10 +960,12 @@ class TestWindowsUpdateCacheIntegration:
 
     def test_negative_detection(self):
         asset = IntegrationFixtures.create_asset(
-            "wu-neg", r"C:\Users\Test\Documents\update.txt",
+            "wu-neg",
+            r"C:\Users\Test\Documents\update.txt",
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.windows_update", asset,
+            "cache.windows_update",
+            asset,
         )
         assert result.is_success
         assert not result.is_match
@@ -821,21 +973,27 @@ class TestWindowsUpdateCacheIntegration:
     def test_wrong_asset_type(self):
         root = IntegrationFixtures.windows_update_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "wu-dir", str(root), asset_type=AssetType.DIRECTORY,
+            "wu-dir",
+            str(root),
+            asset_type=AssetType.DIRECTORY,
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.windows_update", asset,
+            "cache.windows_update",
+            asset,
         )
         assert result.status == EvaluationStatus.SKIPPED_NOT_APPLICABLE
 
     def test_locked_asset(self):
         root = IntegrationFixtures.windows_update_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "wu-lock", str(root / "locked.cab"),
+            "wu-lock",
+            str(root / "locked.cab"),
         )
         snap = IntegrationFixtures.create_snapshot("wu-lock", locked=True)
         _, _, result = evaluate_through_pipeline(
-            "cache.windows_update", asset, snap,
+            "cache.windows_update",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -844,11 +1002,14 @@ class TestWindowsUpdateCacheIntegration:
     def test_inaccessible_asset(self):
         root = IntegrationFixtures.windows_update_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "wu-ina", str(root / "ina.cab"),
+            "wu-ina",
+            str(root / "ina.cab"),
         )
         snap = IntegrationFixtures.create_snapshot("wu-ina", accessible=False)
         _, _, result = evaluate_through_pipeline(
-            "cache.windows_update", asset, snap,
+            "cache.windows_update",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -857,10 +1018,13 @@ class TestWindowsUpdateCacheIntegration:
     def test_missing_snapshot(self):
         root = IntegrationFixtures.windows_update_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "wu-miss", str(root / "update.cab"),
+            "wu-miss",
+            str(root / "update.cab"),
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.windows_update", asset, snapshot=None,
+            "cache.windows_update",
+            asset,
+            snapshot=None,
         )
         assert result.is_success
         assert result.is_match
@@ -868,11 +1032,14 @@ class TestWindowsUpdateCacheIntegration:
     def test_snapshot_not_exists(self):
         root = IntegrationFixtures.windows_update_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "wu-ne", str(root / "gone.cab"),
+            "wu-ne",
+            str(root / "gone.cab"),
         )
         snap = IntegrationFixtures.create_snapshot("wu-ne", exists=False)
         _, _, result = evaluate_through_pipeline(
-            "cache.windows_update", asset, snap,
+            "cache.windows_update",
+            asset,
+            snap,
         )
         assert result.is_success
         assert not result.is_match
@@ -880,14 +1047,19 @@ class TestWindowsUpdateCacheIntegration:
     def test_deterministic_result(self):
         root = IntegrationFixtures.windows_update_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "wu-det", str(root / "det.cab"),
+            "wu-det",
+            str(root / "det.cab"),
         )
         snap = IntegrationFixtures.create_snapshot("wu-det")
         _, _, r1 = evaluate_through_pipeline(
-            "cache.windows_update", asset, snap,
+            "cache.windows_update",
+            asset,
+            snap,
         )
         _, _, r2 = evaluate_through_pipeline(
-            "cache.windows_update", asset, snap,
+            "cache.windows_update",
+            asset,
+            snap,
         )
         assert r1.is_match == r2.is_match
 
@@ -903,11 +1075,15 @@ class TestApplicationCacheIntegration:
     def test_positive_detection(self):
         root = IntegrationFixtures.app_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "ac-pos", str(root / "cache.dat"), size=4096,
+            "ac-pos",
+            str(root / "cache.dat"),
+            size=4096,
         )
         snap = IntegrationFixtures.create_snapshot("ac-pos")
         _, _, result = evaluate_through_pipeline(
-            "cache.application", asset, snap,
+            "cache.application",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -917,10 +1093,12 @@ class TestApplicationCacheIntegration:
 
     def test_negative_detection(self):
         asset = IntegrationFixtures.create_asset(
-            "ac-neg", r"C:\Users\Test\Documents\data.dat",
+            "ac-neg",
+            r"C:\Users\Test\Documents\data.dat",
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.application", asset,
+            "cache.application",
+            asset,
         )
         assert result.is_success
         assert not result.is_match
@@ -928,21 +1106,27 @@ class TestApplicationCacheIntegration:
     def test_wrong_asset_type(self):
         root = IntegrationFixtures.app_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "ac-dir", str(root), asset_type=AssetType.REGISTRY_KEY,
+            "ac-dir",
+            str(root),
+            asset_type=AssetType.REGISTRY_KEY,
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.application", asset,
+            "cache.application",
+            asset,
         )
         assert result.status == EvaluationStatus.SKIPPED_NOT_APPLICABLE
 
     def test_locked_asset(self):
         root = IntegrationFixtures.app_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "ac-lock", str(root / "locked.dat"),
+            "ac-lock",
+            str(root / "locked.dat"),
         )
         snap = IntegrationFixtures.create_snapshot("ac-lock", locked=True)
         _, _, result = evaluate_through_pipeline(
-            "cache.application", asset, snap,
+            "cache.application",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -951,11 +1135,14 @@ class TestApplicationCacheIntegration:
     def test_inaccessible_asset(self):
         root = IntegrationFixtures.app_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "ac-ina", str(root / "ina.dat"),
+            "ac-ina",
+            str(root / "ina.dat"),
         )
         snap = IntegrationFixtures.create_snapshot("ac-ina", accessible=False)
         _, _, result = evaluate_through_pipeline(
-            "cache.application", asset, snap,
+            "cache.application",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -964,10 +1151,13 @@ class TestApplicationCacheIntegration:
     def test_missing_snapshot(self):
         root = IntegrationFixtures.app_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "ac-miss", str(root / "cache.dat"),
+            "ac-miss",
+            str(root / "cache.dat"),
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.application", asset, snapshot=None,
+            "cache.application",
+            asset,
+            snapshot=None,
         )
         assert result.is_success
         assert result.is_match
@@ -975,11 +1165,14 @@ class TestApplicationCacheIntegration:
     def test_snapshot_not_exists(self):
         root = IntegrationFixtures.app_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "ac-ne", str(root / "gone.dat"),
+            "ac-ne",
+            str(root / "gone.dat"),
         )
         snap = IntegrationFixtures.create_snapshot("ac-ne", exists=False)
         _, _, result = evaluate_through_pipeline(
-            "cache.application", asset, snap,
+            "cache.application",
+            asset,
+            snap,
         )
         assert result.is_success
         assert not result.is_match
@@ -987,14 +1180,19 @@ class TestApplicationCacheIntegration:
     def test_deterministic_result(self):
         root = IntegrationFixtures.app_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "ac-det", str(root / "det.dat"),
+            "ac-det",
+            str(root / "det.dat"),
         )
         snap = IntegrationFixtures.create_snapshot("ac-det")
         _, _, r1 = evaluate_through_pipeline(
-            "cache.application", asset, snap,
+            "cache.application",
+            asset,
+            snap,
         )
         _, _, r2 = evaluate_through_pipeline(
-            "cache.application", asset, snap,
+            "cache.application",
+            asset,
+            snap,
         )
         assert r1.is_match == r2.is_match
 
@@ -1010,11 +1208,15 @@ class TestShaderCacheIntegration:
     def test_positive_detection(self):
         root = IntegrationFixtures.shader_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "sc-pos", str(root / "shader.bin"), size=2048,
+            "sc-pos",
+            str(root / "shader.bin"),
+            size=2048,
         )
         snap = IntegrationFixtures.create_snapshot("sc-pos")
         _, _, result = evaluate_through_pipeline(
-            "cache.shader", asset, snap,
+            "cache.shader",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -1024,10 +1226,12 @@ class TestShaderCacheIntegration:
 
     def test_negative_detection(self):
         asset = IntegrationFixtures.create_asset(
-            "sc-neg", r"C:\Users\Test\Documents\shader.txt",
+            "sc-neg",
+            r"C:\Users\Test\Documents\shader.txt",
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.shader", asset,
+            "cache.shader",
+            asset,
         )
         assert result.is_success
         assert not result.is_match
@@ -1035,21 +1239,27 @@ class TestShaderCacheIntegration:
     def test_wrong_asset_type(self):
         root = IntegrationFixtures.shader_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "sc-dir", str(root), asset_type=AssetType.DIRECTORY,
+            "sc-dir",
+            str(root),
+            asset_type=AssetType.DIRECTORY,
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.shader", asset,
+            "cache.shader",
+            asset,
         )
         assert result.status == EvaluationStatus.SKIPPED_NOT_APPLICABLE
 
     def test_locked_asset(self):
         root = IntegrationFixtures.shader_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "sc-lock", str(root / "locked.bin"),
+            "sc-lock",
+            str(root / "locked.bin"),
         )
         snap = IntegrationFixtures.create_snapshot("sc-lock", locked=True)
         _, _, result = evaluate_through_pipeline(
-            "cache.shader", asset, snap,
+            "cache.shader",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -1058,11 +1268,14 @@ class TestShaderCacheIntegration:
     def test_inaccessible_asset(self):
         root = IntegrationFixtures.shader_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "sc-ina", str(root / "ina.bin"),
+            "sc-ina",
+            str(root / "ina.bin"),
         )
         snap = IntegrationFixtures.create_snapshot("sc-ina", accessible=False)
         _, _, result = evaluate_through_pipeline(
-            "cache.shader", asset, snap,
+            "cache.shader",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -1071,10 +1284,13 @@ class TestShaderCacheIntegration:
     def test_missing_snapshot(self):
         root = IntegrationFixtures.shader_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "sc-miss", str(root / "shader.bin"),
+            "sc-miss",
+            str(root / "shader.bin"),
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.shader", asset, snapshot=None,
+            "cache.shader",
+            asset,
+            snapshot=None,
         )
         assert result.is_success
         assert result.is_match
@@ -1082,11 +1298,14 @@ class TestShaderCacheIntegration:
     def test_snapshot_not_exists(self):
         root = IntegrationFixtures.shader_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "sc-ne", str(root / "gone.bin"),
+            "sc-ne",
+            str(root / "gone.bin"),
         )
         snap = IntegrationFixtures.create_snapshot("sc-ne", exists=False)
         _, _, result = evaluate_through_pipeline(
-            "cache.shader", asset, snap,
+            "cache.shader",
+            asset,
+            snap,
         )
         assert result.is_success
         assert not result.is_match
@@ -1094,14 +1313,19 @@ class TestShaderCacheIntegration:
     def test_deterministic_result(self):
         root = IntegrationFixtures.shader_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "sc-det", str(root / "det.bin"),
+            "sc-det",
+            str(root / "det.bin"),
         )
         snap = IntegrationFixtures.create_snapshot("sc-det")
         _, _, r1 = evaluate_through_pipeline(
-            "cache.shader", asset, snap,
+            "cache.shader",
+            asset,
+            snap,
         )
         _, _, r2 = evaluate_through_pipeline(
-            "cache.shader", asset, snap,
+            "cache.shader",
+            asset,
+            snap,
         )
         assert r1.is_match == r2.is_match
 
@@ -1117,11 +1341,15 @@ class TestThumbnailCacheIntegration:
     def test_positive_detection(self):
         root = IntegrationFixtures.thumbnail_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "tc-pos", str(root / "thumbcache_32.db"), size=512,
+            "tc-pos",
+            str(root / "thumbcache_32.db"),
+            size=512,
         )
         snap = IntegrationFixtures.create_snapshot("tc-pos")
         _, _, result = evaluate_through_pipeline(
-            "cache.thumbnail", asset, snap,
+            "cache.thumbnail",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -1131,10 +1359,12 @@ class TestThumbnailCacheIntegration:
 
     def test_negative_detection(self):
         asset = IntegrationFixtures.create_asset(
-            "tc-neg", r"C:\Users\Test\Documents\thumbs.db",
+            "tc-neg",
+            r"C:\Users\Test\Documents\thumbs.db",
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.thumbnail", asset,
+            "cache.thumbnail",
+            asset,
         )
         assert result.is_success
         assert not result.is_match
@@ -1142,21 +1372,27 @@ class TestThumbnailCacheIntegration:
     def test_wrong_asset_type(self):
         root = IntegrationFixtures.thumbnail_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "tc-dir", str(root), asset_type=AssetType.DIRECTORY,
+            "tc-dir",
+            str(root),
+            asset_type=AssetType.DIRECTORY,
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.thumbnail", asset,
+            "cache.thumbnail",
+            asset,
         )
         assert result.status == EvaluationStatus.SKIPPED_NOT_APPLICABLE
 
     def test_locked_asset(self):
         root = IntegrationFixtures.thumbnail_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "tc-lock", str(root / "thumbcache_32.db"),
+            "tc-lock",
+            str(root / "thumbcache_32.db"),
         )
         snap = IntegrationFixtures.create_snapshot("tc-lock", locked=True)
         _, _, result = evaluate_through_pipeline(
-            "cache.thumbnail", asset, snap,
+            "cache.thumbnail",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -1165,11 +1401,14 @@ class TestThumbnailCacheIntegration:
     def test_inaccessible_asset(self):
         root = IntegrationFixtures.thumbnail_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "tc-ina", str(root / "thumbcache_32.db"),
+            "tc-ina",
+            str(root / "thumbcache_32.db"),
         )
         snap = IntegrationFixtures.create_snapshot("tc-ina", accessible=False)
         _, _, result = evaluate_through_pipeline(
-            "cache.thumbnail", asset, snap,
+            "cache.thumbnail",
+            asset,
+            snap,
         )
         assert result.is_success
         assert result.is_match
@@ -1178,10 +1417,13 @@ class TestThumbnailCacheIntegration:
     def test_missing_snapshot(self):
         root = IntegrationFixtures.thumbnail_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "tc-miss", str(root / "thumbcache_32.db"),
+            "tc-miss",
+            str(root / "thumbcache_32.db"),
         )
         _, _, result = evaluate_through_pipeline(
-            "cache.thumbnail", asset, snapshot=None,
+            "cache.thumbnail",
+            asset,
+            snapshot=None,
         )
         assert result.is_success
         assert result.is_match
@@ -1189,11 +1431,14 @@ class TestThumbnailCacheIntegration:
     def test_snapshot_not_exists(self):
         root = IntegrationFixtures.thumbnail_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "tc-ne", str(root / "thumbcache_32.db"),
+            "tc-ne",
+            str(root / "thumbcache_32.db"),
         )
         snap = IntegrationFixtures.create_snapshot("tc-ne", exists=False)
         _, _, result = evaluate_through_pipeline(
-            "cache.thumbnail", asset, snap,
+            "cache.thumbnail",
+            asset,
+            snap,
         )
         assert result.is_success
         assert not result.is_match
@@ -1201,14 +1446,19 @@ class TestThumbnailCacheIntegration:
     def test_deterministic_result(self):
         root = IntegrationFixtures.thumbnail_cache_root()
         asset = IntegrationFixtures.create_asset(
-            "tc-det", str(root / "thumbcache_32.db"),
+            "tc-det",
+            str(root / "thumbcache_32.db"),
         )
         snap = IntegrationFixtures.create_snapshot("tc-det")
         _, _, r1 = evaluate_through_pipeline(
-            "cache.thumbnail", asset, snap,
+            "cache.thumbnail",
+            asset,
+            snap,
         )
         _, _, r2 = evaluate_through_pipeline(
-            "cache.thumbnail", asset, snap,
+            "cache.thumbnail",
+            asset,
+            snap,
         )
         assert r1.is_match == r2.is_match
 
@@ -1232,7 +1482,8 @@ class TestAllRulesThroughEvaluator:
 
         root = IntegrationFixtures.user_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "multi-001", str(root / "test.tmp"),
+            "multi-001",
+            str(root / "test.tmp"),
         )
         snap = IntegrationFixtures.create_snapshot("multi-001")
 
@@ -1247,8 +1498,7 @@ class TestAllRulesThroughEvaluator:
     def test_failure_isolation_through_pipeline(self):
         """If one rule throws, others continue."""
         from avs_backend.scan_core.rules.enums import RuleCategory, Severity
-        from avs_backend.scan_core.rules.models import (RuleIdentifier,
-                                                        RuleVersion)
+        from avs_backend.scan_core.rules.models import RuleIdentifier, RuleVersion
         from avs_backend.scan_core.rules.rule import Rule, RuleMetadata
 
         class ThrowingRule(Rule):
@@ -1275,7 +1525,8 @@ class TestAllRulesThroughEvaluator:
         evaluator = RuleEvaluator(registry)
         root = IntegrationFixtures.user_temp_root()
         asset = IntegrationFixtures.create_asset(
-            "fail-001", str(root / "test.tmp"),
+            "fail-001",
+            str(root / "test.tmp"),
         )
         snap = IntegrationFixtures.create_snapshot("fail-001")
 

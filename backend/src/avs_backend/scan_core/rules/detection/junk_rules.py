@@ -207,7 +207,9 @@ class UserTempRule(Rule):
 
         # Calculate overall confidence (average)
         total_score = sum(f.score for f in confidence_factors)
-        avg_score = total_score / len(confidence_factors) if confidence_factors else 50.0
+        avg_score = (
+            total_score / len(confidence_factors) if confidence_factors else 50.0
+        )
 
         confidence = Confidence(
             score=avg_score,

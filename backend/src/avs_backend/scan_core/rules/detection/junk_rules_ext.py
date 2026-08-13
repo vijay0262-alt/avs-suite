@@ -102,7 +102,9 @@ class ApplicationTempRule(Rule):
             Evidence(
                 evidence_type=EvidenceType.KNOWN_LOCATION,
                 source=self.rule_id,
-                description=(f"Asset is in known application temp directory: {matched_root}"),
+                description=(
+                    f"Asset is in known application temp directory: {matched_root}"
+                ),
                 value=matched_root,
             )
         )
@@ -307,7 +309,9 @@ class BrowserCacheRule(Rule):
             Evidence(
                 evidence_type=EvidenceType.KNOWN_LOCATION,
                 source=self.rule_id,
-                description=(f"Asset is in known browser cache directory: {matched_root}"),
+                description=(
+                    f"Asset is in known browser cache directory: {matched_root}"
+                ),
                 value=matched_root,
             )
         )
@@ -317,7 +321,8 @@ class BrowserCacheRule(Rule):
                 evidence_type=EvidenceType.BEHAVIOR_MATCH,
                 source=self.rule_id,
                 description=(
-                    "Browser caches are regenerated automatically by " "the browser on next visit"
+                    "Browser caches are regenerated automatically by "
+                    "the browser on next visit"
                 ),
                 value="auto-regenerated",
             )
@@ -447,7 +452,8 @@ class InstallerCacheRule(Rule):
             version=RuleVersion(1, 0, 0),
             name="Windows Installer Patch Cache",
             description=(
-                "Detects Windows Installer patch cache files " "($PatchCache$ subfolder only)"
+                "Detects Windows Installer patch cache files "
+                "($PatchCache$ subfolder only)"
             ),
             category=RuleCategory.CACHE,
             severity=Severity.LOW,
@@ -489,7 +495,9 @@ class InstallerCacheRule(Rule):
             Evidence(
                 evidence_type=EvidenceType.KNOWN_LOCATION,
                 source=self.rule_id,
-                description=(f"Asset is in Windows Installer patch cache: {installer_cache_root}"),
+                description=(
+                    f"Asset is in Windows Installer patch cache: {installer_cache_root}"
+                ),
                 value=str(installer_cache_root),
             )
         )
@@ -546,7 +554,8 @@ class InstallerCacheRule(Rule):
                 factor=ConfidenceFactor.STRONG_EVIDENCE,
                 score=85.0,
                 description=(
-                    "Patch cache is safe to clear — Installer re-downloads " "patches if needed"
+                    "Patch cache is safe to clear — Installer re-downloads "
+                    "patches if needed"
                 ),
             )
         )
@@ -579,7 +588,9 @@ class InstallerCacheRule(Rule):
         safety = SafetyPolicy.assess(
             asset=asset,
             snapshot=snapshot,
-            safe_reason=("Installer patch cache is safe to clear — " "re-downloaded if needed"),
+            safe_reason=(
+                "Installer patch cache is safe to clear — " "re-downloaded if needed"
+            ),
         )
 
         estimated_size: Optional[int] = None
@@ -620,7 +631,8 @@ class WindowsUpdateCacheRule(Rule):
             version=RuleVersion(1, 0, 0),
             name="Windows Update Cache",
             description=(
-                "Detects downloaded Windows Update packages " "retained after installation"
+                "Detects downloaded Windows Update packages "
+                "retained after installation"
             ),
             category=RuleCategory.CACHE,
             severity=Severity.LOW,
@@ -662,7 +674,10 @@ class WindowsUpdateCacheRule(Rule):
             Evidence(
                 evidence_type=EvidenceType.KNOWN_LOCATION,
                 source=self.rule_id,
-                description=(f"Asset is in Windows Update download cache: " f"{update_cache_root}"),
+                description=(
+                    f"Asset is in Windows Update download cache: "
+                    f"{update_cache_root}"
+                ),
                 value=str(update_cache_root),
             )
         )
@@ -718,7 +733,9 @@ class WindowsUpdateCacheRule(Rule):
             ConfidenceScore(
                 factor=ConfidenceFactor.STRONG_EVIDENCE,
                 score=85.0,
-                description=("Downloaded updates are safe to remove after installation"),
+                description=(
+                    "Downloaded updates are safe to remove after installation"
+                ),
             )
         )
 
@@ -750,7 +767,9 @@ class WindowsUpdateCacheRule(Rule):
         safety = SafetyPolicy.assess(
             asset=asset,
             snapshot=snapshot,
-            safe_reason=("Windows Update download cache is safe to clear " "after installation"),
+            safe_reason=(
+                "Windows Update download cache is safe to clear " "after installation"
+            ),
         )
 
         estimated_size: Optional[int] = None
@@ -794,7 +813,8 @@ class ApplicationCacheRule(Rule):
             version=RuleVersion(1, 0, 0),
             name="Application Cache",
             description=(
-                "Detects cache files in known application cache " "directories (Office, IconCache)"
+                "Detects cache files in known application cache "
+                "directories (Office, IconCache)"
             ),
             category=RuleCategory.CACHE,
             severity=Severity.LOW,
@@ -872,7 +892,8 @@ class ApplicationCacheRule(Rule):
                 evidence_type=EvidenceType.BEHAVIOR_MATCH,
                 source=self.rule_id,
                 description=(
-                    "Application caches are regenerated automatically " "by the application"
+                    "Application caches are regenerated automatically "
+                    "by the application"
                 ),
                 value="auto-regenerated",
             )

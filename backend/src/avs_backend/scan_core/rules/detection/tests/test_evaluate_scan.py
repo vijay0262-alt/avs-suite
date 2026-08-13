@@ -23,21 +23,31 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-from avs_backend.scan_core.assets import (AssetCategory, AssetSource,
-                                          AssetType, ScanAsset)
+from avs_backend.scan_core.assets import (
+    AssetCategory,
+    AssetSource,
+    AssetType,
+    ScanAsset,
+)
 from avs_backend.scan_core.assets.metadata import AssetMetadata
-from avs_backend.scan_core.context import (AssetSnapshot, ScanContext,
-                                           ScanType, SnapshotState)
+from avs_backend.scan_core.context import (
+    AssetSnapshot,
+    ScanContext,
+    ScanType,
+    SnapshotState,
+)
 from avs_backend.scan_core.context.scan_context import generate_scan_id
-from avs_backend.scan_core.metadata import (AssetRepository, ContextRepository,
-                                            DatabaseConfig, MetadataDatabase,
-                                            SnapshotRepository)
-from avs_backend.scan_core.rules.detection.junk_rules import \
-    register_junk_rules
+from avs_backend.scan_core.metadata import (
+    AssetRepository,
+    ContextRepository,
+    DatabaseConfig,
+    MetadataDatabase,
+    SnapshotRepository,
+)
+from avs_backend.scan_core.rules.detection.junk_rules import register_junk_rules
 from avs_backend.scan_core.rules.detection.locations import KnownLocations
 from avs_backend.scan_core.rules.evaluation import EvaluationStatus
-from avs_backend.scan_core.rules.evaluator import (CancellationToken,
-                                                   RuleEvaluator)
+from avs_backend.scan_core.rules.evaluator import CancellationToken, RuleEvaluator
 from avs_backend.scan_core.rules.registry import RuleRegistry
 
 # ---------------------------------------------------------------------------
@@ -531,7 +541,8 @@ class TestEvaluateScanAllRules:
         # Directory asset should have skipped results for file-only rules
         dir_results = [r for r in batch.results if r.asset_id == "mt-002"]
         dir_skipped = [
-            r for r in dir_results
+            r
+            for r in dir_results
             if r.status == EvaluationStatus.SKIPPED_NOT_APPLICABLE
         ]
         assert len(dir_skipped) >= 1
