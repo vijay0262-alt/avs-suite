@@ -1,7 +1,7 @@
 """
-SC-8C3 Part 3 — Remediation Action Contract + Action Planning
+SC-8C3 Part 4 — Remediation Action Contract + Action Planning + Safety Hardening
 
-Immutable domain contract for remediation actions.
+Immutable domain contract for remediation actions with execution-readiness hardening.
 
 Architecture:
   RuleResult
@@ -12,9 +12,9 @@ Architecture:
     ↓
   [Action Planning Layer] (Part 3)
     ↓
-  Future Safety Gate
+  [Safety Gate Contract] (Part 4)
     ↓
-  Future Execution Engine
+  Future Executor
 
 This layer:
 - NEVER modifies system state
@@ -32,9 +32,43 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Optional, Protocol, runtime_checkable
 
 from ..assets import AssetType
+from .action_path_validation import (
+    FORBIDDEN_ROOTS,
+    PathValidationError,
+    SymlinkContract,
+    is_path_safe_for_planning,
+    normalize_windows_path,
+    validate_filesystem_path,
+)
+from .action_preconditions import (
+    CacheScopeValid,
+    HashMatches,
+    ModifiedTimeMatches,
+    NotJunction,
+    NotReparsePoint,
+    NotSymlink,
+    PathWithinAllowedScope,
+    PreconditionSet,
+    RegistryHiveMatches,
+    RegistryKeyExists,
+    RegistryValueExists,
+    SafetyLevelValid,
+    SizeMatches,
+    SnapshotFresh,
+    TargetAccessible,
+    TargetExists,
+    TargetIdentityMatches,
+    TargetNotLocked,
+)
+from .action_registry_validation import (
+    RegistryValidationError,
+    is_registry_target_safe,
+    validate_registry_target,
+)
 from .aggregation import DetectionFinding
 from .enums import RuleCategory
 from .priority import FindingPriority, Fixability, PrioritizedResult, RuleCapability
+from .safety_gate import SafetyGate, SafetyGateResult, create_safety_gate
 
 if TYPE_CHECKING:
     pass
@@ -51,6 +85,11 @@ class _AssetSnapshot(Protocol):
     is_accessible: bool
     canonical_path: str
     asset_id: str
+    snapshot_timestamp: Optional[datetime] = None
+    snapshot_version: Optional[str] = None
+    content_hash: Optional[str] = None
+    size: Optional[int] = None
+    modified_time: Optional[datetime] = None
 
 
 AssetSnapshotResolver = Callable[[str], Optional[_AssetSnapshot]]
@@ -169,10 +208,11 @@ class RegistryActionTarget:
     rollback_supported: bool = True
     backup_location: Optional[str] = None
     backup_identity: Optional[str] = None
+    view: str = "default"  # "default", "wow6432node", "wow6446node"
 
     def target_identity(self) -> str:
         """Deterministic identity for deduplication."""
-        return f"{self.asset_id}|{self.hive}|{self.key_path}|{self.value_name or ''}"
+        return f"{self.asset_id}|{self.hive}|{self.key_path}|{self.value_name or ''}|{self.view}"
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
@@ -186,6 +226,7 @@ class RegistryActionTarget:
             "rollback_supported": self.rollback_supported,
             "backup_location": self.backup_location,
             "backup_identity": self.backup_identity,
+            "view": self.view,
         }
 
 
@@ -205,6 +246,8 @@ class BrowserActionTarget:
     rollback_supported: bool = False
     backup_location: Optional[str] = None
     backup_identity: Optional[str] = None
+    user_data_safe: bool = True
+    cache_only: bool = True
 
     def target_identity(self) -> str:
         """Deterministic identity for deduplication."""
@@ -223,6 +266,8 @@ class BrowserActionTarget:
             "rollback_supported": self.rollback_supported,
             "backup_location": self.backup_location,
             "backup_identity": self.backup_identity,
+            "user_data_safe": self.user_data_safe,
+            "cache_only": self.cache_only,
         }
 
 
@@ -294,7 +339,7 @@ class RemediationAction:
     is_auto_fixable: bool
     is_fixable: bool
     rule_capability: RuleCapability
-    preconditions: tuple[str, ...]
+    preconditions: PreconditionSet
     safety_assessment: str
     reason: str
     estimated_size: Optional[int]
@@ -351,11 +396,26 @@ class ActionPlan:
     actions: tuple[RemediationAction, ...]
     summary: "ActionSummary"
     generated_at: datetime
+    snapshot_timestamp: Optional[datetime] = None
+    snapshot_version: Optional[str] = None
+    snapshot_ttl_seconds: int = 3600
 
     def __post_init__(self) -> None:
         """Ensure collections are tuples."""
         if isinstance(object.__getattribute__(self, "actions"), list):
             object.__setattr__(self, "actions", tuple(self.actions))
+
+    def is_stale(self) -> bool:
+        """
+        Check if the action plan has expired.
+
+        Returns:
+            True if plan is older than snapshot_ttl_seconds.
+        """
+        if self.snapshot_timestamp is None:
+            return False
+        age = (datetime.now(UTC) - self.snapshot_timestamp).total_seconds()
+        return age > self.snapshot_ttl_seconds
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
@@ -363,6 +423,14 @@ class ActionPlan:
             "actions": [a.to_dict() for a in self.actions],
             "summary": self.summary.to_dict(),
             "generated_at": self.generated_at.isoformat(),
+            "snapshot_timestamp": (
+                self.snapshot_timestamp.isoformat()
+                if self.snapshot_timestamp is not None
+                else None
+            ),
+            "snapshot_version": self.snapshot_version,
+            "snapshot_ttl_seconds": self.snapshot_ttl_seconds,
+            "is_stale": self.is_stale(),
         }
 
 
@@ -423,6 +491,10 @@ class ActionPlanner:
     - Safety-first gating (never overrides SafetyAssessment)
     - Immutability (all output objects are frozen/read-only)
     - Zero system modification
+    - Path validation (FORBIDDEN_ROOTS, traversal, symlinks, junctions, reparse points)
+    - Registry target validation (hive allowlist, protected keys, parent-key protection)
+    - Typed preconditions (machine-verifiable contracts)
+    - Snapshot freshness tracking
 
     Does NOT:
     - Modify system state
@@ -434,6 +506,8 @@ class ActionPlanner:
         self,
         asset_snapshot_resolver: Optional[AssetSnapshotResolver] = None,
         strategy_version: str = "1.0.0",
+        safety_gate: Optional[SafetyGate] = None,
+        snapshot_ttl_seconds: int = 3600,
     ) -> None:
         """
         Initialize action planner.
@@ -443,9 +517,16 @@ class ActionPlanner:
                 snapshot state from asset_id. Required for accurate
                 missing/locked/inaccessible detection.
             strategy_version: Version string for deterministic action IDs.
+            safety_gate: Optional SafetyGate implementation. If provided,
+                used to validate planned actions independently.
+            snapshot_ttl_seconds: Maximum age of snapshot in seconds.
         """
         self._asset_snapshot_resolver = asset_snapshot_resolver
         self._strategy_version = strategy_version
+        self._safety_gate = safety_gate or create_safety_gate(
+            snapshot_ttl_seconds=snapshot_ttl_seconds
+        )
+        self._snapshot_ttl_seconds = snapshot_ttl_seconds
 
     def plan(self, result: PrioritizedResult) -> ActionPlan:
         """
@@ -474,10 +555,23 @@ class ActionPlanner:
         # Build summary
         summary = self._build_action_summary(result, actions_tuple)
 
+        # Capture snapshot timestamp for freshness tracking
+        snapshot_timestamp = None
+        snapshot_version = None
+        for priority in result.priorities:
+            snapshot = self._resolve_asset_snapshot(priority.finding.asset_id)
+            if snapshot is not None and snapshot.snapshot_timestamp is not None:
+                snapshot_timestamp = snapshot.snapshot_timestamp
+                snapshot_version = snapshot.snapshot_version
+                break
+
         return ActionPlan(
             actions=actions_tuple,
             summary=summary,
             generated_at=datetime.now(UTC),
+            snapshot_timestamp=snapshot_timestamp,
+            snapshot_version=snapshot_version,
+            snapshot_ttl_seconds=self._snapshot_ttl_seconds,
         )
 
     def _plan_action(self, priority: FindingPriority) -> Optional[RemediationAction]:
@@ -495,7 +589,7 @@ class ActionPlanner:
                 action_type=ActionType.NONE,
                 state=ActionState.BLOCKED,
                 target=self._make_no_target(),
-                preconditions=("safety_assessment_blocked",),
+                preconditions=PreconditionSet(conditions=()),
                 reason="Action blocked by safety assessment",
             )
 
@@ -508,7 +602,7 @@ class ActionPlanner:
                 action_type=ActionType.NONE,
                 state=ActionState.NOT_FIXABLE,
                 target=self._make_no_target(),
-                preconditions=("fixability_not_actionable",),
+                preconditions=PreconditionSet(conditions=()),
                 reason="Finding is not actionable",
             )
 
@@ -518,7 +612,7 @@ class ActionPlanner:
                 action_type=ActionType.NONE,
                 state=ActionState.NOT_FIXABLE,
                 target=self._make_no_target(),
-                preconditions=("fixability_unknown",),
+                preconditions=PreconditionSet(conditions=()),
                 reason="Fixability is unknown",
             )
 
@@ -528,7 +622,7 @@ class ActionPlanner:
                 action_type=ActionType.NONE,
                 state=ActionState.REVIEW_REQUIRED,
                 target=self._make_no_target(),
-                preconditions=("requires_human_review",),
+                preconditions=PreconditionSet(conditions=()),
                 reason="Action requires human review",
             )
 
@@ -538,7 +632,7 @@ class ActionPlanner:
                 action_type=ActionType.NONE,
                 state=ActionState.NOT_FIXABLE,
                 target=self._make_no_target(),
-                preconditions=("no_remediation_available",),
+                preconditions=PreconditionSet(conditions=()),
                 reason="Rule has no remediation capability",
             )
 
@@ -550,7 +644,7 @@ class ActionPlanner:
                 action_type=ActionType.NONE,
                 state=ActionState.MISSING_TARGET,
                 target=self._make_no_target(),
-                preconditions=("asset_missing",),
+                preconditions=PreconditionSet(conditions=()),
                 reason="Asset snapshot missing",
             )
 
@@ -560,7 +654,7 @@ class ActionPlanner:
                 action_type=ActionType.NONE,
                 state=ActionState.MISSING_TARGET,
                 target=self._make_no_target(),
-                preconditions=("snapshot_exists_false",),
+                preconditions=PreconditionSet(conditions=()),
                 reason="Asset snapshot does not exist",
             )
 
@@ -570,7 +664,7 @@ class ActionPlanner:
                 action_type=ActionType.NONE,
                 state=ActionState.LOCKED_TARGET,
                 target=self._make_no_target(),
-                preconditions=("target_inaccessible",),
+                preconditions=PreconditionSet(conditions=()),
                 reason="Target is inaccessible",
             )
 
@@ -580,7 +674,7 @@ class ActionPlanner:
                 action_type=ActionType.NONE,
                 state=ActionState.LOCKED_TARGET,
                 target=self._make_no_target(),
-                preconditions=("target_locked",),
+                preconditions=PreconditionSet(conditions=()),
                 reason="Target is locked",
             )
 
@@ -592,11 +686,11 @@ class ActionPlanner:
                 action_type=ActionType.NONE,
                 state=ActionState.NOT_FIXABLE,
                 target=self._make_no_target(),
-                preconditions=("unsupported_action_type",),
+                preconditions=PreconditionSet(conditions=()),
                 reason="No supported action type for this finding",
             )
 
-        # Build target
+        # Build target with validation
         target = self._build_target(finding, action_type, snapshot)
         if target is None:
             return self._make_action(
@@ -604,11 +698,11 @@ class ActionPlanner:
                 action_type=ActionType.NONE,
                 state=ActionState.NOT_FIXABLE,
                 target=self._make_no_target(),
-                preconditions=("target_construction_failed",),
+                preconditions=PreconditionSet(conditions=()),
                 reason="Could not construct action target",
             )
 
-        # Build preconditions
+        # Build typed preconditions
         preconditions = self._build_preconditions(finding, target, snapshot)
 
         return self._make_action(
@@ -626,7 +720,7 @@ class ActionPlanner:
         action_type: ActionType,
         state: ActionState,
         target: ActionTarget,
-        preconditions: tuple[str, ...],
+        preconditions: PreconditionSet,
         reason: str,
     ) -> RemediationAction:
         """Create a RemediationAction with deterministic ID."""
@@ -729,13 +823,17 @@ class ActionPlanner:
         snapshot: _AssetSnapshot,
     ) -> Optional[ActionTarget]:
         """
-        Build appropriate target for the action type.
+        Build appropriate target for the action type with validation.
         """
         if action_type in (
             ActionType.DELETE_FILE,
             ActionType.DELETE_DIRECTORY,
             ActionType.CLEAR_CACHE,
         ):
+            # Validate path safety
+            if not is_path_safe_for_planning(snapshot.canonical_path):
+                return None
+
             return FilesystemActionTarget(
                 asset_id=finding.asset_id,
                 canonical_path=snapshot.canonical_path,
@@ -749,15 +847,33 @@ class ActionPlanner:
             ActionType.REMOVE_REGISTRY_VALUE,
             ActionType.REMOVE_REGISTRY_KEY,
         ):
+            hive = self._extract_hive(finding)
+            key_path = self._extract_registry_key(finding)
+            value_name = (
+                self._extract_registry_value(finding)
+                if action_type == ActionType.REMOVE_REGISTRY_VALUE
+                else None
+            )
+
+            # Validate registry target safety
+            try:
+                validate_registry_target(
+                    hive, key_path, value_name, action_type.value
+                )
+            except RegistryValidationError:
+                return None
+
+            # Determine view (WOW6432Node awareness)
+            view = "default"
+            if "WOW6432Node" in key_path.split("\\"):
+                view = "wow6432node"
+
             return RegistryActionTarget(
                 asset_id=finding.asset_id,
-                hive=self._extract_hive(finding),
-                key_path=self._extract_registry_key(finding),
-                value_name=(
-                    self._extract_registry_value(finding)
-                    if action_type == ActionType.REMOVE_REGISTRY_VALUE
-                    else None
-                ),
+                hive=hive,
+                key_path=key_path,
+                value_name=value_name,
+                view=view,
             )
 
         if action_type == ActionType.DISABLE_STARTUP_ENTRY:
@@ -768,38 +884,81 @@ class ActionPlanner:
             )
 
         if action_type == ActionType.CLEAR_BROWSER_CACHE:
+            # Browser safety contracts
+            browser = self._extract_browser(finding)
+            profile = self._extract_browser_profile(finding)
+            cache_type = self._determine_browser_cache_type(finding)
+
+            # Only allow cache-type targets
+            if cache_type not in ("cache",):
+                return None
+
             return BrowserActionTarget(
                 asset_id=finding.asset_id,
-                browser=self._extract_browser(finding),
-                profile=self._extract_browser_profile(finding),
-                cache_type=self._determine_browser_cache_type(finding),
+                browser=browser,
+                profile=profile,
+                cache_type=cache_type,
                 path=snapshot.canonical_path,
+                user_data_safe=True,
+                cache_only=True,
             )
 
         return None
 
     def _build_preconditions(
         self, finding: DetectionFinding, target: ActionTarget, snapshot: _AssetSnapshot
-    ) -> tuple[str, ...]:
+    ) -> PreconditionSet:
         """
-        Build explicit preconditions for an action.
+        Build typed preconditions for an action.
         """
-        preconditions: list[str] = [
-            f"target_exists:{snapshot.exists}",
-            f"target_accessible:{snapshot.is_accessible}",
-            f"target_not_locked:{not snapshot.is_locked}",
-            f"identity_matches:{snapshot.asset_id == finding.asset_id}",
-            f"canonical_path:{snapshot.canonical_path}",
-            f"safety_valid:{finding.safety.level.value}",
+        conditions: list[Any] = [
+            TargetExists(expected=snapshot.exists),
+            TargetAccessible(expected=snapshot.is_accessible),
+            TargetNotLocked(expected=not snapshot.is_locked),
+            TargetIdentityMatches(expected_asset_id=snapshot.asset_id),
+            NotSymlink(),
+            NotJunction(),
+            NotReparsePoint(),
+            SafetyLevelValid(allowed_levels=("safe", "low_risk")),
         ]
 
+        # Snapshot freshness
+        if snapshot.snapshot_timestamp is not None:
+            conditions.append(SnapshotFresh(max_age_seconds=self._snapshot_ttl_seconds))
+
+        # Size verification
+        if snapshot.size is not None:
+            conditions.append(SizeMatches(expected_size=snapshot.size))
+
+        # Modified time verification
+        if snapshot.modified_time is not None:
+            conditions.append(ModifiedTimeMatches(expected_mtime=snapshot.modified_time))
+
+        # Hash verification
+        if snapshot.content_hash is not None:
+            conditions.append(HashMatches(expected_hash=snapshot.content_hash))
+
+        # Target-specific preconditions
         if hasattr(target, "allowed_location") and target.allowed_location:
-            preconditions.append(f"inside_allowed_location:{target.allowed_location}")
+            conditions.append(
+                PathWithinAllowedScope(
+                    allowed_location=target.allowed_location,
+                    canonical_path=snapshot.canonical_path,
+                )
+            )
 
-        if hasattr(target, "scope") and target.scope:
-            preconditions.append(f"scope_valid:{target.scope}")
+        if isinstance(target, RegistryActionTarget):
+            conditions.append(RegistryHiveMatches(expected_hive=target.hive))
+            conditions.append(RegistryKeyExists(expected=True))
+            if target.value_name is not None:
+                conditions.append(RegistryValueExists(expected=True))
 
-        return tuple(preconditions)
+        if isinstance(target, BrowserActionTarget):
+            conditions.append(
+                CacheScopeValid(cache_type=target.cache_type)
+            )
+
+        return PreconditionSet(conditions=tuple(conditions))
 
     def _resolve_asset_snapshot(self, asset_id: str) -> Optional[_AssetSnapshot]:
         """
@@ -818,7 +977,7 @@ class ActionPlanner:
         """Extract allowed location from finding."""
         if finding.canonical_path:
             return finding.canonical_path
-        return finding.display_name or finding.asset_id
+        return finding.asset_id
 
     def _determine_scope(self, finding: DetectionFinding) -> str:
         """Determine scope of action."""
@@ -1023,6 +1182,8 @@ def plan_actions(
     result: PrioritizedResult,
     asset_snapshot_resolver: Optional[AssetSnapshotResolver] = None,
     strategy_version: str = "1.0.0",
+    safety_gate: Optional[SafetyGate] = None,
+    snapshot_ttl_seconds: int = 3600,
 ) -> ActionPlan:
     """
     Convenience function to plan actions from a PrioritizedResult.
@@ -1030,5 +1191,7 @@ def plan_actions(
     planner = ActionPlanner(
         asset_snapshot_resolver=asset_snapshot_resolver,
         strategy_version=strategy_version,
+        safety_gate=safety_gate,
+        snapshot_ttl_seconds=snapshot_ttl_seconds,
     )
     return planner.plan(result)
