@@ -14,11 +14,10 @@ Returns:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Optional, Protocol, runtime_checkable
-
 
 # ── Safety Gate Result ─────────────────────────────────────────────────────────
 
@@ -127,10 +126,18 @@ class DefaultSafetyGate:
                     return SafetyGateResult.REJECTED
 
         # 3. Precondition evaluation
-        if hasattr(action, "preconditions") and action.preconditions:
-            for precondition in action.preconditions:
-                if not self._evaluate_precondition(precondition, execution_context):
+        preconditions = getattr(action, "preconditions", None)
+        if preconditions:
+            # Prefer typed PreconditionSet evaluation
+            if hasattr(preconditions, "evaluate") and callable(preconditions.evaluate):
+                passed, failed = preconditions.evaluate(execution_context)
+                if not passed:
                     return SafetyGateResult.REJECTED
+            else:
+                # Fallback for legacy string preconditions
+                for precondition in preconditions:
+                    if not self._evaluate_precondition(precondition, execution_context):
+                        return SafetyGateResult.REJECTED
 
         # 4. Execution context validation
         if not execution_context.get("exists", False):
@@ -151,6 +158,7 @@ class DefaultSafetyGate:
         if canonical_path:
             try:
                 from .action_path_validation import validate_filesystem_path
+
                 validate_filesystem_path(canonical_path)
             except Exception:
                 return SafetyGateResult.REJECTED
@@ -166,7 +174,9 @@ class DefaultSafetyGate:
         # All checks passed
         return SafetyGateResult.APPROVED
 
-    def _evaluate_precondition(self, precondition: str, context: dict[str, Any]) -> bool:
+    def _evaluate_precondition(
+        self, precondition: str, context: dict[str, Any]
+    ) -> bool:
         """
         Evaluate a string precondition against execution context.
 

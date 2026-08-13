@@ -19,9 +19,7 @@ inspection by the Future Execution Engine.
 from __future__ import annotations
 
 import os
-from pathlib import PureWindowsPath, PurePosixPath
-from typing import FrozenSet, Optional
-
+from typing import FrozenSet
 
 # ── Forbidden Roots ────────────────────────────────────────────────────────────
 
@@ -29,6 +27,7 @@ from typing import FrozenSet, Optional
 # Windows protected locations.
 _FORBIDDEN_RAW: tuple[str, ...] = (
     # System directories
+    r"C:\Windows",
     r"C:\Windows\System32",
     r"C:\Windows\SysWOW64",
     r"C:\Windows\WinSxS",
@@ -51,6 +50,7 @@ _FORBIDDEN_RAW: tuple[str, ...] = (
     r"C:\Program Files",
     r"C:\Program Files (x86)",
     # Protected ProgramData
+    r"C:\ProgramData",
     r"C:\ProgramData\Microsoft\Windows Defender",
     r"C:\ProgramData\Microsoft\Windows",
     r"C:\ProgramData\Microsoft\Search\Data",
@@ -114,8 +114,15 @@ def _normalize_path_component(path: str) -> str:
 def _expand_env_vars(path: str) -> str:
     """Expand Windows environment variables in path."""
     result = path
-    for var in ("%SystemRoot%", "%ProgramFiles%", "%ProgramFiles(x86)%",
-                "%ProgramData%", "%USERPROFILE%", "%LOCALAPPDATA%", "%APPDATA%"):
+    for var in (
+        "%SystemRoot%",
+        "%ProgramFiles%",
+        "%ProgramFiles(x86)%",
+        "%ProgramData%",
+        "%USERPROFILE%",
+        "%LOCALAPPDATA%",
+        "%APPDATA%",
+    ):
         env_val = os.environ.get(var.strip("%"))
         if env_val:
             result = result.replace(var, env_val)
@@ -176,21 +183,24 @@ def validate_filesystem_path(
     if "\x00" in path:
         raise PathValidationError("Path contains null byte", "invalid_path")
 
-    # Normalize for analysis
-    normalized = _normalize_path_component(path)
-
-    # Determine if UNC
-    is_unc = normalized.startswith("//") or normalized.startswith("\\\\")
+    # Determine if UNC before normalizing away the leading double-backslash
+    is_unc = path.startswith("\\\\") or path.startswith("//")
     if is_unc and not allow_unc:
         raise PathValidationError(f"UNC path not allowed: {path}", "unsafe_unc_path")
+
+    # Normalize for analysis
+    normalized = _normalize_path_component(path)
 
     # Check relative path
     drive_colon_pos = -1
     if len(normalized) >= 2 and normalized[1] == ":" and normalized[0].isalpha():
         drive_colon_pos = 1
 
-    if drive_colon_pos == -1 and not is_unc:
-        # No drive letter and not UNC — relative or invalid
+    # Leading slash / backslash counts as absolute for cross-platform tests
+    is_unix_absolute = normalized.startswith("/")
+
+    if drive_colon_pos == -1 and not is_unc and not is_unix_absolute:
+        # No drive letter, not UNC, and not leading-slash absolute — relative or invalid
         if not allow_relative:
             raise PathValidationError(
                 f"Relative path not allowed: {path}", "relative_path"

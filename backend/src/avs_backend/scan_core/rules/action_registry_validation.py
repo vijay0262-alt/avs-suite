@@ -15,8 +15,7 @@ Rejects ambiguous or unsafe registry targets.
 
 from __future__ import annotations
 
-from typing import FrozenSet
-
+from typing import FrozenSet, Optional
 
 # ── Registry Constants ─────────────────────────────────────────────────────────
 
@@ -141,9 +140,7 @@ def normalize_hive(hive: str) -> str:
     hive_upper = hive.upper().strip()
     canonical = _HIVE_CANONICAL.get(hive_upper)
     if canonical is None:
-        raise RegistryValidationError(
-            f"Unrecognized hive: {hive}", "invalid_hive"
-        )
+        raise RegistryValidationError(f"Unrecognized hive: {hive}", "invalid_hive")
     return canonical
 
 
@@ -176,6 +173,39 @@ def normalize_key_path(key_path: str) -> str:
         raise RegistryValidationError("Key path has no components", "empty_key_path")
 
     return "\\".join(parts)
+
+
+def validate_value_name(value_name: str) -> None:
+    """
+    Validate a registry value name.
+
+    Args:
+        value_name: Raw value name string.
+
+    Raises:
+        RegistryValidationError: If value name is malformed.
+    """
+    if value_name is None:
+        return
+    if not isinstance(value_name, str):
+        raise RegistryValidationError(
+            "Value name must be a string", "invalid_value_name"
+        )
+    if "\x00" in value_name:
+        raise RegistryValidationError(
+            "Value name contains null byte", "invalid_value_name"
+        )
+    if value_name.startswith("\\") or value_name.endswith("\\"):
+        raise RegistryValidationError(
+            f"Value name contains path separators: {value_name}",
+            "invalid_value_name",
+        )
+    # Value names may not span multiple components
+    if "\\" in value_name:
+        raise RegistryValidationError(
+            f"Value name must not contain backslash: {value_name}",
+            "invalid_value_name",
+        )
 
 
 def is_protected_key(hive: str, key_path: str) -> bool:
@@ -270,6 +300,10 @@ def validate_registry_target(
             "protected_registry_key",
         )
 
+    # Validate value name when provided
+    if value_name is not None:
+        validate_value_name(value_name)
+
     # Check parent key deletion risk
     if action_type == "remove_registry_key":
         if is_parent_key_deletion(canonical_hive, normalized_key, value_name):
@@ -280,7 +314,9 @@ def validate_registry_target(
             )
 
 
-def is_registry_target_safe(hive: str, key_path: str, value_name: Optional[str] = None) -> bool:
+def is_registry_target_safe(
+    hive: str, key_path: str, value_name: Optional[str] = None
+) -> bool:
     """
     Return True if registry target passes safety checks.
 

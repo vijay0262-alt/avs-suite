@@ -32,15 +32,9 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Optional, Protocol, runtime_checkable
 
 from ..assets import AssetType
-from .action_path_validation import (
-    FORBIDDEN_ROOTS,
-    PathValidationError,
-    SymlinkContract,
-    is_path_safe_for_planning,
-    normalize_windows_path,
-    validate_filesystem_path,
-)
+from .action_path_validation import is_path_safe_for_planning
 from .action_preconditions import (
+    BrowserNotRunning,
     CacheScopeValid,
     HashMatches,
     ModifiedTimeMatches,
@@ -49,6 +43,7 @@ from .action_preconditions import (
     NotSymlink,
     PathWithinAllowedScope,
     PreconditionSet,
+    ProfileExists,
     RegistryHiveMatches,
     RegistryKeyExists,
     RegistryValueExists,
@@ -62,13 +57,12 @@ from .action_preconditions import (
 )
 from .action_registry_validation import (
     RegistryValidationError,
-    is_registry_target_safe,
     validate_registry_target,
 )
 from .aggregation import DetectionFinding
 from .enums import RuleCategory
 from .priority import FindingPriority, Fixability, PrioritizedResult, RuleCapability
-from .safety_gate import SafetyGate, SafetyGateResult, create_safety_gate
+from .safety_gate import SafetyGate, create_safety_gate
 
 if TYPE_CHECKING:
     pass
@@ -412,9 +406,10 @@ class ActionPlan:
         Returns:
             True if plan is older than snapshot_ttl_seconds.
         """
-        if self.snapshot_timestamp is None:
+        reference = self.snapshot_timestamp or self.generated_at
+        if reference is None:
             return False
-        age = (datetime.now(UTC) - self.snapshot_timestamp).total_seconds()
+        age = (datetime.now(UTC) - reference).total_seconds()
         return age > self.snapshot_ttl_seconds
 
     def to_dict(self) -> dict[str, Any]:
@@ -560,9 +555,12 @@ class ActionPlanner:
         snapshot_version = None
         for priority in result.priorities:
             snapshot = self._resolve_asset_snapshot(priority.finding.asset_id)
-            if snapshot is not None and snapshot.snapshot_timestamp is not None:
+            if (
+                snapshot is not None
+                and getattr(snapshot, "snapshot_timestamp", None) is not None
+            ):
                 snapshot_timestamp = snapshot.snapshot_timestamp
-                snapshot_version = snapshot.snapshot_version
+                snapshot_version = getattr(snapshot, "snapshot_version", None)
                 break
 
         return ActionPlan(
@@ -857,9 +855,7 @@ class ActionPlanner:
 
             # Validate registry target safety
             try:
-                validate_registry_target(
-                    hive, key_path, value_name, action_type.value
-                )
+                validate_registry_target(hive, key_path, value_name, action_type.value)
             except RegistryValidationError:
                 return None
 
@@ -923,19 +919,21 @@ class ActionPlanner:
         ]
 
         # Snapshot freshness
-        if snapshot.snapshot_timestamp is not None:
+        if getattr(snapshot, "snapshot_timestamp", None) is not None:
             conditions.append(SnapshotFresh(max_age_seconds=self._snapshot_ttl_seconds))
 
         # Size verification
-        if snapshot.size is not None:
+        if getattr(snapshot, "size", None) is not None:
             conditions.append(SizeMatches(expected_size=snapshot.size))
 
         # Modified time verification
-        if snapshot.modified_time is not None:
-            conditions.append(ModifiedTimeMatches(expected_mtime=snapshot.modified_time))
+        if getattr(snapshot, "modified_time", None) is not None:
+            conditions.append(
+                ModifiedTimeMatches(expected_mtime=snapshot.modified_time)
+            )
 
         # Hash verification
-        if snapshot.content_hash is not None:
+        if getattr(snapshot, "content_hash", None) is not None:
             conditions.append(HashMatches(expected_hash=snapshot.content_hash))
 
         # Target-specific preconditions
@@ -954,9 +952,9 @@ class ActionPlanner:
                 conditions.append(RegistryValueExists(expected=True))
 
         if isinstance(target, BrowserActionTarget):
-            conditions.append(
-                CacheScopeValid(cache_type=target.cache_type)
-            )
+            conditions.append(BrowserNotRunning(browser=target.browser))
+            conditions.append(ProfileExists(profile=target.profile))
+            conditions.append(CacheScopeValid(cache_type=target.cache_type))
 
         return PreconditionSet(conditions=tuple(conditions))
 

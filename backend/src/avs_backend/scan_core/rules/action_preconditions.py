@@ -10,10 +10,10 @@ The Future Execution Engine must evaluate these before action.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Optional, Protocol, runtime_checkable
-
 
 # ── Precondition Protocol ──────────────────────────────────────────────────────
 
@@ -116,7 +116,10 @@ class PathWithinAllowedScope:
             return False
         normalized_actual = _normalize_path(actual_path)
         normalized_allowed = _normalize_path(self.allowed_location)
-        return normalized_actual.startswith(normalized_allowed + "/") or normalized_actual == normalized_allowed
+        return (
+            normalized_actual.startswith(normalized_allowed + "/")
+            or normalized_actual == normalized_allowed
+        )
 
     def to_contract(self) -> str:
         return f"inside_allowed_location:{self.allowed_location}"
@@ -424,10 +427,12 @@ def build_filesystem_preconditions(
     ]
 
     if allowed_location:
-        conditions.append(PathWithinAllowedScope(
-            allowed_location=allowed_location,
-            canonical_path=snapshot.canonical_path,
-        ))
+        conditions.append(
+            PathWithinAllowedScope(
+                allowed_location=allowed_location,
+                canonical_path=snapshot.canonical_path,
+            )
+        )
 
     return PreconditionSet(conditions=tuple(conditions))
 
