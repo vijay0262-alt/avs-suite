@@ -11,7 +11,11 @@ from __future__ import annotations
 import os
 import sys
 import uuid
-import winreg
+
+if sys.platform == "win32":
+    import winreg
+else:
+    winreg = None  # type: ignore[misc]
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Optional
