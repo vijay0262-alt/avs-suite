@@ -449,9 +449,36 @@ class RegistryExecutor:
             registry_backup.restore(record)
             raise
 
+        # 10. Post-execution verification.
+        _check_cancelled(cancellation_token)
+        live_after = _read_registry_value(
+            canonical_hive, canonical_key, value_name, view
+        )
+        if operation == "remove_registry_value" and live_after.value_exists:
+            registry_backup.restore(record)
+            raise _RegistryExecutionError(
+                "POST_EXECUTION_VERIFICATION_FAILED",
+                "Registry value still exists after deletion",
+                {
+                    "hive": canonical_hive,
+                    "key": canonical_key,
+                    "value_name": value_name,
+                },
+            )
+        if operation == "remove_registry_key" and live_after.key_exists:
+            registry_backup.restore(record)
+            raise _RegistryExecutionError(
+                "POST_EXECUTION_VERIFICATION_FAILED",
+                "Registry key still exists after deletion",
+                {
+                    "hive": canonical_hive,
+                    "key": canonical_key,
+                },
+            )
+
         after_state = {
-            "registry_key_exists": operation == "remove_registry_value",
-            "registry_value_exists": False,
+            "registry_key_exists": live_after.key_exists,
+            "registry_value_exists": live_after.value_exists,
         }
 
         return TargetExecutorResult(

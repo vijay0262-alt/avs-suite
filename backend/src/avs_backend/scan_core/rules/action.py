@@ -932,9 +932,13 @@ class ActionPlanner:
                 ModifiedTimeMatches(expected_mtime=snapshot.modified_time)
             )
 
-        # Hash verification
-        if getattr(snapshot, "content_hash", None) is not None:
-            conditions.append(HashMatches(expected_hash=snapshot.content_hash))
+        # Hash verification (content_hash takes precedence over content_fingerprint)
+        observed_hash = (
+            getattr(snapshot, "content_hash", None)
+            or getattr(snapshot, "content_fingerprint", None)
+        )
+        if observed_hash is not None:
+            conditions.append(HashMatches(expected_hash=observed_hash))
 
         # Target-specific preconditions
         if hasattr(target, "allowed_location") and target.allowed_location:

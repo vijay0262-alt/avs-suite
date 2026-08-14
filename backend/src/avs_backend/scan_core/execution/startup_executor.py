@@ -8,6 +8,7 @@ startup items automatically.
 
 from __future__ import annotations
 
+import os
 import types
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,7 +24,12 @@ from .backup import BackupManager
 from .filesystem_executor import FilesystemExecutor
 from .models import ExecutionError, ExecutionStatus, TargetExecutorResult
 from .registry_backup import RegistryBackup
-from .registry_executor import RegistryExecutor
+from .registry_executor import (
+    RegistryExecutor,
+    _hive_to_const,
+    _view_to_sam,
+)
+from .registry_executor import winreg as _winreg
 
 
 @dataclass
@@ -276,7 +282,7 @@ class StartupExecutor:
 
         # 2. Delegate to the appropriate real executor.
         if source == "registry":
-            return cls._execute_registry(
+            result = cls._execute_registry(
                 action,
                 context,
                 entry_id=entry_id,
@@ -285,15 +291,26 @@ class StartupExecutor:
                 registry_backup=registry_backup,
                 execution_id=execution_id,
             )
+        else:
+            result = cls._execute_filesystem(
+                action,
+                context,
+                entry_id=entry_id,
+                mode=mode,
+                cancellation_token=cancellation_token,
+                backup_manager=backup_manager,
+                execution_id=execution_id,
+            )
 
-        return cls._execute_filesystem(
+        return cls._verify_and_wrap(
+            result,
             action,
             context,
+            source=source,
             entry_id=entry_id,
             mode=mode,
-            cancellation_token=cancellation_token,
+            registry_backup=registry_backup,
             backup_manager=backup_manager,
-            execution_id=execution_id,
         )
 
     @classmethod
@@ -465,3 +482,82 @@ class StartupExecutor:
             backup_location=result.backup_location,
             operation=action.action_type.value,
         )
+
+    @classmethod
+    def _verify_and_wrap(
+        cls,
+        result: TargetExecutorResult,
+        action: Any,
+        context: dict[str, Any],
+        *,
+        source: str,
+        entry_id: str,
+        mode: str,
+        registry_backup: Optional[RegistryBackup],
+        backup_manager: Optional[BackupManager],
+    ) -> TargetExecutorResult:
+        """Post-execution verification for live startup remediation."""
+        if result.status != ExecutionStatus.COMPLETED or mode != "live":
+            return cls._wrap_result(result, action)
+
+        if source == "registry":
+            if not cls._verify_registry_value_removed(entry_id):
+                if registry_backup is not None and result.backup_identity:
+                    reg_record = registry_backup.get(result.backup_identity)
+                    if reg_record is not None:
+                        registry_backup.restore(reg_record)
+                return TargetExecutorResult(
+                    status=ExecutionStatus.FAILED,
+                    reason=(
+                        "Post-execution verification failed: "
+                        "startup registry value still exists"
+                    ),
+                    error=ExecutionError(
+                        code="POST_EXECUTION_VERIFICATION_FAILED",
+                        message="Startup registry value still exists after removal",
+                        details={"entry_id": entry_id},
+                    ),
+                    before_state=result.before_state,
+                    after_state=result.after_state,
+                    operation=action.action_type.value,
+                )
+        else:
+            if os.path.lexists(entry_id):
+                if backup_manager is not None and result.backup_identity:
+                    fs_record = backup_manager.get(result.backup_identity)
+                    if fs_record is not None:
+                        backup_manager.restore(fs_record)
+                return TargetExecutorResult(
+                    status=ExecutionStatus.FAILED,
+                    reason="Post-execution verification failed: startup file still exists",
+                    error=ExecutionError(
+                        code="POST_EXECUTION_VERIFICATION_FAILED",
+                        message="Startup file still exists after removal",
+                        details={"entry_id": entry_id},
+                    ),
+                    before_state=result.before_state,
+                    after_state=result.after_state,
+                    operation=action.action_type.value,
+                )
+
+        return cls._wrap_result(result, action)
+
+    @classmethod
+    def _verify_registry_value_removed(cls, entry_id: str) -> bool:
+        """Re-read a registry startup entry and confirm it is gone."""
+        if _winreg is None:
+            # Non-Windows platforms cannot verify; rely on the delegated executor.
+            return True
+        try:
+            hive, key_path, value_name, view = _parse_registry_entry(entry_id)
+            sam = _view_to_sam(view)
+            with _winreg.OpenKey(
+                _hive_to_const(hive), key_path, 0, _winreg.KEY_READ | sam
+            ) as key:
+                if not value_name:
+                    # remove_registry_key: the key itself is still openable.
+                    return False
+                _winreg.QueryValueEx(key, value_name)
+                return False
+        except (FileNotFoundError, OSError):
+            return True

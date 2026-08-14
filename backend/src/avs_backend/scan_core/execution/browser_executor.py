@@ -514,6 +514,24 @@ class BrowserExecutor:
                 {"error": str(exc)},
             )
 
+        # 7. Post-execution verification.
+        _check_cancelled(cancellation_token)
+        for r in removed:
+            if not r.removed:
+                continue
+            live_after = _read_live_state(Path(r.path))
+            if live_after["exists"]:
+                for record in reversed(created_backups):
+                    try:
+                        backup_manager.restore(record)
+                    except Exception:
+                        pass
+                raise _BrowserExecutionError(
+                    "POST_EXECUTION_VERIFICATION_FAILED",
+                    f"Cache child still exists after deletion: {r.path}",
+                    {"path": r.path},
+                )
+
         removed_count = sum(1 for r in removed if r.removed)
         backup_ids = ",".join(r.backup_id for r in removed if r.backup_id is not None)
 

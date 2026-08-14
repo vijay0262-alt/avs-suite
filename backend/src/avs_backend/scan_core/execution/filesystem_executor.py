@@ -293,13 +293,14 @@ class FilesystemExecutor:
 
         # 8. Execute the operation.
         _check_cancelled(cancellation_token)
+        removed_paths: list[Path] = []
         try:
             if operation == "delete_file":
                 cls._delete_file(path, cancellation_token)
             elif operation == "delete_directory":
                 cls._delete_directory(path, cancellation_token)
             elif operation == "clear_cache":
-                cls._clear_cache(path, cancellation_token)
+                removed_paths = cls._clear_cache(path, cancellation_token)
             else:
                 raise _FilesystemExecutionError(
                     code="UNSUPPORTED_OPERATION",
@@ -312,17 +313,56 @@ class FilesystemExecutor:
                 except Exception:
                     pass
             raise
-        except _FilesystemExecutionError:
+        except Exception:
             # Restore from backup if something failed mid-operation.
             if record is not None:
-                backup_manager.restore(record)
+                try:
+                    backup_manager.restore(record)
+                except Exception:
+                    pass
             raise
 
-        after_state = {
-            "exists": path.exists(),
-            "is_file": path.is_file(),
-            "is_dir": path.is_dir(),
-        }
+        # 9. Post-execution verification.
+        _check_cancelled(cancellation_token)
+        if operation == "clear_cache":
+            for child_path in removed_paths:
+                if os.path.lexists(child_path):
+                    if record is not None:
+                        try:
+                            backup_manager.restore(record)
+                        except Exception:
+                            pass
+                    raise _FilesystemExecutionError(
+                        code="POST_EXECUTION_VERIFICATION_FAILED",
+                        message="Cache child still exists after deletion",
+                        details={"path": str(child_path)},
+                    )
+            live_after = cls._read_live_state(path)
+            after_state = {
+                "exists": live_after.exists,
+                "is_file": live_after.is_file,
+                "is_dir": live_after.is_dir,
+                "removed_count": len(removed_paths),
+                "removed_paths": [str(p) for p in removed_paths],
+            }
+        else:
+            if os.path.lexists(path):
+                if record is not None:
+                    try:
+                        backup_manager.restore(record)
+                    except Exception:
+                        pass
+                raise _FilesystemExecutionError(
+                    code="POST_EXECUTION_VERIFICATION_FAILED",
+                    message="Target still exists after deletion",
+                    details={"path": str(path)},
+                )
+            live_after = cls._read_live_state(path)
+            after_state = {
+                "exists": live_after.exists,
+                "is_file": live_after.is_file,
+                "is_dir": live_after.is_dir,
+            }
 
         return TargetExecutorResult(
             status=ExecutionStatus.COMPLETED,
@@ -521,7 +561,7 @@ class FilesystemExecutor:
             )
 
     @classmethod
-    def _clear_cache(cls, path: Path, cancellation_token: Any) -> None:
+    def _clear_cache(cls, path: Path, cancellation_token: Any) -> list[Path]:
         """Clear the contents of an approved cache directory."""
         _check_cancelled(cancellation_token)
         if not path.is_dir():
@@ -531,6 +571,7 @@ class FilesystemExecutor:
             )
 
         children = list(os.scandir(path))
+        removed: list[Path] = []
         for child in children:
             _check_cancelled(cancellation_token)
             child_path = Path(child.path)
@@ -545,6 +586,7 @@ class FilesystemExecutor:
 
             if child_live.is_file:
                 cls._delete_file(child_path, cancellation_token)
+                removed.append(child_path)
             elif child_live.is_dir:
                 if any(os.scandir(child_path)):
                     raise _FilesystemExecutionError(
@@ -552,8 +594,11 @@ class FilesystemExecutor:
                         message=f"Cache child is not empty: {child_path}",
                     )
                 cls._delete_directory(child_path, cancellation_token)
+                removed.append(child_path)
             else:
                 raise _FilesystemExecutionError(
                     code="UNKNOWN_CHILD_TYPE",
                     message=f"Cache child has unknown type: {child_path}",
                 )
+
+        return removed

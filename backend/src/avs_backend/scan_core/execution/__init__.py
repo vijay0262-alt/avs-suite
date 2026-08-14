@@ -32,6 +32,7 @@ from .registry_backup import (
     RegistryRestoreResult,
 )
 from .registry_executor import RegistryExecutor
+from .startup_executor import StartupExecutor
 
 __all__ = [
     "BackupManager",

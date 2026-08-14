@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional, Dict, Any
 from datetime import datetime, UTC
 from enum import Enum
@@ -69,7 +71,24 @@ class AssetSnapshot:
         """Generate metadata fingerprint if not provided."""
         if not self.metadata_fingerprint:
             self.metadata_fingerprint = self._generate_metadata_fingerprint()
-    
+
+    # Compatibility aliases for the _AssetSnapshot planning protocol.
+    @property
+    def is_accessible(self) -> bool:
+        return self.accessible
+
+    @property
+    def is_locked(self) -> bool:
+        return self.locked
+
+    @property
+    def content_hash(self) -> Optional[str]:
+        return self.content_fingerprint
+
+    @property
+    def canonical_path(self) -> Optional[str]:
+        return self.attributes.get("canonical_path")
+
     def _generate_metadata_fingerprint(self) -> str:
         """
         Generate deterministic fingerprint of observed metadata.
@@ -157,14 +176,35 @@ def generate_fingerprint(data: str) -> str:
 def generate_content_fingerprint(content: bytes) -> str:
     """
     Generate a fingerprint of file content.
-    
+
     Args:
         content: File content bytes
-    
+
     Returns:
         SHA-256 hash of content (64 hex chars)
     """
     return hashlib.sha256(content).hexdigest()
+
+
+def _content_fingerprint_from_path(canonical_path: str) -> Optional[str]:
+    """Compute a SHA-256 content fingerprint for a regular file, if safe."""
+    try:
+        p = Path(canonical_path)
+        if not p.is_file() or p.is_symlink():
+            return None
+        size = p.stat().st_size
+        if size > 100 * 1024 * 1024:
+            return None
+        h = hashlib.sha256()
+        with open(p, "rb") as f:
+            while True:
+                chunk = f.read(65536)
+                if not chunk:
+                    break
+                h.update(chunk)
+        return h.hexdigest()
+    except (OSError, ValueError):
+        return None
 
 
 def create_snapshot_from_asset(
@@ -176,13 +216,14 @@ def create_snapshot_from_asset(
     size: Optional[int] = None,
     modified_time: Optional[datetime] = None,
     content_fingerprint: Optional[str] = None,
+    canonical_path: Optional[str] = None,
     attributes: Optional[dict[str, Any]] = None,
 ) -> AssetSnapshot:
     """
     Create an AssetSnapshot from observed asset properties.
-    
+
     Helper function for creating snapshots during enumeration.
-    
+
     Args:
         asset_id: Asset identifier
         scan_id: Scan identifier
@@ -192,8 +233,9 @@ def create_snapshot_from_asset(
         size: Asset size in bytes
         modified_time: Last modified time
         content_fingerprint: Optional content hash
+        canonical_path: Optional filesystem path to hash
         attributes: Additional observed attributes
-    
+
     Returns:
         AssetSnapshot instance
     """
@@ -206,7 +248,14 @@ def create_snapshot_from_asset(
         state = SnapshotState.INACCESSIBLE
     else:
         state = SnapshotState.DISCOVERED
-    
+
+    if content_fingerprint is None and canonical_path:
+        content_fingerprint = _content_fingerprint_from_path(canonical_path)
+
+    attrs = (attributes or {}).copy()
+    if canonical_path is not None:
+        attrs.setdefault("canonical_path", canonical_path)
+
     return AssetSnapshot(
         asset_id=asset_id,
         scan_id=scan_id,
@@ -218,5 +267,5 @@ def create_snapshot_from_asset(
         size=size,
         modified_time=modified_time,
         content_fingerprint=content_fingerprint,
-        attributes=attributes or {},
+        attributes=attrs,
     )

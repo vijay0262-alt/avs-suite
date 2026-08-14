@@ -166,6 +166,24 @@ class DefaultExecutor:
 
         # Build execution context
         context = self._resolve_context(action, request)
+        if context is None:
+            return ExecutionResult(
+                execution_id=execution_id,
+                action_id=action.action_id,
+                finding_id=action.finding_id,
+                asset_id=action.asset_id,
+                action_type=action.action_type.value,
+                target=action.target.to_dict(),
+                status=ExecutionStatus.REJECTED,
+                reason="Live execution requires a fresh execution context",
+                timestamp=datetime.now(UTC),
+                error=ExecutionError(
+                    code="MISSING_EXECUTION_CONTEXT",
+                    message="No execution context provided for live mode",
+                ),
+                verification={},
+                dry_run_info=None,
+            )
 
         # 2. Evaluate typed preconditions for verification information
         preconditions = getattr(action, "preconditions", None)
@@ -273,8 +291,10 @@ class DefaultExecutor:
         )
 
     def _resolve_context(
-        self, action: Any, request: ExecutionRequest
-    ) -> dict[str, Any]:
+        self,
+        action: Any,
+        request: ExecutionRequest,
+    ) -> Optional[dict[str, Any]]:
         """Resolve execution context for an action."""
         if action.action_id in request.execution_context:
             return normalize_context(request.execution_context[action.action_id])
@@ -284,7 +304,11 @@ class DefaultExecutor:
             if provided is not None:
                 return normalize_context(provided)
 
-        return default_context_for_action(action)
+        # Dry-run may use best-effort defaults; live mode requires fresh context.
+        if request.mode != "live":
+            return default_context_for_action(action)
+
+        return None
 
     def _is_cancelled(self, request: ExecutionRequest) -> bool:
         """Return True if the request has been cancelled."""
