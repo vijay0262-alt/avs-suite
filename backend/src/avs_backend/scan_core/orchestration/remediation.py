@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import dataclasses
 import hashlib
+import logging
 import os
 import threading
+
+logger = logging.getLogger(__name__)
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -135,13 +138,12 @@ class RemediationCoordinator:
                 cancellation_token=token,
             )
             summary = self._executor.execute(request)
-            self._finalize_status(request_id, summary)
-            return summary
+            return self._finalize_status(request_id, summary)
         finally:
             self._active.discard(request_id)
             self._tokens.pop(request_id, None)
 
-    def _finalize_status(self, request_id: str, summary: ExecutionSummary) -> None:
+    def _finalize_status(self, request_id: str, summary: ExecutionSummary) -> ExecutionSummary:
         """Persist a serializable execution status independent of the executor."""
         try:
             sanitized = dataclasses.replace(summary, ledger=None)
@@ -152,10 +154,15 @@ class RemediationCoordinator:
                 started_at=sanitized.started_at,
                 completed_at=sanitized.completed_at,
             )
-        except Exception:
-            # Executor already attempted persistence; this is a best-effort
-            # coordinator-level status backstop.
-            pass
+            return summary
+        except Exception as exc:
+            logger.error(f"Coordinator status persistence failed for {request_id}: {exc}")
+            return dataclasses.replace(
+                summary,
+                status=ExecutionStatus.FAILED,
+                reason=f"Execution completed but coordinator audit persistence failed: {exc}",
+                ledger=None,
+            )
 
     def cancel(self, execution_id: str) -> bool:
         """Request cancellation of a running execution."""
@@ -167,7 +174,7 @@ class RemediationCoordinator:
 
     def get_status(self, execution_id: str) -> RemediationExecutionStatus:
         """Return the persisted status for an execution request."""
-        audit = self._exec_repo.get_request_audit(execution_id)
+        audit = self._exec_repo.get_request_audit(execution_id, include_raw=True)
         request_row = audit.get("request") or {}
         summary_row = audit.get("summary") or {}
         summary_data: dict[str, Any] = {}
@@ -213,7 +220,7 @@ class RemediationCoordinator:
 
     def rollback(self, execution_id: str) -> RollbackSummary:
         """Rollback completed filesystem actions for a prior execution."""
-        audit = self._exec_repo.get_request_audit(execution_id)
+        audit = self._exec_repo.get_request_audit(execution_id, include_raw=True)
         summary_row = audit.get("summary") or {}
         if not summary_row or not summary_row.get("summary_data"):
             return RollbackSummary(

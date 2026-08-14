@@ -9,12 +9,49 @@ Privacy-safe: Uses non-reversible hashes for machine/user identity.
 from __future__ import annotations
 
 import hashlib
+import os
 import platform
+import secrets
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, UTC
+from pathlib import Path
 from enum import Enum
 from typing import Optional, List
+
+
+def _default_salt_path() -> Path:
+    """Return a per-installation salt path in the user's data directory."""
+    home = Path.home()
+    if os.name == "nt":
+        base = Path(os.environ.get("LOCALAPPDATA", os.environ.get("APPDATA", str(home))))
+        app_dir = base / "AVS Shield"
+    else:
+        base = Path(os.environ.get("XDG_DATA_HOME", str(home / ".local" / "share")))
+        app_dir = base / "avs-shield"
+    app_dir.mkdir(parents=True, exist_ok=True)
+    return app_dir / "salt.bin"
+
+
+def _get_or_create_salt() -> str:
+    """Load or create a persistent per-installation salt."""
+    salt_path = Path(os.environ.get("AVS_SALT_PATH", str(_default_salt_path())))
+    try:
+        if salt_path.exists():
+            return salt_path.read_text(encoding="utf-8").strip()
+        salt = secrets.token_hex(32)
+        salt_path.write_text(salt, encoding="utf-8")
+        if os.name != "nt":
+            os.chmod(salt_path, 0o600)
+        return salt
+    except Exception:
+        # If the persistent salt cannot be created (e.g. read-only environment),
+        # fall back to an in-memory random salt for the session.  This is not
+        # ideal but avoids crashing during tests or unusual configurations.
+        return secrets.token_hex(32)
+
+
+_INSTALLATION_SALT = _get_or_create_salt()
 
 
 class ScanType(Enum):
@@ -172,8 +209,9 @@ def generate_machine_id_hash() -> str:
     Returns:
         SHA-256 hash of machine identifier (64 hex chars)
     """
-    # Combine multiple platform identifiers
+    # Combine multiple platform identifiers with the per-installation salt.
     identifiers = [
+        _INSTALLATION_SALT,
         platform.node(),  # Hostname
         platform.machine(),  # Machine type
         platform.processor(),  # Processor
@@ -204,4 +242,5 @@ def generate_user_id_hash(username: Optional[str] = None) -> str:
     if not username:
         return ""
     
-    return hashlib.sha256(username.encode()).hexdigest()
+    combined = f"{_INSTALLATION_SALT}|{username}"
+    return hashlib.sha256(combined.encode()).hexdigest()

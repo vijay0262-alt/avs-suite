@@ -304,10 +304,24 @@ class ExecutionRepository:
         finally:
             cursor.close()
 
-    def get_request_audit(self, request_id: str) -> dict[str, Any]:
+    def get_request_audit(
+        self, request_id: str, include_raw: bool = False
+    ) -> dict[str, Any]:
         """Return full audit history for a request: request, summary, action results."""
         conn = self.db.get_connection()
         cursor = conn.cursor()
+
+        _SENSITIVE_AUDIT_COLUMNS = frozenset(
+            {"context_data", "execution_context", "action_data", "summary_data"}
+        )
+
+        def _redact_row(row: dict[str, Any]) -> dict[str, Any]:
+            if include_raw:
+                return row
+            return {
+                k: ("<redacted>" if k in _SENSITIVE_AUDIT_COLUMNS or k.endswith("_data") else v)
+                for k, v in row.items()
+            }
 
         try:
             cursor.execute(
@@ -329,9 +343,9 @@ class ExecutionRepository:
             result_rows = cursor.fetchall()
 
             return {
-                "request": dict(request_row) if request_row else None,
-                "summary": dict(summary_row) if summary_row else None,
-                "action_results": [dict(row) for row in result_rows],
+                "request": _redact_row(dict(request_row)) if request_row else None,
+                "summary": _redact_row(dict(summary_row)) if summary_row else None,
+                "action_results": [_redact_row(dict(row)) for row in result_rows],
             }
         finally:
             cursor.close()

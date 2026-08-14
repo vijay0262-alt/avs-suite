@@ -183,6 +183,13 @@ def validate_filesystem_path(
     if "\x00" in path:
         raise PathValidationError("Path contains null byte", "invalid_path")
 
+    # Reject Windows device namespace paths that bypass normal path semantics.
+    lowered = path.lower().replace("/", "\\")
+    if lowered.startswith("\\\\?\\") or lowered.startswith("\\\\.\\"):
+        raise PathValidationError(
+            f"Windows device path not allowed: {path}", "device_path"
+        )
+
     # Determine if UNC before normalizing away the leading double-backslash
     is_unc = path.startswith("\\\\") or path.startswith("//")
     if is_unc and not allow_unc:

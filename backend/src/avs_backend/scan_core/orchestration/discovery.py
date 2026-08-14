@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
+import os
 from dataclasses import dataclass
 from typing import Any, Iterator, Optional, Protocol
 
 from ..adapters.adapter_registry import convert_to_asset
 from ..context import ScanContext
+from ..rules.action_path_validation import PathValidationError, validate_filesystem_path
 from ..enumerator import (
     CancelEvent,
     EnumerateOptions,
@@ -17,6 +20,9 @@ from ..enumerator import (
     get_default_scan_locations,
 )
 from ..rules.evaluator import CancellationToken
+
+
+logger = logging.getLogger(__name__)
 
 
 class DiscoveryEngine(Protocol):
@@ -86,10 +92,18 @@ class FilesystemDiscoveryEngine:
     def _select_locations(self, scan_context: ScanContext) -> list[ScanLocation]:
         """Return filesystem locations for the current scan mode."""
         if scan_context.requested_scope:
-            return [
-                ScanLocation(path=p, label=f"scope:{p}")
-                for p in scan_context.requested_scope
-            ]
+            valid: list[ScanLocation] = []
+            for p in scan_context.requested_scope:
+                try:
+                    validate_filesystem_path(
+                        p, allow_relative=False, allow_unc=False
+                    )
+                    normalized = os.path.abspath(os.path.normpath(p))
+                    valid.append(ScanLocation(path=normalized, label=f"scope:{p}"))
+                except PathValidationError as exc:
+                    scan_context.error_count += 1
+                    logger.warning(f"Rejected unsafe requested_scope path {p!r}: {exc}")
+            return valid
 
         defaults = get_default_scan_locations()
         if scan_context.scan_type.value == "quick":

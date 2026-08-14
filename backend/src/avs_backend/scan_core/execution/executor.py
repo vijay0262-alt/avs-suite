@@ -9,10 +9,14 @@ Dry-run is the default mode. No destructive operations are performed.
 
 from __future__ import annotations
 
+import dataclasses
+import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 from avs_backend.scan_core.rules.safety_gate import (
     SafetyGate,
@@ -70,6 +74,7 @@ class DefaultExecutor:
         execution_id = str(uuid.uuid4())
         started_at = datetime.now(UTC)
         results: list[ExecutionResult] = []
+        persistence_failed = False
 
         try:
             # 1. Persist plan before any execution begins.
@@ -161,7 +166,8 @@ class DefaultExecutor:
 
                 results.append(result)
                 self.ledger.record(result)
-                self._persist_action_result(request.request_id, result)
+                if not self._persist_action_result(request.request_id, result):
+                    persistence_failed = True
 
             completed_at = datetime.now(UTC)
             summary = self._build_summary(
@@ -172,7 +178,15 @@ class DefaultExecutor:
                 started_at,
                 completed_at,
             )
-            self._finalize_persistence(request, summary, started_at)
+            if not self._finalize_persistence(request, summary, started_at):
+                persistence_failed = True
+            if persistence_failed:
+                return dataclasses.replace(
+                    summary,
+                    status=ExecutionStatus.FAILED,
+                    reason=f"Execution completed but audit persistence failed",
+                    ledger=None,
+                )
             return summary
 
         except Exception as exc:
@@ -202,25 +216,26 @@ class DefaultExecutor:
         self,
         request_id: str,
         result: ExecutionResult,
-    ) -> None:
-        """Persist a single action result, swallowing persistence failures."""
+    ) -> bool:
+        """Persist a single action result; report failures but never mask execution outcome."""
         if self.execution_repository is None:
-            return
+            return True
         try:
             self.execution_repository.save_action_result(request_id, result)
-        except Exception:
-            # Persistence must never mask the real execution outcome.
-            pass
+            return True
+        except Exception as exc:
+            logger.error(f"Failed to persist action result for {request_id}: {exc}")
+            return False
 
     def _finalize_persistence(
         self,
         request: ExecutionRequest,
         summary: ExecutionSummary,
         started_at: datetime,
-    ) -> None:
+    ) -> bool:
         """Persist summary and mark the execution request final."""
         if self.execution_repository is None:
-            return
+            return True
         try:
             self.execution_repository.save_summary(request.request_id, summary)
             self.execution_repository.update_request_status(
@@ -229,9 +244,10 @@ class DefaultExecutor:
                 started_at=started_at,
                 completed_at=summary.completed_at,
             )
-        except Exception:
-            # Do not let persistence failures hide execution results.
-            pass
+            return True
+        except Exception as exc:
+            logger.error(f"Failed to finalize persistence for {request.request_id}: {exc}")
+            return False
 
     def _execute_action(
         self,

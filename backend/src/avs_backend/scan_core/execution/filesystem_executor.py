@@ -280,10 +280,32 @@ class FilesystemExecutor:
                 message="A BackupManager is required for live filesystem execution",
             )
 
-        # 7. Backup before destructive work.
+        # 7. Re-read and re-validate the target identity immediately before
+        #    backup to close the TOCTOU window between initial validation and
+        #    the destructive operation.
+        _check_cancelled(cancellation_token)
+        pre_backup = cls._read_live_state(path)
+        if pre_backup.is_symlink or pre_backup.is_junction or pre_backup.is_reparse:
+            raise _FilesystemExecutionError(
+                code="TOCTOU_REPARSE_POINT",
+                message="Target was replaced by a symlink/junction/reparse point before backup",
+            )
+        if (
+            pre_backup.exists != live.exists
+            or pre_backup.is_file != live.is_file
+            or pre_backup.is_dir != live.is_dir
+            or pre_backup.size != live.size
+            or pre_backup.modified_time != live.modified_time
+        ):
+            raise _FilesystemExecutionError(
+                code="TOCTOU_IDENTITY_CHANGED",
+                message="Target identity changed between validation and backup",
+            )
+
+        # 8. Backup before destructive work.
         _check_cancelled(cancellation_token)
         record: Optional[BackupRecord] = None
-        if live.exists:
+        if pre_backup.exists:
             record = backup_manager.create_backup(
                 str(path),
                 action,

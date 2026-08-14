@@ -482,6 +482,11 @@ class FilesystemEnumerator:
                 stat_result = os.stat(dir_path, follow_symlinks=not opts.follow_symlinks)
                 attrs = _get_win_attributes(dir_path)
                 is_symlink = os.path.islink(dir_path)
+                is_reparse_point = bool(attrs & FILE_ATTRIBUTE_REPARSE_POINT)
+
+                # Do not scan into or yield reparse points (junctions, mount points, etc.).
+                if is_reparse_point and not is_symlink:
+                    return
 
                 dir_entry = _make_directory_entry(
                     path=dir_path,
@@ -491,6 +496,7 @@ class FilesystemEnumerator:
                     is_system=bool(attrs & FILE_ATTRIBUTE_SYSTEM),
                     is_read_only=bool(attrs & FILE_ATTRIBUTE_READONLY),
                     is_symlink=is_symlink,
+                    is_reparse_point=is_reparse_point,
                     parent_dir=parent_dir,
                     depth=depth,
                 )
@@ -522,6 +528,14 @@ class FilesystemEnumerator:
 
                 try:
                     is_symlink = entry.is_symlink()
+                    attrs = _get_win_attributes(entry_path)
+                    is_reparse_point = bool(attrs & FILE_ATTRIBUTE_REPARSE_POINT)
+
+                    # Never descend into reparse points (junctions, mount points).
+                    # Non-symlink reparse points are not emitted; symlinks are
+                    # emitted as such but not followed.
+                    if is_reparse_point and not is_symlink:
+                        continue
 
                     # Handle symlinks specially: always emit them as entries,
                     # but only traverse into them if follow_symlinks is True.
@@ -591,6 +605,7 @@ class FilesystemEnumerator:
         parent_dir = os.path.dirname(path)
         attrs = _get_win_attributes(path)
         is_symlink = scandir_entry.is_symlink()
+        is_reparse_point = bool(attrs & FILE_ATTRIBUTE_REPARSE_POINT)
 
         is_locked = False
         if opts.check_locked:
@@ -606,6 +621,7 @@ class FilesystemEnumerator:
             is_archive=bool(attrs & FILE_ATTRIBUTE_ARCHIVE),
             is_temporary=bool(attrs & FILE_ATTRIBUTE_TEMPORARY),
             is_symlink=is_symlink,
+            is_reparse_point=is_reparse_point,
             is_locked=is_locked,
             parent_dir=parent_dir,
             depth=depth,
@@ -656,6 +672,7 @@ class FilesystemEnumerator:
             is_archive=bool(attrs & FILE_ATTRIBUTE_ARCHIVE),
             is_temporary=bool(attrs & FILE_ATTRIBUTE_TEMPORARY),
             is_symlink=True,
+            is_reparse_point=True,
             is_locked=False,
             parent_dir=parent_dir,
             depth=depth,

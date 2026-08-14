@@ -22,6 +22,10 @@ from avs_backend.scan_core.rules.action_path_validation import (
 
 from .backup import BackupManager
 from .models import ExecutionError, ExecutionStatus, TargetExecutorResult
+from avs_backend.scan_core.rules.action import (
+    ALLOWED_BROWSER_CACHE_TYPES,
+    BLOCKED_BROWSER_DATA_TYPES,
+)
 
 
 class _BrowserExecutionError(Exception):
@@ -44,52 +48,47 @@ def _check_cancelled(token: Any) -> None:
         raise _BrowserExecutionError("CANCELLED", "Operation cancelled")
 
 
-def _classify_rule(rule_id: str) -> str:
-    """Classify a browser rule as cache, user_data, or ambiguous."""
-    lower = rule_id.lower()
-    user_data_keywords = (
-        "cookies",
-        "history",
-        "bookmarks",
-        "login_data",
-        "password",
-        "autofill",
-        "extensions",
-        "session",
-        "preferences",
-        "sync",
-        "certificates",
-        "profile",
-        "database",
-        "web_data",
-        "favicons",
-        "top_sites",
-        "visits",
-    )
-    for keyword in user_data_keywords:
-        if keyword in lower:
-            return "user_data"
+def _validate_cache_type(action: Any, canonical_path: str) -> str:
+    """Validate the browser cache type from the explicit action target."""
+    cache_type = action.target.cache_type
 
-    cache_keywords = (
-        "http_cache",
-        "gpu_cache",
-        "code_cache",
-        "service_worker",
-        "cache_storage",
-        "shader_cache",
-        "font_cache",
-        "media_cache",
-        "blob_storage",
-        "indexeddb",  # treat as user data? No.
-    )
-    for keyword in cache_keywords:
-        if keyword in lower:
-            return "cache"
+    if cache_type == "user_data" or cache_type in BLOCKED_BROWSER_DATA_TYPES:
+        raise _BrowserExecutionError(
+            "REJECTED",
+            "Refusing to remove browser user data; only cache assets are eligible",
+            {"cache_type": cache_type},
+        )
 
-    if "cache" in lower:
-        return "cache"
+    if cache_type not in ALLOWED_BROWSER_CACHE_TYPES:
+        raise _BrowserExecutionError(
+            "REQUIRES_REVIEW",
+            f"Unrecognized or ambiguous browser cache type: {cache_type}",
+            {"cache_type": cache_type},
+        )
 
-    return "ambiguous"
+    user_data_safe = bool(getattr(action.target, "user_data_safe", True))
+    cache_only = bool(getattr(action.target, "cache_only", True))
+    if not user_data_safe or not cache_only:
+        raise _BrowserExecutionError(
+            "REJECTED",
+            "Browser target must be explicitly marked as user-data-safe and cache-only",
+            {
+                "user_data_safe": user_data_safe,
+                "cache_only": cache_only,
+            },
+        )
+
+    # Defense-in-depth: the resolved path must not contain user-data components.
+    path_lower = canonical_path.lower()
+    for keyword in BLOCKED_BROWSER_DATA_TYPES:
+        if keyword in path_lower:
+            raise _BrowserExecutionError(
+                "REJECTED",
+                f"Target path contains user-data keyword: {keyword}",
+                {"canonical_path": canonical_path},
+            )
+
+    return cache_type
 
 
 def _compute_sha256(path: Path) -> str:
@@ -317,20 +316,8 @@ class BrowserExecutor:
 
         _check_cancelled(cancellation_token)
 
-        # 4. Cache classification from the rule that produced the finding.
-        classification = _classify_rule(rule_id)
-        if classification == "user_data":
-            raise _BrowserExecutionError(
-                "REJECTED",
-                "Refusing to remove user data; only cache assets are eligible",
-                {"rule_id": rule_id},
-            )
-        if classification == "ambiguous":
-            raise _BrowserExecutionError(
-                "REQUIRES_REVIEW",
-                "Cache classification is ambiguous; requires human review",
-                {"rule_id": rule_id},
-            )
+        # 4. Cache classification from the explicit target (not the rule_id).
+        _validate_cache_type(action, canonical_path)
 
         _check_cancelled(cancellation_token)
 

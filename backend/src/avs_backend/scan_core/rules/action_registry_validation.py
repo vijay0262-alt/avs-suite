@@ -94,6 +94,30 @@ _PROTECTED_KEYS_RAW: tuple[str, ...] = (
     r"HKU\S-1-5-20",
 )
 
+# Protected registry value names.
+# These values may appear under non-protected keys but are system-critical.
+_PROTECTED_VALUE_NAMES: frozenset[str] = frozenset(
+    {
+        "SystemRoot",
+        "ProgramFilesDir",
+        "ProgramFilesDir (x86)",
+        "ProgramW6432Dir",
+        "Path",
+        "windir",
+        "TEMP",
+        "TMP",
+        "CommonFilesDir",
+        "CommonFilesDir (x86)",
+        "CommonW6432Dir",
+        "AppData",
+        "LocalAppData",
+        "ProgramData",
+        "DevicePath",
+        "MediaPath",
+    }
+)
+
+
 # Protected parent key prefixes.
 # Any key under these prefixes is considered protected.
 _PROTECTED_PREFIXES: tuple[str, ...] = (
@@ -107,7 +131,33 @@ _PROTECTED_PREFIXES: tuple[str, ...] = (
 )
 
 # WOW6432Node marker for 32-bit registry view on 64-bit Windows.
-_WOW6432NODE = "WOW6432Node"
+_WOW6432NODE = "WOW6432NODE"
+
+
+def _strip_wow6432node(key_path: str) -> str:
+    """Remove the WOW6432Node component from a key path, returning the 64-bit view path."""
+    parts = [p for p in key_path.split("\\") if p]
+    filtered = [p for p in parts if p.upper() != _WOW6432NODE]
+    return "\\".join(filtered)
+
+
+def _contains_wow6432node(key_path: str) -> bool:
+    """Return True if the key path explicitly includes a WOW6432Node component."""
+    return any(p.upper() == _WOW6432NODE for p in key_path.split("\\") if p)
+
+
+def normalize_registry_view(view: str) -> str:
+    """Normalize a registry view string to a canonical form."""
+    if not isinstance(view, str):
+        raise RegistryValidationError("Registry view must be a string", "invalid_view")
+    v = view.strip().lower()
+    if v in ("", "default"):
+        return "default"
+    if v in ("wow6432node", "wow32", "32"):
+        return "wow6432node"
+    if v in ("wow64", "64"):
+        return "wow64"
+    raise RegistryValidationError(f"Unrecognized registry view: {view}", "invalid_view")
 
 
 # ── Validation ─────────────────────────────────────────────────────────────────
@@ -175,6 +225,13 @@ def normalize_key_path(key_path: str) -> str:
     return "\\".join(parts)
 
 
+def is_protected_value_name(value_name: str) -> bool:
+    """Return True if the value name is in the protected value name list."""
+    if not value_name:
+        return False
+    return value_name.strip().upper() in {v.upper() for v in _PROTECTED_VALUE_NAMES}
+
+
 def validate_value_name(value_name: str) -> None:
     """
     Validate a registry value name.
@@ -214,21 +271,23 @@ def is_protected_key(hive: str, key_path: str) -> bool:
 
     Args:
         hive: Canonical hive name.
-        key_path: Normalized key path.
+        key_path: Normalized key path (may include WOW6432Node component).
 
     Returns:
         True if the key is protected.
     """
-    full_path = f"{hive}\\{key_path}".upper()
+    # Compare in the canonical 64-bit view so the same key cannot be reached
+    # through a WOW6432Node alias.
+    canonical_path = _strip_wow6432node(f"{hive}\\{key_path}").upper()
 
     # Exact match against protected keys
     for protected in _PROTECTED_KEYS_RAW:
-        if full_path == protected.upper():
+        if canonical_path == protected.upper():
             return True
 
     # Prefix match against protected prefixes
     for prefix in _PROTECTED_PREFIXES:
-        if full_path.startswith(prefix.upper()):
+        if canonical_path.startswith(prefix.upper()):
             return True
 
     return False
@@ -253,10 +312,11 @@ def is_parent_key_deletion(hive: str, key_path: str, value_name: Optional[str]) 
         # Value deletion — not a parent key deletion
         return False
 
-    # Check if this key path is a prefix of any protected key
-    key_prefix = f"{hive}\\{key_path}".upper()
+    # Check if this key path is a prefix of any protected key, comparing in
+    # the canonical 64-bit view.
+    key_prefix = _strip_wow6432node(f"{hive}\\{key_path}").upper()
     for protected in _PROTECTED_KEYS_RAW:
-        protected_upper = protected.upper()
+        protected_upper = _strip_wow6432node(protected).upper()
         if protected_upper.startswith(key_prefix + "\\"):
             return True
 
@@ -287,26 +347,29 @@ def validate_registry_target(
     # Validate key path
     normalized_key = normalize_key_path(key_path)
 
-    # Check for WOW6432Node — must be explicitly handled by execution engine
-    if _WOW6432NODE in normalized_key.split("\\"):
-        # WOW6432Node paths require explicit view handling.
-        # The action plan must record the view for the execution engine.
-        pass
+    # Protected-key and parent-key checks are performed in the canonical
+    # 64-bit view so WOW6432Node cannot be used to bypass the denylist.
+    canonical_key_for_safety = _strip_wow6432node(normalized_key)
 
     # Check protected keys
-    if is_protected_key(canonical_hive, normalized_key):
+    if is_protected_key(canonical_hive, canonical_key_for_safety):
         raise RegistryValidationError(
-            f"Registry key is protected: {canonical_hive}\\{normalized_key}",
+            f"Registry key is protected: {canonical_hive}\\{canonical_key_for_safety}",
             "protected_registry_key",
         )
 
     # Validate value name when provided
     if value_name is not None:
         validate_value_name(value_name)
+        if is_protected_value_name(value_name):
+            raise RegistryValidationError(
+                f"Registry value name is protected: {value_name}",
+                "protected_registry_value",
+            )
 
     # Check parent key deletion risk
     if action_type == "remove_registry_key":
-        if is_parent_key_deletion(canonical_hive, normalized_key, value_name):
+        if is_parent_key_deletion(canonical_hive, canonical_key_for_safety, value_name):
             raise RegistryValidationError(
                 f"Registry key deletion would affect parent key: "
                 f"{canonical_hive}\\{normalized_key}",

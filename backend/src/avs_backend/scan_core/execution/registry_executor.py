@@ -13,10 +13,13 @@ from typing import Any, Optional
 
 from avs_backend.scan_core.rules.action_registry_validation import (
     RegistryValidationError,
+    _contains_wow6432node,
+    _strip_wow6432node,
     is_parent_key_deletion,
     is_protected_key,
     normalize_hive,
     normalize_key_path,
+    normalize_registry_view,
     validate_registry_target,
 )
 
@@ -80,14 +83,15 @@ def _hive_to_const(hive: str) -> Any:
 
 
 def _view_to_sam(view: str) -> int:
-    """Map view string to WOW64 access mask."""
+    """Map a normalized registry view string to a WOW64 access mask."""
     if winreg is None:
         return 0
     view_lower = view.lower()
-    if view_lower in ("wow6432node", "wow32", "32"):
+    if view_lower in ("wow6432node", "wow32"):
         return winreg.KEY_WOW64_32KEY
-    if view_lower in ("wow6446node", "wow64", "64"):
+    if view_lower in ("wow64", "64"):
         return winreg.KEY_WOW64_64KEY
+    # "default" or any other value opens the platform default view.
     return 0
 
 
@@ -275,6 +279,14 @@ class RegistryExecutor:
                     "Registry path contains traversal or relative component",
                     {"raw_key": raw_key},
                 )
+
+            # Parse the view from either the explicit view context or the key path.
+            explicit_view = context.get("registry_view", "") or ""
+            view = normalize_registry_view(explicit_view)
+            if _contains_wow6432node(canonical_key):
+                view = normalize_registry_view("wow6432node")
+                canonical_key = _strip_wow6432node(canonical_key)
+
             validate_registry_target(
                 canonical_hive, canonical_key, value_name, operation
             )

@@ -44,6 +44,7 @@ class FileEntry:
     is_locked: bool
     parent_dir: str
     depth: int
+    is_reparse_point: bool = False
     symlink_target: Optional[str] = None
     is_broken_symlink: bool = False
 
@@ -88,6 +89,7 @@ class DirectoryEntry:
     depth: int
     file_count: int = 0
     subdirectory_count: int = 0
+    is_reparse_point: bool = False
 
     @property
     def entry_type(self) -> EntryType:
@@ -150,6 +152,7 @@ def _make_file_entry(
     is_locked: bool,
     parent_dir: str,
     depth: int,
+    is_reparse_point: bool = False,
     symlink_target: Optional[str] = None,
     is_broken_symlink: bool = False,
 ) -> FileEntry:
@@ -171,6 +174,7 @@ def _make_file_entry(
         is_locked=is_locked,
         parent_dir=parent_dir,
         depth=depth,
+        is_reparse_point=is_reparse_point,
         symlink_target=symlink_target,
         is_broken_symlink=is_broken_symlink,
     )
@@ -189,6 +193,7 @@ def _make_directory_entry(
     depth: int,
     file_count: int = 0,
     subdirectory_count: int = 0,
+    is_reparse_point: bool = False,
 ) -> DirectoryEntry:
     """Factory to build a DirectoryEntry from stat data and attributes."""
     return DirectoryEntry(
@@ -204,4 +209,5 @@ def _make_directory_entry(
         depth=depth,
         file_count=file_count,
         subdirectory_count=subdirectory_count,
+        is_reparse_point=is_reparse_point,
     )

@@ -169,31 +169,86 @@ class MetadataDatabase:
 
         Strategy:
         1. Preserve damaged database for diagnostics
-        2. Create new valid database
-        3. Do not crash the application
-        4. Report recovery status
+        2. Attempt WAL checkpoint/recovery
+        3. Attempt to dump recoverable data
+        4. Only then create a fresh database
 
         Returns:
-            True if recovery successful
+            True if a usable database can be created (corrupt data is preserved)
         """
         try:
-            # Preserve damaged database
+            # Preserve damaged database before any destructive work.
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             backup_path = self.config.db_path.with_suffix(
-                f".corrupted.{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+                f".corrupted.{timestamp}.db"
             )
             shutil.copy2(self.config.db_path, backup_path)
-            logger.info(f"Preserved corrupted database: {backup_path}")
+            logger.warning(f"Database corruption detected; preserved at: {backup_path}")
 
-            # Remove corrupted database
+            # Attempt in-place WAL recovery before deleting anything.
+            if self._wal_checkpoint_recovery():
+                logger.info("WAL checkpoint recovered the database")
+                return True
+
+            # Attempt to dump whatever SQLite can still read.
+            dump_path = self.config.db_path.with_suffix(
+                f".corrupted.{timestamp}.sql"
+            )
+            self._dump_recoverable_data(dump_path)
+
+            # Remove the corrupted working database now that copies exist.
             self.config.db_path.unlink()
-            logger.info("Removed corrupted database")
+            logger.info("Removed corrupted working database; replacement will be created")
 
-            # New database will be created on next connect
             return True
 
         except Exception as e:
             logger.error(f"Corruption recovery failed: {e}")
             return False
+
+    def _wal_checkpoint_recovery(self) -> bool:
+        """Attempt to recover the database via WAL checkpoint and integrity check."""
+        conn = None
+        try:
+            conn = sqlite3.connect(str(self.config.db_path))
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            cursor.fetchone()
+            cursor.execute("PRAGMA integrity_check")
+            result = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            conn = None
+            return result is not None and result[0] == "ok"
+        except Exception as e:
+            logger.warning(f"WAL checkpoint recovery attempt failed: {e}")
+            return False
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+    def _dump_recoverable_data(self, dump_path: Path) -> bool:
+        """Attempt to dump any data SQLite can still read from the corrupted DB."""
+        conn = None
+        try:
+            conn = sqlite3.connect(str(self.config.db_path))
+            with open(dump_path, "w") as f:
+                for line in conn.iterdump():
+                    f.write(line + "\n")
+            logger.info(f"Dumped recoverable data to: {dump_path}")
+            return True
+        except Exception as e:
+            logger.warning(f"Could not dump recoverable data: {e}")
+            return False
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     def _initialize_schema(self) -> None:
         """Initialize database schema."""

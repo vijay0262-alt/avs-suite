@@ -65,6 +65,75 @@ from .enums import RuleCategory
 from .priority import FindingPriority, Fixability, PrioritizedResult, RuleCapability
 from .safety_gate import SafetyGate, create_safety_gate
 
+# Browser cache types that are safe for automatic remediation.
+ALLOWED_BROWSER_CACHE_TYPES: frozenset[str] = frozenset(
+    {
+        "cache",
+        "http_cache",
+        "gpu_cache",
+        "code_cache",
+        "service_worker",
+        "cache_storage",
+        "shader_cache",
+        "font_cache",
+        "media_cache",
+        "blob_storage",
+    }
+)
+
+# Browser data types that must NEVER be treated as cache.
+BLOCKED_BROWSER_DATA_TYPES: frozenset[str] = frozenset(
+    {
+        "cookies",
+        "history",
+        "bookmarks",
+        "login_data",
+        "password",
+        "autofill",
+        "extensions",
+        "session",
+        "database",
+        "web_data",
+        "favicons",
+        "top_sites",
+        "visits",
+    }
+)
+
+# Keywords used to classify a rule_id into allowed cache vs user data.
+BROWSER_CACHE_KEYWORDS: tuple[str, ...] = (
+    "cache",
+    "http_cache",
+    "gpu_cache",
+    "code_cache",
+    "service_worker",
+    "cache_storage",
+    "shader_cache",
+    "font_cache",
+    "media_cache",
+    "blob_storage",
+)
+
+BROWSER_USER_DATA_KEYWORDS: tuple[str, ...] = (
+    "cookies",
+    "history",
+    "bookmarks",
+    "login_data",
+    "password",
+    "autofill",
+    "extensions",
+    "session",
+    "database",
+    "web_data",
+    "favicons",
+    "top_sites",
+    "visits",
+    "preferences",
+    "sync_data",
+    "certificates",
+    "profile",
+)
+
 if TYPE_CHECKING:
     pass
 
@@ -582,7 +651,8 @@ class ActionPlan:
         actions = tuple(RemediationAction.from_dict(a) for a in data.get("actions", []))
         summary = ActionSummary.from_dict(data.get("summary", {}))
         generated_at = _parse_iso_datetime(data["generated_at"])
-        assert generated_at is not None, "ActionPlan generated_at is required"
+        if generated_at is None:
+            raise ValueError("ActionPlan generated_at is required")
         snapshot_timestamp = _parse_iso_datetime(data.get("snapshot_timestamp"))
         return cls(
             actions=actions,
@@ -643,7 +713,8 @@ class ActionSummary:
     def from_dict(cls, data: dict[str, Any]) -> "ActionSummary":
         """Deserialize an ActionSummary from a dictionary."""
         generated_at = _parse_iso_datetime(data["generated_at"])
-        assert generated_at is not None, "ActionSummary generated_at is required"
+        if generated_at is None:
+            raise ValueError("ActionSummary generated_at is required")
         return cls(
             total_findings=data.get("total_findings", 0),
             actions_planned=data.get("actions_planned", 0),
@@ -889,7 +960,8 @@ class ActionPlanner:
             )
 
         # The contract guarantees an action type when ACTIONABLE.
-        assert action_type is not None, "ACTIONABLE verdict without an action type"
+        if action_type is None:
+            raise ValueError("ACTIONABLE verdict without an action type")
 
         # Build target with validation
         target = self._build_target(finding, action_type, snapshot)
@@ -1063,9 +1135,11 @@ class ActionPlanner:
             profile = self._extract_browser_profile(finding)
             cache_type = self._determine_browser_cache_type(finding)
 
-            # Only allow cache-type targets
-            if cache_type not in ("cache",):
-                return None
+            # The cache_type label is explicit: 'cache' for safe/allowed cache
+            # assets, 'user_data' for user-data keywords, or 'unknown' for
+            # anything else.  The BrowserActionTarget carries the type so the
+            # executor can reject user data without relying on the rule_id.
+            is_allowed = cache_type in ALLOWED_BROWSER_CACHE_TYPES
 
             return BrowserActionTarget(
                 asset_id=finding.asset_id,
@@ -1073,8 +1147,8 @@ class ActionPlanner:
                 profile=profile,
                 cache_type=cache_type,
                 path=snapshot.canonical_path,
-                user_data_safe=True,
-                cache_only=True,
+                user_data_safe=is_allowed,
+                cache_only=is_allowed,
             )
 
         return None
@@ -1135,7 +1209,11 @@ class ActionPlanner:
         if isinstance(target, BrowserActionTarget):
             conditions.append(BrowserNotRunning(browser=target.browser))
             conditions.append(ProfileExists(profile=target.profile))
-            conditions.append(CacheScopeValid(cache_type=target.cache_type))
+            # Only enforce cache-scope matching when the target is an allowed
+            # cache type.  User-data/unknown targets are rejected by the
+            # BrowserExecutor instead of failing preconditions.
+            if target.cache_type in ALLOWED_BROWSER_CACHE_TYPES:
+                conditions.append(CacheScopeValid(cache_type=target.cache_type))
 
         return PreconditionSet(conditions=tuple(conditions))
 
@@ -1207,8 +1285,29 @@ class ActionPlanner:
         return "default"
 
     def _determine_browser_cache_type(self, finding: DetectionFinding) -> str:
-        """Determine browser cache type."""
-        return "cache"
+        """Determine browser cache type from the finding rule_id.
+
+        Returns 'cache' for known safe cache keywords, 'user_data' if any
+        user-data keyword is found, or 'unknown' if the type cannot be
+        reliably determined.  The BrowserExecutor enforces the explicit
+        BrowserActionTarget cache_type and user-data flags, not the rule_id.
+        """
+        rule_id = finding.rule_id.lower()
+
+        for keyword in BROWSER_USER_DATA_KEYWORDS:
+            if keyword in rule_id:
+                return "user_data"
+
+        for keyword in BROWSER_CACHE_KEYWORDS:
+            if keyword in rule_id:
+                return "cache"
+
+        # Fall back to the generic "cache" label only if the rule category
+        # explicitly indicates cache and no ambiguous/user-data keyword is present.
+        if finding.rule_category == RuleCategory.CACHE:
+            return "cache"
+
+        return "unknown"
 
     def _deduplicate_and_resolve_conflicts(
         self, actions: list[RemediationAction]
