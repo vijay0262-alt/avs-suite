@@ -82,15 +82,6 @@ class BaseTargetExecutor:
         return {k: v for k, v in context.items() if k in allowed}
 
 
-class RegistryExecutor(BaseTargetExecutor):
-    """Stub executor for registry actions."""
-
-    supported_action_types = (
-        "remove_registry_value",
-        "remove_registry_key",
-    )
-
-
 class BrowserExecutor(BaseTargetExecutor):
     """Stub executor for browser cache actions."""
 
@@ -104,7 +95,6 @@ class StartupExecutor(BaseTargetExecutor):
 
 
 _TARGET_EXECUTORS = (
-    RegistryExecutor,
     BrowserExecutor,
     StartupExecutor,
 )
@@ -116,6 +106,10 @@ def get_target_executor(action_type: str):
         from .filesystem_executor import FilesystemExecutor
 
         return FilesystemExecutor
+    if action_type in ("remove_registry_value", "remove_registry_key"):
+        from .registry_executor import RegistryExecutor
+
+        return RegistryExecutor
     for executor in _TARGET_EXECUTORS:
         if executor.can_execute(action_type):
             return executor

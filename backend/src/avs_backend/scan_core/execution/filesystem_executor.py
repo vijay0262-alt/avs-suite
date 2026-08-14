@@ -134,6 +134,7 @@ class FilesystemExecutor:
         mode: str = "dry_run",
         cancellation_token: Any = None,
         backup_manager: Optional[BackupManager] = None,
+        registry_backup: Any = None,
         execution_id: str = "",
     ) -> TargetExecutorResult:
         """Execute a filesystem action."""
@@ -144,6 +145,7 @@ class FilesystemExecutor:
                 mode=mode,
                 cancellation_token=cancellation_token,
                 backup_manager=backup_manager,
+                registry_backup=registry_backup,
                 execution_id=execution_id,
             )
         except _FilesystemExecutionError as exc:
@@ -187,6 +189,7 @@ class FilesystemExecutor:
         mode: str,
         cancellation_token: Any,
         backup_manager: Optional[BackupManager],
+        registry_backup: Any,
         execution_id: str,
     ) -> TargetExecutorResult:
         """Core filesystem execution logic."""

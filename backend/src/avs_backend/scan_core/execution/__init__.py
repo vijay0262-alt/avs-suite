@@ -24,6 +24,12 @@ from .models import (
     Executor,
     TargetExecutorResult,
 )
+from .registry_backup import (
+    RegistryBackup,
+    RegistryBackupRecord,
+    RegistryRestoreResult,
+)
+from .registry_executor import RegistryExecutor
 
 __all__ = [
     "BackupManager",
@@ -43,7 +49,11 @@ __all__ = [
     "Executor",
     "FilesystemContext",
     "FilesystemExecutor",
+    "RegistryBackup",
+    "RegistryBackupRecord",
     "RegistryContext",
+    "RegistryExecutor",
+    "RegistryRestoreResult",
     "RollbackResult",
     "TargetExecutorResult",
 ]

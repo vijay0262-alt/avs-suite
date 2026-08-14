@@ -51,22 +51,39 @@ class FilesystemContext:
 class RegistryContext:
     """Live registry target state."""
 
+    exists: bool = True
+    accessible: bool = True
+    locked: bool = False
     hive: str = ""
     key: str = ""
     value: Optional[str] = None
     key_exists: bool = False
     value_exists: bool = False
     value_type: Optional[str] = None
+    value_data: Any = None
+    view: str = "default"
+    asset_id: str = ""
+    safety_level: str = "safe"
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
         return {
-            "hive": self.hive,
-            "key": self.key,
-            "value": self.value,
-            "key_exists": self.key_exists,
-            "value_exists": self.value_exists,
-            "value_type": self.value_type,
+            "exists": self.exists,
+            "accessible": self.accessible,
+            "locked": self.locked,
+            "registry_hive": self.hive,
+            "registry_key": self.key,
+            "registry_value": self.value,
+            "registry_key_exists": self.key_exists,
+            "registry_value_exists": self.value_exists,
+            "registry_value_type": self.value_type,
+            "registry_value_data": self.value_data,
+            "registry_view": self.view,
+            "is_symlink": False,
+            "is_junction": False,
+            "is_reparse_point": False,
+            "asset_id": self.asset_id,
+            "safety_level": self.safety_level,
         }
 
 
@@ -132,20 +149,33 @@ def default_registry_context(action_target: Any) -> RegistryContext:
     hive = ""
     key = ""
     value = None
+    view = "default"
+    asset_id = ""
     if hasattr(action_target, "hive"):
         hive = getattr(action_target, "hive", "")
     if hasattr(action_target, "key_path"):
         key = getattr(action_target, "key_path", "")
     if hasattr(action_target, "value_name"):
         value = getattr(action_target, "value_name", None)
+    if hasattr(action_target, "view"):
+        view = getattr(action_target, "view", "default")
+    if hasattr(action_target, "asset_id"):
+        asset_id = getattr(action_target, "asset_id", "")
 
     return RegistryContext(
+        exists=True,
+        accessible=True,
+        locked=False,
         hive=hive,
         key=key,
         value=value,
         key_exists=True,
         value_exists=value is not None,
         value_type=None,
+        value_data=None,
+        view=view,
+        asset_id=asset_id,
+        safety_level="safe",
     )
 
 

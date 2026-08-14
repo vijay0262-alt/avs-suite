@@ -31,6 +31,7 @@ from .models import (
     ExecutionStatus,
     ExecutionSummary,
 )
+from .registry_backup import RegistryBackup
 from .target_executors import get_target_executor
 
 
@@ -52,6 +53,7 @@ class DefaultExecutor:
     safety_gate: SafetyGate = field(default_factory=create_safety_gate)
     ledger: ExecutionLedger = field(default_factory=ExecutionLedger)
     backup_manager: Optional[BackupManager] = None
+    registry_backup: Optional[RegistryBackup] = None
 
     def execute(self, request: ExecutionRequest) -> ExecutionSummary:
         """
@@ -246,6 +248,7 @@ class DefaultExecutor:
             mode=request.mode,
             cancellation_token=request.cancellation_token,
             backup_manager=self.backup_manager,
+            registry_backup=self.registry_backup,
             execution_id=execution_id,
         )
 
