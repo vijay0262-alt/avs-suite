@@ -53,16 +53,14 @@ import {
   CommandLineIcon,
   CogIcon,
   ShieldExclamationIcon,
-  PlayIcon,
-  StopIcon,
 } from '@heroicons/react/24/outline';
 import {
   SECURITY_SCAN_PHASES,
   type ScanTreeNode,
   type LiveThreatCard,
 } from './securityScanTypes';
-import { UnifiedSecurityScanProgress } from './UnifiedSecurityScanProgress';
 import { UnifiedSecurityScanResults } from './UnifiedSecurityScanResults';
+import { ScanView } from '../scan';
 
 const TABS: { id: SecurityCenterTab; label: string; icon: typeof ShieldCheckIcon }[] = [
   { id: 'overview', label: 'Overview', icon: ShieldCheckIcon },
@@ -162,9 +160,6 @@ export function SecurityCenterPage() {
     const navState = location.state as { tab?: SecurityCenterTab; mode?: ScanMode; category?: string } | null;
     if (navState?.tab) {
       vm.setActiveTab(navState.tab);
-      if (navState.mode) {
-        vm.setScanMode(navState.mode);
-      }
       if (navState.category && navState.tab === 'threats') {
         vm.setThreatFilter({ category: navState.category as ThreatCategory | 'all' });
       }
@@ -230,16 +225,13 @@ export function SecurityCenterPage() {
         </div>
         <div className="flex items-center gap-3">
           <ProStatusPill />
-          <Button
-            size="lg"
-            onClick={() => { vm.setScanMode('full'); vm.startScan('full'); vm.setActiveTab('scan'); }}
-            disabled={state.isScanning}
-            loading={state.isScanning}
-            leftIcon={state.isScanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <ShieldCheckIcon className="h-5 w-5" />}
-            data-testid="ai-smart-security-scan-btn"
-          >
-            {state.isScanning ? 'Scanning…' : 'Scan Now'}
-          </Button>
+          <ScanView
+            module="security"
+            mode="full"
+            buttonLabel="Run Security Scan"
+            onClose={() => {}}
+            className="shrink-0 w-72"
+          />
         </div>
       </div>
 
@@ -467,8 +459,7 @@ function ScanTab({ vm }: { vm: SecurityCenterViewModel }) {
               return (
                 <button
                   key={mode.id}
-                  onClick={() => vm.setScanMode(mode.id)}
-                  disabled={s.isScanning}
+                  disabled
                   className={`w-full rounded-[var(--avs-radius-md)] border p-3 text-left transition-all duration-[var(--avs-duration-fast)] ${
                     isSelected
                       ? 'border-[var(--avs-brand-primary)] bg-[var(--avs-brand-primary)]/10'
@@ -485,30 +476,6 @@ function ScanTab({ vm }: { vm: SecurityCenterViewModel }) {
             })}
           </div>
         </Card>
-
-        {/* Scan Now / Cancel Button */}
-        {s.isScanning ? (
-          <Button
-            size="lg"
-            variant="danger"
-            onClick={() => vm.cancelScan()}
-            leftIcon={<StopIcon className="h-5 w-5" />}
-            className="w-full"
-          >
-            Cancel Scan
-          </Button>
-        ) : (
-          <Button
-            size="lg"
-            onClick={() => vm.startScan()}
-            disabled={s.isScanning}
-            loading={s.isScanning}
-            leftIcon={<PlayIcon className="h-5 w-5" />}
-            className="w-full"
-          >
-            Start Scan
-          </Button>
-        )}
 
         {/* Last Scan Result summary in sidebar */}
         {s.lastScanResult && !s.isScanning && (
@@ -540,7 +507,7 @@ function ScanTab({ vm }: { vm: SecurityCenterViewModel }) {
       {/* Right / Main Section — Scan Experience */}
       <div className="flex-1 space-y-6">
         {s.isScanning ? (
-          <UnifiedSecurityScanProgress vm={vm} />
+          <ScanView module="security" mode="full" onClose={() => {}} />
         ) : s.aiSummary ? (
           <UnifiedSecurityScanResults vm={vm} isPro={canUse('security.remediate')} />
         ) : (
@@ -575,14 +542,6 @@ function ScanIdleView({ vm }: { vm: SecurityCenterViewModel }) {
                 : 'A fast scan of critical system areas — processes, registry, scheduled tasks, and behavior analysis.'}
             </p>
           </div>
-          <Button
-            size="lg"
-            onClick={() => vm.startScan()}
-            leftIcon={<SparklesIcon className="h-5 w-5" />}
-            data-testid="start-scan-btn"
-          >
-            Start {s.scanMode === 'full' ? 'Full System' : 'Quick'} Scan
-          </Button>
         </div>
       </Card>
 
@@ -971,7 +930,7 @@ function ScanAISummary({ vm }: { vm: SecurityCenterViewModel }) {
             variant="ghost"
             onClick={() => {
               vm.dismissSummary();
-              vm.startScan();
+              vm.setActiveTab('scan');
             }}
             leftIcon={<ArrowPathIcon className="h-5 w-5" />}
           >
@@ -1072,7 +1031,7 @@ function ThreatsTab({ vm }: { vm: SecurityCenterViewModel }) {
           icon={ShieldCheckIcon}
           title="No threats found"
           message={s.threats.length === 0 ? 'Run a scan to detect threats.' : 'No threats match the current filters.'}
-          action={s.threats.length === 0 ? <Button size="sm" onClick={() => { vm.setActiveTab('scan'); vm.startScan('quick'); }}>Run Quick Scan</Button> : undefined}
+          action={s.threats.length === 0 ? <Button size="sm" onClick={() => { vm.setActiveTab('scan'); }}>Run Quick Scan</Button> : undefined}
         />
       ) : (
         <div className="space-y-3">
@@ -1225,7 +1184,7 @@ function InvestigationTab({ vm }: { vm: SecurityCenterViewModel }) {
         icon={BeakerIcon}
         title="No investigations"
         message="Threats detected by scans will be automatically investigated here."
-        action={<Button size="sm" onClick={() => { vm.setActiveTab('scan'); vm.startScan('full'); }}>Run Full Scan</Button>}
+        action={<Button size="sm" onClick={() => { vm.setActiveTab('scan'); }}>Run Full Scan</Button>}
       />
     );
   }

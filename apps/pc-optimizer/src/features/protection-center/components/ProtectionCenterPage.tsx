@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DashboardSection, LoadingState, EmptyState, Button, Card, CollapsibleSection } from '@avs/ui';
+import { DashboardSection, LoadingState, EmptyState, Card, CollapsibleSection } from '@avs/ui';
 import {
   ShieldCheckIcon,
   HeartIcon,
@@ -12,7 +12,7 @@ import { ProtectionCenterViewModel } from '../ProtectionCenterViewModel';
 import { useIsPro } from '../../sync/syncStore';
 import { DashboardViewModel } from '../../dashboard/DashboardViewModel';
 import { dashboardService } from '../../dashboard/dashboard.service';
-import { UnifiedOptimizeFlow } from '../../dashboard/components/UnifiedOptimizeFlow';
+import { ScanView } from '../../scan';
 import { ProtectionBanner } from './ProtectionBanner';
 import { ProtectionCards } from './ProtectionCards';
 import { LiveActivityTimeline } from './LiveActivityTimeline';
@@ -53,22 +53,10 @@ export function ProtectionCenterPage() {
     };
   }, [vm, dashVm]);
 
-  // Refresh protection state when dashboard scan completes
-  useEffect(() => {
-    if (dashState.healthScanStep === 'complete') {
-      void dashboardService.refreshCache();
-      void vm.refreshAll();
-    }
-  }, [dashState.healthScanStep, vm]);
-
   const handleNavigate = useMemo(
     () => (path: string) => navigate(path),
     [navigate],
   );
-
-  const handleScanNow = useCallback(() => {
-    dashVm.startHealthScan('protection', isPro);
-  }, [dashVm, isPro]);
 
   const handleFixCoverage = useCallback(
     (item: { id: string; fixAction?: { action: string; type: 'navigate' | 'rpc' } }) => {
@@ -95,8 +83,6 @@ export function ProtectionCenterPage() {
     },
     [navigate, vm],
   );
-
-  const isScanning = dashState.healthScanStep !== 'idle' && dashState.healthScanStep !== 'complete';
 
   if (state.loading && !state.protectionState) {
     return (
@@ -141,16 +127,13 @@ export function ProtectionCenterPage() {
             </div>
           )}
         </div>
-        <Button
-          onClick={handleScanNow}
-          disabled={isScanning}
-          loading={isScanning}
-          leftIcon={isScanning ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <ShieldCheckIcon className="h-4 w-4" />}
-          size="lg"
-          data-testid="protection-center-scan-now"
-        >
-          {isScanning ? 'Scanning...' : 'Scan Now'}
-        </Button>
+        <ScanView
+          module="protection"
+          mode="full"
+          buttonLabel="Scan Now"
+          onClose={() => {}}
+          className="shrink-0 w-full max-w-sm"
+        />
       </div>
 
       {/* Active Alerts (only show if there are any) */}
@@ -165,15 +148,6 @@ export function ProtectionCenterPage() {
             onNavigate={handleNavigate}
           />
         </DashboardSection>
-      )}
-
-      {/* Unified Scan Flow — shown near top so user can see scan running */}
-      {dashState.healthScanStep !== 'idle' && (
-        <UnifiedOptimizeFlow
-          vm={dashVm}
-          isPro={isPro}
-          onClose={() => dashVm.closeHealthScan()}
-        />
       )}
 
       {/* Primary: 4 Summary Cards */}

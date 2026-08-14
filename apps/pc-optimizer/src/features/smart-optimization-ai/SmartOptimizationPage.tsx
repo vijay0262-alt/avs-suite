@@ -20,9 +20,7 @@ import { ModuleEmptyState, ModuleLoadingState } from '../../components/ModuleSta
 import { useEditionLimits } from '../licensing/editionLimits';
 import { useIsPro } from '../sync/syncStore';
 import { ProStatusBanner, ProStatusPill, ProOnlySection, ProFeatureIndicator } from '../licensing/ProStatusBadge';
-import { DashboardViewModel } from '../dashboard/DashboardViewModel';
-import { dashboardService } from '../dashboard/dashboard.service';
-import { UnifiedOptimizeFlow } from '../dashboard/components/UnifiedOptimizeFlow';
+import { ScanView } from '../scan';
 import { formatDataSize } from '@avs/shared/utils';
 import {
   SmartOptimizationEngine,
@@ -209,26 +207,12 @@ export default function SmartOptimizationPage() {
   const navigate = useNavigate();
   const [showUpgradeMessage, setShowUpgradeMessage] = useState(false);
 
-  // Dashboard ViewModel for health scan (AI Smart Optimize button)
-  const dashVm = useMemo(() => new DashboardViewModel(dashboardService), []);
-  const dashState = useViewModel(dashVm);
-
-  useEffect(() => {
-    void dashVm.bootstrap();
-    return () => dashVm.dispose();
-  }, [dashVm]);
-
   useEffect(() => {
     vm.bootstrap();
     // Auto-generate plan on page load so user sees results immediately
     void vm.generatePlan();
     return () => vm.dispose();
   }, [vm]);
-
-  const handleSmartOptimize = useCallback(() => {
-    setShowUpgradeMessage(false);
-    dashVm.startHealthScan('optimize', isPro);
-  }, [dashVm, isPro]);
 
   const handleExecutePlan = useCallback(() => {
     if (!isPro) {
@@ -237,8 +221,6 @@ export default function SmartOptimizationPage() {
     }
     vm.executePlan();
   }, [isPro, vm]);
-
-  const isScanning = dashState.healthScanStep !== 'idle' && dashState.healthScanStep !== 'complete';
 
   if (state.bootstrap === 'loading') {
     return (
@@ -263,16 +245,13 @@ export default function SmartOptimizationPage() {
         actions={
           <div className="flex items-center gap-2">
             <ProStatusPill />
-            <Button
-              onClick={handleSmartOptimize}
-              disabled={isScanning}
-              loading={isScanning}
-              leftIcon={isScanning ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <BoltIcon className="h-4 w-4" />}
-              size="lg"
-              data-testid="ai-smart-optimize-btn"
-            >
-              {isScanning ? 'Scanning...' : 'Optimize Now'}
-            </Button>
+            <ScanView
+              module="optimize"
+              mode="quick"
+              buttonLabel="Scan & Optimize"
+              onClose={() => {}}
+              className="shrink-0 w-72"
+            />
           </div>
         }
       />
@@ -633,14 +612,6 @@ export default function SmartOptimizationPage() {
         </div>
       )}
 
-      {/* Unified Optimize Flow — triggered by AI Smart Optimize button */}
-      {dashState.healthScanStep !== 'idle' && (
-        <UnifiedOptimizeFlow
-          vm={dashVm}
-          isPro={isPro}
-          onClose={() => dashVm.closeHealthScan()}
-        />
-      )}
     </div>
   );
 }
