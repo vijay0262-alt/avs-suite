@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Optional
 
-from .models import ExecutionError
+from .models import ExecutionCancelledError, ExecutionError
 
 
 def _compute_sha256(path: Path) -> str:
@@ -117,8 +117,16 @@ class BackupManager:
         action: Any,
         execution_id: str,
         execution_context: dict[str, Any],
+        cancellation_token: Optional[Any] = None,
     ) -> BackupRecord:
-        """Create a backup for a target before deletion."""
+        """Create a backup for a target before deletion.
+
+        Note: a single OS shutil.copy2/copytree call may finish after a
+        cancellation request is received.  Cooperative cancellation must be
+        checked before and after this call, not inside it.
+        """
+        if cancellation_token is not None and cancellation_token.is_cancelled():
+            raise ExecutionCancelledError("Backup creation was cancelled")
         source = Path(source_path).resolve()
         if not source.exists():
             raise FileNotFoundError(f"Cannot back up non-existent target: {source}")
@@ -169,6 +177,25 @@ class BackupManager:
                 timestamp=datetime.now(UTC),
             )
 
+        # Verify the backup itself has not been tampered with before restoring.
+        if not record.is_directory and record.backup_hash is not None:
+            current_backup_hash = _compute_sha256(backup_path)
+            if current_backup_hash != record.backup_hash:
+                return RollbackResult(
+                    success=False,
+                    backup_id=record.backup_id,
+                    reason="Backup hash mismatch; backup may be tampered",
+                    timestamp=datetime.now(UTC),
+                    error=ExecutionError(
+                        code="BACKUP_HASH_MISMATCH",
+                        message="Backup does not match recorded hash",
+                        details={
+                            "expected": record.backup_hash,
+                            "actual": current_backup_hash,
+                        },
+                    ),
+                )
+
         try:
             if record.is_directory:
                 original_path.parent.mkdir(parents=True, exist_ok=True)
@@ -188,6 +215,25 @@ class BackupManager:
                     details={"original_path": str(original_path)},
                 ),
             )
+
+        # Independently verify the restored output matches the recorded hash.
+        if not record.is_directory and record.backup_hash is not None:
+            restored_hash = _compute_sha256(original_path)
+            if restored_hash != record.backup_hash:
+                return RollbackResult(
+                    success=False,
+                    backup_id=record.backup_id,
+                    reason="Restored content hash mismatch",
+                    timestamp=datetime.now(UTC),
+                    error=ExecutionError(
+                        code="RESTORE_HASH_MISMATCH",
+                        message="Restored file does not match backup hash",
+                        details={
+                            "expected": record.backup_hash,
+                            "actual": restored_hash,
+                        },
+                    ),
+                )
 
         return RollbackResult(
             success=True,

@@ -45,8 +45,11 @@ class ScanOrchestrator:
         *,
         capability_contract: Optional[CapabilityContract] = None,
         discovery_engines: Optional[dict[str, DiscoveryEngine]] = None,
+        snapshot_ttl_seconds: int = 3600,
     ) -> None:
         """Initialize the orchestrator with persistent storage and rules."""
+        if not isinstance(snapshot_ttl_seconds, int) or snapshot_ttl_seconds < 1:
+            raise ValueError("snapshot_ttl_seconds must be a positive integer")
         self._db = database
         self._registry = registry
         self._capability_contract = capability_contract or CapabilityContract()
@@ -59,6 +62,7 @@ class ScanOrchestrator:
             asset_repository=self._asset_repo,
             snapshot_repository=self._snapshot_repo,
         )
+        self._snapshot_ttl_seconds = snapshot_ttl_seconds
         self._discovery_engines = dict(discovery_engines or {})
         if not self._discovery_engines:
             self._discovery_engines["filesystem"] = FilesystemDiscoveryEngine()
@@ -427,6 +431,7 @@ class ScanOrchestrator:
         planner = ActionPlanner(
             asset_snapshot_resolver=_resolve_snapshot,  # type: ignore[arg-type]
             capability_contract=self._capability_contract,
+            snapshot_ttl_seconds=self._snapshot_ttl_seconds,
         )
         return planner.plan(prioritized)
 

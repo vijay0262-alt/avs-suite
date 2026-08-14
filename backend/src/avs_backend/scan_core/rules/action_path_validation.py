@@ -112,22 +112,8 @@ def _normalize_path_component(path: str) -> str:
 
 
 def _expand_env_vars(path: str) -> str:
-    """Expand Windows environment variables in path."""
-    result = path
-    for var in (
-        "%SystemRoot%",
-        "%ProgramFiles%",
-        "%ProgramFiles(x86)%",
-        "%ProgramData%",
-        "%USERPROFILE%",
-        "%LOCALAPPDATA%",
-        "%APPDATA%",
-    ):
-        env_val = os.environ.get(var.strip("%"))
-        if env_val:
-            result = result.replace(var, env_val)
-    result = os.path.expandvars(result)
-    return result
+    """Expand environment variables in a path using the platform mechanism."""
+    return os.path.expandvars(path)
 
 
 def _get_forbidden_roots() -> FrozenSet[str]:
@@ -233,6 +219,23 @@ def validate_filesystem_path(
         raise PathValidationError(
             f"Path targets System Volume Information: {path}", "forbidden_root"
         )
+
+    # Re-validate any environment-expanded form with the same rules so that
+    # expansion cannot bypass forbidden roots, traversal, device paths, or UNC
+    # restrictions.
+    expanded = _normalize_path_component(_expand_env_vars(path))
+    if expanded != normalized:
+        try:
+            validate_filesystem_path(
+                _expand_env_vars(path),
+                allow_relative=allow_relative,
+                allow_unc=allow_unc,
+            )
+        except PathValidationError as exc:
+            raise PathValidationError(
+                f"Expanded path is unsafe: {path} -> {exc}",
+                exc.reason,
+            ) from exc
 
 
 def is_path_safe_for_planning(path: str) -> bool:

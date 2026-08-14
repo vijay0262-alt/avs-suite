@@ -149,6 +149,7 @@ class _AssetSnapshot(Protocol):
     is_accessible: bool
     canonical_path: str
     asset_id: str
+    observed_at: Optional[datetime] = None
     snapshot_timestamp: Optional[datetime] = None
     snapshot_version: Optional[str] = None
     content_hash: Optional[str] = None
@@ -812,18 +813,23 @@ class ActionPlanner:
         # Build summary
         summary = self._build_action_summary(result, actions_tuple)
 
-        # Capture snapshot timestamp for freshness tracking
-        snapshot_timestamp = None
-        snapshot_version = None
+        # Capture snapshot timestamp for freshness tracking.
+        # observed_at is the canonical observation timestamp; snapshot_timestamp
+        # is the optional persisted/planning timestamp.
+        snapshot_timestamp: Optional[datetime] = None
+        snapshot_version: Optional[str] = None
         for priority in result.priorities:
             snapshot = self._resolve_asset_snapshot(priority.finding.asset_id)
-            if (
-                snapshot is not None
-                and getattr(snapshot, "snapshot_timestamp", None) is not None
-            ):
-                snapshot_timestamp = snapshot.snapshot_timestamp
-                snapshot_version = getattr(snapshot, "snapshot_version", None)
-                break
+            if snapshot is not None:
+                timestamp = getattr(
+                    snapshot,
+                    "observed_at",
+                    getattr(snapshot, "snapshot_timestamp", None),
+                )
+                if timestamp is not None:
+                    snapshot_timestamp = timestamp
+                    snapshot_version = getattr(snapshot, "snapshot_version", None)
+                    break
 
         return ActionPlan(
             actions=actions_tuple,
@@ -1170,9 +1176,9 @@ class ActionPlanner:
             SafetyLevelValid(allowed_levels=("safe", "low_risk")),
         ]
 
-        # Snapshot freshness
-        if getattr(snapshot, "snapshot_timestamp", None) is not None:
-            conditions.append(SnapshotFresh(max_age_seconds=self._snapshot_ttl_seconds))
+        # Snapshot freshness: always enforce for live filesystem execution.
+        # The actual observed_at is supplied by the fresh execution context.
+        conditions.append(SnapshotFresh(max_age_seconds=self._snapshot_ttl_seconds))
 
         # Size verification
         if getattr(snapshot, "size", None) is not None:

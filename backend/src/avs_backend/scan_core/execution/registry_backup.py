@@ -63,7 +63,15 @@ class RegistryBackupRecord:
 class RegistryBackup:
     """Manages in-memory registry backup records and restores."""
 
-    def __init__(self) -> None:
+    DEFAULT_MAX_VALUE_DATA_SIZE = 1024 * 1024  # 1 MiB
+
+    def __init__(
+        self,
+        max_value_data_size: int = DEFAULT_MAX_VALUE_DATA_SIZE,
+    ) -> None:
+        if max_value_data_size < 0:
+            raise ValueError("max_value_data_size must be non-negative")
+        self._max_value_data_size = max_value_data_size
         self._records: dict[str, RegistryBackupRecord] = {}
 
     def create_record(
@@ -78,8 +86,16 @@ class RegistryBackup:
         value_existed: bool,
         value_type: Optional[int] = None,
         value_data: Any = None,
-    ) -> RegistryBackupRecord:
+    ) -> Optional[RegistryBackupRecord]:
         """Create a backup record for a registry target."""
+        data_size = 0
+        try:
+            data_size = len(value_data) if value_data is not None else 0
+        except TypeError:
+            data_size = 0
+        if data_size > self._max_value_data_size:
+            return None
+
         record = RegistryBackupRecord(
             backup_id=str(uuid.uuid4()),
             execution_id=execution_id,

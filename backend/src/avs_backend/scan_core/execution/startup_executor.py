@@ -8,6 +8,7 @@ startup items automatically.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import types
 from dataclasses import dataclass
@@ -22,7 +23,12 @@ from avs_backend.scan_core.rules.action import (
 
 from .backup import BackupManager
 from .filesystem_executor import FilesystemExecutor
-from .models import ExecutionError, ExecutionStatus, TargetExecutorResult
+from .models import (
+    ExecutionCancelledError,
+    ExecutionError,
+    ExecutionStatus,
+    TargetExecutorResult,
+)
 from .registry_backup import RegistryBackup
 from .registry_executor import (
     RegistryExecutor,
@@ -59,6 +65,15 @@ def _check_cancelled(token: Any) -> None:
     """Raise if a cancellation token is cancelled."""
     if token is not None and token.is_cancelled():
         raise _StartupExecutionError("CANCELLED", "Operation cancelled")
+
+
+def _compute_file_hash(path: Path) -> str:
+    """Compute SHA-256 of a file without loading it entirely into memory."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def _is_registry_entry(entry_id: str) -> bool:
@@ -186,6 +201,16 @@ class StartupExecutor:
         execution_id: str = "",
     ) -> TargetExecutorResult:
         """Execute a startup remediation action."""
+        if mode == "live" and not context.get("__safety_authorized"):
+            return TargetExecutorResult(
+                status=ExecutionStatus.REJECTED,
+                reason="Direct target-executor live execution is not authorized",
+                error=ExecutionError(
+                    code="UNAUTHORIZED_DIRECT_EXECUTION",
+                    message="Execution must go through the DefaultExecutor safety path",
+                    details={"mode": mode},
+                ),
+            )
         try:
             return cls._execute(
                 action,
@@ -216,6 +241,8 @@ class StartupExecutor:
                 after_state={},
                 operation=action.action_type.value,
             )
+        except ExecutionCancelledError:
+            raise
         except Exception as exc:
             return TargetExecutorResult(
                 status=ExecutionStatus.FAILED,
@@ -280,7 +307,26 @@ class StartupExecutor:
 
         _check_cancelled(cancellation_token)
 
-        # 2. Delegate to the appropriate real executor.
+        # 2. Live-execution content verification: same-path executable replacement.
+        if mode == "live" and source == "filesystem":
+            expected_hash = context.get("content_hash")
+            executable_path = context.get("executable_path")
+            if expected_hash and executable_path:
+                exe = Path(executable_path)
+                if exe.is_file():
+                    current_hash = _compute_file_hash(exe)
+                    if current_hash != expected_hash:
+                        raise _StartupExecutionError(
+                            "STARTUP_CONTENT_HASH_MISMATCH",
+                            "Startup executable content changed after discovery",
+                            details={
+                                "executable_path": executable_path,
+                                "expected_hash": expected_hash,
+                                "current_hash": current_hash,
+                            },
+                        )
+
+        # 3. Delegate to the appropriate real executor.
         if source == "registry":
             result = cls._execute_registry(
                 action,
@@ -387,6 +433,7 @@ class StartupExecutor:
             "registry_value_data": context.get("registry_value_data", ""),
             "asset_id": action.asset_id,
             "safety_level": context.get("safety_level", "safe"),
+            "__safety_authorized": context.get("__safety_authorized", True),
         }
 
         if mode == "live" and registry_backup is None:
@@ -529,7 +576,10 @@ class StartupExecutor:
                         backup_manager.restore(fs_record)
                 return TargetExecutorResult(
                     status=ExecutionStatus.FAILED,
-                    reason="Post-execution verification failed: startup file still exists",
+                    reason=(
+                        "Post-execution verification failed:"
+                        " startup file still exists"
+                    ),
                     error=ExecutionError(
                         code="POST_EXECUTION_VERIFICATION_FAILED",
                         message="Startup file still exists after removal",

@@ -143,7 +143,9 @@ class RemediationCoordinator:
             self._active.discard(request_id)
             self._tokens.pop(request_id, None)
 
-    def _finalize_status(self, request_id: str, summary: ExecutionSummary) -> ExecutionSummary:
+    def _finalize_status(
+        self, request_id: str, summary: ExecutionSummary
+    ) -> ExecutionSummary:
         """Persist a serializable execution status independent of the executor."""
         try:
             sanitized = dataclasses.replace(summary, ledger=None)
@@ -156,7 +158,9 @@ class RemediationCoordinator:
             )
             return summary
         except Exception as exc:
-            logger.error(f"Coordinator status persistence failed for {request_id}: {exc}")
+            logger.error(
+                f"Coordinator status persistence failed for {request_id}: {exc}"
+            )
             return dataclasses.replace(
                 summary,
                 status=ExecutionStatus.FAILED,
@@ -267,7 +271,7 @@ class RemediationCoordinator:
                 original_size=before_state.get("size", 0),
                 original_modified_time=None,
                 backup_location=backup_location,
-                backup_hash=None,
+                backup_hash=result.get("backup_hash"),
                 created_at=datetime.now(UTC),
                 is_directory=before_state.get("is_dir", False)
                 or action_type in ("delete_directory", "clear_cache"),

@@ -132,10 +132,17 @@ class SnapshotFresh:
     max_age_seconds: int = 3600  # Default 1 hour
 
     def evaluate(self, context: dict[str, Any]) -> bool:
-        snapshot_time = context.get("snapshot_timestamp")
+        snapshot_time = context.get("observed_at") or context.get("snapshot_timestamp")
         if snapshot_time is None:
             return False
+        if isinstance(snapshot_time, str):
+            try:
+                snapshot_time = datetime.fromisoformat(snapshot_time)
+            except ValueError:
+                return False
         if isinstance(snapshot_time, datetime):
+            if snapshot_time.tzinfo is None:
+                snapshot_time = snapshot_time.replace(tzinfo=UTC)
             age = (datetime.now(UTC) - snapshot_time).total_seconds()
             return age <= self.max_age_seconds
         return False

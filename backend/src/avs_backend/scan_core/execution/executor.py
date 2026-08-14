@@ -246,7 +246,9 @@ class DefaultExecutor:
             )
             return True
         except Exception as exc:
-            logger.error(f"Failed to finalize persistence for {request.request_id}: {exc}")
+            logger.error(
+                f"Failed to finalize persistence for {request.request_id}: {exc}"
+            )
             return False
 
     def _execute_action(
@@ -273,7 +275,7 @@ class DefaultExecutor:
                 dry_run_info=None,
             )
 
-        # Build execution context
+        # Build execution context.
         context = self._resolve_context(action, request)
         if context is None:
             return ExecutionResult(
@@ -293,6 +295,17 @@ class DefaultExecutor:
                 verification={},
                 dry_run_info=None,
             )
+
+        # If the fresh context did not carry an observation time, inject the
+        # canonical timestamp from the persisted plan so SnapshotFresh can
+        # still evaluate meaningfully. Fall back to the plan generation time
+        # when the snapshot itself has no explicit timestamp.
+        plan_timestamp = getattr(request.plan, "snapshot_timestamp", None)
+        if plan_timestamp is None:
+            plan_timestamp = getattr(request.plan, "generated_at", None)
+        if plan_timestamp is not None:
+            context.setdefault("observed_at", plan_timestamp)
+            context.setdefault("snapshot_timestamp", plan_timestamp)
 
         # 2. Evaluate typed preconditions for verification information
         preconditions = getattr(action, "preconditions", None)
@@ -369,6 +382,11 @@ class DefaultExecutor:
                 dry_run_info=None,
             )
 
+        # Mark the context as authorized by the SafetyGate/DefaultExecutor path.
+        # Direct calls to target executors without this marker will be rejected
+        # in live mode.
+        context["__safety_authorized"] = True
+
         target_result = target_executor.execute(
             action,
             context,
@@ -397,6 +415,7 @@ class DefaultExecutor:
             after_state=target_result.after_state,
             backup_identity=target_result.backup_identity,
             backup_location=target_result.backup_location,
+            backup_hash=target_result.backup_hash,
         )
 
     def _resolve_context(

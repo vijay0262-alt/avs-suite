@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .models import ExecutionStatus, TargetExecutorResult
+from .models import ExecutionError, ExecutionStatus, TargetExecutorResult
 
 
 class BaseTargetExecutor:
@@ -30,6 +30,18 @@ class BaseTargetExecutor:
         **kwargs: Any,
     ) -> TargetExecutorResult:
         """Return a dry-run result describing what would happen."""
+        mode = kwargs.get("mode", "dry_run")
+        if mode == "live":
+            return TargetExecutorResult(
+                status=ExecutionStatus.FAILED,
+                reason="Base target executor does not support live execution",
+                error=ExecutionError(
+                    code="UNSUPPORTED_LIVE_EXECUTION",
+                    message="Live execution is not supported by the base target executor",
+                    details={"action_type": action.action_type.value},
+                ),
+            )
+
         target_dict = cls._target_to_dict(action.target)
         dry_run_info = {
             "operation": action.action_type.value,

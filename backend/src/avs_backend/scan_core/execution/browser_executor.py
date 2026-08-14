@@ -21,7 +21,12 @@ from avs_backend.scan_core.rules.action_path_validation import (
 )
 
 from .backup import BackupManager
-from .models import ExecutionError, ExecutionStatus, TargetExecutorResult
+from .models import (
+    ExecutionCancelledError,
+    ExecutionError,
+    ExecutionStatus,
+    TargetExecutorResult,
+)
 from avs_backend.scan_core.rules.action import (
     ALLOWED_BROWSER_CACHE_TYPES,
     BLOCKED_BROWSER_DATA_TYPES,
@@ -177,6 +182,8 @@ class BrowserExecutor:
 
     supported_action_types = ("clear_browser_cache",)
     max_backup_size = 50 * 1024 * 1024  # 50 MiB
+    max_cache_children = 1000  # prevent pathological enumeration
+    max_cache_total_size = 50 * 1024 * 1024  # 50 MiB
 
     @classmethod
     def can_execute(cls, action_type: str) -> bool:
@@ -197,6 +204,16 @@ class BrowserExecutor:
     ) -> TargetExecutorResult:
         """Execute a browser cache cleanup action."""
         del registry_backup
+        if mode == "live" and not context.get("__safety_authorized"):
+            return TargetExecutorResult(
+                status=ExecutionStatus.REJECTED,
+                reason="Direct target-executor live execution is not authorized",
+                error=ExecutionError(
+                    code="UNAUTHORIZED_DIRECT_EXECUTION",
+                    message="Execution must go through the DefaultExecutor safety path",
+                    details={"mode": mode},
+                ),
+            )
         try:
             return cls._execute(
                 action,
@@ -226,6 +243,8 @@ class BrowserExecutor:
                 after_state={},
                 operation=action.action_type.value,
             )
+        except ExecutionCancelledError:
+            raise
         except Exception as exc:
             return TargetExecutorResult(
                 status=ExecutionStatus.FAILED,
@@ -261,7 +280,6 @@ class BrowserExecutor:
         actual_profile = context.get("profile", profile)
         display_browser = actual_browser or browser
         display_profile = actual_profile or profile
-        rule_id = action.rule_id
         canonical_path = context.get("canonical_path", action.target.path)
 
         if not canonical_path:
@@ -480,6 +498,7 @@ class BrowserExecutor:
                     action,
                     execution_id,
                     child_live,
+                    cancellation_token=cancellation_token,
                 )
                 created_backups.append(record)
 
@@ -492,6 +511,8 @@ class BrowserExecutor:
                         reason="Removed",
                     )
                 )
+        except ExecutionCancelledError:
+            raise
         except Exception as exc:
             for record in reversed(created_backups):
                 backup_manager.restore(record)
@@ -554,6 +575,7 @@ class BrowserExecutor:
             return False, []
 
         children: list[_Child] = []
+        total_size = 0
         for dirpath, _dirnames, filenames in os.walk(root):
             _check_cancelled(cancellation_token)
             for filename in filenames:
@@ -569,6 +591,21 @@ class BrowserExecutor:
                     continue
                 if live["is_file"]:
                     children.append(_Child(path=str(full), size=live["size"] or 0))
+                    total_size += live["size"] or 0
+                if (
+                    len(children) > cls.max_cache_children
+                    or total_size > cls.max_cache_total_size
+                ):
+                    raise _BrowserExecutionError(
+                        "REQUIRES_REVIEW",
+                        "Cache tree exceeds safe enumeration limits",
+                        details={
+                            "children_count": len(children),
+                            "total_size": total_size,
+                            "max_children": cls.max_cache_children,
+                            "max_size": cls.max_cache_total_size,
+                        },
+                    )
             # Do not recurse into subdirectories; only process files at the top
             # level. Remove empty dirs if needed after file deletion.
             break

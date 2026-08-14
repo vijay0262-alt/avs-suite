@@ -232,6 +232,7 @@ class TestFilesystemPostExecutionVerification:
             "size": file_size,
             "modified_time": modified_time,
             "safety_level": "safe",
+            "__safety_authorized": True,
             "symlink": False,
             "junction": False,
             "reparse_point": False,
@@ -275,6 +276,7 @@ class TestFilesystemPostExecutionVerification:
             "canonical_path": str(cache_dir),
             "asset_id": "asset-0",
             "safety_level": "safe",
+            "__safety_authorized": True,
             "symlink": False,
             "junction": False,
             "reparse_point": False,
@@ -327,6 +329,7 @@ class TestBrowserPostExecutionVerification:
             "profile": "default",
             "running_browsers": [],
             "safety_level": "safe",
+            "__safety_authorized": True,
         }
 
         monkeypatch.setattr(
@@ -383,6 +386,7 @@ class TestRegistryPostExecutionVerification:
             "registry_value_data": "x",
             "asset_id": "asset-0",
             "safety_level": "safe",
+            "__safety_authorized": True,
         }
 
         monkeypatch.setattr(
@@ -446,6 +450,7 @@ class TestStartupPostExecutionVerification:
             asset_id="asset-0",
             safety_level="safe",
         ).to_dict()
+        context["__safety_authorized"] = True
 
         monkeypatch.setattr(
             FilesystemExecutor, "_delete_file", classmethod(lambda cls, p, t: None)

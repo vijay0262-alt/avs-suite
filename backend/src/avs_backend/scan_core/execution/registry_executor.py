@@ -208,6 +208,16 @@ class RegistryExecutor:
         execution_id: str = "",
     ) -> TargetExecutorResult:
         """Execute a registry action."""
+        if mode == "live" and not context.get("__safety_authorized"):
+            return TargetExecutorResult(
+                status=ExecutionStatus.REJECTED,
+                reason="Direct target-executor live execution is not authorized",
+                error=ExecutionError(
+                    code="UNAUTHORIZED_DIRECT_EXECUTION",
+                    message="Execution must go through the DefaultExecutor safety path",
+                    details={"mode": mode},
+                ),
+            )
         try:
             return cls._execute(
                 action,
@@ -443,6 +453,11 @@ class RegistryExecutor:
             value_type=live.value_type,
             value_data=live.value_data,
         )
+        if record is None:
+            raise _RegistryExecutionError(
+                "OVERSIZED_REGISTRY_BACKUP",
+                "Registry value data exceeds the maximum safe backup size",
+            )
 
         _check_cancelled(cancellation_token)
 

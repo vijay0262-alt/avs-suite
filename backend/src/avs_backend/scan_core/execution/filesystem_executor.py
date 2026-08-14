@@ -28,7 +28,12 @@ from avs_backend.scan_core.rules.action_path_validation import (
 )
 
 from .backup import BackupManager, BackupRecord
-from .models import ExecutionError, ExecutionStatus, TargetExecutorResult
+from .models import (
+    ExecutionCancelledError,
+    ExecutionError,
+    ExecutionStatus,
+    TargetExecutorResult,
+)
 
 
 class _FilesystemExecutionError(Exception):
@@ -138,6 +143,16 @@ class FilesystemExecutor:
         execution_id: str = "",
     ) -> TargetExecutorResult:
         """Execute a filesystem action."""
+        if mode == "live" and not context.get("__safety_authorized"):
+            return TargetExecutorResult(
+                status=ExecutionStatus.REJECTED,
+                reason="Direct target-executor live execution is not authorized",
+                error=ExecutionError(
+                    code="UNAUTHORIZED_DIRECT_EXECUTION",
+                    message="Execution must go through the DefaultExecutor safety path",
+                    details={"mode": mode},
+                ),
+            )
         try:
             return cls._execute(
                 action,
@@ -166,6 +181,8 @@ class FilesystemExecutor:
                 after_state={"exists": True},
                 operation=action.action_type.value,
             )
+        except ExecutionCancelledError:
+            raise
         except Exception as exc:
             return TargetExecutorResult(
                 status=ExecutionStatus.FAILED,
@@ -288,7 +305,10 @@ class FilesystemExecutor:
         if pre_backup.is_symlink or pre_backup.is_junction or pre_backup.is_reparse:
             raise _FilesystemExecutionError(
                 code="TOCTOU_REPARSE_POINT",
-                message="Target was replaced by a symlink/junction/reparse point before backup",
+                message=(
+                    "Target was replaced by a symlink/junction/reparse point"
+                    " before backup"
+                ),
             )
         if (
             pre_backup.exists != live.exists
@@ -311,6 +331,7 @@ class FilesystemExecutor:
                 action,
                 execution_id,
                 context,
+                cancellation_token=cancellation_token,
             )
 
         # 8. Execute the operation.
@@ -393,6 +414,7 @@ class FilesystemExecutor:
             after_state=after_state,
             backup_identity=record.backup_id if record is not None else None,
             backup_location=record.backup_location if record is not None else None,
+            backup_hash=record.backup_hash if record is not None else None,
             operation=operation,
         )
 
@@ -498,6 +520,17 @@ class FilesystemExecutor:
                 },
             )
 
+        expected_hash = context.get("content_hash")
+        if expected_hash is not None and live.hash != str(expected_hash):
+            raise _FilesystemExecutionError(
+                code="TOCTOU_HASH_CHANGED",
+                message="File content hash changed since snapshot",
+                details={
+                    "expected_hash": expected_hash,
+                    "actual_hash": live.hash,
+                },
+            )
+
         expected_mtime = context.get("modified_time")
         if expected_mtime is not None:
             expected_ts = _timestamp_from_context(expected_mtime)
@@ -510,17 +543,6 @@ class FilesystemExecutor:
                         "actual_mtime": live.modified_time.isoformat(),
                     },
                 )
-
-        expected_hash = context.get("content_hash")
-        if expected_hash is not None and live.hash != str(expected_hash):
-            raise _FilesystemExecutionError(
-                code="TOCTOU_HASH_CHANGED",
-                message="File content hash changed since snapshot",
-                details={
-                    "expected_hash": expected_hash,
-                    "actual_hash": live.hash,
-                },
-            )
 
         expected_asset = context.get("asset_id")
         if expected_asset is not None and expected_asset != action.asset_id:

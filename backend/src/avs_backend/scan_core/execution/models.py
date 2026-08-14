@@ -84,6 +84,7 @@ class ExecutionResult:
     after_state: dict[str, Any] = field(default_factory=dict)
     backup_identity: Optional[str] = None
     backup_location: Optional[str] = None
+    backup_hash: Optional[str] = None
     operation: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -105,6 +106,7 @@ class ExecutionResult:
             "after_state": _json_safe(self.after_state),
             "backup_identity": self.backup_identity,
             "backup_location": self.backup_location,
+            "backup_hash": self.backup_hash,
             "operation": self.operation,
         }
 
@@ -224,6 +226,7 @@ class TargetExecutorResult:
     after_state: dict[str, Any] = field(default_factory=dict)
     backup_identity: Optional[str] = None
     backup_location: Optional[str] = None
+    backup_hash: Optional[str] = None
     operation: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -237,6 +240,7 @@ class TargetExecutorResult:
             "after_state": _json_safe(self.after_state),
             "backup_identity": self.backup_identity,
             "backup_location": self.backup_location,
+            "backup_hash": self.backup_hash,
             "operation": self.operation,
         }
 
