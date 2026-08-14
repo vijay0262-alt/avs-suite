@@ -5,6 +5,7 @@ Dry-run-first execution engine that consumes ActionPlan and SafetyGate.
 """
 
 from .backup import BackupManager, BackupRecord, RollbackResult
+from .browser_executor import BrowserExecutor
 from .context import (
     BrowserContext,
     ExecutionContext,
@@ -35,6 +36,7 @@ __all__ = [
     "BackupManager",
     "BackupRecord",
     "BrowserContext",
+    "BrowserExecutor",
     "CancellationToken",
     "DefaultExecutor",
     "ExecutionCancelledError",

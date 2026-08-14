@@ -132,6 +132,12 @@ class DefaultSafetyGate:
             if hasattr(preconditions, "evaluate") and callable(preconditions.evaluate):
                 passed, failed = preconditions.evaluate(execution_context)
                 if not passed:
+                    # A running browser is a review condition, not an outright
+                    # rejection. Everything else is rejected.
+                    if failed and all(
+                        c.startswith("browser_not_running:") for c in failed
+                    ):
+                        return SafetyGateResult.REQUIRES_REVIEW
                     return SafetyGateResult.REJECTED
             else:
                 # Fallback for legacy string preconditions

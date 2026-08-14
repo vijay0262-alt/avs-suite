@@ -7,7 +7,7 @@ SafetyGate and typed preconditions at execution time.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Optional
 
@@ -91,20 +91,48 @@ class RegistryContext:
 class BrowserContext:
     """Live browser target state."""
 
+    exists: bool = True
+    accessible: bool = True
+    locked: bool = False
     browser: str = ""
     profile: str = ""
     running: bool = False
+    running_browsers: tuple[str, ...] = field(default_factory=tuple)
+    browser_profiles: tuple[str, ...] = field(default_factory=tuple)
     cache_type: str = ""
     cache_scope: str = ""
+    canonical_path: str = ""
+    asset_id: str = ""
+    size: Optional[int] = None
+    modified_time: Optional[datetime] = None
+    content_hash: Optional[str] = None
+    symlink: bool = False
+    junction: bool = False
+    reparse_point: bool = False
+    safety_level: str = "safe"
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
         return {
+            "exists": self.exists,
+            "accessible": self.accessible,
+            "locked": self.locked,
             "browser": self.browser,
             "profile": self.profile,
             "running": self.running,
+            "running_browsers": list(self.running_browsers),
+            "browser_profiles": list(self.browser_profiles),
             "cache_type": self.cache_type,
             "cache_scope": self.cache_scope,
+            "canonical_path": self.canonical_path,
+            "asset_id": self.asset_id,
+            "size": self.size,
+            "modified_time": self.modified_time,
+            "content_hash": self.content_hash,
+            "is_symlink": self.symlink,
+            "is_junction": self.junction,
+            "is_reparse_point": self.reparse_point,
+            "safety_level": self.safety_level,
         }
 
 
@@ -185,19 +213,39 @@ def default_browser_context(action_target: Any) -> BrowserContext:
     profile = ""
     cache_type = ""
     cache_scope = ""
+    canonical_path = ""
+    asset_id = ""
     if hasattr(action_target, "browser"):
         browser = getattr(action_target, "browser", "")
     if hasattr(action_target, "profile"):
         profile = getattr(action_target, "profile", "")
     if hasattr(action_target, "cache_type"):
         cache_type = getattr(action_target, "cache_type", "")
+    if hasattr(action_target, "path"):
+        canonical_path = getattr(action_target, "path", "")
+    if hasattr(action_target, "asset_id"):
+        asset_id = getattr(action_target, "asset_id", "")
 
     return BrowserContext(
+        exists=True,
+        accessible=True,
+        locked=False,
         browser=browser,
         profile=profile,
         running=False,
+        running_browsers=(),
+        browser_profiles=(profile,) if profile else (),
         cache_type=cache_type,
         cache_scope=cache_scope,
+        canonical_path=canonical_path,
+        asset_id=asset_id,
+        size=None,
+        modified_time=None,
+        content_hash=None,
+        symlink=False,
+        junction=False,
+        reparse_point=False,
+        safety_level="safe",
     )
 
 

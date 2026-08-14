@@ -82,22 +82,13 @@ class BaseTargetExecutor:
         return {k: v for k, v in context.items() if k in allowed}
 
 
-class BrowserExecutor(BaseTargetExecutor):
-    """Stub executor for browser cache actions."""
-
-    supported_action_types = ("clear_browser_cache",)
-
-
 class StartupExecutor(BaseTargetExecutor):
     """Stub executor for startup entry actions."""
 
     supported_action_types = ("disable_startup_entry",)
 
 
-_TARGET_EXECUTORS = (
-    BrowserExecutor,
-    StartupExecutor,
-)
+_TARGET_EXECUTORS = (StartupExecutor,)
 
 
 def get_target_executor(action_type: str):
@@ -110,6 +101,10 @@ def get_target_executor(action_type: str):
         from .registry_executor import RegistryExecutor
 
         return RegistryExecutor
+    if action_type == "clear_browser_cache":
+        from .browser_executor import BrowserExecutor
+
+        return BrowserExecutor
     for executor in _TARGET_EXECUTORS:
         if executor.can_execute(action_type):
             return executor

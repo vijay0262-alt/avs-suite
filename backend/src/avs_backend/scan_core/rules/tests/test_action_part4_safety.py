@@ -792,7 +792,7 @@ class TestSafetyGate:
                 browser_profiles=["default"],
             ),
         )
-        assert result == SafetyGateResult.REJECTED
+        assert result == SafetyGateResult.REQUIRES_REVIEW
 
     def test_rejected_for_browser_user_data_target(self) -> None:
         """Browser cache action is rejected when scope is not cache."""
