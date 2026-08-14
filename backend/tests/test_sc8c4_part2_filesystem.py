@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import sys
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -405,8 +406,13 @@ class TestReparseSafety:
             execution_context={plan.actions[0].action_id: ctx},
         )
         summary = live_executor.execute(request)
-        assert summary.results[0].status == ExecutionStatus.FAILED
-        assert link.exists() or real.exists()
+        result = summary.results[0]
+        assert result.status == ExecutionStatus.REJECTED
+        assert result.error.code == "REJECTED"
+        assert "symlink" in result.error.message.lower()
+        assert result.backup_identity is None
+        assert link.exists()
+        assert real.exists()
 
     def test_directory_symlink_rejected(self, live_executor, tmp_path):
         real_dir = tmp_path / "real_dir"
@@ -425,7 +431,13 @@ class TestReparseSafety:
             execution_context={plan.actions[0].action_id: ctx},
         )
         summary = live_executor.execute(request)
-        assert summary.results[0].status == ExecutionStatus.FAILED
+        result = summary.results[0]
+        assert result.status == ExecutionStatus.REJECTED
+        assert result.error.code == "REJECTED"
+        assert "symlink" in result.error.message.lower()
+        assert result.backup_identity is None
+        assert link_dir.exists()
+        assert real_dir.exists()
 
 
 # ── TOCTOU and State Mismatch ─────────────────────────────────────────────────
@@ -522,6 +534,10 @@ class TestPermissionAndLocking:
         finally:
             os.chmod(target, 0o666)
 
+    @pytest.mark.skipif(
+        sys.platform != "win32",
+        reason="Windows file-handle lock behavior; Linux can unlink open files",
+    )
     def test_locked_target_fails(self, live_executor, tmp_path):
         target = tmp_path / "locked.txt"
         plan, ctx = _make_action_plan(tmp_path, target, content=b"x")
