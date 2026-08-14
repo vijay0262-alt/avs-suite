@@ -32,7 +32,6 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Optional, Protocol, runtime_checkable
 
-from ..assets import AssetType
 from .action_path_validation import is_path_safe_for_planning
 from .action_preconditions import (
     BrowserNotRunning,
@@ -60,6 +59,7 @@ from .action_registry_validation import (
     RegistryValidationError,
     validate_registry_target,
 )
+from .actionability import Actionability, CapabilityContract
 from .aggregation import DetectionFinding
 from .enums import RuleCategory
 from .priority import FindingPriority, Fixability, PrioritizedResult, RuleCapability
@@ -690,6 +690,7 @@ class ActionPlanner:
         strategy_version: str = "1.0.0",
         safety_gate: Optional[SafetyGate] = None,
         snapshot_ttl_seconds: int = 3600,
+        capability_contract: Optional[CapabilityContract] = None,
     ) -> None:
         """
         Initialize action planner.
@@ -702,6 +703,8 @@ class ActionPlanner:
             safety_gate: Optional SafetyGate implementation. If provided,
                 used to validate planned actions independently.
             snapshot_ttl_seconds: Maximum age of snapshot in seconds.
+            capability_contract: Optional CapabilityContract. If omitted, the
+                default SC-8C4 Phase C contract is used.
         """
         self._asset_snapshot_resolver = asset_snapshot_resolver
         self._strategy_version = strategy_version
@@ -709,6 +712,7 @@ class ActionPlanner:
             snapshot_ttl_seconds=snapshot_ttl_seconds
         )
         self._snapshot_ttl_seconds = snapshot_ttl_seconds
+        self._capability_contract = capability_contract or CapabilityContract()
 
     def plan(self, result: PrioritizedResult) -> ActionPlan:
         """
@@ -863,17 +867,29 @@ class ActionPlanner:
                 reason="Target is locked",
             )
 
-        # Determine action type from finding category and asset type
+        # Determine action type from the capability contract
         action_type = self._infer_action_type(finding)
-        if action_type is None:
+        action_type_value = action_type.value if action_type is not None else None
+        actionability = self._capability_contract.resolve(
+            finding.rule_category,
+            finding.asset_type,
+            action_type_value,
+            finding.safety,
+            priority.fixability,
+            priority.rule_capability,
+        )
+        if actionability != Actionability.ACTIONABLE:
             return self._make_action(
                 priority=priority,
                 action_type=ActionType.NONE,
-                state=ActionState.NOT_FIXABLE,
+                state=self._actionability_to_state(actionability),
                 target=self._make_no_target(),
                 preconditions=PreconditionSet(conditions=()),
-                reason="No supported action type for this finding",
+                reason=f"Actionability verdict: {actionability.value}",
             )
+
+        # The contract guarantees an action type when ACTIONABLE.
+        assert action_type is not None, "ACTIONABLE verdict without an action type"
 
         # Build target with validation
         target = self._build_target(finding, action_type, snapshot)
@@ -954,34 +970,27 @@ class ActionPlanner:
         """Create a no-op target for non-actionable states."""
         return _NoTarget()  # type: ignore[return-value]
 
+    def _actionability_to_state(self, actionability: Actionability) -> ActionState:
+        """Map an Actionability verdict to the matching RemediationAction state."""
+        mapping = {
+            Actionability.REVIEW_REQUIRED: ActionState.REVIEW_REQUIRED,
+            Actionability.BLOCKED: ActionState.BLOCKED,
+            Actionability.UNSUPPORTED: ActionState.NOT_FIXABLE,
+            Actionability.DETECTION_ONLY: ActionState.NOT_FIXABLE,
+        }
+        return mapping.get(actionability, ActionState.NOT_FIXABLE)
+
     def _infer_action_type(self, finding: DetectionFinding) -> Optional[ActionType]:
         """
-        Infer the appropriate action type from finding properties.
+        Infer the appropriate action type from the capability contract.
         """
-        category = finding.rule_category
-        asset_type = finding.asset_type
-
-        if category == RuleCategory.JUNK or category == RuleCategory.TEMPORARY:
-            if asset_type == AssetType.DIRECTORY:
-                return ActionType.DELETE_DIRECTORY
-            return ActionType.DELETE_FILE
-
-        if category == RuleCategory.CACHE:
-            return ActionType.CLEAR_CACHE
-
-        if category == RuleCategory.REGISTRY:
-            if asset_type == AssetType.REGISTRY_VALUE:
-                return ActionType.REMOVE_REGISTRY_VALUE
-            if asset_type == AssetType.REGISTRY_KEY:
-                return ActionType.REMOVE_REGISTRY_KEY
-
-        if category == RuleCategory.STARTUP:
-            return ActionType.DISABLE_STARTUP_ENTRY
-
-        if category == RuleCategory.BROWSER:
-            return ActionType.CLEAR_BROWSER_CACHE
-
-        return None
+        action_type_value = self._capability_contract.infer_action_type(
+            finding.rule_category,
+            finding.asset_type,
+        )
+        if action_type_value is None:
+            return None
+        return ActionType(action_type_value)
 
     def _build_target(
         self,
