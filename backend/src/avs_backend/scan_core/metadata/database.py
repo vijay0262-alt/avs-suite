@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 import shutil
 import sqlite3
+import threading
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -64,7 +65,8 @@ class MetadataDatabase:
             config: Database configuration
         """
         self.config = config
-        self._conn: Optional[sqlite3.Connection] = None
+        self._local = threading.local()
+        self._local.conn: Optional[sqlite3.Connection] = None
         self._is_initialized = False
 
     def initialize(self) -> bool:
@@ -108,19 +110,19 @@ class MetadataDatabase:
             logger.error(f"Failed to initialize database: {e}")
             return False
 
-    def _connect(self) -> None:
-        """Establish database connection."""
-        self._conn = sqlite3.connect(
+    def _open_connection(self) -> sqlite3.Connection:
+        """Create and configure a new SQLite connection."""
+        conn = sqlite3.connect(
             str(self.config.db_path),
             timeout=self.config.busy_timeout_ms / 1000.0,
             check_same_thread=False,  # Allow multi-threaded access
         )
 
         # Enable row factory for dict-like access
-        self._conn.row_factory = sqlite3.Row
+        conn.row_factory = sqlite3.Row
 
         # Configure database
-        cursor = self._conn.cursor()
+        cursor = conn.cursor()
 
         if self.config.enable_wal:
             cursor.execute("PRAGMA journal_mode=WAL")
@@ -132,6 +134,11 @@ class MetadataDatabase:
         cursor.execute("PRAGMA synchronous=NORMAL")  # Balance safety and speed
 
         cursor.close()
+        return conn
+
+    def _connect(self) -> None:
+        """Establish a connection for the current thread."""
+        self._local.conn = self._open_connection()
 
     def _check_integrity(self) -> bool:
         """
@@ -252,9 +259,10 @@ class MetadataDatabase:
 
     def _initialize_schema(self) -> None:
         """Initialize database schema."""
-        if self._conn is None:
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
             raise RuntimeError("Database connection not available")
-        cursor = self._conn.cursor()
+        cursor = conn.cursor()
 
         # Schema migrations table
         cursor.execute("""
@@ -480,7 +488,7 @@ class MetadataDatabase:
         # Create indexes
         self._create_indexes(cursor)
 
-        self._conn.commit()
+        conn.commit()
         cursor.close()
 
     def _create_indexes(self, cursor: sqlite3.Cursor) -> None:
@@ -571,9 +579,10 @@ class MetadataDatabase:
 
     def _run_migrations(self) -> None:
         """Run pending database migrations."""
-        if self._conn is None:
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
             raise RuntimeError("Database connection not available")
-        cursor = self._conn.cursor()
+        cursor = conn.cursor()
 
         # Get current version
         cursor.execute("SELECT MAX(version) FROM schema_migrations")
@@ -595,14 +604,14 @@ class MetadataDatabase:
                 ),
             )
 
-            self._conn.commit()
+            conn.commit()
             logger.info(f"Applied migrations up to version {self.SCHEMA_VERSION}")
 
         cursor.close()
 
     def get_connection(self) -> sqlite3.Connection:
         """
-        Get database connection.
+        Get a database connection for the current thread.
 
         Returns:
             SQLite connection
@@ -610,15 +619,25 @@ class MetadataDatabase:
         Raises:
             RuntimeError: If database not initialized
         """
-        if not self._is_initialized or self._conn is None:
+        if not self._is_initialized:
             raise RuntimeError("Database not initialized. Call initialize() first.")
-        return self._conn
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
+            self._connect()
+            conn = self._local.conn
+        if conn is None:
+            raise RuntimeError("Database connection not available")
+        return conn
 
     def close(self) -> None:
-        """Close database connection."""
-        if self._conn:
-            self._conn.close()
-            self._conn = None
+        """Close the current thread's database connection."""
+        conn = getattr(self._local, "conn", None)
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+            self._local.conn = None
             self._is_initialized = False
             logger.info("Database connection closed")
 

@@ -33,6 +33,7 @@ Key outcomes:
 
 The following source files were modified for Phase A security hardening:
 
+- `src/avs_backend/scan_core/execution/models.py`
 - `src/avs_backend/scan_core/execution/executor.py`
 - `src/avs_backend/scan_core/execution/filesystem_executor.py`
 - `src/avs_backend/scan_core/execution/browser_executor.py`
@@ -129,6 +130,11 @@ A new focused regression test file was added:
 - `ActionPlanner._plan_action()` raises `ValueError` for an `ACTIONABLE` verdict without an action type.
 - Validation remains active under `python -O`.
 
+### 3.13 Persistence serialization and multi-threading fixes (post-audit follow-up)
+
+- `ExecutionResult`, `ExecutionError`, `TargetExecutorResult`, and `ExecutionSummary` `to_dict()` methods now recursively serialize `datetime` and `Enum` values so `json.dumps` no longer fails on timestamps.
+- `MetadataDatabase` now uses thread-local SQLite connections; each thread receives its own connection, preventing `sqlite3.InterfaceError` / `bad parameter` errors when multiple threads load action plans or persist execution state concurrently.
+
 ### 3.12 Reject Windows device paths
 
 - `validate_filesystem_path()` rejects `\\?\` and `\\.\` device namespace paths, including the `//?/` and `//./` variants.
@@ -147,7 +153,7 @@ The complete backend test suite was executed:
 $ python -m pytest -q
 ```
 
-Result: **1192 passed, 14 skipped** (≈11 minutes).
+Result: **1192 passed, 14 skipped** (≈15 minutes on the final run).
 
 Targeted SC-8C4, SC-8C5, and SC-8C6 regression suites passed as part of the full run, with the new `tests/test_sc8c7_phase_a.py` added.
 
@@ -194,5 +200,5 @@ Per the request:
 
 ```text
 $ python -m pytest -q
-1192 passed, 14 skipped in 659.54s (0:10:59)
+1192 passed, 14 skipped in 885.93s (0:14:45)
 ```

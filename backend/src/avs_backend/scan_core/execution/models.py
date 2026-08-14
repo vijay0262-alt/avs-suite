@@ -8,9 +8,24 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Optional, Protocol, runtime_checkable
+from typing import Any, Callable, Iterable, Optional, Protocol, runtime_checkable
 
 from avs_backend.scan_core.rules.action import ActionPlan
+
+
+def _json_safe(value: Any) -> Any:
+    """Recursively make values JSON serializable for persistence."""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, Enum):
+        return value.value
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set, frozenset)) or (
+        isinstance(value, Iterable) and not isinstance(value, (str, bytes))
+    ):
+        return [_json_safe(v) for v in value]
+    return value
 
 
 class ExecutionStatus(str, Enum):
@@ -45,7 +60,7 @@ class ExecutionError:
         return {
             "code": self.code,
             "message": self.message,
-            "details": dict(self.details),
+            "details": _json_safe(self.details),
         }
 
 
@@ -79,17 +94,15 @@ class ExecutionResult:
             "finding_id": self.finding_id,
             "asset_id": self.asset_id,
             "action_type": self.action_type,
-            "target": dict(self.target),
+            "target": _json_safe(self.target),
             "status": self.status.value,
             "reason": self.reason,
             "timestamp": self.timestamp.isoformat(),
             "error": self.error.to_dict() if self.error is not None else None,
-            "verification": dict(self.verification),
-            "dry_run_info": (
-                dict(self.dry_run_info) if self.dry_run_info is not None else None
-            ),
-            "before_state": dict(self.before_state),
-            "after_state": dict(self.after_state),
+            "verification": _json_safe(self.verification),
+            "dry_run_info": _json_safe(self.dry_run_info),
+            "before_state": _json_safe(self.before_state),
+            "after_state": _json_safe(self.after_state),
             "backup_identity": self.backup_identity,
             "backup_location": self.backup_location,
             "operation": self.operation,
@@ -192,7 +205,9 @@ class ExecutionSummary:
             "completed_at": (
                 self.completed_at.isoformat() if self.completed_at is not None else None
             ),
-            "ledger": self.ledger.to_dict() if self.ledger is not None else {},
+            "ledger": _json_safe(
+                self.ledger.to_dict() if self.ledger is not None else {}
+            ),
             "reason": self.reason,
         }
 
@@ -216,10 +231,10 @@ class TargetExecutorResult:
         return {
             "status": self.status.value,
             "reason": self.reason,
-            "dry_run_info": dict(self.dry_run_info),
+            "dry_run_info": _json_safe(self.dry_run_info),
             "error": self.error.to_dict() if self.error is not None else None,
-            "before_state": dict(self.before_state),
-            "after_state": dict(self.after_state),
+            "before_state": _json_safe(self.before_state),
+            "after_state": _json_safe(self.after_state),
             "backup_identity": self.backup_identity,
             "backup_location": self.backup_location,
             "operation": self.operation,
