@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Optional
 
 from avs_backend.scan_core.rules.safety_gate import (
     SafetyGate,
@@ -20,6 +20,7 @@ from avs_backend.scan_core.rules.safety_gate import (
     create_safety_gate,
 )
 
+from .backup import BackupManager
 from .context import default_context_for_action, normalize_context
 from .ledger import ExecutionLedger
 from .models import (
@@ -50,6 +51,7 @@ class DefaultExecutor:
 
     safety_gate: SafetyGate = field(default_factory=create_safety_gate)
     ledger: ExecutionLedger = field(default_factory=ExecutionLedger)
+    backup_manager: Optional[BackupManager] = None
 
     def execute(self, request: ExecutionRequest) -> ExecutionSummary:
         """
@@ -238,18 +240,14 @@ class DefaultExecutor:
                 dry_run_info=None,
             )
 
-        target_result = target_executor.execute(action, context)
-
-        # In Part 1 live mode is not destructive; APPROVED marks it cleared for future work.
-        if request.mode == "live":
-            final_status = ExecutionStatus.APPROVED
-            final_reason = (
-                "SafetyGate approved; live execution is staged"
-                " but not performed in Part 1"
-            )
-        else:
-            final_status = target_result.status
-            final_reason = target_result.reason
+        target_result = target_executor.execute(
+            action,
+            context,
+            mode=request.mode,
+            cancellation_token=request.cancellation_token,
+            backup_manager=self.backup_manager,
+            execution_id=execution_id,
+        )
 
         return ExecutionResult(
             execution_id=execution_id,
@@ -257,13 +255,18 @@ class DefaultExecutor:
             finding_id=action.finding_id,
             asset_id=action.asset_id,
             action_type=action.action_type.value,
+            operation=target_result.operation or action.action_type.value,
             target=action.target.to_dict(),
-            status=final_status,
-            reason=final_reason,
+            status=target_result.status,
+            reason=target_result.reason,
             timestamp=datetime.now(UTC),
             error=target_result.error,
             verification=verification,
             dry_run_info=target_result.dry_run_info,
+            before_state=target_result.before_state,
+            after_state=target_result.after_state,
+            backup_identity=target_result.backup_identity,
+            backup_location=target_result.backup_location,
         )
 
     def _resolve_context(
@@ -330,18 +333,24 @@ class DefaultExecutor:
         cancelled = sum(1 for r in results if r.status == ExecutionStatus.CANCELLED)
         dry_run = sum(1 for r in results if r.status == ExecutionStatus.DRY_RUN)
 
-        if cancelled:
+        if total == 0:
+            batch_status = ExecutionStatus.DRY_RUN
+        elif cancelled:
             batch_status = ExecutionStatus.CANCELLED
         elif failed:
             batch_status = ExecutionStatus.FAILED
         elif rejected == total:
             batch_status = ExecutionStatus.REJECTED
-        elif requires_review:
+        elif requires_review == total:
             batch_status = ExecutionStatus.REQUIRES_REVIEW
-        elif dry_run:
+        elif skipped == total:
+            batch_status = ExecutionStatus.SKIPPED
+        elif dry_run == total:
             batch_status = ExecutionStatus.DRY_RUN
+        elif completed == total:
+            batch_status = ExecutionStatus.COMPLETED
         else:
-            batch_status = ExecutionStatus.APPROVED
+            batch_status = ExecutionStatus.DRY_RUN
 
         return ExecutionSummary(
             execution_id=execution_id,

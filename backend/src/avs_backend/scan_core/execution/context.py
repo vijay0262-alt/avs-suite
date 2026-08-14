@@ -38,15 +38,11 @@ class FilesystemContext:
             "canonical_path": self.canonical_path,
             "asset_id": self.asset_id,
             "size": self.size,
-            "modified_time": (
-                self.modified_time.isoformat()
-                if self.modified_time is not None
-                else None
-            ),
+            "modified_time": self.modified_time,
             "content_hash": self.content_hash,
-            "symlink": self.symlink,
-            "junction": self.junction,
-            "reparse_point": self.reparse_point,
+            "is_symlink": self.symlink,
+            "is_junction": self.junction,
+            "is_reparse_point": self.reparse_point,
             "safety_level": self.safety_level,
         }
 

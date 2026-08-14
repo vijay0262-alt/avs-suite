@@ -65,6 +65,11 @@ class ExecutionResult:
     error: Optional[ExecutionError] = None
     verification: dict[str, Any] = field(default_factory=dict)
     dry_run_info: Optional[dict[str, Any]] = None
+    before_state: dict[str, Any] = field(default_factory=dict)
+    after_state: dict[str, Any] = field(default_factory=dict)
+    backup_identity: Optional[str] = None
+    backup_location: Optional[str] = None
+    operation: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
@@ -83,6 +88,11 @@ class ExecutionResult:
             "dry_run_info": (
                 dict(self.dry_run_info) if self.dry_run_info is not None else None
             ),
+            "before_state": dict(self.before_state),
+            "after_state": dict(self.after_state),
+            "backup_identity": self.backup_identity,
+            "backup_location": self.backup_location,
+            "operation": self.operation,
         }
 
 
@@ -184,6 +194,35 @@ class ExecutionSummary:
             ),
             "ledger": self.ledger.to_dict() if self.ledger is not None else {},
             "reason": self.reason,
+        }
+
+
+@dataclass(frozen=True)
+class TargetExecutorResult:
+    """Result returned by a target-specific executor (dry-run or live)."""
+
+    status: ExecutionStatus
+    reason: str
+    dry_run_info: dict[str, Any] = field(default_factory=dict)
+    error: Optional[ExecutionError] = None
+    before_state: dict[str, Any] = field(default_factory=dict)
+    after_state: dict[str, Any] = field(default_factory=dict)
+    backup_identity: Optional[str] = None
+    backup_location: Optional[str] = None
+    operation: Optional[str] = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
+        return {
+            "status": self.status.value,
+            "reason": self.reason,
+            "dry_run_info": dict(self.dry_run_info),
+            "error": self.error.to_dict() if self.error is not None else None,
+            "before_state": dict(self.before_state),
+            "after_state": dict(self.after_state),
+            "backup_identity": self.backup_identity,
+            "backup_location": self.backup_location,
+            "operation": self.operation,
         }
 
 

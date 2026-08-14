@@ -4,6 +4,7 @@ SC-8C4 Part 1 — Safe Remediation Execution Engine Foundation.
 Dry-run-first execution engine that consumes ActionPlan and SafetyGate.
 """
 
+from .backup import BackupManager, BackupRecord, RollbackResult
 from .context import (
     BrowserContext,
     ExecutionContext,
@@ -11,6 +12,7 @@ from .context import (
     RegistryContext,
 )
 from .executor import DefaultExecutor, ExecutionCancelledError
+from .filesystem_executor import FilesystemExecutor
 from .ledger import ExecutionLedger, ExecutionRecord
 from .models import (
     CancellationToken,
@@ -20,9 +22,12 @@ from .models import (
     ExecutionStatus,
     ExecutionSummary,
     Executor,
+    TargetExecutorResult,
 )
 
 __all__ = [
+    "BackupManager",
+    "BackupRecord",
     "BrowserContext",
     "CancellationToken",
     "DefaultExecutor",
@@ -37,5 +42,8 @@ __all__ = [
     "ExecutionSummary",
     "Executor",
     "FilesystemContext",
+    "FilesystemExecutor",
     "RegistryContext",
+    "RollbackResult",
+    "TargetExecutorResult",
 ]

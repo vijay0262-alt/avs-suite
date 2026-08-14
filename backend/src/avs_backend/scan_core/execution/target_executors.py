@@ -1,5 +1,5 @@
 """
-SC-8C4 Part 1 — Target executor stubs.
+SC-8C4 Part 1 — Non-filesystem target executor stubs.
 
 These executors contain only safe/stub boundaries for future real execution.
 No destructive operations are performed in this phase.
@@ -7,20 +7,9 @@ No destructive operations are performed in this phase.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
-from .models import ExecutionError, ExecutionStatus
-
-
-@dataclass(frozen=True)
-class TargetExecutorResult:
-    """Result returned by a target-specific stub executor."""
-
-    status: ExecutionStatus
-    reason: str
-    dry_run_info: dict[str, Any]
-    error: Optional[ExecutionError] = None
+from .models import ExecutionStatus, TargetExecutorResult
 
 
 class BaseTargetExecutor:
@@ -34,7 +23,12 @@ class BaseTargetExecutor:
         return action_type in cls.supported_action_types
 
     @classmethod
-    def execute(cls, action: Any, context: dict[str, Any]) -> TargetExecutorResult:
+    def execute(
+        cls,
+        action: Any,
+        context: dict[str, Any],
+        **kwargs: Any,
+    ) -> TargetExecutorResult:
         """Return a dry-run result describing what would happen."""
         target_dict = cls._target_to_dict(action.target)
         dry_run_info = {
@@ -47,6 +41,9 @@ class BaseTargetExecutor:
             status=ExecutionStatus.DRY_RUN,
             reason="Dry-run: no destructive operation performed",
             dry_run_info=dry_run_info,
+            operation=action.action_type.value,
+            before_state=context,
+            after_state={"exists": False, "note": "would be removed"},
         )
 
     @classmethod
@@ -71,6 +68,9 @@ class BaseTargetExecutor:
             "symlink",
             "junction",
             "reparse_point",
+            "is_symlink",
+            "is_junction",
+            "is_reparse_point",
             "registry_hive",
             "registry_key_exists",
             "registry_value_exists",
@@ -80,16 +80,6 @@ class BaseTargetExecutor:
             "safety_level",
         }
         return {k: v for k, v in context.items() if k in allowed}
-
-
-class FilesystemExecutor(BaseTargetExecutor):
-    """Stub executor for filesystem actions."""
-
-    supported_action_types = (
-        "delete_file",
-        "delete_directory",
-        "clear_cache",
-    )
 
 
 class RegistryExecutor(BaseTargetExecutor):
@@ -114,15 +104,18 @@ class StartupExecutor(BaseTargetExecutor):
 
 
 _TARGET_EXECUTORS = (
-    FilesystemExecutor,
     RegistryExecutor,
     BrowserExecutor,
     StartupExecutor,
 )
 
 
-def get_target_executor(action_type: str) -> Optional[type[BaseTargetExecutor]]:
-    """Return the appropriate stub executor for an action type."""
+def get_target_executor(action_type: str):
+    """Return the appropriate executor class for an action type."""
+    if action_type in ("delete_file", "delete_directory", "clear_cache"):
+        from .filesystem_executor import FilesystemExecutor
+
+        return FilesystemExecutor
     for executor in _TARGET_EXECUTORS:
         if executor.can_execute(action_type):
             return executor
