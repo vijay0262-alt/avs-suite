@@ -136,7 +136,78 @@ class BrowserContext:
         }
 
 
-ExecutionContext = FilesystemContext | RegistryContext | BrowserContext | dict[str, Any]
+@dataclass(frozen=True)
+class StartupContext:
+    """Live startup target state."""
+
+    exists: bool = True
+    accessible: bool = True
+    locked: bool = False
+    source: str = ""  # "registry" or "filesystem"
+    entry_id: str = ""
+    canonical_path: str = ""
+    allowed_location: str = ""
+    publisher: str = ""
+    executable_path: str = ""
+    is_running: bool = False
+    running_processes: tuple[str, ...] = field(default_factory=tuple)
+    is_signed: bool = False
+    is_system: bool = False
+    is_security: bool = False
+    is_auto_fixable: bool = True
+    hive: str = ""
+    key: str = ""
+    value: Optional[str] = None
+    registry_view: str = "default"
+    asset_id: str = ""
+    size: Optional[int] = None
+    modified_time: Optional[datetime] = None
+    content_hash: Optional[str] = None
+    symlink: bool = False
+    junction: bool = False
+    reparse_point: bool = False
+    safety_level: str = "safe"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
+        return {
+            "exists": self.exists,
+            "accessible": self.accessible,
+            "locked": self.locked,
+            "source": self.source,
+            "entry_id": self.entry_id,
+            "canonical_path": self.canonical_path,
+            "allowed_location": self.allowed_location,
+            "publisher": self.publisher,
+            "executable_path": self.executable_path,
+            "is_running": self.is_running,
+            "running_processes": list(self.running_processes),
+            "is_signed": self.is_signed,
+            "is_system": self.is_system,
+            "is_security": self.is_security,
+            "is_auto_fixable": self.is_auto_fixable,
+            "registry_hive": self.hive,
+            "registry_key": self.key,
+            "registry_value": self.value,
+            "registry_view": self.registry_view,
+            "asset_id": self.asset_id,
+            "size": self.size,
+            "modified_time": self.modified_time,
+            "content_hash": self.content_hash,
+            "is_symlink": self.symlink,
+            "is_junction": self.junction,
+            "is_reparse_point": self.reparse_point,
+            "safety_level": self.safety_level,
+        }
+
+
+ExecutionContext = (
+    FilesystemContext
+    | RegistryContext
+    | BrowserContext
+    | StartupContext
+    | dict[str, Any]
+)
 """Union type for execution contexts."""
 
 
@@ -249,6 +320,78 @@ def default_browser_context(action_target: Any) -> BrowserContext:
     )
 
 
+def default_startup_context(action_target: Any) -> StartupContext:
+    """Return a best-effort default startup context for an action target."""
+    entry_id = ""
+    asset_id = ""
+    if hasattr(action_target, "entry_id"):
+        entry_id = getattr(action_target, "entry_id", "")
+    if hasattr(action_target, "asset_id"):
+        asset_id = getattr(action_target, "asset_id", "")
+
+    upper = entry_id.upper()
+    is_registry = any(
+        upper.startswith(prefix)
+        for prefix in (
+            "HKCU\\",
+            "HKLM\\",
+            "HKCR\\",
+            "HKU\\",
+            "HKCC\\",
+            "HKEY_CURRENT_USER\\",
+            "HKEY_LOCAL_MACHINE\\",
+            "HKEY_CLASSES_ROOT\\",
+            "HKEY_USERS\\",
+            "HKEY_CURRENT_CONFIG\\",
+        )
+    )
+    source = "registry" if is_registry else "filesystem"
+
+    canonical_path = entry_id if source == "filesystem" else ""
+    hive = ""
+    key = ""
+    value = None
+    if source == "registry" and entry_id:
+        parts = entry_id.split("\\")
+        if parts:
+            hive = parts[0]
+        if len(parts) > 2:
+            value = parts[-1]
+            key = "\\".join(parts[1:-1])
+        elif len(parts) == 2:
+            key = parts[1]
+
+    return StartupContext(
+        exists=True,
+        accessible=True,
+        locked=False,
+        source=source,
+        entry_id=entry_id,
+        canonical_path=canonical_path,
+        allowed_location="",
+        publisher="",
+        executable_path="",
+        is_running=False,
+        running_processes=(),
+        is_signed=False,
+        is_system=False,
+        is_security=False,
+        is_auto_fixable=True,
+        hive=hive,
+        key=key,
+        value=value,
+        registry_view="default",
+        asset_id=asset_id,
+        size=None,
+        modified_time=None,
+        content_hash=None,
+        symlink=False,
+        junction=False,
+        reparse_point=False,
+        safety_level="safe",
+    )
+
+
 def default_context_for_action(action: Any) -> dict[str, Any]:
     """Return a default execution context for an action based on its target."""
     target = getattr(action, "target", None)
@@ -273,5 +416,8 @@ def default_context_for_action(action: Any) -> dict[str, Any]:
 
     if action_type_value == "clear_browser_cache":
         return default_browser_context(target).to_dict()
+
+    if action_type_value in ("disable_startup_entry", "remove_startup_entry"):
+        return default_startup_context(target).to_dict()
 
     return default_filesystem_context(target).to_dict()

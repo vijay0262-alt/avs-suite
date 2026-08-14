@@ -82,15 +82,6 @@ class BaseTargetExecutor:
         return {k: v for k, v in context.items() if k in allowed}
 
 
-class StartupExecutor(BaseTargetExecutor):
-    """Stub executor for startup entry actions."""
-
-    supported_action_types = ("disable_startup_entry",)
-
-
-_TARGET_EXECUTORS = (StartupExecutor,)
-
-
 def get_target_executor(action_type: str):
     """Return the appropriate executor class for an action type."""
     if action_type in ("delete_file", "delete_directory", "clear_cache"):
@@ -105,7 +96,8 @@ def get_target_executor(action_type: str):
         from .browser_executor import BrowserExecutor
 
         return BrowserExecutor
-    for executor in _TARGET_EXECUTORS:
-        if executor.can_execute(action_type):
-            return executor
+    if action_type in ("disable_startup_entry", "remove_startup_entry"):
+        from .startup_executor import StartupExecutor
+
+        return StartupExecutor
     return None

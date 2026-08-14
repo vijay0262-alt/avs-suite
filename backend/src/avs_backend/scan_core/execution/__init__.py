@@ -11,6 +11,7 @@ from .context import (
     ExecutionContext,
     FilesystemContext,
     RegistryContext,
+    StartupContext,
 )
 from .executor import DefaultExecutor, ExecutionCancelledError
 from .filesystem_executor import FilesystemExecutor
@@ -57,5 +58,7 @@ __all__ = [
     "RegistryExecutor",
     "RegistryRestoreResult",
     "RollbackResult",
+    "StartupContext",
+    "StartupExecutor",
     "TargetExecutorResult",
 ]
