@@ -302,7 +302,6 @@ class ScanOrchestrator:
                         locked=asset.locked,
                         size=asset_size,
                         modified_time=asset.modified_at,
-                        content_fingerprint="",
                         canonical_path=asset.canonical_path,
                         attributes={"canonical_path": asset.canonical_path},
                     )
