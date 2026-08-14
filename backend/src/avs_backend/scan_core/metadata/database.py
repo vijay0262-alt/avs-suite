@@ -14,13 +14,13 @@ Handles:
 
 from __future__ import annotations
 
-import sqlite3
-import shutil
 import logging
+import shutil
+import sqlite3
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
-from datetime import datetime, UTC
 
 logger = logging.getLogger(__name__)
 
@@ -28,13 +28,13 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DatabaseConfig:
     """Configuration for metadata database."""
-    
+
     db_path: Path
     busy_timeout_ms: int = 30000  # 30 seconds
     enable_wal: bool = True  # Write-Ahead Logging for better concurrency
     enable_foreign_keys: bool = True
     cache_size_kb: int = 10000  # 10 MB cache
-    
+
     def __post_init__(self):
         """Ensure db_path is a Path object."""
         if isinstance(self.db_path, str):
@@ -44,70 +44,70 @@ class DatabaseConfig:
 class MetadataDatabase:
     """
     SQLite database for Scan Core metadata.
-    
+
     STORAGE ONLY. NO DECISIONS.
-    
+
     Stores:
     - Assets (permanent identity)
     - Snapshots (observed state)
     - Contexts (scan metadata)
     - Diffs (changes between scans)
     """
-    
-    SCHEMA_VERSION = 1
-    
+
+    SCHEMA_VERSION = 2
+
     def __init__(self, config: DatabaseConfig):
         """
         Initialize metadata database.
-        
+
         Args:
             config: Database configuration
         """
         self.config = config
         self._conn: Optional[sqlite3.Connection] = None
         self._is_initialized = False
-    
+
     def initialize(self) -> bool:
         """
         Initialize database.
-        
+
         Safe when:
         - Database does not exist
         - Database is empty
         - Database needs upgrade
         - Database is corrupted
-        
+
         Returns:
             True if initialization successful
         """
         try:
             # Ensure directory exists
             self.config.db_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # Check for corruption
             if self.config.db_path.exists():
                 if not self._check_integrity():
                     logger.warning("Database corruption detected")
                     if not self._recover_from_corruption():
                         return False
-            
+
             # Connect
             self._connect()
-            
+
             # Initialize schema
             self._initialize_schema()
-            
+
             # Run migrations if needed
             self._run_migrations()
-            
+
             self._is_initialized = True
             logger.info(f"Metadata database initialized: {self.config.db_path}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
             return False
-    
+
     def _connect(self) -> None:
         """Establish database connection."""
         self._conn = sqlite3.connect(
@@ -115,28 +115,28 @@ class MetadataDatabase:
             timeout=self.config.busy_timeout_ms / 1000.0,
             check_same_thread=False,  # Allow multi-threaded access
         )
-        
+
         # Enable row factory for dict-like access
         self._conn.row_factory = sqlite3.Row
-        
+
         # Configure database
         cursor = self._conn.cursor()
-        
+
         if self.config.enable_wal:
             cursor.execute("PRAGMA journal_mode=WAL")
-        
+
         if self.config.enable_foreign_keys:
             cursor.execute("PRAGMA foreign_keys=ON")
-        
+
         cursor.execute(f"PRAGMA cache_size=-{self.config.cache_size_kb}")
         cursor.execute("PRAGMA synchronous=NORMAL")  # Balance safety and speed
-        
+
         cursor.close()
-    
+
     def _check_integrity(self) -> bool:
         """
         Check database integrity.
-        
+
         Returns:
             True if database is valid
         """
@@ -149,9 +149,9 @@ class MetadataDatabase:
             cursor.close()
             conn.close()
             conn = None
-            
+
             return result[0] == "ok"
-            
+
         except Exception as e:
             logger.error(f"Integrity check failed: {e}")
             return False
@@ -160,19 +160,19 @@ class MetadataDatabase:
             if conn is not None:
                 try:
                     conn.close()
-                except:
+                except Exception:
                     pass
-    
+
     def _recover_from_corruption(self) -> bool:
         """
         Recover from database corruption.
-        
+
         Strategy:
         1. Preserve damaged database for diagnostics
         2. Create new valid database
         3. Do not crash the application
         4. Report recovery status
-        
+
         Returns:
             True if recovery successful
         """
@@ -183,22 +183,24 @@ class MetadataDatabase:
             )
             shutil.copy2(self.config.db_path, backup_path)
             logger.info(f"Preserved corrupted database: {backup_path}")
-            
+
             # Remove corrupted database
             self.config.db_path.unlink()
             logger.info("Removed corrupted database")
-            
+
             # New database will be created on next connect
             return True
-            
+
         except Exception as e:
             logger.error(f"Corruption recovery failed: {e}")
             return False
-    
+
     def _initialize_schema(self) -> None:
         """Initialize database schema."""
+        if self._conn is None:
+            raise RuntimeError("Database connection not available")
         cursor = self._conn.cursor()
-        
+
         # Schema migrations table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -207,7 +209,7 @@ class MetadataDatabase:
                 description TEXT
             )
         """)
-        
+
         # Assets table (permanent identity)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS assets (
@@ -228,7 +230,7 @@ class MetadataDatabase:
                 asset_system INTEGER DEFAULT 0
             )
         """)
-        
+
         # Asset metadata (key-value storage)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS asset_metadata (
@@ -241,7 +243,7 @@ class MetadataDatabase:
                 UNIQUE(asset_id, key)
             )
         """)
-        
+
         # Asset tags
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS asset_tags (
@@ -252,7 +254,7 @@ class MetadataDatabase:
                 UNIQUE(asset_id, tag)
             )
         """)
-        
+
         # Asset relationships
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS asset_relationships (
@@ -264,7 +266,7 @@ class MetadataDatabase:
                 UNIQUE(source_asset_id, target_asset_id, relationship_type)
             )
         """)
-        
+
         # Scan contexts
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS scan_contexts (
@@ -289,7 +291,7 @@ class MetadataDatabase:
                 schema_version INTEGER DEFAULT 1
             )
         """)
-        
+
         # Asset snapshots (observed state)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS asset_snapshots (
@@ -312,7 +314,7 @@ class MetadataDatabase:
                 UNIQUE(asset_id, scan_id)
             )
         """)
-        
+
         # Snapshot diffs (changes between scans)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS snapshot_diffs (
@@ -333,72 +335,230 @@ class MetadataDatabase:
                 UNIQUE(previous_scan_id, current_scan_id)
             )
         """)
-        
+
+        # Action plans (Phase B)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS action_plans (
+                plan_id TEXT PRIMARY KEY,
+                generated_at TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'PLANNED',
+                plan_data TEXT NOT NULL,
+                schema_version INTEGER DEFAULT 2,
+                created_at TEXT NOT NULL
+            )
+        """)
+
+        # Individual remediation actions (Phase B)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS remediation_actions (
+                plan_id TEXT NOT NULL,
+                action_id TEXT NOT NULL,
+                action_type TEXT NOT NULL,
+                asset_id TEXT NOT NULL,
+                state TEXT NOT NULL,
+                action_data TEXT NOT NULL,
+                schema_version INTEGER DEFAULT 2,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (action_id),
+                FOREIGN KEY (plan_id) REFERENCES action_plans(plan_id) ON DELETE CASCADE
+            )
+        """)
+
+        # Execution requests (Phase B)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS execution_requests (
+                request_id TEXT PRIMARY KEY,
+                plan_id TEXT NOT NULL,
+                mode TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'PLANNED',
+                requested_at TEXT NOT NULL,
+                started_at TEXT,
+                completed_at TEXT,
+                context_data TEXT,
+                execution_context TEXT,
+                schema_version INTEGER DEFAULT 2,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (plan_id) REFERENCES action_plans(plan_id) ON DELETE CASCADE
+            )
+        """)
+
+        # Execution summaries (Phase B)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS execution_summaries (
+                summary_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                request_id TEXT NOT NULL,
+                status TEXT NOT NULL,
+                started_at TEXT NOT NULL,
+                completed_at TEXT,
+                summary_data TEXT NOT NULL,
+                schema_version INTEGER DEFAULT 2,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (request_id)
+                    REFERENCES execution_requests(request_id) ON DELETE CASCADE,
+                UNIQUE(request_id)
+            )
+        """)
+
+        # Per-action execution results (Phase B)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS execution_results (
+                result_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                request_id TEXT NOT NULL,
+                action_id TEXT NOT NULL,
+                status TEXT NOT NULL,
+                started_at TEXT,
+                completed_at TEXT,
+                result_data TEXT NOT NULL,
+                backup_identity TEXT,
+                backup_location TEXT,
+                error_data TEXT,
+                schema_version INTEGER DEFAULT 2,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (request_id)
+                    REFERENCES execution_requests(request_id) ON DELETE CASCADE,
+                FOREIGN KEY (action_id)
+                    REFERENCES remediation_actions(action_id) ON DELETE CASCADE,
+                UNIQUE(request_id, action_id)
+            )
+        """)
+
         # Create indexes
         self._create_indexes(cursor)
-        
+
         self._conn.commit()
         cursor.close()
-    
+
     def _create_indexes(self, cursor: sqlite3.Cursor) -> None:
         """Create database indexes for common queries."""
         # Asset indexes
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_assets_type ON assets(asset_type)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_assets_category ON assets(asset_category)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_assets_path ON assets(canonical_path)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_assets_discovered ON assets(discovered_at)")
-        
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_assets_type ON assets(asset_type)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_assets_category ON "
+            "assets(asset_category)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_assets_path ON assets(canonical_path)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_assets_discovered ON "
+            "assets(discovered_at)"
+        )
+
         # Tag index
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_tags_tag ON asset_tags(tag)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_tags_asset ON asset_tags(asset_id)")
-        
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tags_asset ON asset_tags(asset_id)"
+        )
+
         # Snapshot indexes
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_asset ON asset_snapshots(asset_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_scan ON asset_snapshots(scan_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_observed ON asset_snapshots(observed_at)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_state ON asset_snapshots(state)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_fingerprint ON asset_snapshots(metadata_fingerprint)")
-        
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_snapshots_asset ON "
+            "asset_snapshots(asset_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_snapshots_scan ON "
+            "asset_snapshots(scan_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_snapshots_observed ON "
+            "asset_snapshots(observed_at)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_snapshots_state ON "
+            "asset_snapshots(state)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_snapshots_fingerprint ON "
+            "asset_snapshots(metadata_fingerprint)"
+        )
+
         # Context indexes
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_contexts_started ON scan_contexts(started_at)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_contexts_completed ON scan_contexts(completed)")
-    
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_contexts_started ON "
+            "scan_contexts(started_at)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_contexts_completed ON "
+            "scan_contexts(completed)"
+        )
+
+        # Phase B execution-persistence indexes
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_action_plans_status ON "
+            "action_plans(status)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_action_plans_generated ON "
+            "action_plans(generated_at)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_remediation_actions_plan ON "
+            "remediation_actions(plan_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_execution_requests_plan ON "
+            "execution_requests(plan_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_execution_requests_status ON "
+            "execution_requests(status)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_execution_results_request ON "
+            "execution_results(request_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_execution_results_action ON "
+            "execution_results(action_id)"
+        )
+
     def _run_migrations(self) -> None:
         """Run pending database migrations."""
+        if self._conn is None:
+            raise RuntimeError("Database connection not available")
         cursor = self._conn.cursor()
-        
+
         # Get current version
         cursor.execute("SELECT MAX(version) FROM schema_migrations")
         result = cursor.fetchone()
         current_version = result[0] if result[0] is not None else 0
-        
+
         # Apply migrations
         if current_version < self.SCHEMA_VERSION:
             # Record initial migration
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT OR IGNORE INTO schema_migrations (version, applied_at, description)
                 VALUES (?, ?, ?)
-            """, (self.SCHEMA_VERSION, datetime.now(UTC).isoformat(), "Initial schema"))
-            
+            """,
+                (
+                    self.SCHEMA_VERSION,
+                    datetime.now(UTC).isoformat(),
+                    "Phase B execution persistence schema",
+                ),
+            )
+
             self._conn.commit()
             logger.info(f"Applied migrations up to version {self.SCHEMA_VERSION}")
-        
+
         cursor.close()
-    
+
     def get_connection(self) -> sqlite3.Connection:
         """
         Get database connection.
-        
+
         Returns:
             SQLite connection
-        
+
         Raises:
             RuntimeError: If database not initialized
         """
         if not self._is_initialized or self._conn is None:
             raise RuntimeError("Database not initialized. Call initialize() first.")
         return self._conn
-    
+
     def close(self) -> None:
         """Close database connection."""
         if self._conn:
@@ -406,13 +566,13 @@ class MetadataDatabase:
             self._conn = None
             self._is_initialized = False
             logger.info("Database connection closed")
-    
+
     def __enter__(self):
         """Context manager entry."""
         if not self._is_initialized:
             self.initialize()
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.close()

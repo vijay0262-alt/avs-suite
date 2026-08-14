@@ -32,6 +32,7 @@ from .models import (
     ExecutionSummary,
 )
 from .registry_backup import RegistryBackup
+from .state_machine import ExecutionState
 from .target_executors import get_target_executor
 
 
@@ -54,91 +55,183 @@ class DefaultExecutor:
     ledger: ExecutionLedger = field(default_factory=ExecutionLedger)
     backup_manager: Optional[BackupManager] = None
     registry_backup: Optional[RegistryBackup] = None
+    action_plan_repository: Optional[Any] = None
+    execution_repository: Optional[Any] = None
 
     def execute(self, request: ExecutionRequest) -> ExecutionSummary:
         """
         Execute the requested ActionPlan and return an immutable summary.
 
-        Args:
-            request: ExecutionRequest with plan and optional context.
-
-        Returns:
-            ExecutionSummary with one ExecutionResult per action.
+        Persists the plan before live execution begins, seeds the ledger from
+        prior completed actions to avoid duplicate execution, and records every
+        action result and the final summary. Dry-run requests are persisted for
+        audit as well.
         """
         execution_id = str(uuid.uuid4())
         started_at = datetime.now(UTC)
         results: list[ExecutionResult] = []
 
-        if request.plan.is_stale():
-            return ExecutionSummary(
+        try:
+            # 1. Persist plan before any execution begins.
+            if self.action_plan_repository is not None:
+                self.action_plan_repository.save(
+                    request.plan, status=ExecutionState.PLANNED
+                )
+
+            # 2. Persist execution request.
+            if self.execution_repository is not None:
+                self.execution_repository.save_request(
+                    request, status=ExecutionState.PLANNED
+                )
+
+            # 3. Mark running and seed ledger with previously-completed actions.
+            if self.execution_repository is not None:
+                self.execution_repository.update_request_status(
+                    request.request_id, ExecutionState.RUNNING, started_at=started_at
+                )
+                completed_ids = self.execution_repository.get_completed_action_ids(
+                    request.plan.plan_id
+                )
+                for action_id in completed_ids:
+                    self.ledger.seed_completed(action_id, execution_id)
+
+            if request.plan.is_stale():
+                summary = ExecutionSummary(
+                    execution_id=execution_id,
+                    request_id=request.request_id,
+                    status=ExecutionStatus.REJECTED,
+                    total=0,
+                    completed=0,
+                    failed=0,
+                    rejected=1,
+                    skipped=0,
+                    requires_review=0,
+                    cancelled=0,
+                    dry_run=0,
+                    results=(),
+                    started_at=started_at,
+                    completed_at=datetime.now(UTC),
+                    ledger=self.ledger,
+                    reason="Action plan is stale and cannot be executed",
+                )
+                self._finalize_persistence(request, summary, started_at)
+                return summary
+
+            # Deterministic order: priority desc, then action_id asc
+            sorted_actions = sorted(
+                request.plan.actions,
+                key=lambda a: (-a.priority_score, a.action_id),
+            )
+
+            for action in sorted_actions:
+                if self._is_cancelled(request):
+                    result = self._make_cancelled_result(
+                        execution_id, action, started_at
+                    )
+                    results.append(result)
+                    self.ledger.record(result)
+                    self._persist_action_result(request.request_id, result)
+                    continue
+
+                try:
+                    result = self._execute_action(execution_id, action, request)
+                except ExecutionCancelledError:
+                    result = self._make_cancelled_result(
+                        execution_id, action, started_at
+                    )
+                except Exception as exc:
+                    result = ExecutionResult(
+                        execution_id=execution_id,
+                        action_id=action.action_id,
+                        finding_id=action.finding_id,
+                        asset_id=action.asset_id,
+                        action_type=action.action_type.value,
+                        target=action.target.to_dict(),
+                        status=ExecutionStatus.FAILED,
+                        reason=f"Unexpected executor failure: {exc}",
+                        timestamp=datetime.now(UTC),
+                        error=ExecutionError(
+                            code="EXECUTOR_EXCEPTION",
+                            message=str(exc),
+                            details={"exception_type": type(exc).__name__},
+                        ),
+                        verification={},
+                        dry_run_info=None,
+                    )
+
+                results.append(result)
+                self.ledger.record(result)
+                self._persist_action_result(request.request_id, result)
+
+            completed_at = datetime.now(UTC)
+            summary = self._build_summary(
+                execution_id,
+                request,
+                tuple(results),
+                self.ledger,
+                started_at,
+                completed_at,
+            )
+            self._finalize_persistence(request, summary, started_at)
+            return summary
+
+        except Exception as exc:
+            completed_at = datetime.now(UTC)
+            summary = ExecutionSummary(
                 execution_id=execution_id,
                 request_id=request.request_id,
-                status=ExecutionStatus.REJECTED,
+                status=ExecutionStatus.FAILED,
                 total=0,
                 completed=0,
-                failed=0,
-                rejected=1,
+                failed=1,
+                rejected=0,
                 skipped=0,
                 requires_review=0,
                 cancelled=0,
                 dry_run=0,
                 results=(),
                 started_at=started_at,
-                completed_at=datetime.now(UTC),
+                completed_at=completed_at,
                 ledger=self.ledger,
-                reason="Action plan is stale and cannot be executed",
+                reason=f"Executor persistence or coordination failure: {exc}",
             )
+            self._finalize_persistence(request, summary, started_at)
+            return summary
 
-        # Deterministic order: priority desc, then action_id asc
-        sorted_actions = sorted(
-            request.plan.actions,
-            key=lambda a: (-a.priority_score, a.action_id),
-        )
+    def _persist_action_result(
+        self,
+        request_id: str,
+        result: ExecutionResult,
+    ) -> None:
+        """Persist a single action result, swallowing persistence failures."""
+        if self.execution_repository is None:
+            return
+        try:
+            self.execution_repository.save_action_result(request_id, result)
+        except Exception:
+            # Persistence must never mask the real execution outcome.
+            pass
 
-        for action in sorted_actions:
-            if self._is_cancelled(request):
-                result = self._make_cancelled_result(execution_id, action, started_at)
-                results.append(result)
-                self.ledger.record(result)
-                continue
-
-            try:
-                result = self._execute_action(execution_id, action, request)
-            except ExecutionCancelledError:
-                result = self._make_cancelled_result(execution_id, action, started_at)
-            except Exception as exc:
-                result = ExecutionResult(
-                    execution_id=execution_id,
-                    action_id=action.action_id,
-                    finding_id=action.finding_id,
-                    asset_id=action.asset_id,
-                    action_type=action.action_type.value,
-                    target=action.target.to_dict(),
-                    status=ExecutionStatus.FAILED,
-                    reason=f"Unexpected executor failure: {exc}",
-                    timestamp=datetime.now(UTC),
-                    error=ExecutionError(
-                        code="EXECUTOR_EXCEPTION",
-                        message=str(exc),
-                        details={"exception_type": type(exc).__name__},
-                    ),
-                    verification={},
-                    dry_run_info=None,
-                )
-
-            results.append(result)
-            self.ledger.record(result)
-
-        completed_at = datetime.now(UTC)
-        summary = self._build_summary(
-            execution_id,
-            request,
-            tuple(results),
-            self.ledger,
-            started_at,
-            completed_at,
-        )
-        return summary
+    def _finalize_persistence(
+        self,
+        request: ExecutionRequest,
+        summary: ExecutionSummary,
+        started_at: datetime,
+    ) -> None:
+        """Persist summary and mark the execution request final."""
+        if self.execution_repository is None:
+            return
+        try:
+            self.execution_repository.save_summary(request.request_id, summary)
+            self.execution_repository.update_request_status(
+                request.request_id,
+                summary.status.value,
+                started_at=started_at,
+                completed_at=summary.completed_at,
+            )
+        except Exception:
+            # Do not let persistence failures hide execution results.
+            pass
 
     def _execute_action(
         self,

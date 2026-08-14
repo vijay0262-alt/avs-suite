@@ -26,6 +26,7 @@ This layer:
 from __future__ import annotations
 
 import hashlib
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
@@ -92,6 +93,13 @@ Resolve current asset snapshot from asset_id.
 
 Returns None if asset cannot be resolved.
 """
+
+
+def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
+    """Parse an ISO-8601 datetime string or return None."""
+    if not value:
+        return None
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 @runtime_checkable
@@ -186,6 +194,21 @@ class FilesystemActionTarget:
             "backup_identity": self.backup_identity,
         }
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "FilesystemActionTarget":
+        """Deserialize from a dictionary."""
+        return cls(
+            asset_id=data.get("asset_id", ""),
+            canonical_path=data.get("canonical_path", ""),
+            allowed_location=data.get("allowed_location", ""),
+            scope=data.get("scope", ""),
+            target_type=ActionTargetType(data.get("target_type", "filesystem")),
+            backup_required=data.get("backup_required", False),
+            rollback_supported=data.get("rollback_supported", False),
+            backup_location=data.get("backup_location"),
+            backup_identity=data.get("backup_identity"),
+        )
+
 
 @dataclass(frozen=True)
 class RegistryActionTarget:
@@ -222,6 +245,22 @@ class RegistryActionTarget:
             "backup_identity": self.backup_identity,
             "view": self.view,
         }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "RegistryActionTarget":
+        """Deserialize from a dictionary."""
+        return cls(
+            asset_id=data.get("asset_id", ""),
+            hive=data.get("hive", ""),
+            key_path=data.get("key_path", ""),
+            value_name=data.get("value_name"),
+            target_type=ActionTargetType(data.get("target_type", "registry")),
+            backup_required=data.get("backup_required", True),
+            rollback_supported=data.get("rollback_supported", True),
+            backup_location=data.get("backup_location"),
+            backup_identity=data.get("backup_identity"),
+            view=data.get("view", "default"),
+        )
 
 
 @dataclass(frozen=True)
@@ -264,6 +303,24 @@ class BrowserActionTarget:
             "cache_only": self.cache_only,
         }
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "BrowserActionTarget":
+        """Deserialize from a dictionary."""
+        return cls(
+            asset_id=data.get("asset_id", ""),
+            browser=data.get("browser", ""),
+            profile=data.get("profile", ""),
+            cache_type=data.get("cache_type", ""),
+            path=data.get("path", ""),
+            target_type=ActionTargetType(data.get("target_type", "browser")),
+            backup_required=data.get("backup_required", False),
+            rollback_supported=data.get("rollback_supported", False),
+            backup_location=data.get("backup_location"),
+            backup_identity=data.get("backup_identity"),
+            user_data_safe=data.get("user_data_safe", True),
+            cache_only=data.get("cache_only", True),
+        )
+
 
 @dataclass(frozen=True)
 class StartupActionTarget:
@@ -297,13 +354,66 @@ class StartupActionTarget:
             "backup_identity": self.backup_identity,
         }
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "StartupActionTarget":
+        """Deserialize from a dictionary."""
+        return cls(
+            asset_id=data.get("asset_id", ""),
+            entry_id=data.get("entry_id", ""),
+            scope=data.get("scope", ""),
+            target_type=ActionTargetType(data.get("target_type", "startup")),
+            backup_required=data.get("backup_required", True),
+            rollback_supported=data.get("rollback_supported", True),
+            backup_location=data.get("backup_location"),
+            backup_identity=data.get("backup_identity"),
+        )
+
+
+class _NoTarget:
+    """Placeholder target for non-actionable states."""
+
+    target_type = ActionTargetType.FILESYSTEM
+    asset_id = ""
+    canonical_path = ""
+    allowed_location = ""
+    scope = ""
+    backup_required = False
+    rollback_supported = False
+    backup_location = None  # type: ignore[assignment]
+    backup_identity = None  # type: ignore[assignment]
+
+    def target_identity(self) -> str:
+        return ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "_NoTarget":
+        return cls()
+
 
 ActionTarget = (
     FilesystemActionTarget
     | RegistryActionTarget
     | BrowserActionTarget
     | StartupActionTarget
+    | _NoTarget
 )
+
+
+def _action_target_from_dict(data: dict[str, Any]) -> ActionTarget:
+    """Dispatch to the correct ActionTarget from_dict implementation."""
+    target_type = data.get("target_type", "")
+    if target_type == ActionTargetType.REGISTRY.value:
+        return RegistryActionTarget.from_dict(data)
+    if target_type == ActionTargetType.BROWSER.value:
+        return BrowserActionTarget.from_dict(data)
+    if target_type == ActionTargetType.STARTUP.value:
+        return StartupActionTarget.from_dict(data)
+    if target_type == ActionTargetType.FILESYSTEM.value:
+        return FilesystemActionTarget.from_dict(data)
+    return _NoTarget.from_dict(data)
 
 
 # ── Action Model ──────────────────────────────────────────────────────────────
@@ -375,6 +485,42 @@ class RemediationAction:
             "metadata": dict(self.metadata),
         }
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "RemediationAction":
+        """Deserialize a RemediationAction from a dictionary."""
+        target = _action_target_from_dict(data.get("target", {}))
+        preconditions = PreconditionSet.from_dict(
+            {"conditions": data.get("preconditions", [])}
+        )
+        return cls(
+            action_id=data.get("action_id", ""),
+            action_type=ActionType(data.get("action_type", "none")),
+            state=ActionState(data.get("state", "not_fixable")),
+            target=target,
+            finding_id=data.get("finding_id", ""),
+            rule_id=data.get("rule_id", ""),
+            rule_version=data.get("rule_version", ""),
+            asset_id=data.get("asset_id", ""),
+            priority_score=float(data.get("priority_score", 0.0)),
+            fixability=Fixability(data.get("fixability", "unknown")),
+            is_blocked=bool(data.get("is_blocked", False)),
+            requires_review=bool(data.get("requires_review", False)),
+            is_actionable=bool(data.get("is_actionable", False)),
+            is_auto_fixable=bool(data.get("is_auto_fixable", False)),
+            is_fixable=bool(data.get("is_fixable", False)),
+            rule_capability=RuleCapability(data.get("rule_capability", "unavailable")),
+            preconditions=preconditions,
+            safety_assessment=data.get("safety_assessment", ""),
+            reason=data.get("reason", ""),
+            estimated_size=data.get("estimated_size"),
+            backup_required=bool(data.get("backup_required", False)),
+            rollback_supported=bool(data.get("rollback_supported", False)),
+            backup_location=data.get("backup_location"),
+            backup_identity=data.get("backup_identity"),
+            computed_at=_parse_iso_datetime(data["computed_at"]) or datetime.now(UTC),
+            metadata=dict(data.get("metadata", {})),
+        )
+
 
 # ── Action Plan ───────────────────────────────────────────────────────────────
 
@@ -393,6 +539,7 @@ class ActionPlan:
     snapshot_timestamp: Optional[datetime] = None
     snapshot_version: Optional[str] = None
     snapshot_ttl_seconds: int = 3600
+    plan_id: Optional[str] = field(default_factory=lambda: str(uuid.uuid4()))
 
     def __post_init__(self) -> None:
         """Ensure collections are tuples."""
@@ -426,7 +573,26 @@ class ActionPlan:
             "snapshot_version": self.snapshot_version,
             "snapshot_ttl_seconds": self.snapshot_ttl_seconds,
             "is_stale": self.is_stale(),
+            "plan_id": self.plan_id,
         }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ActionPlan":
+        """Deserialize an ActionPlan from a dictionary."""
+        actions = tuple(RemediationAction.from_dict(a) for a in data.get("actions", []))
+        summary = ActionSummary.from_dict(data.get("summary", {}))
+        generated_at = _parse_iso_datetime(data["generated_at"])
+        assert generated_at is not None, "ActionPlan generated_at is required"
+        snapshot_timestamp = _parse_iso_datetime(data.get("snapshot_timestamp"))
+        return cls(
+            actions=actions,
+            summary=summary,
+            generated_at=generated_at,
+            snapshot_timestamp=snapshot_timestamp,
+            snapshot_version=data.get("snapshot_version"),
+            snapshot_ttl_seconds=data.get("snapshot_ttl_seconds", 3600),
+            plan_id=data.get("plan_id"),
+        )
 
 
 # ── Action Summary ────────────────────────────────────────────────────────────
@@ -472,6 +638,27 @@ class ActionSummary:
             "largest_affected_action_id": self.largest_affected_action_id,
             "generated_at": self.generated_at.isoformat(),
         }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ActionSummary":
+        """Deserialize an ActionSummary from a dictionary."""
+        generated_at = _parse_iso_datetime(data["generated_at"])
+        assert generated_at is not None, "ActionSummary generated_at is required"
+        return cls(
+            total_findings=data.get("total_findings", 0),
+            actions_planned=data.get("actions_planned", 0),
+            auto_fixable_actions=data.get("auto_fixable_actions", 0),
+            review_required_actions=data.get("review_required_actions", 0),
+            blocked_actions=data.get("blocked_actions", 0),
+            not_fixable_actions=data.get("not_fixable_actions", 0),
+            unknown_fixability_actions=data.get("unknown_fixability_actions", 0),
+            actions_by_type=dict(data.get("actions_by_type", {})),
+            estimated_affected_size=data.get("estimated_affected_size"),
+            highest_priority_action_id=data.get("highest_priority_action_id"),
+            highest_severity_action_id=data.get("highest_severity_action_id"),
+            largest_affected_action_id=data.get("largest_affected_action_id"),
+            generated_at=generated_at,
+        )
 
 
 # ── Action Planner ────────────────────────────────────────────────────────────
@@ -765,24 +952,6 @@ class ActionPlanner:
 
     def _make_no_target(self) -> ActionTarget:
         """Create a no-op target for non-actionable states."""
-
-        class _NoTarget:
-            target_type = ActionTargetType.FILESYSTEM
-            asset_id = ""
-            canonical_path = ""
-            allowed_location = ""
-            scope = ""
-            backup_required = False
-            rollback_supported = False
-            backup_location = None
-            backup_identity = None
-
-            def target_identity(self) -> str:
-                return ""
-
-            def to_dict(self) -> dict[str, Any]:
-                return {}
-
         return _NoTarget()  # type: ignore[return-value]
 
     def _infer_action_type(self, finding: DetectionFinding) -> Optional[ActionType]:
@@ -933,9 +1102,8 @@ class ActionPlanner:
             )
 
         # Hash verification (content_hash takes precedence over content_fingerprint)
-        observed_hash = (
-            getattr(snapshot, "content_hash", None)
-            or getattr(snapshot, "content_fingerprint", None)
+        observed_hash = getattr(snapshot, "content_hash", None) or getattr(
+            snapshot, "content_fingerprint", None
         )
         if observed_hash is not None:
             conditions.append(HashMatches(expected_hash=observed_hash))

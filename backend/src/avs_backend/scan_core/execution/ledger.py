@@ -56,6 +56,25 @@ class ExecutionLedger:
         """Return the record for an action, or None."""
         return self._records.get(action_id)
 
+    def seed_completed(
+        self,
+        action_id: str,
+        execution_id: str = "",
+        timestamp: Optional[datetime] = None,
+    ) -> None:
+        """Record a previously-completed action_id from persistent storage."""
+        if action_id in self._records:
+            return
+        if timestamp is None:
+            timestamp = datetime.now()
+        self._records[action_id] = ExecutionRecord(
+            action_id=action_id,
+            execution_id=execution_id,
+            status=ExecutionStatus.COMPLETED,
+            timestamp=timestamp,
+            result=None,
+        )
+
     def count(self) -> int:
         """Return the number of recorded actions."""
         return len(self._records)

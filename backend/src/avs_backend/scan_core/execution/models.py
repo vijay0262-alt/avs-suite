@@ -147,7 +147,7 @@ class ExecutionRequest:
         """Serialize to dictionary."""
         return {
             "request_id": self.request_id,
-            "plan_id": self.plan.to_dict().get("generated_at"),
+            "plan_id": self.plan.plan_id,
             "mode": self.mode,
         }
 

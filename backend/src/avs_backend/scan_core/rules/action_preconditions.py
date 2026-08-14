@@ -346,6 +346,26 @@ class NotReparsePoint:
 
 
 @dataclass(frozen=True)
+class _PersistedPrecondition:
+    """Precondition placeholder recovered from persistent storage.
+
+    Preserves the contract string for audit/round-trip, but evaluate() is
+    intentionally disabled. Any execution path using a loaded plan must
+    revalidate preconditions with fresh state rather than trust stored data.
+    """
+
+    contract: str
+
+    def to_contract(self) -> str:
+        return self.contract
+
+    def evaluate(self, context: dict[str, Any]) -> bool:
+        raise RuntimeError(
+            "Preconditions loaded from persistence must be revalidated before execution"
+        )
+
+
+@dataclass(frozen=True)
 class PreconditionSet:
     """
     Immutable set of typed preconditions.
@@ -397,6 +417,16 @@ class PreconditionSet:
         return {
             "conditions": [c.to_contract() for c in self.conditions],
         }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "PreconditionSet":
+        """Deserialize a PreconditionSet from a dictionary."""
+        return cls.from_contract_strings(data.get("conditions", []))
+
+    @classmethod
+    def from_contract_strings(cls, contracts: list[str]) -> "PreconditionSet":
+        """Deserialize from contract strings."""
+        return cls(conditions=tuple(_PersistedPrecondition(c) for c in contracts))
 
 
 # ── Precondition Builders ──────────────────────────────────────────────────────
