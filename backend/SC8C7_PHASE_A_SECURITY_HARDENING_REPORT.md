@@ -33,18 +33,23 @@ Key outcomes:
 
 The following source files were modified for Phase A security hardening:
 
+- `src/avs_backend/scan_core/context/asset_snapshot.py`
 - `src/avs_backend/scan_core/execution/models.py`
 - `src/avs_backend/scan_core/execution/executor.py`
 - `src/avs_backend/scan_core/execution/filesystem_executor.py`
 - `src/avs_backend/scan_core/execution/browser_executor.py`
 - `src/avs_backend/scan_core/execution/registry_executor.py`
 - `src/avs_backend/scan_core/metadata/database.py`
+- `src/avs_backend/scan_core/metadata/asset_repository.py`
+- `src/avs_backend/scan_core/metadata/snapshot_repository.py`
 - `src/avs_backend/scan_core/metadata/execution_repository.py`
 - `src/avs_backend/scan_core/models.py`
 - `src/avs_backend/scan_core/context/scan_context.py`
 - `src/avs_backend/scan_core/enumerator.py`
+- `src/avs_backend/scan_core/orchestration/orchestrator.py`
 - `src/avs_backend/scan_core/orchestration/discovery.py`
 - `src/avs_backend/scan_core/orchestration/remediation.py`
+- `src/avs_backend/scan_core/rules/priority.py`
 - `src/avs_backend/scan_core/rules/action.py`
 - `src/avs_backend/scan_core/rules/action_path_validation.py`
 - `src/avs_backend/scan_core/rules/action_registry_validation.py`
@@ -130,6 +135,18 @@ A new focused regression test file was added:
 - `ActionPlanner._plan_action()` raises `ValueError` for an `ACTIONABLE` verdict without an action type.
 - Validation remains active under `python -O`.
 
+### 3.15 Priority computation timestamp micro-optimization (post-audit follow-up)
+
+- `FindingPrioritizer.prioritize()` captures one `datetime.now(UTC)` at the start and reuses it for all `FindingPriority.computed_at` values and the `PrioritizedSummary.generated_at` field.
+- `priority.py` `_compute_priority` and `_build_prioritized_summary` accept an optional timestamp parameter, eliminating ~10,000 repeated `datetime.now(UTC)` calls during bulk prioritization.
+
+### 3.14 10k-asset scan performance hardening (post-audit follow-up)
+
+- `orchestrator.py` now passes `metadata_fingerprint=""` for bulk-observed snapshots, allowing `AssetSnapshot.__post_init__` to skip per-asset metadata hashing during enumeration.
+- `asset_snapshot.py` treats `metadata_fingerprint=None` as the auto-generate sentinel; an explicit `""` or other string is preserved.
+- `AssetRepository.upsert_many()` and `SnapshotRepository.save_many()` were switched to `executemany()` and a single commit per 500-item batch, removing per-asset/row `commit()` calls that dominated large scan persistence.
+- `MetadataDatabase` continues to provide thread-local connections so this batching remains safe across threads.
+
 ### 3.13 Persistence serialization and multi-threading fixes (post-audit follow-up)
 
 - `ExecutionResult`, `ExecutionError`, `TargetExecutorResult`, and `ExecutionSummary` `to_dict()` methods now recursively serialize `datetime` and `Enum` values so `json.dumps` no longer fails on timestamps.
@@ -153,7 +170,7 @@ The complete backend test suite was executed:
 $ python -m pytest -q
 ```
 
-Result: **1192 passed, 14 skipped** (≈15 minutes on the final run).
+Result: **1192 passed, 14 skipped** (≈9.5 minutes on the final run).
 
 Targeted SC-8C4, SC-8C5, and SC-8C6 regression suites passed as part of the full run, with the new `tests/test_sc8c7_phase_a.py` added.
 
@@ -200,5 +217,5 @@ Per the request:
 
 ```text
 $ python -m pytest -q
-1192 passed, 14 skipped in 885.93s (0:14:45)
+1192 passed, 14 skipped in 566.14s (0:09:26)
 ```

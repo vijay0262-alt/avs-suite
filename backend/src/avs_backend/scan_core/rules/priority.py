@@ -329,10 +329,12 @@ class FindingPrioritizer:
         Returns:
             PrioritizedResult with prioritized findings and extended summary.
         """
+        now = datetime.now(UTC)
+
         # Step 1: Compute priority for each finding
         priorities_list: list[FindingPriority] = []
         for finding in result.findings:
-            priority = self._compute_priority(finding)
+            priority = self._compute_priority(finding, computed_at=now)
             priorities_list.append(priority)
 
         # Step 2: Sort deterministically with tiebreakers
@@ -340,17 +342,23 @@ class FindingPrioritizer:
         priorities_tuple = tuple(priorities_list)
 
         # Step 3: Build extended summary
-        summary = self._build_prioritized_summary(result, priorities_tuple)
+        summary = self._build_prioritized_summary(result, priorities_tuple, generated_at=now)
 
         return PrioritizedResult(
             priorities=priorities_tuple,
             summary=summary,
         )
 
-    def _compute_priority(self, finding: DetectionFinding) -> FindingPriority:
+    def _compute_priority(
+        self,
+        finding: DetectionFinding,
+        computed_at: Optional[datetime] = None,
+    ) -> FindingPriority:
         """
         Compute priority score and fixability for a single finding.
         """
+        if computed_at is None:
+            computed_at = datetime.now(UTC)
         rule_capability = self._resolve_rule_capability(finding.rule_id)
         fixability = self._derive_fixability(finding.safety, rule_capability)
         is_blocked = finding.safety.is_blocked
@@ -375,7 +383,7 @@ class FindingPrioritizer:
             is_auto_fixable=is_auto_fixable,
             is_fixable=is_fixable,
             rule_capability=rule_capability,
-            computed_at=datetime.now(UTC),
+            computed_at=computed_at,
         )
 
     def _compute_priority_score(
@@ -532,6 +540,7 @@ class FindingPrioritizer:
         self,
         result: AggregationResult,
         priorities: tuple[FindingPriority, ...],
+        generated_at: Optional[datetime] = None,
     ) -> PrioritizedSummary:
         """
         Build extended summary with priority and fixability counts.
@@ -589,7 +598,7 @@ class FindingPrioritizer:
             highest_priority_finding_id=highest_priority_id,
             highest_severity_finding_id=highest_severity_id,
             largest_affected_finding_id=largest_affected_id,
-            generated_at=datetime.now(UTC),
+            generated_at=generated_at or datetime.now(UTC),
         )
 
     def _find_extreme_finding_id(

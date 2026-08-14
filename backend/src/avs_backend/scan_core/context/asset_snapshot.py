@@ -59,7 +59,7 @@ class AssetSnapshot:
     
     # Fingerprints
     content_fingerprint: Optional[str] = None  # Hash of file content (if applicable)
-    metadata_fingerprint: str = ""  # Hash of observed metadata
+    metadata_fingerprint: Optional[str] = None  # Hash of observed metadata (None = auto)
     
     # Attributes (compact key-value storage)
     attributes: dict[str, Any] = field(default_factory=dict)
@@ -69,7 +69,7 @@ class AssetSnapshot:
     
     def __post_init__(self):
         """Generate metadata fingerprint if not provided."""
-        if not self.metadata_fingerprint:
+        if self.metadata_fingerprint is None:
             self.metadata_fingerprint = self._generate_metadata_fingerprint()
 
     # Compatibility aliases for the _AssetSnapshot planning protocol.
@@ -154,7 +154,7 @@ class AssetSnapshot:
             size=data.get("size"),
             modified_time=datetime.fromisoformat(data["modified_time"]) if data.get("modified_time") else None,
             content_fingerprint=data.get("content_fingerprint"),
-            metadata_fingerprint=data.get("metadata_fingerprint", ""),
+            metadata_fingerprint=data.get("metadata_fingerprint"),
             attributes=data.get("attributes", {}),
             schema_version=data.get("schema_version", 1),
         )
@@ -216,6 +216,7 @@ def create_snapshot_from_asset(
     size: Optional[int] = None,
     modified_time: Optional[datetime] = None,
     content_fingerprint: Optional[str] = None,
+    metadata_fingerprint: Optional[str] = None,
     canonical_path: Optional[str] = None,
     attributes: Optional[dict[str, Any]] = None,
 ) -> AssetSnapshot:
@@ -267,5 +268,6 @@ def create_snapshot_from_asset(
         size=size,
         modified_time=modified_time,
         content_fingerprint=content_fingerprint,
+        metadata_fingerprint=metadata_fingerprint,
         attributes=attrs,
     )

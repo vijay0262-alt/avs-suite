@@ -104,56 +104,58 @@ class SnapshotRepository:
         Returns:
             Number of snapshots successfully saved
         """
-        count = 0
+        if not snapshots:
+            return 0
+
         conn = self.db.get_connection()
-        
+        cursor = conn.cursor()
+
+        sql = """
+            INSERT INTO asset_snapshots (
+                asset_id, scan_id, observed_at, state,
+                snapshot_exists, snapshot_accessible, snapshot_locked, size, modified_time,
+                content_fingerprint, metadata_fingerprint, attributes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(asset_id, scan_id) DO UPDATE SET
+                observed_at=excluded.observed_at,
+                state=excluded.state,
+                snapshot_exists=excluded.snapshot_exists,
+                snapshot_accessible=excluded.snapshot_accessible,
+                snapshot_locked=excluded.snapshot_locked,
+                size=excluded.size,
+                modified_time=excluded.modified_time,
+                content_fingerprint=excluded.content_fingerprint,
+                metadata_fingerprint=excluded.metadata_fingerprint,
+                attributes=excluded.attributes
+        """
+
+        params = [
+            (
+                snapshot.asset_id,
+                snapshot.scan_id,
+                snapshot.observed_at.isoformat(),
+                snapshot.state.value,
+                snapshot.exists,
+                snapshot.accessible,
+                snapshot.locked,
+                snapshot.size,
+                snapshot.modified_time.isoformat() if snapshot.modified_time else None,
+                snapshot.content_fingerprint,
+                snapshot.metadata_fingerprint,
+                json.dumps(snapshot.attributes),
+            )
+            for snapshot in snapshots
+        ]
+
         try:
-            cursor = conn.cursor()
-            
-            for snapshot in snapshots:
-                try:
-                    cursor.execute("""
-                        INSERT INTO asset_snapshots (
-                            asset_id, scan_id, observed_at, state,
-                            snapshot_exists, snapshot_accessible, snapshot_locked, size, modified_time,
-                            content_fingerprint, metadata_fingerprint, attributes
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ON CONFLICT(asset_id, scan_id) DO UPDATE SET
-                            observed_at=excluded.observed_at,
-                            state=excluded.state,
-                            snapshot_exists=excluded.snapshot_exists,
-                            snapshot_accessible=excluded.snapshot_accessible,
-                            snapshot_locked=excluded.snapshot_locked,
-                            size=excluded.size,
-                            modified_time=excluded.modified_time,
-                            content_fingerprint=excluded.content_fingerprint,
-                            metadata_fingerprint=excluded.metadata_fingerprint,
-                            attributes=excluded.attributes
-                    """, (
-                        snapshot.asset_id,
-                        snapshot.scan_id,
-                        snapshot.observed_at.isoformat(),
-                        snapshot.state.value,
-                        snapshot.exists,
-                        snapshot.accessible,
-                        snapshot.locked,
-                        snapshot.size,
-                        snapshot.modified_time.isoformat() if snapshot.modified_time else None,
-                        snapshot.content_fingerprint,
-                        snapshot.metadata_fingerprint,
-                        json.dumps(snapshot.attributes),
-                    ))
-                    count += 1
-                except Exception:
-                    # Continue with other snapshots
-                    pass
-            
+            cursor.executemany(sql, params)
             conn.commit()
             cursor.close()
-            return count
-            
+            return len(snapshots)
+
         except Exception as e:
             conn.rollback()
+            cursor.close()
             raise RuntimeError(f"Batch save failed: {e}")
     
     def get(self, asset_id: str, scan_id: str) -> Optional[AssetSnapshot]:

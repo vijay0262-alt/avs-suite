@@ -12,6 +12,8 @@ import sqlite3
 import json
 import logging
 from typing import Optional, List
+
+logger = logging.getLogger(__name__)
 from datetime import datetime, UTC
 
 from ..assets import ScanAsset, AssetType, AssetCategory
@@ -43,6 +45,76 @@ class AssetRepository:
         """
         self.db = database
     
+    def _do_upsert_no_commit(self, cursor: sqlite3.Cursor, asset: ScanAsset) -> None:
+        """Execute the SQL for a single asset upsert without committing."""
+        # Upsert main asset record
+        cursor.execute("""
+            INSERT INTO assets (
+                asset_id, asset_type, asset_category, asset_source,
+                display_name, canonical_path, created_at, modified_at,
+                discovered_at, asset_exists, asset_accessible, asset_locked, asset_hidden, asset_system
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(asset_id) DO UPDATE SET
+                display_name=excluded.display_name,
+                canonical_path=excluded.canonical_path,
+                modified_at=excluded.modified_at,
+                asset_exists=excluded.asset_exists,
+                asset_accessible=excluded.asset_accessible,
+                asset_locked=excluded.asset_locked,
+                asset_hidden=excluded.asset_hidden,
+                asset_system=excluded.asset_system
+        """, (
+            asset.asset_id,
+            asset.asset_type.value,
+            asset.asset_category.value,
+            asset.asset_source.value,
+            asset.display_name,
+            asset.canonical_path,
+            asset.created_at.isoformat() if asset.created_at else None,
+            asset.modified_at.isoformat() if asset.modified_at else None,
+            datetime.now(UTC).isoformat(),
+            asset.exists,
+            asset.accessible,
+            asset.locked,
+            asset.hidden,
+            asset.system,
+        ))
+
+        # Delete existing metadata/tags/relationships
+        cursor.execute("DELETE FROM asset_metadata WHERE asset_id = ?", (asset.asset_id,))
+        cursor.execute("DELETE FROM asset_tags WHERE asset_id = ?", (asset.asset_id,))
+        cursor.execute("DELETE FROM asset_relationships WHERE source_asset_id = ?", (asset.asset_id,))
+
+        # Insert metadata
+        for key, value in asset.custom_metadata.data.items():
+            cursor.execute("""
+                INSERT INTO asset_metadata (asset_id, key, value, value_type)
+                VALUES (?, ?, ?, ?)
+            """, (
+                asset.asset_id,
+                key,
+                json.dumps(value),
+                type(value).__name__,
+            ))
+
+        # Insert tags
+        for tag in asset.tags:
+            cursor.execute("""
+                INSERT INTO asset_tags (asset_id, tag)
+                VALUES (?, ?)
+            """, (asset.asset_id, tag))
+
+        # Insert relationships
+        for rel in asset.relationships:
+            cursor.execute("""
+                INSERT INTO asset_relationships (source_asset_id, target_asset_id, relationship_type)
+                VALUES (?, ?, ?)
+            """, (
+                rel.source_asset_id,
+                rel.target_asset_id,
+                rel.relationship_type.value,
+            ))
+
     def upsert(self, asset: ScanAsset) -> bool:
         """
         Insert or update asset.
@@ -53,27 +125,56 @@ class AssetRepository:
         Returns:
             True if successful
         """
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+
         try:
-            conn = self.db.get_connection()
-            cursor = conn.cursor()
-            
-            # Upsert main asset record
-            cursor.execute("""
-                INSERT INTO assets (
-                    asset_id, asset_type, asset_category, asset_source,
-                    display_name, canonical_path, created_at, modified_at,
-                    discovered_at, asset_exists, asset_accessible, asset_locked, asset_hidden, asset_system
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(asset_id) DO UPDATE SET
-                    display_name=excluded.display_name,
-                    canonical_path=excluded.canonical_path,
-                    modified_at=excluded.modified_at,
-                    asset_exists=excluded.asset_exists,
-                    asset_accessible=excluded.asset_accessible,
-                    asset_locked=excluded.asset_locked,
-                    asset_hidden=excluded.asset_hidden,
-                    asset_system=excluded.asset_system
-            """, (
+            self._do_upsert_no_commit(cursor, asset)
+            conn.commit()
+            cursor.close()
+            return True
+
+        except Exception as e:
+            conn.rollback()
+            cursor.close()
+            raise RuntimeError(f"Failed to upsert asset {asset.asset_id}: {e}")
+
+    def upsert_many(self, assets: List[ScanAsset]) -> int:
+        """
+        Batch insert/update assets in a single transaction.
+        
+        Args:
+            assets: List of ScanAssets to persist
+        
+        Returns:
+            Number of assets successfully persisted
+        """
+        if not assets:
+            return 0
+
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+        now = datetime.now(UTC).isoformat()
+
+        main_sql = """
+            INSERT INTO assets (
+                asset_id, asset_type, asset_category, asset_source,
+                display_name, canonical_path, created_at, modified_at,
+                discovered_at, asset_exists, asset_accessible, asset_locked, asset_hidden, asset_system
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(asset_id) DO UPDATE SET
+                display_name=excluded.display_name,
+                canonical_path=excluded.canonical_path,
+                modified_at=excluded.modified_at,
+                asset_exists=excluded.asset_exists,
+                asset_accessible=excluded.asset_accessible,
+                asset_locked=excluded.asset_locked,
+                asset_hidden=excluded.asset_hidden,
+                asset_system=excluded.asset_system
+        """
+
+        main_params = [
+            (
                 asset.asset_id,
                 asset.asset_type.value,
                 asset.asset_category.value,
@@ -82,85 +183,78 @@ class AssetRepository:
                 asset.canonical_path,
                 asset.created_at.isoformat() if asset.created_at else None,
                 asset.modified_at.isoformat() if asset.modified_at else None,
-                datetime.now(UTC).isoformat(),
+                now,
                 asset.exists,
                 asset.accessible,
                 asset.locked,
                 asset.hidden,
                 asset.system,
-            ))
-            
-            # Delete existing metadata/tags/relationships
-            cursor.execute("DELETE FROM asset_metadata WHERE asset_id = ?", (asset.asset_id,))
-            cursor.execute("DELETE FROM asset_tags WHERE asset_id = ?", (asset.asset_id,))
-            cursor.execute("DELETE FROM asset_relationships WHERE source_asset_id = ?", (asset.asset_id,))
-            
-            # Insert metadata
+            )
+            for asset in assets
+        ]
+
+        asset_ids = [(asset.asset_id,) for asset in assets]
+
+        metadata_rows: list[tuple[str, str, str, str]] = []
+        for asset in assets:
             for key, value in asset.custom_metadata.data.items():
-                cursor.execute("""
-                    INSERT INTO asset_metadata (asset_id, key, value, value_type)
-                    VALUES (?, ?, ?, ?)
-                """, (
-                    asset.asset_id,
-                    key,
-                    json.dumps(value),
-                    type(value).__name__,
-                ))
-            
-            # Insert tags
+                metadata_rows.append(
+                    (asset.asset_id, key, json.dumps(value), type(value).__name__)
+                )
+
+        tag_rows: list[tuple[str, str]] = []
+        for asset in assets:
             for tag in asset.tags:
-                cursor.execute("""
-                    INSERT INTO asset_tags (asset_id, tag)
-                    VALUES (?, ?)
-                """, (asset.asset_id, tag))
-            
-            # Insert relationships
+                tag_rows.append((asset.asset_id, tag))
+
+        relationship_rows: list[tuple[str, str, str]] = []
+        for asset in assets:
             for rel in asset.relationships:
-                cursor.execute("""
-                    INSERT INTO asset_relationships (source_asset_id, target_asset_id, relationship_type)
-                    VALUES (?, ?, ?)
-                """, (
-                    rel.source_asset_id,
-                    rel.target_asset_id,
-                    rel.relationship_type.value,
-                ))
-            
+                relationship_rows.append(
+                    (rel.source_asset_id, rel.target_asset_id, rel.relationship_type.value)
+                )
+
+        try:
+            cursor.executemany(main_sql, main_params)
+
+            cursor.executemany(
+                "DELETE FROM asset_metadata WHERE asset_id = ?", asset_ids
+            )
+            cursor.executemany(
+                "DELETE FROM asset_tags WHERE asset_id = ?", asset_ids
+            )
+            cursor.executemany(
+                "DELETE FROM asset_relationships WHERE source_asset_id = ?",
+                asset_ids,
+            )
+
+            if metadata_rows:
+                cursor.executemany(
+                    "INSERT INTO asset_metadata (asset_id, key, value, value_type) "
+                    "VALUES (?, ?, ?, ?)",
+                    metadata_rows,
+                )
+            if tag_rows:
+                cursor.executemany(
+                    "INSERT INTO asset_tags (asset_id, tag) VALUES (?, ?)",
+                    tag_rows,
+                )
+            if relationship_rows:
+                cursor.executemany(
+                    "INSERT INTO asset_relationships (source_asset_id, target_asset_id, relationship_type) "
+                    "VALUES (?, ?, ?)",
+                    relationship_rows,
+                )
+
             conn.commit()
             cursor.close()
-            return True
-            
+            return len(assets)
+
         except Exception as e:
             conn.rollback()
-            raise RuntimeError(f"Failed to upsert asset {asset.asset_id}: {e}")
-    
-    def upsert_many(self, assets: List[ScanAsset]) -> int:
-        """
-        Batch insert/update assets.
-        
-        Args:
-            assets: List of ScanAssets to persist
-        
-        Returns:
-            Number of assets successfully persisted
-        """
-        count = 0
-        conn = self.db.get_connection()
-        
-        try:
-            for asset in assets:
-                try:
-                    self.upsert(asset)
-                    count += 1
-                except Exception as e:
-                    # Log but continue with other assets
-                    pass
-            
-            return count
-            
-        except Exception as e:
-            conn.rollback()
+            cursor.close()
             raise RuntimeError(f"Batch upsert failed: {e}")
-    
+
     def get(self, asset_id: str) -> Optional[ScanAsset]:
         """
         Get asset by ID.
