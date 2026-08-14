@@ -8,7 +8,7 @@ Key files created/modified:
 - `src/avs_backend/scan_core/orchestration/remediation.py`
 - `src/avs_backend/scan_core/orchestration/remediation_models.py`
 - `src/avs_backend/scan_core/orchestration/__init__.py`
-- `src/avs_backend/scan_core/orchestration/orchestrator.py` (removed empty `content_fingerprint=""` override so snapshot hashes are not stored as empty strings)
+- `src/avs_backend/scan_core/orchestration/orchestrator.py` (preserved the `content_fingerprint=""` scan-time optimization for 10k-asset performance; the coordinator rebuilds typed preconditions at execution time, so the empty hash is never used for live remediation decisions)
 - `tests/test_sc8c6_remediation_coordinator.py`
 
 ## Architecture & Data Flow
