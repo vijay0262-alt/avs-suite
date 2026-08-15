@@ -1,18 +1,24 @@
 /**
- * ValidationPanel.tsx — displays the result of a remediation validation.
+ * ValidationPanel.tsx — displays the result of a remediation validation and,
+ * when valid, the explicit approval step.
  *
- * If `valid` is false, execution is clearly blocked.  No Execute button is
- * rendered.
+ * The `Approve & Fix` button is disabled unless the validation is valid and a
+ * preview with an approval token is present.  No remediation is run without an
+ * explicit user approval.
  */
 import { Button } from '@avs/ui';
-import type { RemediationValidation } from './types';
+import type { RemediationPreview, RemediationValidation } from './types';
 
 export interface ValidationPanelProps {
   validation: RemediationValidation;
+  preview: RemediationPreview | null;
+  onApprove: () => void;
   onBack: () => void;
 }
 
-export function ValidationPanel({ validation, onBack }: ValidationPanelProps) {
+export function ValidationPanel({ validation, preview, onApprove, onBack }: ValidationPanelProps) {
+  const canApprove = validation.valid === true && preview !== null;
+
   return (
     <div className="space-y-5" data-testid="remediation-validation-panel">
       <div className="flex items-center justify-between">
@@ -35,7 +41,20 @@ export function ValidationPanel({ validation, onBack }: ValidationPanelProps) {
           className="rounded-[var(--avs-radius-md)] bg-semantic-danger/10 p-3 text-small text-semantic-danger"
           data-testid="validation-blocked-message"
         >
-          Execution is blocked. Review the warnings and validation status before continuing.
+          Validation failed / execution blocked. Review the warnings before continuing.
+        </div>
+      )}
+
+      {validation.valid && preview && (
+        <div
+          className="rounded-[var(--avs-radius-md)] bg-semantic-success/10 p-3 text-small text-semantic-success"
+          data-testid="validation-approval-section"
+        >
+          <div className="text-body font-semibold">Ready for approval</div>
+          <p className="mt-1 text-small">
+            {validation.total} action(s) reviewed, {validation.completed} ready to execute.
+          </p>
+          <p className="text-small">{preview.affected_targets.length} affected target(s).</p>
         </div>
       )}
 
@@ -97,6 +116,15 @@ export function ValidationPanel({ validation, onBack }: ValidationPanelProps) {
         <Button variant="secondary" onClick={onBack} data-testid="validation-back-btn">
           Back
         </Button>
+        {validation.valid && (
+          <Button
+            onClick={onApprove}
+            disabled={!canApprove}
+            data-testid="validation-approve-btn"
+          >
+            Approve & Fix
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 /**
- * Results / Remediation Preview tests — SC-8C8 Part 2B Phase 2.
+ * Results / Remediation Preview and Execution tests — SC-8C8 Part 2B Phase 3.
  *
- * Covers finding selection, preview generation, validation, and the
- * hard stop before any `scan_core.remediation.execute` or orchestrator call.
+ * Covers finding selection, preview generation, validation, explicit approval,
+ * live execution, status polling, cancellation, and terminal states.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
@@ -13,6 +13,7 @@ import { RPC_METHODS } from '@avs/shared/rpc';
 import type { ScanFinding } from '../types';
 
 const planId = 'plan-test-123';
+const executionId = 'exec-test-456';
 
 const actionableFinding: ScanFinding = {
   finding_id: 'f-1',
@@ -91,6 +92,56 @@ const baseStatistics = {
   rules_evaluated: 4,
 };
 
+const validPreview = {
+  request_id: 'req-1',
+  approval_token: 'token-1',
+  plan_id: planId,
+  total_actions: 1,
+  action_types: { delete: 1 },
+  affected_targets: [{ display_name: 'Junk temp files' }],
+  estimated_size: 1024,
+  safety_state_counts: { safe: 1 },
+  fixability_counts: { automatic: 1 },
+  backup_required: false,
+  rollback_supported: true,
+  warnings: [],
+  is_stale: false,
+  generated_at: '2026-01-01T00:00:00Z',
+};
+
+const validValidation = {
+  valid: true,
+  status: 'ok',
+  total: 1,
+  completed: 1,
+  failed: 0,
+  rejected: 0,
+  requires_review: 0,
+  dry_run: true,
+  warnings: [],
+  summary: 'All checks passed',
+};
+
+function makeExecution(status = 'executing' as string) {
+  return {
+    execution_id: executionId,
+    request_id: 'req-1',
+    plan_id: planId,
+    status,
+    total: 1,
+    completed: status === 'completed' ? 1 : 0,
+    failed: 0,
+    rejected: 0,
+    skipped: 0,
+    requires_review: 0,
+    cancelled: false,
+    dry_run: false,
+    started_at: '2026-01-01T00:00:00Z',
+    completed_at: status === 'completed' ? '2026-01-01T00:00:01Z' : undefined,
+    reason: undefined,
+  };
+}
+
 describe('ResultsView', () => {
   const mockCall = vi.fn();
 
@@ -101,41 +152,19 @@ describe('ResultsView', () => {
     });
     mockCall.mockImplementation((method: string) => {
       if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_PREPARE) {
-        return Promise.resolve({
-          ok: true,
-          preview: {
-            approval_token: 'token-1',
-            plan_id: planId,
-            total_actions: 1,
-            action_types: { delete: 1 },
-            affected_targets: [{ display_name: 'Junk temp files' }],
-            estimated_size: 1024,
-            safety_state_counts: { safe: 1 },
-            fixability_counts: { automatic: 1 },
-            backup_required: false,
-            rollback_supported: true,
-            warnings: [],
-            is_stale: false,
-            generated_at: '2026-01-01T00:00:00Z',
-          },
-        });
+        return Promise.resolve({ ok: true, preview: validPreview });
       }
       if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_VALIDATE) {
-        return Promise.resolve({
-          ok: true,
-          validation: {
-            valid: true,
-            status: 'ok',
-            total: 1,
-            completed: 1,
-            failed: 0,
-            rejected: 0,
-            requires_review: 0,
-            dry_run: true,
-            warnings: [],
-            summary: 'All checks passed',
-          },
-        });
+        return Promise.resolve({ ok: true, validation: validValidation });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE) {
+        return Promise.resolve({ ok: true, summary: makeExecution('completed') });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_STATUS) {
+        return Promise.resolve({ ok: true, status: makeExecution('completed') });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_CANCEL) {
+        return Promise.resolve({ ok: true, cancelled: true });
       }
       return Promise.reject(new Error(`Unknown method: ${method}`));
     });
@@ -272,7 +301,7 @@ describe('ResultsView', () => {
     expect(screen.getByText('Junk temp files')).toBeDefined();
   });
 
-  it('validate is called with the real planId', async () => {
+  it('validate is called with the real planId and leads to awaiting approval', async () => {
     render(
       <ResultsView
         moduleName="AI Smart Optimize"
@@ -296,9 +325,385 @@ describe('ResultsView', () => {
         expect.objectContaining({ plan_id: planId }),
       );
     });
+    await waitFor(() => {
+      expect(screen.getByTestId('results-view-awaiting-approval')).toBeDefined();
+    });
   });
 
-  it('stale/blocked validation displays safe failure UI', async () => {
+  it('validated plan displays explicit Approve & Fix button', async () => {
+    render(
+      <ResultsView
+        moduleName="AI Smart Optimize"
+        moduleIcon="SparklesIcon"
+        statistics={baseStatistics}
+        findings={baseFindings}
+        planId={planId}
+        onClose={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
+    fireEvent.click(screen.getByTestId('review-remediate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('preview-validate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+    });
+  });
+
+  it('execute is not called before approval', async () => {
+    render(
+      <ResultsView
+        moduleName="AI Smart Optimize"
+        moduleIcon="SparklesIcon"
+        statistics={baseStatistics}
+        findings={baseFindings}
+        planId={planId}
+        onClose={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
+    fireEvent.click(screen.getByTestId('review-remediate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTestId('preview-validate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+    });
+
+    const executeCalls = mockCall.mock.calls.filter(
+      (call) => call[0] === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE,
+    );
+    expect(executeCalls).toHaveLength(0);
+  });
+
+  it('clicking Approve & Fix calls scan_core.remediation.execute with mode live', async () => {
+    render(
+      <ResultsView
+        moduleName="AI Smart Optimize"
+        moduleIcon="SparklesIcon"
+        statistics={baseStatistics}
+        findings={baseFindings}
+        planId={planId}
+        onClose={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
+    fireEvent.click(screen.getByTestId('review-remediate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('preview-validate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTestId('validation-approve-btn'));
+    await waitFor(() => {
+      expect(mockCall).toHaveBeenCalledWith(
+        RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE,
+        expect.objectContaining({
+          plan_id: planId,
+          request_id: validPreview.request_id,
+          approval_token: validPreview.approval_token,
+          mode: 'live',
+        }),
+      );
+    });
+  });
+
+  it('after execute, status polling starts', async () => {
+    mockCall.mockImplementation((method: string) => {
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_PREPARE) {
+        return Promise.resolve({ ok: true, preview: validPreview });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_VALIDATE) {
+        return Promise.resolve({ ok: true, validation: validValidation });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE) {
+        return Promise.resolve({ ok: true, summary: makeExecution('executing') });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_STATUS) {
+        return Promise.resolve({ ok: true, status: makeExecution('completed') });
+      }
+      return Promise.reject(new Error(`Unknown method: ${method}`));
+    });
+
+    render(
+      <ResultsView
+        moduleName="AI Smart Optimize"
+        moduleIcon="SparklesIcon"
+        statistics={baseStatistics}
+        findings={baseFindings}
+        planId={planId}
+        onClose={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
+    fireEvent.click(screen.getByTestId('review-remediate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('preview-validate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTestId('validation-approve-btn'));
+    await waitFor(() => {
+      expect(mockCall).toHaveBeenCalledWith(
+        RPC_METHODS.SCAN_CORE_REMEDIATION_STATUS,
+        expect.objectContaining({ execution_id: executionId }),
+      );
+    });
+  });
+
+  it('progress is rendered from backend status', async () => {
+    mockCall.mockImplementation((method: string) => {
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_PREPARE) {
+        return Promise.resolve({ ok: true, preview: validPreview });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_VALIDATE) {
+        return Promise.resolve({ ok: true, validation: validValidation });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE) {
+        return Promise.resolve({ ok: true, summary: makeExecution('executing') });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_STATUS) {
+        return Promise.resolve({
+          ok: true,
+          status: {
+            ...makeExecution('executing'),
+            completed: 2,
+            total: 5,
+            failed: 1,
+            rejected: 0,
+            skipped: 0,
+            requires_review: 1,
+          },
+        });
+      }
+      return Promise.reject(new Error(`Unknown method: ${method}`));
+    });
+
+    render(
+      <ResultsView
+        moduleName="AI Smart Optimize"
+        moduleIcon="SparklesIcon"
+        statistics={baseStatistics}
+        findings={baseFindings}
+        planId={planId}
+        onClose={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
+    fireEvent.click(screen.getByTestId('review-remediate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('preview-validate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTestId('validation-approve-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('execution-progress-panel')).toBeDefined();
+    });
+    expect(screen.getByTestId('execution-completed-count').textContent).toBe('2 / 5');
+    expect(screen.getByTestId('execution-failed-count').textContent).toBe('1');
+    expect(screen.getByTestId('execution-review-count').textContent).toBe('1');
+  });
+
+  it('scan_core.remediation.cancel is called by cancel button', async () => {
+    let statusCount = 0;
+    mockCall.mockImplementation((method: string) => {
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_PREPARE) {
+        return Promise.resolve({ ok: true, preview: validPreview });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_VALIDATE) {
+        return Promise.resolve({ ok: true, validation: validValidation });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE) {
+        return Promise.resolve({ ok: true, summary: makeExecution('executing') });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_STATUS) {
+        statusCount += 1;
+        return Promise.resolve({
+          ok: true,
+          status: statusCount >= 2 ? { ...makeExecution('cancelled'), cancelled: true } : makeExecution('executing'),
+        });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_CANCEL) {
+        return Promise.resolve({ ok: true, cancelled: true });
+      }
+      return Promise.reject(new Error(`Unknown method: ${method}`));
+    });
+
+    render(
+      <ResultsView
+        moduleName="AI Smart Optimize"
+        moduleIcon="SparklesIcon"
+        statistics={baseStatistics}
+        findings={baseFindings}
+        planId={planId}
+        onClose={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
+    fireEvent.click(screen.getByTestId('review-remediate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('preview-validate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTestId('validation-approve-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('execution-cancel-btn')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('execution-cancel-btn'));
+    await waitFor(() => {
+      expect(mockCall).toHaveBeenCalledWith(
+        RPC_METHODS.SCAN_CORE_REMEDIATION_CANCEL,
+        expect.objectContaining({ execution_id: executionId }),
+      );
+    });
+  });
+
+  it('cancellation eventually leads to cancelled terminal state', async () => {
+    let statusCount = 0;
+    mockCall.mockImplementation((method: string) => {
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_PREPARE) {
+        return Promise.resolve({ ok: true, preview: validPreview });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_VALIDATE) {
+        return Promise.resolve({ ok: true, validation: validValidation });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE) {
+        return Promise.resolve({ ok: true, summary: makeExecution('executing') });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_STATUS) {
+        statusCount += 1;
+        return Promise.resolve({
+          ok: true,
+          status: statusCount >= 2 ? { ...makeExecution('cancelled'), cancelled: true } : makeExecution('executing'),
+        });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_CANCEL) {
+        return Promise.resolve({ ok: true, cancelled: true });
+      }
+      return Promise.reject(new Error(`Unknown method: ${method}`));
+    });
+
+    render(
+      <ResultsView
+        moduleName="AI Smart Optimize"
+        moduleIcon="SparklesIcon"
+        statistics={baseStatistics}
+        findings={baseFindings}
+        planId={planId}
+        onClose={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
+    fireEvent.click(screen.getByTestId('review-remediate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('preview-validate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTestId('validation-approve-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('execution-cancel-btn')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('execution-cancel-btn'));
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('terminal-state-cancelled')).toBeDefined();
+      },
+      { timeout: 2000 },
+    );
+  });
+
+  it('completed terminal state renders correctly', async () => {
+    render(
+      <ResultsView
+        moduleName="AI Smart Optimize"
+        moduleIcon="SparklesIcon"
+        statistics={baseStatistics}
+        findings={baseFindings}
+        planId={planId}
+        onClose={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
+    fireEvent.click(screen.getByTestId('review-remediate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('preview-validate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('validation-approve-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('terminal-state-completed')).toBeDefined();
+    });
+  });
+
+  it('partial, failed, and cancelled states render correctly', async () => {
+    for (const endState of ['partial', 'failed', 'cancelled'] as const) {
+      cleanup();
+      mockCall.mockImplementation((method: string) => {
+        if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_PREPARE) {
+          return Promise.resolve({ ok: true, preview: validPreview });
+        }
+        if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_VALIDATE) {
+          return Promise.resolve({ ok: true, validation: validValidation });
+        }
+        if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE) {
+          return Promise.resolve({ ok: true, summary: { ...makeExecution(endState), cancelled: endState === 'cancelled' } });
+        }
+        return Promise.reject(new Error(`Unknown method: ${method}`));
+      });
+
+      const { unmount } = render(
+        <ResultsView
+          moduleName="AI Smart Optimize"
+          moduleIcon="SparklesIcon"
+          statistics={baseStatistics}
+          findings={baseFindings}
+          planId={planId}
+          onClose={() => {}}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
+      fireEvent.click(screen.getByTestId('review-remediate-btn'));
+      await waitFor(() => {
+        expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+      });
+      fireEvent.click(screen.getByTestId('preview-validate-btn'));
+      await waitFor(() => {
+        expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+      });
+      fireEvent.click(screen.getByTestId('validation-approve-btn'));
+      await waitFor(() => {
+        expect(screen.getByTestId(`terminal-state-${endState}`)).toBeDefined();
+      });
+      unmount();
+    }
+  });
+
+  it('stale/blocked validation keeps Approve & Fix disabled', async () => {
     mockCall.mockImplementation((method: string) => {
       if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_VALIDATE) {
         return Promise.resolve({
@@ -321,19 +726,9 @@ describe('ResultsView', () => {
         return Promise.resolve({
           ok: true,
           preview: {
-            approval_token: 'token-2',
-            plan_id: planId,
-            total_actions: 1,
-            action_types: { delete: 1 },
-            affected_targets: ['Stale target'],
-            estimated_size: 0,
-            safety_state_counts: { stale: 1 },
-            fixability_counts: { automatic: 1 },
-            backup_required: false,
-            rollback_supported: true,
-            warnings: ['Preview is stale'],
+            ...validPreview,
             is_stale: true,
-            generated_at: '2026-01-01T00:00:00Z',
+            warnings: ['Preview is stale'],
           },
         });
       }
@@ -355,15 +750,33 @@ describe('ResultsView', () => {
     await waitFor(() => {
       expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
     });
-
     fireEvent.click(screen.getByTestId('preview-validate-btn'));
     await waitFor(() => {
       expect(screen.getByTestId('validation-blocked-message')).toBeDefined();
     });
-    expect(screen.getByText(/Execution is blocked/)).toBeDefined();
+    const approveBtn = screen.queryByTestId('validation-approve-btn') as HTMLButtonElement | null;
+    expect(approveBtn).toBeNull();
+
+    const executeCalls = mockCall.mock.calls.filter(
+      (call) => call[0] === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE,
+    );
+    expect(executeCalls).toHaveLength(0);
   });
 
-  it('never calls execute or orchestrator.optimize', async () => {
+  it('execute RPC failure does not display completed', async () => {
+    mockCall.mockImplementation((method: string) => {
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE) {
+        return Promise.resolve({ ok: false, error: 'approval token expired' });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_PREPARE) {
+        return Promise.resolve({ ok: true, preview: validPreview });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_VALIDATE) {
+        return Promise.resolve({ ok: true, validation: validValidation });
+      }
+      return Promise.reject(new Error(`Unknown method: ${method}`));
+    });
+
     render(
       <ResultsView
         moduleName="AI Smart Optimize"
@@ -377,16 +790,147 @@ describe('ResultsView', () => {
     fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
     fireEvent.click(screen.getByTestId('review-remediate-btn'));
     await waitFor(() => {
-      expect(mockCall).toHaveBeenCalledWith(
-        RPC_METHODS.SCAN_CORE_REMEDIATION_PREPARE,
-        expect.any(Object),
-      );
+      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('preview-validate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('validation-approve-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('results-view-error')).toBeDefined();
+    });
+    expect(screen.queryByTestId('terminal-state-completed')).toBeNull();
+  });
+
+  it('status polling failure does not fabricate success', async () => {
+    mockCall.mockImplementation((method: string) => {
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_PREPARE) {
+        return Promise.resolve({ ok: true, preview: validPreview });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_VALIDATE) {
+        return Promise.resolve({ ok: true, validation: validValidation });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE) {
+        return Promise.resolve({ ok: true, summary: makeExecution('executing') });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_STATUS) {
+        return Promise.resolve({ ok: false, error: 'status unavailable' });
+      }
+      return Promise.reject(new Error(`Unknown method: ${method}`));
     });
 
-    const executeCalls = mockCall.mock.calls.filter(
-      (call) => call[0] === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE,
+    render(
+      <ResultsView
+        moduleName="AI Smart Optimize"
+        moduleIcon="SparklesIcon"
+        statistics={baseStatistics}
+        findings={baseFindings}
+        planId={planId}
+        onClose={() => {}}
+      />,
     );
-    expect(executeCalls).toHaveLength(0);
+    fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
+    fireEvent.click(screen.getByTestId('review-remediate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('preview-validate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('validation-approve-btn'));
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('results-view-error')).toBeDefined();
+      },
+      { timeout: 2000 },
+    );
+    expect(screen.queryByTestId('terminal-state-completed')).toBeNull();
+  });
+
+  it('Approve & Fix click is prevented from double-execution', async () => {
+    mockCall.mockImplementation((method: string) => {
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE) {
+        // Deliberately slow so that the second click could overlap.
+        return new Promise((resolve) =>
+          setTimeout(() => resolve({ ok: true, summary: makeExecution('executing') }), 100),
+        );
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_PREPARE) {
+        return Promise.resolve({ ok: true, preview: validPreview });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_VALIDATE) {
+        return Promise.resolve({ ok: true, validation: validValidation });
+      }
+      return Promise.reject(new Error(`Unknown method: ${method}`));
+    });
+
+    render(
+      <ResultsView
+        moduleName="AI Smart Optimize"
+        moduleIcon="SparklesIcon"
+        statistics={baseStatistics}
+        findings={baseFindings}
+        planId={planId}
+        onClose={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
+    fireEvent.click(screen.getByTestId('review-remediate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('preview-validate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTestId('validation-approve-btn'));
+    fireEvent.click(screen.getByTestId('validation-approve-btn'));
+
+    await waitFor(
+      () => {
+        const executeCalls = mockCall.mock.calls.filter(
+          (call) => call[0] === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE,
+        );
+        expect(executeCalls.length).toBe(1);
+      },
+      { timeout: 2000 },
+    );
+  });
+
+  it('never calls disallowed methods', async () => {
+    render(
+      <ResultsView
+        moduleName="AI Smart Optimize"
+        moduleIcon="SparklesIcon"
+        statistics={baseStatistics}
+        findings={baseFindings}
+        planId={planId}
+        onClose={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
+    fireEvent.click(screen.getByTestId('review-remediate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('preview-validate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+    });
+
+    const disallowed = [
+      RPC_METHODS.ORCHESTRATOR_OPTIMIZE,
+      RPC_METHODS.ORCHESTRATOR_FULL_ASYNC,
+      RPC_METHODS.SECURITY_REMEDIATION_EXECUTE,
+      RPC_METHODS.SECURITY_REMEDIATION_ROLLBACK,
+    ];
+    for (const method of disallowed) {
+      const calls = mockCall.mock.calls.filter((call) => call[0] === method);
+      expect(calls).toHaveLength(0);
+    }
     expect(orchestratorService.optimize).not.toHaveBeenCalled();
     expect(orchestratorService.fullAsync).not.toHaveBeenCalled();
   });

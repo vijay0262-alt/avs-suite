@@ -23,12 +23,19 @@ export { remediationService } from './remediation.service';
 export type { RemediationService } from './remediation.service';
 
 export { useResults } from './useResults';
-export type { UseResultsOptions, UseResultsReturn } from './useResults';
+export type { UseResultsOptions, UseResultsReturn, ResultsStep } from './useResults';
 
 export { ResultsView, type ResultsViewProps } from './ResultsView';
 export { FindingsList, type FindingsListProps } from './FindingsList';
 export { PreviewPanel, type PreviewPanelProps } from './PreviewPanel';
 export { ValidationPanel, type ValidationPanelProps } from './ValidationPanel';
+export { ExecutionProgressPanel, type ExecutionProgressPanelProps } from './ExecutionProgressPanel';
+export { TerminalStatePanel, type TerminalStatePanelProps } from './TerminalStatePanel';
+export {
+  RollbackConfirmationPanel,
+  type RollbackConfirmationPanelProps,
+} from './RollbackConfirmationPanel';
+export { RollbackResultPanel, type RollbackResultPanelProps } from './RollbackResultPanel';
 
 export type {
   ScanFinding,
@@ -37,4 +44,15 @@ export type {
   RemediationPrepareResponse,
   RemediationValidation,
   RemediationValidateResponse,
+  ExecutionStatus,
+  RemediationExecution,
+  RemediationExecutionStatus,
+  RemediationExecuteResponse,
+  RemediationStatusResponse,
+  RemediationCancelResponse,
+  RollbackResult,
+  RollbackSummary,
+  RemediationRollbackResponse,
+  ExecutionStep,
+  RollbackStep,
 } from './types';

@@ -1,8 +1,9 @@
 /**
  * ResultsView.tsx — shared component for scan results, remediation preview,
- * and validation.
+ * validation/approval, and live execution.
  *
- * Stops before execution: it never calls `scan_core.remediation.execute`.
+ * The only `scan_core.remediation.execute` call is triggered by the explicit
+ * `Approve & Fix` button inside `useResults.approve`.
  */
 import { Card, Button, LoadingState } from '@avs/ui';
 import { ShieldCheckIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
@@ -10,6 +11,10 @@ import { useResults } from './useResults';
 import { FindingsList } from './FindingsList';
 import { PreviewPanel } from './PreviewPanel';
 import { ValidationPanel } from './ValidationPanel';
+import { ExecutionProgressPanel } from './ExecutionProgressPanel';
+import { TerminalStatePanel } from './TerminalStatePanel';
+import { RollbackConfirmationPanel } from './RollbackConfirmationPanel';
+import { RollbackResultPanel } from './RollbackResultPanel';
 import type { ScanFinding, ScanStatistics } from './types';
 
 export interface ResultsViewProps {
@@ -52,12 +57,23 @@ export function ResultsView({
     selectedIds,
     preview,
     validation,
+    executionStatus,
+    isCancelling,
+    isRollbacking,
+    rollbackStep,
+    rollbackSummary,
+    rollbackError,
     error,
     toggleFinding,
     selectAll,
     clearSelection,
     prepare,
     validate,
+    approve,
+    cancelExecution,
+    initiateRollback,
+    confirmRollback,
+    cancelRollback,
     goBack,
   } = useResults({ planId, findings, statistics });
 
@@ -88,10 +104,99 @@ export function ResultsView({
     );
   }
 
-  if (step === 'validated' && validation) {
+  if (step === 'awaiting_approval' && validation) {
     return (
-      <Card variant="glass" className="p-6" data-testid="results-view-validated">
-        <ValidationPanel validation={validation} onBack={goBack} />
+      <Card variant="glass" className="p-6" data-testid="results-view-awaiting-approval">
+        <ValidationPanel
+          validation={validation}
+          preview={preview}
+          onApprove={approve}
+          onBack={goBack}
+        />
+      </Card>
+    );
+  }
+
+  if (step === 'executing' && executionStatus) {
+    return (
+      <Card variant="glass" className="p-6" data-testid="results-view-executing">
+        <ExecutionProgressPanel
+          status={executionStatus}
+          onCancel={cancelExecution}
+          cancelling={isCancelling}
+        />
+      </Card>
+    );
+  }
+
+  const isTerminal =
+    step === 'completed' || step === 'partial' || step === 'failed' || step === 'cancelled';
+
+  if (rollbackStep === 'confirm' && executionStatus && preview) {
+    return (
+      <Card variant="glass" className="p-6" data-testid="results-view-rollback-confirm">
+        <RollbackConfirmationPanel
+          executionId={executionStatus.execution_id}
+          completedCount={executionStatus.completed}
+          totalCount={executionStatus.total}
+          affectedTargets={preview.affected_targets}
+          onConfirm={confirmRollback}
+          onCancel={cancelRollback}
+        />
+      </Card>
+    );
+  }
+
+  if (rollbackStep === 'rollbacking' || isRollbacking) {
+    return (
+      <Card variant="glass" className="p-8" data-testid="results-view-rollbacking">
+        <LoadingState message="Reverting changes..." />
+      </Card>
+    );
+  }
+
+  if (
+    rollbackStep === 'success' ||
+    rollbackStep === 'partial' ||
+    rollbackStep === 'failed' ||
+    rollbackStep === 'unavailable'
+  ) {
+    return (
+      <Card variant="glass" className="p-6" data-testid={`results-view-rollback-${rollbackStep}`}>
+        <RollbackResultPanel
+          summary={rollbackSummary}
+          step={rollbackStep}
+          rollbackError={rollbackError}
+          onBack={goBack}
+        />
+      </Card>
+    );
+  }
+
+  if (isTerminal) {
+    if (executionStatus) {
+      const rollbackAvailable =
+        executionStatus.completed > 0 &&
+        preview?.rollback_supported === true;
+      return (
+        <Card variant="glass" className="p-6" data-testid={`results-view-${step}`}>
+          <TerminalStatePanel
+            status={executionStatus}
+            onBack={goBack}
+            onRollback={initiateRollback}
+            rollbackAvailable={rollbackAvailable}
+          />
+        </Card>
+      );
+    }
+    return (
+      <Card variant="glass" className="p-8" data-testid="results-view-error">
+        <div className="text-center space-y-4">
+          <h3 className="text-lg font-semibold text-text-primary">Execution State Unavailable</h3>
+          <Button variant="secondary" onClick={goBack} data-testid="error-back-btn">
+            Back
+          </Button>
+        </div>
       </Card>
     );
   }

@@ -466,4 +466,181 @@ describe('ScanView', () => {
       { timeout: 5000 },
     );
   });
+
+  it('full flow reaches approval and only calls execute after explicit Approve & Fix', async () => {
+    mockCall.mockImplementation((method: string) => {
+      if (method === RPC_METHODS.SCAN_CORE_SCAN_FULL) {
+        return Promise.resolve({
+          ok: true,
+          session_id: 'test-session',
+          started_at: new Date().toISOString(),
+        });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_SCAN_STATUS) {
+        return Promise.resolve(currentStatus);
+      }
+      if (method === RPC_METHODS.SCAN_CORE_SCAN_RESULT) {
+        return Promise.resolve(mockResult);
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_PREPARE) {
+        return Promise.resolve({
+          ok: true,
+          preview: {
+            request_id: 'req-flow',
+            approval_token: 'token-flow',
+            plan_id: 'plan-test',
+            total_actions: 1,
+            action_types: { delete: 1 },
+            affected_targets: [{ display_name: 'Junk file' }],
+            estimated_size: 1024,
+            safety_state_counts: { safe: 1 },
+            fixability_counts: { automatic: 1 },
+            backup_required: false,
+            rollback_supported: true,
+            warnings: [],
+            is_stale: false,
+            generated_at: '2026-01-01T00:00:00Z',
+          },
+        });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_VALIDATE) {
+        return Promise.resolve({
+          ok: true,
+          validation: {
+            valid: true,
+            status: 'ok',
+            total: 1,
+            completed: 1,
+            failed: 0,
+            rejected: 0,
+            requires_review: 0,
+            dry_run: true,
+            warnings: [],
+            summary: 'All checks passed',
+          },
+        });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE) {
+        return Promise.resolve({
+          ok: true,
+          summary: {
+            execution_id: 'exec-flow',
+            request_id: 'req-flow',
+            plan_id: 'plan-test',
+            status: 'completed',
+            total: 1,
+            completed: 1,
+            failed: 0,
+            rejected: 0,
+            skipped: 0,
+            requires_review: 0,
+            cancelled: false,
+            dry_run: false,
+            started_at: '2026-01-01T00:00:00Z',
+            completed_at: '2026-01-01T00:00:01Z',
+          },
+        });
+      }
+      return Promise.reject(new Error(`Unknown method: ${method}`));
+    });
+
+    render(<ScanView module="security" mode="full" onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('scan-start-btn'));
+
+    mockResult = {
+      ok: true,
+      result: {
+        scan_id: 'test-session',
+        findings_count: 1,
+        action_plan_id: 'plan-test',
+        elapsed_time_ms: 100,
+        statistics: {
+          assets_discovered: 2,
+          assets_evaluated: 2,
+          matches: 1,
+          rules_evaluated: 1,
+        },
+        findings: [
+          {
+            finding_id: 'f-flow',
+            display_name: 'Junk file',
+            rule_id: 'junk.file',
+            rule_category: 'junk',
+            severity: 'low',
+            confidence: 0.9,
+            safety: 'safe',
+            reason: 'Safe to remove',
+            recommended_action: 'delete',
+            estimated_size: 1024,
+            is_blocked: false,
+            requires_review: false,
+            is_actionable: true,
+            canonical_path: 'C:\\junk.txt',
+          },
+        ],
+      },
+    };
+    currentStatus = {
+      ...currentStatus,
+      completed: true,
+      progress: {
+        ...currentStatus.progress,
+        completion_percent: 100,
+        findings: 1,
+      },
+    };
+
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('unified-scan-view-complete')).toBeDefined();
+      },
+      { timeout: 5000 },
+    );
+    await waitFor(
+      () => {
+        expect(screen.getByText('Review & Remediate')).toBeDefined();
+      },
+      { timeout: 5000 },
+    );
+
+    fireEvent.click(screen.getByText('Review & Remediate'));
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('results-view')).toBeDefined();
+      },
+      { timeout: 5000 },
+    );
+
+    // Preview/validate are triggered by user action in ResultsView.
+    fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
+    fireEvent.click(screen.getByTestId('review-remediate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('preview-validate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+    });
+
+    const executeBeforeApproval = mockCall.mock.calls.filter(
+      (call) => call[0] === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE,
+    );
+    expect(executeBeforeApproval).toHaveLength(0);
+
+    fireEvent.click(screen.getByTestId('validation-approve-btn'));
+    await waitFor(() => {
+      expect(mockCall).toHaveBeenCalledWith(
+        RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE,
+        expect.objectContaining({
+          plan_id: 'plan-test',
+          request_id: 'req-flow',
+          approval_token: 'token-flow',
+          mode: 'live',
+        }),
+      );
+    });
+
+    expect(orchestratorService.optimize).not.toHaveBeenCalled();
+    expect(orchestratorService.fullAsync).not.toHaveBeenCalled();
+  });
 });
