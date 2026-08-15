@@ -5,13 +5,15 @@
  * Delegates the live backend wiring to `useScan` and renders the common
  * `UnifiedScanView`.  When idle it shows a single safe Start Scan button.
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, Button } from '@avs/ui';
 import { BoltIcon } from '@heroicons/react/24/outline';
 import { UnifiedScanView } from '../unified-scan/components/UnifiedScanView';
 import type { UnifiedScanAction } from '../unified-scan/unifiedScanTypes';
 import { useScan } from './useScan';
 import { getScanConfig } from './moduleConfigs';
+import { ResultsView } from './ResultsView';
+import type { ScanFinding, ScanStatistics } from './types';
 
 export interface ScanViewProps {
   module: 'protection' | 'optimize' | 'security';
@@ -24,9 +26,26 @@ export interface ScanViewProps {
 export function ScanView({ module, mode = 'full', onClose, className, buttonLabel }: ScanViewProps) {
   const config = useMemo(() => getScanConfig(module), [module]);
   const scan = useScan({ mode, config });
+  const [showResults, setShowResults] = useState(false);
+
+  const canReview =
+    scan.step === 'complete' &&
+    Boolean(scan.report?.planId) &&
+    (scan.report?.issuesFound ?? 0) > 0;
 
   const actions: UnifiedScanAction[] = useMemo(
     () => [
+      ...(canReview
+        ? [
+            {
+              id: 'review-remediate',
+              label: 'Review & Remediate',
+              icon: 'BoltIcon',
+              variant: 'primary' as const,
+              action: () => setShowResults(true),
+            },
+          ]
+        : []),
       {
         id: 'close-scan',
         label: 'Close',
@@ -35,8 +54,46 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
         action: onClose,
       },
     ],
-    [onClose],
+    [onClose, canReview],
   );
+
+  const resultsClose = useMemo(
+    () => () => {
+      setShowResults(false);
+      scan.reset();
+    },
+    [scan],
+  );
+
+  const findings = useMemo<ScanFinding[]>(() => {
+    const raw = scan.result?.findings;
+    return Array.isArray(raw) ? (raw as ScanFinding[]) : [];
+  }, [scan.result]);
+
+  const statistics = useMemo<ScanStatistics>(() => {
+    const raw = scan.result?.statistics;
+    return typeof raw === 'object' && raw !== null ? (raw as ScanStatistics) : {};
+  }, [scan.result]);
+
+  const planId = scan.report?.planId ?? (scan.result?.action_plan_id as string | undefined);
+
+  if (scan.step === 'complete' && showResults) {
+    return (
+      <ResultsView
+        moduleName={config.moduleName}
+        moduleIcon={config.moduleIcon}
+        statistics={statistics}
+        findings={findings}
+        planId={planId}
+        onClose={resultsClose}
+        onRestart={() => {
+          setShowResults(false);
+          scan.reset();
+          void scan.startScan();
+        }}
+      />
+    );
+  }
 
   if (scan.step === 'idle') {
     return (

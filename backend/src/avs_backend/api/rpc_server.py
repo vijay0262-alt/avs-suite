@@ -71,6 +71,7 @@ _FEATURE_MODULES = [
     "avs_backend.system_restore",
     "avs_backend.orchestrator",
     "avs_backend.full_system_scan",
+    "avs_backend.scan_core_rpc",
 ]
 
 # Track which modules have finished importing (success or failure)
@@ -106,6 +107,7 @@ def _build_method_to_module_map() -> None:
         "realtime": "avs_backend.realtime_protection",
         "restore": "avs_backend.system_restore",
         "scheduler": "avs_backend.scheduler",
+        "scan_core": "avs_backend.scan_core_rpc",
     }
     _METHOD_TO_MODULE.update(_explicit)
 

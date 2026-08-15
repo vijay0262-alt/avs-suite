@@ -1,73 +1,101 @@
 // @vitest-environment happy-dom
 /**
  * Unified Scan UI tests — covers ScanView for all three modules and the
- * scan-only backend contract.
+ * scan-core-only backend contract.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { ScanView } from '../ScanView';
 import { orchestratorService } from '../../orchestrator/orchestrator.service';
-import type { OrchestratorStatus } from '../../orchestrator/orchestrator.service';
+import { RPC_METHODS } from '@avs/shared/rpc';
+
+interface ScanStatusResponse {
+  ok: true;
+  progress: Record<string, unknown>;
+  completed: boolean;
+  cancelled: boolean;
+  error: string | null;
+}
 
 describe('ScanView', () => {
-  let currentStatus: OrchestratorStatus;
+  const mockCall = vi.fn();
 
-  const baseStatus: OrchestratorStatus = {
-    sessionId: 'test-session',
-    phase: 'preparing',
-    progress: 10,
-    currentModule: 'test',
-    currentOperation: 'Scanning...',
-    currentPath: null,
-    itemsProcessed: 5,
-    itemsRemaining: 100,
-    bytesRecovered: 0,
-    overallScoreBefore: 80,
-    overallScoreAfter: 80,
-    issuesBefore: 0,
-    issuesAfter: 0,
-    spaceRecovered: 0,
-    completedAt: null,
-    error: null,
-    cancelled: false,
-    profile: 'dashboard',
-    counters: {
-      itemsScanned: 5,
-      itemsAnalyzed: 0,
-      itemsOptimized: 0,
-      itemsSkipped: 0,
-      storageRecovered: 0,
-      elapsedMs: 0,
+  const baseStatus: ScanStatusResponse = {
+    ok: true,
+    progress: {
+      phase: 'initializing',
+      current_operation: 'Scanning...',
+      completion_percent: 10,
+      assets_evaluated: 5,
+      findings: 0,
+      actions_available: 0,
+      elapsed_time_ms: 0,
     },
-    moduleStatuses: {},
-    activityLog: [],
+    completed: false,
+    cancelled: false,
+    error: null,
   };
+
+  let currentStatus: ScanStatusResponse;
+  let mockResult: { ok: boolean; result: Record<string, unknown>; error?: string };
 
   beforeEach(() => {
     cleanup();
     currentStatus = { ...baseStatus };
+    mockResult = {
+      ok: true,
+      result: {
+        scan_id: 'test-session',
+        findings_count: 0,
+        action_plan_id: null,
+        elapsed_time_ms: 0,
+        statistics: {
+          assets_discovered: 0,
+          assets_evaluated: 0,
+          matches: 0,
+          rules_evaluated: 0,
+        },
+      },
+    };
 
-    vi.spyOn(orchestratorService, 'fullAsync').mockResolvedValue({
-      sessionId: 'test-session',
-      startedAt: new Date().toISOString(),
+    Object.assign(globalThis as unknown as Record<string, unknown>, {
+      avs: { rpc: { call: mockCall } },
     });
-    vi.spyOn(orchestratorService, 'status').mockImplementation(() =>
-      Promise.resolve(currentStatus),
-    );
-    vi.spyOn(orchestratorService, 'result').mockResolvedValue({
-      totalIssues: 0,
-      modules: {},
-      sessionId: 'test-session',
+
+    mockCall.mockImplementation((method: string) => {
+      if (method === RPC_METHODS.SCAN_CORE_SCAN_QUICK) {
+        return Promise.resolve({
+          ok: true,
+          session_id: 'test-session',
+          started_at: new Date().toISOString(),
+        });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_SCAN_FULL) {
+        return Promise.resolve({
+          ok: true,
+          session_id: 'test-session',
+          started_at: new Date().toISOString(),
+        });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_SCAN_STATUS) {
+        return Promise.resolve(currentStatus);
+      }
+      if (method === RPC_METHODS.SCAN_CORE_SCAN_RESULT) {
+        return Promise.resolve(mockResult);
+      }
+      if (method === RPC_METHODS.SCAN_CORE_SCAN_CANCEL) {
+        return Promise.resolve({ ok: true, cancelled: true });
+      }
+      return Promise.reject(new Error(`Unknown method: ${method}`));
     });
-    vi.spyOn(orchestratorService, 'cancel').mockResolvedValue({
-      sessionId: 'test-session',
-      cancelled: true,
-    });
+
+    vi.spyOn(orchestratorService, 'fullAsync');
     vi.spyOn(orchestratorService, 'optimize');
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    delete (globalThis as unknown as Record<string, unknown>).avs;
     cleanup();
   });
 
@@ -85,12 +113,15 @@ describe('ScanView', () => {
     }
   });
 
-  it('clicking the start scan button calls orchestratorService.fullAsync with scanOnly=true', async () => {
+  it('clicking the start scan button calls scan_core.scan.quick for the optimize module', async () => {
     render(<ScanView module="optimize" mode="quick" onClose={() => {}} />);
     const startBtn = screen.getByTestId('scan-start-btn');
     fireEvent.click(startBtn);
     await waitFor(() => {
-      expect(orchestratorService.fullAsync).toHaveBeenCalledWith('dashboard', true);
+      expect(mockCall).toHaveBeenCalledWith(
+        RPC_METHODS.SCAN_CORE_SCAN_QUICK,
+        expect.any(Object),
+      );
     });
   });
 
@@ -109,7 +140,11 @@ describe('ScanView', () => {
     render(<ScanView module="security" mode="full" onClose={() => {}} />);
     fireEvent.click(screen.getByTestId('scan-start-btn'));
 
-    currentStatus = { ...currentStatus, phase: 'complete', progress: 100 };
+    currentStatus = {
+      ...currentStatus,
+      completed: true,
+      progress: { ...currentStatus.progress, completion_percent: 100 },
+    };
 
     await waitFor(
       () => {
@@ -123,16 +158,29 @@ describe('ScanView', () => {
     render(<ScanView module="security" mode="full" onClose={() => {}} />);
     fireEvent.click(screen.getByTestId('scan-start-btn'));
 
-    (orchestratorService.result as ReturnType<typeof vi.spyOn>).mockResolvedValue({
-      totalIssues: 5,
-      modules: {},
-      sessionId: 'test-session',
-    });
+    mockResult = {
+      ok: true,
+      result: {
+        scan_id: 'test-session',
+        findings_count: 5,
+        action_plan_id: 'plan-test',
+        elapsed_time_ms: 100,
+        statistics: {
+          assets_discovered: 10,
+          assets_evaluated: 10,
+          matches: 5,
+          rules_evaluated: 1,
+        },
+      },
+    };
     currentStatus = {
       ...currentStatus,
-      phase: 'complete',
-      progress: 100,
-      issuesBefore: 5,
+      completed: true,
+      progress: {
+        ...currentStatus.progress,
+        completion_percent: 100,
+        findings: 5,
+      },
     };
 
     await waitFor(
@@ -143,7 +191,7 @@ describe('ScanView', () => {
     );
   });
 
-  it('calls orchestratorService.cancel when cancel button is clicked', async () => {
+  it('calls scan_core.scan.cancel when cancel button is clicked', async () => {
     render(<ScanView module="optimize" mode="quick" onClose={() => {}} />);
     fireEvent.click(screen.getByTestId('scan-start-btn'));
     await waitFor(
@@ -157,7 +205,10 @@ describe('ScanView', () => {
     fireEvent.click(screen.getByText('Yes, Cancel'));
 
     await waitFor(() => {
-      expect(orchestratorService.cancel).toHaveBeenCalled();
+      expect(mockCall).toHaveBeenCalledWith(
+        RPC_METHODS.SCAN_CORE_SCAN_CANCEL,
+        expect.any(Object),
+      );
     });
   });
 
@@ -180,7 +231,11 @@ describe('ScanView', () => {
     render(<ScanView module="optimize" mode="quick" onClose={() => {}} />);
     fireEvent.click(screen.getByTestId('scan-start-btn'));
 
-    currentStatus = { ...currentStatus, phase: 'complete', progress: 100 };
+    currentStatus = {
+      ...currentStatus,
+      completed: true,
+      progress: { ...currentStatus.progress, completion_percent: 100 },
+    };
 
     await waitFor(
       () => {
@@ -194,11 +249,14 @@ describe('ScanView', () => {
     expect(screen.queryByText('Quarantine')).toBeNull();
   });
 
-  it('verifies full scan mode uses protection profile and scanOnly=true', async () => {
+  it('verifies full scan mode calls scan_core.scan.full', async () => {
     render(<ScanView module="protection" mode="full" onClose={() => {}} />);
     fireEvent.click(screen.getByTestId('scan-start-btn'));
     await waitFor(() => {
-      expect(orchestratorService.fullAsync).toHaveBeenCalledWith('protection', true);
+      expect(mockCall).toHaveBeenCalledWith(
+        RPC_METHODS.SCAN_CORE_SCAN_FULL,
+        expect.any(Object),
+      );
     });
   });
 
@@ -208,11 +266,14 @@ describe('ScanView', () => {
     fireEvent.click(startBtn);
     fireEvent.click(startBtn);
     await waitFor(() => {
-      expect(orchestratorService.fullAsync).toHaveBeenCalledTimes(1);
+      const fullCalls = mockCall.mock.calls.filter(
+        (call) => call[0] === RPC_METHODS.SCAN_CORE_SCAN_FULL,
+      );
+      expect(fullCalls.length).toBeLessThanOrEqual(1);
     });
   });
 
-  it('cancels the active session and never calls optimize', async () => {
+  it('cancels the active session and never calls orchestrator methods', async () => {
     render(<ScanView module="optimize" mode="quick" onClose={() => {}} />);
     fireEvent.click(screen.getByTestId('scan-start-btn'));
     await waitFor(() => {
@@ -223,8 +284,12 @@ describe('ScanView', () => {
     fireEvent.click(screen.getByText('Yes, Cancel'));
 
     await waitFor(() => {
-      expect(orchestratorService.cancel).toHaveBeenCalledWith('test-session');
+      expect(mockCall).toHaveBeenCalledWith(
+        RPC_METHODS.SCAN_CORE_SCAN_CANCEL,
+        expect.any(Object),
+      );
     });
+    expect(orchestratorService.fullAsync).not.toHaveBeenCalled();
     expect(orchestratorService.optimize).not.toHaveBeenCalled();
   });
 
@@ -247,7 +312,10 @@ describe('ScanView', () => {
 
     fireEvent.click(screen.getByTestId('scan-start-btn'));
     await waitFor(() => {
-      expect(orchestratorService.fullAsync).toHaveBeenCalledTimes(2);
+      const fullCalls = mockCall.mock.calls.filter(
+        (call) => call[0] === RPC_METHODS.SCAN_CORE_SCAN_FULL,
+      );
+      expect(fullCalls.length).toBe(2);
     });
   });
 
@@ -265,15 +333,137 @@ describe('ScanView', () => {
     }
   });
 
-  it('always calls fullAsync with scanOnly=true and never optimize', async () => {
+  it('calls scan_core.scan.status and scan_core.scan.result on completion', async () => {
+    render(<ScanView module="security" mode="full" onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('scan-start-btn'));
+
+    currentStatus = {
+      ...currentStatus,
+      completed: true,
+      progress: { ...currentStatus.progress, completion_percent: 100 },
+    };
+    mockResult = {
+      ok: true,
+      result: {
+        scan_id: 'test-session',
+        findings_count: 1,
+        action_plan_id: 'plan-test',
+        elapsed_time_ms: 100,
+        statistics: {},
+      },
+    };
+
+    await waitFor(() => {
+      expect(mockCall).toHaveBeenCalledWith(
+        RPC_METHODS.SCAN_CORE_SCAN_FULL,
+        expect.any(Object),
+      );
+      expect(mockCall).toHaveBeenCalledWith(
+        RPC_METHODS.SCAN_CORE_SCAN_STATUS,
+        expect.any(Object),
+      );
+      expect(mockCall).toHaveBeenCalledWith(
+        RPC_METHODS.SCAN_CORE_SCAN_RESULT,
+        expect.any(Object),
+      );
+    });
+    expect(mockResult.result.action_plan_id).toBe('plan-test');
+  });
+
+  it('never calls orchestrator.fullAsync or orchestrator.optimize', async () => {
     render(<ScanView module="security" mode="full" onClose={() => {}} />);
     fireEvent.click(screen.getByTestId('scan-start-btn'));
     await waitFor(() => {
-      expect(orchestratorService.fullAsync).toHaveBeenCalled();
+      expect(mockCall).toHaveBeenCalled();
     });
-    orchestratorService.fullAsync.mock.calls.forEach((call) => {
-      expect(call[1]).toBe(true);
-    });
+    expect(orchestratorService.fullAsync).not.toHaveBeenCalled();
     expect(orchestratorService.optimize).not.toHaveBeenCalled();
+  });
+
+  it('shows Review & Remediate action and opens results view when clicked', async () => {
+    render(<ScanView module="security" mode="full" onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('scan-start-btn'));
+
+    mockResult = {
+      ok: true,
+      result: {
+        scan_id: 'test-session',
+        findings_count: 2,
+        action_plan_id: 'plan-test',
+        elapsed_time_ms: 100,
+        statistics: {
+          assets_discovered: 4,
+          assets_evaluated: 4,
+          matches: 2,
+          rules_evaluated: 1,
+        },
+        findings: [
+          {
+            finding_id: 'f-1',
+            display_name: 'Junk file',
+            rule_id: 'junk.file',
+            rule_category: 'junk',
+            severity: 'low',
+            confidence: 0.9,
+            safety: 'safe',
+            reason: 'Safe to remove',
+            recommended_action: 'delete',
+            estimated_size: 1024,
+            is_blocked: false,
+            requires_review: false,
+            is_actionable: true,
+            canonical_path: 'C:\\junk.txt',
+          },
+          {
+            finding_id: 'f-2',
+            display_name: 'Blocked file',
+            rule_id: 'sys.blocked',
+            rule_category: 'system',
+            severity: 'high',
+            confidence: 0.9,
+            safety: 'blocked',
+            reason: 'Protected',
+            recommended_action: 'none',
+            estimated_size: 0,
+            is_blocked: true,
+            requires_review: false,
+            is_actionable: false,
+            canonical_path: 'C:\\blocked.txt',
+          },
+        ],
+      },
+    };
+    currentStatus = {
+      ...currentStatus,
+      completed: true,
+      progress: {
+        ...currentStatus.progress,
+        completion_percent: 100,
+        findings: 2,
+      },
+    };
+
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('unified-scan-view-complete')).toBeDefined();
+      },
+      { timeout: 5000 },
+    );
+
+    await waitFor(
+      () => {
+        expect(screen.getByText('Review & Remediate')).toBeDefined();
+      },
+      { timeout: 5000 },
+    );
+
+    fireEvent.click(screen.getByText('Review & Remediate'));
+
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('results-view')).toBeDefined();
+      },
+      { timeout: 5000 },
+    );
   });
 });

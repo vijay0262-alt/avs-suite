@@ -152,6 +152,21 @@ export const RPC_METHODS = {
   SECURITY_REMEDIATION_EXECUTE: 'security.remediation.execute',
   SECURITY_REMEDIATION_ROLLBACK: 'security.remediation.rollback',
 
+  // Scan Core Remediation (SC-8C8 Part 2A)
+  SCAN_CORE_REMEDIATION_PREPARE: 'scan_core.remediation.prepare',
+  SCAN_CORE_REMEDIATION_VALIDATE: 'scan_core.remediation.validate',
+  SCAN_CORE_REMEDIATION_EXECUTE: 'scan_core.remediation.execute',
+  SCAN_CORE_REMEDIATION_CANCEL: 'scan_core.remediation.cancel',
+  SCAN_CORE_REMEDIATION_STATUS: 'scan_core.remediation.status',
+  SCAN_CORE_REMEDIATION_ROLLBACK: 'scan_core.remediation.rollback',
+
+  // Scan Core Scan lifecycle (SC-8C8 Part 2B)
+  SCAN_CORE_SCAN_QUICK: 'scan_core.scan.quick',
+  SCAN_CORE_SCAN_FULL: 'scan_core.scan.full',
+  SCAN_CORE_SCAN_CANCEL: 'scan_core.scan.cancel',
+  SCAN_CORE_SCAN_STATUS: 'scan_core.scan.status',
+  SCAN_CORE_SCAN_RESULT: 'scan_core.scan.result',
+
   // Predictive Health
   PREDICTIVE_HEALTH_SNAPSHOT: 'predictive.snapshot',
   PREDICTIVE_HEALTH_TRENDS: 'predictive.trends',

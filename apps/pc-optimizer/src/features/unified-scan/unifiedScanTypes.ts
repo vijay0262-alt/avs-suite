@@ -96,6 +96,7 @@ export interface UnifiedScanReport {
   itemsAnalyzed: number;
   issuesFound: number;
   threatsFound?: number;
+  planId?: string;
   results: UnifiedResultCard[];
   aiSummary: UnifiedAISummary;
   actions: UnifiedScanAction[];

@@ -18,3 +18,23 @@ export {
 
 export { ScanView, type ScanViewProps } from './ScanView';
 export { ScanPanel, type ScanPanelProps } from './ScanPanel';
+
+export { remediationService } from './remediation.service';
+export type { RemediationService } from './remediation.service';
+
+export { useResults } from './useResults';
+export type { UseResultsOptions, UseResultsReturn } from './useResults';
+
+export { ResultsView, type ResultsViewProps } from './ResultsView';
+export { FindingsList, type FindingsListProps } from './FindingsList';
+export { PreviewPanel, type PreviewPanelProps } from './PreviewPanel';
+export { ValidationPanel, type ValidationPanelProps } from './ValidationPanel';
+
+export type {
+  ScanFinding,
+  ScanStatistics,
+  RemediationPreview,
+  RemediationPrepareResponse,
+  RemediationValidation,
+  RemediationValidateResponse,
+} from './types';

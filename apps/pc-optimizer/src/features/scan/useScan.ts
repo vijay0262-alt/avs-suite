@@ -1,11 +1,10 @@
 /**
  * useScan.ts — domain hook that wires the unified scan UI to the real
- * orchestrator backend.
+ * scan-core backend via `scan_core.scan.*` RPC methods.
  *
  * - Owns the `sessionId` ref.
- * - Polls `scanService.status(sessionId)` every 500ms.
- * - Maps real `OrchestratorStatus` to `updateProgress`, `updateCounters`,
- *   and `setPhase` based on the provided config.
+ * - Polls `scanService.scan_status(sessionId)` every 500ms.
+ * - Maps the scan-core `ScanProgress` shape to `UnifiedScanLiveStatus`.
  * - Stops polling on completion, cancellation, or error.
  * - Never generates fake progress.
  */
@@ -20,7 +19,6 @@ import type {
 } from '../unified-scan/unifiedScanTypes';
 import type { ActivityEntry } from '../unified-scan/components/ActivityStream';
 import type { CurrentOperationCardProps } from '../unified-scan/components/CurrentOperationCard';
-import type { OrchestratorStatus } from '../orchestrator/orchestrator.service';
 
 export interface UseScanOptions {
   mode?: 'quick' | 'full';
@@ -32,73 +30,56 @@ export interface UseScanReturn extends Omit<UseUnifiedScanReturn, 'startScan' | 
   cancelScan: () => void;
   reset: () => void;
   sessionId: string | null;
+  result: Record<string, unknown> | null;
   activityLog: ActivityEntry[];
   currentOperation: CurrentOperationCardProps | null;
 }
 
+interface ScanStatusResponse {
+  ok: boolean;
+  progress?: Record<string, unknown> | null;
+  completed?: boolean;
+  cancelled?: boolean;
+  error?: string | null;
+}
+
+function getProgressValue<T>(progress: Record<string, unknown> | null | undefined, key: string, fallback: T): T {
+  const value = progress?.[key];
+  if (value === undefined || value === null) return fallback;
+  return value as T;
+}
+
 function mapStatusCounters(
-  config: UnifiedScanModuleConfig,
-  status: OrchestratorStatus,
+  progress: Record<string, unknown> | null | undefined,
 ): Record<string, number> {
-  const values: Record<string, number> = {};
-  for (const counter of config.counters) {
-    values[counter.id] = 0;
-  }
-
-  const counters = status.counters ?? {};
-  const moduleStatuses = status.moduleStatuses ?? {};
-
-  if ('filesScanned' in values) values.filesScanned = counters.itemsScanned ?? 0;
-  if ('registryEntries' in values) values.registryEntries = counters.registryFixed ?? 0;
-  if ('startupItems' in values) values.startupItems = counters.itemsOptimized ?? 0;
-  if ('privacyItems' in values) values.privacyItems = counters.itemsCleaned ?? 0;
-  if ('storageRecovery' in values) {
-    values.storageRecovery = counters.storageRecovered ?? counters.bytesRecovered ?? 0;
-  }
-  if ('memoryRecovery' in values) values.memoryRecovery = 0;
-  if ('startupImprovement' in values) values.startupImprovement = 0;
-  if ('recommendations' in values) {
-    values.recommendations = counters.threatsChecked ?? counters.itemsAnalyzed ?? 0;
-  }
-  if ('processesAnalyzed' in values) values.processesAnalyzed = counters.itemsAnalyzed ?? 0;
-  if ('servicesChecked' in values) values.servicesChecked = counters.itemsAnalyzed ?? 0;
-  if ('registryKeysChecked' in values) values.registryKeysChecked = counters.itemsScanned ?? 0;
-  if ('browserObjects' in values) values.browserObjects = 0;
-  if ('scriptsInspected' in values) values.scriptsInspected = 0;
-  if ('scheduledTasks' in values) values.scheduledTasks = counters.itemsSkipped ?? 0;
-  if ('persistenceEntries' in values) values.persistenceEntries = 0;
-  if ('threatsFound' in values) {
-    values.threatsFound =
-      Object.values(moduleStatuses).reduce(
-        (sum, m) => sum + (m.issuesFound ?? 0),
-        0,
-      ) || (status.issuesBefore ?? 0);
-  }
-  if ('suspiciousProcesses' in values) values.suspiciousProcesses = 0;
-  if ('unsignedExecutables' in values) values.unsignedExecutables = 0;
-  if ('aiConfidence' in values) values.aiConfidence = 100;
-  if ('protectionAreas' in values) {
-    values.protectionAreas =
-      Object.keys(moduleStatuses).length || config.phases.length;
-  }
-  if ('suspiciousProcesses' in values) values.suspiciousProcesses = 0;
-
-  return values;
+  return {
+    itemsScanned: getProgressValue<number>(progress, 'assets_evaluated', 0),
+    itemsAnalyzed: getProgressValue<number>(progress, 'findings', 0),
+    actionsAvailable: getProgressValue<number>(progress, 'actions_available', 0),
+    elapsedMs: getProgressValue<number>(progress, 'elapsed_time_ms', 0),
+    filesScanned: getProgressValue<number>(progress, 'assets_evaluated', 0),
+    recommendations: getProgressValue<number>(progress, 'findings', 0),
+    threatsChecked: getProgressValue<number>(progress, 'assets_discovered', 0),
+    storageRecovered: getProgressValue<number>(progress, 'actions_available', 0),
+    bytesRecovered: 0,
+    memoryRecovery: 0,
+    startupImprovement: 0,
+  };
 }
 
 function mapCurrentOperation(
-  status: OrchestratorStatus,
+  progress: Record<string, unknown> | null | undefined,
   elapsedMs: number,
 ): CurrentOperationCardProps {
   return {
-    currentModule: status.currentModule,
-    currentOperation: status.currentOperation,
-    currentPath: status.currentPath,
-    itemsProcessed: status.itemsProcessed,
-    itemsRemaining: status.itemsRemaining,
-    bytesRecovered: status.bytesRecovered,
+    currentModule: getProgressValue<string | null>(progress, 'phase', null),
+    currentOperation: getProgressValue<string | null>(progress, 'current_operation', null),
+    currentPath: null,
+    itemsProcessed: getProgressValue<number>(progress, 'assets_evaluated', 0),
+    itemsRemaining: 0,
+    bytesRecovered: 0,
     elapsedMs,
-    overallProgress: status.progress,
+    overallProgress: getProgressValue<number>(progress, 'completion_percent', 0),
   };
 }
 
@@ -112,6 +93,7 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
   const sessionIdRef = useRef<string | null>(null);
   const startingRef = useRef(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [activityLog, setActivityLog] = useState<ActivityEntry[]>([]);
   const [currentOperation, setCurrentOperation] = useState<CurrentOperationCardProps | null>(null);
 
@@ -130,15 +112,20 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
     sessionIdRef.current = null;
     startingRef.current = false;
     stopPoll();
+    setResult(null);
     hookReset();
   }, [hookReset, stopPoll]);
 
   const handleComplete = useCallback(
-    async (status: OrchestratorStatus) => {
+    async (sid: string) => {
       stopPoll();
       try {
-        const result = await scanService.result(status.sessionId);
-        const report = buildScanReport(config.moduleName, result, status);
+        const response = (await scanService.result(sid)) as { ok?: boolean; result?: Record<string, unknown>; error?: string };
+        if (response.ok === false || response.error) {
+          throw new Error(response.error ?? 'Failed to fetch scan result');
+        }
+        setResult(response.result ?? null);
+        const report = buildScanReport(config.moduleName, response.result ?? {});
         scan.completeScan(report);
       } catch (err) {
         scan.failScan(err instanceof Error ? err.message : 'Failed to fetch scan result');
@@ -148,7 +135,7 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
   );
 
   const processStatus = useCallback(
-    async (status: OrchestratorStatus) => {
+    async (sid: string, status: ScanStatusResponse) => {
       if (status.error) {
         stopPoll();
         scan.failScan(status.error);
@@ -160,44 +147,44 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
         return;
       }
 
-      if (status.phase === 'complete') {
-        await handleComplete(status);
+      const progress = status.progress ?? null;
+      const currentPhase = getProgressValue<string | null>(progress, 'phase', null);
+
+      if (status.completed) {
+        await handleComplete(sid);
         return;
       }
 
-      const phaseIndex = config.phases.findIndex((p) => p.id === status.phase);
+      const phaseIndex = currentPhase ? config.phases.findIndex((p) => p.id === currentPhase) : -1;
       if (phaseIndex >= 0) {
         scan.setPhase(phaseIndex);
       }
 
       scan.updateProgress({
-        overallProgress: status.progress,
-        currentModule: status.currentModule ?? undefined,
-        currentFolder: status.currentPath ?? undefined,
-        currentActivity: status.currentOperation ?? status.phase ?? 'Scanning...',
+        overallProgress: getProgressValue<number>(progress, 'completion_percent', 0),
+        currentModule: currentPhase ?? undefined,
+        currentActivity:
+          getProgressValue<string | null>(progress, 'current_operation', null) ??
+          currentPhase ??
+          'Scanning...',
       });
 
-      scan.updateCounters(mapStatusCounters(config, status));
+      scan.updateCounters(mapStatusCounters(progress));
 
-      const currentPhase = config.phases[phaseIndex] ?? config.phases[scan.currentPhaseIndex] ?? config.phases[0];
-      if (currentPhase) {
-        const itemsScanned = status.counters?.itemsScanned ?? 0;
-        const issuesFound =
-          status.issuesBefore ??
-          Object.values(status.moduleStatuses ?? {}).reduce(
-            (sum, m) => sum + (m.issuesFound ?? 0),
-            0,
-          );
+      const currentPhaseConfig = config.phases[phaseIndex] ?? config.phases[scan.currentPhaseIndex] ?? config.phases[0];
+      if (currentPhaseConfig) {
+        const itemsScanned = getProgressValue<number>(progress, 'assets_evaluated', 0);
+        const issuesFound = getProgressValue<number>(progress, 'findings', 0);
         const treeUpdate: Partial<UnifiedScanTreeNode> = {
           itemsScanned,
           issuesFound,
         };
-        scan.updateTreeNode(currentPhase.id, treeUpdate);
+        scan.updateTreeNode(currentPhaseConfig.id, treeUpdate);
       }
 
       const elapsedMs = scan.startTime ? Date.now() - scan.startTime : 0;
-      setCurrentOperation(mapCurrentOperation(status, elapsedMs));
-      setActivityLog(status.activityLog ?? []);
+      setCurrentOperation(mapCurrentOperation(progress, elapsedMs));
+      setActivityLog([]);
     },
     [config, scan, reset, stopPoll, handleComplete],
   );
@@ -205,8 +192,8 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
   const pollOnce = useCallback(
     async (sid: string) => {
       try {
-        const status = await scanService.status(sid);
-        await processStatus(status);
+        const status = (await scanService.status(sid)) as unknown as ScanStatusResponse;
+        await processStatus(sid, status);
       } catch (err) {
         stopPoll();
         scan.failScan(err instanceof Error ? err.message : 'Status poll failed');
@@ -231,9 +218,13 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
     hookStartScan();
     try {
       const startMethod = mode === 'quick' ? scanService.scan_quick : scanService.scan_full;
-      const response = await startMethod();
-      sessionIdRef.current = response.sessionId;
-      startPoll(response.sessionId);
+      const response = (await startMethod()) as { session_id?: string; started_at?: string };
+      const sid = response.session_id;
+      if (!sid) {
+        throw new Error('Backend did not return a session id');
+      }
+      sessionIdRef.current = sid;
+      startPoll(sid);
     } catch (err) {
       stopPoll();
       scan.failScan(err instanceof Error ? err.message : 'Failed to start scan');
@@ -243,6 +234,10 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
   }, [hookStartScan, mode, startPoll, scan, stopPoll]);
 
   const cancelScan = useCallback(() => {
+    const sid = sessionIdRef.current;
+    if (sid) {
+      void scanService.cancel_scan(sid);
+    }
     reset();
   }, [reset]);
 
@@ -256,6 +251,7 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
     ...scan,
     reset,
     sessionId: sessionIdRef.current,
+    result,
     startScan,
     cancelScan,
     activityLog,
