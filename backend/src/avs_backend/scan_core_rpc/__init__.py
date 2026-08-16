@@ -491,3 +491,40 @@ def _scan_core_scan_result(params: Optional[dict[str, Any]]) -> dict[str, Any]:
         return {"ok": False, "error": "Scan not complete"}
 
     return {"ok": True, "result": session["result"]}
+
+
+@register("scan_core.scan.latest")
+def _scan_core_scan_latest(_params: Optional[dict[str, Any]]) -> dict[str, Any]:
+    """Return the latest persisted scan_core scan history record."""
+    orchestrator = get_scan_orchestrator()
+    if orchestrator is None:
+        return _orchestrator_error()
+
+    try:
+        record = orchestrator.get_latest_scan_history()
+        if record is None:
+            return {"ok": True, "latest": None}
+        return {"ok": True, "latest": record}
+    except Exception as exc:
+        logger.exception("scan_core.scan.latest failed: %s", exc)
+        return {"ok": False, "error": str(exc)}
+
+
+@register("scan_core.scan.history")
+def _scan_core_scan_history(params: Optional[dict[str, Any]]) -> dict[str, Any]:
+    """Return the most recent persisted scan_core scan history records."""
+    params = _safe_params(params)
+    limit = params.get("limit", 10)
+    if not isinstance(limit, int) or limit < 1:
+        limit = 10
+
+    orchestrator = get_scan_orchestrator()
+    if orchestrator is None:
+        return _orchestrator_error()
+
+    try:
+        records = orchestrator.list_scan_history(limit=limit)
+        return {"ok": True, "history": records}
+    except Exception as exc:
+        logger.exception("scan_core.scan.history failed: %s", exc)
+        return {"ok": False, "error": str(exc)}

@@ -23,12 +23,44 @@ export interface ScanCancelResponse {
   cancelled: boolean;
 }
 
+export interface PersistedScanRecord {
+  scan_id: string;
+  scan_type: 'quick' | 'full' | string;
+  started_at: string;
+  completed_at: string | null;
+  duration_ms: number;
+  cancelled: boolean;
+  completed: boolean;
+  error_count: number;
+  findings_count: number;
+  action_plan_id: string | null;
+  actionable_count: number;
+  review_count: number;
+  blocked_count: number;
+  not_fixable_count: number;
+  statistics: Record<string, unknown>;
+}
+
+export interface ScanLatestResponse {
+  ok: boolean;
+  latest: PersistedScanRecord | null;
+  error?: string;
+}
+
+export interface ScanHistoryResponse {
+  ok: boolean;
+  history: PersistedScanRecord[];
+  error?: string;
+}
+
 export interface ScanService {
   scan_quick(scope?: string[]): Promise<ScanStartResponse>;
   scan_full(scope?: string[]): Promise<ScanStartResponse>;
   cancel_scan(sessionId: string): Promise<ScanCancelResponse>;
   status(sessionId: string): Promise<Record<string, unknown>>;
   result(sessionId: string): Promise<Record<string, unknown>>;
+  latest(): Promise<ScanLatestResponse>;
+  history(limit?: number): Promise<ScanHistoryResponse>;
 }
 
 export const scanService: ScanService = {
@@ -37,4 +69,6 @@ export const scanService: ScanService = {
   cancel_scan: (sessionId: string) => client().call(RPC_METHODS.SCAN_CORE_SCAN_CANCEL, { session_id: sessionId }),
   status: (sessionId: string) => client().call(RPC_METHODS.SCAN_CORE_SCAN_STATUS, { session_id: sessionId }),
   result: (sessionId: string) => client().call(RPC_METHODS.SCAN_CORE_SCAN_RESULT, { session_id: sessionId }),
+  latest: () => client().call(RPC_METHODS.SCAN_CORE_SCAN_LATEST, {}) as Promise<ScanLatestResponse>,
+  history: (limit?: number) => client().call(RPC_METHODS.SCAN_CORE_SCAN_HISTORY, { limit: limit ?? 10 }) as Promise<ScanHistoryResponse>,
 };

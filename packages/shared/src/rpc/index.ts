@@ -166,6 +166,8 @@ export const RPC_METHODS = {
   SCAN_CORE_SCAN_CANCEL: 'scan_core.scan.cancel',
   SCAN_CORE_SCAN_STATUS: 'scan_core.scan.status',
   SCAN_CORE_SCAN_RESULT: 'scan_core.scan.result',
+  SCAN_CORE_SCAN_LATEST: 'scan_core.scan.latest',
+  SCAN_CORE_SCAN_HISTORY: 'scan_core.scan.history',
 
   // Predictive Health
   PREDICTIVE_HEALTH_SNAPSHOT: 'predictive.snapshot',

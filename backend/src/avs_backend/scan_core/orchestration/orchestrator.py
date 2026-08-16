@@ -19,6 +19,7 @@ from ..metadata.action_plan_repository import ActionPlanRepository
 from ..metadata.asset_repository import AssetRepository
 from ..metadata.context_repository import ContextRepository
 from ..metadata.database import MetadataDatabase
+from ..metadata.scan_history_repository import ScanHistoryRepository
 from ..metadata.snapshot_repository import SnapshotRepository
 from ..rules.action import ActionPlan, ActionPlanner, ActionState
 from ..rules.actionability import Actionability, CapabilityContract
@@ -57,6 +58,7 @@ class ScanOrchestrator:
         self._snapshot_repo = SnapshotRepository(database)
         self._context_repo = ContextRepository(database)
         self._action_plan_repo = ActionPlanRepository(database)
+        self._history_repo = ScanHistoryRepository(database)
         self._evaluator = RuleEvaluator(
             registry,
             asset_repository=self._asset_repo,
@@ -168,7 +170,7 @@ class ScanOrchestrator:
                 orchestrator_errors,
                 eval_batch.statistics.failures,
             )
-            return self._build_result(
+            result = self._build_result(
                 scan_context,
                 elapsed_ms,
                 eval_batch,
@@ -177,6 +179,8 @@ class ScanOrchestrator:
                 action_plan,
                 orchestrator_errors,
             )
+            self._save_scan_history(result)
+            return result
         finally:
             self._tokens.pop(scan_id, None)
 
@@ -209,6 +213,48 @@ class ScanOrchestrator:
             on_progress=on_progress,
             generate_action_plan=generate_action_plan,
         )
+
+    def get_latest_scan_history(self) -> Optional[dict[str, Any]]:
+        """Return the latest persisted scan history record."""
+        return self._history_repo.get_latest()
+
+    def list_scan_history(self, limit: int = 10) -> list[dict[str, Any]]:
+        """Return the most recent persisted scan history records."""
+        return self._history_repo.list_recent(limit)
+
+    def _save_scan_history(self, result: ScanResult) -> bool:
+        """Persist a privacy-safe scan result summary."""
+        actionability = result.actionability_summary
+        stats = result.statistics
+        record = {
+            "scan_id": result.scan_id,
+            "scan_type": result.scan_type,
+            "started_at": result.started_at.isoformat(),
+            "completed_at": result.completed_at.isoformat(),
+            "duration_ms": result.elapsed_time_ms,
+            "cancelled": result.cancelled,
+            "completed": not result.cancelled,
+            "error_count": len(result.errors) or 0,
+            "findings_count": len(result.findings),
+            "action_plan_id": result.action_plan_id,
+            "actionable_count": actionability.get("actionable", 0),
+            "review_count": actionability.get("review_required", 0),
+            "blocked_count": actionability.get("blocked", 0),
+            "not_fixable_count": actionability.get("not_fixable", 0),
+            "statistics": {
+                "assets_discovered": stats.get("assets_discovered", 0),
+                "assets_evaluated": stats.get("assets_evaluated", 0),
+                "matches": stats.get("matches", 0),
+                "findings_count": stats.get("findings_count", 0),
+                "actions_total": stats.get("actions_total", 0),
+                "actions_planned": stats.get("actions_planned", 0),
+                "actions_review_required": stats.get("actions_review_required", 0),
+                "actions_blocked": stats.get("actions_blocked", 0),
+                "actions_not_fixable": stats.get("actions_not_fixable", 0),
+                "errors_count": stats.get("errors_count", 0),
+            },
+        }
+        return self._history_repo.save(record)
 
     def cancel_scan(self, scan_id: str) -> bool:
         """Request cancellation of a running scan."""

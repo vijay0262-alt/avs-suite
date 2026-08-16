@@ -6,6 +6,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { remediationService } from './remediation.service';
+import { unifiedScanState } from './unifiedScanState';
+import type { AppRemediationStatus } from './unifiedScanState';
 import type {
   ScanFinding,
   ScanStatistics,
@@ -157,6 +159,13 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
       }
       setPreview(response.preview ?? null);
       setStep('preview');
+      unifiedScanState.updateLatest({
+        planId,
+        preview: response.preview ?? undefined,
+        rollbackSupported: response.preview?.rollback_supported,
+        remediationStatus: 'preparing',
+        error: null,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to prepare remediation preview');
       setStep('error');
@@ -178,6 +187,11 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
       }
       setValidation(response.validation ?? null);
       setStep('awaiting_approval');
+      unifiedScanState.updateLatest({
+        validation: response.validation ?? undefined,
+        remediationStatus: 'awaiting_approval',
+        error: null,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to validate remediation plan');
       setStep('error');
@@ -207,9 +221,17 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
         if (response.status === 'rejected') {
           setStep('rejected');
           setError(response.reason ?? 'Execution rejected');
+          unifiedScanState.updateLatest({
+            remediationStatus: 'rejected',
+            error: response.reason ?? 'Execution rejected',
+          });
         } else {
           setStep('error');
           setError(response.error ?? 'Failed to start remediation execution');
+          unifiedScanState.updateLatest({
+            remediationStatus: 'failed',
+            error: response.error ?? 'Failed to start remediation execution',
+          });
         }
         hasRequestedExecution.current = false;
         return;
@@ -220,6 +242,12 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
       const summary: RemediationExecution = response.summary;
       setExecutionId(summary.execution_id);
       setExecutionStatus(summary);
+      unifiedScanState.updateLatest({
+        executionId: summary.execution_id,
+        execution: summary,
+        remediationStatus: isTerminalStatus(summary.status) ? (summary.status as AppRemediationStatus) : 'executing',
+        error: null,
+      });
       if (isTerminalStatus(summary.status)) {
         setStep(summary.status as ResultsStep);
       } else {
@@ -256,6 +284,9 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
       setRollbackStep('confirm');
     } else {
       setRollbackStep('unavailable');
+      unifiedScanState.updateLatest({
+        remediationStatus: 'rollback_unavailable',
+      });
     }
   }, [isRollbacking, rollbackStep, rollbackAvailable]);
 
@@ -286,18 +317,32 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
       }
       const summary: RollbackSummary = response.rollback;
       setRollbackSummary(summary);
-      if (summary.failed === 0 && summary.successful === summary.total) {
-        setRollbackStep('success');
-      } else if (summary.failed > 0 && summary.successful > 0) {
-        setRollbackStep('partial');
-      } else if (summary.failed > 0 && summary.successful === 0) {
-        setRollbackStep('failed');
-      } else {
-        setRollbackStep('failed');
-      }
+      const nextStep =
+        summary.failed === 0 && summary.successful === summary.total
+          ? 'success'
+          : summary.failed > 0 && summary.successful > 0
+            ? 'partial'
+            : 'failed';
+      const appStatus: AppRemediationStatus =
+        nextStep === 'success'
+          ? 'rollback_success'
+          : nextStep === 'partial'
+            ? 'rollback_partial'
+            : 'rollback_failed';
+      setRollbackStep(nextStep);
+      unifiedScanState.updateLatest({
+        rollbackSummary: summary,
+        remediationStatus: appStatus,
+        error: null,
+      });
     } catch (err) {
-      setRollbackError(err instanceof Error ? err.message : 'Rollback request failed');
+      const msg = err instanceof Error ? err.message : 'Rollback request failed';
+      setRollbackError(msg);
       setRollbackStep('failed');
+      unifiedScanState.updateLatest({
+        remediationStatus: 'rollback_failed',
+        error: msg,
+      });
     } finally {
       setIsRollbacking(false);
       // The single rollback attempt flag stays true to prevent double rollback.
@@ -322,6 +367,15 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
         }
         const status = response.status;
         setExecutionStatus(status);
+        const nextRemediationStatus: AppRemediationStatus = isTerminalStatus(status.status)
+          ? (status.status as AppRemediationStatus)
+          : 'executing';
+        unifiedScanState.updateLatest({
+          execution: status as RemediationExecution,
+          executionId: status.execution_id,
+          remediationStatus: nextRemediationStatus,
+          error: null,
+        });
         if (isTerminalStatus(status.status)) {
           if (pollTimer.current) {
             clearInterval(pollTimer.current);
@@ -335,8 +389,10 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
           clearInterval(pollTimer.current);
           pollTimer.current = null;
         }
-        setError(err instanceof Error ? err.message : 'execution status unavailable');
+        const msg = err instanceof Error ? err.message : 'execution status unavailable';
+        setError(msg);
         setStep('error');
+        unifiedScanState.updateLatest({ remediationStatus: 'failed', error: msg });
       }
     };
 

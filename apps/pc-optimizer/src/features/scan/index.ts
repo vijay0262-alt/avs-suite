@@ -18,6 +18,11 @@ export {
 
 export { ScanView, type ScanViewProps } from './ScanView';
 export { ScanPanel, type ScanPanelProps } from './ScanPanel';
+export { DashboardScanStatusCard } from './components/DashboardScanStatusCard';
+export { useDashboardScan } from './useDashboardScan';
+export type { UseDashboardScanReturn } from './useDashboardScan';
+export { toDashboardSnapshot } from './dashboardAdapter';
+export type { DashboardScanSnapshot } from './dashboardAdapter';
 
 export { remediationService } from './remediation.service';
 export type { RemediationService } from './remediation.service';

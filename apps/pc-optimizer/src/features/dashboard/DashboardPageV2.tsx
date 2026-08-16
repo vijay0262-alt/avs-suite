@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, memo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button, Card, RecommendationCard, ChartCard, TimelineCard, Sparkline, EmptyState, LoadingState, CollapsibleSection } from '@avs/ui';
 import { ModuleErrorBanner } from '../../components/ModuleStates';
 import {
@@ -21,7 +21,7 @@ import { DashboardViewModel } from './DashboardViewModel';
 import { dashboardService } from './dashboard.service';
 import { generateRecommendations } from './dashboard.utils';
 import type { DashboardMetrics, LiveMetrics, HardwareSensorReading } from './dashboard.types';
-import { UnifiedOptimizeFlow } from './components/UnifiedOptimizeFlow';
+import { DashboardScanStatusCard } from '../scan/components/DashboardScanStatusCard';
 import { useIsPro } from '../sync/syncStore';
 import { useEditionLimits } from '../licensing/editionLimits';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
@@ -117,7 +117,6 @@ export default function DashboardPage() {
   const vm = useMemo(() => new DashboardViewModel(dashboardService), []);
   const state = useViewModel(vm);
   const navigate = useNavigate();
-  const location = useLocation();
   const isPro = useIsPro();
   const limits = useEditionLimits();
 
@@ -126,17 +125,6 @@ export default function DashboardPage() {
     return () => vm.dispose();
   }, [vm]);
 
-  // Auto-trigger health scan when navigated from FirstScanDialog
-  useEffect(() => {
-    if (state.bootstrap === 'ready' && state.healthScanStep === 'idle') {
-      const navState = location.state as { action?: string } | null;
-      if (navState?.action === 'auto-scan') {
-        vm.startHealthScan('dashboard', isPro);
-        // Clear the location state so it doesn't re-trigger
-        navigate('/dashboard', { replace: true, state: {} });
-      }
-    }
-  }, [state.bootstrap, state.healthScanStep, location.state, navigate, vm, isPro]);
 
   const isScanning = state.healthScanStep !== 'idle' && state.healthScanStep !== 'complete';
 
@@ -217,7 +205,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <ProStatusPill />
           <Button
-            onClick={() => vm.startHealthScan('dashboard', isPro)}
+            onClick={() => navigate('/ai-smart-optimize')}
             disabled={isScanning}
             size="lg"
             leftIcon={isScanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <BoltIcon className="h-5 w-5" />}
@@ -344,6 +332,9 @@ export default function DashboardPage() {
           </Card>
         )}
       </div>
+
+      {/* Latest unified scan/remediation status from scan_core */}
+      <DashboardScanStatusCard />
 
       {/* ── COLLAPSIBLE SECONDARY CONTENT (2 panels) ─────────────── */}
 
@@ -481,14 +472,6 @@ export default function DashboardPage() {
         </div>
       </CollapsibleSection>
 
-      {/* Unified Scan + Optimize + Verify Flow */}
-      {state.healthScanStep !== 'idle' && (
-        <UnifiedOptimizeFlow
-          vm={vm}
-          isPro={isPro}
-          onClose={() => vm.closeHealthScan()}
-        />
-      )}
     </div>
   );
 }

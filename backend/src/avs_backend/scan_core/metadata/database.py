@@ -355,6 +355,30 @@ class MetadataDatabase:
             )
         """)
 
+        # Scan history (SC-8C9 Phase 2)
+        # Privacy-safe dashboard summary. No raw findings, paths, credentials,
+        # or browser data are stored here.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS scan_history (
+                scan_id TEXT PRIMARY KEY,
+                scan_type TEXT NOT NULL,
+                started_at TEXT NOT NULL,
+                completed_at TEXT,
+                duration_ms INTEGER DEFAULT 0,
+                cancelled INTEGER DEFAULT 0,
+                completed INTEGER DEFAULT 0,
+                error_count INTEGER DEFAULT 0,
+                findings_count INTEGER DEFAULT 0,
+                action_plan_id TEXT,
+                actionable_count INTEGER DEFAULT 0,
+                review_count INTEGER DEFAULT 0,
+                blocked_count INTEGER DEFAULT 0,
+                not_fixable_count INTEGER DEFAULT 0,
+                statistics_json TEXT,
+                created_at TEXT NOT NULL
+            )
+        """)
+
         # Asset snapshots (observed state)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS asset_snapshots (
@@ -545,6 +569,16 @@ class MetadataDatabase:
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_contexts_completed ON "
             "scan_contexts(completed)"
+        )
+
+        # Scan history indexes
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_scan_history_started ON "
+            "scan_history(started_at)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_scan_history_action_plan ON "
+            "scan_history(action_plan_id)"
         )
 
         # Phase B execution-persistence indexes

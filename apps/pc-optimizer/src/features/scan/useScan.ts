@@ -11,6 +11,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { scanService } from './scan.service';
 import { buildScanReport } from './reportBuilder';
+import { unifiedScanState } from './unifiedScanState';
+import type { ScanStatistics } from './types';
 import { useUnifiedScan } from '../unified-scan/useUnifiedScan';
 import type { UseUnifiedScanReturn } from '../unified-scan/useUnifiedScan';
 import type {
@@ -41,6 +43,12 @@ interface ScanStatusResponse {
   completed?: boolean;
   cancelled?: boolean;
   error?: string | null;
+}
+
+function toAppModule(configId: string): 'protection' | 'optimize' | 'security' {
+  if (configId === 'protection-center') return 'protection';
+  if (configId === 'security') return 'security';
+  return 'optimize';
 }
 
 function getProgressValue<T>(progress: Record<string, unknown> | null | undefined, key: string, fallback: T): T {
@@ -124,9 +132,27 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
         if (response.ok === false || response.error) {
           throw new Error(response.error ?? 'Failed to fetch scan result');
         }
-        setResult(response.result ?? null);
-        const report = buildScanReport(config.moduleName, response.result ?? {});
+        const result = response.result ?? null;
+        setResult(result);
+        const report = buildScanReport(config.moduleName, result ?? {});
         scan.completeScan(report);
+
+        const rawStats = result?.statistics;
+        const statistics = typeof rawStats === 'object' && rawStats !== null
+          ? (rawStats as ScanStatistics)
+          : ({} as ScanStatistics);
+        const planId =
+          (result?.action_plan_id as string | undefined) ??
+          (report.planId as string | undefined) ??
+          undefined;
+
+        unifiedScanState.updateLatest({
+          status: 'complete',
+          completedAt: new Date().toISOString(),
+          result,
+          statistics,
+          planId,
+        });
       } catch (err) {
         scan.failScan(err instanceof Error ? err.message : 'Failed to fetch scan result');
       }
@@ -137,12 +163,14 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
   const processStatus = useCallback(
     async (sid: string, status: ScanStatusResponse) => {
       if (status.error) {
+        unifiedScanState.updateLatest({ status: 'error', error: status.error });
         stopPoll();
         scan.failScan(status.error);
         return;
       }
 
       if (status.cancelled) {
+        unifiedScanState.updateLatest({ status: 'cancelled' });
         reset();
         return;
       }
@@ -181,6 +209,11 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
         };
         scan.updateTreeNode(currentPhaseConfig.id, treeUpdate);
       }
+
+      unifiedScanState.updateLatest({
+        status: 'scanning',
+        error: null,
+      });
 
       const elapsedMs = scan.startTime ? Date.now() - scan.startTime : 0;
       setCurrentOperation(mapCurrentOperation(progress, elapsedMs));
@@ -224,14 +257,27 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
         throw new Error('Backend did not return a session id');
       }
       sessionIdRef.current = sid;
+      unifiedScanState.setLatest({
+        sessionId: sid,
+        module: toAppModule(config.moduleId),
+        mode,
+        status: 'scanning',
+        startedAt: response.started_at ?? new Date().toISOString(),
+        remediationStatus: 'none',
+        error: null,
+      });
       startPoll(sid);
     } catch (err) {
+      unifiedScanState.updateLatest({
+        status: 'error',
+        error: err instanceof Error ? err.message : 'Failed to start scan',
+      });
       stopPoll();
       scan.failScan(err instanceof Error ? err.message : 'Failed to start scan');
     } finally {
       startingRef.current = false;
     }
-  }, [hookStartScan, mode, startPoll, scan, stopPoll]);
+  }, [hookStartScan, mode, startPoll, scan, stopPoll, config.moduleId]);
 
   const cancelScan = useCallback(() => {
     const sid = sessionIdRef.current;
