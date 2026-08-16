@@ -19,6 +19,9 @@ from avs_backend.scan_core.orchestration import orchestrator as _orchestrator_mo
 from avs_backend.scan_core.adapters.smart_optimization_plan_builder import (
     SmartOptimizationPlanBuilder,
 )
+from avs_backend.scan_core.adapters.security_remediation_plan_builder import (
+    SecurityRemediationPlanBuilder,
+)
 from avs_backend.scan_core.metadata.action_plan_repository import ActionPlanRepository
 from avs_backend.scan_core.orchestration.orchestrator import ScanOrchestrator
 from avs_backend.scan_core.orchestration.models import ScanProgress, ScanResult
@@ -642,4 +645,96 @@ def _scan_core_smart_optimization_plan(params: Optional[dict[str, Any]]) -> dict
         }
     except Exception as exc:
         logger.exception("scan_core.smart_optimization.plan failed: %s", exc)
+        return {"ok": False, "error": str(exc)}
+
+
+@register("scan_core.security_remediation.plan")
+def _scan_core_security_remediation_plan(
+    params: Optional[dict[str, Any]],
+) -> dict[str, Any]:
+    """Convert Security Center remediation actions into a canonical ActionPlan.
+
+    This RPC is planning-only. It does NOT execute remediation.
+    It does NOT call legacy Security Center execution paths.
+
+    Request:
+        {
+            "actions": [
+                {
+                    "id": "action-1",
+                    "type": "quarantine",
+                    "title": "Quarantine Threat",
+                    "description": "...",
+                    "confidence": 0.95,
+                    "severity": "high",
+                    "category": "spyware",
+                    "sourceModule": "security-center",
+                    "sourceFindingId": "finding-1",
+                    "rollbackAvailable": true,
+                    "target": {"type": "file", "path": "...", "name": "..."}
+                },
+                ...
+            ]
+        }
+
+    Response (success):
+        {
+            "ok": true,
+            "plan_id": "...",
+            "total_actions": N,
+            "auto_fixable": N,
+            "review_required": N,
+            "not_fixable": N,
+            "estimated_affected_size": N or null,
+            "statistics": {
+                "converted": N,
+                "unsupported": N,
+                "errors": N
+            }
+        }
+
+    Response (failure):
+        {"ok": false, "error": "..."}
+
+    Privacy:
+        The response NEVER exposes canonical_path, asset_id, backup_location,
+        quarantine_path, registry keys, browser profile paths, raw evidence,
+        or internal target payloads.
+    """
+    params = _safe_params(params)
+    actions = params.get("actions")
+    if not isinstance(actions, list):
+        return {"ok": False, "error": "Missing or invalid parameter: actions"}
+    if len(actions) == 0:
+        return {"ok": False, "error": "No Security Center actions provided"}
+
+    coordinator = get_coordinator()
+    if coordinator is None:
+        return _coordinator_error()
+
+    try:
+        builder = SecurityRemediationPlanBuilder()
+        plan = builder.build_plan(actions)
+
+        plan_repo = ActionPlanRepository(coordinator.database)
+        plan_repo.save(plan)
+
+        adapter_stats = builder.get_adapter_statistics()
+
+        return {
+            "ok": True,
+            "plan_id": plan.plan_id,
+            "total_actions": len(plan.actions),
+            "auto_fixable": plan.summary.auto_fixable_actions,
+            "review_required": plan.summary.review_required_actions,
+            "not_fixable": plan.summary.not_fixable_actions,
+            "estimated_affected_size": plan.summary.estimated_affected_size,
+            "statistics": {
+                "converted": adapter_stats["converted"],
+                "unsupported": adapter_stats["unsupported"],
+                "errors": adapter_stats["errors"],
+            },
+        }
+    except Exception as exc:
+        logger.exception("scan_core.security_remediation.plan failed: %s", exc)
         return {"ok": False, "error": str(exc)}
