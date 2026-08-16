@@ -30,7 +30,13 @@ export type { RemediationService } from './remediation.service';
 export { useResults } from './useResults';
 export type { UseResultsOptions, UseResultsReturn, ResultsStep } from './useResults';
 
+export { useSmartOptimizationPlan } from './useSmartOptimizationPlan';
+export type { UseSmartOptimizationPlanReturn } from './useSmartOptimizationPlan';
+
 export { ResultsView, type ResultsViewProps } from './ResultsView';
+export { PlanReviewView, type PlanReviewViewProps } from './PlanReviewView';
+export { usePlanDetails } from './usePlanDetails';
+export type { UsePlanDetailsReturn } from './usePlanDetails';
 export { FindingsList, type FindingsListProps } from './FindingsList';
 export { PreviewPanel, type PreviewPanelProps } from './PreviewPanel';
 export { ValidationPanel, type ValidationPanelProps } from './ValidationPanel';

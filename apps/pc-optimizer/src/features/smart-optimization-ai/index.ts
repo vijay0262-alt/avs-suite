@@ -42,10 +42,6 @@ export { OptimizationSimulationEngine } from './OptimizationSimulation';
 export { OptimizationApprovalManager } from './OptimizationApprovalManager';
 export { OptimizationRollbackPlanner } from './OptimizationRollbackPlanner';
 
-// Execution
-export { OptimizationExecutionCoordinator } from './OptimizationExecutionCoordinator';
-export type { ExecutionHandler } from './OptimizationExecutionCoordinator';
-
 // Insights & Dashboard
 export { OptimizationInsights } from './OptimizationInsights';
 export { OptimizationDashboardProvider } from './OptimizationDashboardProvider';
@@ -54,7 +50,6 @@ export { OptimizationDashboardProvider } from './OptimizationDashboardProvider';
 export { OptimizationHistory } from './OptimizationHistory';
 export { OptimizationLearning } from './OptimizationLearning';
 
-// Findings & Execution
+// Findings
 export { gatherFindings } from './findingsGatherer';
 export type { GatheredFindings } from './findingsGatherer';
-export { createExecutionHandler } from './executionHandler';

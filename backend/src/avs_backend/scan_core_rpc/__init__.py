@@ -16,6 +16,10 @@ from avs_backend.api.registry import register
 from avs_backend.scan_core.metadata.database import DatabaseConfig, MetadataDatabase
 from avs_backend.scan_core.orchestration import RemediationCoordinator
 from avs_backend.scan_core.orchestration import orchestrator as _orchestrator_module
+from avs_backend.scan_core.adapters.smart_optimization_plan_builder import (
+    SmartOptimizationPlanBuilder,
+)
+from avs_backend.scan_core.metadata.action_plan_repository import ActionPlanRepository
 from avs_backend.scan_core.orchestration.orchestrator import ScanOrchestrator
 from avs_backend.scan_core.orchestration.models import ScanProgress, ScanResult
 from avs_backend.scan_core.rules.evaluator import CancellationToken
@@ -595,4 +599,47 @@ def _scan_core_scan_plan_details(params: Optional[dict[str, Any]]) -> dict[str, 
         return orchestrator.get_plan_details(plan_id)
     except Exception as exc:
         logger.exception("scan_core.scan.plan_details failed: %s", exc)
+        return {"ok": False, "error": str(exc)}
+
+
+@register("scan_core.smart_optimization.plan")
+def _scan_core_smart_optimization_plan(params: Optional[dict[str, Any]]) -> dict[str, Any]:
+    """Convert Smart Optimization analysis output into a canonical ActionPlan.
+
+    This RPC is planning-only. It does NOT execute remediation.
+    """
+    params = _safe_params(params)
+    actions = params.get("actions")
+    if not isinstance(actions, list):
+        return {"ok": False, "error": "Missing or invalid parameter: actions"}
+    if len(actions) == 0:
+        return {"ok": False, "error": "No Smart Optimization actions provided"}
+
+    coordinator = get_coordinator()
+    if coordinator is None:
+        return _coordinator_error()
+
+    try:
+        builder = SmartOptimizationPlanBuilder()
+        plan = builder.build_plan(actions)
+
+        plan_repo = ActionPlanRepository(coordinator.database)
+        plan_repo.save(plan)
+
+        return {
+            "ok": True,
+            "plan_id": plan.plan_id,
+            "total_actions": len(plan.actions),
+            "auto_fixable": plan.summary.auto_fixable_actions,
+            "review_required": plan.summary.review_required_actions,
+            "not_fixable": plan.summary.not_fixable_actions,
+            "estimated_affected_size": plan.summary.estimated_affected_size,
+            "statistics": {
+                "converted": builder.get_adapter_statistics()["converted"],
+                "unsupported": builder.get_adapter_statistics()["unsupported"],
+                "errors": builder.get_adapter_statistics()["errors"],
+            },
+        }
+    except Exception as exc:
+        logger.exception("scan_core.smart_optimization.plan failed: %s", exc)
         return {"ok": False, "error": str(exc)}

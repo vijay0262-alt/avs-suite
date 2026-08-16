@@ -10,7 +10,7 @@
  *   - Execution history & learning data
  *   - Configuration controls
  */
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useCallback } from 'react';
 import { Card, Button, Badge, CollapsibleSection } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
@@ -19,7 +19,7 @@ import { ModuleEmptyState, ModuleLoadingState } from '../../components/ModuleSta
 import { useEditionLimits } from '../licensing/editionLimits';
 import { useIsPro } from '../sync/syncStore';
 import { ProStatusBanner, ProStatusPill, ProOnlySection, ProFeatureIndicator } from '../licensing/ProStatusBadge';
-import { ScanView } from '../scan';
+import { ScanView, PlanReviewView, useSmartOptimizationPlan } from '../scan';
 import { formatDataSize } from '@avs/shared/utils';
 import {
   SmartOptimizationEngine,
@@ -32,6 +32,7 @@ import {
   type RiskLevel,
   type OptimizationImpactTier,
   type SourceFinding,
+  type OptimizationAction,
 } from '../smart-optimization-ai';
 import { gatherFindings } from '../smart-optimization-ai/findingsGatherer';
 import {
@@ -48,6 +49,43 @@ import {
   CalendarDaysIcon,
   EyeIcon,
 } from '@heroicons/react/24/outline';
+
+/**
+ * Convert an OptimizationAction (AI plan) into the plain-object format
+ * expected by scan_core.smart_optimization.plan RPC. Only serializable
+ * fields are sent — no canonical paths, asset IDs, or internal target
+ * payloads are included.
+ */
+function actionToRpcPayload(action: OptimizationAction): Record<string, unknown> {
+  return {
+    id: action.id,
+    type: action.type,
+    title: action.title,
+    description: action.description,
+    confidence: action.confidence,
+    rollbackAvailable: action.rollbackAvailable,
+    sourceModule: action.sourceModule,
+    sourceFindingId: action.sourceFindingId,
+    impact: {
+      score: action.impact.score,
+      tier: action.impactTier,
+      primaryBenefit: action.impact.primaryBenefit,
+      estimatedHealthScoreGain: action.impact.estimatedHealthScoreGain,
+      description: action.impact.description,
+    },
+    risk: {
+      level: action.risk.level,
+      score: action.risk.score,
+      reversible: action.risk.reversible,
+      requiresRestart: action.risk.requiresRestart,
+      estimatedDurationSeconds: action.risk.estimatedDurationSeconds,
+      userConfirmationRequired: action.risk.userConfirmationRequired,
+      factors: action.risk.factors,
+      mitigations: action.risk.mitigations,
+    },
+    benefits: action.benefits,
+  };
+}
 
 // ── ViewModel ──────────────────────────────────────────────────
 
@@ -181,12 +219,39 @@ export default function SmartOptimizationPage() {
   const state = useViewModel(vm);
   const limits = useEditionLimits();
   const isPro = useIsPro();
+  const smartPlan = useSmartOptimizationPlan();
+
   useEffect(() => {
     vm.bootstrap();
     // Auto-generate plan on page load so user sees results immediately
     void vm.generatePlan();
     return () => vm.dispose();
   }, [vm]);
+
+  // ── Canonical plan creation handoff ──────────────────────────────
+  const handleReviewOptimize = useCallback(async () => {
+    const plan = state.plan;
+    if (!plan || plan.actions.length === 0) return;
+    const payload = plan.actions.map(actionToRpcPayload);
+    await smartPlan.createPlan(payload);
+  }, [state.plan, smartPlan]);
+
+  const handlePlanClose = useCallback(() => {
+    smartPlan.reset();
+  }, [smartPlan]);
+
+  // If the RPC returned a plan_id, hand off to the canonical review flow
+  if (smartPlan.planId) {
+    return (
+      <div className="px-6 py-6" data-testid="smart-opt-plan-review">
+        <PlanReviewView
+          planId={smartPlan.planId}
+          module="optimize"
+          onClose={handlePlanClose}
+        />
+      </div>
+    );
+  }
 
   if (state.bootstrap === 'loading') {
     return (
@@ -202,6 +267,7 @@ export default function SmartOptimizationPage() {
   const maxOptimizations = isPro ? limits.getLimit('aiSmartOptimizePerRun') : null;
   const visibleActions = s.preview ? s.preview.actionsPreview.slice(0, maxOptimizations ?? undefined) : [];
   const hiddenCount = s.preview && maxOptimizations !== null ? Math.max(0, s.preview.actionsPreview.length - maxOptimizations) : 0;
+  const hasActionablePlan = s.plan !== null && s.plan.actions.length > 0;
 
   return (
     <div className="px-6 py-6 space-y-5">
@@ -214,7 +280,7 @@ export default function SmartOptimizationPage() {
             <ScanView
               module="optimize"
               mode="quick"
-              buttonLabel="Scan & Optimize"
+              buttonLabel="Scan & Review"
               onClose={() => {}}
               className="shrink-0 w-72"
             />
@@ -322,7 +388,25 @@ export default function SmartOptimizationPage() {
               <Button onClick={() => vm.runSimulation()} leftIcon={<BeakerIcon className="h-4 w-4" />} variant="secondary">
                 Preview Results
               </Button>
+              <Button
+                onClick={handleReviewOptimize}
+                disabled={!hasActionablePlan || smartPlan.isCreating}
+                leftIcon={<ShieldCheckIcon className="h-4 w-4" />}
+                data-testid="smart-opt-review-btn"
+              >
+                {smartPlan.isCreating ? 'Creating Plan...' : 'Review & Optimize'}
+              </Button>
             </div>
+
+            {/* Plan creation error */}
+            {smartPlan.error && (
+              <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-danger)]/10 p-3" data-testid="smart-opt-plan-error">
+                <div className="flex items-center gap-2">
+                  <ExclamationTriangleIcon className="h-4 w-4 text-[var(--avs-danger)]" />
+                  <span className="text-caption text-[var(--avs-danger)]">{smartPlan.error}</span>
+                </div>
+              </div>
+            )}
 
             {/* Hidden actions notice for Free */}
             {hiddenCount > 0 && (
@@ -469,7 +553,7 @@ export default function SmartOptimizationPage() {
           <ModuleEmptyState
             icon={BoltIcon}
             title="No optimization plan yet"
-            message="Click 'AI Smart Optimize' to run a complete system scan and create an evidence-based optimization plan."
+            message="Click 'Scan & Optimize' to run a complete system scan and create an evidence-based optimization plan."
           />
         </Card>
       )}

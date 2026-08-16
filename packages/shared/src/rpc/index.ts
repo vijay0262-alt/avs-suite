@@ -170,6 +170,9 @@ export const RPC_METHODS = {
   SCAN_CORE_SCAN_HISTORY: 'scan_core.scan.history',
   SCAN_CORE_SCAN_PLAN_DETAILS: 'scan_core.scan.plan_details',
 
+  // Smart Optimization Plan Creation (SC-8C11 Phase 2)
+  SCAN_CORE_SMART_OPTIMIZATION_PLAN: 'scan_core.smart_optimization.plan',
+
   // Predictive Health
   PREDICTIVE_HEALTH_SNAPSHOT: 'predictive.snapshot',
   PREDICTIVE_HEALTH_TRENDS: 'predictive.trends',

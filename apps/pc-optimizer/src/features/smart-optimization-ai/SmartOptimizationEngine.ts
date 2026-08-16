@@ -115,6 +115,12 @@ export class SmartOptimizationEngine {
 
   /**
    * Execute a plan. Requires an execution handler to be set.
+   *
+   * @deprecated Smart Optimization execution is now handled by the canonical
+   * scan_core remediation flow. Use scan_core.smart_optimization.plan to
+   * create a canonical ActionPlan, then use scan_core.remediation.prepare /
+   * validate / execute / rollback. This method is retained for test
+   * compatibility and is not called from production UI.
    */
   async executePlan(plan?: OptimizationPlan): Promise<OptimizationReport> {
     const target = plan ?? this.lastPlan;
@@ -139,6 +145,8 @@ export class SmartOptimizationEngine {
 
   /**
    * Rollback a specific action.
+   *
+   * @deprecated Use scan_core.remediation.rollback instead.
    */
   async rollbackAction(action: OptimizationAction, planId: string): Promise<boolean> {
     return this.executionCoordinator.rollbackAction(action, planId);
@@ -146,6 +154,8 @@ export class SmartOptimizationEngine {
 
   /**
    * Set the execution handler for running optimizations.
+   *
+   * @deprecated Use the canonical scan_core remediation flow instead.
    */
   setExecutionHandler(handler: ExecutionHandler): void {
     this.executionCoordinator.setHandler(handler);
@@ -153,6 +163,8 @@ export class SmartOptimizationEngine {
 
   /**
    * Get the approval manager for the current execution.
+   *
+   * @deprecated Use scan_core.remediation.validate instead.
    */
   getApprovalManager() {
     return this.executionCoordinator.getApprovalManager();
