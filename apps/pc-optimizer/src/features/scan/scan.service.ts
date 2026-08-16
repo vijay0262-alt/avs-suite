@@ -24,7 +24,6 @@ export interface ScanCancelResponse {
 }
 
 export interface ScanService {
-  scan(scope?: string[]): Promise<ScanStartResponse>;
   scan_quick(scope?: string[]): Promise<ScanStartResponse>;
   scan_full(scope?: string[]): Promise<ScanStartResponse>;
   cancel_scan(sessionId: string): Promise<ScanCancelResponse>;
@@ -33,7 +32,6 @@ export interface ScanService {
 }
 
 export const scanService: ScanService = {
-  scan: (scope?: string[]) => client().call(RPC_METHODS.SCAN_CORE_SCAN_QUICK, { scope }),
   scan_quick: (scope?: string[]) => client().call(RPC_METHODS.SCAN_CORE_SCAN_QUICK, { scope }),
   scan_full: (scope?: string[]) => client().call(RPC_METHODS.SCAN_CORE_SCAN_FULL, { scope }),
   cancel_scan: (sessionId: string) => client().call(RPC_METHODS.SCAN_CORE_SCAN_CANCEL, { session_id: sessionId }),

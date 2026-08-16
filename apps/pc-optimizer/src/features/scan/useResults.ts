@@ -33,9 +33,10 @@ export type ResultsStep =
   | 'partial'
   | 'failed'
   | 'cancelled'
+  | 'rejected'
   | 'error';
 
-const TERMINAL_STATUSES = ['completed', 'partial', 'failed', 'cancelled'] as const;
+const TERMINAL_STATUSES = ['completed', 'partial', 'failed', 'cancelled', 'rejected'] as const;
 
 function isTerminalStatus(status?: string): boolean {
   if (!status) return false;
@@ -202,8 +203,19 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
         preview.approval_token,
         'live',
       );
-      if (response.ok === false || !response.summary) {
-        throw new Error(response.error ?? 'Failed to start remediation execution');
+      if (response.ok === false) {
+        if (response.status === 'rejected') {
+          setStep('rejected');
+          setError(response.reason ?? 'Execution rejected');
+        } else {
+          setStep('error');
+          setError(response.error ?? 'Failed to start remediation execution');
+        }
+        hasRequestedExecution.current = false;
+        return;
+      }
+      if (!response.summary) {
+        throw new Error('Failed to start remediation execution');
       }
       const summary: RemediationExecution = response.summary;
       setExecutionId(summary.execution_id);

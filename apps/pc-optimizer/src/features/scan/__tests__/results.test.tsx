@@ -934,4 +934,133 @@ describe('ResultsView', () => {
     expect(orchestratorService.optimize).not.toHaveBeenCalled();
     expect(orchestratorService.fullAsync).not.toHaveBeenCalled();
   });
+
+  it('rejected execution leaves step="rejected" and does not poll status', async () => {
+    mockCall.mockImplementation((method: string) => {
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_PREPARE) {
+        return Promise.resolve({ ok: true, preview: validPreview });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_VALIDATE) {
+        return Promise.resolve({ ok: true, validation: validValidation });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE) {
+        return Promise.resolve({ ok: false, status: 'rejected', reason: 'Plan is stale' });
+      }
+      return Promise.reject(new Error(`Unknown method: ${method}`));
+    });
+
+    render(
+      <ResultsView
+        moduleName="AI Smart Optimize"
+        moduleIcon="SparklesIcon"
+        statistics={baseStatistics}
+        findings={baseFindings}
+        planId={planId}
+        onClose={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
+    fireEvent.click(screen.getByTestId('review-remediate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('preview-validate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTestId('validation-approve-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('results-view-rejected')).toBeDefined();
+    });
+
+    const statusCalls = mockCall.mock.calls.filter(
+      (call) => call[0] === RPC_METHODS.SCAN_CORE_REMEDIATION_STATUS,
+    );
+    expect(statusCalls).toHaveLength(0);
+  });
+
+  it('missing approval token rejection renders the rejected panel', async () => {
+    mockCall.mockImplementation((method: string) => {
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_PREPARE) {
+        return Promise.resolve({ ok: true, preview: validPreview });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_VALIDATE) {
+        return Promise.resolve({ ok: true, validation: validValidation });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE) {
+        return Promise.resolve({ ok: false, status: 'rejected', reason: 'Missing approval token' });
+      }
+      return Promise.reject(new Error(`Unknown method: ${method}`));
+    });
+
+    render(
+      <ResultsView
+        moduleName="AI Smart Optimize"
+        moduleIcon="SparklesIcon"
+        statistics={baseStatistics}
+        findings={baseFindings}
+        planId={planId}
+        onClose={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
+    fireEvent.click(screen.getByTestId('review-remediate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('preview-validate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTestId('validation-approve-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('results-view-rejected')).toBeDefined();
+    });
+    expect(screen.getByText('Missing approval token')).toBeDefined();
+  });
+
+  it('valid approval still reaches normal execution completion', async () => {
+    mockCall.mockImplementation((method: string) => {
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_PREPARE) {
+        return Promise.resolve({ ok: true, preview: validPreview });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_VALIDATE) {
+        return Promise.resolve({ ok: true, validation: validValidation });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE) {
+        return Promise.resolve({ ok: true, summary: makeExecution('completed') });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_STATUS) {
+        return Promise.resolve({ ok: true, status: makeExecution('completed') });
+      }
+      return Promise.reject(new Error(`Unknown method: ${method}`));
+    });
+
+    render(
+      <ResultsView
+        moduleName="AI Smart Optimize"
+        moduleIcon="SparklesIcon"
+        statistics={baseStatistics}
+        findings={baseFindings}
+        planId={planId}
+        onClose={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
+    fireEvent.click(screen.getByTestId('review-remediate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTestId('preview-validate-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTestId('validation-approve-btn'));
+    await waitFor(() => {
+      expect(screen.getByTestId('terminal-state-completed')).toBeDefined();
+    });
+  });
 });

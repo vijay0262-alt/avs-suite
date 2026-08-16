@@ -222,14 +222,14 @@ def _scan_core_remediation_validate(params: Optional[dict[str, Any]]) -> dict[st
 @register("scan_core.remediation.execute")
 def _scan_core_remediation_execute(params: Optional[dict[str, Any]]) -> dict[str, Any]:
     params = _safe_params(params)
-    for key in ("plan_id", "request_id", "approval_token"):
+    for key in ("plan_id", "request_id"):
         ok, value = _require_str(params, key)
         if not ok:
             return {"ok": False, "error": value}
 
     plan_id: str = params["plan_id"]
     request_id: str = params["request_id"]
-    approval_token: str = params["approval_token"]
+    approval_token = str(params.get("approval_token") or "")
     mode = params.get("mode", "dry_run")
     if mode not in ("dry_run", "live"):
         return {"ok": False, "error": "mode must be 'dry_run' or 'live'"}
@@ -245,6 +245,12 @@ def _scan_core_remediation_execute(params: Optional[dict[str, Any]]) -> dict[str
             approval_token=approval_token,
             mode=mode,
         )
+        if summary.status.value == "rejected":
+            return {
+                "ok": False,
+                "status": "rejected",
+                "reason": summary.reason or "Execution rejected",
+            }
         return {"ok": True, "summary": summary.to_dict()}
     except Exception as exc:
         logger.exception("scan_core.remediation.execute failed: %s", exc)

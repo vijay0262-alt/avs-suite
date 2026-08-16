@@ -17,7 +17,7 @@ export interface ValidationPanelProps {
 }
 
 export function ValidationPanel({ validation, preview, onApprove, onBack }: ValidationPanelProps) {
-  const canApprove = validation.valid === true && preview !== null;
+  const canApprove = validation.valid === true && preview !== null && preview.is_stale !== true;
 
   return (
     <div className="space-y-5" data-testid="remediation-validation-panel">
@@ -55,6 +55,11 @@ export function ValidationPanel({ validation, preview, onApprove, onBack }: Vali
             {validation.total} action(s) reviewed, {validation.completed} ready to execute.
           </p>
           <p className="text-small">{preview.affected_targets.length} affected target(s).</p>
+          {preview.is_stale && (
+            <p className="mt-2 text-small text-semantic-warning" data-testid="stale-preview-warning">
+              Preview is stale. Re-run prepare before approving.
+            </p>
+          )}
         </div>
       )}
 

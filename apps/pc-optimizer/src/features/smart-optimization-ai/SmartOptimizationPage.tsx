@@ -10,8 +10,7 @@
  *   - Execution history & learning data
  *   - Configuration controls
  */
-import { useEffect, useMemo, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo } from 'react';
 import { Card, Button, Badge, CollapsibleSection } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
@@ -30,29 +29,24 @@ import {
   type OptimizationInsight,
   type OptimizationDashboardData,
   type OptimizationConfiguration,
-  type OptimizationReport,
   type RiskLevel,
   type OptimizationImpactTier,
   type SourceFinding,
 } from '../smart-optimization-ai';
 import { gatherFindings } from '../smart-optimization-ai/findingsGatherer';
-import { createExecutionHandler } from '../smart-optimization-ai/executionHandler';
 import {
   BoltIcon,
   ChartBarIcon,
   ShieldCheckIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
-  ArrowPathIcon,
   CpuChipIcon,
-  CircleStackIcon,
   ClockIcon,
   ArrowTrendingUpIcon,
   LightBulbIcon,
   BeakerIcon,
   CalendarDaysIcon,
   EyeIcon,
-  LockClosedIcon,
 } from '@heroicons/react/24/outline';
 
 // ── ViewModel ──────────────────────────────────────────────────
@@ -66,8 +60,6 @@ interface SmartOptState {
   insights: OptimizationInsight[];
   config: OptimizationConfiguration | null;
   isGenerating: boolean;
-  isExecuting: boolean;
-  lastReport: OptimizationReport | null;
   selectedActionId: string | null;
   error: string | null;
 }
@@ -85,13 +77,10 @@ class SmartOptViewModel extends ViewModel<SmartOptState> {
       insights: [],
       config: null,
       isGenerating: false,
-      isExecuting: false,
-      lastReport: null,
       selectedActionId: null,
       error: null,
     });
     this.engine = new SmartOptimizationEngine();
-    this.engine.setExecutionHandler(createExecutionHandler());
   }
 
   bootstrap() {
@@ -147,18 +136,6 @@ class SmartOptViewModel extends ViewModel<SmartOptState> {
     }
   }
 
-  async executePlan() {
-    const { plan } = this.state;
-    if (!plan) return;
-    this.setState({ isExecuting: true, error: null });
-    try {
-      const report = await this.engine.executePlan(plan);
-      this.setState({ lastReport: report, isExecuting: false, dashboard: this.engine.buildDashboard() });
-    } catch (e) {
-      this.setState({ isExecuting: false, error: e instanceof Error ? e.message : 'Execution failed' });
-    }
-  }
-
   selectAction(actionId: string | null) {
     this.setState({ selectedActionId: actionId });
   }
@@ -204,23 +181,12 @@ export default function SmartOptimizationPage() {
   const state = useViewModel(vm);
   const limits = useEditionLimits();
   const isPro = useIsPro();
-  const navigate = useNavigate();
-  const [showUpgradeMessage, setShowUpgradeMessage] = useState(false);
-
   useEffect(() => {
     vm.bootstrap();
     // Auto-generate plan on page load so user sees results immediately
     void vm.generatePlan();
     return () => vm.dispose();
   }, [vm]);
-
-  const handleExecutePlan = useCallback(() => {
-    if (!isPro) {
-      setShowUpgradeMessage(true);
-      return;
-    }
-    vm.executePlan();
-  }, [isPro, vm]);
 
   if (state.bootstrap === 'loading') {
     return (
@@ -275,28 +241,28 @@ export default function SmartOptimizationPage() {
           <Card variant="glass" className="p-4" data-testid="smart-opt-storage">
             <div className="text-caption text-text-muted">Storage Recovered</div>
             <div className="mt-1 text-2xl font-bold text-text-primary tabular-nums">
-              {s.lastReport ? formatDataSize(s.lastReport.summary.storageRecoveredMB * 1024 * 1024) : formatDataSize(dash.summary.estimatedTotalRecoveryMB * 1024 * 1024)}
+              {formatDataSize(dash.summary.estimatedTotalRecoveryMB * 1024 * 1024)}
             </div>
-            <div className="text-caption text-text-muted mt-0.5">{s.lastReport ? 'This session' : 'Estimated'}</div>
+            <div className="text-caption text-text-muted mt-0.5">Estimated</div>
           </Card>
 
           {/* Card 3: Items Fixed */}
           <Card variant="glass" className="p-4" data-testid="smart-opt-items">
             <div className="text-caption text-text-muted">Items Fixed</div>
             <div className="mt-1 text-2xl font-bold text-text-primary tabular-nums">
-              {s.lastReport ? s.lastReport.successCount : dash.summary.totalAvailableActions}
+              {dash.summary.totalAvailableActions}
             </div>
-            <div className="text-caption text-text-muted mt-0.5">{s.lastReport ? `${s.lastReport.failureCount} failed` : 'Available actions'}</div>
+            <div className="text-caption text-text-muted mt-0.5">Available actions</div>
           </Card>
 
           {/* Card 4: Last Optimization */}
           <Card variant="glass" className="p-4" data-testid="smart-opt-last">
             <div className="text-caption text-text-muted">Last Optimization</div>
             <div className="mt-1 text-small font-semibold text-text-primary">
-              {s.lastReport ? 'Completed' : 'Not yet run'}
+              Not yet run
             </div>
             <div className="text-caption text-text-muted mt-0.5">
-              {s.lastReport ? `${s.lastReport.successCount} of ${s.lastReport.successCount + s.lastReport.failureCount} actions` : `Est. ${formatDuration(dash.summary.estimatedDurationSeconds)}`}
+              {`Est. ${formatDuration(dash.summary.estimatedDurationSeconds)}`}
             </div>
           </Card>
         </div>
@@ -356,13 +322,6 @@ export default function SmartOptimizationPage() {
               <Button onClick={() => vm.runSimulation()} leftIcon={<BeakerIcon className="h-4 w-4" />} variant="secondary">
                 Preview Results
               </Button>
-              <Button
-                onClick={handleExecutePlan}
-                loading={s.isExecuting}
-                leftIcon={isPro ? <BoltIcon className="h-4 w-4" /> : <LockClosedIcon className="h-4 w-4" />}
-              >
-                {isPro ? 'Auto Optimize' : 'Upgrade to Execute'}
-              </Button>
             </div>
 
             {/* Hidden actions notice for Free */}
@@ -405,21 +364,7 @@ export default function SmartOptimizationPage() {
                     </select>
                   </div>
                 </div>
-                {/* Background Optimization */}
-                <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
-                  <div className="flex items-center gap-2">
-                    <ArrowPathIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
-                    <div>
-                      <span className="text-caption font-medium text-[var(--avs-text-primary)]">Background Optimization</span>
-                      <p className="text-caption text-[var(--avs-text-muted)]">Continuously optimize in the background</p>
-                    </div>
-                  </div>
-                  <ConfigToggle
-                    label=""
-                    value={s.config?.autoApproveLowRisk ?? false}
-                    onChange={(v) => vm.updateConfig({ autoApproveLowRisk: v })}
-                  />
-                </div>
+
               </div>
             </ProOnlySection>
           </div>
@@ -449,7 +394,7 @@ export default function SmartOptimizationPage() {
       )}
 
       {/* Panel 2: Results & Settings */}
-      {(s.simulation || s.lastReport || s.config) && (
+      {(s.simulation || s.config) && (
         <CollapsibleSection title="Results & Settings" icon={<BeakerIcon className="h-5 w-5" />} storageKey="smart-opt-results-settings">
           <div className="space-y-4">
             {s.simulation && (
@@ -479,33 +424,7 @@ export default function SmartOptimizationPage() {
                 )}
               </div>
             )}
-            {s.lastReport && (
-              <div className="space-y-3 pt-4 border-t border-[var(--avs-border)]">
-                <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)]">Optimization Results</h4>
-                <p className="text-small font-medium text-[var(--avs-text-primary)]">{s.lastReport.summary.headline}</p>
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                  <MetricBox label="Score Change" value={`${s.lastReport.summary.healthScoreChange > 0 ? '+' : ''}${s.lastReport.summary.healthScoreChange}`} icon={ArrowTrendingUpIcon} />
-                  <MetricBox label="Storage Recovered" value={formatDataSize(s.lastReport.summary.storageRecoveredMB * 1024 * 1024)} icon={CircleStackIcon} />
-                  <MetricBox label="Completed" value={s.lastReport.successCount.toString()} icon={CheckCircleIcon} />
-                  <MetricBox label="Failed" value={s.lastReport.failureCount.toString()} icon={ExclamationTriangleIcon} />
-                </div>
-                <div className="space-y-1">
-                  {s.lastReport.results.map((result) => (
-                    <div key={result.actionId} className="flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
-                      {result.status === 'completed' ? (
-                        <CheckCircleIcon className="h-4 w-4 text-[var(--avs-success)]" />
-                      ) : result.status === 'failed' ? (
-                        <ExclamationTriangleIcon className="h-4 w-4 text-[var(--avs-danger)]" />
-                      ) : (
-                        <ArrowPathIcon className="h-4 w-4 text-[var(--avs-text-muted)]" />
-                      )}
-                      <span className="text-caption font-medium text-[var(--avs-text-primary)]">{result.actionTitle}</span>
-                      <span className="text-caption text-[var(--avs-text-muted)] ml-auto capitalize">{result.status}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+
             {s.config && (
               <div className="space-y-3 pt-4 border-t border-[var(--avs-border)]">
                 <h4 className="text-caption font-semibold uppercase tracking-wide text-[var(--avs-text-muted)]">Configuration</h4>
@@ -514,7 +433,6 @@ export default function SmartOptimizationPage() {
                   <ConfigToggle label="Enable Simulation" value={s.config.enableSimulation} onChange={(v) => vm.updateConfig({ enableSimulation: v })} />
                   <ConfigToggle label="Enable Learning" value={s.config.enableLearning} onChange={(v) => vm.updateConfig({ enableLearning: v })} />
                   <ConfigToggle label="Enable Insights" value={s.config.enableInsights} onChange={(v) => vm.updateConfig({ enableInsights: v })} />
-                  <ConfigToggle label="Auto-approve Low Risk" value={s.config.autoApproveLowRisk} onChange={(v) => vm.updateConfig({ autoApproveLowRisk: v })} />
                   <ConfigToggle label="Approval Flow" value={s.config.enableApprovalFlow} onChange={(v) => vm.updateConfig({ enableApprovalFlow: v })} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -546,60 +464,13 @@ export default function SmartOptimizationPage() {
       )}
 
       {/* Empty State */}
-      {!s.plan && !s.isGenerating && !showUpgradeMessage && (
+      {!s.plan && !s.isGenerating && (
         <Card>
           <ModuleEmptyState
             icon={BoltIcon}
             title="No optimization plan yet"
-            message={isPro
-              ? "Click 'AI Smart Optimize' to run a complete system scan and create an evidence-based optimization plan with one-click execution."
-              : "Click 'AI Smart Optimize' to run a complete system scan and see what can be optimized. Upgrade to Professional for one-click automatic optimization."}
+            message="Click 'AI Smart Optimize' to run a complete system scan and create an evidence-based optimization plan."
           />
-        </Card>
-      )}
-
-      {/* Upgrade message for Free users - shown when they try to execute */}
-      {showUpgradeMessage && !isPro && (
-        <Card variant="glass" data-testid="smart-opt-upgrade-message">
-          <div className="flex flex-col items-center text-center py-8 px-6 gap-4">
-            <div className="rounded-full bg-semantic-warning/10 p-4">
-              <LockClosedIcon className="h-8 w-8 text-semantic-warning" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-section-title font-semibold text-text-primary">Upgrade to Professional for Full Optimization</h3>
-              <p className="text-small text-text-secondary max-w-md">
-                You can see the optimization plan and expected improvements. Professional edition unlocks:
-              </p>
-              <div className="flex flex-wrap justify-center gap-2 text-caption">
-                <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">One-click Auto Optimize</span>
-                <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">Automatic sequencing</span>
-                <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">Risk assessment</span>
-                <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">Rollback support</span>
-                <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">Background optimization</span>
-                <span className="rounded-full bg-[var(--avs-surface-muted)] px-3 py-1 text-text-secondary">Scheduled optimization</span>
-              </div>
-              <p className="text-small text-text-muted pt-2">
-                Or use <span className="font-medium text-text-primary">Manual Optimization</span> —
-                run individual scans and cleaners from the sidebar with your Free edition.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="primary"
-                onClick={() => navigate('/license')}
-                leftIcon={<BoltIcon className="h-4 w-4" />}
-                data-testid="smart-opt-upgrade-button"
-              >
-                Upgrade to Professional
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => setShowUpgradeMessage(false)}
-              >
-                Maybe Later
-              </Button>
-            </div>
-          </div>
         </Card>
       )}
 

@@ -85,6 +85,7 @@ export type ExecutionStatus =
   | 'partial'
   | 'failed'
   | 'cancelled'
+  | 'rejected'
   | 'unknown';
 
 export interface RemediationExecution {
@@ -126,6 +127,8 @@ export interface RemediationExecutionStatus {
 export interface RemediationExecuteResponse {
   ok: boolean;
   summary?: RemediationExecution;
+  status?: ExecutionStatus;
+  reason?: string;
   error?: string | null;
 }
 
@@ -164,7 +167,7 @@ export interface RemediationRollbackResponse {
   error?: string | null;
 }
 
-export type ExecutionStep = 'executing' | 'completed' | 'partial' | 'failed' | 'cancelled';
+export type ExecutionStep = 'executing' | 'completed' | 'partial' | 'failed' | 'cancelled' | 'rejected';
 
 export type RollbackStep =
   | 'idle'

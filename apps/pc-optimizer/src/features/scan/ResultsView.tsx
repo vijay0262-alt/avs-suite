@@ -129,6 +129,23 @@ export function ResultsView({
     );
   }
 
+  if (step === 'rejected') {
+    return (
+      <Card variant="glass" className="p-8" data-testid="results-view-rejected">
+        <div className="text-center space-y-4">
+          <div className="inline-flex p-3 rounded-full bg-semantic-danger/10">
+            <ExclamationTriangleIcon className="h-8 w-8 text-semantic-danger" />
+          </div>
+          <h3 className="text-lg font-semibold text-text-primary">Execution rejected</h3>
+          <p className="text-small text-text-secondary">{error}</p>
+          <Button variant="secondary" onClick={goBack} data-testid="rejected-back-btn">
+            Back to Review
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
   const isTerminal =
     step === 'completed' || step === 'partial' || step === 'failed' || step === 'cancelled';
 

@@ -268,6 +268,92 @@ def test_unknown_method_returns_safe_error() -> None:
     json.dumps(result)
 
 
+def test_execute_rejects_stale_plan(
+    patched_coordinator: tuple[RemediationCoordinator, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _coordinator, plan_id = patched_coordinator
+    preview = _call("scan_core.remediation.prepare", {"plan_id": plan_id})["preview"]
+
+    # Force any loaded ActionPlan to report itself as stale.
+    from avs_backend.scan_core.rules.action import ActionPlan
+
+    monkeypatch.setattr(ActionPlan, "is_stale", lambda self: True)
+
+    result = _call(
+        "scan_core.remediation.execute",
+        {
+            "plan_id": plan_id,
+            "request_id": preview["request_id"],
+            "approval_token": preview["approval_token"],
+            "mode": "live",
+        },
+    )
+    assert result["ok"] is False
+    assert result.get("status") == "rejected"
+    assert "reason" in result
+    assert "execution_id" not in result
+    assert "summary" not in result
+    json.dumps(result)
+
+
+def test_execute_rejects_missing_approval_token(
+    patched_coordinator: tuple[RemediationCoordinator, str],
+) -> None:
+    _coordinator, plan_id = patched_coordinator
+    preview = _call("scan_core.remediation.prepare", {"plan_id": plan_id})["preview"]
+
+    result = _call(
+        "scan_core.remediation.execute",
+        {
+            "plan_id": plan_id,
+            "request_id": preview["request_id"],
+            "mode": "live",
+        },
+    )
+    assert result["ok"] is False
+    assert result.get("status") == "rejected"
+    assert "reason" in result
+    assert "execution_id" not in result
+    assert "summary" not in result
+    json.dumps(result)
+
+
+def test_execute_rejects_invalid_approval_token(
+    patched_coordinator: tuple[RemediationCoordinator, str],
+) -> None:
+    _coordinator, plan_id = patched_coordinator
+    preview = _call("scan_core.remediation.prepare", {"plan_id": plan_id})["preview"]
+
+    # First, finalize the request using a valid dry_run call.
+    _call(
+        "scan_core.remediation.execute",
+        {
+            "plan_id": plan_id,
+            "request_id": preview["request_id"],
+            "approval_token": preview["approval_token"],
+            "mode": "dry_run",
+        },
+    )
+
+    # Reusing the same request_id with a different token is treated as invalid/duplicate.
+    result = _call(
+        "scan_core.remediation.execute",
+        {
+            "plan_id": plan_id,
+            "request_id": preview["request_id"],
+            "approval_token": "invalid-token",
+            "mode": "live",
+        },
+    )
+    assert result["ok"] is False
+    assert result.get("status") == "rejected"
+    assert "reason" in result
+    assert "execution_id" not in result
+    assert "summary" not in result
+    json.dumps(result)
+
+
 def test_all_methods_return_json_serializable_results(
     patched_coordinator: tuple[RemediationCoordinator, str],
 ) -> None:
