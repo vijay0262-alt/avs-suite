@@ -383,8 +383,12 @@ class RemediationCoordinator:
                 fixability_counts.get(action.fixability.value, 0) + 1
             )
             estimated_size += action.estimated_size or 0
-            if hasattr(action.target, "to_dict"):
-                targets.append(action.target.to_dict())
+            display_name = (
+                action.rule_id.replace("-", " ").replace("_", " ").title()
+                if action.rule_id
+                else action.action_type.value.replace("_", " ").title()
+            )
+            targets.append({"display_name": display_name})
             if action.backup_required:
                 backup_required = True
             if action.rollback_supported:

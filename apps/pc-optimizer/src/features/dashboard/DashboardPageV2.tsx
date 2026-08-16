@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, RecommendationCard, ChartCard, TimelineCard, Sparkline, EmptyState, LoadingState, CollapsibleSection } from '@avs/ui';
+import { Button, Card, ChartCard, TimelineCard, Sparkline, EmptyState, LoadingState, CollapsibleSection } from '@avs/ui';
 import { ModuleErrorBanner } from '../../components/ModuleStates';
 import {
   SparklesIcon,
@@ -19,11 +19,9 @@ import {
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { DashboardViewModel } from './DashboardViewModel';
 import { dashboardService } from './dashboard.service';
-import { generateRecommendations } from './dashboard.utils';
 import type { DashboardMetrics, LiveMetrics, HardwareSensorReading } from './dashboard.types';
 import { DashboardScanStatusCard } from '../scan/components/DashboardScanStatusCard';
-import { useIsPro } from '../sync/syncStore';
-import { useEditionLimits } from '../licensing/editionLimits';
+import { useDashboardScan } from '../scan/useDashboardScan';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
 
 function getGreeting(): string {
@@ -117,24 +115,21 @@ export default function DashboardPage() {
   const vm = useMemo(() => new DashboardViewModel(dashboardService), []);
   const state = useViewModel(vm);
   const navigate = useNavigate();
-  const isPro = useIsPro();
-  const limits = useEditionLimits();
+  const { snapshot } = useDashboardScan();
 
   useEffect(() => {
     void vm.bootstrap();
     return () => vm.dispose();
   }, [vm]);
 
-
-  const isScanning = state.healthScanStep !== 'idle' && state.healthScanStep !== 'complete';
+  const isScanning = snapshot.scanStatus !== 'idle' && snapshot.scanStatus !== 'complete';
 
   const buttonLabel = (() => {
-    switch (state.healthScanStep) {
+    switch (snapshot.scanStatus) {
       case 'preparing': return 'Preparing...';
       case 'scanning': return 'Analyzing...';
-      case 'optimizing': return 'Optimizing...';
-      case 'verifying': return 'Verifying...';
-      case 'updating_dashboard': return 'Updating Dashboard...';
+      case 'complete': return 'Review Findings';
+      case 'error': return 'Try Again';
       default: return 'Optimize Now';
     }
   })();
@@ -144,15 +139,6 @@ export default function DashboardPage() {
   const securityLabel = useMemo(() => getSecurityLabel(state.metrics), [state.metrics]);
   const performanceValue = useMemo(() => getPerformanceValue(state.liveMetrics), [state.liveMetrics]);
   const storageValue = useMemo(() => getStorageValue(state.metrics), [state.metrics]);
-
-  const recommendations = useMemo(
-    () => state.healthScore
-      ? generateRecommendations(state.healthScore, state.metrics, isPro ? 'professional' : 'free')
-      : [],
-    [state.healthScore, state.metrics, isPro],
-  );
-  const maxRecommendations = limits.getLimit('dashboardRecommendations') ?? recommendations.length;
-  const visibleRecommendations = recommendations.slice(0, maxRecommendations);
 
   if (state.bootstrap === 'loading') {
     return <LoadingState message="Loading dashboard..." data-testid="dashboard-loading" />;
@@ -282,41 +268,44 @@ export default function DashboardPage() {
               <CheckCircleIcon className="h-5 w-5 text-text-muted shrink-0" />
               <div>
                 <div className="text-caption text-text-muted">Last Scan</div>
-                {state.healthScanHistory[0] ? (
+                {snapshot.hasActiveSession ? (
                   <div className="text-small font-medium text-text-primary">
-                    {state.healthScanHistory[0].result === 'success' ? 'Optimized' : 'Partial'} · {new Date(state.healthScanHistory[0].date).toLocaleDateString()}
+                    {snapshot.scanStatus === 'complete' ? 'Completed' : snapshot.scanStatus} · {snapshot.completedAt ? new Date(snapshot.completedAt).toLocaleDateString() : 'In progress'}
                   </div>
                 ) : (
                   <div className="text-small text-text-muted">No scans yet</div>
                 )}
               </div>
             </div>
-            {state.healthScanHistory[0] && (
+            {snapshot.hasActiveSession && (
               <div className="text-right">
-                <div className="text-caption text-text-muted">Score</div>
-                <div className="text-small font-bold text-text-primary tabular-nums">{state.healthScanHistory[0].healthAfter}</div>
+                <div className="text-caption text-text-muted">Issues</div>
+                <div className="text-small font-bold text-text-primary tabular-nums">{snapshot.issuesFound}</div>
               </div>
             )}
           </div>
         </Card>
 
-        {visibleRecommendations[0] ? (
+        {snapshot.canReview ? (
           <Card variant="glass" className="p-4" data-testid="primary-recommendation">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
                 <SparklesIcon className="h-5 w-5 text-brand-primary shrink-0" />
                 <div className="min-w-0">
                   <div className="text-caption text-text-muted">Recommended Action</div>
-                  <div className="text-small font-medium text-text-primary truncate">{visibleRecommendations[0].title}</div>
+                  <div className="text-small font-medium text-text-primary truncate">
+                    Review {snapshot.actionableCount} actionable {snapshot.actionableCount === 1 ? 'issue' : 'issues'}
+                  </div>
                 </div>
               </div>
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() => navigate(visibleRecommendations[0]?.actionPath ?? '/')}
+                onClick={() => navigate(`${snapshot.moduleRoute}?planId=${encodeURIComponent(snapshot.planId!)}`)}
                 className="shrink-0"
+                data-testid="primary-recommendation-action"
               >
-                {visibleRecommendations[0].actionLabel}
+                Review
               </Button>
             </div>
           </Card>
@@ -326,7 +315,9 @@ export default function DashboardPage() {
               <CheckCircleIcon className="h-5 w-5 text-semantic-success shrink-0" />
               <div>
                 <div className="text-caption text-text-muted">Recommendation</div>
-                <div className="text-small font-medium text-text-primary">No actions needed</div>
+                <div className="text-small font-medium text-text-primary">
+                  {snapshot.hasActiveSession ? `${snapshot.actionableCount === 0 ? 'No actionable issues' : `${snapshot.actionableCount} actionable`}` : 'No actions needed'}
+                </div>
               </div>
             </div>
           </Card>
@@ -419,31 +410,16 @@ export default function DashboardPage() {
 
       {/* Panel 2: Recommendations & History */}
       <CollapsibleSection title="Recommendations & History" icon={<ClockIcon className="h-5 w-5" />} storageKey="dash-recommendations-history">
-        {visibleRecommendations.length > 1 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-            {visibleRecommendations.map((rec) => (
-              <RecommendationCard
-                key={rec.id}
-                icon={<SparklesIcon className="h-5 w-5" />}
-                title={rec.title}
-                description={rec.description}
-                priority={rec.severity === 'danger' ? 'high' : rec.severity === 'warning' ? 'medium' : 'low'}
-                action={{ label: rec.actionLabel, onClick: () => navigate(rec.actionPath) }}
-                data-testid={`recommendation-${rec.id}`}
-              />
-            ))}
-          </div>
-        )}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <TimelineCard
             title="Recent Activity"
             icon={<ClockIcon className="h-4 w-4" />}
-            items={(state.healthScanHistory || []).slice(0, 5).map((h) => ({
-              title: h.result === 'success' ? 'Smart Optimize Completed' : 'Optimization Partial',
-              description: `Health: ${h.healthBefore} → ${h.healthAfter}. Recovered ${Math.round(h.recoveredSpace / 1_000_000)} MB.`,
-              timestamp: new Date(h.date).toLocaleDateString(),
-              severity: h.result === 'success' ? 'success' : 'warning',
-            }))}
+            items={snapshot.hasActiveSession ? [{
+              title: snapshot.scanStatus === 'complete' ? 'Scan Completed' : 'Scan Activity',
+              description: `${snapshot.moduleName} · ${snapshot.issuesFound} issues, ${snapshot.actionableCount} actionable`,
+              timestamp: snapshot.completedAt ? new Date(snapshot.completedAt).toLocaleDateString() : 'In progress',
+              severity: snapshot.scanStatus === 'error' ? 'danger' : snapshot.scanStatus === 'complete' ? 'success' : 'warning',
+            }] : []}
             data-testid="recent-activity"
           />
           <TimelineCard

@@ -12,6 +12,7 @@ export interface PreviewPanelProps {
   preview: RemediationPreview;
   onValidate: () => void;
   onBack: () => void;
+  isValidating?: boolean;
 }
 
 function displayTarget(target: { display_name: string; path?: string } | string): string {
@@ -42,7 +43,7 @@ function CountList({ title, counts }: { title: string; counts: Record<string, nu
   );
 }
 
-export function PreviewPanel({ preview, onValidate, onBack }: PreviewPanelProps) {
+export function PreviewPanel({ preview, onValidate, onBack, isValidating = false }: PreviewPanelProps) {
   const targets = preview.affected_targets ?? [];
 
   return (
@@ -135,8 +136,12 @@ export function PreviewPanel({ preview, onValidate, onBack }: PreviewPanelProps)
         <Button variant="secondary" onClick={onBack} data-testid="preview-back-btn">
           Back
         </Button>
-        <Button onClick={onValidate} data-testid="preview-validate-btn">
-          Validate Plan
+        <Button
+          onClick={onValidate}
+          disabled={isValidating}
+          data-testid="preview-validate-btn"
+        >
+          {isValidating ? 'Validating...' : 'Validate Plan'}
         </Button>
       </div>
     </div>

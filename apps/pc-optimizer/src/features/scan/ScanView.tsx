@@ -5,7 +5,8 @@
  * Delegates the live backend wiring to `useScan` and renders the common
  * `UnifiedScanView`.  When idle it shows a single safe Start Scan button.
  */
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, Button } from '@avs/ui';
 import { BoltIcon } from '@heroicons/react/24/outline';
 import { UnifiedScanView } from '../unified-scan/components/UnifiedScanView';
@@ -13,6 +14,7 @@ import type { UnifiedScanAction } from '../unified-scan/unifiedScanTypes';
 import { useScan } from './useScan';
 import { getScanConfig } from './moduleConfigs';
 import { ResultsView } from './ResultsView';
+import { PlanReviewView } from './PlanReviewView';
 import type { ScanFinding, ScanStatistics } from './types';
 
 export interface ScanViewProps {
@@ -27,6 +29,12 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
   const config = useMemo(() => getScanConfig(module), [module]);
   const scan = useScan({ mode, config });
   const [showResults, setShowResults] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const planIdParam = searchParams.get('planId');
+  const handlePlanClose = useCallback(() => {
+    setSearchParams({});
+    onClose();
+  }, [setSearchParams, onClose]);
 
   const canReview =
     scan.step === 'complete' &&
@@ -76,6 +84,16 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
   }, [scan.result]);
 
   const planId = scan.report?.planId ?? (scan.result?.action_plan_id as string | undefined);
+
+  if (planIdParam) {
+    return (
+      <PlanReviewView
+        planId={planIdParam}
+        module={module}
+        onClose={handlePlanClose}
+      />
+    );
+  }
 
   if (scan.step === 'complete' && showResults) {
     return (

@@ -53,6 +53,16 @@ export interface ScanHistoryResponse {
   error?: string;
 }
 
+export interface PlanDetailsResponse {
+  ok: boolean;
+  plan_id?: string;
+  generated_at?: string;
+  is_stale?: boolean;
+  statistics?: Record<string, unknown>;
+  findings?: Record<string, unknown>[];
+  error?: string;
+}
+
 export interface ScanService {
   scan_quick(scope?: string[]): Promise<ScanStartResponse>;
   scan_full(scope?: string[]): Promise<ScanStartResponse>;
@@ -61,6 +71,7 @@ export interface ScanService {
   result(sessionId: string): Promise<Record<string, unknown>>;
   latest(): Promise<ScanLatestResponse>;
   history(limit?: number): Promise<ScanHistoryResponse>;
+  plan_details(planId: string): Promise<PlanDetailsResponse>;
 }
 
 export const scanService: ScanService = {
@@ -71,4 +82,5 @@ export const scanService: ScanService = {
   result: (sessionId: string) => client().call(RPC_METHODS.SCAN_CORE_SCAN_RESULT, { session_id: sessionId }),
   latest: () => client().call(RPC_METHODS.SCAN_CORE_SCAN_LATEST, {}) as Promise<ScanLatestResponse>,
   history: (limit?: number) => client().call(RPC_METHODS.SCAN_CORE_SCAN_HISTORY, { limit: limit ?? 10 }) as Promise<ScanHistoryResponse>,
+  plan_details: (planId: string) => client().call(RPC_METHODS.SCAN_CORE_SCAN_PLAN_DETAILS, { plan_id: planId }) as Promise<PlanDetailsResponse>,
 };

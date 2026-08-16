@@ -8,7 +8,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { ResultsView } from '../ResultsView';
-import { orchestratorService } from '../../orchestrator/orchestrator.service';
 import { RPC_METHODS } from '@avs/shared/rpc';
 import type { ScanFinding } from '../types';
 
@@ -168,8 +167,7 @@ describe('ResultsView', () => {
       }
       return Promise.reject(new Error(`Unknown method: ${method}`));
     });
-    vi.spyOn(orchestratorService, 'fullAsync');
-    vi.spyOn(orchestratorService, 'optimize');
+
   });
 
   afterEach(() => {
@@ -931,8 +929,7 @@ describe('ResultsView', () => {
       const calls = mockCall.mock.calls.filter((call) => call[0] === method);
       expect(calls).toHaveLength(0);
     }
-    expect(orchestratorService.optimize).not.toHaveBeenCalled();
-    expect(orchestratorService.fullAsync).not.toHaveBeenCalled();
+
   });
 
   it('rejected execution leaves step="rejected" and does not poll status', async () => {

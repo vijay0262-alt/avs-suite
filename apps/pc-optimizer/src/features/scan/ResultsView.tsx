@@ -60,6 +60,8 @@ export function ResultsView({
     executionStatus,
     isCancelling,
     isRollbacking,
+    isPreparing,
+    isValidating,
     rollbackStep,
     rollbackSummary,
     rollbackError,
@@ -99,7 +101,12 @@ export function ResultsView({
   if (step === 'preview' && preview) {
     return (
       <Card variant="glass" className="p-6" data-testid="results-view-preview">
-        <PreviewPanel preview={preview} onValidate={validate} onBack={goBack} />
+        <PreviewPanel
+          preview={preview}
+          onValidate={validate}
+          onBack={goBack}
+          isValidating={isValidating}
+        />
       </Card>
     );
   }
@@ -339,10 +346,10 @@ export function ResultsView({
             </Button>
             <Button
               onClick={prepare}
-              disabled={!canRemediate}
+              disabled={!canRemediate || isPreparing}
               data-testid="review-remediate-btn"
             >
-              Review & Remediate
+              {isPreparing ? 'Preparing...' : 'Review & Remediate'}
             </Button>
             <Button variant="secondary" onClick={onClose} data-testid="results-close-btn">
               Close

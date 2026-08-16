@@ -47,14 +47,15 @@ export function DashboardScanStatusCard() {
   const navigate = useNavigate();
 
   const primaryAction = (() => {
+    const planParam = snapshot.planId ? `?planId=${encodeURIComponent(snapshot.planId)}` : '';
     if (snapshot.canReview) {
-      return { label: 'Review Findings', route: snapshot.moduleRoute };
+      return { label: 'Review Findings', route: `${snapshot.moduleRoute}${planParam}` };
     }
     if (snapshot.canApprove) {
-      return { label: 'Approve & Fix', route: snapshot.moduleRoute };
+      return { label: 'Approve & Fix', route: `${snapshot.moduleRoute}${planParam}` };
     }
     if (snapshot.canRollback) {
-      return { label: 'View Rollback', route: snapshot.moduleRoute };
+      return { label: 'View Rollback', route: `${snapshot.moduleRoute}${planParam}` };
     }
     if (!snapshot.hasActiveSession) {
       return { label: 'Start a Scan', route: '/ai-smart-optimize' };

@@ -174,6 +174,51 @@ def rollback_to_dict(summary: RollbackSummary) -> dict[str, Any]:
     return summary.to_dict()
 
 
+def _sanitize_finding_for_frontend(finding: dict[str, Any]) -> dict[str, Any]:
+    """Return a privacy-safe, UI-compatible finding view.
+
+    This matches the contract used by ``scan_core.scan.plan_details``:
+    no canonical_path, asset_id, raw target data, or sensitive evidence.
+    """
+    safety = finding.get("safety") or {}
+    confidence = finding.get("confidence") or {}
+
+    if isinstance(safety, dict):
+        safety_value = safety.get("level", "unknown")
+    else:
+        safety_value = str(safety) or "unknown"
+
+    if isinstance(confidence, dict):
+        confidence_score = float(confidence.get("score", 1.0))
+    else:
+        try:
+            confidence_score = float(confidence or 1.0)
+        except (TypeError, ValueError):
+            confidence_score = 1.0
+
+    return {
+        "finding_id": finding.get("finding_id", ""),
+        "display_name": finding.get("display_name", ""),
+        "rule_id": finding.get("rule_id", ""),
+        "rule_category": finding.get("rule_category", ""),
+        "severity": finding.get("severity", "info"),
+        "confidence": confidence_score,
+        "safety": safety_value,
+        "reason": finding.get("reason", ""),
+        "recommended_action": finding.get("recommended_action", ""),
+        "estimated_size": finding.get("estimated_size") or 0,
+        "is_blocked": bool(finding.get("is_blocked", False)),
+        "requires_review": bool(finding.get("requires_review", False)),
+        "is_actionable": bool(finding.get("is_actionable", False)),
+        "canonical_path": "",
+    }
+
+
+def _sanitize_findings_for_frontend(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Sanitize a list of findings for the frontend."""
+    return [_sanitize_finding_for_frontend(f) for f in findings]
+
+
 def _coordinator_error() -> dict[str, Any]:
     return {
         "ok": False,
@@ -490,7 +535,11 @@ def _scan_core_scan_result(params: Optional[dict[str, Any]]) -> dict[str, Any]:
     if session["result"] is None:
         return {"ok": False, "error": "Scan not complete"}
 
-    return {"ok": True, "result": session["result"]}
+    result = dict(session["result"])
+    if "findings" in result:
+        result["findings"] = _sanitize_findings_for_frontend(result["findings"])
+
+    return {"ok": True, "result": result}
 
 
 @register("scan_core.scan.latest")
@@ -527,4 +576,23 @@ def _scan_core_scan_history(params: Optional[dict[str, Any]]) -> dict[str, Any]:
         return {"ok": True, "history": records}
     except Exception as exc:
         logger.exception("scan_core.scan.history failed: %s", exc)
+        return {"ok": False, "error": str(exc)}
+
+
+@register("scan_core.scan.plan_details")
+def _scan_core_scan_plan_details(params: Optional[dict[str, Any]]) -> dict[str, Any]:
+    """Return a read-only, privacy-safe view of a persisted ActionPlan."""
+    params = _safe_params(params)
+    ok, plan_id = _require_str(params, "plan_id")
+    if not ok:
+        return {"ok": False, "error": plan_id}
+
+    orchestrator = get_scan_orchestrator()
+    if orchestrator is None:
+        return _orchestrator_error()
+
+    try:
+        return orchestrator.get_plan_details(plan_id)
+    except Exception as exc:
+        logger.exception("scan_core.scan.plan_details failed: %s", exc)
         return {"ok": False, "error": str(exc)}

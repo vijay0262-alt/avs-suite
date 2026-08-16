@@ -283,6 +283,8 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
     const sid = sessionIdRef.current;
     if (sid) {
       void scanService.cancel_scan(sid);
+      // Prevent the subsequent reset() from issuing a second cancel_scan.
+      sessionIdRef.current = null;
     }
     reset();
   }, [reset]);

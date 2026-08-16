@@ -222,6 +222,71 @@ class ScanOrchestrator:
         """Return the most recent persisted scan history records."""
         return self._history_repo.list_recent(limit)
 
+    def get_plan_details(self, plan_id: str) -> dict[str, Any]:
+        """Return a read-only, privacy-safe view of a persisted ActionPlan."""
+        action_plan = self._action_plan_repo.load(plan_id)
+        if action_plan is None:
+            return {"ok": False, "error": "Plan not found"}
+
+        actions = action_plan.actions
+        findings: list[dict[str, Any]] = []
+        for action in actions:
+            severity = "info"
+            if action.priority_score >= 80:
+                severity = "critical"
+            elif action.priority_score >= 60:
+                severity = "high"
+            elif action.priority_score >= 40:
+                severity = "medium"
+            elif action.priority_score >= 20:
+                severity = "low"
+
+            display_name = (
+                action.rule_id.replace("-", " ").replace("_", " ").title()
+                if action.rule_id
+                else action.action_type.value.replace("_", " ").title()
+            )
+
+            finding = {
+                "finding_id": action.finding_id or action.action_id,
+                "display_name": display_name,
+                "rule_id": action.rule_id,
+                "rule_category": action.action_type.value,
+                "severity": severity,
+                "confidence": 1.0,
+                "safety": action.safety_assessment or "unknown",
+                "reason": action.reason or "",
+                "recommended_action": action.action_type.value.replace("_", " "),
+                "estimated_size": action.estimated_size or 0,
+                "is_blocked": action.is_blocked,
+                "requires_review": action.requires_review,
+                "is_actionable": action.is_actionable,
+                "canonical_path": "",
+            }
+            findings.append(finding)
+
+        summary = action_plan.summary
+        statistics: dict[str, Any] = {
+            "matches": summary.total_findings,
+            "actionable": summary.auto_fixable_actions,
+            "blocked": summary.blocked_actions,
+            "review": summary.review_required_actions,
+            "not_fixable": summary.not_fixable_actions,
+            "total_findings": summary.total_findings,
+            "actions_planned": summary.actions_planned,
+            "estimated_affected_size": summary.estimated_affected_size,
+            "generated_at": summary.generated_at.isoformat(),
+        }
+
+        return {
+            "ok": True,
+            "plan_id": plan_id,
+            "generated_at": action_plan.generated_at.isoformat(),
+            "is_stale": action_plan.is_stale(),
+            "statistics": statistics,
+            "findings": findings,
+        }
+
     def _save_scan_history(self, result: ScanResult) -> bool:
         """Persist a privacy-safe scan result summary."""
         actionability = result.actionability_summary

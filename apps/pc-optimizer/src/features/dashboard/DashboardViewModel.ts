@@ -42,8 +42,6 @@ import { healthTimelineService } from '../health/HealthTimelineService';
 import { healthNotificationService } from '../health/HealthNotificationService';
 import type { OptimizationSummary } from './OptimizationSummary.types';
 import { loadSession, clearSession } from './sessionPersistence';
-import { clearScanState } from './ScanStatePersistence';
-import type { PersistedScanState } from './ScanStatePersistence';
 import { idbPut } from '../../services/avsWithIDB';
 import { canUse as featureGateCanUse, currentEdition as getFeatureGateEdition } from '../licensing/FeatureGate';
 import type { ManagedFeature } from '@avs/licensing';
@@ -54,7 +52,8 @@ import { createMockHardwareProvider } from '../hardware-center/MockHardwareProvi
 import { hardwareSnapshotToSensors, getCpuTempFromSnapshot } from './hardwareAdapter';
 import type { VerificationReport } from '../health/VerificationEngine';
 import { useLiveSync } from '../health/LiveSyncService';
-import type { ScanProfile } from '../orchestrator/orchestrator.service';
+
+type ScanProfile = 'dashboard' | 'optimize' | 'protection';
 
 export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
 
@@ -139,9 +138,6 @@ export interface DashboardState {
   hardwareSensorsLoading: boolean;
   hardwareSensorsError: string | null;
 
-  // Phase 23 — Interrupted scan recovery
-  interruptedScan: PersistedScanState | null;
-  showInterruptedScanPrompt: boolean;
 }
 
 const LIVE_METRICS_POLL_INTERVAL_MS = 2000;
@@ -255,8 +251,6 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       hardwareSensors: null,
       hardwareSensorsLoading: false,
       hardwareSensorsError: null,
-      interruptedScan: null,
-      showInterruptedScanPrompt: false,
     });
   }
 
@@ -331,12 +325,6 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       this.verificationLogFlushTimer = null;
     }
     super.dispose();
-  }
-
-  // ------------------------------------------------------------------
-  /** Clear persisted scan state after successful completion. */
-  private clearPersistedScanState(): void {
-    clearScanState();
   }
 
   // ------------------------------------------------------------------
@@ -700,8 +688,6 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
 
   cancelHealthScan(): void {
     this.setState({ healthScanCancelled: true });
-    // Phase 23: Clear persisted scan state on cancel
-    this.clearPersistedScanState();
     // Reset immediately — don't wait for the scan loop to notice the flag
     this.setState({
       healthScanStep: 'idle',

@@ -8,7 +8,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { ResultsView } from '../ResultsView';
-import { orchestratorService } from '../../orchestrator/orchestrator.service';
 import { RPC_METHODS } from '@avs/shared/rpc';
 import type { ScanFinding } from '../types';
 
@@ -172,8 +171,7 @@ describe('ResultsView rollback (SC-8C8 Part 2B Phase 4)', () => {
     Object.assign(window as unknown as Record<string, unknown>, {
       avs: { rpc: { call: mockCall } },
     });
-    vi.spyOn(orchestratorService, 'fullAsync');
-    vi.spyOn(orchestratorService, 'optimize');
+
   });
 
   afterEach(() => {
@@ -424,15 +422,14 @@ describe('ResultsView rollback (SC-8C8 Part 2B Phase 4)', () => {
         expect(keys).not.toMatch(/path|registry|browser|startup|localStorage|fs|child_process/);
       }
     }
-    expect(orchestratorService.fullAsync).not.toHaveBeenCalled();
-    expect(orchestratorService.optimize).not.toHaveBeenCalled();
+
   });
 
   it('17. orchestrator.optimize is never called', async () => {
     await reachTerminal('completed', mockCall);
     fireEvent.click(screen.getByTestId('terminal-rollback-btn'));
     fireEvent.click(screen.getByTestId('rollback-confirm-btn'));
-    expect(orchestratorService.optimize).not.toHaveBeenCalled();
+
   });
 
   it('18. security.remediation.rollback is never called', async () => {

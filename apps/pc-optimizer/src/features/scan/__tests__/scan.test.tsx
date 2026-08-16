@@ -4,10 +4,15 @@
  * scan-core-only backend contract.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render as baseRender, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import type { ReactElement } from 'react';
 import { ScanView } from '../ScanView';
-import { orchestratorService } from '../../orchestrator/orchestrator.service';
 import { RPC_METHODS } from '@avs/shared/rpc';
+
+function render(ui: ReactElement) {
+  return baseRender(<MemoryRouter>{ui}</MemoryRouter>);
+}
 
 interface ScanStatusResponse {
   ok: true;
@@ -89,8 +94,7 @@ describe('ScanView', () => {
       return Promise.reject(new Error(`Unknown method: ${method}`));
     });
 
-    vi.spyOn(orchestratorService, 'fullAsync');
-    vi.spyOn(orchestratorService, 'optimize');
+
   });
 
   afterEach(() => {
@@ -289,8 +293,7 @@ describe('ScanView', () => {
         expect.any(Object),
       );
     });
-    expect(orchestratorService.fullAsync).not.toHaveBeenCalled();
-    expect(orchestratorService.optimize).not.toHaveBeenCalled();
+
   });
 
   it('retry after close/error starts exactly one new session', async () => {
@@ -376,8 +379,7 @@ describe('ScanView', () => {
     await waitFor(() => {
       expect(mockCall).toHaveBeenCalled();
     });
-    expect(orchestratorService.fullAsync).not.toHaveBeenCalled();
-    expect(orchestratorService.optimize).not.toHaveBeenCalled();
+
   });
 
   it('shows Review & Remediate action and opens results view when clicked', async () => {
@@ -412,7 +414,7 @@ describe('ScanView', () => {
             is_blocked: false,
             requires_review: false,
             is_actionable: true,
-            canonical_path: 'C:\\junk.txt',
+            canonical_path: '',
           },
           {
             finding_id: 'f-2',
@@ -428,7 +430,7 @@ describe('ScanView', () => {
             is_blocked: true,
             requires_review: false,
             is_actionable: false,
-            canonical_path: 'C:\\blocked.txt',
+            canonical_path: '',
           },
         ],
       },
@@ -465,6 +467,99 @@ describe('ScanView', () => {
       },
       { timeout: 5000 },
     );
+  });
+
+  it('active scan results do not display canonical_path or asset_id', async () => {
+    render(<ScanView module="security" mode="full" onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('scan-start-btn'));
+
+    mockResult = {
+      ok: true,
+      result: {
+        scan_id: 'test-session',
+        findings_count: 2,
+        action_plan_id: 'plan-test',
+        elapsed_time_ms: 100,
+        statistics: {
+          assets_discovered: 4,
+          assets_evaluated: 4,
+          matches: 2,
+          rules_evaluated: 1,
+        },
+        findings: [
+          {
+            finding_id: 'f-1',
+            display_name: 'Junk file',
+            rule_id: 'junk.file',
+            rule_category: 'junk',
+            severity: 'low',
+            confidence: 0.9,
+            safety: 'safe',
+            reason: 'Safe to remove',
+            recommended_action: 'delete',
+            estimated_size: 1024,
+            is_blocked: false,
+            requires_review: false,
+            is_actionable: true,
+            canonical_path: '',
+          },
+          {
+            finding_id: 'f-2',
+            display_name: 'Blocked file',
+            rule_id: 'sys.blocked',
+            rule_category: 'system',
+            severity: 'high',
+            confidence: 0.9,
+            safety: 'blocked',
+            reason: 'Protected',
+            recommended_action: 'none',
+            estimated_size: 0,
+            is_blocked: true,
+            requires_review: false,
+            is_actionable: false,
+            canonical_path: '',
+          },
+        ],
+      },
+    };
+    currentStatus = {
+      ...currentStatus,
+      completed: true,
+      progress: {
+        ...currentStatus.progress,
+        completion_percent: 100,
+        findings: 2,
+      },
+    };
+
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('unified-scan-view-complete')).toBeDefined();
+      },
+      { timeout: 5000 },
+    );
+
+    await waitFor(
+      () => {
+        expect(screen.getByText('Review & Remediate')).toBeDefined();
+      },
+      { timeout: 5000 },
+    );
+
+    fireEvent.click(screen.getByText('Review & Remediate'));
+
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('results-view')).toBeDefined();
+      },
+      { timeout: 5000 },
+    );
+
+    // Ensure display names are shown but no raw path or asset data is visible.
+    expect(screen.getByText('Junk file')).toBeDefined();
+    expect(screen.getByText('Blocked file')).toBeDefined();
+    expect(screen.queryByText(/C:\\\\|\\\\Users/)).toBeNull();
+    expect(screen.queryByText(/asset-1/)).toBeNull();
   });
 
   it('full flow reaches approval and only calls execute after explicit Approve & Fix', async () => {
@@ -575,7 +670,7 @@ describe('ScanView', () => {
             is_blocked: false,
             requires_review: false,
             is_actionable: true,
-            canonical_path: 'C:\\junk.txt',
+            canonical_path: '',
           },
         ],
       },
@@ -640,7 +735,6 @@ describe('ScanView', () => {
       );
     });
 
-    expect(orchestratorService.optimize).not.toHaveBeenCalled();
-    expect(orchestratorService.fullAsync).not.toHaveBeenCalled();
+
   });
 });

@@ -54,6 +54,8 @@ export interface UseResultsReturn {
   executionStatus: RemediationExecutionStatus | null;
   isCancelling: boolean;
   isRollbacking: boolean;
+  isPreparing: boolean;
+  isValidating: boolean;
   rollbackStep: RollbackStep;
   rollbackSummary: RollbackSummary | null;
   rollbackError: string | null;
@@ -88,8 +90,12 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
   const [rollbackSummary, setRollbackSummary] = useState<RollbackSummary | null>(null);
   const [rollbackError, setRollbackError] = useState<string | null>(null);
   const [isRollbacking, setIsRollbacking] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
   const hasRequestedExecution = useRef(false);
   const hasRequestedRollback = useRef(false);
+  const isPreparingRef = useRef(false);
+  const isValidatingRef = useRef(false);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const actionable = useMemo(
@@ -151,6 +157,11 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
       setStep('error');
       return;
     }
+    if (isPreparingRef.current) {
+      return;
+    }
+    isPreparingRef.current = true;
+    setIsPreparing(true);
     setError(null);
     try {
       const response = await remediationService.prepare(planId);
@@ -169,6 +180,9 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to prepare remediation preview');
       setStep('error');
+    } finally {
+      isPreparingRef.current = false;
+      setIsPreparing(false);
     }
   }, [planId]);
 
@@ -178,6 +192,11 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
       setStep('error');
       return;
     }
+    if (isValidatingRef.current) {
+      return;
+    }
+    isValidatingRef.current = true;
+    setIsValidating(true);
     setError(null);
     setStep('validating');
     try {
@@ -195,6 +214,9 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to validate remediation plan');
       setStep('error');
+    } finally {
+      isValidatingRef.current = false;
+      setIsValidating(false);
     }
   }, [planId]);
 
@@ -240,6 +262,9 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
         throw new Error('Failed to start remediation execution');
       }
       const summary: RemediationExecution = response.summary;
+      if (!summary.execution_id) {
+        throw new Error('Backend did not return an execution id');
+      }
       setExecutionId(summary.execution_id);
       setExecutionStatus(summary);
       unifiedScanState.updateLatest({
@@ -418,6 +443,8 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
     executionStatus,
     isCancelling,
     isRollbacking,
+    isPreparing,
+    isValidating,
     rollbackStep,
     rollbackSummary,
     rollbackError,
