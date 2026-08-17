@@ -1,5 +1,5 @@
 /**
- * SC-8C15 Phase 1 — ProcessIntelligenceViewModel integration tests.
+ * SC-8C15 Phase 1+2 — ProcessIntelligenceViewModel integration tests.
  *
  * Verifies that:
  *   - ViewModel uses RpcProcessProvider (not MockProcessProvider)
@@ -8,6 +8,9 @@
  *   - scan() updates the report
  *   - scan() handles errors
  *   - dispose() cleans up
+ *   - Stale scan responses do not overwrite newer results
+ *   - dispose() prevents state updates from in-flight scans
+ *   - Rapid scan calls are safe
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ProcessIntelligenceViewModel } from '../ui/ProcessIntelligenceViewModel';
@@ -166,5 +169,114 @@ describe('ProcessIntelligenceViewModel — SC-8C15 Phase 1', () => {
 
   it('dispose() cleans up without error', () => {
     expect(() => vm.dispose()).not.toThrow();
+  });
+
+  // ── SC-8C15 Phase 2: Concurrency & State Safety ─────────────────
+
+  it('stale scan response does not overwrite newer scan result', async () => {
+    // Bootstrap succeeds
+    mockRaw.mockResolvedValue({
+      ok: true,
+      entries: [makeValidEntry(1, 'a.exe')],
+      count: 1,
+      scanDurationMs: 50,
+    });
+    await vm.bootstrap();
+
+    // Scan A: slow (never resolves in this test)
+    let resolveScanA: (value: unknown) => void = () => {};
+    mockRaw.mockReturnValueOnce(new Promise((resolve) => { resolveScanA = resolve; }));
+
+    // Scan B: fast, returns different data
+    const entriesB = [makeValidEntry(2, 'b.exe')];
+    mockRaw.mockResolvedValueOnce({ ok: true, entries: entriesB, count: 1, scanDurationMs: 30 });
+
+    // Start scan A (don't await)
+    const scanAPromise = vm.scan().catch(() => {});
+
+    // Start scan B (await)
+    await vm.scan();
+
+    const stateAfterB = vm.state;
+    expect(stateAfterB.report).not.toBeNull();
+    // The report should contain the newer data (process 2)
+    expect(stateAfterB.report!.analyses.some((a) => a.pid === 2)).toBe(true);
+
+    // Now resolve scan A with stale data (process 99)
+    resolveScanA({ ok: true, entries: [makeValidEntry(99, 'stale.exe')], count: 1, scanDurationMs: 999 });
+    await scanAPromise;
+
+    // The stale result should NOT have overwritten the newer result
+    const finalState = vm.state;
+    expect(finalState.report!.analyses.some((a) => a.pid === 2)).toBe(true);
+    expect(finalState.report!.analyses.some((a) => a.pid === 99)).toBe(false);
+  });
+
+  it('dispose() prevents in-flight scan from updating state', async () => {
+    // Bootstrap succeeds
+    mockRaw.mockResolvedValue({
+      ok: true,
+      entries: [makeValidEntry(1, 'a.exe')],
+      count: 1,
+      scanDurationMs: 50,
+    });
+    await vm.bootstrap();
+
+    // Start a scan that we'll resolve after dispose
+    let resolveScan: (value: unknown) => void = () => {};
+    mockRaw.mockReturnValueOnce(new Promise((resolve) => { resolveScan = resolve; }));
+
+    const scanPromise = vm.scan().catch(() => {});
+    vm.dispose();
+
+    // Resolve the scan after dispose
+    resolveScan({ ok: true, entries: [makeValidEntry(99, 'late.exe')], count: 1, scanDurationMs: 50 });
+    await scanPromise;
+
+    // State should not have been updated with the late result
+    // (the report from bootstrap should still be there)
+    expect(vm.state.report).not.toBeNull();
+    expect(vm.state.report!.analyses.some((a) => a.pid === 1)).toBe(true);
+    expect(vm.state.report!.analyses.some((a) => a.pid === 99)).toBe(false);
+  });
+
+  it('isScanning returns to false after scan error', async () => {
+    mockRaw.mockResolvedValue({
+      ok: true,
+      entries: [makeValidEntry(1, 'a.exe')],
+      count: 1,
+      scanDurationMs: 50,
+    });
+    await vm.bootstrap();
+
+    mockRaw.mockResolvedValue({ ok: false, error: 'Scan failed' });
+    await expect(vm.scan()).rejects.toThrow();
+
+    expect(vm.state.isScanning).toBe(false);
+  });
+
+  it('clears bootstrapError on successful scan after error', async () => {
+    mockRaw.mockResolvedValue({
+      ok: true,
+      entries: [makeValidEntry(1, 'a.exe')],
+      count: 1,
+      scanDurationMs: 50,
+    });
+    await vm.bootstrap();
+
+    // Scan fails
+    mockRaw.mockResolvedValue({ ok: false, error: 'Scan failed' });
+    await expect(vm.scan()).rejects.toThrow();
+    expect(vm.state.bootstrapError).toBe('Scan failed');
+
+    // Scan succeeds — should clear error
+    mockRaw.mockResolvedValue({
+      ok: true,
+      entries: [makeValidEntry(1, 'a.exe')],
+      count: 1,
+      scanDurationMs: 50,
+    });
+    await vm.scan();
+    expect(vm.state.bootstrapError).toBeNull();
   });
 });

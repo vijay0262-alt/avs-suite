@@ -16,6 +16,7 @@ import {
   CheckCircleIcon,
   BoltIcon,
   ShieldExclamationIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline';
 
 export default function ProcessIntelligencePage() {
@@ -86,6 +87,28 @@ export default function ProcessIntelligencePage() {
           </div>
         }
       />
+
+      {state.bootstrapError && state.bootstrap === 'ready' && (
+        <div
+          className="flex items-start gap-3 rounded-lg border border-semantic-danger/30 bg-semantic-danger/5 p-4"
+          data-testid="process-scan-error-banner"
+        >
+          <XCircleIcon className="h-5 w-5 shrink-0 text-semantic-danger" />
+          <div className="flex-1">
+            <p className="text-small font-medium text-text-primary">Last scan failed</p>
+            <p className="text-caption text-text-secondary mt-0.5">{state.bootstrapError}</p>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleScan}
+            disabled={state.isScanning}
+            data-testid="btn-process-scan-retry"
+          >
+            Retry
+          </Button>
+        </div>
+      )}
 
       {dashboard && (
         <>

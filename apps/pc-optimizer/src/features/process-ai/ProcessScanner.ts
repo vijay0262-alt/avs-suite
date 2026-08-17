@@ -1,9 +1,10 @@
 /**
  * ProcessScanner — collects process data from the operating system.
  *
- * In production this will use WMI/ETW/Win32 APIs to enumerate processes.
- * For now, a mock provider interface is used so the engine can be
- * developed and tested without a live system.
+ * In production, the RpcProcessProvider implements this interface to
+ * enumerate real system processes via the backend
+ * `process_intelligence.scan` RPC (psutil). The provider interface
+ * allows alternative implementations for testing.
  */
 import type { ProcessEntry, ProcessSnapshot, ProcessSystemTotals } from './types';
 
