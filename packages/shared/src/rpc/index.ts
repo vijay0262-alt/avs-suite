@@ -173,6 +173,9 @@ export const RPC_METHODS = {
   // Smart Optimization Plan Creation (SC-8C11 Phase 2)
   SCAN_CORE_SMART_OPTIMIZATION_PLAN: 'scan_core.smart_optimization.plan',
 
+  // Security Remediation Plan Creation (SC-8C12 Phase 3)
+  SCAN_CORE_SECURITY_REMEDIATION_PLAN: 'scan_core.security_remediation.plan',
+
   // Predictive Health
   PREDICTIVE_HEALTH_SNAPSHOT: 'predictive.snapshot',
   PREDICTIVE_HEALTH_TRENDS: 'predictive.trends',

@@ -6,7 +6,7 @@
  *
  * Connects SecurityCenterViewModel to the UI.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Card, Button, Badge, CollapsibleSection } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
@@ -23,7 +23,8 @@ import {
 } from './SecurityCenterViewModel';
 import type { Threat, ThreatCategory, ThreatSeverity } from '../security-center/types';
 import type { ThreatInvestigation } from '../security-investigation/types';
-import type { RemediationPlan } from '../security-remediation/types';
+import type { RemediationPlan, RemediationAction as SecRemediationAction } from '../security-remediation/types';
+import { PlanReviewView, useSecurityRemediationPlan } from '../scan';
 import {
   ShieldCheckIcon,
   MagnifyingGlassIcon,
@@ -144,6 +145,43 @@ function formatTimeAgo(ts: number): string {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ago`;
   return `${Math.floor(h / 24)}d ago`;
+}
+
+/**
+ * Convert a Security Center RemediationAction into the plain-object format
+ * expected by scan_core.security_remediation.plan RPC.
+ *
+ * Privacy: Only the minimum fields required by the backend adapter are
+ * serialized. No canonical_path, asset_id, backup_location, quarantine_path,
+ * registry keys, browser profile paths, raw evidence, executable commands,
+ * PowerShell, shell commands, or internal target payloads are sent beyond
+ * what the adapter genuinely requires for planning.
+ *
+ * The target.path is required by the adapter to construct a canonical
+ * FilesystemActionTarget / RegistryActionTarget / StartupActionTarget.
+ * This is the affected asset path from threat detection, not an internal
+ * backup or quarantine location.
+ */
+function securityActionToRpcPayload(action: SecRemediationAction): Record<string, unknown> {
+  return {
+    id: action.id,
+    type: action.type,
+    threatId: action.threatId,
+    title: action.metadata.investigationTitle,
+    description: action.explanation,
+    reason: action.reason,
+    confidence: action.metadata.confidence,
+    severity: action.metadata.severity,
+    category: action.metadata.category,
+    sourceModule: action.metadata.detectionSource,
+    sourceFindingId: action.id,
+    rollbackAvailable: action.reversible,
+    target: {
+      type: action.target.type,
+      path: action.target.path,
+      name: action.target.name,
+    },
+  };
 }
 
 export function SecurityCenterPage() {
@@ -1441,9 +1479,43 @@ function RemediationTab({ vm }: { vm: SecurityCenterViewModel }) {
   const s = vm.state;
   const qs = s.quarantineSummary;
   const canRemediate = canUse('security.remediate');
+  const { guard } = useFeatureGuard();
+  const securityPlan = useSecurityRemediationPlan();
+
+  // ── Canonical plan creation handoff ──────────────────────────────
+  // Convert the most recent legacy remediation plan's actions into a
+  // canonical ActionPlan via the scan_core.security_remediation.plan RPC.
+  // This routes remediation through the canonical prepare → validate →
+  // approve → execute → rollback flow.
+  const handleReviewAndFix = useCallback(async () => {
+    const plan = s.plans[0];
+    if (!plan || plan.actions.length === 0) return;
+    const payload = plan.actions.map(securityActionToRpcPayload);
+    await securityPlan.createPlan(payload);
+  }, [s.plans, securityPlan]);
+
+  const handlePlanClose = useCallback(() => {
+    securityPlan.reset();
+  }, [securityPlan]);
+
+  // ── Canonical plan review handoff ────────────────────────────────
+  // If the RPC returned a plan_id, hand off to the canonical review flow.
+  // The PlanReviewView loads plan details read-only from scan_core and
+  // lets the user proceed through the existing RemediationCoordinator flow.
+  if (securityPlan.planId) {
+    return (
+      <div className="px-6 py-6" data-testid="security-remediation-plan-review">
+        <PlanReviewView
+          planId={securityPlan.planId}
+          module="security"
+          onClose={handlePlanClose}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="security-remediation-tab">
       {/* Free edition notice */}
       {!canRemediate && (
         <Card variant="glass" className="border-[var(--avs-brand-primary)]/30 bg-[var(--avs-brand-primary)]/5">
@@ -1456,6 +1528,47 @@ function RemediationTab({ vm }: { vm: SecurityCenterViewModel }) {
               </p>
             </div>
           </div>
+        </Card>
+      )}
+
+      {/* Canonical Remediation Handoff */}
+      {s.plans.length > 0 && s.activeThreats.length > 0 && (
+        <Card variant="glass" className="border-[var(--avs-brand-primary)]/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-small font-semibold text-[var(--avs-text-primary)]">Review & Fix Threats</p>
+              <p className="text-caption text-[var(--avs-text-secondary)]">
+                Create a canonical remediation plan for {s.activeThreats.length} active threat{s.activeThreats.length > 1 ? 's' : ''} and review it before execution.
+              </p>
+            </div>
+            {canRemediate ? (
+              <Button
+                size="sm"
+                onClick={handleReviewAndFix}
+                disabled={securityPlan.isCreating}
+                leftIcon={<WrenchScrewdriverIcon className="h-4 w-4" />}
+                data-testid="security-review-and-fix-btn"
+              >
+                {securityPlan.isCreating ? 'Creating Plan…' : 'Review & Fix'}
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => guard('security.remediate', 'Security Center', handleReviewAndFix, {
+                  limitDescription: 'Remediation is not available in the Free edition.',
+                  proBenefit: 'Review and fix threats with AVS Shield Pro.',
+                })}
+                leftIcon={<LockIconSmall className="h-4 w-4" />}
+              >
+                Review & Fix (Pro)
+              </Button>
+            )}
+          </div>
+          {securityPlan.error && (
+            <p className="mt-2 text-caption text-[var(--avs-danger)]" data-testid="security-plan-error">
+              {securityPlan.error}
+            </p>
+          )}
         </Card>
       )}
 
@@ -1532,6 +1645,36 @@ function RemediationTab({ vm }: { vm: SecurityCenterViewModel }) {
 function PlanCard({ plan, vm }: { plan: RemediationPlan; vm: SecurityCenterViewModel }) {
   const { guard, dialogElement } = useFeatureGuard();
   const canRemediate = canUse('security.remediate');
+  const securityPlan = useSecurityRemediationPlan();
+
+  // ── Canonical plan creation handoff ──────────────────────────────
+  // Convert this legacy remediation plan's actions into a canonical
+  // ActionPlan via scan_core.security_remediation.plan RPC. This routes
+  // remediation through the canonical prepare → validate → approve →
+  // execute → rollback flow, replacing the legacy ThreatRemediationEngine
+  // execution path.
+  const handleReviewViaCanonical = useCallback(async () => {
+    if (plan.actions.length === 0) return;
+    const payload = plan.actions.map(securityActionToRpcPayload);
+    await securityPlan.createPlan(payload);
+  }, [plan.actions, securityPlan]);
+
+  const handlePlanClose = useCallback(() => {
+    securityPlan.reset();
+  }, [securityPlan]);
+
+  // ── Canonical plan review handoff ────────────────────────────────
+  if (securityPlan.planId) {
+    return (
+      <div data-testid={`security-plan-card-review-${plan.id}`}>
+        <PlanReviewView
+          planId={securityPlan.planId}
+          module="security"
+          onClose={handlePlanClose}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-4">
@@ -1545,7 +1688,7 @@ function PlanCard({ plan, vm }: { plan: RemediationPlan; vm: SecurityCenterViewM
         </Badge>
       </div>
 
-      {/* Actions List */}
+      {/* Actions List (read-only display — no legacy execution buttons) */}
       <div className="mt-3 space-y-1">
         {plan.actions.map((action) => (
           <div key={action.id} className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface)] px-2 py-1.5">
@@ -1562,82 +1705,44 @@ function PlanCard({ plan, vm }: { plan: RemediationPlan; vm: SecurityCenterViewM
             </div>
             <div className="flex items-center gap-2">
               <span className="text-caption text-[var(--avs-text-muted)]">{action.riskLevel}</span>
-              {action.status === 'completed' && action.reversible && action.rollbackId && (
-                canRemediate ? (
-                  <Button size="sm" variant="ghost" onClick={() => vm.rollbackAction(action.id)} leftIcon={<ArrowUturnLeftIcon className="h-3 w-3" />}>
-                    Undo
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => guard('security.remediate', 'Security Center', () => vm.rollbackAction(action.id), {
-                      limitDescription: 'Rollback of remediation actions is not available in the Free edition.',
-                      proBenefit: 'Undo remediation actions with AVS Shield Pro.',
-                    })}
-                    leftIcon={<LockIconSmall className="h-3 w-3" />}
-                  >
-                    Undo (Pro)
-                  </Button>
-                )
-              )}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Plan Actions */}
+      {/* Plan Actions — canonical handoff only, no legacy execution */}
       <div className="mt-3 flex gap-2">
-        {plan.status === 'pending_approval' && (
+        {plan.status !== 'completed' && plan.status !== 'executing' && (
           canRemediate ? (
-            <>
-              <Button size="sm" onClick={() => vm.approvePlan(plan.id)} leftIcon={<CheckIcon className="h-4 w-4" />}>Approve</Button>
-              <Button size="sm" variant="secondary" onClick={() => vm.rejectPlan(plan.id)} leftIcon={<XMarkIcon className="h-4 w-4" />}>Reject</Button>
-            </>
-          ) : (
-            <>
-              <Button
-                size="sm"
-                onClick={() => guard('security.remediate', 'Security Center', () => vm.approvePlan(plan.id), {
-                  limitDescription: 'Approving remediation plans is not available in the Free edition.',
-                  proBenefit: 'Approve and execute remediation plans with AVS Shield Pro.',
-                })}
-                leftIcon={<LockIconSmall className="h-4 w-4" />}
-              >
-                Approve (Pro)
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => guard('security.remediate', 'Security Center', () => vm.rejectPlan(plan.id), {
-                  limitDescription: 'Managing remediation plans is not available in the Free edition.',
-                  proBenefit: 'Full remediation management with AVS Shield Pro.',
-                })}
-                leftIcon={<LockIconSmall className="h-4 w-4" />}
-              >
-                Reject (Pro)
-              </Button>
-            </>
-          )
-        )}
-        {plan.status === 'approved' && (
-          canRemediate ? (
-            <Button size="sm" onClick={() => vm.executePlan(plan.id)} leftIcon={<WrenchScrewdriverIcon className="h-4 w-4" />}>Execute</Button>
+            <Button
+              size="sm"
+              onClick={handleReviewViaCanonical}
+              disabled={securityPlan.isCreating}
+              leftIcon={<WrenchScrewdriverIcon className="h-4 w-4" />}
+              data-testid={`plan-review-canonical-${plan.id}`}
+            >
+              {securityPlan.isCreating ? 'Creating Plan…' : 'Review & Fix'}
+            </Button>
           ) : (
             <Button
               size="sm"
-              onClick={() => guard('security.remediate', 'Security Center', () => vm.executePlan(plan.id), {
-                limitDescription: 'Executing remediation plans is not available in the Free edition.',
-                proBenefit: 'Execute remediation plans to remove threats with AVS Shield Pro.',
+              onClick={() => guard('security.remediate', 'Security Center', handleReviewViaCanonical, {
+                limitDescription: 'Remediation is not available in the Free edition.',
+                proBenefit: 'Review and fix threats with AVS Shield Pro.',
               })}
               leftIcon={<LockIconSmall className="h-4 w-4" />}
             >
-              Execute (Pro)
+              Review & Fix (Pro)
             </Button>
           )
         )}
         <Button size="sm" variant="ghost" onClick={() => vm.generateRemediationReport(plan.id)} leftIcon={<DocumentTextIcon className="h-4 w-4" />}>Report</Button>
       </div>
+      {securityPlan.error && (
+        <p className="mt-2 text-caption text-[var(--avs-danger)]" data-testid={`plan-error-${plan.id}`}>
+          {securityPlan.error}
+        </p>
+      )}
       {dialogElement}
     </div>
   );
