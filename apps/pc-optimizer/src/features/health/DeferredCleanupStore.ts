@@ -1,12 +1,19 @@
 /**
  * DeferredCleanupStore — persistent store for deferred cleanup items.
  *
- * Items that could not be cleaned during the main optimization pass
- * (locked files, browser running, permission errors) are stored here.
- * The BackgroundCleanupService retries them automatically when the
- * blocking application closes.
+ * SC-8C13 Phase 1: This store is DEPRECATED. It is no longer populated
+ * with new items and is not used for automatic destructive cleanup.
+ * BackgroundCleanupService now uses it only for read-only detection of
+ * existing cleanup opportunities (to send notifications). The store
+ * itself is retained for compatibility with items from previous sessions.
  *
- * Persists to localStorage so items survive app restarts.
+ * Items that could not be cleaned during the main optimization pass
+ * (locked files, browser running, permission errors) were previously
+ * stored here. The BackgroundCleanupService would retry them automatically
+ * when the blocking application closed — that automatic execution has
+ * been removed per the SC-8C13 "no automatic destructive execution" invariant.
+ *
+ * Persists to IndexedDB so items survive app restarts.
  */
 
 import { create } from 'zustand';

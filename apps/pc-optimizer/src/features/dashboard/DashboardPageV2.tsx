@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, memo } from 'react';
+import { useEffect, useMemo, useState, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, ChartCard, TimelineCard, Sparkline, EmptyState, LoadingState, CollapsibleSection } from '@avs/ui';
 import { ModuleErrorBanner } from '../../components/ModuleStates';
@@ -15,6 +15,7 @@ import {
   ChartBarIcon,
   FireIcon,
   Battery50Icon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { DashboardViewModel } from './DashboardViewModel';
@@ -23,6 +24,8 @@ import type { DashboardMetrics, LiveMetrics, HardwareSensorReading } from './das
 import { DashboardScanStatusCard } from '../scan/components/DashboardScanStatusCard';
 import { useDashboardScan } from '../scan/useDashboardScan';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
+import { PlanReviewView, useDashboardOptimizationPlan } from '../scan';
+import { dashboardPreviewToRpcPayload } from './dashboardOptimizationSerializer';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -116,6 +119,9 @@ export default function DashboardPage() {
   const state = useViewModel(vm);
   const navigate = useNavigate();
   const { snapshot } = useDashboardScan();
+  const dashPlan = useDashboardOptimizationPlan();
+  const [optimizePreviewLoading, setOptimizePreviewLoading] = useState(false);
+  const [optimizePreviewError, setOptimizePreviewError] = useState<string | null>(null);
 
   useEffect(() => {
     void vm.bootstrap();
@@ -139,6 +145,50 @@ export default function DashboardPage() {
   const securityLabel = useMemo(() => getSecurityLabel(state.metrics), [state.metrics]);
   const performanceValue = useMemo(() => getPerformanceValue(state.liveMetrics), [state.liveMetrics]);
   const storageValue = useMemo(() => getStorageValue(state.metrics), [state.metrics]);
+
+  // ── Canonical Dashboard Optimization plan creation handoff ──────────────
+  // Fetches a read-only optimize preview, maps actions to the backend format,
+  // and creates a canonical ActionPlan via scan_core.dashboard_optimization.plan.
+  // The plan_id is then handed off to PlanReviewView for the canonical
+  // prepare → validate → approve → execute → rollback flow.
+  // This NEVER executes remediation directly.
+  const handleReviewOptimize = useCallback(async () => {
+    if (dashPlan.isCreating) return;
+    setOptimizePreviewLoading(true);
+    setOptimizePreviewError(null);
+    try {
+      const preview = await dashboardService.getOptimizePreview();
+      if (!preview.actions || preview.actions.length === 0) {
+        setOptimizePreviewError('No optimization actions available.');
+        return;
+      }
+      const payload = dashboardPreviewToRpcPayload(preview.actions);
+      await dashPlan.createPlan(payload);
+    } catch (err) {
+      setOptimizePreviewError(err instanceof Error ? err.message : 'Failed to load optimization preview');
+    } finally {
+      setOptimizePreviewLoading(false);
+    }
+  }, [dashPlan]);
+
+  const handlePlanClose = useCallback(() => {
+    dashPlan.reset();
+    setOptimizePreviewError(null);
+  }, [dashPlan]);
+
+  // ── Canonical plan review handoff ────────────────────────────────────────
+  // If the RPC returned a plan_id, hand off to the canonical review flow.
+  if (dashPlan.planId) {
+    return (
+      <div className="px-6 py-6" data-testid="dashboard-opt-plan-review">
+        <PlanReviewView
+          planId={dashPlan.planId}
+          module="optimize"
+          onClose={handlePlanClose}
+        />
+      </div>
+    );
+  }
 
   if (state.bootstrap === 'loading') {
     return <LoadingState message="Loading dashboard..." data-testid="dashboard-loading" />;
@@ -191,9 +241,24 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <ProStatusPill />
           <Button
+            onClick={handleReviewOptimize}
+            disabled={isScanning || dashPlan.isCreating || optimizePreviewLoading}
+            size="lg"
+            leftIcon={
+              dashPlan.isCreating || optimizePreviewLoading
+                ? <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                : <SparklesIcon className="h-5 w-5" />
+            }
+            data-testid="dashboard-review-optimize-btn"
+            aria-label="Review and optimize system"
+          >
+            {dashPlan.isCreating ? 'Creating Plan...' : optimizePreviewLoading ? 'Analyzing...' : 'Review & Optimize'}
+          </Button>
+          <Button
             onClick={() => navigate('/ai-smart-optimize')}
             disabled={isScanning}
             size="lg"
+            variant="secondary"
             leftIcon={isScanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <BoltIcon className="h-5 w-5" />}
             data-testid="improve-health-button"
           >
@@ -201,6 +266,14 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
+
+      {/* Dashboard optimization plan creation error */}
+      {(dashPlan.error || optimizePreviewError) && (
+        <div className="flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 p-3" data-testid="dashboard-opt-plan-error">
+          <ExclamationTriangleIcon className="h-4 w-4 text-semantic-danger shrink-0" />
+          <span className="text-caption text-semantic-danger">{dashPlan.error ?? optimizePreviewError}</span>
+        </div>
+      )}
 
       {/* Primary: Health Score + Protection Status (2 large cards) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

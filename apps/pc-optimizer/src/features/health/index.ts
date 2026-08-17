@@ -105,7 +105,7 @@ export type { ProcessClosedEvent, ProcessMonitorListener } from './ProcessMonito
 export { processMonitorService, ProcessMonitorServiceImpl } from './ProcessMonitorService';
 export type { DeferredCleanupItem } from './DeferredCleanupStore';
 export { useDeferredCleanupStore } from './DeferredCleanupStore';
-export type { BackgroundCleanupResult, BackgroundCleanupListener } from './BackgroundCleanupService';
+export type { BackgroundCleanupOpportunity, BackgroundCleanupListener } from './BackgroundCleanupService';
 export { backgroundCleanupService, BackgroundCleanupServiceImpl } from './BackgroundCleanupService';
 export type { LogLevel, LogEntry } from './LogService';
 export { log } from './LogService';

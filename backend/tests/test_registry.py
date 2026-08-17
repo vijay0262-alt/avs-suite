@@ -53,7 +53,6 @@ def test_registry_has_expected_methods() -> None:
             "dashboard.metrics",
             "dashboard.health",
             "dashboard.optimize.preview",
-            "dashboard.optimize.execute",
         })
 
     assert base_methods.issubset(methods)

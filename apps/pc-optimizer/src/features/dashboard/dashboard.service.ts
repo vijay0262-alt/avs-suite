@@ -8,7 +8,6 @@ import type {
   LiveMetrics,
   HealthScore,
   OptimizePreview,
-  OptimizeExecuteResponse,
   HardwareSensors,
 } from './dashboard.types';
 
@@ -31,7 +30,6 @@ export interface DashboardService {
    */
   refreshCache(): Promise<{ refreshed: boolean }>;
   getOptimizePreview(): Promise<OptimizePreview>;
-  executeOptimize(): Promise<OptimizeExecuteResponse>;
   getHardwareSensors(): Promise<HardwareSensors>;
   enableSmartScreen(): Promise<{ enabled: boolean; message: string }>;
   enableDefender(): Promise<{ enabled: boolean; message: string }>;
@@ -44,7 +42,6 @@ export const dashboardService: DashboardService = {
   getHealthScore: () => rpcCache.get('dashboard.health', () => client().call<HealthScore>(RPC_METHODS.DASHBOARD_HEALTH), 15_000),
   refreshCache: () => { rpcCache.invalidate('dashboard.metrics'); rpcCache.invalidate('dashboard.health'); return client().call(RPC_METHODS.DASHBOARD_REFRESH_CACHE); },
   getOptimizePreview: () => client().call(RPC_METHODS.DASHBOARD_OPTIMIZE_PREVIEW),
-  executeOptimize: () => client().call(RPC_METHODS.DASHBOARD_OPTIMIZE_EXECUTE),
   getHardwareSensors: () => rpcCache.get('dashboard.hardware', () => client().call<HardwareSensors>(RPC_METHODS.HARDWARE_SENSORS), 30_000),
   enableSmartScreen: () => client().call(RPC_METHODS.SECURITY_ENABLE_SMARTSCREEN),
   enableDefender: () => client().call(RPC_METHODS.SECURITY_ENABLE_DEFENDER),

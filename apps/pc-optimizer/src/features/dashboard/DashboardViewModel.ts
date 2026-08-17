@@ -13,7 +13,6 @@ import type {
   DashboardMetrics,
   LiveMetrics,
   HealthScore,
-  OptimizePreview,
   OptimizeExecuteResponse,
   HealthScanStep,
   HealthScanModuleResult,
@@ -37,7 +36,6 @@ import { calculateHealthScore } from './dashboard.utils';
 import { invalidateMetricsCache, dashboardRefreshManager } from '../health';
 import { withRetry } from '../health/RpcRetryWrapper';
 import type { OptimizationEvent } from '../health';
-import { optimizationHistoryService } from '../health/OptimizationHistoryService';
 import { healthTimelineService } from '../health/HealthTimelineService';
 import { healthNotificationService } from '../health/HealthNotificationService';
 import type { OptimizationSummary } from './OptimizationSummary.types';
@@ -55,7 +53,7 @@ import { useLiveSync } from '../health/LiveSyncService';
 
 type ScanProfile = 'dashboard' | 'optimize' | 'protection';
 
-export type OptimizeStep = 'idle' | 'preview' | 'confirm' | 'optimizing' | 'complete';
+// SC-8C13 Phase 5: OptimizeStep type removed — legacy optimize flow deleted.
 
 
 export interface DashboardState {
@@ -84,13 +82,8 @@ export interface DashboardState {
   privacyRisksLoading: boolean;
   privacyRisksError: string | null;
 
-  // Optimization flow
-  optimizeStep: OptimizeStep;
-  optimizePreview: OptimizePreview | null;
-  optimizePreviewLoading: boolean;
-  optimizePreviewError: string | null;
-  optimizeResult: OptimizeExecuteResponse | null;
-  optimizeError: string | null;
+  // Optimization flow — SC-8C13 Phase 5: legacy optimize step state removed.
+  // Dashboard optimization now uses useDashboardOptimizationPlan → PlanReviewView.
 
   // Health Scan workflow
   healthScanStep: HealthScanStep;
@@ -203,12 +196,7 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       privacyRisksLoading: false,
       privacyRisksError: null,
 
-      optimizeStep: 'idle',
-      optimizePreview: null,
-      optimizePreviewLoading: false,
-      optimizePreviewError: null,
-      optimizeResult: null,
-      optimizeError: null,
+      // SC-8C13 Phase 5: legacy optimize state removed.
 
       healthScanStep: 'idle',
       healthScanModules: [],
@@ -856,116 +844,10 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   }
 
   // ------------------------------------------------------------------
-  // Optimization
+  // Optimization — SC-8C13 Phase 5: legacy direct-execution methods removed.
+  // Dashboard optimization now uses useDashboardOptimizationPlan →
+  // PlanReviewView → ResultsView → prepare → validate → approve → execute.
   // ------------------------------------------------------------------
-  async openOptimizePreview(): Promise<void> {
-    this.setState({
-      optimizeStep: 'preview',
-      optimizePreview: null,
-      optimizePreviewLoading: true,
-      optimizePreviewError: null,
-      optimizeError: null,
-    });
-    
-    try {
-      const preview = await this.service.getOptimizePreview();
-      this.setState({
-        optimizePreview: preview,
-        optimizePreviewLoading: false,
-      });
-    } catch (err) {
-      this.setState({
-        optimizePreviewLoading: false,
-        optimizePreviewError: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }
-
-  advanceToOptimizeConfirm(): void {
-    if (!this.state.optimizePreview) return;
-    void this.executeOptimize();
-  }
-
-  cancelOptimizeFlow(): void {
-    this.setState({
-      optimizeStep: 'idle',
-      optimizePreview: null,
-      optimizePreviewError: null,
-      optimizeResult: null,
-      optimizeError: null,
-    });
-  }
-
-  async executeOptimize(): Promise<void> {
-    this.setState({ optimizeStep: 'optimizing', optimizeError: null });
-    const healthBefore = this.state.healthScore?.overallScore ?? 0;
-
-    try {
-      const result = await this.service.executeOptimize();
-      this.setState({
-        optimizeResult: result,
-        optimizeStep: 'complete',
-      });
-      // dashboard.optimize.execute already clears the backend metrics cache
-      // as part of its own execution, but invalidate again defensively in
-      // case that changes, then await a full metrics reload so the health
-      // score recomputed below reflects real post-optimization state.
-      try {
-        await this.service.refreshCache();
-      } catch (err) {
-        console.error('Failed to invalidate dashboard cache:', err);
-      }
-      await this.loadMetrics();
-
-      // Part 7: Build improvement summary
-      const healthAfter = this.state.healthScore?.overallScore ?? 100;
-      const summary: OptimizationSummary = {
-        healthBefore,
-        healthAfter,
-        storageRecovered: result.totalRecovered,
-        registryFixed: 0,
-        startupOptimized: 0,
-        privacyCleaned: 0,
-        duplicateFilesRemoved: 0,
-        durationMs: result.elapsedMs,
-        completedAt: result.completedAt,
-        success: result.success,
-      };
-      this.setState({ optimizationSummary: summary });
-
-      // Part 8: Record optimization history
-      optimizationHistoryService.recordOptimization({
-        timestamp: result.completedAt,
-        healthBefore,
-        healthAfter,
-        storageRecovered: result.totalRecovered,
-        registryFixed: 0,
-        startupOptimized: 0,
-        privacyCleaned: 0,
-        duplicateFilesRemoved: 0,
-        durationMs: result.elapsedMs,
-        result: result.success ? 'success' : 'partial',
-        modulesUsed: ['junk'],
-      });
-    } catch (err) {
-      this.setState({
-        optimizeStep: 'preview',
-        optimizeError: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }
-
-  closeOptimizeResult(): void {
-    this.setState({
-      optimizeStep: 'idle',
-      optimizePreview: null,
-      optimizeResult: null,
-      optimizeError: null,
-      optimizationSummary: null,
-      verificationReport: null,
-      deferredCleanupItems: [],
-    });
-  }
 
   // ------------------------------------------------------------------
   // Quick Actions

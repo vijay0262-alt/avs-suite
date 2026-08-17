@@ -36,6 +36,9 @@ export type { UseSmartOptimizationPlanReturn } from './useSmartOptimizationPlan'
 export { useSecurityRemediationPlan } from './useSecurityRemediationPlan';
 export type { UseSecurityRemediationPlanReturn } from './useSecurityRemediationPlan';
 
+export { useDashboardOptimizationPlan } from './useDashboardOptimizationPlan';
+export type { UseDashboardOptimizationPlanReturn } from './useDashboardOptimizationPlan';
+
 export { ResultsView, type ResultsViewProps } from './ResultsView';
 export { PlanReviewView, type PlanReviewViewProps } from './PlanReviewView';
 export { usePlanDetails } from './usePlanDetails';

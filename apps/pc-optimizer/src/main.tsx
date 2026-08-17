@@ -46,6 +46,11 @@ deferInit(() => {
   });
 });
 deferInit(() => {
+  // SC-8C13 Phase 1: Background cleanup is detection/notification-only.
+  // start() subscribes to process monitor events for detection.
+  // checkStartupOpportunities() inspects existing deferred items and
+  // sends a notification if cleanup opportunities exist — it does NOT
+  // execute any destructive operations.
   backgroundCleanupService.start();
-  void backgroundCleanupService.runStartupCleanup();
+  backgroundCleanupService.checkStartupOpportunities();
 });

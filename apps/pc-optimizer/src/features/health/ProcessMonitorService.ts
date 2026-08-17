@@ -2,8 +2,10 @@
  * ProcessMonitorService — monitors target applications (browsers, Explorer)
  * and emits events when they close.
  *
- * Used by BackgroundCleanupService to trigger deferred cleanup automatically
- * when the blocking application is no longer running.
+ * SC-8C13 Phase 1: Used by BackgroundCleanupService for detection-only
+ * behavior. When a process closes, BackgroundCleanupService checks for
+ * deferred cleanup opportunities and sends a notification — it does NOT
+ * execute any destructive cleanup automatically.
  *
  * Polls the backend's `performance.monitor.getTopProcesses` RPC every
  * `POLL_INTERVAL_MS` milliseconds. When a tracked process transitions

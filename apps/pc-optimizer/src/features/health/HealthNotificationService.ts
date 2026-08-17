@@ -158,6 +158,35 @@ export class HealthNotificationService {
     this.notifications = [];
   }
 
+  /**
+   * Push a custom notification (e.g. from BackgroundCleanupService).
+   * This is a public API for services that need to notify the user
+   * without going through the threshold-based checkForChanges flow.
+   */
+  pushNotification(
+    severity: NotificationSeverity,
+    title: string,
+    message: string,
+    actionLabel?: string,
+    actionPath?: string,
+  ): HealthNotification {
+    const notification: HealthNotification = {
+      id: `notif-${Date.now()}-${title.replace(/\s+/g, '-').toLowerCase()}`,
+      timestamp: new Date().toISOString(),
+      severity,
+      title,
+      message,
+      actionLabel,
+      actionPath,
+    };
+    this.notifications.unshift(notification);
+    if (this.notifications.length > this.maxNotifications) {
+      this.notifications = this.notifications.slice(0, this.maxNotifications);
+    }
+    this.listeners.forEach((l) => l(notification));
+    return notification;
+  }
+
   /** Reset internal state (for testing). */
   reset(): void {
     this.lastState = null;

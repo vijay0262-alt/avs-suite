@@ -85,7 +85,6 @@ function makeDashboardService(overrides: Record<string, unknown> = {}): Dashboar
     getHealthScore: vi.fn(async () => ({ score: 85, status: 'good' })),
     refreshCache: vi.fn(async () => { currentMetrics = makeMetrics(); return { refreshed: true }; }),
     getOptimizePreview: vi.fn(async () => ({ totalRecoverable: 0, actions: [], estimatedTime: 0 })),
-    executeOptimize: vi.fn(async () => ({ success: true, totalRecovered: 500_000_000, results: {}, elapsedMs: 1000, completedAt: '' })),
     ...overrides,
   } as unknown as DashboardService;
 }

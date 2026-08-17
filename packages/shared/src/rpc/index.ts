@@ -56,7 +56,8 @@ export const RPC_METHODS = {
   DASHBOARD_HEALTH: 'dashboard.health',
   DASHBOARD_REFRESH_CACHE: 'dashboard.refreshCache',
   DASHBOARD_OPTIMIZE_PREVIEW: 'dashboard.optimize.preview',
-  DASHBOARD_OPTIMIZE_EXECUTE: 'dashboard.optimize.execute',
+  // SC-8C13 Phase 5: DASHBOARD_OPTIMIZE_EXECUTE removed — Dashboard uses
+  // scan_core.dashboard_optimization.plan → scan_core.remediation.execute.
 
   // Feature modules — Junk Cleaner scan lifecycle
   CLEANER_LIST: 'cleaner.list',
@@ -175,6 +176,9 @@ export const RPC_METHODS = {
 
   // Security Remediation Plan Creation (SC-8C12 Phase 3)
   SCAN_CORE_SECURITY_REMEDIATION_PLAN: 'scan_core.security_remediation.plan',
+
+  // Dashboard Optimization Plan Creation (SC-8C13 Phase 2)
+  SCAN_CORE_DASHBOARD_OPTIMIZATION_PLAN: 'scan_core.dashboard_optimization.plan',
 
   // Predictive Health
   PREDICTIVE_HEALTH_SNAPSHOT: 'predictive.snapshot',

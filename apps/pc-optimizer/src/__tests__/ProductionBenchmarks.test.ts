@@ -280,13 +280,6 @@ describe('React rendering optimizations (from Phase 3 Part 1A)', () => {
     )).toBe(true);
   });
 
-  it('OneClickOptimize uses React.memo', () => {
-    expect(fileContains(
-      path.join(featuresDir, 'dashboard/components/OneClickOptimize.tsx'),
-      'memo(',
-    )).toBe(true);
-  });
-
   it('Router uses lazy loading and requestIdleCallback', () => {
     const content = readFile(path.resolve(__dirname, '../router/index.tsx'));
     expect(content).toContain('lazy(() => import');

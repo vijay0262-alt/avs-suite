@@ -1,36 +1,40 @@
 /**
- * BackgroundCleanupService — automatically retries deferred cleanup items
- * when blocking applications close.
+ * BackgroundCleanupService — detection and notification service for
+ * deferred cleanup opportunities.
  *
- * Architecture:
+ * SC-8C13 Phase 1 — Background Cleanup Safety Migration
+ *
+ * This service was previously an automatic destructive execution path
+ * that called orchestrator.optimize without user approval at application
+ * startup and when monitored processes closed. That behavior violated
+ * the established security invariant:
+ *
+ *   NO AUTOMATIC DESTRUCTIVE EXECUTION.
+ *
+ * The service has been converted to detection/notification-only:
  *   1. ProcessMonitorService polls for running browser/Explorer processes.
  *   2. When a target process closes, this service is notified.
- *   3. It collects deferred items associated with that process.
- *   4. Calls the backend orchestrator to retry cleaning those items.
- *   5. Verifies results, updates scores, saves history, broadcasts.
- *   6. Sends a notification: "Background Cleanup Completed".
+ *   3. It checks whether deferred cleanup items are associated with that process.
+ *   4. If so, it sends a notification: "Cleanup opportunities available".
+ *   5. The user must then explicitly open the canonical scan/review/approve/execute flow.
  *
- * This service starts at app boot and runs continuously in the background.
- * No user interaction required.
+ * This service NEVER:
+ *   - Calls orchestrator.optimize
+ *   - Calls dashboard.optimize.execute
+ *   - Performs any destructive filesystem/registry/cache mutation
+ *   - Bypasses SafetyGate or RemediationCoordinator
+ *   - Executes remediation without explicit user approval
+ *
+ * The service MAY:
+ *   - Inspect cleanup opportunities (read-only)
+ *   - Report estimated savings
+ *   - Generate notifications directing the user to the appropriate UI
  */
 
 import { processMonitorService, type ProcessClosedEvent } from './ProcessMonitorService';
-import { useDeferredCleanupStore, type DeferredCleanupItem } from './DeferredCleanupStore';
-import { useLiveSync } from './LiveSyncService';
-import { optimizationEventBus, OptimizationEventType } from './OptimizationEventBus';
+import { useDeferredCleanupStore } from './DeferredCleanupStore';
 import { healthNotificationService } from './HealthNotificationService';
-import { optimizationHistoryService } from './OptimizationHistoryService';
-import { invalidateMetricsCache } from './healthProviders';
-import { RPC_METHODS } from '@avs/shared/rpc';
 import { log } from './LogService';
-import { withRetry } from './RpcRetryWrapper';
-
-function rpcClient() {
-  if (typeof window === 'undefined' || !window.avs) {
-    throw new Error('AVS RPC bridge is unavailable (outside Electron?)');
-  }
-  return window.avs.rpc;
-}
 
 /** Map process names to deferred item keywords for matching. */
 const PROCESS_TO_KEYWORDS: Record<string, string[]> = {
@@ -41,26 +45,27 @@ const PROCESS_TO_KEYWORDS: Record<string, string[]> = {
   explorer: ['explorer'],
 };
 
-export interface BackgroundCleanupResult {
-  success: boolean;
-  itemsCleaned: number;
-  itemsRemaining: number;
-  bytesRecovered: number;
-  durationMs: number;
-  cleanedItemIds: string[];
+/** Cooldown (ms) between cleanup-opportunity notifications for the same process. */
+const NOTIFICATION_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
+export interface BackgroundCleanupOpportunity {
+  processName: string;
+  itemCount: number;
+  estimatedBytes: number;
 }
 
-export type BackgroundCleanupListener = (result: BackgroundCleanupResult) => void;
+export type BackgroundCleanupListener = (opportunity: BackgroundCleanupOpportunity) => void;
 
 class BackgroundCleanupServiceImpl {
   private listeners = new Set<BackgroundCleanupListener>();
   private unsubProcessMonitor: (() => void) | null = null;
   private started = false;
-  private cleaning = false;
+  private lastNotificationTime = new Map<string, number>();
 
   /**
-   * Start the background cleanup service.
-   * Subscribes to process monitor events.
+   * Start the background cleanup detection service.
+   * Subscribes to process monitor events for detection-only behavior.
+   * Does NOT perform any destructive operations.
    */
   start(): void {
     if (this.started) return;
@@ -72,7 +77,7 @@ class BackgroundCleanupServiceImpl {
   }
 
   /**
-   * Stop the background cleanup service.
+   * Stop the background cleanup detection service.
    */
   stop(): void {
     if (this.unsubProcessMonitor) {
@@ -83,7 +88,9 @@ class BackgroundCleanupServiceImpl {
   }
 
   /**
-   * Subscribe to background cleanup completion events.
+   * Subscribe to cleanup-opportunity detection events.
+   * Listeners are notified when cleanup opportunities are detected
+   * (NOT when cleanup is executed — this service no longer executes cleanup).
    */
   subscribe(listener: BackgroundCleanupListener): () => void {
     this.listeners.add(listener);
@@ -91,33 +98,49 @@ class BackgroundCleanupServiceImpl {
   }
 
   /**
-   * Manually trigger cleanup of all deferred items (e.g. on app startup).
-   * Only cleans items whose blocking processes are not currently running.
+   * Check for deferred cleanup opportunities at startup.
+   * This is detection-only: it inspects the DeferredCleanupStore and
+   * sends a notification if opportunities exist. It does NOT execute
+   * any cleanup.
    */
-  async runStartupCleanup(): Promise<BackgroundCleanupResult | null> {
+  checkStartupOpportunities(): BackgroundCleanupOpportunity | null {
     const store = useDeferredCleanupStore.getState();
     if (store.items.length === 0) return null;
 
-    // Filter to items whose blocking process is not running
+    // Filter to items whose blocking process is not currently running
     const cleanable = store.items.filter((item) => {
       if (!item.blockingProcess) return true;
       return !processMonitorService.isRunning(item.blockingProcess);
     });
 
     if (cleanable.length === 0) return null;
-    return this.executeCleanup(cleanable);
+
+    const estimatedBytes = cleanable.reduce((sum, item) => sum + (item.size ?? 0), 0);
+
+    const opportunity: BackgroundCleanupOpportunity = {
+      processName: 'startup',
+      itemCount: cleanable.length,
+      estimatedBytes,
+    };
+
+    // Notify listeners (detection event, not execution)
+    this.listeners.forEach((l) => l(opportunity));
+
+    // Send user notification directing them to the canonical flow
+    this.notifyCleanupAvailable(opportunity);
+    return opportunity;
   }
 
   /**
    * Handle a process-closed event from the monitor.
+   * Detection-only: checks for deferred items and sends a notification.
+   * Does NOT execute any cleanup.
    */
   private async handleProcessClosed(event: ProcessClosedEvent): Promise<void> {
-    if (this.cleaning) return; // Don't overlap cleanups
-
     const store = useDeferredCleanupStore.getState();
     const keywords = PROCESS_TO_KEYWORDS[event.processName] ?? [event.processName];
 
-    // Find deferred items associated with this process
+    // Find deferred items associated with this process (read-only check)
     const matching = store.items.filter((item) => {
       const reasonLower = item.reason.toLowerCase();
       const blockingLower = (item.blockingProcess ?? '').toLowerCase();
@@ -127,201 +150,51 @@ class BackgroundCleanupServiceImpl {
     });
 
     if (matching.length === 0) return;
-    await this.executeCleanup(matching);
-  }
 
-  /**
-   * Execute cleanup for a set of deferred items.
-   * Calls the backend, verifies, updates scores, broadcasts, notifies.
-   */
-  private async executeCleanup(items: DeferredCleanupItem[]): Promise<BackgroundCleanupResult> {
-    this.cleaning = true;
-    const startTime = Date.now();
-    const cleanedIds: string[] = [];
-    let bytesRecovered = 0;
-    let itemsCleaned = 0;
+    const estimatedBytes = matching.reduce((sum, item) => sum + (item.size ?? 0), 0);
 
-    try {
-      // Group items by module for batch cleaning
-      const byModule = new Map<string, DeferredCleanupItem[]>();
-      for (const item of items) {
-        const group = byModule.get(item.moduleId) ?? [];
-        group.push(item);
-        byModule.set(item.moduleId, group);
-      }
-
-      // Call the backend to retry cleaning for each module group
-      for (const [moduleId, moduleItems] of byModule) {
-        try {
-          const result = await withRetry(
-            () => rpcClient().call(RPC_METHODS.ORCHESTRATOR_OPTIMIZE, {
-              sessionId: `deferred-${Date.now()}`,
-              moduleIds: [moduleId],
-              deferredPaths: moduleItems.map((i) => i.path),
-            }),
-            'background-cleanup.optimize',
-            { maxAttempts: 3, baseDelayMs: 1000 },
-          ) as {
-            success: boolean;
-            bytesRecovered?: number;
-            itemsRemoved?: number;
-            errors?: string[];
-            optimizeResults?: Record<string, { success: boolean; bytesRecovered?: number; itemsRemoved?: number; errors?: string[] }>;
-          };
-
-          // Check results
-          const optResults = result.optimizeResults ?? {};
-          const moduleResult = optResults[moduleId];
-          const success = moduleResult?.success ?? result.success ?? false;
-          const recovered = moduleResult?.bytesRecovered ?? result.bytesRecovered ?? 0;
-          const removed = moduleResult?.itemsRemoved ?? result.itemsRemoved ?? 0;
-
-          if (success) {
-            bytesRecovered += recovered;
-            itemsCleaned += removed;
-            cleanedIds.push(...moduleItems.map((i) => i.id));
-          }
-        } catch (err) {
-          // Phase 23: Log backend failure — items remain deferred for next retry
-          log.error(
-            `Background cleanup failed for module ${moduleId}: ${err instanceof Error ? err.message : String(err)}`,
-            'background-cleanup',
-            'executeCleanup',
-            err instanceof Error ? err : new Error(String(err)),
-          );
-        }
-      }
-
-      // Remove successfully cleaned items from the store
-      if (cleanedIds.length > 0) {
-        useDeferredCleanupStore.getState().removeItems(cleanedIds);
-      }
-
-      const durationMs = Date.now() - startTime;
-      const result: BackgroundCleanupResult = {
-        success: cleanedIds.length > 0,
-        itemsCleaned,
-        itemsRemaining: items.length - cleanedIds.length,
-        bytesRecovered,
-        durationMs,
-        cleanedItemIds: cleanedIds,
-      };
-
-      // If anything was cleaned, verify and broadcast
-      if (bytesRecovered > 0 || itemsCleaned > 0) {
-        await this.verifyAndBroadcast(result);
-      }
-
-      // Notify listeners
-      this.listeners.forEach((l) => l(result));
-      return result;
-    } finally {
-      this.cleaning = false;
-    }
-  }
-
-  /**
-   * Verify cleanup results, update scores, save history, broadcast.
-   */
-  private async verifyAndBroadcast(result: BackgroundCleanupResult): Promise<void> {
-    // Invalidate metrics cache so fresh data is loaded
-    invalidateMetricsCache();
-
-    // Re-load dashboard metrics to get updated scores
-    let newHealthScore = 0;
-    try {
-      const metrics = await rpcClient().call(RPC_METHODS.DASHBOARD_METRICS) as {
-        healthScore?: number;
-        overallScore?: number;
-      };
-      newHealthScore = metrics.healthScore ?? metrics.overallScore ?? 0;
-    } catch (err) {
-      // Phase 23: Log metrics fetch failure — non-fatal, use current score
-      log.warning(
-        `Background cleanup: failed to fetch updated metrics: ${err instanceof Error ? err.message : String(err)}`,
-        'background-cleanup',
-        'verifyAndBroadcast',
-      );
-    }
-
-    const currentScore = useLiveSync.getState().healthScore;
-
-    // Broadcast updated scores
-    useLiveSync.getState().broadcastScores({
-      healthScore: newHealthScore,
-    });
-
-    // Emit optimization event for each cleaned module
-    const cleanedByModule = new Map<string, number>();
-    for (const itemId of result.cleanedItemIds) {
-      const item = useDeferredCleanupStore.getState().items.find((i) => i.id === itemId);
-      if (item) {
-        cleanedByModule.set(item.moduleId, (cleanedByModule.get(item.moduleId) ?? 0) + 1);
-      }
-    }
-    for (const [moduleId, count] of cleanedByModule) {
-      optimizationEventBus.emit({
-        type: OptimizationEventType.CleaningCompleted,
-        moduleId: moduleId as never,
-        action: 'deferred_cleanup',
-        bytesRecovered: result.bytesRecovered,
-        itemsProcessed: count,
-        timestamp: Date.now(),
-      });
-    }
-
-    // Record in optimization history
-    optimizationHistoryService.recordOptimization({
-      timestamp: new Date().toISOString(),
-      healthBefore: currentScore,
-      healthAfter: newHealthScore,
-      storageRecovered: result.bytesRecovered,
-      registryFixed: 0,
-      startupOptimized: 0,
-      privacyCleaned: 0,
-      duplicateFilesRemoved: 0,
-      durationMs: result.durationMs,
-      modulesUsed: [...cleanedByModule.keys()],
-      result: result.success ? 'success' : 'partial',
-    });
-
-    // Send notification
-    const recoveredMB = Math.round(result.bytesRecovered / 1_000_000);
-    healthNotificationService.checkForChanges(
-      newHealthScore,
-      0,
-      0,
-    );
-
-    // Emit a custom notification for background cleanup
-    const notif = {
-      id: `bg-cleanup-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      severity: 'info' as const,
-      title: 'Background Cleanup Completed',
-      message: `Recovered ${recoveredMB} MB · Health Score ${currentScore} → ${newHealthScore}`,
+    const opportunity: BackgroundCleanupOpportunity = {
+      processName: event.processName,
+      itemCount: matching.length,
+      estimatedBytes,
     };
-    // Use the notification service's listener mechanism
-    (healthNotificationService as unknown as {
-      listeners: Set<(n: typeof notif) => void>;
-      notifications: typeof notif[];
-      maxNotifications: number;
-    }).listeners.forEach((l) => l(notif));
 
-    // Update system tray
+    // Notify listeners (detection event, not execution)
+    this.listeners.forEach((l) => l(opportunity));
+
+    // Send user notification directing them to the canonical flow
+    this.notifyCleanupAvailable(opportunity);
+  }
+
+  /**
+   * Send a notification to the user that cleanup opportunities are available.
+   * Uses the existing HealthNotificationService — does NOT create a new
+   * notification subsystem.
+   */
+  private notifyCleanupAvailable(opportunity: BackgroundCleanupOpportunity): void {
+    // Cooldown: don't spam notifications for the same process
+    const now = Date.now();
+    const lastTime = this.lastNotificationTime.get(opportunity.processName) ?? 0;
+    if (now - lastTime < NOTIFICATION_COOLDOWN_MS) return;
+    this.lastNotificationTime.set(opportunity.processName, now);
+
+    const estimatedMB = Math.round(opportunity.estimatedBytes / 1_000_000);
+
     try {
-      const tray = (window as unknown as { avs?: { tray?: { updateStatus?: (s: string, t?: string) => void } } }).avs?.tray;
-      if (tray?.updateStatus) {
-        const status = newHealthScore >= 90 ? 'protected' : newHealthScore >= 70 ? 'optimized' : 'warning';
-        const tooltip = `AVS Shield — Background cleanup recovered ${recoveredMB} MB (Score: ${newHealthScore})`;
-        tray.updateStatus(status, tooltip);
-      }
+      healthNotificationService.pushNotification(
+        'info',
+        'Cleanup Opportunities Available',
+        estimatedMB > 0
+          ? `${opportunity.itemCount} item${opportunity.itemCount > 1 ? 's' : ''} ready for cleanup (~${estimatedMB} MB). Open the Dashboard to review and approve.`
+          : `${opportunity.itemCount} item${opportunity.itemCount > 1 ? 's' : ''} ready for cleanup. Open the Dashboard to review and approve.`,
+        'Open Dashboard',
+        '/dashboard',
+      );
     } catch (err) {
-      // Phase 23: Log tray update failure — non-fatal
       log.warning(
-        `Background cleanup: failed to update tray: ${err instanceof Error ? err.message : String(err)}`,
+        `Background cleanup: failed to send notification: ${err instanceof Error ? err.message : String(err)}`,
         'background-cleanup',
-        'verifyAndBroadcast',
+        'notifyCleanupAvailable',
       );
     }
   }
@@ -330,7 +203,7 @@ class BackgroundCleanupServiceImpl {
   reset(): void {
     this.stop();
     this.listeners.clear();
-    this.cleaning = false;
+    this.lastNotificationTime.clear();
   }
 }
 

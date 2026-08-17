@@ -87,6 +87,18 @@ export interface SecurityRemediationPlanResponse {
   error?: string;
 }
 
+export interface DashboardOptimizationPlanResponse {
+  ok: boolean;
+  plan_id?: string;
+  total_actions?: number;
+  auto_fixable?: number;
+  review_required?: number;
+  not_fixable?: number;
+  estimated_affected_size?: number | null;
+  statistics?: { converted: number; unsupported: number; errors: number };
+  error?: string;
+}
+
 export interface ScanService {
   scan_quick(scope?: string[]): Promise<ScanStartResponse>;
   scan_full(scope?: string[]): Promise<ScanStartResponse>;
@@ -98,6 +110,7 @@ export interface ScanService {
   plan_details(planId: string): Promise<PlanDetailsResponse>;
   smart_optimization_plan(actions: Record<string, unknown>[]): Promise<SmartOptimizationPlanResponse>;
   security_remediation_plan(actions: Record<string, unknown>[]): Promise<SecurityRemediationPlanResponse>;
+  dashboard_optimization_plan(actions: Record<string, unknown>[]): Promise<DashboardOptimizationPlanResponse>;
 }
 
 export const scanService: ScanService = {
@@ -113,4 +126,6 @@ export const scanService: ScanService = {
     client().call(RPC_METHODS.SCAN_CORE_SMART_OPTIMIZATION_PLAN, { actions }) as Promise<SmartOptimizationPlanResponse>,
   security_remediation_plan: (actions: Record<string, unknown>[]) =>
     client().call(RPC_METHODS.SCAN_CORE_SECURITY_REMEDIATION_PLAN, { actions }) as Promise<SecurityRemediationPlanResponse>,
+  dashboard_optimization_plan: (actions: Record<string, unknown>[]) =>
+    client().call(RPC_METHODS.SCAN_CORE_DASHBOARD_OPTIMIZATION_PLAN, { actions }) as Promise<DashboardOptimizationPlanResponse>,
 };
