@@ -21,12 +21,8 @@ export { ThreatConfigurationManager } from './ThreatConfiguration';
 export { ThreatRemediationPolicyManager } from './ThreatRemediationPolicy';
 export { ThreatSafetyValidator } from './ThreatSafetyValidator';
 
-// Quarantine & Restore & Delete
+// Quarantine
 export { ThreatQuarantineManager } from './ThreatQuarantineManager';
-export { ThreatRestoreManager } from './ThreatRestoreManager';
-export type { RestoreResult } from './ThreatRestoreManager';
-export { ThreatDeletionManager } from './ThreatDeletionManager';
-export type { DeleteResult } from './ThreatDeletionManager';
 
 // Rollback & Approval
 export { ThreatRollbackManager } from './ThreatRollbackManager';
@@ -37,9 +33,7 @@ export { ThreatRemediationPlanner } from './ThreatRemediationPlanner';
 export { ThreatRemediationHistory } from './ThreatRemediationHistory';
 export { ThreatRemediationReportGenerator } from './ThreatRemediationReport';
 
-// Recovery & Dashboard
-export { ThreatRecoveryProvider } from './ThreatRecoveryProvider';
-export type { RecoveryOption } from './ThreatRecoveryProvider';
+// Dashboard
 export { ThreatDashboardProvider } from './ThreatDashboardProvider';
 
 // False Positive

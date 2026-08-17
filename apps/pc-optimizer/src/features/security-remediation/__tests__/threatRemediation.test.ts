@@ -16,8 +16,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ThreatRemediationEngine } from '../ThreatRemediationEngine';
 import { ThreatQuarantineManager } from '../ThreatQuarantineManager';
-import { ThreatRestoreManager } from '../ThreatRestoreManager';
-import { ThreatDeletionManager } from '../ThreatDeletionManager';
 import { ThreatRollbackManager } from '../ThreatRollbackManager';
 import { ThreatApprovalManager } from '../ThreatApprovalManager';
 import { ThreatSafetyValidator } from '../ThreatSafetyValidator';
@@ -25,7 +23,6 @@ import { ThreatRemediationPolicyManager } from '../ThreatRemediationPolicy';
 import { ThreatRemediationPlanner } from '../ThreatRemediationPlanner';
 import { ThreatRemediationHistory } from '../ThreatRemediationHistory';
 import { ThreatRemediationReportGenerator } from '../ThreatRemediationReport';
-import { ThreatRecoveryProvider } from '../ThreatRecoveryProvider';
 import { ThreatFalsePositiveTracker } from '../ThreatFalsePositiveTracker';
 import { ThreatConfigurationManager } from '../ThreatConfiguration';
 import { remediationEventBus } from '../ThreatRemediationEvents';
@@ -236,76 +233,6 @@ describe('AI Remediation, Quarantine & Recovery', () => {
       expect(manager.isQuarantined(threat.id)).toBe(false);
       manager.quarantine(threat, 'inv-1', 'C:\\Temp\\keylogger.exe', 'keylogger.exe', 1024, 'abc123', null);
       expect(manager.isQuarantined(threat.id)).toBe(true);
-    });
-  });
-
-  // ── ThreatRestoreManager ──────────────────────────────────────────
-
-  describe('ThreatRestoreManager', () => {
-    let quarantine: ThreatQuarantineManager;
-    let restore: ThreatRestoreManager;
-
-    beforeEach(() => {
-      quarantine = new ThreatQuarantineManager(true);
-      restore = new ThreatRestoreManager(quarantine);
-    });
-
-    it('restores from quarantine', () => {
-      const threat = makeSpywareThreat();
-      const entry = quarantine.quarantine(threat, 'inv-1', 'C:\\Temp\\evil.exe', 'evil.exe', 1024, 'hash', null);
-      const result = restore.restore(entry.id);
-      expect(result.success).toBe(true);
-      expect(result.restoredPath).toBe('C:\\Temp\\evil.exe');
-    });
-
-    it('fails for non-existent entry', () => {
-      const result = restore.restore('nonexistent');
-      expect(result.success).toBe(false);
-    });
-
-    it('can restore check', () => {
-      const threat = makeSpywareThreat();
-      const entry = quarantine.quarantine(threat, 'inv-1', 'C:\\Temp\\evil.exe', 'evil.exe', 1024, 'hash', null);
-      expect(restore.canRestore(entry.id)).toBe(true);
-      quarantine.delete(entry.id);
-      expect(restore.canRestore(entry.id)).toBe(false);
-    });
-  });
-
-  // ── ThreatDeletionManager ─────────────────────────────────────────
-
-  describe('ThreatDeletionManager', () => {
-    let quarantine: ThreatQuarantineManager;
-    let deletion: ThreatDeletionManager;
-
-    beforeEach(() => {
-      quarantine = new ThreatQuarantineManager(true);
-      deletion = new ThreatDeletionManager(quarantine, 0); // No observation period for tests
-    });
-
-    it('deletes with user confirmation', () => {
-      const threat = makeSpywareThreat();
-      const entry = quarantine.quarantine(threat, 'inv-1', 'C:\\Temp\\evil.exe', 'evil.exe', 1024, 'hash', null);
-      const result = deletion.delete(entry.id, true);
-      expect(result.success).toBe(true);
-      expect(result.irreversible).toBe(true);
-    });
-
-    it('refuses deletion without confirmation', () => {
-      const threat = makeSpywareThreat();
-      const entry = quarantine.quarantine(threat, 'inv-1', 'C:\\Temp\\evil.exe', 'evil.exe', 1024, 'hash', null);
-      const result = deletion.delete(entry.id, false);
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('confirmation');
-    });
-
-    it('respects observation period', () => {
-      const delWithPeriod = new ThreatDeletionManager(quarantine, 999999999);
-      const threat = makeSpywareThreat();
-      const entry = quarantine.quarantine(threat, 'inv-1', 'C:\\Temp\\evil.exe', 'evil.exe', 1024, 'hash', null);
-      const result = delWithPeriod.delete(entry.id, true);
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Observation period');
     });
   });
 
@@ -654,40 +581,6 @@ describe('AI Remediation, Quarantine & Recovery', () => {
     });
   });
 
-  // ── ThreatRecoveryProvider ────────────────────────────────────────
-
-  describe('ThreatRecoveryProvider', () => {
-    let quarantine: ThreatQuarantineManager;
-    let rollback: ThreatRollbackManager;
-    let provider: ThreatRecoveryProvider;
-
-    beforeEach(() => {
-      quarantine = new ThreatQuarantineManager(true);
-      rollback = new ThreatRollbackManager();
-      provider = new ThreatRecoveryProvider(quarantine, rollback);
-    });
-
-    it('provides recovery status', () => {
-      const status = provider.getStatus();
-      expect(status.quarantineAvailable).toBe(false);
-      expect(status.rollbackAvailable).toBe(false);
-    });
-
-    it('lists recovery providers', () => {
-      const providers = provider.getProviders();
-      expect(providers.length).toBe(3);
-      expect(providers.some((p) => p.type === 'quarantine')).toBe(true);
-    });
-
-    it('provides recovery options for investigation', () => {
-      const threat = makeSpywareThreat();
-      quarantine.quarantine(threat, 'inv-1', 'C:\\Temp\\evil.exe', 'evil.exe', 1024, 'hash', null);
-      const options = provider.getRecoveryOptions('inv-1');
-      expect(options.length).toBeGreaterThan(0);
-      expect(options.some((o) => o.type === 'restore_from_quarantine')).toBe(true);
-    });
-  });
-
   // ── ThreatConfigurationManager ────────────────────────────────────
 
   describe('ThreatConfigurationManager', () => {
@@ -725,40 +618,6 @@ describe('AI Remediation, Quarantine & Recovery', () => {
       expect(plan.actions.length).toBeGreaterThan(0);
     });
 
-    it('approves and executes plan', () => {
-      const threat = makeSpywareThreat();
-      const investigation = makeInvestigation([threat]);
-      const plan = engine.createPlan(investigation, [threat]);
-
-      if (plan.requiresApproval) {
-        engine.approvePlan(plan.id, 'user-1', 'Approved');
-      }
-
-      const executed = engine.executePlan(plan.id);
-      expect(executed).not.toBeNull();
-      const allCompleted = executed!.actions.every((a) => a.status === 'completed' || a.status === 'failed');
-      expect(allCompleted).toBe(true);
-    });
-
-    it('rejects plan', () => {
-      const threat = makeSpywareThreat();
-      const investigation = makeInvestigation([threat]);
-      const plan = engine.createPlan(investigation, [threat]);
-      const rejected = engine.rejectPlan(plan.id, 'user-1', 'Too risky');
-      expect(rejected!.status).toBe('cancelled');
-    });
-
-    it('cannot execute without approval', () => {
-      const threat = makeSpywareThreat();
-      const investigation = makeInvestigation([threat]);
-      const plan = engine.createPlan(investigation, [threat]);
-
-      if (plan.requiresApproval) {
-        const result = engine.executePlan(plan.id);
-        expect(result).toBeNull();
-      }
-    });
-
     it('marks false positive', () => {
       const threat = makeSpywareThreat();
       const result = engine.markFalsePositive(threat, 'inv-1', 'Safe app', 'mark_safe');
@@ -770,8 +629,6 @@ describe('AI Remediation, Quarantine & Recovery', () => {
       const threat = makeSpywareThreat();
       const investigation = makeInvestigation([threat]);
       const plan = engine.createPlan(investigation, [threat]);
-      if (plan.requiresApproval) engine.approvePlan(plan.id);
-      engine.executePlan(plan.id);
       const report = engine.generateReport(plan.id);
       expect(report).not.toBeNull();
       expect(report!.summary).toBeTruthy();
@@ -785,20 +642,10 @@ describe('AI Remediation, Quarantine & Recovery', () => {
       expect(dashboard.summary.totalPlans).toBeGreaterThan(0);
     });
 
-    it('provides recovery status', () => {
-      const status = engine.getRecoveryStatus();
-      expect(status).toBeTruthy();
-      expect(status.quarantineAvailable).toBe(false);
-    });
-
     it('provides history', () => {
-      const threat = makeSpywareThreat();
-      const investigation = makeInvestigation([threat]);
-      const plan = engine.createPlan(investigation, [threat]);
-      if (plan.requiresApproval) engine.approvePlan(plan.id);
-      engine.executePlan(plan.id);
       const history = engine.getHistory();
-      expect(history.totalActions).toBeGreaterThan(0);
+      expect(history).toBeTruthy();
+      expect(history.totalActions).toBe(0);
     });
 
     it('handles empty threats', () => {
@@ -848,9 +695,7 @@ describe('AI Remediation, Quarantine & Recovery', () => {
       const threat = makeSpywareThreat();
       const investigation = makeInvestigation([threat]);
       const plan = engine.createPlan(investigation, [threat]);
-      if (plan.requiresApproval) engine.approvePlan(plan.id);
-      engine.executePlan(plan.id);
-      // Quarantine actions should still be in the plan but may fail
+      // Quarantine actions should still be in the plan
       expect(plan.actions.length).toBeGreaterThan(0);
     });
 
@@ -861,23 +706,6 @@ describe('AI Remediation, Quarantine & Recovery', () => {
       const investigation = makeInvestigation([t1, t2]);
       const plan = engine.createPlan(investigation, [t1, t2]);
       expect(plan.actions.length).toBeGreaterThan(1);
-    });
-
-    it('handles rollback after execution', () => {
-      const engine = new ThreatRemediationEngine();
-      const threat = makeSpywareThreat();
-      const investigation = makeInvestigation([threat]);
-      const plan = engine.createPlan(investigation, [threat]);
-      if (plan.requiresApproval) engine.approvePlan(plan.id);
-      engine.executePlan(plan.id);
-
-      // Find a reversible action
-      const reversibleAction = plan.actions.find((a) => a.reversible && a.rollbackId);
-      if (reversibleAction) {
-        const result = engine.rollbackAction(reversibleAction.id);
-        expect(result).toBe(true);
-        expect(reversibleAction.status).toBe('rolled_back');
-      }
     });
   });
 });

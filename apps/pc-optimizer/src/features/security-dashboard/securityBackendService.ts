@@ -143,15 +143,25 @@ export interface InvestigationResult {
   capturedAt: string;
 }
 
+/**
+ * Privacy-safe quarantine entry returned by the canonical
+ * `scan_core.security_remediation.quarantine_list` RPC.
+ *
+ * SC-8C14 Phase 3: this interface intentionally does NOT expose
+ * `quarantinePath`, `originalPath`, `asset_id`, `backup_location`,
+ * registry keys, browser paths, or any internal filesystem location.
+ * Only display-oriented fields are surfaced.
+ */
 export interface QuarantineEntry {
-  quarantineId: string;
-  originalPath: string;
-  quarantinePath: string;
-  threatId: string;
-  reason: string;
-  quarantinedAt: string;
-  fileSize: number;
-  restored: boolean;
+  id: string;
+  displayName: string;
+  status: 'quarantined' | 'restored' | 'deleted';
+  detectedAt: string | null;
+  threatType: string | null;
+  severity: string | null;
+  size: number;
+  rollbackAvailable: boolean;
+  detectionReason: string | null;
 }
 
 // ── Service ────────────────────────────────────────────────────
@@ -229,33 +239,22 @@ export const securityBackendService = {
 
   // ── Quarantine ─────────────────────────────────────────────
 
-  async quarantineFile(filePath: string, threatId?: string, reason?: string): Promise<{ quarantineId: string; quarantined: boolean; originalPath: string; quarantinePath: string; timestamp: string; error?: string }> {
-    return rpc.raw(RPC_METHODS.SECURITY_QUARANTINE, { filePath, threatId, reason });
-  },
-
-  async restoreQuarantined(quarantineId: string): Promise<{ quarantineId: string; restored: boolean; originalPath: string; timestamp: string; error?: string }> {
-    return rpc.raw(RPC_METHODS.SECURITY_QUARANTINE_RESTORE, { quarantineId });
-  },
-
-  async listQuarantined(): Promise<{ items: QuarantineEntry[]; count: number; totalItems: number; capturedAt: string }> {
-    return rpc.raw(RPC_METHODS.SECURITY_QUARANTINE_LIST);
-  },
-
-  async deleteQuarantined(quarantineId: string): Promise<{ quarantineId: string; deleted: boolean; timestamp: string; error?: string }> {
-    return rpc.raw(RPC_METHODS.SECURITY_QUARANTINE_DELETE, { quarantineId });
-  },
-
-  // ── Remediation plans ──────────────────────────────────────
-
-  async generateRemediationPlan(threats: Array<{ id: string; type: string; filePath: string; severity: string }>): Promise<{ planId: string; actions: Array<Record<string, unknown>>; totalActions: number; generatedAt: string }> {
-    return rpc.raw(RPC_METHODS.SECURITY_REMEDIATION_PLAN, { threats });
-  },
-
-  async executeRemediationPlan(plan: { planId: string; actions: Array<Record<string, unknown>> }, actionIds?: string[]): Promise<{ planId: string; executed: number; failed: number; skipped: number; results: Array<Record<string, unknown>>; timestamp: string }> {
-    return rpc.raw(RPC_METHODS.SECURITY_REMEDIATION_EXECUTE, { plan, actionIds });
-  },
-
-  async rollbackRemediation(quarantineIds: string[]): Promise<{ restored: number; total: number; results: Array<Record<string, unknown>>; timestamp: string }> {
-    return rpc.raw(RPC_METHODS.SECURITY_REMEDIATION_ROLLBACK, { quarantineIds });
+  /**
+   * List quarantined items via the canonical read-only RPC.
+   *
+   * SC-8C14 Phase 3: migrated from the transitional
+   * `security.quarantine.list` RPC to the canonical
+   * `scan_core.security_remediation.quarantine_list` RPC. The
+   * response is privacy-safe and does not expose internal paths.
+   */
+  async listQuarantined(): Promise<{
+    ok: boolean;
+    items: QuarantineEntry[];
+    count: number;
+    totalItems: number;
+    capturedAt: string;
+    error?: string;
+  }> {
+    return rpc.raw(RPC_METHODS.SCAN_CORE_SECURITY_REMEDIATION_QUARANTINE_LIST);
   },
 };

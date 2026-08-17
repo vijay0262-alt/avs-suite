@@ -210,8 +210,8 @@ describe('Dashboard scan state', () => {
     const forbidden = [
       RPC_METHODS.ORCHESTRATOR_OPTIMIZE,
       RPC_METHODS.ORCHESTRATOR_FULL_ASYNC,
-      RPC_METHODS.SECURITY_REMEDIATION_EXECUTE,
-      RPC_METHODS.SECURITY_REMEDIATION_ROLLBACK,
+      'security.remediation.execute',
+      'security.remediation.rollback',
     ];
     render(<SnapshotDump />, { wrapper: Wrapper });
     const calls = mockCall.mock.calls.map((call) => call[0] as string);

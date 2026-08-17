@@ -443,7 +443,7 @@ describe('ResultsView rollback (SC-8C8 Part 2B Phase 4)', () => {
       expect(calls).toHaveLength(1);
     });
     const securityCalls = mockCall.mock.calls.filter(
-      (call) => call[0] === RPC_METHODS.SECURITY_REMEDIATION_ROLLBACK,
+      (call) => call[0] === 'security.remediation.rollback',
     );
     expect(securityCalls).toHaveLength(0);
   });

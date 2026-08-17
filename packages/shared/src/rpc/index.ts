@@ -145,13 +145,8 @@ export const RPC_METHODS = {
   SECURITY_INVESTIGATION_CORRELATION: 'security.investigation.correlation',
 
   // Security Remediation
-  SECURITY_QUARANTINE: 'security.quarantine',
-  SECURITY_QUARANTINE_RESTORE: 'security.quarantine.restore',
-  SECURITY_QUARANTINE_LIST: 'security.quarantine.list',
-  SECURITY_QUARANTINE_DELETE: 'security.quarantine.delete',
-  SECURITY_REMEDIATION_PLAN: 'security.remediation.plan',
-  SECURITY_REMEDIATION_EXECUTE: 'security.remediation.execute',
-  SECURITY_REMEDIATION_ROLLBACK: 'security.remediation.rollback',
+  // (SC-8C14 Phase 3: transitional SECURITY_QUARANTINE_LIST removed;
+  //  use SCAN_CORE_SECURITY_REMEDIATION_QUARANTINE_LIST instead)
 
   // Scan Core Remediation (SC-8C8 Part 2A)
   SCAN_CORE_REMEDIATION_PREPARE: 'scan_core.remediation.prepare',
@@ -176,6 +171,9 @@ export const RPC_METHODS = {
 
   // Security Remediation Plan Creation (SC-8C12 Phase 3)
   SCAN_CORE_SECURITY_REMEDIATION_PLAN: 'scan_core.security_remediation.plan',
+
+  // Security Remediation Quarantine Listing (SC-8C14 Phase 3) — read-only
+  SCAN_CORE_SECURITY_REMEDIATION_QUARANTINE_LIST: 'scan_core.security_remediation.quarantine_list',
 
   // Dashboard Optimization Plan Creation (SC-8C13 Phase 2)
   SCAN_CORE_DASHBOARD_OPTIMIZATION_PLAN: 'scan_core.dashboard_optimization.plan',

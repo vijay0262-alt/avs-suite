@@ -512,12 +512,15 @@ export class SecurityCenterService {
     // Try backend first for real quarantined items
     try {
       const backendList = await securityBackendService.listQuarantined();
+      if (!backendList.ok) {
+        throw new Error(backendList.error ?? 'quarantine_list RPC failed');
+      }
       return {
         totalItems: backendList.totalItems,
         activeQuarantine: backendList.count,
         restored: backendList.totalItems - backendList.count,
         deleted: 0,
-        totalSize: backendList.items.reduce((sum, item) => sum + (item.fileSize || 0), 0),
+        totalSize: backendList.items.reduce((sum, item) => sum + (item.size || 0), 0),
         oldestQuarantine: null,
         newestQuarantine: null,
       } as QuarantineSummary;

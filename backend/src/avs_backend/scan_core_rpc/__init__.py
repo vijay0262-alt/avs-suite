@@ -829,3 +829,177 @@ def _scan_core_dashboard_optimization_plan(
     except Exception as exc:
         logger.exception("scan_core.dashboard_optimization.plan failed: %s", exc)
         return {"ok": False, "error": str(exc)}
+
+
+# =====================================================================
+# SC-8C14 Phase 3 — Canonical read-only quarantine list
+# =====================================================================
+#
+# Reads the existing quarantine manifest maintained by the
+# security_remediation module (same path, same format) and returns a
+# privacy-safe, display-oriented summary. This RPC is strictly
+# read-only: it never mutates the manifest, never moves/deletes files,
+# never calls executors, never calls subprocess, and never invokes the
+# RemediationCoordinator or SafetyGate.
+#
+# Privacy contract:
+#   The response NEVER exposes canonical_path, asset_id, backup_location,
+#   quarantine_path, original_path, registry keys, browser profile paths,
+#   internal storage paths, raw evidence, or executable commands.
+
+import json as _json_for_quarantine
+import platform as _platform_for_quarantine
+
+_QUARANTINE_DIR_CANONICAL: str
+if _platform_for_quarantine.system() == "Windows":
+    _QUARANTINE_DIR_CANONICAL = os.path.expandvars(
+        r"%LOCALAPPDATA%\AVS Shield\Quarantine"
+    )
+else:
+    _QUARANTINE_DIR_CANONICAL = os.path.expanduser("~/.avs-shield/quarantine")
+
+_QUARANTINE_MANIFEST_CANONICAL = os.path.join(
+    _QUARANTINE_DIR_CANONICAL, "manifest.json"
+)
+
+
+def _load_quarantine_manifest_canonical() -> dict[str, Any]:
+    """Load the quarantine manifest read-only.
+
+    Returns ``{"items": []}`` when the manifest is missing or malformed,
+    matching the tolerant behavior of the transitional implementation.
+    """
+    try:
+        with open(_QUARANTINE_MANIFEST_CANONICAL, "r", encoding="utf-8") as f:
+            data = _json_for_quarantine.load(f)
+        if not isinstance(data, dict) or not isinstance(data.get("items"), list):
+            return {"items": []}
+        return data
+    except (FileNotFoundError, ValueError, OSError):
+        return {"items": []}
+
+
+def _sanitize_quarantine_item(raw: dict[str, Any]) -> dict[str, Any] | None:
+    """Convert a raw manifest item into a privacy-safe display record.
+
+    Returns ``None`` for entries that cannot be safely surfaced.
+    """
+    if not isinstance(raw, dict):
+        return None
+
+    quarantine_id = raw.get("quarantineId")
+    if not isinstance(quarantine_id, str) or not quarantine_id:
+        return None
+
+    restored = bool(raw.get("restored", False))
+    deleted = bool(raw.get("deleted", False))
+    if deleted:
+        status = "deleted"
+    elif restored:
+        status = "restored"
+    else:
+        status = "quarantined"
+
+    # Derive a display name from the original path basename. The full
+    # path itself is NOT exposed.
+    original_path = raw.get("originalPath")
+    display_name: str
+    if isinstance(original_path, str) and original_path:
+        display_name = os.path.basename(original_path)
+    else:
+        display_name = "quarantined-item"
+
+    quarantined_at = raw.get("quarantinedAt")
+    detected_at = quarantined_at if isinstance(quarantined_at, str) else None
+
+    file_size = raw.get("fileSize")
+    size = int(file_size) if isinstance(file_size, (int, float)) else 0
+
+    reason = raw.get("reason")
+    detection_reason = reason if isinstance(reason, str) else None
+
+    return {
+        "id": quarantine_id,
+        "displayName": display_name,
+        "status": status,
+        "detectedAt": detected_at,
+        "threatType": None,
+        "severity": None,
+        "size": size,
+        "rollbackAvailable": status == "quarantined",
+        "detectionReason": detection_reason,
+    }
+
+
+@register("scan_core.security_remediation.quarantine_list")
+def _scan_core_security_remediation_quarantine_list(
+    _params: Optional[dict[str, Any]],
+) -> dict[str, Any]:
+    """List quarantined items in a privacy-safe, read-only form.
+
+    Reads the existing quarantine manifest maintained by the
+    ``security_remediation`` module and returns display-oriented
+    metadata only. This RPC does NOT execute remediation, does NOT
+    call executors, does NOT call subprocess, does NOT move or delete
+    files, and does NOT invoke the RemediationCoordinator or SafetyGate.
+
+    Response (success):
+        {
+            "ok": True,
+            "items": [
+                {
+                    "id": "q-...",
+                    "displayName": "evil.exe",
+                    "status": "quarantined" | "restored" | "deleted",
+                    "detectedAt": "2024-..." | None,
+                    "threatType": None,
+                    "severity": None,
+                    "size": 1024,
+                    "rollbackAvailable": True | False,
+                    "detectionReason": "..." | None
+                },
+                ...
+            ],
+            "count": N,         # active (non-restored, non-deleted) items
+            "totalItems": N,    # all manifest entries
+            "capturedAt": "2024-..."
+        }
+
+    Response (failure):
+        {"ok": False, "error": "..."}
+
+    Privacy:
+        The response NEVER exposes canonical_path, asset_id,
+        backup_location, quarantine_path, original_path, registry keys,
+        browser profile paths, internal storage paths, raw evidence, or
+        executable commands. Only display-oriented fields are returned.
+    """
+    try:
+        manifest = _load_quarantine_manifest_canonical()
+        raw_items = manifest.get("items", [])
+        if not isinstance(raw_items, list):
+            raw_items = []
+
+        sanitized: list[dict[str, Any]] = []
+        for raw in raw_items:
+            entry = _sanitize_quarantine_item(raw)
+            if entry is not None:
+                sanitized.append(entry)
+
+        active = [
+            it for it in sanitized if it["status"] == "quarantined"
+        ]
+
+        return {
+            "ok": True,
+            "items": sanitized,
+            "count": len(active),
+            "totalItems": len(sanitized),
+            "capturedAt": datetime.now(UTC).isoformat(),
+        }
+    except Exception as exc:
+        logger.exception(
+            "scan_core.security_remediation.quarantine_list failed: %s",
+            exc,
+        )
+        return {"ok": False, "error": str(exc)}

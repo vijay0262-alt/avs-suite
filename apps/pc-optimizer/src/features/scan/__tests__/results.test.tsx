@@ -922,8 +922,8 @@ describe('ResultsView', () => {
     const disallowed = [
       RPC_METHODS.ORCHESTRATOR_OPTIMIZE,
       RPC_METHODS.ORCHESTRATOR_FULL_ASYNC,
-      RPC_METHODS.SECURITY_REMEDIATION_EXECUTE,
-      RPC_METHODS.SECURITY_REMEDIATION_ROLLBACK,
+      'security.remediation.execute',
+      'security.remediation.rollback',
     ];
     for (const method of disallowed) {
       const calls = mockCall.mock.calls.filter((call) => call[0] === method);

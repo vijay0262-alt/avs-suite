@@ -516,28 +516,6 @@ export interface RemediationDashboardEntry {
   reversible: boolean;
 }
 
-// ── Recovery Provider ────────────────────────────────────────────────
-
-export interface RecoveryProvider {
-  id: string;
-  name: string;
-  type: RecoveryProviderType;
-  available: boolean;
-  lastBackup: number | null;
-}
-
-export type RecoveryProviderType = 'system_restore' | 'file_backup' | 'registry_backup' | 'quarantine' | 'rollback';
-
-export interface RecoveryStatus {
-  systemRestoreAvailable: boolean;
-  lastRestorePoint: number | null;
-  quarantineAvailable: boolean;
-  rollbackAvailable: boolean;
-  totalBackups: number;
-  totalQuarantined: number;
-  totalRollbacks: number;
-}
-
 // ── Helper Functions ─────────────────────────────────────────────────
 
 export function actionRequiresApproval(
