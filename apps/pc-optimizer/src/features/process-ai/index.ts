@@ -19,6 +19,7 @@ export { ProcessAIEngine } from './ProcessAIEngine';
 export { ProcessManager } from './ProcessManager';
 export { ProcessScanner } from './ProcessScanner';
 export type { ProcessProvider } from './ProcessScanner';
+export { RpcProcessProvider } from './RpcProcessProvider';
 export { ProcessRepository } from './ProcessRepository';
 export { ProcessHistory } from './ProcessHistory';
 

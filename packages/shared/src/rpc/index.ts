@@ -108,6 +108,9 @@ export const RPC_METHODS = {
   // Performance Optimization — detect and kill high resource processes
   PERFORMANCE_OPTIMIZE_PROCESSES: 'performance.optimizeProcesses',
 
+  // Process Intelligence — read-only process enumeration for AI analysis
+  PROCESS_INTELLIGENCE_SCAN: 'process_intelligence.scan',
+
   // System Information
   SYSTEM_COMPREHENSIVE: 'system.comprehensive',
   SYSTEM_STATIC: 'system.static',

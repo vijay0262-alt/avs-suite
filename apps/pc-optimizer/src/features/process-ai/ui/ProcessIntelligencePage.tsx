@@ -27,7 +27,7 @@ export default function ProcessIntelligencePage() {
     return () => vm.dispose();
   }, [vm]);
 
-  const handleScan = useCallback(() => { void vm.scan(); }, [vm]);
+  const handleScan = useCallback(() => { void vm.scan().catch(() => {}); }, [vm]);
 
   if (state.bootstrap === 'loading') {
     return (

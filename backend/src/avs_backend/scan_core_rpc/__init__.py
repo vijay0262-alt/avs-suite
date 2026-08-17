@@ -901,11 +901,15 @@ def _sanitize_quarantine_item(raw: dict[str, Any]) -> dict[str, Any] | None:
         status = "quarantined"
 
     # Derive a display name from the original path basename. The full
-    # path itself is NOT exposed.
+    # path itself is NOT exposed. Handle both Windows (backslash) and
+    # POSIX (forward slash) separators so the basename extraction works
+    # correctly regardless of the platform running the backend.
     original_path = raw.get("originalPath")
     display_name: str
     if isinstance(original_path, str) and original_path:
-        display_name = os.path.basename(original_path)
+        # Normalize separators so basename works on any host platform.
+        normalized = original_path.replace("\\", "/")
+        display_name = os.path.basename(normalized)
     else:
         display_name = "quarantined-item"
 

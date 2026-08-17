@@ -72,6 +72,7 @@ _FEATURE_MODULES = [
     "avs_backend.orchestrator",
     "avs_backend.full_system_scan",
     "avs_backend.scan_core_rpc",
+    "avs_backend.process_intelligence",
 ]
 
 # Track which modules have finished importing (success or failure)
