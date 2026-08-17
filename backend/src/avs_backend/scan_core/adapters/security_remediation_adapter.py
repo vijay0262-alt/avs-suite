@@ -46,6 +46,7 @@ Quarantine Architecture Decision (SC-8C12 Specification §10):
 from __future__ import annotations
 
 import os
+import ntpath
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Optional
@@ -761,10 +762,14 @@ class SecurityRemediationAdapter:
 
         This is used as the allowed_location for filesystem targets,
         ensuring the executor only operates within the approved scope.
+
+        Uses ntpath to correctly parse Windows-style paths (with backslash
+        separators) on all platforms, since Security Center targets are
+        always Windows paths regardless of the host OS running the tests.
         """
         if not path:
             return ""
-        parent = os.path.dirname(path)
+        parent = ntpath.dirname(path)
         return parent if parent else ""
 
     def _parse_registry_target(

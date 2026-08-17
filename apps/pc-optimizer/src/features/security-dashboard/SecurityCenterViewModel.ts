@@ -714,6 +714,17 @@ export class SecurityCenterViewModel extends ViewModel<SecurityCenterState> {
   }
 
   // ── Remediation ───────────────────────────────────────────────
+  //
+  // Phase 5 (SC-8C12): Legacy execution methods (approvePlan, rejectPlan,
+  // executePlan, rollbackAction, restoreFromQuarantine, deleteFromQuarantine,
+  // loadQuarantineSummary) have been removed. Remediation execution now
+  // occurs exclusively through the canonical scan_core.remediation.* flow
+  // via PlanReviewView → ResultsView → useResults.
+  //
+  // The following methods remain for read-only/domain functionality:
+  //   - createRemediationPlan() — creates candidate plan (planning-only)
+  //   - generateRemediationReport() — report generation (read-only)
+  //   - markFalsePositive() — false-positive tracking (non-remediation)
 
   createRemediationPlan(investigationId: string): RemediationPlan | null {
     const investigation = this.service.getInvestigation(investigationId);
@@ -726,47 +737,6 @@ export class SecurityCenterViewModel extends ViewModel<SecurityCenterState> {
     const plan = this.service.createRemediationPlan(investigation, threats);
     this.refresh();
     return plan;
-  }
-
-  approvePlan(planId: string): void {
-    this.service.approvePlan(planId);
-    this.refresh();
-  }
-
-  rejectPlan(planId: string): void {
-    this.service.rejectPlan(planId);
-    this.refresh();
-  }
-
-  executePlan(planId: string): void {
-    this.service.executePlan(planId);
-    this.refresh();
-    void this.loadQuarantineSummary();
-  }
-
-  rollbackAction(actionId: string): void {
-    this.service.rollbackAction(actionId);
-    this.refresh();
-    void this.loadQuarantineSummary();
-  }
-
-  async restoreFromQuarantine(quarantineId: string): Promise<void> {
-    await this.service.restoreFromQuarantine(quarantineId);
-    await this.loadQuarantineSummary();
-  }
-
-  async deleteFromQuarantine(quarantineId: string): Promise<void> {
-    await this.service.deleteFromQuarantine(quarantineId, true);
-    await this.loadQuarantineSummary();
-  }
-
-  async loadQuarantineSummary(): Promise<void> {
-    try {
-      const summary = await this.service.getQuarantineSummary();
-      this.setState({ quarantineSummary: summary });
-    } catch {
-      // Fallback — keep existing state
-    }
   }
 
   markFalsePositive(

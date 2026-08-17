@@ -467,21 +467,24 @@ export class SecurityCenterService {
   }
 
   // ── Remediation ───────────────────────────────────────────────
+  //
+  // Phase 5 (SC-8C12): Legacy execution methods (approvePlan, rejectPlan,
+  // executePlan, rollbackAction) have been removed. Remediation execution
+  // now occurs exclusively through the canonical scan_core.remediation.*
+  // flow via PlanReviewView → ResultsView → useResults.
+  //
+  // The following methods remain for read-only/domain functionality:
+  //   - createRemediationPlan() — creates candidate plan (planning-only)
+  //   - getAllPlans() — read-only plan listing
+  //   - getPlan() — read-only plan lookup
+  //   - getQuarantineSummary() — read-only quarantine stats
+  //   - markFalsePositive() — false-positive tracking (non-remediation)
+  //   - generateRemediationReport() — report generation (read-only)
+  //   - getRemediationHistory() — read-only history
+  //   - getRemediationDashboard() — read-only dashboard
 
   createRemediationPlan(investigation: ThreatInvestigation, threats: Threat[], tier?: RemediationTier): RemediationPlan {
     return this.remediationEngine.createPlan(investigation, threats, tier);
-  }
-
-  approvePlan(planId: string, userId?: string, reason?: string): RemediationPlan | null {
-    return this.remediationEngine.approvePlan(planId, userId, reason);
-  }
-
-  rejectPlan(planId: string, userId?: string, reason?: string): RemediationPlan | null {
-    return this.remediationEngine.rejectPlan(planId, userId, reason);
-  }
-
-  executePlan(planId: string): RemediationPlan | null {
-    return this.remediationEngine.executePlan(planId);
   }
 
   getPlan(id: string): RemediationPlan | null {
@@ -492,11 +495,14 @@ export class SecurityCenterService {
     return this.remediationEngine.getAllPlans();
   }
 
-  rollbackAction(actionId: string): boolean {
-    return this.remediationEngine.rollbackAction(actionId);
-  }
-
   // ── Quarantine ────────────────────────────────────────────────
+  //
+  // Phase 5 (SC-8C12): Legacy quarantine execution methods
+  // (restoreFromQuarantine, deleteFromQuarantine) have been removed.
+  // Quarantine restore now occurs through scan_core.remediation.rollback
+  // via the canonical ResultsView workflow.
+  //
+  // getQuarantineSummary() remains for read-only quarantine stats display.
 
   getQuarantineEntry(id: string): QuarantineEntry | null {
     return this.remediationEngine.getQuarantineEntry(id);
@@ -518,34 +524,6 @@ export class SecurityCenterService {
     } catch {
       // Fallback to frontend-only quarantine
       return this.remediationEngine.getQuarantineSummary();
-    }
-  }
-
-  async restoreFromQuarantine(quarantineId: string) {
-    // Try backend first for real file restore
-    try {
-      const result = await securityBackendService.restoreQuarantined(quarantineId);
-      if (result.restored) {
-        this.remediationEngine.restoreFromQuarantine(quarantineId);
-        return result;
-      }
-      return this.remediationEngine.restoreFromQuarantine(quarantineId);
-    } catch {
-      return this.remediationEngine.restoreFromQuarantine(quarantineId);
-    }
-  }
-
-  async deleteFromQuarantine(quarantineId: string, userConfirmed: boolean) {
-    // Try backend first for real file deletion
-    try {
-      const result = await securityBackendService.deleteQuarantined(quarantineId);
-      if (result.deleted) {
-        this.remediationEngine.deleteFromQuarantine(quarantineId, userConfirmed);
-        return result;
-      }
-      return this.remediationEngine.deleteFromQuarantine(quarantineId, userConfirmed);
-    } catch {
-      return this.remediationEngine.deleteFromQuarantine(quarantineId, userConfirmed);
     }
   }
 

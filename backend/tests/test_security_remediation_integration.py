@@ -62,6 +62,7 @@ Covers:
 
 import inspect
 import os
+import sys
 from datetime import UTC, datetime
 from unittest.mock import patch
 
@@ -757,6 +758,7 @@ def test_no_filesystem_mutation(builder, sample_security_actions, tmp_path):
 
 
 # 33. no registry mutation
+@pytest.mark.skipif(sys.platform != "win32", reason="winreg is only available on Windows")
 def test_no_registry_mutation(builder, sample_security_actions):
     """Test that the builder does not mutate the registry."""
     with patch("winreg.DeleteValue") as mock_delete, patch(
