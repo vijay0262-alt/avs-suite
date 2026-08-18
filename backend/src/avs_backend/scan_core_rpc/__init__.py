@@ -102,7 +102,7 @@ _scan_orchestrator_initializing = False
 
 def get_scan_orchestrator() -> Optional[ScanOrchestrator]:
     """Return the module-level ScanOrchestrator singleton, or None on failure."""
-    global _scan_orchestrator
+    global _scan_orchestrator, _scan_orchestrator_initializing
     if _scan_orchestrator is not None:
         return _scan_orchestrator
 
@@ -137,7 +137,6 @@ def get_scan_orchestrator() -> Optional[ScanOrchestrator]:
         return None
     finally:
         with _scan_orchestrator_lock:
-            global _scan_orchestrator_initializing
             _scan_orchestrator_initializing = False
 
 
