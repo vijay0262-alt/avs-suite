@@ -427,6 +427,53 @@ def test_partial_execution_and_recovery(tmp_path: Path) -> None:
     assert status.completed == summary.completed
 
 
+def test_cancel_registered_before_setup_completes(tmp_path: Path) -> None:
+    """Regression: cancel() must find the token even if called while execute()
+    is still in its setup phase (loading plan, checking staleness, etc.).
+
+    Previously the token was registered AFTER _load_plan() and pre-execution
+    checks, so a cancel() that raced with setup would silently lose the
+    cancellation request.  This test deterministically verifies the fix by
+    cancelling via the public coordinator.cancel() API from a thread with a
+    minimal 1ms delay — fast enough to land during setup on any machine.
+    """
+    _, target, plan_id = _scan_junk(tmp_path, 50)
+    db = MetadataDatabase(DatabaseConfig(db_path=tmp_path / "metadata.db"))
+    db.initialize()
+    coordinator = RemediationCoordinator(db, backup_root=tmp_path / "backups")
+    preview = coordinator.prepare(plan_id)
+    token = CancellationToken()
+
+    cancel_result: dict[str, Any] = {"found": None}
+
+    def _cancel_immediately() -> None:
+        time.sleep(0.001)  # 1ms — lands during setup on any machine
+        cancel_result["found"] = coordinator.cancel(preview.request_id)
+
+    thread = threading.Thread(target=_cancel_immediately, daemon=True)
+    thread.start()
+    summary = coordinator.execute(
+        plan_id,
+        request_id=preview.request_id,
+        approval_token=preview.approval_token,
+        mode="live",
+        cancellation_token=token,
+    )
+    thread.join(timeout=2.0)
+
+    # The cancel() call MUST have found the token (not lost to a setup race).
+    assert cancel_result["found"] is True, (
+        "coordinator.cancel() returned False — token was not registered before "
+        "setup completed. This is a cancellation registration race."
+    )
+    # Execution must reflect the cancellation.
+    assert summary.cancelled > 0
+    assert summary.cancelled + summary.completed == 50
+    # All files should remain (cancellation happened before/during early execution).
+    remaining = list(target.iterdir())
+    assert len(remaining) == summary.cancelled
+
+
 def test_duplicate_execution_rejected(tmp_path: Path) -> None:
     _, target, plan_id = _scan_junk(tmp_path, 3)
     db = MetadataDatabase(DatabaseConfig(db_path=tmp_path / "metadata.db"))

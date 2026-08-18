@@ -24,8 +24,9 @@ import type { DashboardMetrics, LiveMetrics, HardwareSensorReading } from './das
 import { DashboardScanStatusCard } from '../scan/components/DashboardScanStatusCard';
 import { useDashboardScan } from '../scan/useDashboardScan';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
-import { PlanReviewView, useDashboardOptimizationPlan } from '../scan';
+import { PlanReviewView, useDashboardOptimizationPlan, ScanView } from '../scan';
 import { dashboardPreviewToRpcPayload } from './dashboardOptimizationSerializer';
+import { Modal } from './components/Modal';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -122,6 +123,7 @@ export default function DashboardPage() {
   const dashPlan = useDashboardOptimizationPlan();
   const [optimizePreviewLoading, setOptimizePreviewLoading] = useState(false);
   const [optimizePreviewError, setOptimizePreviewError] = useState<string | null>(null);
+  const [scanModalOpen, setScanModalOpen] = useState(false);
 
   useEffect(() => {
     void vm.bootstrap();
@@ -255,7 +257,7 @@ export default function DashboardPage() {
             {dashPlan.isCreating ? 'Creating Plan...' : optimizePreviewLoading ? 'Analyzing...' : 'Review & Optimize'}
           </Button>
           <Button
-            onClick={() => navigate('/ai-smart-optimize')}
+            onClick={() => setScanModalOpen(true)}
             disabled={isScanning}
             size="lg"
             variant="secondary"
@@ -520,6 +522,21 @@ export default function DashboardPage() {
           />
         </div>
       </CollapsibleSection>
+
+      {/* Scan modal — opens in-modal scan instead of redirecting */}
+      <Modal
+        open={scanModalOpen}
+        onClose={() => setScanModalOpen(false)}
+        title="AI Smart Optimize Scan"
+        size="xl"
+        testId="dashboard-scan-modal"
+      >
+        <ScanView
+          module="optimize"
+          onClose={() => setScanModalOpen(false)}
+          buttonLabel="Start Scan"
+        />
+      </Modal>
 
     </div>
   );

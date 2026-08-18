@@ -209,14 +209,10 @@ async function createMainWindow(): Promise<void> {
     return { action: 'deny' };
   });
 
-  const devServerUrl = process.env.VITE_DEV_SERVER_URL;
-  if (devServerUrl) {
-    await mainWindow.loadURL(devServerUrl);
-    if (env.openDevTools) mainWindow.webContents.openDevTools({ mode: 'detach' });
-  } else {
-    await mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
-  }
-
+  // Register ready-to-show BEFORE loadFile/loadURL so the event is never
+  // missed. When loading from a local file (production), loadFile() can
+  // resolve and fire ready-to-show synchronously; registering the handler
+  // after the await would lose the event and leave the splash screen stuck.
   mainWindow.once('ready-to-show', () => {
     if (splashWindow) {
       splashWindow.close();
@@ -228,6 +224,24 @@ async function createMainWindow(): Promise<void> {
     } else {
       mainWindow?.show();
     }
+  });
+
+  const devServerUrl = process.env.VITE_DEV_SERVER_URL;
+  if (devServerUrl) {
+    await mainWindow.loadURL(devServerUrl);
+    if (env.openDevTools) mainWindow.webContents.openDevTools({ mode: 'detach' });
+  } else {
+    await mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
+  }
+
+  // Log renderer crashes to main process log for diagnostics
+  mainWindow.webContents.on('render-process-gone', (_e, details) => {
+    log.error(`[renderer] render-process-gone: reason=${details.reason} exitCode=${details.exitCode}`);
+  });
+
+  // Log unresponsive events
+  mainWindow.on('unresponsive', () => {
+    log.error('[renderer] Window became unresponsive');
   });
 
   // ── Window close behaviour ──────────────────────────────
@@ -311,6 +325,10 @@ if (!gotSingleInstanceLock) {
     showMainWindow();
   });
 }
+
+// Disable GPU hardware acceleration — fixes blank-screen rendering issues
+// on some Windows GPU/driver combinations. Must be called before whenReady.
+app.disableHardwareAcceleration();
 
 app.whenReady().then(async () => {
   const appStart = Date.now();

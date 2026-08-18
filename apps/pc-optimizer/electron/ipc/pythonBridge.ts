@@ -89,8 +89,10 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
   const reconnectCallbacks: ReconnectCallback[] = [];
   let activeChild = child;
 
-  // Cap buffer size to prevent memory growth from malformed backend output
-  const MAX_BUFFER_SIZE = 1024 * 1024; // 1 MB
+  // Cap buffer size to prevent memory growth from malformed backend output.
+  // Must be large enough for the biggest JSON-RPC response (scan results
+  // with thousands of findings can exceed 10 MB).
+  const MAX_BUFFER_SIZE = 64 * 1024 * 1024; // 64 MB
 
   child.stdout.on('data', (chunk: Buffer) => {
     buffer += chunk.toString('utf8');

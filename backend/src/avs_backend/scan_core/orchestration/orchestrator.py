@@ -632,6 +632,23 @@ class ScanOrchestrator:
         """Emit an immutable progress snapshot."""
         if on_progress is None:
             return
+        # Map phases to completion percentages so the UI can show real progress.
+        # Discovery is the longest phase; use a sub-range within it based on
+        # assets discovered (capped at 45% since we don't know the total upfront).
+        PHASE_PERCENT = {
+            "initializing": 2.0,
+            "discovery": 10.0,
+            "evaluating": 55.0,
+            "aggregating": 75.0,
+            "prioritizing": 85.0,
+            "planning": 95.0,
+        }
+        base_percent = PHASE_PERCENT.get(phase, 0.0)
+        if phase == "discovery" and assets_discovered > 0:
+            # Scale within discovery range (10% → 50%) using a log scale
+            # so early files show progress but it doesn't jump to 50% too fast.
+            import math
+            base_percent = min(50.0, 10.0 + math.log10(assets_discovered + 1) * 5.0)
         on_progress(
             ScanProgress(
                 scan_id=scan_id,
@@ -641,6 +658,7 @@ class ScanOrchestrator:
                 assets_evaluated=assets_evaluated,
                 findings=findings,
                 actions_available=actions_available,
+                completion_percent=base_percent,
             )
         )
 

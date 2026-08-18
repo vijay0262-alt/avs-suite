@@ -35,10 +35,8 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
   const syncedRef = useRef(false);
 
   useEffect(() => {
-    if (!restored) {
-      void restoreSession().finally(() => setRestored(true));
-    }
-  }, [restoreSession, restored]);
+    void restoreSession().finally(() => setRestored(true));
+  }, [restoreSession]);
 
   // Register logout callback with authService for session expiry
   useEffect(() => {

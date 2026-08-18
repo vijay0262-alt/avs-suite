@@ -107,18 +107,15 @@ class RemediationCoordinator:
         mode: str = "dry_run",
         cancellation_token: Optional[CancellationToken] = None,
     ) -> ExecutionSummary:
-        """Execute a plan after explicit approval and fresh re-validation."""
-        plan = self._load_plan(plan_id)
+        """Execute a plan after explicit approval and fresh re-validation.
 
-        if plan.is_stale():
-            return self._rejected_summary(
-                request_id, "ActionPlan is stale and cannot be executed"
-            )
-
-        if mode == "live" and not approval_token:
-            return self._rejected_summary(
-                request_id, "Live execution requires explicit approval_token"
-            )
+        The cancellation token is registered under the lock BEFORE any setup
+        work so that ``cancel()`` can find it even if called while this method
+        is still loading the plan or performing pre-execution checks.  Without
+        early registration a ``cancel()`` call that races with the setup phase
+        would silently lose the cancellation request.
+        """
+        token = cancellation_token or CancellationToken()
 
         with self._lock:
             if request_id in self._active or self._is_request_final(request_id):
@@ -126,10 +123,21 @@ class RemediationCoordinator:
                     request_id, "Execution request is already active or completed"
                 )
             self._active.add(request_id)
+            self._tokens[request_id] = token
 
-        token = cancellation_token or CancellationToken()
-        self._tokens[request_id] = token
         try:
+            plan = self._load_plan(plan_id)
+
+            if plan.is_stale():
+                return self._rejected_summary(
+                    request_id, "ActionPlan is stale and cannot be executed"
+                )
+
+            if mode == "live" and not approval_token:
+                return self._rejected_summary(
+                    request_id, "Live execution requires explicit approval_token"
+                )
+
             request = ExecutionRequest(
                 plan=plan,
                 request_id=request_id,

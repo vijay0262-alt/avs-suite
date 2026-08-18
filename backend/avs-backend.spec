@@ -70,6 +70,15 @@ a = Analysis(
         "avs_backend.realtime_protection",
         "avs_backend.system_restore",
         "avs_backend.orchestrator",
+        # ── Modules added in SC-8C8 through SC-8C15 ──
+        # These are loaded dynamically via importlib.import_module() in
+        # rpc_server.py and cannot be detected by PyInstaller static analysis.
+        # Without them, the packaged backend fails to register scan_core RPC
+        # methods (all remediation workflows), Process Intelligence, and
+        # Full System Scan.
+        "avs_backend.full_system_scan",
+        "avs_backend.scan_core_rpc",
+        "avs_backend.process_intelligence",
     ],
     hookspath=[],
     hooksconfig={},
