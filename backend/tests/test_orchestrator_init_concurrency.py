@@ -39,16 +39,27 @@ def test_normal_startup_initializes_orchestrator(tmp_path) -> None:
 
 
 def test_rpc_during_init_returns_none_not_blocking(tmp_path) -> None:
-    """B. RPC during initialization returns None instead of blocking."""
+    """B. RPC during initialization returns None instead of blocking.
+
+    The key synchronization guarantee is that the 'during init' call to
+    get_scan_orchestrator() happens WHILE the init thread is still inside
+    slow_init().  We achieve this by having slow_init block until the
+    'during init' call has been made (via call_made event), ensuring the
+    _scan_orchestrator_initializing flag is still True when the call checks it.
+    """
     _reset_orchestrator_state()
 
     init_started = threading.Event()
+    call_made = threading.Event()
     init_can_proceed = threading.Event()
 
     def slow_init(self):
         init_started.set()
+        # Wait until the "during init" caller has made its call — this
+        # guarantees the call happens while _scan_orchestrator_initializing
+        # is still True.
+        call_made.wait(timeout=5.0)
         init_can_proceed.wait(timeout=5.0)
-        # Don't call real initialize — just return (schema is irrelevant for this test)
 
     with patch.object(rpc_module, "_get_app_data_dir", return_value=tmp_path):
         with patch.object(rpc_module.MetadataDatabase, "initialize", slow_init):
@@ -58,14 +69,19 @@ def test_rpc_during_init_returns_none_not_blocking(tmp_path) -> None:
             def _call_during_init():
                 init_started.wait(timeout=5.0)
                 # This should return None, not block
-                return rpc_module.get_scan_orchestrator()
+                result = rpc_module.get_scan_orchestrator()
+                call_made.set()
+                return result
 
             with ThreadPoolExecutor(max_workers=2) as pool:
                 fut_init = pool.submit(_init_in_thread)
                 fut_call = pool.submit(_call_during_init)
 
-                # Wait for init to start, then let it proceed
+                # Wait for init to start
                 init_started.wait(timeout=5.0)
+                # Wait for the "during init" call to be made
+                call_made.wait(timeout=5.0)
+                # Now let init proceed
                 init_can_proceed.set()
 
                 orch = fut_init.result(timeout=10.0)

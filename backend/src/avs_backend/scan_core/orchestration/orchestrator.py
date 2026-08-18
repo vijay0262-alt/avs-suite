@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from datetime import UTC, datetime
 from typing import Any, Callable, Optional
 
@@ -647,7 +648,6 @@ class ScanOrchestrator:
         if phase == "discovery" and assets_discovered > 0:
             # Scale within discovery range (10% → 50%) using a log scale
             # so early files show progress but it doesn't jump to 50% too fast.
-            import math
             base_percent = min(50.0, 10.0 + math.log10(assets_discovered + 1) * 5.0)
         on_progress(
             ScanProgress(
