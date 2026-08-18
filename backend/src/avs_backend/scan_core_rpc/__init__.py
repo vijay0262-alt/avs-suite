@@ -97,6 +97,9 @@ def get_coordinator() -> Optional[RemediationCoordinator]:
             return None
 
 
+_scan_orchestrator_initializing = False
+
+
 def get_scan_orchestrator() -> Optional[ScanOrchestrator]:
     """Return the module-level ScanOrchestrator singleton, or None on failure."""
     global _scan_orchestrator
@@ -106,24 +109,53 @@ def get_scan_orchestrator() -> Optional[ScanOrchestrator]:
     with _scan_orchestrator_lock:
         if _scan_orchestrator is not None:
             return _scan_orchestrator
+        # If the eager-init thread is already initializing, don't block —
+        # return None so RPC callers get a graceful "not ready" response
+        # instead of timing out waiting for the lock.
+        if _scan_orchestrator_initializing:
+            return None
+        _scan_orchestrator_initializing = True
 
-        try:
-            app_dir = _get_app_data_dir()
-            app_dir.mkdir(parents=True, exist_ok=True)
+    # Run initialization outside the lock so other callers don't block.
+    try:
+        app_dir = _get_app_data_dir()
+        app_dir.mkdir(parents=True, exist_ok=True)
 
-            db = MetadataDatabase(DatabaseConfig(db_path=app_dir / "metadata.db"))
-            db.initialize()
-            registry = RuleRegistry()
-            register_junk_rules(registry)
+        db = MetadataDatabase(DatabaseConfig(db_path=app_dir / "metadata.db"))
+        db.initialize()
+        registry = RuleRegistry()
+        register_junk_rules(registry)
+        with _scan_orchestrator_lock:
             _scan_orchestrator = ScanOrchestrator(
                 database=db,
                 registry=registry,
                 snapshot_ttl_seconds=3600,
             )
             return _scan_orchestrator
-        except Exception as exc:
-            logger.exception("Failed to initialize ScanOrchestrator: %s", exc)
-            return None
+    except Exception as exc:
+        logger.exception("Failed to initialize ScanOrchestrator: %s", exc)
+        return None
+    finally:
+        with _scan_orchestrator_lock:
+            global _scan_orchestrator_initializing
+            _scan_orchestrator_initializing = False
+
+
+def _eager_init() -> None:
+    """Initialize the scan orchestrator in a background thread at import time.
+
+    The MetadataDatabase.initialize() call can take 30-60+ seconds on first
+    run (schema creation, index building).  By starting this immediately at
+    module import, the orchestrator is usually ready before the UI requests
+    a scan, avoiding a 120s timeout on the first scan_core.scan.latest call.
+    """
+    try:
+        get_scan_orchestrator()
+    except Exception:
+        logger.exception("Eager scan orchestrator initialization failed")
+
+
+threading.Thread(target=_eager_init, daemon=True, name="scan-orch-init").start()
 
 
 def _orchestrator_error() -> dict[str, Any]:
@@ -443,7 +475,7 @@ def _start_scan(scan_type: str, params: dict[str, Any]) -> dict[str, Any]:
 
     orchestrator = get_scan_orchestrator()
     if orchestrator is None:
-        return _orchestrator_error()
+        return {"ok": False, "error": "Scan engine is still initializing. Please try again in a moment."}
 
     scan_id = str(uuid.uuid4())
     started_at = datetime.now(UTC).isoformat()
@@ -557,7 +589,9 @@ def _scan_core_scan_latest(_params: Optional[dict[str, Any]]) -> dict[str, Any]:
     """Return the latest persisted scan_core scan history record."""
     orchestrator = get_scan_orchestrator()
     if orchestrator is None:
-        return _orchestrator_error()
+        # Orchestrator may still be initializing — return empty result
+        # instead of an error so the dashboard doesn't show an error.
+        return {"ok": True, "latest": None}
 
     try:
         record = orchestrator.get_latest_scan_history()

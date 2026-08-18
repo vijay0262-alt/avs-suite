@@ -16,26 +16,18 @@
  *
  * @vitest-environment happy-dom
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useAuthStore } from './authStore';
-import { tokenStorage } from './tokenStorage';
 import { LoginDialog } from './LoginDialog';
 import { useSyncStore, startPeriodicSync, stopPeriodicSync } from '../sync/syncStore';
 
 export function AuthBootstrap({ children }: { children: ReactNode }) {
   const { phase, restoreSession, logout } = useAuthStore();
   const { sync, restoreFromCache, clear: clearSync } = useSyncStore();
-  // Check for cached session synchronously — if we have one, render
-  // children immediately instead of blocking with a loading spinner.
-  // restoreSession() will validate in the background.
-  const [restored, setRestored] = useState(() => {
-    const session = tokenStorage.load();
-    return !session; // restored=true if no session (skip waiting)
-  });
   const syncedRef = useRef(false);
 
   useEffect(() => {
-    void restoreSession().finally(() => setRestored(true));
+    void restoreSession();
   }, [restoreSession]);
 
   // Register logout callback with authService for session expiry
