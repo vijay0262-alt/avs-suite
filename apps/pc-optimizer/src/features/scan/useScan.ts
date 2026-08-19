@@ -60,15 +60,18 @@ function getProgressValue<T>(progress: Record<string, unknown> | null | undefine
 function mapStatusCounters(
   progress: Record<string, unknown> | null | undefined,
 ): Record<string, number> {
+  // These field names match the backend's ScanProgress.to_dict() output:
+  //   scan_id, phase, current_operation, assets_discovered, assets_evaluated,
+  //   findings, actions_available, elapsed_time_ms, is_cancelled, completion_percent
   return {
+    filesScanned: getProgressValue<number>(progress, 'assets_discovered', 0),
     itemsScanned: getProgressValue<number>(progress, 'assets_evaluated', 0),
-    itemsAnalyzed: getProgressValue<number>(progress, 'findings', 0),
+    recommendations: getProgressValue<number>(progress, 'findings', 0),
     actionsAvailable: getProgressValue<number>(progress, 'actions_available', 0),
     elapsedMs: getProgressValue<number>(progress, 'elapsed_time_ms', 0),
-    filesScanned: getProgressValue<number>(progress, 'assets_evaluated', 0),
-    recommendations: getProgressValue<number>(progress, 'findings', 0),
+    // Legacy counter aliases for backward compatibility with other configs.
     threatsChecked: getProgressValue<number>(progress, 'assets_discovered', 0),
-    storageRecovered: getProgressValue<number>(progress, 'actions_available', 0),
+    storageRecovered: 0,
     bytesRecovered: 0,
     memoryRecovery: 0,
     startupImprovement: 0,
@@ -82,7 +85,9 @@ function mapCurrentOperation(
   return {
     currentModule: getProgressValue<string | null>(progress, 'phase', null),
     currentOperation: getProgressValue<string | null>(progress, 'current_operation', null),
-    currentPath: null,
+    // The backend's ProgressEvent (from the enumerator) includes current_folder.
+    // We surface it as currentPath so the user can see what is being scanned.
+    currentPath: getProgressValue<string | null>(progress, 'current_folder', null),
     itemsProcessed: getProgressValue<number>(progress, 'assets_evaluated', 0),
     itemsRemaining: 0,
     bytesRecovered: 0,
@@ -176,7 +181,11 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
       }
 
       const progress = status.progress ?? null;
-      const currentPhase = getProgressValue<string | null>(progress, 'phase', null);
+      const rawPhase = getProgressValue<string | null>(progress, 'phase', null);
+      // Map backend phase to frontend phase ID using the config's backendPhaseMap.
+      const currentPhase = rawPhase
+        ? (config.backendPhaseMap?.[rawPhase] ?? rawPhase)
+        : null;
 
       if (status.completed) {
         await handleComplete(sid);
@@ -188,13 +197,18 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
         scan.setPhase(phaseIndex);
       }
 
+      // Use the backend's completion_percent directly — it is the canonical
+      // progress value derived from actual scan work, not a UI animation.
+      const completionPercent = getProgressValue<number>(progress, 'completion_percent', 0);
+      const currentOperation =
+        getProgressValue<string | null>(progress, 'current_operation', null) ??
+        currentPhase ??
+        'Scanning...';
+
       scan.updateProgress({
-        overallProgress: getProgressValue<number>(progress, 'completion_percent', 0),
+        overallProgress: completionPercent,
         currentModule: currentPhase ?? undefined,
-        currentActivity:
-          getProgressValue<string | null>(progress, 'current_operation', null) ??
-          currentPhase ??
-          'Scanning...',
+        currentActivity: currentOperation,
       });
 
       scan.updateCounters(mapStatusCounters(progress));
@@ -295,6 +309,16 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
     }
     reset();
   }, [reset]);
+
+  // When the scan completes, clear the session ref so a new scan can start.
+  // handleComplete already calls stopPoll and sets the result; we just need
+  // to release the session guard so startScan() doesn't bail out.
+  useEffect(() => {
+    if (scan.step === 'complete' || scan.step === 'error' || scan.step === 'cancelled') {
+      sessionIdRef.current = null;
+      startingRef.current = false;
+    }
+  }, [scan.step]);
 
   useEffect(() => {
     return () => {

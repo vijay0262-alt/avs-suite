@@ -167,6 +167,69 @@ export interface RemediationRollbackResponse {
   error?: string | null;
 }
 
+// ── Auto-Optimization Types (V1.0 one-click workflow) ──────────────────
+
+export type AutoOptimizePhase =
+  | 'starting'
+  | 'preparing'
+  | 'validating'
+  | 'executing'
+  | 'verifying'
+  | 'complete'
+  | 'cancelled'
+  | 'error';
+
+export interface AutoOptimizeResult {
+  execution_id?: string;
+  total: number;
+  completed: number;
+  failed: number;
+  rejected: number;
+  skipped: number;
+  requires_review: number;
+  cancelled: number;
+  space_recovered: number;
+  status?: string;
+  health_before?: number;
+  health_after?: number;
+  reason?: string;
+}
+
+export interface AutoOptimizeStatus {
+  ok: boolean;
+  session_id: string;
+  plan_id: string;
+  phase: AutoOptimizePhase;
+  message: string;
+  preview?: Record<string, unknown> | null;
+  validation?: Record<string, unknown> | null;
+  result?: AutoOptimizeResult | null;
+  completed: boolean;
+  cancelled: boolean;
+  error?: string | null;
+  total_actions: number;
+  safe_actions: number;
+  review_required: number;
+  blocked: number;
+  verification_status?: string | null;
+  execution_progress?: number;
+  execution_total?: number;
+  current_file?: string;
+  overall_progress?: number;
+}
+
+export interface AutoOptimizeStartResponse {
+  ok: boolean;
+  session_id?: string;
+  error?: string;
+}
+
+export interface AutoOptimizeCancelResponse {
+  ok: boolean;
+  cancelled?: boolean;
+  error?: string;
+}
+
 export type ExecutionStep = 'executing' | 'completed' | 'partial' | 'failed' | 'cancelled' | 'rejected';
 
 export type RollbackStep =

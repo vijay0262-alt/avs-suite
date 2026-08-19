@@ -4,8 +4,12 @@
  *
  * Delegates the live backend wiring to `useScan` and renders the common
  * `UnifiedScanView`.  When idle it shows a single safe Start Scan button.
+ *
+ * For the Dashboard (module="optimize"), after scan completion it
+ * automatically starts the one-click auto-optimization flow for safe
+ * actions, then shows a completion summary.
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, Button } from '@avs/ui';
 import { BoltIcon } from '@heroicons/react/24/outline';
@@ -15,6 +19,7 @@ import { useScan } from './useScan';
 import { getScanConfig } from './moduleConfigs';
 import { ResultsView } from './ResultsView';
 import { PlanReviewView } from './PlanReviewView';
+import { AutoOptimizeView } from './AutoOptimizeView';
 import type { ScanFinding, ScanStatistics } from './types';
 
 export interface ScanViewProps {
@@ -29,6 +34,7 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
   const config = useMemo(() => getScanConfig(module), [module]);
   const scan = useScan({ mode, config });
   const [showResults, setShowResults] = useState(false);
+  const [showAutoOptimize, setShowAutoOptimize] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const planIdParam = searchParams.get('planId');
   const handlePlanClose = useCallback(() => {
@@ -36,14 +42,33 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
     onClose();
   }, [setSearchParams, onClose]);
 
+  const isDashboardOptimize = module === 'optimize';
+
   const canReview =
     scan.step === 'complete' &&
     Boolean(scan.report?.planId) &&
     (scan.report?.issuesFound ?? 0) > 0;
 
+  // For Dashboard optimize, auto-start optimization when scan completes.
+  // For other modules, show the manual "Review & Remediate" button.
+  const shouldAutoOptimize =
+    isDashboardOptimize &&
+    scan.step === 'complete' &&
+    Boolean(scan.report?.planId) &&
+    (scan.report?.issuesFound ?? 0) > 0 &&
+    !showResults &&
+    !showAutoOptimize;
+
+  // Trigger auto-optimization when scan completes with findings.
+  useEffect(() => {
+    if (shouldAutoOptimize) {
+      setShowAutoOptimize(true);
+    }
+  }, [shouldAutoOptimize]);
+
   const actions: UnifiedScanAction[] = useMemo(
     () => [
-      ...(canReview
+      ...(canReview && !isDashboardOptimize
         ? [
             {
               id: 'review-remediate',
@@ -62,12 +87,20 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
         action: onClose,
       },
     ],
-    [onClose, canReview],
+    [onClose, canReview, isDashboardOptimize],
   );
 
   const resultsClose = useMemo(
     () => () => {
       setShowResults(false);
+      scan.reset();
+    },
+    [scan],
+  );
+
+  const autoOptimizeClose = useMemo(
+    () => () => {
+      setShowAutoOptimize(false);
       scan.reset();
     },
     [scan],
@@ -91,6 +124,20 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
         planId={planIdParam}
         module={module}
         onClose={handlePlanClose}
+      />
+    );
+  }
+
+  // Auto-optimization view for Dashboard
+  if (showAutoOptimize && planId) {
+    return (
+      <AutoOptimizeView
+        planId={planId}
+        onClose={autoOptimizeClose}
+        onReviewRequired={(_pid) => {
+          setShowAutoOptimize(false);
+          setShowResults(true);
+        }}
       />
     );
   }

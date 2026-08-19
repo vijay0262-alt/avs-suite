@@ -55,7 +55,7 @@ class MetadataDatabase:
     - Diffs (changes between scans)
     """
 
-    SCHEMA_VERSION = 2
+    SCHEMA_VERSION = 3
 
     def __init__(self, config: DatabaseConfig):
         """
@@ -635,18 +635,29 @@ class MetadataDatabase:
 
         # Apply migrations
         if current_version < self.SCHEMA_VERSION:
-            # Record initial migration
-            cursor.execute(
-                """
-                INSERT OR IGNORE INTO schema_migrations (version, applied_at, description)
-                VALUES (?, ?, ?)
-            """,
-                (
-                    self.SCHEMA_VERSION,
-                    datetime.now(UTC).isoformat(),
-                    "Phase B execution persistence schema",
-                ),
-            )
+            # Migration to version 3: Add cleanup_result_json to scan_history
+            if current_version < 3:
+                try:
+                    cursor.execute("""
+                        ALTER TABLE scan_history 
+                        ADD COLUMN cleanup_result_json TEXT
+                    """)
+                    cursor.execute(
+                        """
+                        INSERT OR IGNORE INTO schema_migrations (version, applied_at, description)
+                        VALUES (?, ?, ?)
+                    """,
+                        (
+                            3,
+                            datetime.now(UTC).isoformat(),
+                            "Add cleanup_result_json to scan_history for Dashboard auto-optimization",
+                        ),
+                    )
+                    logger.info("Applied migration to version 3: Added cleanup_result_json column")
+                except sqlite3.OperationalError as e:
+                    # Column might already exist
+                    if "duplicate column name" not in str(e).lower():
+                        raise
 
             conn.commit()
             logger.info(f"Applied migrations up to version {self.SCHEMA_VERSION}")

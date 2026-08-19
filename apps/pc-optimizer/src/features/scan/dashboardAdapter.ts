@@ -31,6 +31,17 @@ export interface DashboardScanSnapshot {
   canApprove: boolean;
   canRollback: boolean;
   error: string | null;
+  cleanupResult: {
+    detected: number;
+    cleaned: number;
+    remaining: number;
+    failed: number;
+    reviewRequired: number;
+    spaceRecovered: number;
+    healthBefore?: number;
+    healthAfter?: number;
+    verificationStatus?: string;
+  } | null;
 }
 
 const MODULE_ROUTE: Record<'protection' | 'optimize' | 'security', string> = {
@@ -88,6 +99,7 @@ function buildIdleSnapshot(): DashboardScanSnapshot {
     canApprove: false,
     canRollback: false,
     error: null,
+    cleanupResult: null,
   };
 }
 
@@ -104,6 +116,7 @@ function buildSnapshot(
   execution: { completed?: number } | undefined,
   rollbackSummary: unknown | undefined,
   error: string | null,
+  cleanupResult: Record<string, unknown> | null = null,
 ): DashboardScanSnapshot {
   const issuesFound = getCount(statistics, 'matches');
   const actionableCount = getCount(statistics, 'actionable');
@@ -129,6 +142,22 @@ function buildSnapshot(
     isTerminal(remediationStatus) &&
     completedActions > 0;
 
+  // Map cleanup_result from backend format to frontend format
+  let mappedCleanupResult: DashboardScanSnapshot['cleanupResult'] = null;
+  if (cleanupResult && typeof cleanupResult === 'object') {
+    mappedCleanupResult = {
+      detected: typeof cleanupResult.detected === 'number' ? cleanupResult.detected : 0,
+      cleaned: typeof cleanupResult.cleaned === 'number' ? cleanupResult.cleaned : 0,
+      remaining: typeof cleanupResult.remaining === 'number' ? cleanupResult.remaining : 0,
+      failed: typeof cleanupResult.failed === 'number' ? cleanupResult.failed : 0,
+      reviewRequired: typeof cleanupResult.review_required === 'number' ? cleanupResult.review_required : 0,
+      spaceRecovered: typeof cleanupResult.space_recovered === 'number' ? cleanupResult.space_recovered : 0,
+      healthBefore: typeof cleanupResult.health_before === 'number' ? cleanupResult.health_before : undefined,
+      healthAfter: typeof cleanupResult.health_after === 'number' ? cleanupResult.health_after : undefined,
+      verificationStatus: typeof cleanupResult.verification_status === 'string' ? cleanupResult.verification_status : undefined,
+    };
+  }
+
   return {
     hasActiveSession: status !== 'idle',
     module: module === 'unknown' ? null : module,
@@ -150,6 +179,7 @@ function buildSnapshot(
     canApprove,
     canRollback,
     error,
+    cleanupResult: mappedCleanupResult,
   };
 }
 
@@ -178,6 +208,7 @@ export function toDashboardSnapshot(
       session.execution,
       session.rollbackSummary,
       session.error,
+      null, // cleanup_result not available in active session
     );
   }
 
@@ -202,6 +233,7 @@ export function toDashboardSnapshot(
     undefined,
     undefined,
     undefined,
-    record.error_count > 0 ? 'Scan completed with errors' : null,
+    record.error_count > 0 ? 'Scan completed with errors' : null, // error
+    record.cleanup_result || null, // cleanup_result from persisted scan history
   );
 }

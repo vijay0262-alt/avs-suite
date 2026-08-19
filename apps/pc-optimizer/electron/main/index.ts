@@ -14,6 +14,7 @@
 import { app, BrowserWindow, shell, Notification, nativeImage } from 'electron';
 import { exec } from 'child_process';
 import path from 'node:path';
+import fs from 'node:fs';
 import { installCrashHandler } from '../crash/crashReporter';
 import { createLogger } from '../logger/logger';
 import { runStartup, shutdownStartup, getRpcClient } from '../startup/startupStateMachine';
@@ -87,18 +88,42 @@ let bgProtection: BackgroundProtectionService | null = null;
 let isQuitting = false;
 
 function getAppIcon(): Electron.NativeImage | undefined {
+  // Try multiple icon locations and formats.
+  // When running as admin, some asar paths may not resolve correctly,
+  // so we also check the resources directory directly (outside asar).
   const candidates = [
+    // 1. Direct in resources folder (outside asar — most reliable in admin mode)
+    path.join(process.resourcesPath || '', 'icon.ico'),
+    path.join(process.resourcesPath || '', 'icon.png'),
+    path.join(process.resourcesPath || '', 'tray-icon.png'),
+    // 2. Inside asar via resourcesPath
+    path.join(process.resourcesPath || '', 'app.asar', 'build', 'icon.ico'),
+    path.join(process.resourcesPath || '', 'app.asar', 'build', 'icon.png'),
     path.join(process.resourcesPath || '', 'app.asar', 'build', 'tray-icon.png'),
+    // 3. Inside asar via app.getAppPath()
+    path.join(app.getAppPath(), 'build', 'icon.ico'),
+    path.join(app.getAppPath(), 'build', 'icon.png'),
     path.join(app.getAppPath(), 'build', 'tray-icon.png'),
+    // 4. Relative to __dirname (development)
+    path.join(__dirname, '..', '..', 'build', 'icon.ico'),
+    path.join(__dirname, '..', '..', 'build', 'icon.png'),
     path.join(__dirname, '..', '..', 'build', 'tray-icon.png'),
+    path.join(__dirname, '..', '..', '..', 'build', 'icon.ico'),
+    path.join(__dirname, '..', '..', '..', 'build', 'icon.png'),
     path.join(__dirname, '..', '..', '..', 'build', 'tray-icon.png'),
   ];
+
   for (const iconPath of candidates) {
     try {
+      if (!fs.existsSync(iconPath)) continue;
       const img = nativeImage.createFromPath(iconPath);
-      if (!img.isEmpty()) return img;
+      if (!img.isEmpty()) {
+        log.info(`[icon] Loaded app icon from: ${iconPath}`);
+        return img;
+      }
     } catch { /* try next */ }
   }
+  log.warn('[icon] Could not load app icon from any candidate path');
   return undefined;
 }
 

@@ -48,6 +48,7 @@ class ScanProgress:
     elapsed_time_ms: int = 0
     is_cancelled: bool = False
     completion_percent: float = 0.0
+    current_folder: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
@@ -62,6 +63,7 @@ class ScanProgress:
             "elapsed_time_ms": self.elapsed_time_ms,
             "is_cancelled": self.is_cancelled,
             "completion_percent": self.completion_percent,
+            "current_folder": self.current_folder,
         }
 
 

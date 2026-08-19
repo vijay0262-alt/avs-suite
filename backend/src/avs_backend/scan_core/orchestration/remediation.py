@@ -13,7 +13,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from avs_backend.scan_core.execution.backup import BackupManager, BackupRecord
 from avs_backend.scan_core.execution.context import FilesystemContext
@@ -106,6 +106,7 @@ class RemediationCoordinator:
         approval_token: str,
         mode: str = "dry_run",
         cancellation_token: Optional[CancellationToken] = None,
+        on_progress: Optional[Callable[[str, int, int, dict], None]] = None,
     ) -> ExecutionSummary:
         """Execute a plan after explicit approval and fresh re-validation.
 
@@ -145,7 +146,7 @@ class RemediationCoordinator:
                 context_provider=self._context_provider(plan),
                 cancellation_token=token,
             )
-            summary = self._executor.execute(request)
+            summary = self._executor.execute(request, on_progress=on_progress)
             return self._finalize_status(request_id, summary)
         finally:
             self._active.discard(request_id)

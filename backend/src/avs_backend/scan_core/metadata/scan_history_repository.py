@@ -49,8 +49,8 @@ class ScanHistoryRepository:
                     scan_id, scan_type, started_at, completed_at, duration_ms,
                     cancelled, completed, error_count, findings_count,
                     action_plan_id, actionable_count, review_count, blocked_count,
-                    not_fixable_count, statistics_json, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    not_fixable_count, statistics_json, cleanup_result_json, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(scan_id) DO UPDATE SET
                     scan_type=excluded.scan_type,
                     started_at=excluded.started_at,
@@ -66,6 +66,7 @@ class ScanHistoryRepository:
                     blocked_count=excluded.blocked_count,
                     not_fixable_count=excluded.not_fixable_count,
                     statistics_json=excluded.statistics_json,
+                    cleanup_result_json=excluded.cleanup_result_json,
                     created_at=excluded.created_at
                 """,
                 (
@@ -84,6 +85,7 @@ class ScanHistoryRepository:
                     record.get("blocked_count", 0),
                     record.get("not_fixable_count", 0),
                     json.dumps(record.get("statistics") or {}),
+                    json.dumps(record.get("cleanup_result") or {}) if record.get("cleanup_result") else None,
                     now,
                 ),
             )
@@ -137,6 +139,19 @@ class ScanHistoryRepository:
             except json.JSONDecodeError:
                 statistics = {}
 
+        cleanup_result = None
+        # Handle cleanup_result_json (may not exist in old schema)
+        try:
+            raw_cleanup = row["cleanup_result_json"]
+            if raw_cleanup:
+                try:
+                    cleanup_result = json.loads(raw_cleanup)
+                except json.JSONDecodeError:
+                    cleanup_result = None
+        except (KeyError, IndexError):
+            # Column doesn't exist in old schema
+            cleanup_result = None
+
         return {
             "scan_id": row["scan_id"],
             "scan_type": row["scan_type"],
@@ -153,5 +168,51 @@ class ScanHistoryRepository:
             "blocked_count": row["blocked_count"],
             "not_fixable_count": row["not_fixable_count"],
             "statistics": statistics,
+            "cleanup_result": cleanup_result,
             "created_at": row["created_at"],
         }
+
+    def update_cleanup_result(self, plan_id: str, cleanup_result: dict[str, Any]) -> bool:
+        """
+        Update scan history with cleanup result from auto-optimization.
+
+        Args:
+            plan_id: The action plan ID to find the associated scan
+            cleanup_result: Cleanup result dict with keys:
+                detected, cleaned, remaining, failed, review_required,
+                space_recovered, health_before, health_after
+
+        Returns:
+            True if successful
+        """
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            # Find the scan_id for this plan_id
+            cursor.execute(
+                "SELECT scan_id FROM scan_history WHERE action_plan_id = ? LIMIT 1",
+                (plan_id,),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return False
+
+            scan_id = row[0]
+
+            # Update the cleanup_result_json
+            cursor.execute(
+                """
+                UPDATE scan_history 
+                SET cleanup_result_json = ?
+                WHERE scan_id = ?
+                """,
+                (json.dumps(cleanup_result), scan_id),
+            )
+            conn.commit()
+            return True
+        except Exception as exc:
+            conn.rollback()
+            raise RuntimeError(f"Failed to update cleanup result: {exc}") from exc
+        finally:
+            cursor.close()

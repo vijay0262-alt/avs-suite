@@ -14,9 +14,12 @@ import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
+
+# Type alias for progress callback
+ProgressCallback = Callable[[str, int, int, dict], None]
 
 from avs_backend.scan_core.rules.safety_gate import (
     SafetyGate,
@@ -62,7 +65,9 @@ class DefaultExecutor:
     action_plan_repository: Optional[Any] = None
     execution_repository: Optional[Any] = None
 
-    def execute(self, request: ExecutionRequest) -> ExecutionSummary:
+    def execute(
+        self, request: ExecutionRequest, on_progress: Optional[ProgressCallback] = None
+    ) -> ExecutionSummary:
         """
         Execute the requested ActionPlan and return an immutable summary.
 
@@ -127,8 +132,34 @@ class DefaultExecutor:
                 request.plan.actions,
                 key=lambda a: (-a.priority_score, a.action_id),
             )
+            total_actions = len(sorted_actions)
 
-            for action in sorted_actions:
+            for idx, action in enumerate(sorted_actions):
+                # Report progress before each action
+                if on_progress is not None:
+                    try:
+                        target_dict = action.target.to_dict()
+                        # Extract a human-readable path from the target
+                        current_path = (
+                            target_dict.get("canonical_path")
+                            or target_dict.get("path")
+                            or target_dict.get("key_path")
+                            or target_dict.get("entry_id")
+                            or action.action_id
+                        )
+                        on_progress(
+                            current_path,
+                            idx,
+                            total_actions,
+                            {
+                                "action_id": action.action_id,
+                                "action_type": action.action_type.value,
+                                "status": result.status.value if "result" in dir() else "starting",
+                            },
+                        )
+                    except Exception:
+                        pass  # Progress reporting is non-fatal
+
                 if self._is_cancelled(request):
                     result = self._make_cancelled_result(
                         execution_id, action, started_at
@@ -168,6 +199,30 @@ class DefaultExecutor:
                 self.ledger.record(result)
                 if not self._persist_action_result(request.request_id, result):
                     persistence_failed = True
+
+                # Report progress after each action with updated status
+                if on_progress is not None:
+                    try:
+                        target_dict = action.target.to_dict()
+                        current_path = (
+                            target_dict.get("canonical_path")
+                            or target_dict.get("path")
+                            or target_dict.get("key_path")
+                            or target_dict.get("entry_id")
+                            or action.action_id
+                        )
+                        on_progress(
+                            current_path,
+                            idx + 1,
+                            total_actions,
+                            {
+                                "action_id": action.action_id,
+                                "action_type": action.action_type.value,
+                                "status": result.status.value,
+                            },
+                        )
+                    except Exception:
+                        pass  # Progress reporting is non-fatal
 
             completed_at = datetime.now(UTC)
             summary = self._build_summary(

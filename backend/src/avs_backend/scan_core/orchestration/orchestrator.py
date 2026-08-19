@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
+import dataclasses
 from datetime import UTC, datetime
 from typing import Any, Callable, Optional
 
@@ -88,9 +89,16 @@ class ScanOrchestrator:
         started_at = datetime.now(UTC)
         orchestrator_errors: list[ScanOrchestratorError] = []
 
+        # Performance instrumentation: track per-phase durations in ms.
+        phase_timings: dict[str, int] = {}
+
         try:
+            t0 = datetime.now(UTC)
             scan_context = self._create_context(scan_id, scan_type, scope)
             self._context_repo.create(scan_context)
+            phase_timings["initialization_ms"] = int(
+                (datetime.now(UTC) - t0).total_seconds() * 1000
+            )
             self._emit_progress(
                 scan_id,
                 on_progress,
@@ -98,8 +106,12 @@ class ScanOrchestrator:
                 "scan context persisted",
             )
 
+            t1 = datetime.now(UTC)
             discovered_count, asset_lookup, size_lookup, discovery_errors = (
                 self._run_discovery(scan_context, token, on_progress)
+            )
+            phase_timings["discovery_ms"] = int(
+                (datetime.now(UTC) - t1).total_seconds() * 1000
             )
             orchestrator_errors.extend(discovery_errors)
 
@@ -110,9 +122,13 @@ class ScanOrchestrator:
                 "evaluating rules",
                 assets_discovered=discovered_count,
             )
+            t2 = datetime.now(UTC)
             eval_batch = self._evaluator.evaluate_scan(
                 scan_context,
                 cancellation_token=token,
+            )
+            phase_timings["evaluation_ms"] = int(
+                (datetime.now(UTC) - t2).total_seconds() * 1000
             )
 
             self._emit_progress(
@@ -124,7 +140,11 @@ class ScanOrchestrator:
                 assets_evaluated=eval_batch.statistics.assets_evaluated,
                 findings=eval_batch.statistics.matches,
             )
+            t3 = datetime.now(UTC)
             aggregation = self._aggregate(eval_batch, asset_lookup)
+            phase_timings["aggregation_ms"] = int(
+                (datetime.now(UTC) - t3).total_seconds() * 1000
+            )
 
             self._emit_progress(
                 scan_id,
@@ -135,7 +155,11 @@ class ScanOrchestrator:
                 assets_evaluated=eval_batch.statistics.assets_evaluated,
                 findings=len(aggregation.findings),
             )
+            t4 = datetime.now(UTC)
             prioritized = self._prioritize(aggregation, size_lookup)
+            phase_timings["prioritization_ms"] = int(
+                (datetime.now(UTC) - t4).total_seconds() * 1000
+            )
 
             action_plan: Optional[ActionPlan] = None
             if generate_action_plan and not token.is_cancelled:
@@ -148,7 +172,11 @@ class ScanOrchestrator:
                     assets_evaluated=eval_batch.statistics.assets_evaluated,
                     findings=len(prioritized.priorities),
                 )
+                t5 = datetime.now(UTC)
                 action_plan = self._plan(prioritized, scan_context)
+                phase_timings["planning_ms"] = int(
+                    (datetime.now(UTC) - t5).total_seconds() * 1000
+                )
                 if action_plan is not None and action_plan.plan_id is not None:
                     try:
                         self._action_plan_repo.save(action_plan, status="PLANNED")
@@ -161,9 +189,21 @@ class ScanOrchestrator:
                                 recoverable=True,
                             )
                         )
+            else:
+                phase_timings["planning_ms"] = 0
 
             completed_at = datetime.now(UTC)
             elapsed_ms = int((completed_at - started_at).total_seconds() * 1000)
+            phase_timings["total_ms"] = elapsed_ms
+
+            # Identify the bottleneck phase (longest duration).
+            bottleneck_phase = max(
+                (k for k in phase_timings if k != "total_ms"),
+                key=lambda k: phase_timings[k],
+                default="none",
+            )
+            phase_timings["bottleneck"] = bottleneck_phase
+
             scan_context = self._finalize_context(
                 scan_context,
                 token,
@@ -180,6 +220,13 @@ class ScanOrchestrator:
                 action_plan,
                 orchestrator_errors,
             )
+            # Attach phase timings to the result statistics.
+            # ScanResult is frozen, so we inject via the statistics dict
+            # by creating a new result with augmented statistics.
+            if phase_timings:
+                augmented_stats = dict(result.statistics)
+                augmented_stats["phase_timings"] = phase_timings
+                result = dataclasses.replace(result, statistics=augmented_stats)
             self._save_scan_history(result)
             return result
         finally:
@@ -222,6 +269,10 @@ class ScanOrchestrator:
     def list_scan_history(self, limit: int = 10) -> list[dict[str, Any]]:
         """Return the most recent persisted scan history records."""
         return self._history_repo.list_recent(limit)
+
+    def update_scan_history_cleanup(self, plan_id: str, cleanup_result: dict[str, Any]) -> bool:
+        """Update scan history with cleanup result from auto-optimization."""
+        return self._history_repo.update_cleanup_result(plan_id, cleanup_result)
 
     def get_plan_details(self, plan_id: str) -> dict[str, Any]:
         """Return a read-only, privacy-safe view of a persisted ActionPlan."""
@@ -368,6 +419,15 @@ class ScanOrchestrator:
         progress_interval = 100
 
         engine_names = sorted(self._discovery_engines.keys())
+        # Track the current folder being scanned for telemetry.
+        current_folder_holder: dict[str, str] = {"folder": ""}
+
+        def _engine_progress_callback(event: Any) -> None:
+            """Capture the current folder from the enumerator's ProgressEvent."""
+            folder = getattr(event, "current_folder", None)
+            if folder:
+                current_folder_holder["folder"] = folder
+
         for engine_name in engine_names:
             if token.is_cancelled:
                 break
@@ -378,9 +438,12 @@ class ScanOrchestrator:
                 "discovery",
                 f"enumerating {engine_name}",
                 assets_discovered=discovered_count,
+                current_folder=current_folder_holder["folder"],
             )
             try:
-                for raw in engine.enumerate(scan_context, token):
+                for raw in engine.enumerate(
+                    scan_context, token, on_progress=_engine_progress_callback
+                ):
                     if token.is_cancelled:
                         break
                     discovered_count += 1
@@ -391,6 +454,7 @@ class ScanOrchestrator:
                             "discovery",
                             f"{engine_name}: {discovered_count} items discovered",
                             assets_discovered=discovered_count,
+                            current_folder=current_folder_holder["folder"],
                         )
                     try:
                         asset = convert_to_asset(raw)
@@ -630,6 +694,7 @@ class ScanOrchestrator:
         assets_evaluated: int = 0,
         findings: int = 0,
         actions_available: int = 0,
+        current_folder: str = "",
     ) -> None:
         """Emit an immutable progress snapshot."""
         if on_progress is None:
@@ -661,6 +726,7 @@ class ScanOrchestrator:
                 findings=findings,
                 actions_available=actions_available,
                 completion_percent=base_percent,
+                current_folder=current_folder,
             )
         )
 

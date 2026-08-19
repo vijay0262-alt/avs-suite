@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Iterator, Optional, Protocol
 
 from ..adapters.adapter_registry import convert_to_asset
@@ -90,7 +91,24 @@ class FilesystemDiscoveryEngine:
             yield entry
 
     def _select_locations(self, scan_context: ScanContext) -> list[ScanLocation]:
-        """Return filesystem locations for the current scan mode."""
+        """Return filesystem locations for the current scan mode.
+
+        For quick scans, we target only the specific directories where the
+        canonical detection rules look for junk/cache files. This is NOT
+        an arbitrary exclusion — it is a deliberate scan profile that
+        matches the rule registry's known locations:
+
+        - User temp (%TEMP%, %LOCALAPPDATA%\\Temp)
+        - Windows temp (%SystemRoot%\\Temp)
+        - Shader caches (D3DSCache, NVIDIA/AMD caches)
+        - Thumbnail cache (Explorer)
+        - Browser caches (Chrome, Edge, Brave, Firefox)
+        - Application temp (Office)
+        - Recycle Bin
+
+        This reduces a 150K-file enumeration to ~5-15K files while still
+        evaluating every canonical rule against every relevant asset.
+        """
         if scan_context.requested_scope:
             valid: list[ScanLocation] = []
             for p in scan_context.requested_scope:
@@ -105,10 +123,62 @@ class FilesystemDiscoveryEngine:
                     logger.warning(f"Rejected unsafe requested_scope path {p!r}: {exc}")
             return valid
 
-        defaults = get_default_scan_locations()
         if scan_context.scan_type.value == "quick":
-            return [loc for loc in defaults if loc.label in self.quick_labels]
-        return defaults
+            return self._get_quick_scan_locations()
+
+        return get_default_scan_locations()
+
+    def _get_quick_scan_locations(self) -> list[ScanLocation]:
+        """Return the deliberate quick-scan location set.
+
+        These locations correspond exactly to the directories checked by
+        the canonical junk/cache detection rules. Each location is a leaf
+        directory that the rules evaluate, not a broad parent like
+        LocalAppData or AppData.
+        """
+        from ..rules.detection.locations import KnownLocations
+
+        locations: list[ScanLocation] = []
+        seen: set[str] = set()
+
+        def _add(path: Path, label: str) -> None:
+            key = str(path).lower()
+            if key in seen:
+                return
+            seen.add(key)
+            if path.is_dir():
+                locations.append(ScanLocation(path=str(path), label=label))
+
+        # User temp roots
+        for root in KnownLocations.get_user_temp_roots():
+            _add(root, "Temp")
+
+        # Windows temp
+        _add(KnownLocations.get_windows_temp_root(), "Windows Temp")
+
+        # Shader caches
+        for root in KnownLocations.get_shader_cache_roots():
+            _add(root, "Shader Cache")
+
+        # Thumbnail cache
+        _add(KnownLocations.get_thumbnail_cache_root(), "Thumbnail Cache")
+
+        # Application temp
+        for root in KnownLocations.get_application_temp_roots():
+            _add(root, "App Temp")
+
+        # Browser caches
+        for root in KnownLocations.get_browser_cache_roots():
+            _add(root, "Browser Cache")
+
+        # Recycle Bin
+        _add(Path("C:\\$Recycle.Bin"), "Recycle Bin")
+
+        logger.info(
+            f"Quick scan locations ({len(locations)}): "
+            f"{[loc.label for loc in locations]}"
+        )
+        return locations
 
 
 class _AdapterProgress:

@@ -12,6 +12,9 @@ import type {
   RemediationStatusResponse,
   RemediationCancelResponse,
   RemediationRollbackResponse,
+  AutoOptimizeStartResponse,
+  AutoOptimizeStatus,
+  AutoOptimizeCancelResponse,
 } from './types';
 
 function client() {
@@ -33,6 +36,9 @@ export interface RemediationService {
   status(executionId: string): Promise<RemediationStatusResponse>;
   cancel(executionId: string): Promise<RemediationCancelResponse>;
   rollback(executionId: string): Promise<RemediationRollbackResponse>;
+  autoOptimize(planId: string): Promise<AutoOptimizeStartResponse>;
+  autoOptimizeStatus(sessionId: string): Promise<AutoOptimizeStatus>;
+  autoOptimizeCancel(sessionId: string): Promise<AutoOptimizeCancelResponse>;
 }
 
 export const remediationService: RemediationService = {
@@ -53,4 +59,10 @@ export const remediationService: RemediationService = {
     client().call(RPC_METHODS.SCAN_CORE_REMEDIATION_CANCEL, { execution_id: executionId }) as Promise<RemediationCancelResponse>,
   rollback: (executionId: string) =>
     client().call(RPC_METHODS.SCAN_CORE_REMEDIATION_ROLLBACK, { execution_id: executionId }) as Promise<RemediationRollbackResponse>,
+  autoOptimize: (planId: string) =>
+    client().call(RPC_METHODS.SCAN_CORE_DASHBOARD_AUTO_OPTIMIZE, { plan_id: planId }) as Promise<AutoOptimizeStartResponse>,
+  autoOptimizeStatus: (sessionId: string) =>
+    client().call(RPC_METHODS.SCAN_CORE_DASHBOARD_AUTO_OPTIMIZE_STATUS, { session_id: sessionId }) as Promise<AutoOptimizeStatus>,
+  autoOptimizeCancel: (sessionId: string) =>
+    client().call(RPC_METHODS.SCAN_CORE_DASHBOARD_AUTO_OPTIMIZE_CANCEL, { session_id: sessionId }) as Promise<AutoOptimizeCancelResponse>,
 };

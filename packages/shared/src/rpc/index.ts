@@ -181,6 +181,11 @@ export const RPC_METHODS = {
   // Dashboard Optimization Plan Creation (SC-8C13 Phase 2)
   SCAN_CORE_DASHBOARD_OPTIMIZATION_PLAN: 'scan_core.dashboard_optimization.plan',
 
+  // Dashboard Auto-Optimization (V1.0 one-click workflow)
+  SCAN_CORE_DASHBOARD_AUTO_OPTIMIZE: 'scan_core.dashboard.auto_optimize',
+  SCAN_CORE_DASHBOARD_AUTO_OPTIMIZE_STATUS: 'scan_core.dashboard.auto_optimize_status',
+  SCAN_CORE_DASHBOARD_AUTO_OPTIMIZE_CANCEL: 'scan_core.dashboard.auto_optimize_cancel',
+
   // Predictive Health
   PREDICTIVE_HEALTH_SNAPSHOT: 'predictive.snapshot',
   PREDICTIVE_HEALTH_TRENDS: 'predictive.trends',

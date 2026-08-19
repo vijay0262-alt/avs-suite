@@ -39,6 +39,7 @@ export interface PersistedScanRecord {
   blocked_count: number;
   not_fixable_count: number;
   statistics: Record<string, unknown>;
+  cleanup_result?: Record<string, unknown> | null;
 }
 
 export interface ScanLatestResponse {

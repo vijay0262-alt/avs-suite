@@ -286,12 +286,31 @@ export default function DashboardPage() {
                       {snapshot.completedAt ? new Date(snapshot.completedAt).toLocaleString() : 'Recently completed'}
                     </div>
                     <div className="mt-1 text-small text-text-secondary">
-                      {snapshot.issuesFound > 0 ? (
-                        <span className="text-semantic-warning font-medium">{snapshot.issuesFound} {snapshot.issuesFound === 1 ? 'issue' : 'issues'} found</span>
-                      ) : (
-                        <span className="text-semantic-success">No issues found</span>
-                      )}
-                      {snapshot.actionableCount > 0 && ` · ${snapshot.actionableCount} actionable`}
+                      {(() => {
+                        // PART 4: Distinguish detected from remaining
+                        // If cleanup_result exists, show remaining issues (current state)
+                        // Otherwise show detected issues (scan result)
+                        const hasCleanup = snapshot.cleanupResult !== null;
+                        const issueCount = hasCleanup 
+                          ? snapshot.cleanupResult!.remaining 
+                          : snapshot.issuesFound;
+                        const label = hasCleanup 
+                          ? (issueCount === 1 ? 'issue remaining' : 'issues remaining')
+                          : (issueCount === 1 ? 'issue found' : 'issues found');
+                        
+                        if (issueCount > 0) {
+                          return (
+                            <>
+                              <span className="text-semantic-warning font-medium">{issueCount} {label}</span>
+                              {hasCleanup && snapshot.cleanupResult!.cleaned > 0 && (
+                                <span className="text-text-muted"> · {snapshot.cleanupResult!.cleaned} cleaned</span>
+                              )}
+                            </>
+                          );
+                        }
+                        return <span className="text-semantic-success">No issues {hasCleanup ? 'remaining' : 'found'}</span>;
+                      })()}
+                      {snapshot.actionableCount > 0 && !snapshot.cleanupResult && ` · ${snapshot.actionableCount} actionable`}
                     </div>
                   </>
                 ) : hasScanError ? (
@@ -331,7 +350,16 @@ export default function DashboardPage() {
                   </Button>
                 ) : hasCompletedScan && snapshot.issuesFound > 0 ? (
                   <Button
-                    onClick={() => setScanModalOpen(true)}
+                    onClick={() => {
+                      // Navigate to the completed scan results using the stored planId.
+                      // This shows PlanReviewView with the completed scan, NOT a new scan.
+                      if (snapshot.planId) {
+                        navigate(`${snapshot.moduleRoute}?planId=${encodeURIComponent(snapshot.planId)}`);
+                      } else {
+                        // Fallback: open scan modal if no planId (shouldn't happen)
+                        setScanModalOpen(true);
+                      }
+                    }}
                     size="lg"
                     leftIcon={<BoltIcon className="h-5 w-5" />}
                     data-testid="dashboard-scan-cta"
