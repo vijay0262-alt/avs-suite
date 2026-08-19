@@ -364,7 +364,8 @@ class ScanOrchestrator:
         discovered_count = 0
         batch_assets: list[ScanAsset] = []
         batch_snapshots: list[AssetSnapshot] = []
-        batch_size = 500
+        batch_size = 200
+        progress_interval = 100
 
         engine_names = sorted(self._discovery_engines.keys())
         for engine_name in engine_names:
@@ -383,7 +384,7 @@ class ScanOrchestrator:
                     if token.is_cancelled:
                         break
                     discovered_count += 1
-                    if discovered_count % 500 == 0:
+                    if discovered_count % progress_interval == 0:
                         self._emit_progress(
                             scan_context.scan_id,
                             on_progress,
@@ -647,8 +648,9 @@ class ScanOrchestrator:
         base_percent = PHASE_PERCENT.get(phase, 0.0)
         if phase == "discovery" and assets_discovered > 0:
             # Scale within discovery range (10% → 50%) using a log scale
-            # so early files show progress but it doesn't jump to 50% too fast.
-            base_percent = min(50.0, 10.0 + math.log10(assets_discovered + 1) * 5.0)
+            # that reaches 50% at ~100K files (typical full scan).
+            # log10(100001) ≈ 5.0, so 10 + 5*8 = 50.
+            base_percent = min(50.0, 10.0 + math.log10(assets_discovered + 1) * 8.0)
         on_progress(
             ScanProgress(
                 scan_id=scan_id,

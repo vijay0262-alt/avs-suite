@@ -251,10 +251,17 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
     hookStartScan();
     try {
       const startMethod = mode === 'quick' ? scanService.scan_quick : scanService.scan_full;
-      const response = (await startMethod()) as { session_id?: string; started_at?: string };
+      const response = (await startMethod()) as { ok?: boolean; session_id?: string; started_at?: string; error?: string };
+      if (response.ok === false) {
+        const backendError = response.error ?? 'Scan could not start';
+        if (backendError.toLowerCase().includes('initializing')) {
+          throw new Error('AVS is preparing the scanner. Please try again in a moment.');
+        }
+        throw new Error(backendError);
+      }
       const sid = response.session_id;
       if (!sid) {
-        throw new Error('Backend did not return a session id');
+        throw new Error('AVS could not start the scan. Please try again.');
       }
       sessionIdRef.current = sid;
       unifiedScanState.setLatest({

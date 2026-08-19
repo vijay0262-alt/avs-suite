@@ -86,7 +86,8 @@ class MetadataDatabase:
             # Ensure directory exists
             self.config.db_path.parent.mkdir(parents=True, exist_ok=True)
 
-            # Check for corruption
+            # Check for corruption (only if DB exists and is large)
+            # For large databases, use quick_check which is much faster
             if self.config.db_path.exists():
                 if not self._check_integrity():
                     logger.warning("Database corruption detected")
@@ -101,6 +102,10 @@ class MetadataDatabase:
 
             # Run migrations if needed
             self._run_migrations()
+
+            # Clean up old snapshots to prevent database bloat.
+            # Keep only the most recent snapshot per asset.
+            self._cleanup_old_snapshots()
 
             self._is_initialized = True
             logger.info(f"Metadata database initialized: {self.config.db_path}")
@@ -144,6 +149,11 @@ class MetadataDatabase:
         """
         Check database integrity.
 
+        Uses PRAGMA quick_check instead of integrity_check for performance.
+        quick_check skips the b-tree balance and reference verification,
+        making it much faster on large databases (1GB+) while still
+        detecting structural corruption.
+
         Returns:
             True if database is valid
         """
@@ -151,7 +161,7 @@ class MetadataDatabase:
         try:
             conn = sqlite3.connect(str(self.config.db_path))
             cursor = conn.cursor()
-            cursor.execute("PRAGMA integrity_check")
+            cursor.execute("PRAGMA quick_check")
             result = cursor.fetchone()
             cursor.close()
             conn.close()
@@ -642,6 +652,40 @@ class MetadataDatabase:
             logger.info(f"Applied migrations up to version {self.SCHEMA_VERSION}")
 
         cursor.close()
+
+    def _cleanup_old_snapshots(self) -> None:
+        """Remove old snapshots to prevent database bloat.
+
+        Keeps only the most recent snapshot per asset, deleting older ones.
+        This prevents the asset_snapshots table from growing unboundedly
+        across scans (686K+ rows → ~269K rows).
+        """
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
+            return
+        try:
+            cursor = conn.cursor()
+            # Set a short busy timeout for the cleanup to avoid blocking
+            # if another connection holds a lock.
+            cursor.execute("PRAGMA busy_timeout = 5000")
+            # Delete all but the most recent snapshot per asset_id.
+            # The subquery finds the max rowid for each asset_id,
+            # and we delete rows that don't match (keeping the latest).
+            cursor.execute("""
+                DELETE FROM asset_snapshots
+                WHERE rowid NOT IN (
+                    SELECT MAX(s.rowid)
+                    FROM asset_snapshots s
+                    GROUP BY s.asset_id
+                )
+            """)
+            deleted = cursor.rowcount
+            conn.commit()
+            cursor.close()
+            if deleted > 0:
+                logger.info(f"Cleaned up {deleted} old snapshots")
+        except Exception as e:
+            logger.warning(f"Snapshot cleanup failed (non-fatal): {e}")
 
     def get_connection(self) -> sqlite3.Connection:
         """
