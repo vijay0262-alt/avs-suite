@@ -88,29 +88,25 @@ let bgProtection: BackgroundProtectionService | null = null;
 let isQuitting = false;
 
 function getAppIcon(): Electron.NativeImage | undefined {
-  // Try multiple icon locations and formats.
-  // When running as admin, some asar paths may not resolve correctly,
-  // so we also check the resources directory directly (outside asar).
+  // Use the SAME PNG icon that works without admin.
+  // Do NOT use icon.ico — it has multiple embedded sizes that get distorted
+  // when Electron resizes them, especially in admin mode.
+  // The tray-icon.png (256x256) renders cleanly at any size.
   const candidates = [
     // 1. Direct in resources folder (outside asar — most reliable in admin mode)
-    path.join(process.resourcesPath || '', 'icon.ico'),
-    path.join(process.resourcesPath || '', 'icon.png'),
     path.join(process.resourcesPath || '', 'tray-icon.png'),
+    path.join(process.resourcesPath || '', 'icon.png'),
     // 2. Inside asar via resourcesPath
-    path.join(process.resourcesPath || '', 'app.asar', 'build', 'icon.ico'),
-    path.join(process.resourcesPath || '', 'app.asar', 'build', 'icon.png'),
     path.join(process.resourcesPath || '', 'app.asar', 'build', 'tray-icon.png'),
+    path.join(process.resourcesPath || '', 'app.asar', 'build', 'icon.png'),
     // 3. Inside asar via app.getAppPath()
-    path.join(app.getAppPath(), 'build', 'icon.ico'),
-    path.join(app.getAppPath(), 'build', 'icon.png'),
     path.join(app.getAppPath(), 'build', 'tray-icon.png'),
+    path.join(app.getAppPath(), 'build', 'icon.png'),
     // 4. Relative to __dirname (development)
-    path.join(__dirname, '..', '..', 'build', 'icon.ico'),
-    path.join(__dirname, '..', '..', 'build', 'icon.png'),
     path.join(__dirname, '..', '..', 'build', 'tray-icon.png'),
-    path.join(__dirname, '..', '..', '..', 'build', 'icon.ico'),
-    path.join(__dirname, '..', '..', '..', 'build', 'icon.png'),
+    path.join(__dirname, '..', '..', 'build', 'icon.png'),
     path.join(__dirname, '..', '..', '..', 'build', 'tray-icon.png'),
+    path.join(__dirname, '..', '..', '..', 'build', 'icon.png'),
   ];
 
   for (const iconPath of candidates) {

@@ -31,29 +31,26 @@ let _baseIcon: Electron.NativeImage | null = null;
 function getBaseTrayIcon(): Electron.NativeImage {
   if (_baseIcon) return _baseIcon;
 
-  // Try multiple icon locations and formats.
-  // When running as admin, some asar paths may not resolve correctly,
-  // so we also check the resources directory directly (outside asar).
+  // Use the SAME PNG icon that works without admin.
+  // Do NOT use icon.ico — it has multiple embedded sizes that get distorted
+  // when Electron resizes them, especially in admin mode.
+  // The tray-icon.png (256x256) renders cleanly at any size.
+  // We do NOT resize — let Windows/Electron handle scaling natively.
   const candidates = [
     // 1. Direct in resources folder (outside asar — most reliable in admin mode)
-    path.join(process.resourcesPath || '', 'icon.ico'),
-    path.join(process.resourcesPath || '', 'icon.png'),
     path.join(process.resourcesPath || '', 'tray-icon.png'),
+    path.join(process.resourcesPath || '', 'icon.png'),
     // 2. Inside asar via resourcesPath
-    path.join(process.resourcesPath || '', 'app.asar', 'build', 'icon.ico'),
-    path.join(process.resourcesPath || '', 'app.asar', 'build', 'icon.png'),
     path.join(process.resourcesPath || '', 'app.asar', 'build', 'tray-icon.png'),
+    path.join(process.resourcesPath || '', 'app.asar', 'build', 'icon.png'),
     // 3. Inside asar via app.getAppPath()
-    path.join(app.getAppPath(), 'build', 'icon.ico'),
-    path.join(app.getAppPath(), 'build', 'icon.png'),
     path.join(app.getAppPath(), 'build', 'tray-icon.png'),
+    path.join(app.getAppPath(), 'build', 'icon.png'),
     // 4. Relative to __dirname (development)
-    path.join(__dirname, '..', '..', 'build', 'icon.ico'),
-    path.join(__dirname, '..', '..', 'build', 'icon.png'),
     path.join(__dirname, '..', '..', 'build', 'tray-icon.png'),
-    path.join(__dirname, '..', '..', '..', 'build', 'icon.ico'),
-    path.join(__dirname, '..', '..', '..', 'build', 'icon.png'),
+    path.join(__dirname, '..', '..', 'build', 'icon.png'),
     path.join(__dirname, '..', '..', '..', 'build', 'tray-icon.png'),
+    path.join(__dirname, '..', '..', '..', 'build', 'icon.png'),
   ];
 
   // Log all candidate paths for debugging
@@ -65,10 +62,10 @@ function getBaseTrayIcon(): Electron.NativeImage {
       if (!exists) continue;
       const img = nativeImage.createFromPath(iconPath);
       if (!img.isEmpty()) {
-        // Resize to 16×16 for the system tray (Windows standard)
-        const resized = img.resize({ width: 16, height: 16 });
-        _baseIcon = resized.isEmpty() ? img : resized;
-        console.log(`[tray-icon] SUCCESS: Loaded tray icon from: ${iconPath}`);
+        // Do NOT resize — the 256x256 PNG scales cleanly.
+        // Resizing to 16x16 was causing distortion in admin mode.
+        _baseIcon = img;
+        console.log(`[tray-icon] SUCCESS: Loaded tray icon from: ${iconPath} (${img.getSize().width}x${img.getSize().height})`);
         break;
       } else {
         console.log(`[tray-icon]   -> icon loaded but empty`);
