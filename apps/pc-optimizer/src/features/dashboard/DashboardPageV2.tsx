@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useState, useCallback, memo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState, memo } from 'react';
 import { Button, Card, ChartCard, Sparkline, EmptyState, LoadingState, CollapsibleSection } from '@avs/ui';
 import { ModuleErrorBanner } from '../../components/ModuleStates';
 import {
-  SparklesIcon,
   ShieldExclamationIcon,
   CpuChipIcon,
   CircleStackIcon,
@@ -24,8 +22,7 @@ import type { DashboardMetrics, LiveMetrics, HardwareSensorReading } from './das
 import { DashboardScanStatusCard } from '../scan/components/DashboardScanStatusCard';
 import { useDashboardScan } from '../scan/useDashboardScan';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
-import { PlanReviewView, useDashboardOptimizationPlan, ScanView } from '../scan';
-import { dashboardPreviewToRpcPayload } from './dashboardOptimizationSerializer';
+import { ScanView } from '../scan';
 import { Modal } from './components/Modal';
 
 function getGreeting(): string {
@@ -118,11 +115,7 @@ const LiveMetricsMonitor = memo(function LiveMetricsMonitor({ liveMetrics }: { l
 export default function DashboardPage() {
   const vm = useMemo(() => new DashboardViewModel(dashboardService), []);
   const state = useViewModel(vm);
-  const navigate = useNavigate();
   const { snapshot } = useDashboardScan();
-  const dashPlan = useDashboardOptimizationPlan();
-  const [optimizePreviewLoading, setOptimizePreviewLoading] = useState(false);
-  const [optimizePreviewError, setOptimizePreviewError] = useState<string | null>(null);
   const [scanModalOpen, setScanModalOpen] = useState(false);
 
   useEffect(() => {
@@ -140,49 +133,8 @@ export default function DashboardPage() {
   const performanceValue = useMemo(() => getPerformanceValue(state.liveMetrics), [state.liveMetrics]);
   const storageValue = useMemo(() => getStorageValue(state.metrics), [state.metrics]);
 
-  // ── Canonical Dashboard Optimization plan creation handoff ──────────────
-  // Fetches a read-only optimize preview, maps actions to the backend format,
-  // and creates a canonical ActionPlan via scan_core.dashboard_optimization.plan.
-  // The plan_id is then handed off to PlanReviewView for the canonical
-  // prepare → validate → approve → execute → rollback flow.
-  // This NEVER executes remediation directly.
-  const handleReviewOptimize = useCallback(async () => {
-    if (dashPlan.isCreating) return;
-    setOptimizePreviewLoading(true);
-    setOptimizePreviewError(null);
-    try {
-      const preview = await dashboardService.getOptimizePreview();
-      if (!preview.actions || preview.actions.length === 0) {
-        setOptimizePreviewError('No optimization actions available.');
-        return;
-      }
-      const payload = dashboardPreviewToRpcPayload(preview.actions);
-      await dashPlan.createPlan(payload);
-    } catch (err) {
-      setOptimizePreviewError(err instanceof Error ? err.message : 'Failed to load optimization preview');
-    } finally {
-      setOptimizePreviewLoading(false);
-    }
-  }, [dashPlan]);
-
-  const handlePlanClose = useCallback(() => {
-    dashPlan.reset();
-    setOptimizePreviewError(null);
-  }, [dashPlan]);
-
-  // ── Canonical plan review handoff ────────────────────────────────────────
-  // If the RPC returned a plan_id, hand off to the canonical review flow.
-  if (dashPlan.planId) {
-    return (
-      <div className="px-6 py-6" data-testid="dashboard-opt-plan-review">
-        <PlanReviewView
-          planId={dashPlan.planId}
-          module="optimize"
-          onClose={handlePlanClose}
-        />
-      </div>
-    );
-  }
+  // ── V1.0 Dashboard: No plan review redirect. The single modal handles
+  // the full Scan → Clean → Verify → Results workflow. ──────────────
 
   if (state.bootstrap === 'loading') {
     return <LoadingState message="Loading dashboard..." data-testid="dashboard-loading" />;
@@ -233,14 +185,6 @@ export default function DashboardPage() {
         </div>
         <ProStatusPill />
       </div>
-
-      {/* Dashboard optimization plan creation error */}
-      {(dashPlan.error || optimizePreviewError) && (
-        <div className="flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 p-3" data-testid="dashboard-opt-plan-error">
-          <ExclamationTriangleIcon className="h-4 w-4 text-semantic-danger shrink-0" />
-          <span className="text-caption text-semantic-danger">{dashPlan.error ?? optimizePreviewError}</span>
-        </div>
-      )}
 
       {/* ── PRIMARY: SYSTEM HEALTH + SCAN ─────────────────────────── */}
       <Card variant="glass" className="p-6" data-testid="primary-system-health">
@@ -336,7 +280,7 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Primary Scan CTA */}
+              {/* Primary Scan CTA — V1.0 Dashboard: single Scan Now button */}
               <div className="shrink-0">
                 {isScanning ? (
                   <Button
@@ -347,24 +291,6 @@ export default function DashboardPage() {
                     data-testid="dashboard-scan-cta"
                   >
                     View Progress
-                  </Button>
-                ) : hasCompletedScan && snapshot.issuesFound > 0 ? (
-                  <Button
-                    onClick={() => {
-                      // Navigate to the completed scan results using the stored planId.
-                      // This shows PlanReviewView with the completed scan, NOT a new scan.
-                      if (snapshot.planId) {
-                        navigate(`${snapshot.moduleRoute}?planId=${encodeURIComponent(snapshot.planId)}`);
-                      } else {
-                        // Fallback: open scan modal if no planId (shouldn't happen)
-                        setScanModalOpen(true);
-                      }
-                    }}
-                    size="lg"
-                    leftIcon={<BoltIcon className="h-5 w-5" />}
-                    data-testid="dashboard-scan-cta"
-                  >
-                    Review Results
                   </Button>
                 ) : (
                   <Button
@@ -444,65 +370,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* ── SECONDARY ACTION: REVIEW & OPTIMIZE ─────────────────── */}
-      {snapshot.canReview && snapshot.actionableCount > 0 && (
-        <Card variant="glass" className="p-4" data-testid="actionable-recommendation">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <SparklesIcon className="h-5 w-5 text-brand-primary shrink-0" />
-              <div className="min-w-0">
-                <div className="text-small font-medium text-text-primary">
-                  {snapshot.actionableCount} actionable {snapshot.actionableCount === 1 ? 'issue' : 'issues'} ready for review
-                </div>
-                <div className="text-caption text-text-secondary">
-                  Review findings and approve fixes
-                </div>
-              </div>
-            </div>
-            <Button
-              size="md"
-              onClick={() => navigate(`${snapshot.moduleRoute}?planId=${encodeURIComponent(snapshot.planId!)}`)}
-              leftIcon={<SparklesIcon className="h-4 w-4" />}
-              data-testid="review-actionable-btn"
-            >
-              Review & Fix
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {/* Alternative: Review & Optimize (when no scan results) */}
-      {!isScanning && !hasCompletedScan && !hasScanError && (
-        <Card variant="glass" className="p-4" data-testid="optimize-preview-card">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <SparklesIcon className="h-5 w-5 text-brand-primary shrink-0" />
-              <div className="min-w-0">
-                <div className="text-small font-medium text-text-primary">
-                  Quick optimization available
-                </div>
-                <div className="text-caption text-text-secondary">
-                  Review recommended optimizations without scanning
-                </div>
-              </div>
-            </div>
-            <Button
-              onClick={handleReviewOptimize}
-              disabled={dashPlan.isCreating || optimizePreviewLoading}
-              size="md"
-              variant="secondary"
-              leftIcon={
-                dashPlan.isCreating || optimizePreviewLoading
-                  ? <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                  : <SparklesIcon className="h-4 w-4" />
-              }
-              data-testid="dashboard-review-optimize-btn"
-            >
-              {dashPlan.isCreating ? 'Creating...' : optimizePreviewLoading ? 'Analyzing...' : 'Review & Optimize'}
-            </Button>
-          </div>
-        </Card>
-      )}
+      {/* ── SECONDARY ACTION: REMOVED — V1.0 Dashboard uses single Scan Now → Clean → Results modal ── */}
 
       {/* Latest unified scan/remediation status from scan_core */}
       <DashboardScanStatusCard />
@@ -613,7 +481,7 @@ export default function DashboardPage() {
         </div>
       </CollapsibleSection>
 
-      {/* Scan modal — opens in-modal scan instead of redirecting */}
+      {/* Scan modal — V1.0 Dashboard: single modal handles Scan → Clean → Verify → Results */}
       <Modal
         open={scanModalOpen}
         onClose={() => setScanModalOpen(false)}
@@ -625,7 +493,8 @@ export default function DashboardPage() {
           module="optimize"
           mode="quick"
           onClose={() => setScanModalOpen(false)}
-          buttonLabel="Start Scan"
+          buttonLabel="Scan Now"
+          autoStart
         />
       </Modal>
 

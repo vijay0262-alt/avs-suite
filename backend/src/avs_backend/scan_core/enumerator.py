@@ -143,8 +143,11 @@ def _can_delete_file_windows(path: str) -> bool:
         _FILE_ATTRIBUTE_NORMAL,
         None,
     )
-    # INVALID_HANDLE_VALUE = -1 (as ctypes.c_void_p)
-    if handle == -1 or handle is None:
+    # INVALID_HANDLE_VALUE = (HANDLE)-1
+    # On 64-bit Windows with ctypes.c_void_p, this is returned as
+    # 0xFFFFFFFFFFFFFFFF (18446744073709551615), NOT -1.
+    # We must check both representations to be platform-safe.
+    if handle is None or handle == -1 or handle == 0xFFFFFFFFFFFFFFFF:
         return False
     try:
         _CloseHandle(handle)

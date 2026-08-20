@@ -2,14 +2,11 @@
  * AutoOptimizeView.tsx — shows the one-click optimization progress and
  * completion summary for the Dashboard scan workflow.
  *
- * This component is displayed after a scan completes with findings.
- * It automatically starts the safe-action optimization pipeline and
- * shows real progress from the backend.
- *
- * Safety is NOT bypassed:
- *   - Only APPROVED actions are executed by the backend.
- *   - REQUIRES_REVIEW actions are counted but not executed.
- *   - REJECTED actions are counted but not executed.
+ * V1.0 Dashboard contract:
+ *   User sees ONLY: detected, cleaned, remaining, failed, space_recovered,
+ *   health_before, health_after.
+ *   Internal safety fields (rejected, requires_review, blocked, etc.) are
+ *   NOT displayed — they are implementation details.
  */
 import { useEffect, useMemo } from 'react';
 import { Card, Button } from '@avs/ui';
@@ -27,20 +24,9 @@ import { optimizationEventBus, OptimizationEventType } from '../health/Optimizat
 export interface AutoOptimizeViewProps {
   planId: string;
   onClose: () => void;
+  /** V1.0: Review callback is no longer used by Dashboard but kept for API compat. */
   onReviewRequired?: (planId: string) => void;
 }
-
-const PHASE_LABELS: Record<AutoOptimizePhase | 'idle', string> = {
-  idle: 'Idle',
-  starting: 'Starting',
-  preparing: 'Preparing',
-  validating: 'Validating',
-  executing: 'Optimizing',
-  verifying: 'Verifying',
-  complete: 'Complete',
-  cancelled: 'Cancelled',
-  error: 'Error',
-};
 
 const PHASE_PROGRESS: Record<AutoOptimizePhase | 'idle', number> = {
   idle: 0,
@@ -66,7 +52,7 @@ function formatNumber(n: number): string {
   return n.toLocaleString();
 }
 
-export function AutoOptimizeView({ planId, onClose, onReviewRequired }: AutoOptimizeViewProps) {
+export function AutoOptimizeView({ planId, onClose }: AutoOptimizeViewProps) {
   const autoOpt = useAutoOptimize();
 
   // Automatically start optimization when the component mounts.
@@ -86,7 +72,7 @@ export function AutoOptimizeView({ planId, onClose, onReviewRequired }: AutoOpti
         moduleId: 'junk',
         action: 'clean',
         bytesRecovered: autoOpt.result.space_recovered,
-        itemsProcessed: autoOpt.result.completed,
+        itemsProcessed: autoOpt.result.cleaned,
         timestamp: Date.now(),
       });
     }
@@ -102,10 +88,22 @@ export function AutoOptimizeView({ planId, onClose, onReviewRequired }: AutoOpti
   const progress = autoOpt.phase === 'executing' && autoOpt.overallProgress > 0
     ? autoOpt.overallProgress
     : PHASE_PROGRESS[autoOpt.phase] ?? 0;
-  const phaseLabel = PHASE_LABELS[autoOpt.phase] ?? autoOpt.phase;
+  // V1.0: Map internal phases to user-friendly labels.
+  // Do not expose internal backend phase names.
+  const USER_PHASE_LABELS: Record<string, string> = {
+    idle: 'Starting...',
+    starting: 'Starting...',
+    preparing: 'Preparing...',
+    validating: 'Preparing...',
+    executing: 'Cleaning your PC...',
+    verifying: 'Verifying cleanup...',
+    complete: 'Complete',
+    cancelled: 'Cancelled',
+    error: 'Error',
+  };
+  const phaseLabel = USER_PHASE_LABELS[autoOpt.phase] ?? 'Cleaning your PC...';
 
   const result = autoOpt.result;
-  const hasReviewItems = (autoOpt.reviewRequired ?? 0) > 0 || (result?.requires_review ?? 0) > 0;
 
   const summaryCards = useMemo(() => {
     if (!result) return [];
@@ -116,29 +114,34 @@ export function AutoOptimizeView({ planId, onClose, onReviewRequired }: AutoOpti
       positive: boolean;
     }> = [];
 
-    if (result.completed > 0) {
-      cards.push({
-        label: 'Items Cleaned',
-        value: formatNumber(result.completed),
-        icon: CheckCircleIcon,
-        positive: true,
-      });
-    }
+    // V1.0: Only user-facing fields.
+    // detected = verified cleanable items
+    // cleaned = successfully deleted + verified
+    // remaining = detected items still present
+    // failed = actual unexpected deletion failures
+    // space_recovered = verified deleted bytes
+    const detectedCount = result.detected ?? 0;
+    const cleanedCount = result.cleaned ?? 0;
 
-    // V1.0: "Detected" = genuinely cleanable items (safe candidates),
-    // NOT all pattern matches. Use result.detected if available.
-    const detectedCount = result.detected ?? result.total;
     if (detectedCount > 0) {
       cards.push({
-        label: 'Cleanable Items Found',
+        label: 'Files Detected',
         value: formatNumber(detectedCount),
         icon: CheckCircleIcon,
         positive: true,
       });
     }
 
-    // Remaining = safe candidates that were not cleaned
-    const remaining = result.remaining ?? Math.max(0, detectedCount - result.completed);
+    if (cleanedCount > 0) {
+      cards.push({
+        label: 'Files Cleaned',
+        value: formatNumber(cleanedCount),
+        icon: CheckCircleIcon,
+        positive: true,
+      });
+    }
+
+    const remaining = result.remaining ?? Math.max(0, detectedCount - cleanedCount);
     if (remaining > 0) {
       cards.push({
         label: 'Remaining',
@@ -166,23 +169,8 @@ export function AutoOptimizeView({ planId, onClose, onReviewRequired }: AutoOpti
       });
     }
 
-    if (result.skipped > 0) {
-      cards.push({
-        label: 'Skipped',
-        value: formatNumber(result.skipped),
-        icon: ExclamationTriangleIcon,
-        positive: false,
-      });
-    }
-
-    if (result.requires_review > 0) {
-      cards.push({
-        label: 'Requires Your Attention',
-        value: formatNumber(result.requires_review),
-        icon: ExclamationTriangleIcon,
-        positive: false,
-      });
-    }
+    // V1.0: Do NOT show rejected, requires_review, skipped, blocked, etc.
+    // Those are internal safety implementation details.
 
     return cards;
   }, [result]);
@@ -246,7 +234,7 @@ export function AutoOptimizeView({ planId, onClose, onReviewRequired }: AutoOpti
               <BoltIcon className="h-8 w-8 text-brand-primary" />
             </div>
             <h3 className="text-lg font-semibold text-text-primary">
-              {phaseLabel === 'Optimizing' ? 'Optimizing your PC...' : `${phaseLabel}...`}
+              {phaseLabel}
             </h3>
             <p className="text-small text-text-secondary">{autoOpt.message}</p>
           </div>
@@ -254,7 +242,7 @@ export function AutoOptimizeView({ planId, onClose, onReviewRequired }: AutoOpti
           {/* Progress bar */}
           <div className="space-y-2">
             <div className="flex justify-between text-small text-text-muted">
-              <span>{phaseLabel}</span>
+              <span>{autoOpt.phase === 'verifying' ? 'Verifying' : autoOpt.phase === 'preparing' || autoOpt.phase === 'starting' || autoOpt.phase === 'validating' ? 'Preparing' : 'Cleaning'}</span>
               <span>{progress}%</span>
             </div>
             <div className="h-2 rounded-full bg-surface-secondary overflow-hidden">
@@ -287,29 +275,21 @@ export function AutoOptimizeView({ planId, onClose, onReviewRequired }: AutoOpti
             </div>
           )}
 
-          {/* Live counters during optimization */}
-          {autoOpt.totalActions > 0 && (
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-text-primary tabular-nums">
-                  {formatNumber(autoOpt.safeActions)}
-                </div>
-                <div className="text-caption text-text-muted">Safe Actions</div>
+          {/* Live counters: Files Detected + Files Cleaned */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-text-primary tabular-nums">
+                {formatNumber(autoOpt.safeActions)}
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-text-primary tabular-nums">
-                  {formatNumber(autoOpt.reviewRequired)}
-                </div>
-                <div className="text-caption text-text-muted">Need Review</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-text-primary tabular-nums">
-                  {formatNumber(autoOpt.blocked)}
-                </div>
-                <div className="text-caption text-text-muted">Blocked</div>
-              </div>
+              <div className="text-caption text-text-muted">Files Detected</div>
             </div>
-          )}
+            <div className="text-center">
+              <div className="text-2xl font-bold text-semantic-success tabular-nums">
+                {formatNumber(autoOpt.executionProgress)}
+              </div>
+              <div className="text-caption text-text-muted">Files Cleaned</div>
+            </div>
+          </div>
 
           {/* Cancel button */}
           <div className="flex justify-center">
@@ -328,8 +308,9 @@ export function AutoOptimizeView({ planId, onClose, onReviewRequired }: AutoOpti
 
   // ── Complete state ───────────────────────────────────────────────
   if (isComplete && result) {
-    const detectedCount = result.detected ?? result.total;
-    const nothingToClean = detectedCount === 0 || (result.completed === 0 && result.requires_review === 0 && result.failed === 0);
+    const detectedCount = result.detected ?? 0;
+    const cleanedCount = result.cleaned ?? 0;
+    const nothingToClean = detectedCount === 0 && cleanedCount === 0;
 
     return (
       <Card variant="glass" className="p-8" data-testid="auto-optimize-complete">
@@ -400,19 +381,10 @@ export function AutoOptimizeView({ planId, onClose, onReviewRequired }: AutoOpti
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex justify-center gap-3">
-            {hasReviewItems && onReviewRequired && (
-              <Button
-                onClick={() => onReviewRequired(planId)}
-                leftIcon={<ExclamationTriangleIcon className="h-4 w-4" />}
-                data-testid="auto-optimize-review-required"
-              >
-                Review {result?.requires_review ?? autoOpt.reviewRequired} Items
-              </Button>
-            )}
+          {/* Actions — V1.0 Dashboard: no review button, just Done */}
+          <div className="flex justify-center">
             <Button
-              variant={hasReviewItems ? 'secondary' : 'primary'}
+              variant="primary"
               onClick={onClose}
               data-testid="auto-optimize-done"
             >

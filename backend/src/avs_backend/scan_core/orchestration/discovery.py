@@ -138,6 +138,10 @@ class FilesystemDiscoveryEngine:
         the canonical junk/cache detection rules. Each location is a leaf
         directory that the rules evaluate, not a broad parent like
         LocalAppData or AppData.
+
+        V1.0 Disk Cleanup+: Added Recycle Bin (all drives), Delivery
+        Optimization, crash dumps, Windows Error Reporting, and
+        Windows.old detection.
         """
         from ..rules.detection.locations import KnownLocations
 
@@ -174,8 +178,34 @@ class FilesystemDiscoveryEngine:
         for root in KnownLocations.get_browser_cache_roots():
             _add(root, "Browser Cache")
 
-        # Recycle Bin
-        _add(Path("C:\\$Recycle.Bin"), "Recycle Bin")
+        # V1.0: Recycle Bin on all local fixed drives
+        for root in KnownLocations.get_recycle_bin_roots():
+            _add(root, "Recycle Bin")
+
+        # V1.0: Delivery Optimization cache
+        for root in KnownLocations.get_delivery_optimization_roots():
+            _add(root, "Delivery Optimization")
+
+        # V1.0: Crash dumps and Windows Error Reporting
+        # Note: WER ReportArchive/ReportQueue may have restrictive ACLs.
+        # The _is_locked check uses CreateFileW which may fail on these,
+        # correctly classifying them as non-deletable. But we still scan
+        # them because some WER files are deletable.
+        for root in KnownLocations.get_crash_dump_roots():
+            _add(root, "Crash Dumps")
+
+        # V1.0: Windows.old (detected but NOT auto-cleaned — REVIEW_REQUIRED)
+        _add(KnownLocations.get_windows_old_root(), "Windows.old")
+
+        # V1.0: Windows Update cache
+        _add(KnownLocations.get_windows_update_cache_root(), "Windows Update Cache")
+
+        # V1.0: Installer patch cache
+        _add(KnownLocations.get_installer_cache_root(), "Installer Cache")
+
+        # V1.0: Application cache
+        for root in KnownLocations.get_application_cache_roots():
+            _add(root, "App Cache")
 
         logger.info(
             f"Quick scan locations ({len(locations)}): "

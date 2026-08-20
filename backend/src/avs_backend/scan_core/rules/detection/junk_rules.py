@@ -785,3 +785,7 @@ def register_junk_rules(registry) -> None:
     registry.register(InstallerCacheRule())
     registry.register(WindowsUpdateCacheRule())
     registry.register(ApplicationCacheRule())
+
+    # V1.0 Disk Cleanup+ provider rules
+    from .cleanup_providers import register_cleanup_provider_rules
+    register_cleanup_provider_rules(registry)

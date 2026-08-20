@@ -59,6 +59,18 @@ _BROWSER_CACHE_PATH_MARKERS = {
 _cached_running_browsers: Optional[set[str]] = None
 
 
+def invalidate_running_browsers_cache() -> None:
+    """Clear the cached running-browsers set.
+
+    Must be called at the start of each scan so the browser-running check
+    reflects the current process state, not a stale snapshot from a prior
+    scan. Without this, a browser that was running during an earlier scan
+    would be incorrectly treated as running for all subsequent scans.
+    """
+    global _cached_running_browsers
+    _cached_running_browsers = None
+
+
 def _detect_running_browsers() -> set[str]:
     """Return the set of browser names whose processes are currently running."""
     global _cached_running_browsers

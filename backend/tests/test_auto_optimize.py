@@ -176,8 +176,10 @@ class TestAutoOptimizeRPC:
                 assert session is not None
                 assert session["phase"] == "complete"
                 assert session["completed"] is True
-                assert session["result"]["completed"] == 0
-                assert session["result"]["requires_review"] == 3
+                # V1.0: result uses "cleaned" instead of "completed"
+                assert session["result"]["cleaned"] == 0
+                # Internal diagnostics still track requires_review
+                assert session["result"]["_diagnostics"]["requires_review"] == 3
         finally:
             with _auto_opt_lock:
                 _auto_opt_sessions.pop(session_id, None)

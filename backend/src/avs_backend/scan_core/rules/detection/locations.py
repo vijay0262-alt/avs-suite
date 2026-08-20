@@ -288,6 +288,153 @@ class KnownLocations:
         """
         return KnownLocations.expand(r"%LOCALAPPDATA%\IconCache.db")
 
+    # ── Recycle Bin Roots ────────────────────────────────────────
+
+    @staticmethod
+    def get_recycle_bin_roots() -> list[Path]:
+        """
+        Get Recycle Bin directory paths on all local drives.
+
+        The Recycle Bin is located at C:\\$Recycle.Bin on the system
+        drive, and at D:\\$Recycle.Bin, E:\\$Recycle.Bin, etc. on
+        other local fixed volumes.
+
+        Returns:
+            List of Recycle Bin directory paths
+        """
+        roots: list[Path] = []
+        if os.name != "nt":
+            return roots
+
+        # System drive Recycle Bin
+        system_drive = os.environ.get("SystemDrive", "C:")
+        roots.append(Path(f"{system_drive}\\$Recycle.Bin"))
+
+        # Other local fixed drives
+        try:
+            import ctypes
+            GetLogicalDrives = ctypes.windll.kernel32.GetLogicalDrives
+            bitmask = GetLogicalDrives()
+            for i in range(26):
+                if bitmask & (1 << i):
+                    drive = f"{chr(65 + i)}:"
+                    # Skip system drive (already added) and non-fixed drives
+                    if drive == system_drive:
+                        continue
+                    # Check if drive is fixed (DriveType 3)
+                    try:
+                        GetDriveType = ctypes.windll.kernel32.GetDriveTypeW
+                        drive_type = GetDriveType(f"{drive}\\")
+                        if drive_type == 3:  # DRIVE_FIXED
+                            roots.append(Path(f"{drive}\\$Recycle.Bin"))
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        return roots
+
+    # ── Delivery Optimization Cache ──────────────────────────────
+
+    @staticmethod
+    def get_delivery_optimization_roots() -> list[Path]:
+        """
+        Get Windows Delivery Optimization cache directories.
+
+        Delivery Optimization stores downloaded update fragments
+        for peer-to-peer distribution. These are safe to clean
+        when no active download is in progress.
+
+        Returns:
+            List of Delivery Optimization cache directory paths
+        """
+        candidates = [
+            r"%SystemRoot%\SoftwareDistribution\DeliveryOptimization",
+            r"%LOCALAPPDATA%\Microsoft\Windows\DeliveryOptimization",
+        ]
+        roots: list[Path] = []
+        for template in candidates:
+            p = KnownLocations.expand(template)
+            roots.append(p)
+        return roots
+
+    # ── Windows Error Reporting / Crash Dump Locations ───────────
+
+    @staticmethod
+    def get_crash_dump_roots() -> list[Path]:
+        """
+        Get Windows Error Reporting and crash dump directories.
+
+        Includes:
+        - Windows Error Reporting (WER) report queues and archives
+        - Minidump files
+        - Live kernel reports
+
+        These are safe to clean when no active diagnostic operation
+        is in progress.
+
+        Returns:
+            List of crash dump / error reporting directory paths
+        """
+        candidates = [
+            # Windows Error Reporting (WER) — report queue and archive
+            r"%PROGRAMDATA%\Microsoft\Windows\WER\ReportQueue",
+            r"%PROGRAMDATA%\Microsoft\Windows\WER\ReportArchive",
+            r"%PROGRAMDATA%\Microsoft\Windows\WER\Temp",
+            # User-level WER
+            r"%LOCALAPPDATA%\Microsoft\Windows\WER\ReportQueue",
+            r"%LOCALAPPDATA%\Microsoft\Windows\WER\ReportArchive",
+            r"%LOCALAPPDATA%\Microsoft\Windows\WER\Temp",
+            # Minidump files
+            r"%SystemRoot%\Minidump",
+            # Live kernel reports
+            r"%SystemRoot%\LiveKernelReports",
+        ]
+        roots: list[Path] = []
+        for template in candidates:
+            p = KnownLocations.expand(template)
+            roots.append(p)
+        return roots
+
+    # ── Windows.old (Previous Installation) ──────────────────────
+
+    @staticmethod
+    def get_windows_old_root() -> Path:
+        """
+        Get the Windows.old directory path.
+
+        This directory contains the previous Windows installation
+        after an upgrade. It is NOT safe to automatically delete
+        because it may be needed for rollback.
+
+        Returns:
+            Windows.old directory path
+        """
+        return Path(r"C:\Windows.old")
+
+    # ── Device Driver Packages ───────────────────────────────────
+
+    @staticmethod
+    def get_driver_package_roots() -> list[Path]:
+        """
+        Get Windows driver package staging directories.
+
+        The FileRepository under System32\\DriverStore contains
+        installed driver packages. Only the "stale" driver packages
+        (superseded versions) are safe to clean, and only via
+        Windows-supported APIs (pnputil). Direct file deletion
+        is NOT safe.
+
+        For V1.0 Dashboard automatic cleanup, this provider is
+        EXCLUDED — driver cleanup requires Windows API coordination.
+
+        Returns:
+            List of driver store paths (for detection only, NOT deletion)
+        """
+        return [
+            KnownLocations.expand(r"%SystemRoot%\System32\DriverStore\FileRepository"),
+        ]
+
     # ── Temporary Extension Helpers ─────────────────────────────
 
     @staticmethod
@@ -479,8 +626,13 @@ class KnownLocations:
         This is NOT exhaustive - it's a safety check.
         Rules should use SafetyAssessment for proper safety evaluation.
 
-        Returns:
-            List of protected directory paths
+        Includes:
+        - Windows system directories (System32, SysWOW64, WinSxS, etc.)
+        - Program Files directories
+        - Boot/EFI/Recovery partitions
+        - System Volume Information
+        - User personal data directories
+        - AVS Shield installation directories
         """
         protected = [
             # Windows system root itself
@@ -511,6 +663,14 @@ class KnownLocations:
             r"%USERPROFILE%\Pictures",
             r"%USERPROFILE%\Videos",
             r"%USERPROFILE%\Music",
+            # Boot/EFI/Recovery — system-critical, never auto-clean
+            r"C:\Boot",
+            r"C:\EFI",
+            r"C:\Recovery",
+            r"C:\System Volume Information",
+            r"C:\$Windows.~WS",
+            r"C:\$Windows.~BT",
+            r"C:\Windows.old",
         ]
 
         roots: list[Path] = []
@@ -522,6 +682,47 @@ class KnownLocations:
                 continue
 
         return roots
+
+    @staticmethod
+    def get_protected_files() -> list[str]:
+        """
+        Get protected system files (by name) that must NEVER be deleted.
+
+        These are critical system files that exist at the root of the
+        system drive. They are not directories and need special handling.
+
+        Returns:
+            List of protected file names (lowercase)
+        """
+        return [
+            "pagefile.sys",
+            "hiberfil.sys",
+            "swapfile.sys",
+            "ntldr",
+            "ntdetect.com",
+            "bootmgr",
+            "bootsect.bak",
+            "win.ini",
+            "system.ini",
+        ]
+
+    @staticmethod
+    def is_protected_file(asset_path: str) -> bool:
+        """
+        Check if asset is a protected system file by name.
+
+        Args:
+            asset_path: Asset canonical path
+
+        Returns:
+            True if the file name is in the protected files list
+        """
+        try:
+            p = Path(asset_path)
+            name_lower = p.name.lower()
+            return name_lower in KnownLocations.get_protected_files()
+        except Exception:
+            return False
 
     @staticmethod
     def get_protected_exceptions() -> list[Path]:
@@ -544,6 +745,12 @@ class KnownLocations:
             r"%SystemRoot%\Installer\$PatchCache$",
             r"%SystemRoot%\Temp",
             r"%SystemRoot%\SoftwareDistribution\Download",
+            # V1.0: Crash dump directories under %SystemRoot% are safe
+            # exceptions — they contain disposable diagnostic data.
+            r"%SystemRoot%\Minidump",
+            r"%SystemRoot%\LiveKernelReports",
+            # V1.0: Delivery Optimization under SoftwareDistribution
+            r"%SystemRoot%\SoftwareDistribution\DeliveryOptimization",
         ]
         roots: list[Path] = []
         for template in candidates:
@@ -563,12 +770,19 @@ class KnownLocations:
         exception subfolders (e.g. $PatchCache$ under Installer) are
         NOT considered protected.
 
+        Also checks for protected system files by name (pagefile.sys,
+        hiberfil.sys, swapfile.sys, etc.) regardless of directory.
+
         Args:
             asset_path: Asset canonical path
 
         Returns:
             True if asset appears to be in protected location
         """
+        # Check protected files by name first (pagefile.sys, etc.)
+        if KnownLocations.is_protected_file(asset_path):
+            return True
+
         # Check exceptions first — if asset is in a known-safe
         # subfolder of a protected root, it is NOT protected.
         for exception_root in KnownLocations.get_protected_exceptions():

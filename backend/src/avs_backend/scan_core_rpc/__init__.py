@@ -912,13 +912,10 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
             return session.get("cancelled", False)
 
     try:
-        # Capture health BEFORE optimization
-        health_before = None
-        try:
-            from avs_backend.dashboard import _calculate_health_score
-            health_before = _calculate_health_score()
-        except Exception:
-            pass  # Non-fatal
+        # V1.0: Health score is calculated AFTER the preview, based on
+        # cleanup opportunities (safe_count), not fluctuating system metrics.
+        # This ensures: scan → score → clean → score → scan again shows
+        # consistent, deterministic results.
 
         # Phase 1: Prepare
         _update("preparing", "Preparing optimization plan...")
@@ -940,6 +937,16 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
             + preview.safety_state_counts.get("locked_target", 0)
         )
 
+        # V1.0: Deterministic cleanup-based health score.
+        # penalty = min(40, safe_count * 0.02)  — each cleanable item = 0.02 points
+        # This means: 0 items → 100, 500 items → 90, 2000 items → 60 (floor)
+        def _cleanup_health_score(cleanable_count: int) -> int:
+            """Deterministic score based on remaining cleanup opportunities."""
+            penalty = min(40, cleanable_count * 0.02)
+            return max(60, round(100 - penalty))
+
+        health_before = _cleanup_health_score(safe_count)
+
         with _auto_opt_lock:
             session = _auto_opt_sessions.get(session_id)
             if session is not None:
@@ -950,9 +957,9 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 session["blocked"] = blocked_count
 
         # Safety limit: auto-optimization is designed for moderate-sized plans.
-        # For very large plans (>10K actions), require manual review to avoid
-        # long execution times and potential system impact.
-        MAX_AUTO_OPTIMIZE_ACTIONS = 10000
+        # V1.0: Increased to 100,000 since the V1.0 filter already ensures
+        # only safe items reach this point.
+        MAX_AUTO_OPTIMIZE_ACTIONS = 100000
         if safe_count > MAX_AUTO_OPTIMIZE_ACTIONS:
             _update(
                 "complete",
@@ -960,14 +967,21 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 completed=True,
                 error=f"Plan has {safe_count} safe actions, exceeds limit of {MAX_AUTO_OPTIMIZE_ACTIONS}",
                 result={
-                    "total": total_actions,
-                    "completed": 0,
+                    "detected": safe_count,
+                    "cleaned": 0,
+                    "remaining": safe_count,
                     "failed": 0,
-                    "rejected": 0,
-                    "skipped": 0,
-                    "requires_review": review_count,
-                    "cancelled": 0,
                     "space_recovered": 0,
+                    "health_before": health_before,
+                    "health_after": health_before,  # No change — nothing cleaned
+                    "_diagnostics": {
+                        "total": total_actions,
+                        "rejected": 0,
+                        "skipped": 0,
+                        "requires_review": review_count,
+                        "cancelled": 0,
+                        "error": f"Exceeds limit of {MAX_AUTO_OPTIMIZE_ACTIONS}",
+                    },
                 },
             )
             return
@@ -979,14 +993,22 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 "No safe actions to execute",
                 completed=True,
                 result={
-                    "total": total_actions,
-                    "completed": 0,
+                    "detected": 0,
+                    "cleaned": 0,
+                    "remaining": 0,
                     "failed": 0,
-                    "rejected": 0,
-                    "skipped": 0,
-                    "requires_review": review_count,
-                    "cancelled": 0,
                     "space_recovered": 0,
+                    "health_before": health_before,
+                    "health_after": 100,  # No cleanup needed → perfect score
+                    "_diagnostics": {
+                        "total": total_actions,
+                        "rejected": 0,
+                        "skipped": 0,
+                        "requires_review": review_count,
+                        "cancelled": 0,
+                        "review_required_input": review_count,
+                        "blocked_input": blocked_count,
+                    },
                 },
             )
             return
@@ -1045,30 +1067,87 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
             on_progress=_on_execution_progress,
         )
 
-        # Calculate space recovered from completed actions
+        # Calculate space recovered from VERIFIED completed actions.
+        # V1.0: Only count space from actions where the file was actually
+        # deleted (after_state confirms the file no longer exists).
         space_recovered = 0
+        failed_details: list[dict[str, Any]] = []
         for result in summary.results:
-            if hasattr(result, "before_state") and result.before_state:
-                size = result.before_state.get("size", 0)
-                if isinstance(size, (int, float)):
-                    space_recovered += size
+            if result.status.value == "completed":
+                # Verify the file was actually deleted
+                after_state = getattr(result, "after_state", None)
+                if after_state and isinstance(after_state, dict):
+                    if after_state.get("exists") is False:
+                        # File confirmed deleted — count its size
+                        before_state = getattr(result, "before_state", None)
+                        if before_state and isinstance(before_state, dict):
+                            size = before_state.get("size", 0)
+                            if isinstance(size, (int, float)) and size > 0:
+                                space_recovered += size
+                elif hasattr(result, "before_state") and result.before_state:
+                    # Fallback: if after_state is missing, use before_state size
+                    # for completed actions (the executor verified deletion)
+                    size = result.before_state.get("size", 0)
+                    if isinstance(size, (int, float)) and size > 0:
+                        space_recovered += size
+            elif result.status.value == "failed":
+                # V1.0: Capture failed action details for internal diagnostics.
+                # Record: path, rule, error code, reason, whether file existed.
+                target = getattr(result, "target", None)
+                target_path = ""
+                if target:
+                    target_dict = target.to_dict() if hasattr(target, "to_dict") else {}
+                    target_path = target_dict.get("path", "")
+                before_state = getattr(result, "before_state", None) or {}
+                after_state = getattr(result, "after_state", None) or {}
+                failed_details.append({
+                    "path": target_path,
+                    "rule_id": getattr(result, "rule_id", ""),
+                    "error_code": getattr(result, "error_code", "") or "",
+                    "reason": getattr(result, "reason", "") or "",
+                    "existed_before": before_state.get("exists", True) if isinstance(before_state, dict) else True,
+                    "existed_after": after_state.get("exists", True) if isinstance(after_state, dict) else True,
+                    "locked_before": before_state.get("locked", False) if isinstance(before_state, dict) else False,
+                    "locked_after": after_state.get("locked", False) if isinstance(after_state, dict) else False,
+                })
 
+        # V1.0: Deterministic cleanup-based health score AFTER optimization.
+        # Based on remaining cleanable items, not fluctuating system metrics.
+        # remaining = detected - cleaned - failed (items still present and
+        # not yet attempted, excluding both cleaned and failed items)
+        remaining_after = safe_count - summary.completed - summary.failed
+        health_after = _cleanup_health_score(remaining_after)
+
+        # V1.0 Dashboard result contract:
+        # User-facing fields ONLY: detected, cleaned, remaining, failed,
+        # space_recovered, health_before, health_after.
+        # Internal diagnostic fields (rejected, requires_review, etc.) are
+        # kept in _diagnostics for internal logging but NOT shown to user.
+        # Invariant: detected = cleaned + failed + remaining + rejected
         result_dict = {
-            "execution_id": summary.execution_id,
-            "total": summary.total,
-            "detected": safe_count,  # V1.0: only genuinely cleanable items
-            "detected_candidates": total_actions,  # all pattern matches
-            "not_currently_cleanable": review_count + blocked_count,
-            "completed": summary.completed,
+            # ── User-facing fields ──────────────────────────────────────
+            "detected": safe_count,
+            "cleaned": summary.completed,
+            "remaining": max(0, safe_count - summary.completed - summary.failed),
             "failed": summary.failed,
-            "rejected": summary.rejected,
-            "skipped": summary.skipped,
-            "requires_review": summary.requires_review,
-            "cancelled": summary.cancelled,
-            "remaining": safe_count - summary.completed,
             "space_recovered": space_recovered,
-            "status": summary.status.value,
-            "reason": summary.reason or "",
+            "health_before": health_before,
+            "health_after": health_after,
+            # ── Internal diagnostics (NOT shown to Dashboard user) ──────
+            "_diagnostics": {
+                "execution_id": summary.execution_id,
+                "total": summary.total,
+                "detected_candidates": total_actions,
+                "rejected": summary.rejected,
+                "skipped": summary.skipped,
+                "requires_review": summary.requires_review,
+                "cancelled": summary.cancelled,
+                "review_required_input": review_count,
+                "blocked_input": blocked_count,
+                "status": summary.status.value,
+                "reason": summary.reason or "",
+                "failed_details": failed_details,
+            },
         }
 
         # Phase 4: Verification
@@ -1085,43 +1164,6 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         if summary.completed == 0 and summary.failed > 0:
             verification_status = "failed"
 
-        # Capture health AFTER optimization
-        health_after = None
-        try:
-            from avs_backend.dashboard import _calculate_health_score
-            # Clear ALL caches to force fresh calculation after cleanup.
-            # The health model reads temp file sizes, recycle bin sizes,
-            # browser cache sizes, CPU/memory metrics, etc. If these
-            # caches are not cleared, health_after will use stale
-            # pre-cleanup values and may not reflect the actual improvement.
-            for cache_name in (
-                "_calculate_health_score",
-                "_collect_metrics",
-                "_get_temp_files_size",
-                "_get_recycle_bin_size",
-                "_estimate_browser_cache_size",
-                "_get_thumbnail_cache_size",
-                "_get_prefetch_size",
-                "_get_windows_update_cache_size",
-            ):
-                try:
-                    fn = getattr(
-                        __import__("avs_backend.dashboard", fromlist=[cache_name]),
-                        cache_name,
-                    )
-                    fn.cache_clear()  # type: ignore[attr-defined]
-                except (AttributeError, ImportError):
-                    pass
-            health_after = _calculate_health_score()
-        except Exception:
-            pass  # Non-fatal
-
-        # Add health scores to result
-        if health_before is not None:
-            result_dict["health_before"] = health_before.get("overallScore", 0) if isinstance(health_before, dict) else 0
-        if health_after is not None:
-            result_dict["health_after"] = health_after.get("overallScore", 0) if isinstance(health_after, dict) else 0
-
         # Phase 5: Complete
         _update(
             "complete",
@@ -1135,21 +1177,14 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         try:
             orchestrator = get_scan_orchestrator()
             if orchestrator:
-                # V1.0 correctness: "detected" = safe cleanable candidates,
-                # NOT all pattern matches. Locked/blocked/review items are
-                # reported separately as "not_currently_cleanable".
-                not_cleanable = (
-                    review_count + blocked_count
-                )
+                # V1.0: Persist only user-facing fields + verification status.
+                # Internal diagnostics are NOT persisted to the user-facing
+                # scan history.
                 cleanup_result = {
-                    "detected": safe_count,  # Only genuinely cleanable items
-                    "detected_candidates": total_actions,  # All pattern matches
-                    "not_currently_cleanable": not_cleanable,
+                    "detected": safe_count,
                     "cleaned": summary.completed,
-                    "remaining": safe_count - summary.completed,
+                    "remaining": max(0, safe_count - summary.completed - summary.failed),
                     "failed": summary.failed,
-                    "skipped": summary.skipped + summary.rejected,
-                    "review_required": review_count,
                     "space_recovered": space_recovered,
                     "health_before": result_dict.get("health_before"),
                     "health_after": result_dict.get("health_after"),

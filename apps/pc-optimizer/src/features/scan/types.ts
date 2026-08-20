@@ -180,22 +180,38 @@ export type AutoOptimizePhase =
   | 'error';
 
 export interface AutoOptimizeResult {
-  execution_id?: string;
-  total: number;
-  detected?: number;  // V1.0: genuinely cleanable items (safe candidates)
-  detected_candidates?: number;  // all pattern matches
-  not_currently_cleanable?: number;  // locked/blocked/review
-  completed: number;
-  failed: number;
-  rejected: number;
-  skipped: number;
-  requires_review: number;
-  cancelled: number;
-  remaining?: number;  // safe candidates not yet cleaned
-  space_recovered: number;
-  status?: string;
+  // ── V1.0 User-facing fields ─────────────────────────────────────
+  detected: number;      // verified cleanable items shown to user
+  cleaned: number;       // successfully deleted + verified
+  remaining: number;     // detected items still present
+  failed: number;        // actual unexpected deletion failures
+  space_recovered: number;  // verified deleted bytes
   health_before?: number;
   health_after?: number;
+
+  // ── Internal diagnostics (NOT shown to Dashboard user) ──────────
+  _diagnostics?: {
+    execution_id?: string;
+    total?: number;
+    detected_candidates?: number;
+    rejected?: number;
+    skipped?: number;
+    requires_review?: number;
+    cancelled?: number;
+    review_required_input?: number;
+    blocked_input?: number;
+    status?: string;
+    reason?: string;
+  };
+
+  // ── Legacy compat (still returned by backend but not shown) ─────
+  completed?: number;  // alias for cleaned
+  total?: number;
+  rejected?: number;
+  skipped?: number;
+  requires_review?: number;
+  cancelled?: number;
+  status?: string;
   reason?: string;
 }
 

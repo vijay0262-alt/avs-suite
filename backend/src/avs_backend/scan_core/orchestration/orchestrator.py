@@ -81,8 +81,22 @@ class ScanOrchestrator:
         *,
         on_progress: Optional[ProgressCallback] = None,
         generate_action_plan: bool = True,
+        dashboard_eligible_only: bool = False,
     ) -> ScanResult:
-        """Run a complete scan workflow and return an immutable result."""
+        """Run a complete scan workflow and return an immutable result.
+
+        Args:
+            scan_type: QUICK or FULL scan.
+            scope: Optional list of paths to scan.
+            on_progress: Optional progress callback.
+            generate_action_plan: Whether to generate an action plan.
+            dashboard_eligible_only: V1.0 Dashboard mode — only verified-safe
+                findings become actions. Unsafe/non-cleanable items (locked,
+                blocked, review-required, inaccessible) are excluded BEFORE
+                the ActionPlanner, so the user only sees items that can be
+                automatically cleaned. Internal diagnostic counts are still
+                tracked in statistics.
+        """
         scan_id = generate_scan_id()
         token = CancellationToken()
         self._tokens[scan_id] = token
@@ -94,6 +108,16 @@ class ScanOrchestrator:
 
         try:
             t0 = datetime.now(UTC)
+            # V1.0: Invalidate the running-browsers cache so each scan
+            # reflects the current process state, not a stale snapshot
+            # from a prior scan.
+            try:
+                from ..rules.detection.junk_rules_ext import (
+                    invalidate_running_browsers_cache,
+                )
+                invalidate_running_browsers_cache()
+            except ImportError:
+                pass
             scan_context = self._create_context(scan_id, scan_type, scope)
             self._context_repo.create(scan_context)
             phase_timings["initialization_ms"] = int(
@@ -145,6 +169,37 @@ class ScanOrchestrator:
             phase_timings["aggregation_ms"] = int(
                 (datetime.now(UTC) - t3).total_seconds() * 1000
             )
+
+            # V1.0 Dashboard eligibility filter:
+            # For Dashboard automatic cleanup, ONLY verified-safe findings
+            # become actions. Locked, blocked, review-required, and
+            # inaccessible items are excluded BEFORE the ActionPlanner.
+            # This ensures: detected = verified cleanable, cleaned ≈ detected.
+            # The SafetyGate remains as the final barrier but should approve
+            # nearly all actions because unsafe items were already filtered.
+            excluded_count = 0
+            if dashboard_eligible_only:
+                safe_findings = tuple(
+                    f for f in aggregation.findings if f.safety.is_safe
+                )
+                excluded_count = len(aggregation.findings) - len(safe_findings)
+                if excluded_count > 0:
+                    # Rebuild aggregation with only safe findings
+                    from ..rules.aggregation import (
+                        AggregationResult,
+                        DetectionSummary,
+                    )
+                    safe_summary = self._build_safe_summary(safe_findings)
+                    aggregation = AggregationResult(
+                        findings=safe_findings,
+                        groups=(),  # Groups not needed for Dashboard
+                        summary=safe_summary,
+                    )
+                    logger.info(
+                        "V1.0 Dashboard filter: %d safe findings, %d excluded",
+                        len(safe_findings),
+                        excluded_count,
+                    )
 
             self._emit_progress(
                 scan_id,
@@ -219,6 +274,7 @@ class ScanOrchestrator:
                 prioritized,
                 action_plan,
                 orchestrator_errors,
+                excluded_count=excluded_count,
             )
             # Attach phase timings to the result statistics.
             # ScanResult is frozen, so we inject via the statistics dict
@@ -239,12 +295,19 @@ class ScanOrchestrator:
         on_progress: Optional[ProgressCallback] = None,
         generate_action_plan: bool = True,
     ) -> ScanResult:
-        """Run a quick scan."""
+        """Run a quick scan.
+
+        V1.0: Quick scans are used by the Dashboard automatic cleaner.
+        Only verified-safe findings become actions — locked, blocked,
+        review-required, and inaccessible items are excluded before the
+        ActionPlanner so the user only sees automatically cleanable items.
+        """
         return self.scan(
             ScanType.QUICK,
             scope=scope,
             on_progress=on_progress,
             generate_action_plan=generate_action_plan,
+            dashboard_eligible_only=True,
         )
 
     def scan_full(
@@ -576,6 +639,42 @@ class ScanOrchestrator:
         )
         return aggregator.aggregate(matches)
 
+    def _build_safe_summary(
+        self, findings: tuple[Any, ...]
+    ) -> Any:
+        """Build a DetectionSummary for only safe findings (V1.0 Dashboard)."""
+        from ..rules.aggregation import DetectionSummary
+        from datetime import UTC, datetime
+
+        total_findings = len(findings)
+        unique_assets = len({f.asset_id for f in findings})
+
+        known_sizes = [
+            f.estimated_size for f in findings if f.estimated_size is not None
+        ]
+        unknown_count = total_findings - len(known_sizes)
+        total_known = sum(known_sizes) if known_sizes else 0
+        total_size: Optional[int] = None if unknown_count > 0 else total_known
+
+        return DetectionSummary(
+            total_findings=total_findings,
+            unique_assets=unique_assets,
+            total_known_size=total_known,
+            total_unknown_size_count=unknown_count,
+            total_size=total_size,
+            size_by_category={},
+            size_by_severity={},
+            size_by_rule={},
+            findings_by_category={},
+            findings_by_severity={},
+            findings_by_safety={"safe": total_findings},
+            findings_by_confidence={},
+            fixable_findings=total_findings,
+            blocked_findings=0,
+            review_required_findings=0,
+            generated_at=datetime.now(UTC),
+        )
+
     def _prioritize(
         self,
         aggregation: Any,
@@ -641,6 +740,8 @@ class ScanOrchestrator:
         prioritized: Any,
         action_plan: Optional[ActionPlan],
         orchestrator_errors: list[ScanOrchestratorError],
+        *,
+        excluded_count: int = 0,
     ) -> ScanResult:
         """Assemble the immutable ScanResult."""
         findings = tuple(f.to_dict() for f in aggregation.findings)
@@ -662,6 +763,10 @@ class ScanOrchestrator:
             "actions_blocked": self._count_actions(action_plan, "blocked"),
             "actions_not_fixable": self._count_actions(action_plan, "not_fixable"),
             "errors_count": scan_context.error_count,
+            # V1.0 Dashboard: internal diagnostic count of items excluded
+            # because they were not verified-safe (locked, blocked, etc.).
+            # NOT shown to the user — for diagnostics only.
+            "dashboard_excluded_count": excluded_count,
         }
 
         return ScanResult(

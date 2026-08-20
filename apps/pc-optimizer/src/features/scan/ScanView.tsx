@@ -28,9 +28,11 @@ export interface ScanViewProps {
   onClose: () => void;
   className?: string;
   buttonLabel?: string;
+  /** Auto-start the scan immediately on mount (V1.0 Dashboard). */
+  autoStart?: boolean;
 }
 
-export function ScanView({ module, mode = 'full', onClose, className, buttonLabel }: ScanViewProps) {
+export function ScanView({ module, mode = 'full', onClose, className, buttonLabel, autoStart }: ScanViewProps) {
   const config = useMemo(() => getScanConfig(module), [module]);
   const scan = useScan({ mode, config });
   const [showResults, setShowResults] = useState(false);
@@ -43,6 +45,14 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
   }, [setSearchParams, onClose]);
 
   const isDashboardOptimize = module === 'optimize';
+
+  // V1.0 Dashboard: auto-start scan on mount when autoStart is set.
+  useEffect(() => {
+    if (autoStart && scan.step === 'idle' && !scan.sessionId) {
+      void scan.startScan();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart]);
 
   const canReview =
     scan.step === 'complete' &&

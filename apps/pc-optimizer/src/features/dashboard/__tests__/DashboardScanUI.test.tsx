@@ -162,7 +162,7 @@ describe('Dashboard Scan UI', () => {
     });
   });
 
-  it('modal contains ScanView component', async () => {
+  it('modal contains ScanView component (V1.0: auto-starts scan)', async () => {
     renderDashboard();
 
     await waitFor(() => {
@@ -171,9 +171,10 @@ describe('Dashboard Scan UI', () => {
 
     fireEvent.click(screen.getByTestId('dashboard-scan-cta'));
 
+    // V1.0: Dashboard modal auto-starts the scan, so the idle state
+    // may not be visible. Instead, verify the modal itself is open.
     await waitFor(() => {
-      // ScanView renders with scan-view-idle testid when idle
-      expect(screen.getByTestId('scan-view-idle')).toBeInTheDocument();
+      expect(screen.getByTestId('dashboard-scan-modal')).toBeInTheDocument();
     });
   });
 
@@ -349,7 +350,7 @@ describe('Dashboard Scan UI', () => {
     });
   });
 
-  it('shows "Review Results" when scan completes with findings', async () => {
+  it('shows "Scan Now" when scan completes with findings (V1.0: no Review Results)', async () => {
     mockUseDashboardScan.mockReturnValue({
       session: null,
       persisted: null,
@@ -378,11 +379,12 @@ describe('Dashboard Scan UI', () => {
 
     await waitFor(() => {
       const scanBtn = screen.getByTestId('dashboard-scan-cta');
-      expect(scanBtn).toHaveTextContent('Review Results');
+      // V1.0: Dashboard always shows "Scan Now" — no "Review Results" button
+      expect(scanBtn).toHaveTextContent('Scan Now');
     });
   });
 
-  it('shows actionable recommendation card when scan completes with actionable findings', async () => {
+  it('V1.0: does not show actionable recommendation card (removed)', async () => {
     mockUseDashboardScan.mockReturnValue({
       session: null,
       persisted: null,
@@ -409,9 +411,9 @@ describe('Dashboard Scan UI', () => {
 
     renderDashboard();
 
+    // V1.0: actionable-recommendation card was removed
     await waitFor(() => {
-      expect(screen.getByTestId('actionable-recommendation')).toBeInTheDocument();
-      expect(screen.getByText(/8 actionable issues ready for review/i)).toBeInTheDocument();
+      expect(screen.queryByTestId('actionable-recommendation')).not.toBeInTheDocument();
     });
   });
 
@@ -447,16 +449,16 @@ describe('Dashboard Scan UI', () => {
     });
   });
 
-  it('shows optimize preview card when idle and no scan results', async () => {
+  it('V1.0: does not show optimize preview card when idle (removed)', async () => {
     renderDashboard();
 
+    // V1.0: optimize-preview-card was removed — Dashboard uses single Scan Now flow
     await waitFor(() => {
-      expect(screen.getByTestId('optimize-preview-card')).toBeInTheDocument();
-      expect(screen.getByText(/Quick optimization available/i)).toBeInTheDocument();
+      expect(screen.queryByTestId('optimize-preview-card')).not.toBeInTheDocument();
     });
   });
 
-  it('does not show optimize preview card during active scan', async () => {
+  it('V1.0: does not show optimize preview card during active scan (removed)', async () => {
     mockUseDashboardScan.mockReturnValue({
       session: null,
       persisted: null,
