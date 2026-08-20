@@ -1,0 +1,38 @@
+Unify scan experience: visual consistency across 3 scan pages
+
+Audit findings:
+- Smart Opt + Security pages had double padding (px-6 py-6) on top
+  of AppLayout's var(--avs-space-page-x/y) padding
+- Protection Center lacked ProStatusBanner/ProStatusPill
+- Summary cards on all 3 pages used plain text-only layout, while
+  Dashboard used polished icon+label+value cards
+- ScanView width inconsistent: Protection=w-full max-w-sm,
+  Smart Opt/Security=w-72
+- Button labels inconsistent: "Scan Now" / "Scan & Review" /
+  "Run Security Scan"
+- Loading/error states used different component patterns
+
+Fixes:
+1. Smart Optimization: Remove px-6 py-6 (AppLayout handles padding).
+   Add description to PageHeader. Change buttonLabel to "Optimize
+   Now". Change ScanView width to w-full max-w-sm. Upgrade 4 summary
+   cards to icon+label+value pattern matching Dashboard.
+
+2. Security Center: Remove px-6 py-6. Change buttonLabel to "Scan
+   Now". Change ScanView width to w-full max-w-sm. Add min-w-0 to
+   header text container. Upgrade 4 summary cards to icon+label+value
+   pattern matching Dashboard.
+
+3. Protection Center: Add ProStatusBanner compact + ProStatusPill.
+   Wrap ScanView in flex container with ProStatusPill. Upgrade 4
+   summary cards to icon+label+value pattern matching Dashboard.
+
+All three pages now share:
+- No double padding (AppLayout provides page padding)
+- ProStatusBanner compact at top
+- Consistent ScanView width (w-full max-w-sm)
+- Icon+label+value summary cards (Dashboard pattern)
+- Consistent button labels ("Scan Now" / "Optimize Now" / "Scan Now")
+
+Results: yarn lint PASS, yarn typecheck PASS, yarn test PASS
+(8399 tests, 141 files, 0 failures)

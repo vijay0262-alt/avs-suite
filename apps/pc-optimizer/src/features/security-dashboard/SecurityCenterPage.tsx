@@ -206,16 +206,16 @@ export function SecurityCenterPage() {
 
   if (state.bootstrap === 'loading') {
     return (
-      <div className="px-6 py-6">
+      <>
         <PageHeader title="AI Security Center" description="Unified AI-powered security protection, investigation, and remediation." />
         <ModuleLoadingState message="Initializing security engines…" />
-      </div>
+      </>
     );
   }
 
   if (state.bootstrap === 'error') {
     return (
-      <div className="px-6 py-6">
+      <>
         <PageHeader title="AI Security Center" />
         <Card>
           <div className="py-8 text-center">
@@ -227,18 +227,18 @@ export function SecurityCenterPage() {
             </Button>
           </div>
         </Card>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="px-6 py-6 space-y-5">
+    <div className="space-y-5">
       <ProStatusBanner compact />
 
       {/* ── ABOVE THE FOLD ─────────────────────────────────────────── */}
       {/* Security Score + Scan Now */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4 min-w-0">
           <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-3 ${
             state.securityScore >= 80 ? 'bg-semantic-success/10' : state.securityScore >= 60 ? 'bg-semantic-warning/10' : 'bg-semantic-danger/10'
           }`}>
@@ -246,7 +246,7 @@ export function SecurityCenterPage() {
               state.securityScore >= 80 ? 'text-semantic-success' : state.securityScore >= 60 ? 'text-semantic-warning' : 'text-semantic-danger'
             }`} />
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-page-title text-text-primary">AI Security Center</h1>
             <div className="flex items-center gap-3 mt-1">
               <span className="text-small font-semibold text-text-primary tabular-nums">{state.securityScore}<span className="text-caption text-text-muted">/100</span></span>
@@ -261,14 +261,14 @@ export function SecurityCenterPage() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <ProStatusPill />
           <ScanView
             module="security"
             mode="full"
-            buttonLabel="Run Security Scan"
+            buttonLabel="Scan Now"
             onClose={() => {}}
-            className="shrink-0 w-72"
+            className="shrink-0 w-full max-w-sm"
           />
         </div>
       </div>
@@ -277,43 +277,75 @@ export function SecurityCenterPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Threat Status */}
         <Card variant="glass" className="p-4" data-testid="security-threat-status">
-          <div className="text-caption text-text-muted">Threat Status</div>
-          <div className={`mt-1 text-2xl font-bold tabular-nums ${state.activeThreats.length > 0 ? 'text-semantic-danger' : 'text-semantic-success'}`}>
-            {state.activeThreats.length}
-          </div>
-          <div className="text-caption text-text-muted mt-0.5">
-            {state.activeThreats.length > 0 ? 'Active threats' : 'No threats'}
+          <div className="flex items-center gap-3">
+            <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${
+              state.activeThreats.length > 0 ? 'bg-semantic-danger/10' : 'bg-semantic-success/10'
+            }`}>
+              <ShieldExclamationIcon className={`h-5 w-5 ${
+                state.activeThreats.length > 0 ? 'text-semantic-danger' : 'text-semantic-success'
+              }`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-caption text-text-muted">Threat Status</div>
+              <div className={`text-2xl font-bold tabular-nums ${state.activeThreats.length > 0 ? 'text-semantic-danger' : 'text-semantic-success'}`}>
+                {state.activeThreats.length}
+              </div>
+              <div className="text-caption text-text-muted">
+                {state.activeThreats.length > 0 ? 'Active threats' : 'No threats'}
+              </div>
+            </div>
           </div>
         </Card>
 
         {/* Card 2: Files Scanned */}
         <Card variant="glass" className="p-4" data-testid="security-files-scanned">
-          <div className="text-caption text-text-muted">Files Scanned</div>
-          <div className="mt-1 text-2xl font-bold text-text-primary tabular-nums">
-            {state.scanHistory[0]?.itemsScanned?.toLocaleString() ?? '0'}
-          </div>
-          <div className="text-caption text-text-muted mt-0.5">
-            {state.scanHistory[0] ? 'Last scan' : 'No scans yet'}
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-surface-muted">
+              <MagnifyingGlassIcon className="h-5 w-5 text-text-muted" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-caption text-text-muted">Files Scanned</div>
+              <div className="text-2xl font-bold text-text-primary tabular-nums">
+                {state.scanHistory[0]?.itemsScanned?.toLocaleString() ?? '0'}
+              </div>
+              <div className="text-caption text-text-muted">
+                {state.scanHistory[0] ? 'Last scan' : 'No scans yet'}
+              </div>
+            </div>
           </div>
         </Card>
 
         {/* Card 3: Threats Removed */}
         <Card variant="glass" className="p-4" data-testid="security-threats-removed">
-          <div className="text-caption text-text-muted">Threats Removed</div>
-          <div className="mt-1 text-2xl font-bold text-text-primary tabular-nums">
-            {state.scanHistory.reduce((sum, s) => sum + (s.threatsResolved ?? 0), 0)}
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-semantic-success/10">
+              <CheckIcon className="h-5 w-5 text-semantic-success" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-caption text-text-muted">Threats Removed</div>
+              <div className="text-2xl font-bold text-text-primary tabular-nums">
+                {state.scanHistory.reduce((sum, s) => sum + (s.threatsResolved ?? 0), 0)}
+              </div>
+              <div className="text-caption text-text-muted">All time</div>
+            </div>
           </div>
-          <div className="text-caption text-text-muted mt-0.5">All time</div>
         </Card>
 
         {/* Card 4: Last Scan */}
         <Card variant="glass" className="p-4" data-testid="security-last-scan">
-          <div className="text-caption text-text-muted">Last Scan</div>
-          <div className="mt-1 text-small font-semibold text-text-primary">
-            {state.snapshot?.lastScan ? formatTimeAgo(state.snapshot.lastScan) : 'Never'}
-          </div>
-          <div className="text-caption text-text-muted mt-0.5">
-            {state.snapshot?.protectionStatus.realTimeProtection ? 'Real-time active' : 'Real-time off'}
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-surface-muted">
+              <ClockIcon className="h-5 w-5 text-text-muted" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-caption text-text-muted">Last Scan</div>
+              <div className="text-small font-semibold text-text-primary">
+                {state.snapshot?.lastScan ? formatTimeAgo(state.snapshot.lastScan) : 'Never'}
+              </div>
+              <div className="text-caption text-text-muted">
+                {state.snapshot?.protectionStatus.realTimeProtection ? 'Real-time active' : 'Real-time off'}
+              </div>
+            </div>
           </div>
         </Card>
       </div>

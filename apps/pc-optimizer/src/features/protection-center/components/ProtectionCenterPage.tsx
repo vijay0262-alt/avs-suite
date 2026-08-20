@@ -6,6 +6,9 @@ import {
   HeartIcon,
   BellAlertIcon,
   ArrowPathIcon,
+  EyeIcon,
+  FireIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ProtectionCenterViewModel } from '../ProtectionCenterViewModel';
@@ -13,6 +16,7 @@ import { useIsPro } from '../../sync/syncStore';
 import { DashboardViewModel } from '../../dashboard/DashboardViewModel';
 import { dashboardService } from '../../dashboard/dashboard.service';
 import { ScanView } from '../../scan';
+import { ProStatusBanner, ProStatusPill } from '../../licensing/ProStatusBadge';
 import { ProtectionBanner } from './ProtectionBanner';
 import { ProtectionCards } from './ProtectionCards';
 import { LiveActivityTimeline } from './LiveActivityTimeline';
@@ -111,6 +115,8 @@ export function ProtectionCenterPage() {
       role="main"
       aria-label="AI Protection Center"
     >
+      <ProStatusBanner compact />
+
       {/* ── ABOVE THE FOLD ─────────────────────────────────────────── */}
       {/* Protection Status + Scan Now */}
       <div className="flex items-start justify-between gap-4">
@@ -127,13 +133,16 @@ export function ProtectionCenterPage() {
             </div>
           )}
         </div>
-        <ScanView
-          module="protection"
-          mode="full"
-          buttonLabel="Scan Now"
-          onClose={() => {}}
-          className="shrink-0 w-full max-w-sm"
-        />
+        <div className="flex items-center gap-3 shrink-0">
+          <ProStatusPill />
+          <ScanView
+            module="protection"
+            mode="full"
+            buttonLabel="Scan Now"
+            onClose={() => {}}
+            className="shrink-0 w-full max-w-sm"
+          />
+        </div>
       </div>
 
       {/* Active Alerts (only show if there are any) */}
@@ -154,44 +163,80 @@ export function ProtectionCenterPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Protection Score */}
         <Card variant="glass" className="p-4" data-testid="protection-score">
-          <div className="text-caption text-text-muted">Protection Score</div>
-          <div className="mt-1 text-2xl font-bold text-text-primary tabular-nums">
-            {state.coverage.filter(c => c.covered).length}/{state.coverage.length}
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-brand-primary/10">
+              <ShieldCheckIcon className="h-5 w-5 text-brand-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-caption text-text-muted">Protection Score</div>
+              <div className="text-2xl font-bold text-text-primary tabular-nums">
+                {state.coverage.filter(c => c.covered).length}/{state.coverage.length}
+              </div>
+              <div className="text-caption text-text-muted">Coverage areas</div>
+            </div>
           </div>
-          <div className="text-caption text-text-muted mt-0.5">Coverage areas</div>
         </Card>
 
         {/* Card 2: Real-Time Protection */}
         <Card variant="glass" className="p-4" data-testid="protection-realtime">
-          <div className="text-caption text-text-muted">Real-Time Protection</div>
-          <div className="mt-1 text-small font-semibold text-text-primary">
-            {state.cards.filter(c => c.status === 'active').length} active monitors
-          </div>
-          <div className="text-caption text-text-muted mt-0.5">
-            {state.cards.filter(c => c.status === 'active').length > 0 ? 'Monitoring' : 'Standby'}
+          <div className="flex items-center gap-3">
+            <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${
+              state.cards.filter(c => c.status === 'active').length > 0 ? 'bg-semantic-success/10' : 'bg-surface-muted'
+            }`}>
+              <EyeIcon className={`h-5 w-5 ${
+                state.cards.filter(c => c.status === 'active').length > 0 ? 'text-semantic-success' : 'text-text-muted'
+              }`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-caption text-text-muted">Real-Time Protection</div>
+              <div className="text-2xl font-bold text-text-primary tabular-nums">
+                {state.cards.filter(c => c.status === 'active').length}
+              </div>
+              <div className="text-caption text-text-muted">
+                {state.cards.filter(c => c.status === 'active').length > 0 ? 'Monitoring' : 'Standby'}
+              </div>
+            </div>
           </div>
         </Card>
 
         {/* Card 3: Firewall Status */}
         <Card variant="glass" className="p-4" data-testid="protection-firewall">
-          <div className="text-caption text-text-muted">Firewall Status</div>
-          <div className="mt-1 text-small font-semibold text-text-primary">
-            {state.cards.find(c => c.id === 'firewall')?.status === 'active' ? 'Active' : 'Inactive'}
-          </div>
-          <div className="text-caption text-text-muted mt-0.5">
-            {state.cards.find(c => c.id === 'firewall')?.status === 'active' ? 'Protected' : 'Check settings'}
+          <div className="flex items-center gap-3">
+            <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${
+              state.cards.find(c => c.id === 'firewall')?.status === 'active' ? 'bg-semantic-success/10' : 'bg-semantic-danger/10'
+            }`}>
+              <FireIcon className={`h-5 w-5 ${
+                state.cards.find(c => c.id === 'firewall')?.status === 'active' ? 'text-semantic-success' : 'text-semantic-danger'
+              }`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-caption text-text-muted">Firewall Status</div>
+              <div className="text-small font-semibold text-text-primary">
+                {state.cards.find(c => c.id === 'firewall')?.status === 'active' ? 'Active' : 'Inactive'}
+              </div>
+              <div className="text-caption text-text-muted">
+                {state.cards.find(c => c.id === 'firewall')?.status === 'active' ? 'Protected' : 'Check settings'}
+              </div>
+            </div>
           </div>
         </Card>
 
         {/* Card 4: Last Security Scan */}
         <Card variant="glass" className="p-4" data-testid="protection-last-scan">
-          <div className="text-caption text-text-muted">Last Security Scan</div>
-          <div className="mt-1 text-small font-semibold text-text-primary">
-            {dashState.healthScanHistory[0] ? `${dashState.healthScanHistory[0].result === 'success' ? 'Completed' : 'Partial'} · ${new Date(dashState.healthScanHistory[0].date).toLocaleDateString()}` : 'No scans yet'}
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-surface-muted">
+              <ClockIcon className="h-5 w-5 text-text-muted" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-caption text-text-muted">Last Security Scan</div>
+              <div className="text-small font-semibold text-text-primary">
+                {dashState.healthScanHistory[0] ? `${dashState.healthScanHistory[0].result === 'success' ? 'Completed' : 'Partial'} · ${new Date(dashState.healthScanHistory[0].date).toLocaleDateString()}` : 'No scans yet'}
+              </div>
+              {dashState.healthScanHistory[0] && (
+                <div className="text-caption text-text-muted">Score: {dashState.healthScanHistory[0].healthAfter}</div>
+              )}
+            </div>
           </div>
-          {dashState.healthScanHistory[0] && (
-            <div className="text-caption text-text-muted mt-0.5">Score: {dashState.healthScanHistory[0].healthAfter}</div>
-          )}
         </Card>
       </div>
 

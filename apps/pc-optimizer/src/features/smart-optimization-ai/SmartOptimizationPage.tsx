@@ -43,6 +43,7 @@ import {
   CheckCircleIcon,
   CpuChipIcon,
   ClockIcon,
+  CircleStackIcon,
   ArrowTrendingUpIcon,
   LightBulbIcon,
   BeakerIcon,
@@ -243,7 +244,7 @@ export default function SmartOptimizationPage() {
   // If the RPC returned a plan_id, hand off to the canonical review flow
   if (smartPlan.planId) {
     return (
-      <div className="px-6 py-6" data-testid="smart-opt-plan-review">
+      <div data-testid="smart-opt-plan-review">
         <PlanReviewView
           planId={smartPlan.planId}
           module="optimize"
@@ -255,10 +256,10 @@ export default function SmartOptimizationPage() {
 
   if (state.bootstrap === 'loading') {
     return (
-      <div className="px-6 py-6">
+      <>
         <PageHeader title="AI Smart Optimization" description="Safe, intelligent optimization recommendations tailored to your PC." />
         <ModuleLoadingState />
-      </div>
+      </>
     );
   }
 
@@ -270,19 +271,20 @@ export default function SmartOptimizationPage() {
   const hasActionablePlan = s.plan !== null && s.plan.actions.length > 0;
 
   return (
-    <div className="px-6 py-6 space-y-5">
+    <div className="space-y-5">
       <ProStatusBanner compact />
       <PageHeader
         title="AI Smart Optimization"
+        description="Safe, intelligent optimization recommendations tailored to your PC."
         actions={
           <div className="flex items-center gap-2">
             <ProStatusPill />
             <ScanView
               module="optimize"
               mode="quick"
-              buttonLabel="Scan & Review"
+              buttonLabel="Optimize Now"
               onClose={() => {}}
-              className="shrink-0 w-72"
+              className="shrink-0 w-full max-w-sm"
             />
           </div>
         }
@@ -294,41 +296,68 @@ export default function SmartOptimizationPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Optimization Score */}
           <Card variant="glass" className="p-4" data-testid="smart-opt-score">
-            <div className="text-caption text-text-muted">Optimization Score</div>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-text-primary tabular-nums">{dash.summary.currentHealthScore}</span>
-              <ArrowTrendingUpIcon className="h-4 w-4 text-semantic-success" />
-              <span className="text-2xl font-bold text-semantic-success tabular-nums">{dash.summary.potentialHealthScore}</span>
+            <div className="flex items-center gap-3">
+              <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-brand-primary/10">
+                <ArrowTrendingUpIcon className="h-5 w-5 text-brand-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-caption text-text-muted">Optimization Score</div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-bold text-text-primary tabular-nums">{dash.summary.currentHealthScore}</span>
+                  <span className="text-small font-semibold text-semantic-success tabular-nums">→ {dash.summary.potentialHealthScore}</span>
+                </div>
+                <div className="text-caption text-text-muted">+{dash.summary.potentialHealthScore - dash.summary.currentHealthScore} possible</div>
+              </div>
             </div>
-            <div className="text-caption text-text-muted mt-0.5">+{dash.summary.potentialHealthScore - dash.summary.currentHealthScore} possible</div>
           </Card>
 
           {/* Card 2: Storage Recovered */}
           <Card variant="glass" className="p-4" data-testid="smart-opt-storage">
-            <div className="text-caption text-text-muted">Storage Recovered</div>
-            <div className="mt-1 text-2xl font-bold text-text-primary tabular-nums">
-              {formatDataSize(dash.summary.estimatedTotalRecoveryMB * 1024 * 1024)}
+            <div className="flex items-center gap-3">
+              <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-semantic-success/10">
+                <CircleStackIcon className="h-5 w-5 text-semantic-success" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-caption text-text-muted">Storage Recovered</div>
+                <div className="text-2xl font-bold text-text-primary tabular-nums">
+                  {formatDataSize(dash.summary.estimatedTotalRecoveryMB * 1024 * 1024)}
+                </div>
+                <div className="text-caption text-text-muted">Estimated</div>
+              </div>
             </div>
-            <div className="text-caption text-text-muted mt-0.5">Estimated</div>
           </Card>
 
           {/* Card 3: Items Fixed */}
           <Card variant="glass" className="p-4" data-testid="smart-opt-items">
-            <div className="text-caption text-text-muted">Items Fixed</div>
-            <div className="mt-1 text-2xl font-bold text-text-primary tabular-nums">
-              {dash.summary.totalAvailableActions}
+            <div className="flex items-center gap-3">
+              <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-semantic-warning/10">
+                <BoltIcon className="h-5 w-5 text-semantic-warning" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-caption text-text-muted">Items Fixed</div>
+                <div className="text-2xl font-bold text-text-primary tabular-nums">
+                  {dash.summary.totalAvailableActions}
+                </div>
+                <div className="text-caption text-text-muted">Available actions</div>
+              </div>
             </div>
-            <div className="text-caption text-text-muted mt-0.5">Available actions</div>
           </Card>
 
           {/* Card 4: Last Optimization */}
           <Card variant="glass" className="p-4" data-testid="smart-opt-last">
-            <div className="text-caption text-text-muted">Last Optimization</div>
-            <div className="mt-1 text-small font-semibold text-text-primary">
-              Not yet run
-            </div>
-            <div className="text-caption text-text-muted mt-0.5">
-              {`Est. ${formatDuration(dash.summary.estimatedDurationSeconds)}`}
+            <div className="flex items-center gap-3">
+              <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-surface-muted">
+                <ClockIcon className="h-5 w-5 text-text-muted" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-caption text-text-muted">Last Optimization</div>
+                <div className="text-small font-semibold text-text-primary">
+                  Not yet run
+                </div>
+                <div className="text-caption text-text-muted">
+                  {`Est. ${formatDuration(dash.summary.estimatedDurationSeconds)}`}
+                </div>
+              </div>
             </div>
           </Card>
         </div>
