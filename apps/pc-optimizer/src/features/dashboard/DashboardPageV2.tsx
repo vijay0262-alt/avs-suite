@@ -290,7 +290,7 @@ export default function DashboardPage() {
                         // PART 4: Distinguish detected from remaining
                         // If cleanup_result exists, show remaining issues (current state)
                         // Otherwise show detected issues (scan result)
-                        const hasCleanup = snapshot.cleanupResult !== null;
+                        const hasCleanup = snapshot.cleanupResult != null;
                         const issueCount = hasCleanup 
                           ? snapshot.cleanupResult!.remaining 
                           : snapshot.issuesFound;

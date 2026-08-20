@@ -44,8 +44,8 @@ const VALID_CACHED: StoredLicense = {
   expires_at: null,
   signature: 'cached-signature-data-here-at-least-10',
   last_refreshed: '2026-07-20T10:00:00+00:00',
-  last_successful_validation: '2026-07-20T10:00:00+00:00',
-  grace_period_expiration: '2026-08-19T10:00:00+00:00',
+  last_successful_validation: '2026-08-20T10:00:00+00:00',
+  grace_period_expiration: '2026-09-19T10:00:00+00:00',
   product_version: '1.0.0',
   cache_version: 2,
 };

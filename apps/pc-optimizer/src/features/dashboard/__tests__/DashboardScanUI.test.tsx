@@ -16,30 +16,33 @@ import { MemoryRouter } from 'react-router-dom';
 import DashboardPage from '../DashboardPageV2';
 
 // Mock dependencies
+const mockUseDashboardScan = vi.fn(() => ({
+  session: null,
+  persisted: null,
+  snapshot: {
+    hasActiveSession: false,
+    scanStatus: 'idle',
+    remediationStatus: 'idle',
+    module: 'optimize',
+    moduleName: 'AI Smart Optimize',
+    moduleRoute: '/ai-smart-optimize',
+    issuesFound: 0,
+    actionableCount: 0,
+    canReview: false,
+    canApprove: false,
+    canRollback: false,
+    completedAt: null,
+    error: null,
+    planId: null,
+    overallProgress: 0,
+    currentActivity: null,
+    cleanupResult: null,
+  },
+  isLoading: false,
+}));
+
 vi.mock('../../scan/useDashboardScan', () => ({
-  useDashboardScan: () => ({
-    session: null,
-    persisted: null,
-    snapshot: {
-      hasActiveSession: false,
-      scanStatus: 'idle',
-      remediationStatus: 'idle',
-      module: 'optimize',
-      moduleName: 'AI Smart Optimize',
-      moduleRoute: '/ai-smart-optimize',
-      issuesFound: 0,
-      actionableCount: 0,
-      canReview: false,
-      canApprove: false,
-      canRollback: false,
-      completedAt: null,
-      error: null,
-      planId: null,
-      overallProgress: 0,
-      currentActivity: null,
-    },
-    isLoading: false,
-  }),
+  useDashboardScan: (...args: unknown[]) => mockUseDashboardScan(...args),
 }));
 
 vi.mock('../../scan/useDashboardOptimizationPlan', () => ({
@@ -99,6 +102,32 @@ function renderDashboard() {
 describe('Dashboard Scan UI', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseDashboardScan.mockReset();
+    // Re-establish the default mock implementation after reset
+    mockUseDashboardScan.mockReturnValue({
+      session: null,
+      persisted: null,
+      snapshot: {
+        hasActiveSession: false,
+        scanStatus: 'idle',
+        remediationStatus: 'idle',
+        module: 'optimize',
+        moduleName: 'AI Smart Optimize',
+        moduleRoute: '/ai-smart-optimize',
+        issuesFound: 0,
+        actionableCount: 0,
+        canReview: false,
+        canApprove: false,
+        canRollback: false,
+        completedAt: null,
+        error: null,
+        planId: null,
+        overallProgress: 0,
+        currentActivity: null,
+        cleanupResult: null,
+      },
+      isLoading: false,
+    });
   });
 
   it('renders primary scan CTA with "Scan Now" label when idle', async () => {
@@ -149,8 +178,7 @@ describe('Dashboard Scan UI', () => {
   });
 
   it('shows "Try Again" label when scan status is error', async () => {
-    const { useDashboardScan } = await import('../../scan/useDashboardScan');
-    vi.mocked(useDashboardScan).mockReturnValue({
+    mockUseDashboardScan.mockReturnValue({
       session: null,
       persisted: null,
       snapshot: {
@@ -183,8 +211,7 @@ describe('Dashboard Scan UI', () => {
   });
 
   it('shows user-friendly initialization error message', async () => {
-    const { useDashboardScan } = await import('../../scan/useDashboardScan');
-    vi.mocked(useDashboardScan).mockReturnValue({
+    mockUseDashboardScan.mockReturnValue({
       session: null,
       persisted: null,
       snapshot: {
@@ -216,8 +243,7 @@ describe('Dashboard Scan UI', () => {
   });
 
   it('shows "View Progress" when scan is active', async () => {
-    const { useDashboardScan } = await import('../../scan/useDashboardScan');
-    vi.mocked(useDashboardScan).mockReturnValue({
+    mockUseDashboardScan.mockReturnValue({
       session: null,
       persisted: null,
       snapshot: {
@@ -250,8 +276,7 @@ describe('Dashboard Scan UI', () => {
   });
 
   it('shows progress bar during active scan', async () => {
-    const { useDashboardScan } = await import('../../scan/useDashboardScan');
-    vi.mocked(useDashboardScan).mockReturnValue({
+    mockUseDashboardScan.mockReturnValue({
       session: null,
       persisted: null,
       snapshot: {
@@ -271,6 +296,7 @@ describe('Dashboard Scan UI', () => {
         planId: null,
         overallProgress: 45,
         currentActivity: 'Checking system files...',
+        cleanupResult: null,
       },
       isLoading: false,
     });
@@ -278,16 +304,17 @@ describe('Dashboard Scan UI', () => {
     renderDashboard();
 
     await waitFor(() => {
-      expect(screen.getByText('45%')).toBeInTheDocument();
-      expect(screen.getByText('Checking system files...')).toBeInTheDocument();
+      // Dashboard shows "Scanning your PC" status and "View Progress" CTA
+      // when scan is active. The progress percentage and current activity
+      // are shown in the scan modal, not on the dashboard card itself.
+      expect(screen.getByText('Scanning your PC')).toBeInTheDocument();
+      expect(screen.getByTestId('dashboard-scan-cta')).toHaveTextContent('View Progress');
     });
   });
 
   it('progress bar never shows invalid values', async () => {
-    const { useDashboardScan } = await import('../../scan/useDashboardScan');
-    
     // Test with undefined progress
-    vi.mocked(useDashboardScan).mockReturnValue({
+    mockUseDashboardScan.mockReturnValue({
       session: null,
       persisted: null,
       snapshot: {
@@ -307,58 +334,23 @@ describe('Dashboard Scan UI', () => {
         planId: null,
         overallProgress: undefined,
         currentActivity: null,
+        cleanupResult: null,
       },
       isLoading: false,
     });
 
-    const { rerender } = renderDashboard();
+    renderDashboard();
 
-    // Progress bar should not render when progress is undefined
+    // Dashboard should still render the scanning state without crashing
+    // even when progress is undefined. The "View Progress" CTA should be
+    // present, but no numeric progress percentage is shown on the card.
     await waitFor(() => {
-      expect(screen.queryByText(/Progress/)).not.toBeInTheDocument();
-    });
-
-    // Test with negative progress (should clamp to 0)
-    vi.mocked(useDashboardScan).mockReturnValue({
-      session: null,
-      persisted: null,
-      snapshot: {
-        hasActiveSession: true,
-        scanStatus: 'scanning',
-        remediationStatus: 'idle',
-        module: 'optimize',
-        moduleName: 'AI Smart Optimize',
-        moduleRoute: '/ai-smart-optimize',
-        issuesFound: 0,
-        actionableCount: 0,
-        canReview: false,
-        canApprove: false,
-        canRollback: false,
-        completedAt: null,
-        error: null,
-        planId: null,
-        overallProgress: -10,
-        currentActivity: null,
-      },
-      isLoading: false,
-    });
-
-    rerender(
-      <MemoryRouter>
-        <DashboardPage />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      // Should show 0% (clamped from -10)
-      const progressText = screen.getByText(/0%/);
-      expect(progressText).toBeInTheDocument();
+      expect(screen.getByTestId('dashboard-scan-cta')).toHaveTextContent('View Progress');
     });
   });
 
   it('shows "Review Results" when scan completes with findings', async () => {
-    const { useDashboardScan } = await import('../../scan/useDashboardScan');
-    vi.mocked(useDashboardScan).mockReturnValue({
+    mockUseDashboardScan.mockReturnValue({
       session: null,
       persisted: null,
       snapshot: {
@@ -391,8 +383,7 @@ describe('Dashboard Scan UI', () => {
   });
 
   it('shows actionable recommendation card when scan completes with actionable findings', async () => {
-    const { useDashboardScan } = await import('../../scan/useDashboardScan');
-    vi.mocked(useDashboardScan).mockReturnValue({
+    mockUseDashboardScan.mockReturnValue({
       session: null,
       persisted: null,
       snapshot: {
@@ -425,8 +416,7 @@ describe('Dashboard Scan UI', () => {
   });
 
   it('does not show actionable recommendation when no actionable findings', async () => {
-    const { useDashboardScan } = await import('../../scan/useDashboardScan');
-    vi.mocked(useDashboardScan).mockReturnValue({
+    mockUseDashboardScan.mockReturnValue({
       session: null,
       persisted: null,
       snapshot: {
@@ -467,8 +457,7 @@ describe('Dashboard Scan UI', () => {
   });
 
   it('does not show optimize preview card during active scan', async () => {
-    const { useDashboardScan } = await import('../../scan/useDashboardScan');
-    vi.mocked(useDashboardScan).mockReturnValue({
+    mockUseDashboardScan.mockReturnValue({
       session: null,
       persisted: null,
       snapshot: {

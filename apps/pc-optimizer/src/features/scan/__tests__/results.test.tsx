@@ -511,7 +511,11 @@ describe('ResultsView', () => {
     await waitFor(() => {
       expect(screen.getByTestId('execution-progress-panel')).toBeDefined();
     });
-    expect(screen.getByTestId('execution-completed-count').textContent).toBe('2 / 5');
+    // Wait for the status poll to update the execution counts from the
+    // backend status response (completed: 2, total: 5, failed: 1, review: 1).
+    await waitFor(() => {
+      expect(screen.getByTestId('execution-completed-count').textContent).toBe('2 / 5');
+    });
     expect(screen.getByTestId('execution-failed-count').textContent).toBe('1');
     expect(screen.getByTestId('execution-review-count').textContent).toBe('1');
   });
