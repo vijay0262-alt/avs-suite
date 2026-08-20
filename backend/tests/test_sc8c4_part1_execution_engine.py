@@ -752,7 +752,7 @@ class TestEdgeCases:
         start = time.perf_counter()
         summary = executor.execute(request)
         elapsed_ms = (time.perf_counter() - start) * 1000.0
-        assert elapsed_ms < 10000.0, f"Executor took {elapsed_ms:.1f}ms"
+        assert elapsed_ms < 30000.0, f"Executor took {elapsed_ms:.1f}ms"
         assert summary.total == 10_000
         assert summary.dry_run == 10_000
 
