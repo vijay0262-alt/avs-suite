@@ -71,6 +71,17 @@ class KnownLocations:
         seen: set[str] = set()
         roots: list[Path] = []
 
+        if os.name != "nt":
+            # On non-Windows (Linux CI, macOS, etc.), use platform temp dirs.
+            for candidate in ("/tmp", "/var/tmp", f"/tmp/{os.environ.get('USER', 'user')}"):
+                p = Path(candidate)
+                key = str(p).lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                roots.append(p)
+            return roots
+
         for candidate in (r"%LOCALAPPDATA%\Temp", r"%TEMP%", r"%TMP%"):
             p = KnownLocations.expand(candidate)
             key = str(p).lower()
@@ -89,6 +100,10 @@ class KnownLocations:
         Returns:
             Windows temp directory path
         """
+        if os.name != "nt":
+            # On non-Windows, there is no equivalent of %SystemRoot%\Temp.
+            # Return /var/tmp as the closest analogue (system-wide temp).
+            return Path("/var/tmp")
         return KnownLocations.expand(r"%SystemRoot%\Temp")
 
     @staticmethod
