@@ -231,30 +231,34 @@ export default function DashboardPage() {
                     </div>
                     <div className="mt-1 text-small text-text-secondary">
                       {(() => {
-                        // PART 4: Distinguish detected from remaining
-                        // If cleanup_result exists, show remaining issues (current state)
-                        // Otherwise show detected issues (scan result)
+                        // V1.0 SIMPLE: After cleanup, show "X files cleaned, Y MB recovered".
+                        // Before cleanup, show "X files found".
                         const hasCleanup = snapshot.cleanupResult != null;
-                        const issueCount = hasCleanup 
-                          ? snapshot.cleanupResult!.remaining 
-                          : snapshot.issuesFound;
-                        const label = hasCleanup 
-                          ? (issueCount === 1 ? 'issue remaining' : 'issues remaining')
-                          : (issueCount === 1 ? 'issue found' : 'issues found');
-                        
+                        if (hasCleanup) {
+                          const cleaned = snapshot.cleanupResult!.cleaned ?? 0;
+                          const space = snapshot.cleanupResult!.spaceRecovered ?? 0;
+                          if (cleaned > 0) {
+                            const spaceStr = space > 0
+                              ? ` · ${(space / 1024 / 1024).toFixed(1)} MB recovered`
+                              : '';
+                            return (
+                              <span className="text-semantic-success font-medium">
+                                {cleaned} files cleaned{spaceStr}
+                              </span>
+                            );
+                          }
+                          return <span className="text-semantic-success">PC is clean</span>;
+                        }
+                        const issueCount = snapshot.issuesFound;
                         if (issueCount > 0) {
                           return (
-                            <>
-                              <span className="text-semantic-warning font-medium">{issueCount} {label}</span>
-                              {hasCleanup && snapshot.cleanupResult!.cleaned > 0 && (
-                                <span className="text-text-muted"> · {snapshot.cleanupResult!.cleaned} cleaned</span>
-                              )}
-                            </>
+                            <span className="text-semantic-warning font-medium">
+                              {issueCount} files found
+                            </span>
                           );
                         }
-                        return <span className="text-semantic-success">No issues {hasCleanup ? 'remaining' : 'found'}</span>;
+                        return <span className="text-semantic-success">No issues found</span>;
                       })()}
-                      {snapshot.actionableCount > 0 && !snapshot.cleanupResult && ` · ${snapshot.actionableCount} actionable`}
                     </div>
                   </>
                 ) : hasScanError ? (

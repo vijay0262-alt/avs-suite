@@ -789,3 +789,7 @@ def register_junk_rules(registry) -> None:
     # V1.0 Disk Cleanup+ provider rules
     from .cleanup_providers import register_cleanup_provider_rules
     register_cleanup_provider_rules(registry)
+
+    # Security threat detection rules
+    from .security_rules import register_security_rules
+    register_security_rules(registry)

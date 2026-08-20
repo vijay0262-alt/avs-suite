@@ -62,6 +62,8 @@ import {
 } from './securityScanTypes';
 import { UnifiedSecurityScanResults } from './UnifiedSecurityScanResults';
 import { ScanView } from '../scan';
+import { Modal } from '../dashboard/components/Modal';
+import { BoltIcon } from '@heroicons/react/24/outline';
 
 const TABS: { id: SecurityCenterTab; label: string; icon: typeof ShieldCheckIcon }[] = [
   { id: 'overview', label: 'Overview', icon: ShieldCheckIcon },
@@ -188,6 +190,7 @@ export function SecurityCenterPage() {
   const vm = useMemo(() => new SecurityCenterViewModel(), []);
   const state = useViewModel(vm);
   const location = useLocation();
+  const [scanModalOpen, setScanModalOpen] = useState(false);
 
   useEffect(() => {
     vm.bootstrap();
@@ -236,20 +239,20 @@ export function SecurityCenterPage() {
       <ProStatusBanner compact />
 
       {/* ── ABOVE THE FOLD ─────────────────────────────────────────── */}
-      {/* Security Score + Scan Now */}
+      {/* Security Score + Scan Now — V1.0 UNIFIED: matches Dashboard style */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4 min-w-0">
           <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-3 ${
             state.securityScore >= 80 ? 'bg-semantic-success/10' : state.securityScore >= 60 ? 'bg-semantic-warning/10' : 'bg-semantic-danger/10'
           }`}>
-            <ShieldCheckIcon className={`h-8 w-8 ${
+            <ShieldCheckIcon className={`h-9 w-9 ${
               state.securityScore >= 80 ? 'text-semantic-success' : state.securityScore >= 60 ? 'text-semantic-warning' : 'text-semantic-danger'
             }`} />
           </div>
           <div className="min-w-0">
             <h1 className="text-page-title text-text-primary">AI Security Center</h1>
-            <div className="flex items-center gap-3 mt-1">
-              <span className="text-small font-semibold text-text-primary tabular-nums">{state.securityScore}<span className="text-caption text-text-muted">/100</span></span>
+            <div className="flex items-baseline gap-3 mt-1">
+              <span className="text-3xl font-bold text-text-primary tabular-nums">{state.securityScore}<span className="text-caption text-text-muted">/100</span></span>
               <span className={`text-caption font-medium ${
                 state.securityScore >= 80 ? 'text-semantic-success' : state.securityScore >= 60 ? 'text-semantic-warning' : 'text-semantic-danger'
               }`}>
@@ -263,13 +266,14 @@ export function SecurityCenterPage() {
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <ProStatusPill />
-          <ScanView
-            module="security"
-            mode="full"
-            buttonLabel="Scan Now"
-            onClose={() => {}}
-            className="shrink-0 w-full max-w-sm"
-          />
+          <Button
+            onClick={() => setScanModalOpen(true)}
+            size="lg"
+            leftIcon={<BoltIcon className="h-5 w-5" />}
+            data-testid="security-scan-cta"
+          >
+            Scan Now
+          </Button>
         </div>
       </div>
 
@@ -391,6 +395,23 @@ export function SecurityCenterPage() {
       {state.activeTab === 'remediation' && <RemediationTab vm={vm} />}
       {state.activeTab === 'reports' && <ReportsTab vm={vm} />}
       {state.activeTab === 'settings' && <SettingsTab vm={vm} />}
+
+      {/* V1.0 UNIFIED: Scan modal — same pattern as Dashboard */}
+      <Modal
+        open={scanModalOpen}
+        onClose={() => setScanModalOpen(false)}
+        title="AI Security Scan"
+        size="xl"
+        testId="security-scan-modal"
+      >
+        <ScanView
+          module="security"
+          mode="full"
+          autoStart={true}
+          buttonLabel="Scan Now"
+          onClose={() => setScanModalOpen(false)}
+        />
+      </Modal>
     </div>
   );
 }

@@ -1,13 +1,13 @@
 /**
- * ScanView.tsx — main shared scan component for Protection Center,
- * AI Smart Optimize, and AI Smart Security.
+ * ScanView.tsx — main shared scan component for ALL scan pages.
  *
  * Delegates the live backend wiring to `useScan` and renders the common
  * `UnifiedScanView`.  When idle it shows a single safe Start Scan button.
  *
- * For the Dashboard (module="optimize"), after scan completion it
- * automatically starts the one-click auto-optimization flow for safe
- * actions, then shows a completion summary.
+ * V1.0 UNIFIED: ALL modules (Dashboard, Smart Optimize, Security,
+ * Protection) follow the same scan → detect → auto-clean → show results
+ * pattern. After scan completion, auto-optimization runs automatically
+ * for safe actions, then shows a completion summary.
  */
 import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -44,9 +44,7 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
     onClose();
   }, [setSearchParams, onClose]);
 
-  const isDashboardOptimize = module === 'optimize';
-
-  // V1.0 Dashboard: auto-start scan on mount when autoStart is set.
+  // V1.0 UNIFIED: auto-start scan on mount when autoStart is set.
   useEffect(() => {
     if (autoStart && scan.step === 'idle' && !scan.sessionId) {
       void scan.startScan();
@@ -54,15 +52,9 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart]);
 
-  const canReview =
-    scan.step === 'complete' &&
-    Boolean(scan.report?.planId) &&
-    (scan.report?.issuesFound ?? 0) > 0;
-
-  // For Dashboard optimize, auto-start optimization when scan completes.
-  // For other modules, show the manual "Review & Remediate" button.
+  // V1.0 UNIFIED: ALL modules auto-start optimization when scan completes.
+  // No more manual "Review & Remediate" — scan → detect → clean → results.
   const shouldAutoOptimize =
-    isDashboardOptimize &&
     scan.step === 'complete' &&
     Boolean(scan.report?.planId) &&
     (scan.report?.issuesFound ?? 0) > 0 &&
@@ -78,17 +70,6 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
 
   const actions: UnifiedScanAction[] = useMemo(
     () => [
-      ...(canReview && !isDashboardOptimize
-        ? [
-            {
-              id: 'review-remediate',
-              label: 'Review & Remediate',
-              icon: 'BoltIcon',
-              variant: 'primary' as const,
-              action: () => setShowResults(true),
-            },
-          ]
-        : []),
       {
         id: 'close-scan',
         label: 'Close',
@@ -97,7 +78,7 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
         action: onClose,
       },
     ],
-    [onClose, canReview, isDashboardOptimize],
+    [onClose],
   );
 
   const resultsClose = useMemo(
@@ -138,11 +119,12 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
     );
   }
 
-  // Auto-optimization view for Dashboard
+  // V1.0 UNIFIED: Auto-optimization view for ALL modules
   if (showAutoOptimize && planId) {
     return (
       <AutoOptimizeView
         planId={planId}
+        module={module}
         onClose={autoOptimizeClose}
         onReviewRequired={(_pid) => {
           setShowAutoOptimize(false);

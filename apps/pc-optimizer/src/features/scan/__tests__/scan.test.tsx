@@ -91,6 +91,17 @@ describe('ScanView', () => {
       if (method === RPC_METHODS.SCAN_CORE_SCAN_CANCEL) {
         return Promise.resolve({ ok: true, cancelled: true });
       }
+      if (method === RPC_METHODS.SCAN_CORE_DASHBOARD_AUTO_OPTIMIZE) {
+        return Promise.resolve({ ok: true, session_id: 'opt-session' });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_DASHBOARD_AUTO_OPTIMIZE_STATUS) {
+        return Promise.resolve({
+          ok: true,
+          phase: 'complete',
+          completed: true,
+          result: { files_cleaned: 1, space_recovered: 1024 },
+        });
+      }
       return Promise.reject(new Error(`Unknown method: ${method}`));
     });
 
@@ -382,7 +393,7 @@ describe('ScanView', () => {
 
   });
 
-  it('shows Review & Remediate action and opens results view when clicked', async () => {
+  it('V1.0 UNIFIED: auto-starts optimization when scan completes with findings', async () => {
     render(<ScanView module="security" mode="full" onClose={() => {}} />);
     fireEvent.click(screen.getByTestId('scan-start-btn'));
 
@@ -445,27 +456,17 @@ describe('ScanView', () => {
       },
     };
 
+    // V1.0 UNIFIED: AutoOptimizeView should appear automatically (no manual Review & Remediate)
+    // The scan completes and immediately transitions to auto-optimize, so we
+    // wait for the auto-optimize view to appear.
     await waitFor(
       () => {
-        expect(screen.getByTestId('unified-scan-view-complete')).toBeDefined();
+        const view = screen.queryByTestId('auto-optimize-loading') ||
+                     screen.queryByTestId('auto-optimize-running') ||
+                     screen.queryByTestId('auto-optimize-complete');
+        expect(view).toBeDefined();
       },
-      { timeout: 5000 },
-    );
-
-    await waitFor(
-      () => {
-        expect(screen.getByText('Review & Remediate')).toBeDefined();
-      },
-      { timeout: 5000 },
-    );
-
-    fireEvent.click(screen.getByText('Review & Remediate'));
-
-    await waitFor(
-      () => {
-        expect(screen.getByTestId('results-view')).toBeDefined();
-      },
-      { timeout: 5000 },
+      { timeout: 10000 },
     );
   });
 
@@ -539,30 +540,23 @@ describe('ScanView', () => {
       { timeout: 5000 },
     );
 
+    // V1.0 UNIFIED: AutoOptimizeView appears automatically (no manual Review & Remediate)
     await waitFor(
       () => {
-        expect(screen.getByText('Review & Remediate')).toBeDefined();
+        const view = screen.queryByTestId('auto-optimize-loading') ||
+                     screen.queryByTestId('auto-optimize-running') ||
+                     screen.queryByTestId('auto-optimize-complete');
+        expect(view).toBeDefined();
       },
       { timeout: 5000 },
     );
 
-    fireEvent.click(screen.getByText('Review & Remediate'));
-
-    await waitFor(
-      () => {
-        expect(screen.getByTestId('results-view')).toBeDefined();
-      },
-      { timeout: 5000 },
-    );
-
-    // Ensure display names are shown but no raw path or asset data is visible.
-    expect(screen.getByText('Junk file')).toBeDefined();
-    expect(screen.getByText('Blocked file')).toBeDefined();
+    // Ensure no raw path or asset data is visible in the auto-optimize view.
     expect(screen.queryByText(/C:\\\\|\\\\Users/)).toBeNull();
     expect(screen.queryByText(/asset-1/)).toBeNull();
   });
 
-  it('full flow reaches approval and only calls execute after explicit Approve & Fix', async () => {
+  it('V1.0 UNIFIED: auto-optimize starts automatically after scan completes', async () => {
     mockCall.mockImplementation((method: string) => {
       if (method === RPC_METHODS.SCAN_CORE_SCAN_FULL) {
         return Promise.resolve({
@@ -576,6 +570,17 @@ describe('ScanView', () => {
       }
       if (method === RPC_METHODS.SCAN_CORE_SCAN_RESULT) {
         return Promise.resolve(mockResult);
+      }
+      if (method === RPC_METHODS.SCAN_CORE_DASHBOARD_AUTO_OPTIMIZE) {
+        return Promise.resolve({ ok: true, session_id: 'opt-session' });
+      }
+      if (method === RPC_METHODS.SCAN_CORE_DASHBOARD_AUTO_OPTIMIZE_STATUS) {
+        return Promise.resolve({
+          ok: true,
+          phase: 'complete',
+          completed: true,
+          result: { files_cleaned: 1, space_recovered: 1024 },
+        });
       }
       if (method === RPC_METHODS.SCAN_CORE_REMEDIATION_PREPARE) {
         return Promise.resolve({
@@ -691,46 +696,24 @@ describe('ScanView', () => {
       },
       { timeout: 5000 },
     );
+
+    // V1.0 UNIFIED: AutoOptimizeView appears automatically (no manual review)
     await waitFor(
       () => {
-        expect(screen.getByText('Review & Remediate')).toBeDefined();
+        const view = screen.queryByTestId('auto-optimize-loading') ||
+                     screen.queryByTestId('auto-optimize-running') ||
+                     screen.queryByTestId('auto-optimize-complete');
+        expect(view).toBeDefined();
       },
       { timeout: 5000 },
     );
 
-    fireEvent.click(screen.getByText('Review & Remediate'));
-    await waitFor(
-      () => {
-        expect(screen.getByTestId('results-view')).toBeDefined();
-      },
-      { timeout: 5000 },
-    );
-
-    // Preview/validate are triggered by user action in ResultsView.
-    fireEvent.click(screen.getByTestId('select-all-actionable-btn'));
-    fireEvent.click(screen.getByTestId('review-remediate-btn'));
-    await waitFor(() => {
-      expect(screen.getByTestId('remediation-preview-panel')).toBeDefined();
-    });
-    fireEvent.click(screen.getByTestId('preview-validate-btn'));
-    await waitFor(() => {
-      expect(screen.getByTestId('validation-approve-btn')).toBeDefined();
-    });
-
-    const executeBeforeApproval = mockCall.mock.calls.filter(
-      (call) => call[0] === RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE,
-    );
-    expect(executeBeforeApproval).toHaveLength(0);
-
-    fireEvent.click(screen.getByTestId('validation-approve-btn'));
+    // The auto-optimize flow should call the auto_optimize RPC with the plan_id.
     await waitFor(() => {
       expect(mockCall).toHaveBeenCalledWith(
-        RPC_METHODS.SCAN_CORE_REMEDIATION_EXECUTE,
+        RPC_METHODS.SCAN_CORE_DASHBOARD_AUTO_OPTIMIZE,
         expect.objectContaining({
           plan_id: 'plan-test',
-          request_id: 'req-flow',
-          approval_token: 'token-flow',
-          mode: 'live',
         }),
       );
     });

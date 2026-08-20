@@ -10,7 +10,7 @@
  *   - Execution history & learning data
  *   - Configuration controls
  */
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useState } from 'react';
 import { Card, Button, Badge, CollapsibleSection } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
@@ -20,6 +20,7 @@ import { useEditionLimits } from '../licensing/editionLimits';
 import { useIsPro } from '../sync/syncStore';
 import { ProStatusBanner, ProStatusPill, ProOnlySection, ProFeatureIndicator } from '../licensing/ProStatusBadge';
 import { ScanView, PlanReviewView, useSmartOptimizationPlan } from '../scan';
+import { Modal } from '../dashboard/components/Modal';
 import { formatDataSize } from '@avs/shared/utils';
 import {
   SmartOptimizationEngine,
@@ -221,6 +222,7 @@ export default function SmartOptimizationPage() {
   const limits = useEditionLimits();
   const isPro = useIsPro();
   const smartPlan = useSmartOptimizationPlan();
+  const [scanModalOpen, setScanModalOpen] = useState(false);
 
   useEffect(() => {
     vm.bootstrap();
@@ -279,13 +281,14 @@ export default function SmartOptimizationPage() {
         actions={
           <div className="flex items-center gap-2">
             <ProStatusPill />
-            <ScanView
-              module="optimize"
-              mode="quick"
-              buttonLabel="Optimize Now"
-              onClose={() => {}}
-              className="shrink-0 w-full max-w-sm"
-            />
+            <Button
+              onClick={() => setScanModalOpen(true)}
+              size="lg"
+              leftIcon={<BoltIcon className="h-5 w-5" />}
+              data-testid="smart-opt-scan-cta"
+            >
+              Optimize Now
+            </Button>
           </div>
         }
       />
@@ -294,19 +297,23 @@ export default function SmartOptimizationPage() {
       {/* 4 Summary Cards */}
       {dash && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Optimization Score */}
+          {/* Card 1: Optimization Score — V1.0 UNIFIED: matches Dashboard style */}
           <Card variant="glass" className="p-4" data-testid="smart-opt-score">
             <div className="flex items-center gap-3">
-              <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-brand-primary/10">
-                <ArrowTrendingUpIcon className="h-5 w-5 text-brand-primary" />
+              <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${
+                dash.summary.currentHealthScore >= 80 ? 'bg-semantic-success/10' : dash.summary.currentHealthScore >= 60 ? 'bg-semantic-warning/10' : 'bg-semantic-danger/10'
+              }`}>
+                <ArrowTrendingUpIcon className={`h-5 w-5 ${
+                  dash.summary.currentHealthScore >= 80 ? 'text-semantic-success' : dash.summary.currentHealthScore >= 60 ? 'text-semantic-warning' : 'text-semantic-danger'
+                }`} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-caption text-text-muted">Optimization Score</div>
-                <div className="flex items-baseline gap-1.5">
+                <div className="flex items-baseline gap-1">
                   <span className="text-2xl font-bold text-text-primary tabular-nums">{dash.summary.currentHealthScore}</span>
-                  <span className="text-small font-semibold text-semantic-success tabular-nums">→ {dash.summary.potentialHealthScore}</span>
+                  <span className="text-caption text-text-muted">/100</span>
                 </div>
-                <div className="text-caption text-text-muted">+{dash.summary.potentialHealthScore - dash.summary.currentHealthScore} possible</div>
+                <div className="text-caption text-semantic-success">+{dash.summary.potentialHealthScore - dash.summary.currentHealthScore} possible</div>
               </div>
             </div>
           </Card>
@@ -596,11 +603,24 @@ export default function SmartOptimizationPage() {
         </div>
       )}
 
+      {/* V1.0 UNIFIED: Scan modal — same pattern as Dashboard */}
+      <Modal
+        open={scanModalOpen}
+        onClose={() => setScanModalOpen(false)}
+        title="AI Smart Optimization"
+        size="xl"
+      >
+        <ScanView
+          module="optimize"
+          mode="quick"
+          autoStart={true}
+          buttonLabel="Optimize Now"
+          onClose={() => setScanModalOpen(false)}
+        />
+      </Modal>
     </div>
   );
 }
-
-// ── Sub-components ─────────────────────────────────────────────
 
 function MetricBox({ label, value, icon: Icon }: { label: string; value: string; icon: typeof ChartBarIcon }) {
   return (

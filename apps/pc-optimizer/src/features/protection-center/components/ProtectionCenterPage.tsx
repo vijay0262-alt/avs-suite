@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DashboardSection, LoadingState, EmptyState, Card, CollapsibleSection } from '@avs/ui';
+import { DashboardSection, LoadingState, EmptyState, Card, CollapsibleSection, Button } from '@avs/ui';
 import {
   ShieldCheckIcon,
   HeartIcon,
@@ -9,6 +9,7 @@ import {
   EyeIcon,
   FireIcon,
   ClockIcon,
+  BoltIcon,
 } from '@heroicons/react/24/outline';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ProtectionCenterViewModel } from '../ProtectionCenterViewModel';
@@ -17,6 +18,7 @@ import { DashboardViewModel } from '../../dashboard/DashboardViewModel';
 import { dashboardService } from '../../dashboard/dashboard.service';
 import { ScanView } from '../../scan';
 import { ProStatusBanner, ProStatusPill } from '../../licensing/ProStatusBadge';
+import { Modal } from '../../dashboard/components/Modal';
 import { ProtectionBanner } from './ProtectionBanner';
 import { ProtectionCards } from './ProtectionCards';
 import { LiveActivityTimeline } from './LiveActivityTimeline';
@@ -32,6 +34,7 @@ import { ProcessOptimizer } from './ProcessOptimizer';
 export function ProtectionCenterPage() {
   const navigate = useNavigate();
   const isPro = useIsPro();
+  const [scanModalOpen, setScanModalOpen] = useState(false);
   const vmRef = useRef<ProtectionCenterViewModel | null>(null);
 
   if (!vmRef.current) {
@@ -135,13 +138,14 @@ export function ProtectionCenterPage() {
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <ProStatusPill />
-          <ScanView
-            module="protection"
-            mode="full"
-            buttonLabel="Scan Now"
-            onClose={() => {}}
-            className="shrink-0 w-full max-w-sm"
-          />
+          <Button
+            onClick={() => setScanModalOpen(true)}
+            size="lg"
+            leftIcon={<BoltIcon className="h-5 w-5" />}
+            data-testid="protection-scan-cta"
+          >
+            Scan Now
+          </Button>
         </div>
       </div>
 
@@ -161,16 +165,25 @@ export function ProtectionCenterPage() {
 
       {/* Primary: 4 Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Protection Score */}
+        {/* Card 1: Protection Score — V1.0 UNIFIED: matches Dashboard style */}
         <Card variant="glass" className="p-4" data-testid="protection-score">
           <div className="flex items-center gap-3">
-            <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-brand-primary/10">
-              <ShieldCheckIcon className="h-5 w-5 text-brand-primary" />
+            <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${
+              state.coverage.filter(c => c.covered).length >= state.coverage.length * 0.8 ? 'bg-semantic-success/10' :
+              state.coverage.filter(c => c.covered).length >= state.coverage.length * 0.6 ? 'bg-semantic-warning/10' : 'bg-semantic-danger/10'
+            }`}>
+              <ShieldCheckIcon className={`h-5 w-5 ${
+                state.coverage.filter(c => c.covered).length >= state.coverage.length * 0.8 ? 'text-semantic-success' :
+                state.coverage.filter(c => c.covered).length >= state.coverage.length * 0.6 ? 'text-semantic-warning' : 'text-semantic-danger'
+              }`} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-caption text-text-muted">Protection Score</div>
-              <div className="text-2xl font-bold text-text-primary tabular-nums">
-                {state.coverage.filter(c => c.covered).length}/{state.coverage.length}
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold text-text-primary tabular-nums">
+                  {state.coverage.filter(c => c.covered).length}
+                </span>
+                <span className="text-caption text-text-muted">/{state.coverage.length} areas</span>
               </div>
               <div className="text-caption text-text-muted">Coverage areas</div>
             </div>
@@ -274,6 +287,23 @@ export function ProtectionCenterPage() {
           </div>
         </div>
       </CollapsibleSection>
+
+      {/* V1.0 UNIFIED: Scan modal — same pattern as Dashboard */}
+      <Modal
+        open={scanModalOpen}
+        onClose={() => setScanModalOpen(false)}
+        title="AI Protection Scan"
+        size="xl"
+        testId="protection-scan-modal"
+      >
+        <ScanView
+          module="protection"
+          mode="full"
+          autoStart={true}
+          buttonLabel="Scan Now"
+          onClose={() => setScanModalOpen(false)}
+        />
+      </Modal>
 
     </div>
   );

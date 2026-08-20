@@ -967,13 +967,15 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 completed=True,
                 error=f"Plan has {safe_count} safe actions, exceeds limit of {MAX_AUTO_OPTIMIZE_ACTIONS}",
                 result={
+                    "files_found": safe_count,
+                    "files_cleaned": 0,
+                    "space_recovered": 0,
                     "detected": safe_count,
                     "cleaned": 0,
                     "remaining": safe_count,
                     "failed": 0,
-                    "space_recovered": 0,
                     "health_before": health_before,
-                    "health_after": health_before,  # No change — nothing cleaned
+                    "health_after": health_before,
                     "_diagnostics": {
                         "total": total_actions,
                         "rejected": 0,
@@ -993,11 +995,13 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 "No safe actions to execute",
                 completed=True,
                 result={
+                    "files_found": 0,
+                    "files_cleaned": 0,
+                    "space_recovered": 0,
                     "detected": 0,
                     "cleaned": 0,
                     "remaining": 0,
                     "failed": 0,
-                    "space_recovered": 0,
                     "health_before": health_before,
                     "health_after": 100,  # No cleanup needed → perfect score
                     "_diagnostics": {
@@ -1118,19 +1122,20 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         remaining_after = safe_count - summary.completed - summary.failed
         health_after = _cleanup_health_score(remaining_after)
 
-        # V1.0 Dashboard result contract:
-        # User-facing fields ONLY: detected, cleaned, remaining, failed,
-        # space_recovered, health_before, health_after.
-        # Internal diagnostic fields (rejected, requires_review, etc.) are
-        # kept in _diagnostics for internal logging but NOT shown to user.
-        # Invariant: detected = cleaned + failed + remaining + rejected
+        # V1.0 Dashboard result contract — SIMPLE:
+        # User sees ONLY: files_found, files_cleaned, space_recovered.
+        # Everything else (rejected, failed, remaining, health, etc.) is
+        # internal diagnostics only — NOT shown to the user.
         result_dict = {
-            # ── User-facing fields ──────────────────────────────────────
+            # ── User-facing fields (ONLY these 3) ───────────────────────
+            "files_found": safe_count,
+            "files_cleaned": summary.completed,
+            "space_recovered": space_recovered,
+            # ── Legacy compat (kept for any old callers, NOT shown) ─────
             "detected": safe_count,
             "cleaned": summary.completed,
             "remaining": max(0, safe_count - summary.completed - summary.failed),
             "failed": summary.failed,
-            "space_recovered": space_recovered,
             "health_before": health_before,
             "health_after": health_after,
             # ── Internal diagnostics (NOT shown to Dashboard user) ──────
@@ -1144,6 +1149,8 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 "cancelled": summary.cancelled,
                 "review_required_input": review_count,
                 "blocked_input": blocked_count,
+                "failed": summary.failed,
+                "remaining": max(0, safe_count - summary.completed - summary.failed),
                 "status": summary.status.value,
                 "reason": summary.reason or "",
                 "failed_details": failed_details,
@@ -1181,13 +1188,9 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 # Internal diagnostics are NOT persisted to the user-facing
                 # scan history.
                 cleanup_result = {
-                    "detected": safe_count,
-                    "cleaned": summary.completed,
-                    "remaining": max(0, safe_count - summary.completed - summary.failed),
-                    "failed": summary.failed,
+                    "files_found": safe_count,
+                    "files_cleaned": summary.completed,
                     "space_recovered": space_recovered,
-                    "health_before": result_dict.get("health_before"),
-                    "health_after": result_dict.get("health_after"),
                     "verification_status": verification_status,
                 }
                 orchestrator.update_scan_history_cleanup(plan_id, cleanup_result)

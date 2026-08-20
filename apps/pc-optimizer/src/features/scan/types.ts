@@ -180,12 +180,16 @@ export type AutoOptimizePhase =
   | 'error';
 
 export interface AutoOptimizeResult {
-  // ── V1.0 User-facing fields ─────────────────────────────────────
-  detected: number;      // verified cleanable items shown to user
-  cleaned: number;       // successfully deleted + verified
-  remaining: number;     // detected items still present
-  failed: number;        // actual unexpected deletion failures
-  space_recovered: number;  // verified deleted bytes
+  // ── V1.0 User-facing fields (ONLY these are shown) ──────────────
+  files_found: number;       // files eligible for cleanup
+  files_cleaned: number;     // successfully deleted + verified
+  space_recovered: number;   // verified deleted bytes
+
+  // ── Legacy compat (kept for backward compatibility, NOT shown) ───
+  detected?: number;      // alias for files_found
+  cleaned?: number;       // alias for files_cleaned
+  remaining?: number;
+  failed?: number;
   health_before?: number;
   health_after?: number;
 
@@ -200,6 +204,8 @@ export interface AutoOptimizeResult {
     cancelled?: number;
     review_required_input?: number;
     blocked_input?: number;
+    failed?: number;
+    remaining?: number;
     status?: string;
     reason?: string;
   };

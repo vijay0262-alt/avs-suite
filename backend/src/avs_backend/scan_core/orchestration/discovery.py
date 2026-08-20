@@ -207,6 +207,24 @@ class FilesystemDiscoveryEngine:
         for root in KnownLocations.get_application_cache_roots():
             _add(root, "App Cache")
 
+        # V1.0: Prefetch (Windows Disk Cleanup category)
+        _add(KnownLocations.get_prefetch_root(), "Prefetch")
+
+        # V1.0: Downloaded Program Files (legacy ActiveX)
+        _add(KnownLocations.get_downloaded_program_files_root(), "Downloaded Program Files")
+
+        # V1.0: Offline Web Pages (legacy IE)
+        _add(KnownLocations.get_offline_web_pages_root(), "Offline Web Pages")
+
+        # V1.0: Font Cache (auto-regenerated)
+        _add(KnownLocations.get_font_cache_root(), "Font Cache")
+
+        # V1.0: BranchCache (if enabled)
+        _add(KnownLocations.get_branch_cache_root(), "BranchCache")
+
+        # V1.0: RetailDemo
+        _add(KnownLocations.get_retail_demo_root(), "RetailDemo")
+
         logger.info(
             f"Quick scan locations ({len(locations)}): "
             f"{[loc.label for loc in locations]}"

@@ -2,11 +2,10 @@
  * AutoOptimizeView.tsx — shows the one-click optimization progress and
  * completion summary for the Dashboard scan workflow.
  *
- * V1.0 Dashboard contract:
- *   User sees ONLY: detected, cleaned, remaining, failed, space_recovered,
- *   health_before, health_after.
- *   Internal safety fields (rejected, requires_review, blocked, etc.) are
- *   NOT displayed — they are implementation details.
+ * V1.0 SIMPLE Dashboard contract:
+ *   User sees ONLY: files_cleaned, space_recovered.
+ *   Everything else (detected, remaining, failed, rejected, health, etc.)
+ *   is internal — NOT displayed.
  */
 import { useEffect, useMemo } from 'react';
 import { Card, Button } from '@avs/ui';
@@ -24,8 +23,10 @@ import { optimizationEventBus, OptimizationEventType } from '../health/Optimizat
 export interface AutoOptimizeViewProps {
   planId: string;
   onClose: () => void;
-  /** V1.0: Review callback is no longer used by Dashboard but kept for API compat. */
+  /** V1.0: Review callback is no longer used but kept for API compat. */
   onReviewRequired?: (planId: string) => void;
+  /** V1.0 UNIFIED: Module context for labels. */
+  module?: 'optimize' | 'security' | 'protection';
 }
 
 const PHASE_PROGRESS: Record<AutoOptimizePhase | 'idle', number> = {
@@ -52,7 +53,7 @@ function formatNumber(n: number): string {
   return n.toLocaleString();
 }
 
-export function AutoOptimizeView({ planId, onClose }: AutoOptimizeViewProps) {
+export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoOptimizeViewProps) {
   const autoOpt = useAutoOptimize();
 
   // Automatically start optimization when the component mounts.
@@ -72,7 +73,7 @@ export function AutoOptimizeView({ planId, onClose }: AutoOptimizeViewProps) {
         moduleId: 'junk',
         action: 'clean',
         bytesRecovered: autoOpt.result.space_recovered,
-        itemsProcessed: autoOpt.result.cleaned,
+        itemsProcessed: autoOpt.result.files_cleaned ?? autoOpt.result.cleaned ?? 0,
         timestamp: Date.now(),
       });
     }
@@ -82,6 +83,14 @@ export function AutoOptimizeView({ planId, onClose }: AutoOptimizeViewProps) {
   const isComplete = autoOpt.phase === 'complete';
   const isError = autoOpt.phase === 'error';
   const isCancelled = autoOpt.phase === 'cancelled';
+
+  // V1.0 UNIFIED: Module-appropriate labels.
+  const isSecurity = module === 'security' || module === 'protection';
+  const cleanedLabel = isSecurity ? 'Threats Cleaned' : 'Files Cleaned';
+  const phaseRunningLabel = isSecurity ? 'Cleaning threats...' : 'Cleaning your PC...';
+  const phaseCompleteLabel = isSecurity ? 'Security Cleanup Complete' : 'Cleanup Complete';
+  const phaseAlreadyClean = isSecurity ? 'Your PC is secure' : 'Your PC is already clean';
+  const phaseAlreadyCleanDesc = isSecurity ? 'No threats required cleanup.' : 'Nothing required cleanup.';
 
   // Use actual progress from backend when available (during execution phase)
   // Otherwise fall back to phase-based progress
@@ -95,13 +104,13 @@ export function AutoOptimizeView({ planId, onClose }: AutoOptimizeViewProps) {
     starting: 'Starting...',
     preparing: 'Preparing...',
     validating: 'Preparing...',
-    executing: 'Cleaning your PC...',
+    executing: phaseRunningLabel,
     verifying: 'Verifying cleanup...',
     complete: 'Complete',
     cancelled: 'Cancelled',
     error: 'Error',
   };
-  const phaseLabel = USER_PHASE_LABELS[autoOpt.phase] ?? 'Cleaning your PC...';
+  const phaseLabel = USER_PHASE_LABELS[autoOpt.phase] ?? phaseRunningLabel;
 
   const result = autoOpt.result;
 
@@ -114,40 +123,16 @@ export function AutoOptimizeView({ planId, onClose }: AutoOptimizeViewProps) {
       positive: boolean;
     }> = [];
 
-    // V1.0: Only user-facing fields.
-    // detected = verified cleanable items
-    // cleaned = successfully deleted + verified
-    // remaining = detected items still present
-    // failed = actual unexpected deletion failures
-    // space_recovered = verified deleted bytes
-    const detectedCount = result.detected ?? 0;
-    const cleanedCount = result.cleaned ?? 0;
-
-    if (detectedCount > 0) {
-      cards.push({
-        label: 'Files Detected',
-        value: formatNumber(detectedCount),
-        icon: CheckCircleIcon,
-        positive: true,
-      });
-    }
+    // V1.0 SIMPLE: Only show Files Cleaned and Space Recovered.
+    // Nothing else — no detected, no remaining, no failed.
+    const cleanedCount = result.files_cleaned ?? result.cleaned ?? 0;
 
     if (cleanedCount > 0) {
       cards.push({
-        label: 'Files Cleaned',
+        label: cleanedLabel,
         value: formatNumber(cleanedCount),
         icon: CheckCircleIcon,
         positive: true,
-      });
-    }
-
-    const remaining = result.remaining ?? Math.max(0, detectedCount - cleanedCount);
-    if (remaining > 0) {
-      cards.push({
-        label: 'Remaining',
-        value: formatNumber(remaining),
-        icon: ExclamationTriangleIcon,
-        positive: false,
       });
     }
 
@@ -160,20 +145,8 @@ export function AutoOptimizeView({ planId, onClose }: AutoOptimizeViewProps) {
       });
     }
 
-    if (result.failed > 0) {
-      cards.push({
-        label: 'Failed',
-        value: formatNumber(result.failed),
-        icon: XCircleIcon,
-        positive: false,
-      });
-    }
-
-    // V1.0: Do NOT show rejected, requires_review, skipped, blocked, etc.
-    // Those are internal safety implementation details.
-
     return cards;
-  }, [result]);
+  }, [result, cleanedLabel]);
 
   // ── Error state ──────────────────────────────────────────────────
   if (isError) {
@@ -275,20 +248,12 @@ export function AutoOptimizeView({ planId, onClose }: AutoOptimizeViewProps) {
             </div>
           )}
 
-          {/* Live counters: Files Detected + Files Cleaned */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-text-primary tabular-nums">
-                {formatNumber(autoOpt.safeActions)}
-              </div>
-              <div className="text-caption text-text-muted">Files Detected</div>
+          {/* Live counter: Files Cleaned so far */}
+          <div className="text-center">
+            <div className="text-3xl font-bold text-semantic-success tabular-nums">
+              {formatNumber(autoOpt.executionProgress)}
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-semantic-success tabular-nums">
-                {formatNumber(autoOpt.executionProgress)}
-              </div>
-              <div className="text-caption text-text-muted">Files Cleaned</div>
-            </div>
+            <div className="text-caption text-text-muted">{cleanedLabel}</div>
           </div>
 
           {/* Cancel button */}
@@ -308,9 +273,8 @@ export function AutoOptimizeView({ planId, onClose }: AutoOptimizeViewProps) {
 
   // ── Complete state ───────────────────────────────────────────────
   if (isComplete && result) {
-    const detectedCount = result.detected ?? 0;
-    const cleanedCount = result.cleaned ?? 0;
-    const nothingToClean = detectedCount === 0 && cleanedCount === 0;
+    const cleanedCount = result.files_cleaned ?? result.cleaned ?? 0;
+    const nothingToClean = cleanedCount === 0;
 
     return (
       <Card variant="glass" className="p-8" data-testid="auto-optimize-complete">
@@ -322,44 +286,25 @@ export function AutoOptimizeView({ planId, onClose }: AutoOptimizeViewProps) {
             {nothingToClean ? (
               <>
                 <h3 className="text-lg font-semibold text-text-primary">
-                  Your PC is already optimized
+                  {phaseAlreadyClean}
                 </h3>
                 <p className="text-small text-text-secondary">
-                  Nothing required cleanup. Verification complete.
+                  {phaseAlreadyCleanDesc}
                 </p>
               </>
             ) : (
               <>
                 <h3 className="text-lg font-semibold text-text-primary">
-                  Your PC is Optimized
+                  {phaseCompleteLabel}
                 </h3>
                 <p className="text-small text-text-secondary">
-                  {autoOpt.verificationStatus === 'passed'
-                    ? 'Verification complete.'
-                    : autoOpt.verificationStatus === 'partial'
-                      ? 'Verification partially completed.'
-                      : 'Verification completed with issues.'}
+                  Your PC has been optimized.
                 </p>
               </>
             )}
           </div>
 
-          {/* PART 6: Health Before/After */}
-          {result.health_before !== undefined && result.health_after !== undefined && (
-            <div className="flex items-center justify-center gap-4 py-4">
-              <div className="text-center">
-                <div className="text-caption text-text-muted uppercase tracking-wide">Health Before</div>
-                <div className="text-3xl font-bold text-text-primary tabular-nums">{result.health_before}</div>
-              </div>
-              <div className="text-2xl text-text-muted">→</div>
-              <div className="text-center">
-                <div className="text-caption text-text-muted uppercase tracking-wide">Health After</div>
-                <div className="text-3xl font-bold text-semantic-success tabular-nums">{result.health_after}</div>
-              </div>
-            </div>
-          )}
-
-          {/* Summary cards */}
+          {/* Summary cards — ONLY Files Cleaned + Space Recovered */}
           {summaryCards.length > 0 && (
             <div className="grid grid-cols-2 gap-4" data-testid="auto-optimize-summary">
               {summaryCards.map((card) => (
@@ -381,7 +326,7 @@ export function AutoOptimizeView({ planId, onClose }: AutoOptimizeViewProps) {
             </div>
           )}
 
-          {/* Actions — V1.0 Dashboard: no review button, just Done */}
+          {/* Actions — just Done */}
           <div className="flex justify-center">
             <Button
               variant="primary"
