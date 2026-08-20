@@ -38,6 +38,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Optional
+from unittest.mock import patch
 
 from avs_backend.scan_core.assets import (
     AssetCategory,
@@ -664,11 +665,16 @@ class TestBrowserCacheIntegration:
             size=512,
         )
         snap = IntegrationFixtures.create_snapshot("bc-pos")
-        _, _, result = evaluate_through_pipeline(
-            "cache.browser",
-            asset,
-            snap,
-        )
+        # Mock: no browsers running so cache is SAFE for automatic cleaning
+        with patch(
+            "avs_backend.scan_core.rules.detection.junk_rules_ext._detect_running_browsers",
+            return_value=set(),
+        ):
+            _, _, result = evaluate_through_pipeline(
+                "cache.browser",
+                asset,
+                snap,
+            )
         assert result.is_success
         assert result.is_match
         assert result.rule_result.confidence.score >= 80.0

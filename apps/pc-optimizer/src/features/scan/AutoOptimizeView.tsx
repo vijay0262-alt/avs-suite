@@ -125,17 +125,20 @@ export function AutoOptimizeView({ planId, onClose, onReviewRequired }: AutoOpti
       });
     }
 
-    // Show detected vs remaining
-    if (result.total > 0) {
+    // V1.0: "Detected" = genuinely cleanable items (safe candidates),
+    // NOT all pattern matches. Use result.detected if available.
+    const detectedCount = result.detected ?? result.total;
+    if (detectedCount > 0) {
       cards.push({
-        label: 'Detected',
-        value: formatNumber(result.total),
+        label: 'Cleanable Items Found',
+        value: formatNumber(detectedCount),
         icon: CheckCircleIcon,
         positive: true,
       });
     }
 
-    const remaining = result.total - result.completed - result.failed - result.skipped - result.cancelled;
+    // Remaining = safe candidates that were not cleaned
+    const remaining = result.remaining ?? Math.max(0, detectedCount - result.completed);
     if (remaining > 0) {
       cards.push({
         label: 'Remaining',
@@ -325,7 +328,8 @@ export function AutoOptimizeView({ planId, onClose, onReviewRequired }: AutoOpti
 
   // ── Complete state ───────────────────────────────────────────────
   if (isComplete && result) {
-    const nothingToClean = result.total === 0 || (result.completed === 0 && result.requires_review === 0 && result.failed === 0);
+    const detectedCount = result.detected ?? result.total;
+    const nothingToClean = detectedCount === 0 || (result.completed === 0 && result.requires_review === 0 && result.failed === 0);
 
     return (
       <Card variant="glass" className="p-8" data-testid="auto-optimize-complete">

@@ -65,6 +65,11 @@ def _get_win_attributes(path: str) -> int:
 def _is_locked(path: str) -> bool:
     """Check if a file is locked by attempting to open it for writing.
     Returns True if the file appears to be locked (in use by another process).
+
+    On Windows, uses CreateFile with DELETE access to check if the file
+    can actually be deleted (FILE_SHARE_DELETE). This catches files that
+    are open with read/write sharing but NOT delete sharing — the common
+    case for browser cache LevelDB files and active application files.
     """
     if not os.path.isfile(path):
         return False
@@ -73,11 +78,72 @@ def _is_locked(path: str) -> bool:
         flags = os.O_WRONLY | getattr(os, "O_NONBLOCK", 0)
         fd = os.open(path, flags)
         os.close(fd)
-        return False
     except (OSError, PermissionError):
         return True
     except Exception:
         return False
+
+    # On Windows, the O_WRONLY check above is not sufficient.
+    # A file can be openable for writing but still not deletable
+    # because the owning process didn't share DELETE access.
+    # Use CreateFile with DELETE access to check delete feasibility.
+    if sys.platform == "win32":
+        try:
+            return not _can_delete_file_windows(path)
+        except Exception:
+            # If the check fails, fall back to the O_WRONLY result (not locked)
+            return False
+
+    return False
+
+
+def _can_delete_file_windows(path: str) -> bool:
+    """Check if a file can be deleted on Windows by attempting to open it
+    with DELETE access and FILE_SHARE_DELETE.
+
+    This is the definitive preflight check: if CreateFile succeeds with
+    DELETE access, the file can be deleted (subject to TOCTOU races).
+    """
+    # CreateFileW constants
+    GENERIC_DELETE = 0x00010000
+    FILE_SHARE_READ = 0x00000001
+    FILE_SHARE_WRITE = 0x00000002
+    FILE_SHARE_DELETE = 0x00000004
+    OPEN_EXISTING = 3
+    FILE_ATTRIBUTE_NORMAL = 0x80
+
+    kernel32 = ctypes.windll.kernel32
+    CreateFileW = kernel32.CreateFileW
+    CreateFileW.restype = ctypes.c_void_p
+    CreateFileW.argtypes = [
+        ctypes.c_wchar_p,      # lpFileName
+        ctypes.c_uint32,       # dwDesiredAccess
+        ctypes.c_uint32,       # dwShareMode
+        ctypes.c_void_p,       # lpSecurityAttributes
+        ctypes.c_uint32,       # dwCreationDisposition
+        ctypes.c_uint32,       # dwFlagsAndAttributes
+        ctypes.c_void_p,       # hTemplateFile
+    ]
+    CloseHandle = kernel32.CloseHandle
+    CloseHandle.argtypes = [ctypes.c_void_p]
+
+    handle = CreateFileW(
+        path,
+        GENERIC_DELETE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        None,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        None,
+    )
+    # INVALID_HANDLE_VALUE = -1 (as ctypes.c_void_p)
+    if handle == -1 or handle is None:
+        return False
+    try:
+        CloseHandle(handle)
+    except Exception:
+        pass
+    return True
 
 
 # ── Progress events ────────────────────────────────────────────

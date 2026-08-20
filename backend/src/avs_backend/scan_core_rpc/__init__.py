@@ -1031,7 +1031,10 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 session["execution_total"] = total
                 session["current_file"] = current_path
                 session["overall_progress"] = overall_pct
-                session["message"] = f"Cleaning: {current_path} ({completed}/{total})"
+                # V1.0: message is a generic status label; the current file
+                # path is surfaced separately via session["current_file"] so
+                # the frontend does not display the path twice.
+                session["message"] = f"Cleaning {completed}/{total} files..."
 
         request_id = str(uuid.uuid4())
         summary = coord.execute(
@@ -1053,12 +1056,16 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         result_dict = {
             "execution_id": summary.execution_id,
             "total": summary.total,
+            "detected": safe_count,  # V1.0: only genuinely cleanable items
+            "detected_candidates": total_actions,  # all pattern matches
+            "not_currently_cleanable": review_count + blocked_count,
             "completed": summary.completed,
             "failed": summary.failed,
             "rejected": summary.rejected,
             "skipped": summary.skipped,
             "requires_review": summary.requires_review,
             "cancelled": summary.cancelled,
+            "remaining": safe_count - summary.completed,
             "space_recovered": space_recovered,
             "status": summary.status.value,
             "reason": summary.reason or "",
@@ -1082,8 +1089,29 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         health_after = None
         try:
             from avs_backend.dashboard import _calculate_health_score
-            # Clear cache first to force fresh calculation
-            _calculate_health_score.cache_clear()  # type: ignore[attr-defined]
+            # Clear ALL caches to force fresh calculation after cleanup.
+            # The health model reads temp file sizes, recycle bin sizes,
+            # browser cache sizes, CPU/memory metrics, etc. If these
+            # caches are not cleared, health_after will use stale
+            # pre-cleanup values and may not reflect the actual improvement.
+            for cache_name in (
+                "_calculate_health_score",
+                "_collect_metrics",
+                "_get_temp_files_size",
+                "_get_recycle_bin_size",
+                "_estimate_browser_cache_size",
+                "_get_thumbnail_cache_size",
+                "_get_prefetch_size",
+                "_get_windows_update_cache_size",
+            ):
+                try:
+                    fn = getattr(
+                        __import__("avs_backend.dashboard", fromlist=[cache_name]),
+                        cache_name,
+                    )
+                    fn.cache_clear()  # type: ignore[attr-defined]
+                except (AttributeError, ImportError):
+                    pass
             health_after = _calculate_health_score()
         except Exception:
             pass  # Non-fatal
@@ -1107,11 +1135,20 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         try:
             orchestrator = get_scan_orchestrator()
             if orchestrator:
+                # V1.0 correctness: "detected" = safe cleanable candidates,
+                # NOT all pattern matches. Locked/blocked/review items are
+                # reported separately as "not_currently_cleanable".
+                not_cleanable = (
+                    review_count + blocked_count
+                )
                 cleanup_result = {
-                    "detected": total_actions,
+                    "detected": safe_count,  # Only genuinely cleanable items
+                    "detected_candidates": total_actions,  # All pattern matches
+                    "not_currently_cleanable": not_cleanable,
                     "cleaned": summary.completed,
-                    "remaining": total_actions - summary.completed,
+                    "remaining": safe_count - summary.completed,
                     "failed": summary.failed,
+                    "skipped": summary.skipped + summary.rejected,
                     "review_required": review_count,
                     "space_recovered": space_recovered,
                     "health_before": result_dict.get("health_before"),

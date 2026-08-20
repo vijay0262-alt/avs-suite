@@ -182,12 +182,16 @@ export type AutoOptimizePhase =
 export interface AutoOptimizeResult {
   execution_id?: string;
   total: number;
+  detected?: number;  // V1.0: genuinely cleanable items (safe candidates)
+  detected_candidates?: number;  // all pattern matches
+  not_currently_cleanable?: number;  // locked/blocked/review
   completed: number;
   failed: number;
   rejected: number;
   skipped: number;
   requires_review: number;
   cancelled: number;
+  remaining?: number;  // safe candidates not yet cleaned
   space_recovered: number;
   status?: string;
   health_before?: number;

@@ -80,6 +80,9 @@ class FilesystemDiscoveryEngine:
         options = EnumerateOptions(
             cancel_event=_CancelAdapter(cancellation_token),
             progress_interval=250,
+            check_locked=True,  # V1.0: detect locked files so they are classified
+                                # as REVIEW_REQUIRED instead of SAFE, preventing
+                                # thousands of failed deletion attempts.
         )
         for entry in enumerator.enumerate_locations(
             locations,

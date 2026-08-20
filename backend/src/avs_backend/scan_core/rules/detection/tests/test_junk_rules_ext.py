@@ -15,6 +15,7 @@ import os
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Optional
+from unittest.mock import patch
 
 from avs_backend.scan_core.assets import (
     AssetCategory,
@@ -310,7 +311,12 @@ class TestBrowserCacheRule:
 
         snapshot = ExtTestFixtures.create_snapshot(asset_id="bc-001")
 
-        result = rule.evaluate(asset, snapshot)
+        # Mock: no browsers running so cache is SAFE for automatic cleaning
+        with patch(
+            "avs_backend.scan_core.rules.detection.junk_rules_ext._detect_running_browsers",
+            return_value=set(),
+        ):
+            result = rule.evaluate(asset, snapshot)
 
         assert result.status == RuleMatchStatus.MATCHED
         assert result.matched is True
