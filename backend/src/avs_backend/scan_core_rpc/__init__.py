@@ -50,6 +50,7 @@ logger = logging.getLogger(__name__)
 
 _coordinator: Optional[RemediationCoordinator] = None
 _scan_orchestrator: Optional[ScanOrchestrator] = None
+_shared_database: Optional[MetadataDatabase] = None
 _lock = threading.Lock()
 _scan_orchestrator_lock = threading.Lock()
 _scan_session_lock = threading.Lock()
@@ -76,6 +77,30 @@ def _get_app_data_dir() -> Path:
     return base / "avs-shield"
 
 
+def _get_shared_database() -> MetadataDatabase:
+    """Return the singleton MetadataDatabase shared by coordinator and orchestrator.
+
+    Both the RemediationCoordinator and the ScanOrchestrator must use the
+    SAME MetadataDatabase instance so that plans saved by one can be loaded
+    by the other (e.g. security_remediation.plan → scan.plan_details).
+    """
+    global _shared_database
+    if _shared_database is not None and _shared_database._is_initialized:
+        return _shared_database
+
+    with _lock:
+        if _shared_database is not None and _shared_database._is_initialized:
+            return _shared_database
+
+        app_dir = _get_app_data_dir()
+        app_dir.mkdir(parents=True, exist_ok=True)
+
+        db = MetadataDatabase(DatabaseConfig(db_path=app_dir / "metadata.db"))
+        db.initialize()
+        _shared_database = db
+        return _shared_database
+
+
 def get_coordinator() -> Optional[RemediationCoordinator]:
     """Return the module-level RemediationCoordinator singleton, or None on failure."""
     global _coordinator
@@ -90,7 +115,7 @@ def get_coordinator() -> Optional[RemediationCoordinator]:
             app_dir = _get_app_data_dir()
             app_dir.mkdir(parents=True, exist_ok=True)
 
-            db = MetadataDatabase(DatabaseConfig(db_path=app_dir / "metadata.db"))
+            db = _get_shared_database()
             _coordinator = RemediationCoordinator(
                 database=db,
                 backup_root=app_dir / "backups",
@@ -125,8 +150,7 @@ def get_scan_orchestrator() -> Optional[ScanOrchestrator]:
         app_dir = _get_app_data_dir()
         app_dir.mkdir(parents=True, exist_ok=True)
 
-        db = MetadataDatabase(DatabaseConfig(db_path=app_dir / "metadata.db"))
-        db.initialize()
+        db = _get_shared_database()
         registry = RuleRegistry()
         register_junk_rules(registry)
         with _scan_orchestrator_lock:
