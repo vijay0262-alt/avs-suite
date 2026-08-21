@@ -397,8 +397,16 @@ class MaliciousFileNameRule(Rule):
         safety = SafetyPolicy.assess(
             asset=asset,
             snapshot=snapshot,
-            safe_reason="Malicious file is safe to remove",
+            safe_reason="Malicious file detected — requires quarantine, not automatic deletion",
         )
+        # Security findings require dedicated quarantine/remediation.
+        # They must NOT flow into generic Disk Cleanup DELETE_FILE pipeline.
+        # Override safety to REVIEW_REQUIRED if currently safe.
+        from ..safety import SafetyAssessment
+        if safety.level.value == "safe":
+            safety = SafetyAssessment.create_review_required(
+                reason="Security finding requires dedicated quarantine — not auto-deleted",
+            )
 
         estimated_size: Optional[int] = None
         size_value = asset.custom_metadata.get("size")
@@ -414,7 +422,7 @@ class MaliciousFileNameRule(Rule):
             safety=safety,
             reason=f"Malicious file name ({family}): '{pattern}' in {asset.display_name}",
             evidence=EvidenceCollection(tuple(evidence_items)),
-            recommended_action=ActionType.DELETE,
+            recommended_action=ActionType.QUARANTINE,
             estimated_size=estimated_size,
         )
 
@@ -570,8 +578,14 @@ class SuspiciousScriptRule(Rule):
         safety = SafetyPolicy.assess(
             asset=asset,
             snapshot=snapshot,
-            safe_reason="Suspicious script is safe to remove",
+            safe_reason="Suspicious script detected — requires review, not automatic deletion",
         )
+        # Security findings require dedicated quarantine/remediation.
+        from ..safety import SafetyAssessment
+        if safety.level.value == "safe":
+            safety = SafetyAssessment.create_review_required(
+                reason="Security finding requires dedicated quarantine — not auto-deleted",
+            )
 
         estimated_size: Optional[int] = None
         size_value = asset.custom_metadata.get("size")
@@ -590,7 +604,7 @@ class SuspiciousScriptRule(Rule):
                 + ", ".join(matched_patterns)
             ),
             evidence=EvidenceCollection(tuple(evidence_items)),
-            recommended_action=ActionType.DELETE,
+            recommended_action=ActionType.QUARANTINE,
             estimated_size=estimated_size,
         )
 
@@ -774,8 +788,14 @@ class SuspiciousExecutableRule(Rule):
         safety = SafetyPolicy.assess(
             asset=asset,
             snapshot=snapshot,
-            safe_reason="Suspicious executable is safe to remove",
+            safe_reason="Suspicious executable detected — requires review, not automatic deletion",
         )
+        # Security findings require dedicated quarantine/remediation.
+        from ..safety import SafetyAssessment
+        if safety.level.value == "safe":
+            safety = SafetyAssessment.create_review_required(
+                reason="Security finding requires dedicated quarantine — not auto-deleted",
+            )
 
         estimated_size: Optional[int] = None
         size_value = asset.custom_metadata.get("size")
@@ -791,7 +811,7 @@ class SuspiciousExecutableRule(Rule):
             safety=safety,
             reason=reason_detail,
             evidence=EvidenceCollection(tuple(evidence_items)),
-            recommended_action=ActionType.DELETE,
+            recommended_action=ActionType.QUARANTINE,
             estimated_size=estimated_size,
         )
 
@@ -926,8 +946,14 @@ class TrackingCookieRule(Rule):
         safety = SafetyPolicy.assess(
             asset=asset,
             snapshot=snapshot,
-            safe_reason="Tracking cookie file is safe to remove",
+            safe_reason="Tracking cookie detected — requires review, not automatic deletion",
         )
+        # Security findings require dedicated quarantine/remediation.
+        from ..safety import SafetyAssessment
+        if safety.level.value == "safe":
+            safety = SafetyAssessment.create_review_required(
+                reason="Security finding requires dedicated quarantine — not auto-deleted",
+            )
 
         estimated_size: Optional[int] = None
         size_value = asset.custom_metadata.get("size")
@@ -943,7 +969,7 @@ class TrackingCookieRule(Rule):
             safety=safety,
             reason=f"Tracking cookie file in browser cache: {asset.display_name}",
             evidence=EvidenceCollection(tuple(evidence_items)),
-            recommended_action=ActionType.DELETE,
+            recommended_action=ActionType.QUARANTINE,
             estimated_size=estimated_size,
         )
 

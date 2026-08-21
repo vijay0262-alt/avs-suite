@@ -1,0 +1,164 @@
+﻿Starting packaged backend: C:\Users\HPBP\Documents\GitHub\avs-suite\apps\pc-optimizer\release\win-unpacked\resources\backend\avs-backend.exe
+
+=== 1. system.ping ===
+Ping: {"pong":true} 
+
+=== 2. scan_core.scan.quick (V1.0 Dashboard mode) ===
+Scan started: {"ok":true,"session_id":"eb79cc4d-27a4-4213-85bd-6b1b1014a3da","started_at":"2026-08-21T02:33:04.822824+00:00"} 
+
+=== 3. Polling scan status ===
+  Poll 1: null% | phase=unknown
+  Poll 2: 37.578504870588546% | phase=discovery | discovered=2800 | findings=0
+  Poll 3: 39.14841094850356% | phase=discovery | discovered=4400 | findings=0
+  Poll 4: 39.302817866118374% | phase=discovery | discovered=4600 | findings=0
+  Poll 5: 39.302817866118374% | phase=discovery | discovered=4600 | findings=0
+  Poll 6: 39.302817866118374% | phase=discovery | discovered=4600 | findings=0
+  Poll 7: 39.302817866118374% | phase=discovery | discovered=4600 | findings=0
+  Poll 8: 39.302817866118374% | phase=discovery | discovered=4600 | findings=0
+  Poll 9: 39.302817866118374% | phase=discovery | discovered=4600 | findings=0
+  Poll 10: 39.302817866118374% | phase=discovery | discovered=4600 | findings=0
+  Poll 11: 39.59245483638134% | phase=discovery | discovered=5000 | findings=0
+  Poll 12: 40.55687786201268% | phase=discovery | discovered=6600 | findings=0
+  Poll 13: 41.31093449516992% | phase=discovery | discovered=8200 | findings=0
+  Poll 14: 41.930163113560795% | phase=discovery | discovered=9800 | findings=0
+  Poll 15: 42.39405437785782% | phase=discovery | discovered=11200 | findings=0
+  Poll 16: 42.691163416994% | phase=discovery | discovered=12200 | findings=0
+  Poll 17: 42.88498700186665% | phase=discovery | discovered=12900 | findings=0
+  Poll 18: 43.09401813061331% | phase=discovery | discovered=13700 | findings=0
+  Poll 19: 43.26714120309696% | phase=discovery | discovered=14400 | findings=0
+  Poll 20: 43.408961688448684% | phase=discovery | discovered=15000 | findings=0
+  Poll 21: 43.522877730122595% | phase=discovery | discovered=15500 | findings=0
+  Poll 22: 43.6763345761328% | phase=discovery | discovered=16200 | findings=0
+  Poll 23: 43.76107399656202% | phase=discovery | discovered=16600 | findings=0
+  Poll 24: 43.86417205590155% | phase=discovery | discovered=17100 | findings=0
+  Poll 25: 44.003555201519724% | phase=discovery | discovered=17800 | findings=0
+  Poll 26: 44.080761997309686% | phase=discovery | discovered=18200 | findings=0
+  Poll 27: 44.080761997309686% | phase=discovery | discovered=18200 | findings=0
+  Poll 28: 44.080761997309686% | phase=discovery | discovered=18200 | findings=0
+  Poll 29: 44.080761997309686% | phase=discovery | discovered=18200 | findings=0
+  Poll 30: 44.080761997309686% | phase=discovery | discovered=18200 | findings=0
+  Poll 31: 44.080761997309686% | phase=discovery | discovered=18200 | findings=0
+  Poll 32: 44.080761997309686% | phase=discovery | discovered=18200 | findings=0
+  Poll 33: 44.080761997309686% | phase=discovery | discovered=18200 | findings=0
+  Poll 34: 44.080761997309686% | phase=discovery | discovered=18200 | findings=0
+  Poll 35: 44.080761997309686% | phase=discovery | discovered=18200 | findings=0
+  Poll 36: 44.21187825687507% | phase=discovery | discovered=18900 | findings=0
+  Poll 37: 44.37349699017921% | phase=discovery | discovered=19800 | findings=0
+  Poll 38: 44.54467371202612% | phase=discovery | discovered=20800 | findings=0
+  Poll 39: 44.70781131930338% | phase=discovery | discovered=21800 | findings=0
+  Poll 40: 44.86363115669071% | phase=discovery | discovered=22800 | findings=0
+  Poll 41: 44.98344323911035% | phase=discovery | discovered=23600 | findings=0
+  Poll 42: 45.09926099942547% | phase=discovery | discovered=24400 | findings=0
+  Poll 43: 45.238806515930534% | phase=discovery | discovered=25400 | findings=0
+  Poll 44: 45.37296301685466% | phase=discovery | discovered=26400 | findings=0
+  Poll 45: 45.50213130155785% | phase=discovery | discovered=27400 | findings=0
+  Poll 46: 45.67526053733558% | phase=discovery | discovered=28800 | findings=0
+  Poll 47: 45.79384669977655% | phase=discovery | discovered=29800 | findings=0
+  Poll 48: 45.964465700382945% | phase=discovery | discovered=31300 | findings=0
+  Poll 49: 46.11648826907225% | phase=discovery | discovered=32700 | findings=0
+  Poll 50: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 51: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 52: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 53: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 54: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 55: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 56: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 57: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 58: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 59: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 60: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 61: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 62: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 63: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 64: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 65: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 66: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 67: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 68: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 69: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 70: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 71: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 72: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 73: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 74: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 75: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 76: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 77: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 78: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 79: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 80: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 81: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 82: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 83: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 84: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 85: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 86: 55% | phase=evaluating | discovered=33231 | findings=0
+  Poll 87: 95% | phase=planning | discovered=33231 | findings=1297
+  Poll 88: 95% | phase=planning | discovered=33231 | findings=1297
+  Poll 89: 95% | phase=planning | discovered=33231 | findings=1297
+  Poll 90: 95% | phase=planning | discovered=33231 | findings=1297
+
+Scan completed in 209.4s
+
+=== 4. scan_core.scan.result ===
+  plan_id: ca45263c-11f8-4cde-b8ea-423890ef3f4f
+  assets_discovered: 33231
+  findings_count (V1.0 safe only): 1297
+  actions_planned: undefined
+  actions_review_required: undefined
+  actions_blocked: undefined
+  dashboard_excluded_count: undefined
+  actionability_summary: {"total":1297,"actionable":1288,"review_required":0,"blocked":0,"not_fixable":9,"missing_or_locked_target":0}
+
+=== 5. scan_core.dashboard.auto_optimize ===
+Auto-optimize started: {"ok":true,"session_id":"e6fe334c-8672-4c75-a6a9-1c369b3c28b2"} 
+
+=== 6. Polling auto-optimize status ===
+  Poll 1: undefined% | phase=starting
+  Poll 2: undefined% | phase=executing
+  Poll 3: undefined% | phase=executing
+  Poll 4: undefined% | phase=executing
+  Poll 5: undefined% | phase=complete
+
+Auto-optimize completed in 8.1s
+
+=== 7. Final Results ===
+========================================
+  V1.0 DISK CLEANUP+ E2E ΓÇö FINAL RESULTS
+========================================
+
+ΓöÇΓöÇ User-facing fields (ONLY these shown to user) ΓöÇΓöÇ
+Files Found: 1288
+Files Cleaned: 5
+Space recovered (bytes): 1101149
+Space recovered (formatted): 1.1 MB
+
+ΓöÇΓöÇ Internal diagnostics (NOT shown to user) ΓöÇΓöÇ
+Total actions: 1297
+Rejected by SafetyGate: 1291
+Skipped: 0
+Failed (internal): 1
+Remaining (internal): 1282
+Requires review (input): 0
+Review required input: 0
+Blocked input: 9
+
+ΓöÇΓöÇ Failed action details (internal) ΓöÇΓöÇ
+Count: 1
+  [1] reason=Cache target is not a directory
+      existed_before=true | existed_after=true | locked_before=false
+
+ΓöÇΓöÇ Acceptance check ΓöÇΓöÇ
+files_cleaned (5) > 0: true
+space_recovered > 0: true
+
+ΓöÇΓöÇ Performance ΓöÇΓöÇ
+Scan duration (s): 209.4
+Auto-optimize duration (s): 8.1
+Total workflow (s): 217.5
+
+========================================
+  V1.0 DISK CLEANUP+ E2E TEST COMPLETE
+========================================
+
+Backend exited with code null

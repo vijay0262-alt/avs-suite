@@ -187,70 +187,126 @@ class ScanLocation:
 
 
 def get_default_scan_locations() -> list[ScanLocation]:
-    """Return the default set of scan locations for the current platform."""
+    """Return the default set of scan locations for the current platform.
+
+    V1.0: Only scan KNOWN CLEANUP TARGETS — not broad system directories.
+    This follows the Windows Disk Cleanup model: only enumerate
+    directories that are actual cleanup categories.
+
+    NEVER scan:
+    - System32, SysWOW64, WinSxS, drivers, Boot, EFI, Recovery
+    - Program Files, Program Files (x86)
+    - User Documents, Desktop, Downloads, Pictures, Videos, Music
+    - pagefile.sys, hiberfil.sys, swapfile.sys, bootmgr
+
+    These are protected and must never be recursively scanned for junk.
+    """
     locations: list[ScanLocation] = []
     home = str(Path.home())
 
-    # User profile
-    locations.append(ScanLocation(path=home, label="User Profile"))
-
-    # Common Windows locations
     if _is_windows:
         system_drive = os.environ.get("SystemDrive", "C:")
         win_dir = os.environ.get("SystemRoot", os.path.join(system_drive, "\\Windows"))
-        prog_files = os.environ.get("ProgramFiles", os.path.join(system_drive, "\\Program Files"))
-        prog_files_x86 = os.environ.get("ProgramFiles(x86)", os.path.join(system_drive, "\\Program Files (x86)"))
-        program_data = os.environ.get("ProgramData", os.path.join(system_drive, "\\ProgramData"))
-
-        for p, label in [
-            (program_data, "ProgramData"),
-            (prog_files, "Program Files"),
-            (prog_files_x86, "Program Files (x86)"),
-            (win_dir, "Windows"),
-        ]:
-            if os.path.isdir(p):
-                locations.append(ScanLocation(path=p, label=label))
-
-        # User-specific
-        for sub, label in [
-            ("Downloads", "Downloads"),
-            ("Desktop", "Desktop"),
-            ("Documents", "Documents"),
-        ]:
-            p = os.path.join(home, sub)
-            if os.path.isdir(p):
-                locations.append(ScanLocation(path=p, label=label))
-
-        # AppData
         local_appdata = os.environ.get("LOCALAPPDATA", os.path.join(home, "AppData", "Local"))
-        appdata = os.path.join(home, "AppData", "Roaming")
+        appdata = os.environ.get("APPDATA", os.path.join(home, "AppData", "Roaming"))
+        program_data = os.environ.get("ProgramData", os.path.join(system_drive, "\\ProgramData"))
         temp_dir = os.environ.get("TEMP", os.path.join(local_appdata, "Temp"))
 
-        for p, label in [
-            (appdata, "AppData (Roaming)"),
-            (local_appdata, "LocalAppData"),
-            (temp_dir, "Temp"),
-        ]:
+        # ── Disk Cleanup+ target directories (ONLY these) ──────────
+        # Each entry is a known safe cleanup category from Windows Disk Cleanup.
+        cleanup_targets: list[tuple[str, str]] = [
+            # User Temp
+            (temp_dir, "User Temp"),
+            # Windows Temp
+            (os.path.join(win_dir, "Temp"), "Windows Temp"),
+            # Prefetch
+            (os.path.join(win_dir, "Prefetch"), "Prefetch"),
+            # Windows Update Download Cache
+            (os.path.join(win_dir, "SoftwareDistribution", "Download"), "Windows Update Cache"),
+            # Delivery Optimization
+            (os.path.join(win_dir, "SoftwareDistribution", "DeliveryOptimization"), "Delivery Optimization"),
+            # Downloaded Program Files
+            (os.path.join(win_dir, "Downloaded Program Files"), "Downloaded Program Files"),
+            # Offline Web Pages
+            (os.path.join(win_dir, "Offline Web Pages"), "Offline Web Pages"),
+            # Minidump
+            (os.path.join(win_dir, "Minidump"), "Minidump"),
+            # LiveKernelReports
+            (os.path.join(win_dir, "LiveKernelReports"), "Live Kernel Reports"),
+            # MEMORY.DMP (parent dir — the rule matches the specific file)
+            (win_dir, "Windows Root (MEMORY.DMP)"),
+            # Font Cache
+            (os.path.join(win_dir, "ServiceProfiles", "LocalService", "AppData", "Local", "FontCache"), "Font Cache"),
+            # BranchCache
+            (os.path.join(win_dir, "ServiceProfiles", "NetworkService", "AppData", "Local", "BranchCache"), "BranchCache"),
+            # Installer $PatchCache$
+            (os.path.join(win_dir, "Installer", "$PatchCache$"), "Installer Patch Cache"),
+            # WER (ProgramData)
+            (os.path.join(program_data, "Microsoft", "Windows", "WER"), "Windows Error Reporting"),
+            # RetailDemo
+            (os.path.join(program_data, "Microsoft", "Windows", "RetailDemo"), "Retail Demo"),
+            # Recycle Bin
+            (f"{system_drive}\\$Recycle.Bin", "Recycle Bin"),
+            # Thumbnail cache
+            (os.path.join(local_appdata, "Microsoft", "Windows", "Explorer"), "Thumbnail Cache"),
+            # Shader caches
+            (os.path.join(local_appdata, "D3DSCache"), "D3D Shader Cache"),
+            (os.path.join(local_appdata, "NVIDIA", "DXCache"), "NVIDIA DX Cache"),
+            (os.path.join(local_appdata, "NVIDIA", "GLCache"), "NVIDIA GL Cache"),
+            (os.path.join(local_appdata, "NVIDIA", "ComputeCache"), "NVIDIA Compute Cache"),
+            (os.path.join(local_appdata, "AMD", "DxCache"), "AMD DX Cache"),
+            (os.path.join(local_appdata, "AMD", "GLCache"), "AMD GL Cache"),
+            # Application temp/cache
+            (os.path.join(local_appdata, "Microsoft", "Office", "16.0", "Temp"), "Office Temp"),
+            (os.path.join(local_appdata, "Microsoft", "Office", "15.0", "Temp"), "Office Temp (15.0)"),
+            (os.path.join(local_appdata, "Microsoft", "Office", "16.0", "OfficeFileCache"), "Office File Cache"),
+            (os.path.join(local_appdata, "Microsoft", "Office", "15.0", "OfficeFileCache"), "Office File Cache (15.0)"),
+            (os.path.join(local_appdata, "Microsoft", "Office", "16.0", "DocumentCache"), "Office Document Cache"),
+            (os.path.join(local_appdata, "Microsoft", "Office", "UnsavedFiles"), "Office Unsaved Files"),
+            # Browser caches
+            (os.path.join(local_appdata, "Google", "Chrome", "User Data"), "Chrome"),
+            (os.path.join(local_appdata, "Microsoft", "Edge", "User Data"), "Edge"),
+            (os.path.join(local_appdata, "BraveSoftware", "Brave-Browser", "User Data"), "Brave"),
+            (os.path.join(appdata, "Opera Software"), "Opera"),
+            (os.path.join(local_appdata, "Vivaldi", "User Data"), "Vivaldi"),
+            (os.path.join(appdata, "Mozilla", "Firefox", "Profiles"), "Firefox"),
+            # Windows.old (detection only — cleanup requires review)
+            (r"C:\Windows.old", "Windows.old"),
+        ]
+
+        for p, label in cleanup_targets:
             if os.path.isdir(p):
                 locations.append(ScanLocation(path=p, label=label))
 
-        # Recycle Bin
-        locations.append(ScanLocation(path="C:\\$Recycle.Bin", label="Recycle Bin"))
-
-        # Browser profile roots (common)
-        for browser_path in [
-            os.path.join(local_appdata, "Google", "Chrome", "User Data"),
-            os.path.join(local_appdata, "Microsoft", "Edge", "User Data"),
-            os.path.join(appdata, "Mozilla", "Firefox", "Profiles"),
-            os.path.join(local_appdata, "BraveSoftware", "Brave-Browser", "User Data"),
+        # Additional local fixed drive Recycle Bins
+        try:
+            import ctypes
+            GetLogicalDrives = ctypes.windll.kernel32.GetLogicalDrives
+            bitmask = GetLogicalDrives()
+            for i in range(26):
+                if bitmask & (1 << i):
+                    drive = f"{chr(65 + i)}:"
+                    if drive == system_drive:
+                        continue
+                    try:
+                        GetDriveType = ctypes.windll.kernel32.GetDriveTypeW
+                        drive_type = GetDriveType(f"{drive}\\")
+                        if drive_type == 3:  # DRIVE_FIXED
+                            rb = f"{drive}\\$Recycle.Bin"
+                            if os.path.isdir(rb):
+                                locations.append(ScanLocation(path=rb, label=f"Recycle Bin ({drive})"))
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+    else:
+        # Non-Windows: scan temp dirs for testing
+        for p, label in [
+            ("/tmp", "Temp"),
+            ("/var/tmp", "Var Temp"),
         ]:
-            if os.path.isdir(browser_path):
-                locations.append(ScanLocation(path=browser_path, label=f"Browser: {os.path.basename(os.path.dirname(browser_path))}"))
-
-    # Users root
-    users_dir = os.path.join(os.path.dirname(home), "")
-    if users_dir and os.path.isdir(users_dir):
-        locations.append(ScanLocation(path=users_dir, label="Users"))
+            if os.path.isdir(p):
+                locations.append(ScanLocation(path=p, label=label))
 
     return locations
 

@@ -123,9 +123,22 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
       positive: boolean;
     }> = [];
 
-    // V1.0 SIMPLE: Only show Files Cleaned and Space Recovered.
-    // Nothing else — no detected, no remaining, no failed.
+    // V1.0: Show Files Detected, Files Cleaned, Space Recovered, Remaining,
+    // Health Before → Health After. These are the customer-facing results.
+    const detectedCount = result.files_found ?? result.detected ?? 0;
     const cleanedCount = result.files_cleaned ?? result.cleaned ?? 0;
+    const remainingCount = result.remaining ?? Math.max(0, detectedCount - cleanedCount);
+    const healthBefore = result.health_before ?? 0;
+    const healthAfter = result.health_after ?? 0;
+
+    if (detectedCount > 0) {
+      cards.push({
+        label: 'Files Detected',
+        value: formatNumber(detectedCount),
+        icon: CheckCircleIcon,
+        positive: true,
+      });
+    }
 
     if (cleanedCount > 0) {
       cards.push({
@@ -142,6 +155,24 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
         value: formatBytes(result.space_recovered),
         icon: CheckCircleIcon,
         positive: true,
+      });
+    }
+
+    if (remainingCount > 0) {
+      cards.push({
+        label: 'Remaining',
+        value: formatNumber(remainingCount),
+        icon: ExclamationTriangleIcon,
+        positive: false,
+      });
+    }
+
+    if (healthBefore > 0 || healthAfter > 0) {
+      cards.push({
+        label: 'Health',
+        value: `${healthBefore} → ${healthAfter}`,
+        icon: BoltIcon,
+        positive: healthAfter >= healthBefore,
       });
     }
 
