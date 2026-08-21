@@ -58,6 +58,10 @@ class UserTempRule(Rule):
         )
         super().__init__(metadata)
 
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return KnownLocations.get_user_temp_roots()
+
     def evaluate(
         self,
         asset: ScanAsset,
@@ -273,6 +277,10 @@ class WindowsTempRule(Rule):
         )
         super().__init__(metadata)
 
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return [KnownLocations.get_windows_temp_root()]
+
     def evaluate(
         self,
         asset: ScanAsset,
@@ -464,6 +472,10 @@ class ShaderCacheRule(Rule):
         )
         super().__init__(metadata)
 
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return KnownLocations.get_shader_cache_roots()
+
     def evaluate(
         self,
         asset: ScanAsset,
@@ -627,6 +639,10 @@ class ThumbnailCacheRule(Rule):
         )
         super().__init__(metadata)
 
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return [KnownLocations.get_thumbnail_cache_root()]
+
     def evaluate(
         self,
         asset: ScanAsset,
@@ -758,9 +774,47 @@ class ThumbnailCacheRule(Rule):
         )
 
 
+# Canonical registry of every active detection rule ID.
+#
+# This is the single source of truth for the rule set. Tests MUST
+# assert against this list — never against a hard-coded count — so
+# that adding/removing a rule is an explicit, reviewed change here.
+CANONICAL_JUNK_RULE_IDS: tuple[str, ...] = (
+    # Original junk/cache rules (SC-8C2, 4 original + 5 extended)
+    "junk.temp.user",
+    "junk.temp.windows",
+    "cache.shader",
+    "cache.thumbnail",
+    "junk.temp.application",
+    "cache.browser",
+    "cache.installer",
+    "cache.windows_update",
+    "cache.application",
+    # V1.0 Disk Cleanup+ provider rules
+    "junk.recycle_bin",
+    "cache.delivery_optimization",
+    "junk.crash_dump",
+    "junk.windows_old",
+    "junk.prefetch",
+    "junk.downloaded_program_files",
+    "junk.offline_web_pages",
+    "cache.font_cache",
+    "cache.branch_cache",
+    "junk.retail_demo",
+    "junk.memory_dump",
+    # Security threat detection rules
+    "security.malicious_filename",
+    "security.suspicious_script",
+    "security.suspicious_executable",
+    "security.tracking_cookie",
+)
+
+
 def register_junk_rules(registry) -> None:
     """
     Register all junk detection rules with the registry.
+
+    The registered set MUST exactly match CANONICAL_JUNK_RULE_IDS.
 
     Args:
         registry: RuleRegistry instance

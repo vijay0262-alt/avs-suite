@@ -533,20 +533,15 @@ describe('ScanView', () => {
       },
     };
 
-    await waitFor(
-      () => {
-        expect(screen.getByTestId('unified-scan-view-complete')).toBeDefined();
-      },
-      { timeout: 5000 },
-    );
-
-    // V1.0 UNIFIED: AutoOptimizeView appears automatically (no manual Review & Remediate)
+    // V1.0 UNIFIED: the scan transitions DIRECTLY to AutoOptimizeView
+    // (no intermediate summary, no manual Review & Remediate).
     await waitFor(
       () => {
         const view = screen.queryByTestId('auto-optimize-loading') ||
                      screen.queryByTestId('auto-optimize-running') ||
-                     screen.queryByTestId('auto-optimize-complete');
-        expect(view).toBeDefined();
+                     screen.queryByTestId('auto-optimize-complete') ||
+                     screen.queryByTestId('auto-optimize-error');
+        expect(view).not.toBeNull();
       },
       { timeout: 5000 },
     );
@@ -690,20 +685,15 @@ describe('ScanView', () => {
       },
     };
 
-    await waitFor(
-      () => {
-        expect(screen.getByTestId('unified-scan-view-complete')).toBeDefined();
-      },
-      { timeout: 5000 },
-    );
-
-    // V1.0 UNIFIED: AutoOptimizeView appears automatically (no manual review)
+    // V1.0 UNIFIED: the scan transitions DIRECTLY to AutoOptimizeView
+    // (no intermediate summary, no manual review).
     await waitFor(
       () => {
         const view = screen.queryByTestId('auto-optimize-loading') ||
                      screen.queryByTestId('auto-optimize-running') ||
-                     screen.queryByTestId('auto-optimize-complete');
-        expect(view).toBeDefined();
+                     screen.queryByTestId('auto-optimize-complete') ||
+                     screen.queryByTestId('auto-optimize-error');
+        expect(view).not.toBeNull();
       },
       { timeout: 5000 },
     );

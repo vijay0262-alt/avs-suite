@@ -37,6 +37,14 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+# The quick-scan location test inspects the LIVE filesystem (locations
+# are only included when the directory actually exists), so it can only
+# run on a real Windows host. Rule-evaluation tests are platform-
+# independent (pure string path matching) and must NOT be skipped.
+_requires_windows_filesystem = pytest.mark.skipif(
+    os.name != "nt", reason="Inspects the live Windows filesystem"
+)
+
 from avs_backend.scan_core.rules.detection.locations import KnownLocations
 from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
 from avs_backend.scan_core.context.asset_snapshot import (
@@ -430,6 +438,7 @@ class TestCleaningVerification:
 class TestRecycleBin:
     """Tests that Recycle Bin is included in scan locations."""
 
+    @_requires_windows_filesystem
     def test_recycle_bin_in_quick_scan_locations(self):
         """Recycle Bin must be in the quick scan location set."""
         from avs_backend.scan_core.orchestration.discovery import (

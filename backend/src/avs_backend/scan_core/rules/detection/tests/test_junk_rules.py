@@ -610,19 +610,23 @@ class TestRuleRegistration:
     """Test rule registration."""
 
     def test_register_all_junk_rules(self):
-        """Test registering all junk rules."""
-        from avs_backend.scan_core.rules.detection.junk_rules import register_junk_rules
+        """Registered rule set must exactly match CANONICAL_JUNK_RULE_IDS."""
+        from avs_backend.scan_core.rules.detection.junk_rules import (
+            CANONICAL_JUNK_RULE_IDS,
+            register_junk_rules,
+        )
         from avs_backend.scan_core.rules.registry import RuleRegistry
 
         registry = RuleRegistry()
         register_junk_rules(registry)
 
-        # Should have 9 rules (4 original + 5 extended)
+        # Exact set equality — no missing rules, no unexpected extras.
         all_rules = registry.list_all()
-        assert len(all_rules) == 9
+        rule_ids = {r.rule_id for r in all_rules}
+        assert rule_ids == set(CANONICAL_JUNK_RULE_IDS)
+        assert len(all_rules) == len(CANONICAL_JUNK_RULE_IDS)
 
         # Check rule IDs
-        rule_ids = {r.rule_id for r in all_rules}
         assert "junk.temp.user" in rule_ids
         assert "junk.temp.windows" in rule_ids
         assert "cache.shader" in rule_ids
@@ -636,14 +640,17 @@ class TestRuleRegistration:
 
     def test_rules_are_enabled_by_default(self):
         """Test that registered rules are enabled."""
-        from avs_backend.scan_core.rules.detection.junk_rules import register_junk_rules
+        from avs_backend.scan_core.rules.detection.junk_rules import (
+            CANONICAL_JUNK_RULE_IDS,
+            register_junk_rules,
+        )
         from avs_backend.scan_core.rules.registry import RuleRegistry
 
         registry = RuleRegistry()
         register_junk_rules(registry)
 
         enabled_rules = registry.list_enabled()
-        assert len(enabled_rules) == 9
+        assert {r.rule_id for r in enabled_rules} == set(CANONICAL_JUNK_RULE_IDS)
 
 
 class TestDeterminism:

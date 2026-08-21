@@ -358,6 +358,9 @@ class RuleEvaluator:
         # Sort pairs by asset_id for deterministic ordering
         asset_snapshot_pairs.sort(key=lambda pair: pair[0].asset_id)
 
+        # Pre-sort rules once (evaluate_asset would re-sort per asset)
+        sorted_rules = sorted(rules, key=lambda r: r.rule_id)
+
         for asset, snapshot in asset_snapshot_pairs:
             stats.assets_considered += 1
 
@@ -366,11 +369,12 @@ class RuleEvaluator:
                 break
 
             # Evaluate asset with its snapshot through the standard pipeline
+            # Pass pre-sorted rules to avoid re-sorting per asset (62k times)
             batch = self.evaluate_asset(
                 asset=asset,
                 snapshot=snapshot,
                 scan_context=scan_context,
-                rules=rules,
+                rules=sorted_rules,
                 cancellation_token=cancellation_token,
             )
 

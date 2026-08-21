@@ -227,13 +227,23 @@ def test_clean_stress_ten_thousand_files(tmp_path: Path, count: int) -> None:
     reach the 100k+ target from the brief on beefier CI hardware. Runs
     in ~1s at 10k on modern SSDs.
     """
+    create_started = time.monotonic()
     paths = _make_files(tmp_path, count, size=1)
+    create_elapsed = time.monotonic() - create_started
+
     started = time.monotonic()
     result = _TreeCleaner(tmp_path).clean(paths, Event(), lambda _p: None)
     elapsed = time.monotonic() - started
 
     assert result.result == CleaningActionResult.SUCCESS
     assert result.files_removed == count
-    # Sanity-check that the loop is fast enough — ~1000 files/second
-    # is the floor even on slow CI runners.
-    assert elapsed < max(2.0, count / 1000.0)
+    # Perf sanity check — machine-relative, not absolute wall-clock.
+    # Deleting a file is a single syscall while creating one is
+    # open+write+close, so a healthy deletion loop must never be
+    # dramatically slower than creating the same tree. An absolute
+    # floor (~1000 files/s) is kept for fast machines; the relative
+    # bound absorbs disk contention from parallel xdist workers and
+    # antivirus scanning that slow BOTH phases proportionally, while
+    # still catching real per-file overhead regressions (e.g. an
+    # accidental Path.resolve()/handle-open per file).
+    assert elapsed < max(2.0, count / 1000.0, create_elapsed * 2.0)

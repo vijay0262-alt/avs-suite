@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
 from .enums import RuleCategory, Severity, RuleStatus
@@ -139,6 +140,7 @@ class Rule(ABC):
             metadata: Immutable rule metadata
         """
         self._metadata = metadata
+        self._applicable_roots_cache: list[Path] | None | bool = False
     
     @property
     def metadata(self) -> RuleMetadata:
@@ -192,3 +194,33 @@ class Rule(ABC):
         This is a contract definition only.
         """
         raise NotImplementedError("Rule evaluation not implemented in SC-8A")
+
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Return location roots this rule applies to, or None for universal.
+
+        Override in subclasses to enable path-based pre-filtering in the
+        ApplicabilityEngine. When a non-empty list is returned, the engine
+        skips this rule for assets whose canonical_path is not under any
+        of the listed roots — dramatically reducing rules_evaluated for
+        large scans without losing coverage.
+
+        The result is cached on first call since rules are singletons.
+
+        Returns:
+            List of root Paths, or None if the rule is universal (applies
+            to all assets regardless of path).
+        """
+        return None
+
+    def get_applicable_roots_cached(self) -> list[Path] | None:
+        """Cached version of get_applicable_roots() for performance.
+
+        Computes roots once and caches the result on the instance.
+        Rules are singletons (registered once), so the cache is safe.
+
+        Returns:
+            List of root Paths, or None if the rule is universal.
+        """
+        if self._applicable_roots_cache is False:
+            self._applicable_roots_cache = self.get_applicable_roots()
+        return self._applicable_roots_cache

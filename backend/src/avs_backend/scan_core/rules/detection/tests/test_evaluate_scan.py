@@ -44,7 +44,10 @@ from avs_backend.scan_core.metadata import (
     MetadataDatabase,
     SnapshotRepository,
 )
-from avs_backend.scan_core.rules.detection.junk_rules import register_junk_rules
+from avs_backend.scan_core.rules.detection.junk_rules import (
+    CANONICAL_JUNK_RULE_IDS,
+    register_junk_rules,
+)
 from avs_backend.scan_core.rules.detection.locations import KnownLocations
 from avs_backend.scan_core.rules.evaluation import EvaluationStatus
 from avs_backend.scan_core.rules.evaluator import CancellationToken, RuleEvaluator
@@ -173,7 +176,7 @@ class TestEvaluateScanBasic:
 
         assert batch.statistics.assets_considered == 3
         assert batch.statistics.assets_evaluated == 3
-        assert batch.statistics.rules_considered == 9
+        assert batch.statistics.rules_considered == len(CANONICAL_JUNK_RULE_IDS)
         assert len(batch.results) > 0
 
         matches = batch.get_matches()
@@ -201,7 +204,7 @@ class TestEvaluateScanBasic:
         assert len(batch.results) == 0
         assert batch.statistics.assets_considered == 0
         assert batch.statistics.assets_evaluated == 0
-        assert batch.statistics.rules_considered == 9
+        assert batch.statistics.rules_considered == len(CANONICAL_JUNK_RULE_IDS)
 
     def test_no_repositories_returns_empty_batch(self, tmp_path: Path) -> None:
         """evaluate_scan() without repositories returns empty batch gracefully."""
@@ -294,7 +297,7 @@ class TestEvaluateScanStatistics:
         stats = batch.statistics
         assert stats.assets_considered == 2
         assert stats.assets_evaluated == 2
-        assert stats.rules_considered == 9
+        assert stats.rules_considered == len(CANONICAL_JUNK_RULE_IDS)
         assert stats.started_at is not None
         assert stats.completed_at is not None
         assert stats.evaluation_duration_ms > 0
@@ -493,7 +496,7 @@ class TestEvaluateScanAllRules:
         rule_ids_in_results = {r.rule_id for r in batch.results}
         all_rule_ids = {r.rule_id for r in registry.list_enabled()}
         assert all_rule_ids == rule_ids_in_results
-        assert len(all_rule_ids) == 9
+        assert all_rule_ids == set(CANONICAL_JUNK_RULE_IDS)
 
     def test_multiple_asset_types_through_scan(self, tmp_path: Path) -> None:
         """evaluate_scan() handles assets of different types correctly."""

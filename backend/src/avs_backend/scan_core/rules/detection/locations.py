@@ -29,8 +29,11 @@ class KnownLocations:
     # Used only when the corresponding env var is not set in os.environ.
     _WINDOWS_ENV_DEFAULTS: dict[str, str] = {
         "SystemRoot": r"C:\Windows",
+        "SystemDrive": "C:",
         "ProgramFiles": r"C:\Program Files",
         "ProgramFiles(x86)": r"C:\Program Files (x86)",
+        "ProgramData": r"C:\ProgramData",
+        "PROGRAMDATA": r"C:\ProgramData",
         "LOCALAPPDATA": r"C:\Users\User\AppData\Local",
         "APPDATA": r"C:\Users\User\AppData\Roaming",
         "TEMP": r"C:\Users\User\AppData\Local\Temp",
@@ -72,7 +75,8 @@ class KnownLocations:
         roots: list[Path] = []
 
         if os.name != "nt":
-            # On non-Windows (Linux CI, macOS, etc.), use platform temp dirs.
+            # On non-Windows (Linux CI, macOS, etc.), include platform temp
+            # dirs first so live-filesystem tests keep working ...
             for candidate in ("/tmp", "/var/tmp", f"/tmp/{os.environ.get('USER', 'user')}"):
                 p = Path(candidate)
                 key = str(p).lower()
@@ -80,7 +84,10 @@ class KnownLocations:
                     continue
                 seen.add(key)
                 roots.append(p)
-            return roots
+            # ... then ALSO include the Windows-default temp roots so that
+            # detection rules evaluate Windows-style paths identically
+            # regardless of the host OS (path matching is pure string
+            # comparison via is_under_path — no filesystem access).
 
         for candidate in (r"%LOCALAPPDATA%\Temp", r"%TEMP%", r"%TMP%"):
             p = KnownLocations.expand(candidate)
@@ -100,10 +107,9 @@ class KnownLocations:
         Returns:
             Windows temp directory path
         """
-        if os.name != "nt":
-            # On non-Windows, there is no equivalent of %SystemRoot%\Temp.
-            # Return /var/tmp as the closest analogue (system-wide temp).
-            return Path("/var/tmp")
+        # Always resolve as a Windows-style path (real env vars on
+        # Windows, hardcoded defaults elsewhere). Rule matching is
+        # pure string comparison, so this works on any host OS.
         return KnownLocations.expand(r"%SystemRoot%\Temp")
 
     @staticmethod
@@ -303,12 +309,16 @@ class KnownLocations:
             List of Recycle Bin directory paths
         """
         roots: list[Path] = []
-        if os.name != "nt":
-            return roots
 
-        # System drive Recycle Bin
+        # System drive Recycle Bin — always included (Windows-style
+        # path; rule matching is pure string comparison so this works
+        # on any host OS, including Linux CI).
         system_drive = os.environ.get("SystemDrive", "C:")
         roots.append(Path(f"{system_drive}\\$Recycle.Bin"))
+
+        if os.name != "nt":
+            # Drive enumeration requires the Windows API.
+            return roots
 
         # Other local fixed drives
         try:
@@ -798,7 +808,11 @@ class KnownLocations:
             True if the file name is in the protected files list
         """
         try:
-            p = Path(asset_path)
+            # Handle both Windows and POSIX path separators so that
+            # Windows-style paths (e.g. C:\\pagefile.sys) are correctly
+            # parsed even when running on Linux CI.
+            normalized = asset_path.replace("\\", "/")
+            p = Path(normalized)
             name_lower = p.name.lower()
             return name_lower in KnownLocations.get_protected_files()
         except Exception:

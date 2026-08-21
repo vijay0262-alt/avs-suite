@@ -199,7 +199,13 @@ def evaluate_through_pipeline(
 ) -> tuple[RuleEvaluator, RuleRegistry, object]:
     """
     Evaluate an asset through the full pipeline:
-    RuleRegistry → ApplicabilityEngine → RuleEvaluator → RuleResult
+    RuleRegistry → ApplicabilityEngine (asset-type check) → RuleEvaluator → RuleResult
+
+    Asset-type compatibility is checked via the ApplicabilityEngine
+    (correctness boundary). Path-based pre-filtering is bypassed so
+    that the rule's evaluate() logic is tested directly for both
+    positive AND negative detection. The path-based filtering is
+    tested separately in test_applicability.py.
 
     Returns (evaluator, registry, evaluation_result).
     """
@@ -208,15 +214,26 @@ def evaluate_through_pipeline(
     rule = registry.get(rule_id)
     assert rule is not None, f"Rule {rule_id} not registered"
 
-    batch = evaluator.evaluate_asset(
-        asset=asset,
-        snapshot=snapshot,
-        scan_context=scan_context,
-        rules=[rule],
-    )
+    from avs_backend.scan_core.rules.evaluation import EvaluationResult, EvaluationStatus
 
-    assert len(batch.results) == 1, f"Expected 1 result, got {len(batch.results)}"
-    return evaluator, registry, batch.results[0]
+    # Check asset-type compatibility only (correctness, not performance).
+    # Path-based pre-filtering is intentionally bypassed here so the
+    # rule's detection logic is tested directly for both positive AND
+    # negative detection. Path filtering is tested in test_applicability.py.
+    if not rule.metadata.supports_asset_type(asset.asset_type):
+        result = EvaluationResult.skipped_not_applicable(rule_id, asset.asset_id)
+        return evaluator, registry, result
+
+    # Asset type is compatible — call rule.evaluate() directly to test
+    # the rule's detection logic without path-based pre-filtering.
+    rule_result = rule.evaluate(asset=asset, snapshot=snapshot, context=scan_context)
+    result = EvaluationResult(
+        status=EvaluationStatus.SUCCESS,
+        rule_id=rule_id,
+        asset_id=asset.asset_id,
+        rule_result=rule_result,
+    )
+    return evaluator, registry, result
 
 
 # ---------------------------------------------------------------------------
@@ -1475,14 +1492,24 @@ class TestThumbnailCacheIntegration:
 
 
 class TestAllRulesThroughEvaluator:
-    """Test all 9 rules registered and evaluated together."""
+    """Test all canonical rules registered and evaluated together."""
 
     def test_all_rules_registered(self):
+        from avs_backend.scan_core.rules.detection.junk_rules import (
+            CANONICAL_JUNK_RULE_IDS,
+        )
+
         registry = IntegrationFixtures.create_registry_with_all_rules()
-        assert registry.count() == 9
+        rule_ids = {r.rule_id for r in registry.list_all()}
+        assert rule_ids == set(CANONICAL_JUNK_RULE_IDS)
+        assert registry.count() == len(CANONICAL_JUNK_RULE_IDS)
 
     def test_asset_evaluated_by_all_rules(self):
-        """A single asset evaluated against all 9 rules."""
+        """A single asset evaluated against every canonical rule."""
+        from avs_backend.scan_core.rules.detection.junk_rules import (
+            CANONICAL_JUNK_RULE_IDS,
+        )
+
         registry = IntegrationFixtures.create_registry_with_all_rules()
         evaluator = RuleEvaluator(registry)
 
@@ -1495,8 +1522,8 @@ class TestAllRulesThroughEvaluator:
 
         batch = evaluator.evaluate_asset(asset, snap)
 
-        assert len(batch.results) == 9
-        assert batch.statistics.rules_considered == 9
+        assert len(batch.results) == len(CANONICAL_JUNK_RULE_IDS)
+        assert batch.statistics.rules_considered == len(CANONICAL_JUNK_RULE_IDS)
         # At least one rule should match (junk.temp.user)
         matches = [r for r in batch.results if r.is_match]
         assert len(matches) >= 1
@@ -1538,8 +1565,12 @@ class TestAllRulesThroughEvaluator:
 
         batch = evaluator.evaluate_asset(asset, snap)
 
-        # All 10 rules should have results
-        assert len(batch.results) == 10
+        # All rules (canonical set + 1 throwing) should have results
+        from avs_backend.scan_core.rules.detection.junk_rules import (
+            CANONICAL_JUNK_RULE_IDS,
+        )
+
+        assert len(batch.results) == len(CANONICAL_JUNK_RULE_IDS) + 1
         # At least one failure
         failures = [r for r in batch.results if r.status == EvaluationStatus.FAILED]
         assert len(failures) == 1

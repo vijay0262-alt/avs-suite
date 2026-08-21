@@ -139,6 +139,10 @@ class ApplicationTempRule(Rule):
         )
         super().__init__(metadata)
 
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return KnownLocations.get_application_temp_roots()
+
     def evaluate(
         self,
         asset: ScanAsset,
@@ -345,6 +349,10 @@ class BrowserCacheRule(Rule):
             ),
         )
         super().__init__(metadata)
+
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return KnownLocations.get_browser_cache_roots()
 
     def evaluate(
         self,
@@ -563,6 +571,10 @@ class InstallerCacheRule(Rule):
         )
         super().__init__(metadata)
 
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return [KnownLocations.get_installer_cache_root()]
+
     def evaluate(
         self,
         asset: ScanAsset,
@@ -741,6 +753,10 @@ class WindowsUpdateCacheRule(Rule):
             supported_asset_types=tuple([AssetType.FILE.value]),
         )
         super().__init__(metadata)
+
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return [KnownLocations.get_windows_update_cache_root()]
 
     def evaluate(
         self,
@@ -923,6 +939,10 @@ class ApplicationCacheRule(Rule):
             supported_asset_types=tuple([AssetType.FILE.value]),
         )
         super().__init__(metadata)
+
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return KnownLocations.get_application_cache_roots()
 
     def evaluate(
         self,

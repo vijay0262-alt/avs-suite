@@ -96,28 +96,51 @@ class ApplicabilityEngine:
     def check_applicability(rule: Rule, asset: ScanAsset) -> ApplicabilityResult:
         """
         Check if rule is applicable to asset.
-        
+
+        Path-based pre-filtering: if the rule declares applicable roots
+        via get_applicable_roots(), the asset's canonical_path must be
+        under at least one of those roots. This avoids evaluating every
+        rule against every file in large scans (requirement #16).
+
         Args:
             rule: Rule to check
             asset: Asset to check against
-        
+
         Returns:
             ApplicabilityResult indicating whether rule should be evaluated
         """
         metadata = rule.metadata
-        
+
         # Check if rule is enabled
         if not metadata.is_enabled:
             return ApplicabilityResult.disabled(
                 f"Rule '{metadata.rule_id}' is {metadata.status.value}"
             )
-        
+
         # Check asset type compatibility
         if not metadata.supports_asset_type(asset.asset_type):
             return ApplicabilityResult.unsupported_asset(
                 f"Rule '{metadata.rule_id}' does not support asset type '{asset.asset_type.value}'"
             )
-        
+
+        # Path-based pre-filtering (performance optimization)
+        roots = rule.get_applicable_roots_cached()
+        if roots:
+            from ..rules.detection.locations import KnownLocations
+
+            # Pre-compute asset path parts once for this asset
+            asset_parts = KnownLocations._normalize_windows_path(asset.canonical_path)
+            matched = False
+            for root in roots:
+                root_parts = KnownLocations._normalize_windows_path(str(root))
+                if len(asset_parts) >= len(root_parts) and asset_parts[:len(root_parts)] == root_parts:
+                    matched = True
+                    break
+            if not matched:
+                return ApplicabilityResult.not_applicable(
+                    f"Asset path is not under any applicable root for rule '{metadata.rule_id}'"
+                )
+
         # Rule is applicable
         return ApplicabilityResult.applicable(
             f"Rule '{metadata.rule_id}' is applicable to {asset.asset_type.value}"

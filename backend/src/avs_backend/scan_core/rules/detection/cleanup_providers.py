@@ -66,6 +66,10 @@ class RecycleBinRule(Rule):
         )
         super().__init__(metadata)
 
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return KnownLocations.get_recycle_bin_roots()
+
     def evaluate(
         self,
         asset: ScanAsset,
@@ -188,6 +192,10 @@ class DeliveryOptimizationRule(Rule):
             supported_asset_types=tuple([AssetType.FILE.value]),
         )
         super().__init__(metadata)
+
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return KnownLocations.get_delivery_optimization_roots()
 
     def evaluate(
         self,
@@ -317,6 +325,10 @@ class CrashDumpRule(Rule):
             supported_asset_types=tuple([AssetType.FILE.value]),
         )
         super().__init__(metadata)
+
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return KnownLocations.get_crash_dump_roots()
 
     def evaluate(
         self,
@@ -448,6 +460,10 @@ class WindowsOldRule(Rule):
         )
         super().__init__(metadata)
 
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return [KnownLocations.get_windows_old_root()]
+
     def evaluate(
         self,
         asset: ScanAsset,
@@ -572,6 +588,10 @@ class PrefetchRule(Rule):
         )
         super().__init__(metadata)
 
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return [KnownLocations.get_prefetch_root()]
+
     def evaluate(
         self,
         asset: ScanAsset,
@@ -687,6 +707,10 @@ class DownloadedProgramFilesRule(Rule):
             supported_asset_types=tuple([AssetType.FILE.value]),
         )
         super().__init__(metadata)
+
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return [KnownLocations.get_downloaded_program_files_root()]
 
     def evaluate(
         self,
@@ -804,6 +828,10 @@ class OfflineWebPagesRule(Rule):
         )
         super().__init__(metadata)
 
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return [KnownLocations.get_offline_web_pages_root()]
+
     def evaluate(
         self,
         asset: ScanAsset,
@@ -920,6 +948,10 @@ class FontCacheRule(Rule):
         )
         super().__init__(metadata)
 
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return [KnownLocations.get_font_cache_root()]
+
     def evaluate(
         self,
         asset: ScanAsset,
@@ -1035,6 +1067,10 @@ class BranchCacheRule(Rule):
             supported_asset_types=tuple([AssetType.FILE.value]),
         )
         super().__init__(metadata)
+
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return [KnownLocations.get_branch_cache_root()]
 
     def evaluate(
         self,
@@ -1153,6 +1189,10 @@ class RetailDemoRule(Rule):
         )
         super().__init__(metadata)
 
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return [KnownLocations.get_retail_demo_root()]
+
     def evaluate(
         self,
         asset: ScanAsset,
@@ -1268,6 +1308,10 @@ class MemoryDumpRule(Rule):
             supported_asset_types=tuple([AssetType.FILE.value]),
         )
         super().__init__(metadata)
+
+    def get_applicable_roots(self) -> list[Path] | None:
+        """Path roots this rule applies to (for pre-filtering)."""
+        return [KnownLocations.get_memory_dump_file()]
 
     def evaluate(
         self,
