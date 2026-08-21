@@ -80,9 +80,12 @@ class FilesystemDiscoveryEngine:
         options = EnumerateOptions(
             cancel_event=_CancelAdapter(cancellation_token),
             progress_interval=250,
-            check_locked=True,  # V1.0: detect locked files so they are classified
-                                # as REVIEW_REQUIRED instead of SAFE, preventing
-                                # thousands of failed deletion attempts.
+            # V1.0: Lock checking is deferred to the pre-execution
+            # revalidation phase (RemediationCoordinator.
+            # revalidate_planned_actions) which only checks PLANNED
+            # actions (typically ~1K), not all discovered files (67K+).
+            # Doing CreateFileW per file during discovery is too slow.
+            check_locked=False,
         )
         for entry in enumerator.enumerate_locations(
             locations,

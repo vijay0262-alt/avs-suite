@@ -53,14 +53,26 @@ from .remediation_models import (
 
 # ── V1.0: File lock check for execution-time revalidation ──────────────
 #
-# We reuse the enumerator's CreateFileW(GENERIC_DELETE) probe so that
-# the SafetyGate can reject files that are held by another process
-# without FILE_SHARE_DELETE (the common case for browser cache LevelDB
-# files, active application files, and loaded PyInstaller modules).
+# Platform-aware lock detection:
+#
+# Windows:
+#   Uses CreateFileW with GENERIC_DELETE + FILE_SHARE_DELETE to probe
+#   whether Windows would allow deletion. If the open fails, the file
+#   is locked / in use and must NOT be counted as deletable.
+#
+# Non-Windows (Linux CI, macOS):
+#   Uses os.open(O_WRONLY) as a basic writability probe. If the file
+#   cannot be opened for writing, it is treated as locked. A normal
+#   accessible file will always pass this check.
+#
+# IMPORTANT: A normal accessible file must NEVER be reported as locked.
+#   "API unavailable" must NOT mean "locked".
 
 import sys as _sys
 
-if _sys.platform == "win32":
+_is_windows_platform = _sys.platform == "win32"
+
+if _is_windows_platform:
     import ctypes as _ctypes
 
     _kernel32 = _ctypes.windll.kernel32
@@ -89,26 +101,49 @@ if _sys.platform == "win32":
 def _check_file_locked(path: str) -> bool:
     """Return True if the file cannot be deleted right now.
 
-    Uses CreateFileW with GENERIC_DELETE + FILE_SHARE_DELETE to probe
-    whether Windows would allow deletion. If the open fails, the file
-    is locked / in use and must NOT be counted as deletable.
+    Platform-aware:
+    - Windows: CreateFileW(GENERIC_DELETE) probe.
+    - Non-Windows: os.open(O_WRONLY) probe (basic POSIX lock check).
+
+    A normal accessible file must return False (not locked).
+    Only genuinely locked/in-use files return True.
     """
+    if not os.path.isfile(path):
+        # Non-existent or non-regular file → treat as "locked" (can't delete)
+        return True
+
+    if _is_windows_platform:
+        try:
+            handle = _kernel32_CreateFileW(
+                path,
+                _GENERIC_DELETE,
+                _FILE_SHARE_READ | _FILE_SHARE_WRITE | _FILE_SHARE_DELETE,
+                None,
+                _OPEN_EXISTING,
+                _FILE_ATTRIBUTE_NORMAL,
+                None,
+            )
+            if handle is None or handle == -1 or handle == 0xFFFFFFFFFFFFFFFF:
+                return True  # cannot open with DELETE → locked
+            _kernel32_CloseHandle(handle)
+            return False
+        except Exception:
+            # Conservative on Windows: if the API fails unexpectedly,
+            # treat as locked. This is Windows production behavior.
+            return True
+
+    # Non-Windows (Linux CI, macOS): use POSIX writability probe.
+    # A normal accessible file will always pass this check.
+    # Only files that cannot be opened for writing are "locked".
     try:
-        handle = _kernel32_CreateFileW(
-            path,
-            _GENERIC_DELETE,
-            _FILE_SHARE_READ | _FILE_SHARE_WRITE | _FILE_SHARE_DELETE,
-            None,
-            _OPEN_EXISTING,
-            _FILE_ATTRIBUTE_NORMAL,
-            None,
-        )
-        if handle is None or handle == -1 or handle == 0xFFFFFFFFFFFFFFFF:
-            return True  # cannot open with DELETE → locked
-        _kernel32_CloseHandle(handle)
-        return False
+        flags = os.O_WRONLY | getattr(os, "O_NONBLOCK", 0)
+        fd = os.open(path, flags)
+        os.close(fd)
+        return False  # Successfully opened → not locked
+    except (OSError, PermissionError):
+        return True  # Cannot open for writing → locked
     except Exception:
-        return True  # conservative: treat errors as locked
+        return False  # Unexpected error → do NOT falsely report as locked
 
 
 @dataclass
