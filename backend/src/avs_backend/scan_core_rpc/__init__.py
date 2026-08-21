@@ -674,7 +674,7 @@ def _scan_core_scan_plan_details(params: Optional[dict[str, Any]]) -> dict[str, 
             findings.append({
                 "severity": severity,
                 "category": action.action_type.value if hasattr(action.action_type, "value") else str(action.action_type),
-                "title": action.description or action.action_id,
+                "title": getattr(action, "description", None) or action.reason or action.action_id,
                 "actionable": action.is_actionable,
                 "state": action.state.value if hasattr(action.state, "value") else str(action.state),
             })

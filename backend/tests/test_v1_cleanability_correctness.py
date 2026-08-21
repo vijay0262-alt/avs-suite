@@ -155,7 +155,14 @@ def test_100_deletable_files_all_detected_and_cleaned() -> None:
 
 
 def test_locked_and_missing_not_detected_as_cleanable() -> None:
-    """100 junk + 20 locked + 10 already-deleted → only 100 cleanable."""
+    """100 junk + 20 locked + 10 already-deleted → only 100 cleanable.
+
+    Platform-aware:
+    - Windows: mandatory file locking — held files are detected as locked.
+    - Linux: advisory locking — open files can still be deleted, so the
+      locked-file assertion is relaxed (Linux allows unlinking open files).
+    - All platforms: 10 already-deleted files must NOT be enumerated.
+    """
     from avs_backend.scan_core.enumerator import (
         EnumerateOptions,
         FilesystemEnumerator,
@@ -165,6 +172,8 @@ def test_locked_and_missing_not_detected_as_cleanable() -> None:
     from avs_backend.scan_core.rules.detection.junk_rules import UserTempRule
     from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
     from avs_backend.scan_core.context.asset_snapshot import create_snapshot_from_asset
+
+    is_windows = sys.platform == "win32"
 
     temp_root = _get_temp_root()
     test_dir = temp_root / "avs_v1_test_mixed"
@@ -177,6 +186,8 @@ def test_locked_and_missing_not_detected_as_cleanable() -> None:
         normal_files.append(f)
 
     # Create 20 locked files (held open by this process)
+    # On Windows, holding a file open prevents deletion (mandatory locking).
+    # On Linux, this does NOT prevent deletion (advisory locking + unlink).
     locked_files = []
     lock_stop = threading.Event()
     lock_threads = []
@@ -242,15 +253,28 @@ def test_locked_and_missing_not_detected_as_cleanable() -> None:
                     locked_count += 1
 
         # V1.0 invariant: only genuinely deletable files are "safe"
-        assert safe_count == 100, (
-            f"Expected 100 safe (deletable) files, got {safe_count}. "
-            f"Locked: {locked_count}. "
-            "The 20 locked files must NOT be classified as safe/cleanable."
-        )
-        assert locked_count == 20, (
-            f"Expected 20 locked files, got {locked_count}. "
-            "Locked files must be detected as REVIEW_REQUIRED, not SAFE."
-        )
+        if is_windows:
+            # Windows: mandatory locking — held files must be detected as locked
+            assert safe_count == 100, (
+                f"Expected 100 safe (deletable) files, got {safe_count}. "
+                f"Locked: {locked_count}. "
+                "The 20 locked files must NOT be classified as safe/cleanable."
+            )
+            assert locked_count == 20, (
+                f"Expected 20 locked files, got {locked_count}. "
+                "Locked files must be detected as REVIEW_REQUIRED, not SAFE."
+            )
+        else:
+            # Linux: advisory locking — open files can still be deleted.
+            # The 20 "locked" files are actually deletable on Linux, so
+            # all 120 should be safe. This is correct Linux behavior.
+            assert safe_count == 120, (
+                f"Expected 120 safe files on Linux (advisory locking), "
+                f"got {safe_count}. Locked: {locked_count}."
+            )
+            assert locked_count == 0, (
+                f"Expected 0 locked files on Linux, got {locked_count}."
+            )
 
     finally:
         # Release locked files
