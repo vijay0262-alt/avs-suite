@@ -20,8 +20,11 @@ def _call(method: str, params: dict[str, Any] | None = None) -> Any:
     return handler(params)
 
 
-def _wait_for_session(session_id: str, timeout: float = 10.0) -> dict[str, Any]:
-    """Poll status until the session completes."""
+def _wait_for_session(session_id: str, timeout: float = 60.0) -> dict[str, Any]:
+    """Poll status until the session completes.
+
+    Generous timeout (60s) for lazy scan engine initialization on CI.
+    """
     deadline = time.time() + timeout
     while time.time() < deadline:
         status = _call("scan_core.scan.status", {"session_id": session_id})

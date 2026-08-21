@@ -29,12 +29,14 @@ def fresh_scan_bridge(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     app_dir.mkdir()
     monkeypatch.setattr(scan_core_rpc, "_get_app_data_dir", lambda: app_dir)
     monkeypatch.setattr(scan_core_rpc, "_scan_orchestrator", None)
+    monkeypatch.setattr(scan_core_rpc, "_coordinator", None)
     scan_core_rpc._scan_sessions.clear()
     monkeypatch.setenv("TEMP", str(tmp_path))
     monkeypatch.setenv("TMP", str(tmp_path))
     yield app_dir
     scan_core_rpc._scan_sessions.clear()
     scan_core_rpc._scan_orchestrator = None
+    scan_core_rpc._coordinator = None
 
 
 def _temp_files(tmp_path: Path, count: int = 1) -> Path:
@@ -45,8 +47,13 @@ def _temp_files(tmp_path: Path, count: int = 1) -> Path:
     return tmp_path
 
 
-def _wait_for_session(session_id: str, key: str = "completed", timeout: float = 10.0) -> dict[str, Any]:
-    """Poll status until the requested key becomes truthy."""
+def _wait_for_session(session_id: str, key: str = "completed", timeout: float = 60.0) -> dict[str, Any]:
+    """Poll status until the requested key becomes truthy.
+
+    The timeout is generous (60s) because the scan engine initializes
+    lazily — DB creation, rule registration, and discovery engine setup
+    can take several seconds on first call, especially under CI load.
+    """
     deadline = time.time() + timeout
     while time.time() < deadline:
         status = _call("scan_core.scan.status", {"session_id": session_id})

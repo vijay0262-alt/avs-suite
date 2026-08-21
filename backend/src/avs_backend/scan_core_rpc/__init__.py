@@ -50,7 +50,6 @@ logger = logging.getLogger(__name__)
 
 _coordinator: Optional[RemediationCoordinator] = None
 _scan_orchestrator: Optional[ScanOrchestrator] = None
-_shared_database: Optional[MetadataDatabase] = None
 _lock = threading.Lock()
 _scan_orchestrator_lock = threading.Lock()
 _scan_session_lock = threading.Lock()
@@ -77,30 +76,6 @@ def _get_app_data_dir() -> Path:
     return base / "avs-shield"
 
 
-def _get_shared_database() -> MetadataDatabase:
-    """Return the singleton MetadataDatabase shared by coordinator and orchestrator.
-
-    Both the RemediationCoordinator and the ScanOrchestrator must use the
-    SAME MetadataDatabase instance so that plans saved by one can be loaded
-    by the other (e.g. security_remediation.plan → scan.plan_details).
-    """
-    global _shared_database
-    if _shared_database is not None and _shared_database._is_initialized:
-        return _shared_database
-
-    with _lock:
-        if _shared_database is not None and _shared_database._is_initialized:
-            return _shared_database
-
-        app_dir = _get_app_data_dir()
-        app_dir.mkdir(parents=True, exist_ok=True)
-
-        db = MetadataDatabase(DatabaseConfig(db_path=app_dir / "metadata.db"))
-        db.initialize()
-        _shared_database = db
-        return _shared_database
-
-
 def get_coordinator() -> Optional[RemediationCoordinator]:
     """Return the module-level RemediationCoordinator singleton, or None on failure."""
     global _coordinator
@@ -115,7 +90,7 @@ def get_coordinator() -> Optional[RemediationCoordinator]:
             app_dir = _get_app_data_dir()
             app_dir.mkdir(parents=True, exist_ok=True)
 
-            db = _get_shared_database()
+            db = MetadataDatabase(DatabaseConfig(db_path=app_dir / "metadata.db"))
             _coordinator = RemediationCoordinator(
                 database=db,
                 backup_root=app_dir / "backups",
@@ -150,7 +125,8 @@ def get_scan_orchestrator() -> Optional[ScanOrchestrator]:
         app_dir = _get_app_data_dir()
         app_dir.mkdir(parents=True, exist_ok=True)
 
-        db = _get_shared_database()
+        db = MetadataDatabase(DatabaseConfig(db_path=app_dir / "metadata.db"))
+        db.initialize()
         registry = RuleRegistry()
         register_junk_rules(registry)
         with _scan_orchestrator_lock:
@@ -659,13 +635,61 @@ def _scan_core_scan_plan_details(params: Optional[dict[str, Any]]) -> dict[str, 
         return {"ok": False, "error": plan_id}
 
     orchestrator = get_scan_orchestrator()
-    if orchestrator is None:
-        return _orchestrator_error()
+    if orchestrator is not None:
+        try:
+            result = orchestrator.get_plan_details(plan_id)
+            if result.get("ok"):
+                return result
+        except Exception as exc:
+            logger.exception("scan_core.scan.plan_details (orchestrator) failed: %s", exc)
+
+    # Fallback: load via the coordinator's ActionPlanRepository.
+    # Plans created by security_remediation.plan, smart_optimization.plan,
+    # or dashboard_optimization.plan are saved through the coordinator's
+    # database, which may be a different MetadataDatabase instance than
+    # the orchestrator's (though they point to the same file).
+    coordinator = get_coordinator()
+    if coordinator is None:
+        return _coordinator_error()
 
     try:
-        return orchestrator.get_plan_details(plan_id)
+        from avs_backend.scan_core.metadata.action_plan_repository import (
+            ActionPlanRepository,
+        )
+        repo = ActionPlanRepository(coordinator.database)
+        action_plan = repo.load(plan_id)
+        if action_plan is None:
+            return {"ok": False, "error": "Plan not found"}
+
+        actions = action_plan.actions
+        findings: list[dict[str, Any]] = []
+        for action in actions:
+            severity = "info"
+            if action.priority_score >= 80:
+                severity = "critical"
+            elif action.priority_score >= 60:
+                severity = "high"
+            elif action.priority_score >= 40:
+                severity = "medium"
+            findings.append({
+                "severity": severity,
+                "category": action.action_type.value if hasattr(action.action_type, "value") else str(action.action_type),
+                "title": action.description or action.action_id,
+                "actionable": action.is_actionable,
+                "state": action.state.value if hasattr(action.state, "value") else str(action.state),
+            })
+
+        return {
+            "ok": True,
+            "plan_id": plan_id,
+            "findings": findings,
+            "total_actions": len(actions),
+            "auto_fixable": action_plan.summary.auto_fixable_actions,
+            "review_required": action_plan.summary.review_required_actions,
+            "not_fixable": action_plan.summary.not_fixable_actions,
+        }
     except Exception as exc:
-        logger.exception("scan_core.scan.plan_details failed: %s", exc)
+        logger.exception("scan_core.scan.plan_details (coordinator fallback) failed: %s", exc)
         return {"ok": False, "error": str(exc)}
 
 

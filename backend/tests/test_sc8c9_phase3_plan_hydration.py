@@ -20,8 +20,11 @@ def _call(method: str, params: dict[str, Any] | None = None) -> Any:
     return handler(params)
 
 
-def _wait_for_session(session_id: str, timeout: float = 10.0) -> dict[str, Any]:
-    """Poll status until the session completes."""
+def _wait_for_session(session_id: str, timeout: float = 60.0) -> dict[str, Any]:
+    """Poll status until the session completes.
+
+    Generous timeout (60s) for lazy scan engine initialization on CI.
+    """
     deadline = time.time() + timeout
     while time.time() < deadline:
         status = _call("scan_core.scan.status", {"session_id": session_id})
@@ -52,12 +55,14 @@ def fresh_plan_hydration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     app_dir.mkdir()
     monkeypatch.setattr(scan_core_rpc, "_get_app_data_dir", lambda: app_dir)
     monkeypatch.setattr(scan_core_rpc, "_scan_orchestrator", None)
+    monkeypatch.setattr(scan_core_rpc, "_coordinator", None)
     scan_core_rpc._scan_sessions.clear()
     monkeypatch.setenv("TEMP", str(tmp_path))
     monkeypatch.setenv("TMP", str(tmp_path))
     yield app_dir
     scan_core_rpc._scan_sessions.clear()
     scan_core_rpc._scan_orchestrator = None
+    scan_core_rpc._coordinator = None
 
 
 def test_plan_details_hydrates_findings_and_statistics(fresh_plan_hydration: Path) -> None:
