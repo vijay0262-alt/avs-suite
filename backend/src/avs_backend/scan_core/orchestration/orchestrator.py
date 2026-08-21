@@ -131,7 +131,7 @@ class ScanOrchestrator:
             )
 
             t1 = datetime.now(UTC)
-            discovered_count, asset_lookup, size_lookup, discovery_errors = (
+            discovered_count, asset_lookup, size_lookup, snapshot_lookup, discovery_errors = (
                 self._run_discovery(scan_context, token, on_progress)
             )
             phase_timings["discovery_ms"] = int(
@@ -228,7 +228,7 @@ class ScanOrchestrator:
                     findings=len(prioritized.priorities),
                 )
                 t5 = datetime.now(UTC)
-                action_plan = self._plan(prioritized, scan_context)
+                action_plan = self._plan(prioritized, scan_context, snapshot_lookup)
                 phase_timings["planning_ms"] = int(
                     (datetime.now(UTC) - t5).total_seconds() * 1000
                 )
@@ -469,11 +469,19 @@ class ScanOrchestrator:
         token: CancellationToken,
         on_progress: Optional[ProgressCallback],
     ) -> tuple[
-        int, dict[str, Any], dict[str, Optional[int]], list[ScanOrchestratorError]
+        int, dict[str, Any], dict[str, Optional[int]], dict[str, Any], list[ScanOrchestratorError]
     ]:
-        """Run discovery engines, convert assets, and persist snapshots."""
+        """Run discovery engines, convert assets, and persist snapshots.
+
+        Returns:
+            Tuple of (discovered_count, asset_lookup, size_lookup,
+            snapshot_lookup, errors). snapshot_lookup maps asset_id to the
+            in-memory AssetSnapshot, so _plan can resolve snapshots without
+            re-querying the database per finding (10K+ DB roundtrips avoided).
+        """
         asset_lookup: dict[str, tuple[Any, ...]] = {}
         size_lookup: dict[str, Optional[int]] = {}
+        snapshot_lookup: dict[str, Any] = {}
         errors: list[ScanOrchestratorError] = []
         discovered_count = 0
         batch_assets: list[ScanAsset] = []
@@ -558,6 +566,7 @@ class ScanOrchestrator:
                         asset.canonical_path,
                     )
                     size_lookup[asset.asset_id] = asset_size
+                    snapshot_lookup[asset.asset_id] = snapshot
                     batch_assets.append(asset)
                     batch_snapshots.append(snapshot)
 
@@ -578,7 +587,7 @@ class ScanOrchestrator:
         if batch_assets:
             self._save_batch(batch_assets, batch_snapshots, errors)
 
-        return discovered_count, asset_lookup, size_lookup, errors
+        return discovered_count, asset_lookup, size_lookup, snapshot_lookup, errors
 
     def _save_batch(
         self,
@@ -696,10 +705,21 @@ class ScanOrchestrator:
         self,
         prioritized: Any,
         scan_context: ScanContext,
+        snapshot_lookup: Optional[dict[str, Any]] = None,
     ) -> ActionPlan:
-        """Build an ActionPlan from prioritized findings."""
+        """Build an ActionPlan from prioritized findings.
+
+        Args:
+            snapshot_lookup: Optional in-memory map of asset_id → AssetSnapshot
+                from the discovery phase. When provided, snapshots are resolved
+                from memory (O(1)) instead of querying the database per finding
+                (which caused a 10K-DB-query performance regression on CI).
+                Falls back to DB lookup only if the asset is not in the cache.
+        """
 
         def _resolve_snapshot(asset_id: str) -> Any:
+            if snapshot_lookup is not None and asset_id in snapshot_lookup:
+                return snapshot_lookup[asset_id]
             return self._snapshot_repo.get(
                 asset_id, scan_context.scan_id
             ) or self._snapshot_repo.get_latest(asset_id)
