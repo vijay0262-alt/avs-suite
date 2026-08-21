@@ -1065,12 +1065,74 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
             )
             return
 
-        # Phase 2: Execute (live mode)
-        # Skip the separate validation phase for automatic optimization.
+        # Phase 2: Pre-execution revalidation
+        # V1.0: Re-check every PLANNED action against the CURRENT filesystem.
+        # This closes the TOCTOU gap: files that were deletable during discovery
+        # may have become locked, deleted, or inaccessible by the time execution
+        # begins. The user-visible "detected" count must only include files that
+        # can actually be deleted RIGHT NOW.
+        if _is_cancelled():
+            _update("cancelled", "Optimization cancelled", completed=True)
+            return
+        _update("revalidating", "Verifying cleanup targets...")
+        revalidation = coord.revalidate_planned_actions(plan_id)
+        originally_planned = safe_count
+        still_deletable = revalidation.get("still_deletable", 0)
+        now_missing = revalidation.get("now_missing", 0)
+        now_locked = revalidation.get("now_locked", 0)
+        now_inaccessible = revalidation.get("now_inaccessible", 0)
+        removed = originally_planned - still_deletable
+
+        # V1.0: Update safe_count to the revalidated count.
+        # The user sees "detected" = still_deletable, NOT the original
+        # planning count. Files that became locked/missing/inaccessible
+        # are removed from the user-visible cleanup set BEFORE cleanup.
+        safe_count = still_deletable
+        health_before = _cleanup_health_score(safe_count)
+
+        with _auto_opt_lock:
+            session = _auto_opt_sessions.get(session_id)
+            if session is not None:
+                session["safe_actions"] = safe_count
+                session["revalidation_removed"] = removed
+
+        # If revalidation removed everything, skip execution
+        if safe_count == 0:
+            _update(
+                "complete",
+                "No deletable files found after revalidation",
+                completed=True,
+                result={
+                    "files_found": 0,
+                    "files_cleaned": 0,
+                    "space_recovered": 0,
+                    "detected": 0,
+                    "cleaned": 0,
+                    "remaining": 0,
+                    "failed": 0,
+                    "health_before": health_before,
+                    "health_after": 100,
+                    "_diagnostics": {
+                        "total": total_actions,
+                        "rejected": 0,
+                        "skipped": 0,
+                        "requires_review": review_count,
+                        "cancelled": 0,
+                        "review_required_input": review_count,
+                        "blocked_input": blocked_count,
+                        "revalidation_removed": removed,
+                        "now_missing": now_missing,
+                        "now_locked": now_locked,
+                        "now_inaccessible": now_inaccessible,
+                    },
+                },
+            )
+            return
+
+        # Phase 3: Execute (live mode)
         # The executor independently validates each action via SafetyGate
-        # during execution, so a separate dry-run is redundant and slow.
-        # The approval_token from prepare() authorizes the execution.
-        # The SafetyGate still evaluates each action independently.
+        # during execution. The approval_token from prepare() authorizes
+        # execution. The SafetyGate still evaluates each action independently.
         if _is_cancelled():
             _update("cancelled", "Optimization cancelled", completed=True)
             return
@@ -1202,6 +1264,10 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 "status": summary.status.value,
                 "reason": summary.reason or "",
                 "failed_details": failed_details,
+                "revalidation_removed": removed,
+                "now_missing": now_missing,
+                "now_locked": now_locked,
+                "now_inaccessible": now_inaccessible,
             },
         }
 

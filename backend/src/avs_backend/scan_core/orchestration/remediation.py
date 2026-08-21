@@ -51,6 +51,65 @@ from .remediation_models import (
     RollbackSummary,
 )
 
+# ── V1.0: File lock check for execution-time revalidation ──────────────
+#
+# We reuse the enumerator's CreateFileW(GENERIC_DELETE) probe so that
+# the SafetyGate can reject files that are held by another process
+# without FILE_SHARE_DELETE (the common case for browser cache LevelDB
+# files, active application files, and loaded PyInstaller modules).
+
+import sys as _sys
+
+if _sys.platform == "win32":
+    import ctypes as _ctypes
+
+    _kernel32 = _ctypes.windll.kernel32
+    _kernel32_CreateFileW = _kernel32.CreateFileW
+    _kernel32_CreateFileW.restype = _ctypes.c_void_p
+    _kernel32_CreateFileW.argtypes = [
+        _ctypes.c_wchar_p,
+        _ctypes.c_uint32,
+        _ctypes.c_uint32,
+        _ctypes.c_void_p,
+        _ctypes.c_uint32,
+        _ctypes.c_uint32,
+        _ctypes.c_void_p,
+    ]
+    _kernel32_CloseHandle = _kernel32.CloseHandle
+    _kernel32_CloseHandle.argtypes = [_ctypes.c_void_p]
+
+    _GENERIC_DELETE = 0x00010000
+    _FILE_SHARE_READ = 0x00000001
+    _FILE_SHARE_WRITE = 0x00000002
+    _FILE_SHARE_DELETE = 0x00000004
+    _OPEN_EXISTING = 3
+    _FILE_ATTRIBUTE_NORMAL = 0x80
+
+
+def _check_file_locked(path: str) -> bool:
+    """Return True if the file cannot be deleted right now.
+
+    Uses CreateFileW with GENERIC_DELETE + FILE_SHARE_DELETE to probe
+    whether Windows would allow deletion. If the open fails, the file
+    is locked / in use and must NOT be counted as deletable.
+    """
+    try:
+        handle = _kernel32_CreateFileW(
+            path,
+            _GENERIC_DELETE,
+            _FILE_SHARE_READ | _FILE_SHARE_WRITE | _FILE_SHARE_DELETE,
+            None,
+            _OPEN_EXISTING,
+            _FILE_ATTRIBUTE_NORMAL,
+            None,
+        )
+        if handle is None or handle == -1 or handle == 0xFFFFFFFFFFFFFFFF:
+            return True  # cannot open with DELETE → locked
+        _kernel32_CloseHandle(handle)
+        return False
+    except Exception:
+        return True  # conservative: treat errors as locked
+
 
 @dataclass
 class RemediationCoordinator:
@@ -184,6 +243,75 @@ class RemediationCoordinator:
             token.cancel()
             return True
         return False
+
+    def revalidate_planned_actions(self, plan_id: str) -> dict[str, int]:
+        """V1.0: Pre-execution revalidation of every PLANNED action.
+
+        Re-checks the CURRENT filesystem state for each PLANNED action:
+        - Does the file still exist?
+        - Is the file locked / in use right now?
+        - Is the file accessible?
+
+        Actions that fail revalidation are NOT counted as deletable.
+        This closes the TOCTOU gap between planning and execution so
+        that the user-visible ``detected`` count only includes files
+        that can actually be deleted RIGHT NOW.
+
+        Returns:
+            Dict with keys: ``total_planned``, ``still_deletable``,
+            ``now_missing``, ``now_locked``, ``now_inaccessible``.
+        """
+        try:
+            plan = self._load_plan(plan_id)
+        except Exception as exc:
+            logger.warning("revalidate_planned_actions: failed to load plan %s: %s", plan_id, exc)
+            return {"total_planned": 0, "still_deletable": 0, "now_missing": 0, "now_locked": 0, "now_inaccessible": 0}
+
+        total_planned = 0
+        still_deletable = 0
+        now_missing = 0
+        now_locked = 0
+        now_inaccessible = 0
+
+        for action in plan.actions:
+            if action.state.value != "planned":
+                continue
+            total_planned += 1
+
+            target = getattr(action, "target", None)
+            if target is None:
+                now_missing += 1
+                continue
+
+            canonical = getattr(target, "canonical_path", "")
+            if not canonical:
+                now_missing += 1
+                continue
+
+            try:
+                p = Path(canonical)
+                if not os.path.lexists(p):
+                    now_missing += 1
+                    continue
+                if not os.access(p, os.W_OK):
+                    now_inaccessible += 1
+                    continue
+                if p.is_file() and not os.path.islink(p):
+                    if _check_file_locked(str(p)):
+                        now_locked += 1
+                        continue
+                still_deletable += 1
+            except (OSError, ValueError):
+                now_inaccessible += 1
+                continue
+
+        return {
+            "total_planned": total_planned,
+            "still_deletable": still_deletable,
+            "now_missing": now_missing,
+            "now_locked": now_locked,
+            "now_inaccessible": now_inaccessible,
+        }
 
     def get_status(self, execution_id: str) -> RemediationExecutionStatus:
         """Return the persisted status for an execution request."""
@@ -488,6 +616,20 @@ class RemediationCoordinator:
     def _filesystem_context(
         self, target: Any, asset_id: str
     ) -> Optional[dict[str, Any]]:
+        """Build a fresh filesystem execution context for an action target.
+
+        V1.0: This is the authoritative pre-execution and execution-time
+        revalidation. It checks the CURRENT filesystem state — not the
+        snapshot from discovery time. This closes the TOCTOU gap:
+
+        - ``exists``    → os.path.lexists (file still present)
+        - ``accessible`` → os.access(W_OK) (writable / deletable permission)
+        - ``locked``    → CreateFileW(GENERIC_DELETE) probe (file not held
+                          by another process without FILE_SHARE_DELETE)
+
+        If any of these fail, the SafetyGate will REJECT the action during
+        execution, preventing failed deletion attempts.
+        """
         canonical = getattr(target, "canonical_path", "")
         if not canonical:
             return None
@@ -508,7 +650,14 @@ class RemediationCoordinator:
                 datetime.fromtimestamp(os.path.getmtime(path), UTC) if exists else None
             )
             accessible = os.access(path, os.W_OK) if exists else False
+
+            # V1.0: Actually check if the file is locked / not deletable
+            # right now. This is the same CreateFileW(GENERIC_DELETE) probe
+            # used by the enumerator. If the file cannot be opened with
+            # DELETE access, it is locked and the SafetyGate will reject it.
             locked = False
+            if exists and is_file:
+                locked = _check_file_locked(str(path))
 
             ctx = FilesystemContext(
                 exists=exists,
