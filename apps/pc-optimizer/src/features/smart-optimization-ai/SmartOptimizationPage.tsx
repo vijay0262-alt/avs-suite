@@ -21,6 +21,7 @@ import { useIsPro } from '../sync/syncStore';
 import { ProStatusBanner, ProStatusPill, ProOnlySection, ProFeatureIndicator } from '../licensing/ProStatusBadge';
 import { ScanView, PlanReviewView, useSmartOptimizationPlan } from '../scan';
 import { Modal } from '../dashboard/components/Modal';
+import { dashboardService } from '../dashboard/dashboard.service';
 import { formatDataSize } from '@avs/shared/utils';
 import {
   SmartOptimizationEngine,
@@ -155,14 +156,32 @@ class SmartOptViewModel extends ViewModel<SmartOptState> {
     }
   }
 
-  runSimulation() {
+  async runSimulation() {
     const { plan } = this.state;
     if (!plan) return;
     try {
+      // V1.0: Use the PC's actual current CPU/memory/disk state for the
+      // "Preview Results" projection instead of fabricated baseline
+      // numbers. Dimensions with no real telemetry source in this app
+      // (browser responsiveness, privacy, thermal, battery, stability)
+      // remain documented neutral baselines — they are relative
+      // improvement scores, not raw hardware readings.
+      let cpuUsagePercent = 50;
+      let memoryUsageMB = 8192;
+      let diskFreeSpaceMB = 50000;
+      try {
+        const live = await dashboardService.getLiveMetrics();
+        cpuUsagePercent = live.cpu.usage;
+        memoryUsageMB = live.memory.used / (1024 * 1024);
+        diskFreeSpaceMB = live.storage.reduce((sum, d) => sum + d.free, 0) / (1024 * 1024);
+      } catch {
+        // Live metrics unavailable — fall back to neutral baseline so the
+        // preview still renders rather than failing outright.
+      }
       const sim = this.engine.simulate(plan, {
-        cpuUsagePercent: 50,
-        memoryUsageMB: 8192,
-        diskFreeSpaceMB: 50000,
+        cpuUsagePercent,
+        memoryUsageMB,
+        diskFreeSpaceMB,
         startupTimeSeconds: 30,
         browserResponsiveness: 80,
         privacyScore: 70,

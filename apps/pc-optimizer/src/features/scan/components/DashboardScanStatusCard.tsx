@@ -3,9 +3,9 @@
  * latest unified scan/remediation state from `useDashboardScan`.
  *
  * It never starts a scan, executes remediation, or calls target executors.
- * The only user action is navigation to the appropriate module page.
+ * V1.0: The action button opens the Dashboard scan modal instead of
+ * navigating away, so the user stays on the Dashboard.
  */
-import { useNavigate } from 'react-router-dom';
 import { Card, Button } from '@avs/ui';
 import {
   ShieldCheckIcon,
@@ -42,25 +42,28 @@ function StatusLabel({ status }: { status: string }) {
   );
 }
 
-export function DashboardScanStatusCard() {
+export interface DashboardScanStatusCardProps {
+  /** V1.0: Open the Dashboard scan modal instead of navigating away. */
+  onOpenScan?: () => void;
+}
+
+export function DashboardScanStatusCard({ onOpenScan }: DashboardScanStatusCardProps = {}) {
   const { snapshot } = useDashboardScan();
-  const navigate = useNavigate();
 
   const primaryAction = (() => {
-    const planParam = snapshot.planId ? `?planId=${encodeURIComponent(snapshot.planId)}` : '';
     if (snapshot.canReview) {
-      return { label: 'Review Findings', route: `${snapshot.moduleRoute}${planParam}` };
+      return { label: 'Review Findings' };
     }
     if (snapshot.canApprove) {
-      return { label: 'Approve & Fix', route: `${snapshot.moduleRoute}${planParam}` };
+      return { label: 'Approve & Fix' };
     }
     if (snapshot.canRollback) {
-      return { label: 'View Rollback', route: `${snapshot.moduleRoute}${planParam}` };
+      return { label: 'View Rollback' };
     }
     if (!snapshot.hasActiveSession) {
-      return { label: 'Start a Scan', route: '/ai-smart-optimize' };
+      return { label: 'Start a Scan' };
     }
-    return { label: 'Open', route: snapshot.moduleRoute };
+    return { label: 'Open' };
   })();
 
   const Icon =
@@ -125,7 +128,7 @@ export function DashboardScanStatusCard() {
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => navigate(primaryAction.route)}
+          onClick={() => onOpenScan?.()}
           rightIcon={<ArrowRightIcon className="h-4 w-4" />}
           data-testid="dashboard-scan-action"
         >

@@ -24,6 +24,7 @@ import { useDashboardScan } from '../scan/useDashboardScan';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
 import { ScanView } from '../scan';
 import { Modal } from './components/Modal';
+import { optimizationEventBus, OptimizationEventType } from '../health/OptimizationEventBus';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -121,6 +122,19 @@ export default function DashboardPage() {
   useEffect(() => {
     void vm.bootstrap();
     return () => vm.dispose();
+  }, [vm]);
+
+  // V1.0: Refresh dashboard metrics after cleanup completes.
+  // The ViewModel already listens via dashboardRefreshManager, but
+  // that has a 500ms debounce. This direct subscription triggers
+  // an immediate metrics reload so cards update right away when
+  // the user clicks Done on the cleanup results.
+  useEffect(() => {
+    return optimizationEventBus.subscribe((event) => {
+      if (event.type === OptimizationEventType.CleaningCompleted) {
+        void vm.loadMetrics();
+      }
+    });
   }, [vm]);
 
   const isScanning = snapshot.scanStatus === 'preparing' || snapshot.scanStatus === 'scanning';
@@ -377,7 +391,7 @@ export default function DashboardPage() {
       {/* ── SECONDARY ACTION: REMOVED — V1.0 Dashboard uses single Scan Now → Clean → Results modal ── */}
 
       {/* Latest unified scan/remediation status from scan_core */}
-      <DashboardScanStatusCard />
+      <DashboardScanStatusCard onOpenScan={() => setScanModalOpen(true)} />
 
       {/* ── COLLAPSIBLE SECONDARY CONTENT (2 panels) ─────────────── */}
 
