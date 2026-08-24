@@ -807,6 +807,8 @@ CANONICAL_JUNK_RULE_IDS: tuple[str, ...] = (
     "security.suspicious_script",
     "security.suspicious_executable",
     "security.tracking_cookie",
+    # Defender confirmed threat rule (authoritative malware verdicts)
+    "security.defender_confirmed_threat",
 )
 
 
@@ -844,6 +846,10 @@ def register_junk_rules(registry) -> None:
     from .cleanup_providers import register_cleanup_provider_rules
     register_cleanup_provider_rules(registry)
 
-    # Security threat detection rules
+    # Suspicious/privacy heuristic rules (NOT auto-remediated)
     from .security_rules import register_security_rules
     register_security_rules(registry)
+
+    # Defender confirmed threat rule (authoritative — auto-quarantined)
+    from .defender_confirmed_threat_rule import register_defender_threat_rule
+    register_defender_threat_rule(registry)

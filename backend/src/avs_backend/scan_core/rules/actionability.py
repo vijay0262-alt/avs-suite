@@ -74,6 +74,14 @@ DEFAULT_CAPABILITY_MATRIX: dict[tuple[RuleCategory, AssetType, str], Actionabili
         AssetType.BROWSER_PROFILE,
         "clear_browser_cache",
     ): Actionability.ACTIONABLE,
+    # Security quarantine — confirmed threats only (Defender-backed).
+    # Heuristic-only findings use RuleCategory.SUSPICIOUS which has NO
+    # actionability mapping and therefore never auto-remediates.
+    (
+        RuleCategory.SECURITY,
+        AssetType.FILE,
+        "quarantine_file",
+    ): Actionability.ACTIONABLE,
 }
 
 

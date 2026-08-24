@@ -63,13 +63,21 @@ function mapStatusCounters(
   // These field names match the backend's ScanProgress.to_dict() output:
   //   scan_id, phase, current_operation, assets_discovered, assets_evaluated,
   //   findings, actions_available, elapsed_time_ms, is_cancelled, completion_percent
+  // V1.0 Protection Center: security-specific counters from the orchestrator:
+  //   confirmed_threats, suspicious_items, threats_secured, threats_remaining
   return {
     filesScanned: getProgressValue<number>(progress, 'assets_discovered', 0),
     itemsScanned: getProgressValue<number>(progress, 'assets_evaluated', 0),
     recommendations: getProgressValue<number>(progress, 'findings', 0),
     actionsAvailable: getProgressValue<number>(progress, 'actions_available', 0),
     elapsedMs: getProgressValue<number>(progress, 'elapsed_time_ms', 0),
+    // V1.0 Protection Center: separate security counters.
+    confirmedThreats: getProgressValue<number>(progress, 'confirmed_threats', 0),
+    suspiciousItems: getProgressValue<number>(progress, 'suspicious_items', 0),
+    threatsSecured: getProgressValue<number>(progress, 'threats_secured', 0),
+    threatsRemaining: getProgressValue<number>(progress, 'threats_remaining', 0),
     // Legacy counter aliases for backward compatibility with other configs.
+    threatsFound: getProgressValue<number>(progress, 'confirmed_threats', 0),
     threatsChecked: getProgressValue<number>(progress, 'assets_discovered', 0),
     storageRecovered: 0,
     bytesRecovered: 0,

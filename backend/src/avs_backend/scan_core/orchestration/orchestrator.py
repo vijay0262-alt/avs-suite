@@ -528,7 +528,12 @@ class ScanOrchestrator:
                             current_folder=current_folder_holder["folder"],
                         )
                     try:
-                        asset = convert_to_asset(raw)
+                        # If the discovery engine yields a ScanAsset directly
+                        # (e.g. DefenderThreatDiscoveryEngine), skip conversion.
+                        if isinstance(raw, ScanAsset):
+                            asset = raw
+                        else:
+                            asset = convert_to_asset(raw)
                     except (ValueError, TypeError) as exc:
                         errors.append(
                             ScanOrchestratorError(
@@ -789,6 +794,32 @@ class ScanOrchestrator:
             "dashboard_excluded_count": excluded_count,
         }
 
+        # V1.0 Protection Center: security-specific counters.
+        # These are computed from the findings list so the frontend
+        # can display separate counters for confirmed threats,
+        # suspicious items, and privacy findings.
+        confirmed_threats = 0
+        suspicious_items = 0
+        privacy_items = 0
+        for f in aggregation.findings:
+            cat = f.rule_category
+            if cat == RuleCategory.SECURITY:
+                confirmed_threats += 1
+            elif cat == RuleCategory.SUSPICIOUS:
+                suspicious_items += 1
+            elif cat == RuleCategory.PRIVACY:
+                privacy_items += 1
+        stats["confirmed_threats"] = confirmed_threats
+        stats["suspicious_items"] = suspicious_items
+        stats["privacy_items"] = privacy_items
+        # Count planned quarantine actions (threats that can be secured).
+        stats["threats_secured"] = self._count_actions_by_type(
+            action_plan, "quarantine_file", "planned"
+        )
+        stats["threats_remaining"] = max(
+            0, confirmed_threats - stats["threats_secured"]
+        )
+
         return ScanResult(
             scan_id=scan_context.scan_id,
             scan_type=scan_context.scan_type.value,
@@ -887,6 +918,22 @@ class ScanOrchestrator:
         if action_plan is None:
             return 0
         return sum(1 for a in action_plan.actions if a.state.value == state_value)
+
+    def _count_actions_by_type(
+        self,
+        action_plan: Optional[ActionPlan],
+        action_type_value: str,
+        state_value: str,
+    ) -> int:
+        """Count actions with a given action type AND state."""
+        if action_plan is None:
+            return 0
+        return sum(
+            1
+            for a in action_plan.actions
+            if a.state.value == state_value
+            and a.action_type.value == action_type_value
+        )
 
     def _actionability_summary(
         self, action_plan: Optional[ActionPlan]

@@ -112,4 +112,8 @@ def get_target_executor(action_type: str):
         from .startup_executor import StartupExecutor
 
         return StartupExecutor
+    if action_type == "quarantine_file":
+        from .quarantine_executor import QuarantineExecutor
+
+        return QuarantineExecutor
     return None

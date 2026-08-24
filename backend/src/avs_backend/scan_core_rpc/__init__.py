@@ -129,10 +129,28 @@ def get_scan_orchestrator() -> Optional[ScanOrchestrator]:
         db.initialize()
         registry = RuleRegistry()
         register_junk_rules(registry)
+
+        # V1.0 Protection Center: Register the Defender threat discovery
+        # engine so confirmed Defender threats enter the canonical scan
+        # pipeline as ScanAssets. The DefenderConfirmedThreatRule (registered
+        # via register_junk_rules → register_defender_threat_rule) matches
+        # these assets and produces CONFIRMED_THREAT findings.
+        from avs_backend.scan_core.orchestration.discovery import (
+            FilesystemDiscoveryEngine,
+        )
+        from avs_backend.scan_core.security.defender_discovery import (
+            DefenderThreatDiscoveryEngine,
+        )
+        discovery_engines = {
+            "filesystem": FilesystemDiscoveryEngine(),
+            "defender": DefenderThreatDiscoveryEngine(),
+        }
+
         with _scan_orchestrator_lock:
             _scan_orchestrator = ScanOrchestrator(
                 database=db,
                 registry=registry,
+                discovery_engines=discovery_engines,
                 snapshot_ttl_seconds=3600,
             )
             return _scan_orchestrator
@@ -1594,4 +1612,50 @@ def _scan_core_security_remediation_quarantine_list(
             "scan_core.security_remediation.quarantine_list failed: %s",
             exc,
         )
+        return {"ok": False, "error": str(exc)}
+
+
+# =====================================================================
+# V1.0 Protection Center — Windows Defender status
+# =====================================================================
+
+
+@register("scan_core.defender.status")
+def _scan_core_defender_status(
+    _params: Optional[dict[str, Any]],
+) -> dict[str, Any]:
+    """Query Windows Defender threat information and protection state.
+
+    Returns authoritative Defender status:
+    - status: "available" | "unavailable" | "disabled" | "not_windows" | "query_failed"
+    - is_available: bool
+    - reason: human-readable explanation
+    - threats: list of confirmed threats (empty when available with no threats)
+    - protection_state: real-time protection posture
+
+    NEVER fabricates results. When unavailable, returns status="unavailable"
+    with a clear reason — NOT "no threats found".
+
+    Response (success):
+        {
+            "ok": true,
+            "status": "available" | "unavailable" | "disabled" | ...,
+            "is_available": bool,
+            "reason": "...",
+            "threats": [...],
+            "active_threat_count": N,
+            "total_threat_count": N,
+            "protection_state": {...} | null,
+            "queried_at": "..."
+        }
+    """
+    try:
+        from avs_backend.scan_core.security.defender_integration import (
+            get_defender_threat_info,
+        )
+
+        info = get_defender_threat_info()
+        return {"ok": True, **info.to_dict()}
+    except Exception as exc:
+        logger.exception("scan_core.defender.status failed: %s", exc)
         return {"ok": False, "error": str(exc)}

@@ -1,14 +1,17 @@
 """
-Security threat detection rules.
+Suspicious item detection rules (AVS heuristics).
 
-Implements detection rules for known security threats so that the
-unified scan-detect-clean-results pattern can detect AND clean
-security threats via the existing auto-optimize flow:
+These rules are NOT malware detectors. They produce SUSPICIOUS findings
+that require user attention — they are NEVER automatically deleted or
+quarantined. Only confirmed threats from Windows Defender (registered
+separately as ``security.defender_confirmed_threat``) are eligible for
+automatic quarantine.
 
-- Malicious file names (security.malicious_filename)
-- Suspicious scripts (security.suspicious_script)
-- Suspicious executables (security.suspicious_executable)
-- Tracking cookies (security.tracking_cookie)
+Classification:
+- MaliciousFileNameRule     → SUSPICIOUS (heuristic name match)
+- SuspiciousScriptRule      → SUSPICIOUS (heuristic content match)
+- SuspiciousExecutableRule  → SUSPICIOUS (heuristic location match)
+- TrackingCookieRule        → PRIVACY   (not a security threat)
 
 These rules follow the EXACT same architecture as the cleanup
 providers in ``cleanup_providers.py``:
@@ -22,6 +25,7 @@ DO NOT bypass SafetyGate.
 DO NOT weaken safety checks.
 DO NOT execute anything — these rules only generate findings; the
 existing auto-optimize flow handles execution of the action plan.
+DO NOT auto-delete or auto-quarantine heuristic matches.
 """
 
 from __future__ import annotations
@@ -279,29 +283,33 @@ def _get_browser_cache_roots_only() -> list[Path]:
 
 class MaliciousFileNameRule(Rule):
     """
-    Detect files with known malicious names/patterns.
+    Detect files with suspicious names/patterns (HEURISTIC — NOT confirmed malware).
 
     Matches well-known ransomware, trojan, spyware/adware, miner, and
     generic malware family names in the file stem. Only files with
     executable/script extensions are considered.
 
-    Safety: centralized via SafetyPolicy. Threats typically land in
-    temp / cache / downloads which are NOT protected roots, so they
-    pass the protected-location check and are SAFE to delete. Files
-    that happen to land in protected locations are BLOCKED.
+    IMPORTANT: This is a HEURISTIC rule. A match means "suspicious —
+    requires attention", NOT "confirmed malware". These findings are
+    classified as SUSPICIOUS and are NEVER automatically deleted or
+    quarantined. Only Defender-confirmed threats are auto-quarantined.
+
+    Safety: centralized via SafetyPolicy. Findings are REVIEW_REQUIRED
+    so they never enter the automatic cleanup pipeline.
     """
 
     def __init__(self) -> None:
         metadata = RuleMetadata(
             identifier=RuleIdentifier("security.malicious_filename"),
             version=RuleVersion(1, 0, 0),
-            name="Malicious File Name",
+            name="Suspicious File Name",
             description=(
-                "Detects files with known malicious names (ransomware, "
-                "trojan, spyware, miner, generic malware families)"
+                "Detects files with suspicious names matching known "
+                "malware family patterns (heuristic — requires attention, "
+                "not auto-remediated)"
             ),
-            category=RuleCategory.SECURITY,
-            severity=Severity.HIGH,
+            category=RuleCategory.SUSPICIOUS,
+            severity=Severity.MEDIUM,
             supported_asset_types=tuple([AssetType.FILE.value]),
         )
         super().__init__(metadata)
@@ -420,10 +428,16 @@ class MaliciousFileNameRule(Rule):
             severity=self.metadata.severity,
             confidence=confidence,
             safety=safety,
-            reason=f"Malicious file name ({family}): '{pattern}' in {asset.display_name}",
+            reason=f"Suspicious file name ({family}): '{pattern}' in {asset.display_name}",
             evidence=EvidenceCollection(tuple(evidence_items)),
             recommended_action=ActionType.QUARANTINE,
             estimated_size=estimated_size,
+            metadata={
+                "classification": "SUSPICIOUS",
+                "detection_source": "AVS_HEURISTIC",
+                "heuristic_family": family,
+                "heuristic_pattern": pattern,
+            },
         )
 
 
@@ -432,7 +446,7 @@ class MaliciousFileNameRule(Rule):
 
 class SuspiciousScriptRule(Rule):
     """
-    Detect suspicious script files in temp / browser cache / downloads.
+    Detect suspicious script files in temp / browser cache / downloads (HEURISTIC).
 
     Evaluates PowerShell (.ps1), VBS, batch (.bat/.cmd), and JS files
     located in temp directories, browser cache, or the downloads
@@ -445,10 +459,13 @@ class SuspiciousScriptRule(Rule):
     - Long base64-encoded blocks (obfuscation)
     - ``reg add`` / ``schtasks /create``
 
-    Safety: centralized via SafetyPolicy. Temp and browser cache
-    locations are NOT protected roots, so scripts there are SAFE to
-    delete. Files in Downloads are in a protected root and will be
-    BLOCKED from automatic deletion (detection still reported).
+    IMPORTANT: This is a HEURISTIC rule. A match means "suspicious —
+    requires attention", NOT "confirmed malware". These findings are
+    classified as SUSPICIOUS and are NEVER automatically deleted or
+    quarantined.
+
+    Safety: centralized via SafetyPolicy. Findings are REVIEW_REQUIRED
+    so they never enter the automatic cleanup pipeline.
     """
 
     def __init__(self) -> None:
@@ -458,9 +475,10 @@ class SuspiciousScriptRule(Rule):
             name="Suspicious Script",
             description=(
                 "Detects suspicious script files (PS1/VBS/BAT/JS) in "
-                "temp/cache/downloads with malicious content indicators"
+                "temp/cache/downloads with malicious content indicators "
+                "(heuristic — requires attention, not auto-remediated)"
             ),
-            category=RuleCategory.SECURITY,
+            category=RuleCategory.SUSPICIOUS,
             severity=Severity.MEDIUM,
             supported_asset_types=tuple([AssetType.FILE.value]),
         )
@@ -606,6 +624,11 @@ class SuspiciousScriptRule(Rule):
             evidence=EvidenceCollection(tuple(evidence_items)),
             recommended_action=ActionType.QUARANTINE,
             estimated_size=estimated_size,
+            metadata={
+                "classification": "SUSPICIOUS",
+                "detection_source": "AVS_HEURISTIC",
+                "heuristic_indicators": matched_patterns,
+            },
         )
 
 
@@ -614,16 +637,20 @@ class SuspiciousScriptRule(Rule):
 
 class SuspiciousExecutableRule(Rule):
     """
-    Detect suspicious executables in temp / browser cache locations.
+    Detect suspicious executables in temp / browser cache locations (HEURISTIC).
 
     Legitimate software rarely runs from temp directories or browser
     cache. Executables (.exe) and screen savers (.scr) in these
     locations are common malware delivery vectors. Batch files
     (.bat/.cmd) in the user profile root or startup are also flagged.
 
-    Safety: centralized via SafetyPolicy. Temp and browser cache
-    locations are NOT protected roots, so executables there are SAFE
-    to delete. Files in protected locations are BLOCKED.
+    IMPORTANT: This is a HEURISTIC rule. A match means "suspicious —
+    requires attention", NOT "confirmed malware". These findings are
+    classified as SUSPICIOUS and are NEVER automatically deleted or
+    quarantined.
+
+    Safety: centralized via SafetyPolicy. Findings are REVIEW_REQUIRED
+    so they never enter the automatic cleanup pipeline.
     """
 
     def __init__(self) -> None:
@@ -633,9 +660,10 @@ class SuspiciousExecutableRule(Rule):
             name="Suspicious Executable",
             description=(
                 "Detects suspicious executables (.exe/.scr) in temp/cache "
-                "and batch files in user profile root/startup"
+                "and batch files in user profile root/startup "
+                "(heuristic — requires attention, not auto-remediated)"
             ),
-            category=RuleCategory.SECURITY,
+            category=RuleCategory.SUSPICIOUS,
             severity=Severity.MEDIUM,
             supported_asset_types=tuple([AssetType.FILE.value]),
         )
@@ -813,6 +841,11 @@ class SuspiciousExecutableRule(Rule):
             evidence=EvidenceCollection(tuple(evidence_items)),
             recommended_action=ActionType.QUARANTINE,
             estimated_size=estimated_size,
+            metadata={
+                "classification": "SUSPICIOUS",
+                "detection_source": "AVS_HEURISTIC",
+                "heuristic_location": matched_root,
+            },
         )
 
 
@@ -821,11 +854,15 @@ class SuspiciousExecutableRule(Rule):
 
 class TrackingCookieRule(Rule):
     """
-    Detect tracking/suspicious cookies in browser cache directories.
+    Detect tracking/privacy cookies in browser cache directories.
 
     Matches files whose names contain cookie-related fragments or
     known tracking-domain indicators, located under browser cache
     directories.
+
+    IMPORTANT: This is a PRIVACY finding, NOT a security threat.
+    Tracking cookies are not malware. They are classified as PRIVACY
+    and must never appear as "threats" in the UI.
 
     Safety: centralized via SafetyPolicy. Browser cache directories
     are NOT protected roots, so cookie files there are SAFE to delete.
@@ -837,10 +874,10 @@ class TrackingCookieRule(Rule):
             version=RuleVersion(1, 0, 0),
             name="Tracking Cookie",
             description=(
-                "Detects tracking/suspicious cookie files in browser "
-                "cache directories"
+                "Detects tracking/privacy cookie files in browser "
+                "cache directories (privacy finding, not a security threat)"
             ),
-            category=RuleCategory.SECURITY,
+            category=RuleCategory.PRIVACY,
             severity=Severity.LOW,
             supported_asset_types=tuple([AssetType.FILE.value]),
         )
@@ -971,6 +1008,10 @@ class TrackingCookieRule(Rule):
             evidence=EvidenceCollection(tuple(evidence_items)),
             recommended_action=ActionType.QUARANTINE,
             estimated_size=estimated_size,
+            metadata={
+                "classification": "PRIVACY",
+                "detection_source": "AVS_HEURISTIC",
+            },
         )
 
 
@@ -979,7 +1020,14 @@ class TrackingCookieRule(Rule):
 
 def register_security_rules(registry) -> None:
     """
-    Register all security threat detection rules with the registry.
+    Register all suspicious/privacy detection rules with the registry.
+
+    These are HEURISTIC rules that produce SUSPICIOUS or PRIVACY findings.
+    They are NEVER automatically deleted or quarantined.
+
+    The Defender confirmed threat rule (security.defender_confirmed_threat)
+    is registered separately by register_defender_threat_rule() because
+    it requires the Defender discovery engine to provide assets.
 
     Args:
         registry: RuleRegistry instance

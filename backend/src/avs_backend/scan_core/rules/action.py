@@ -196,6 +196,7 @@ class ActionType(str, Enum):
     REMOVE_REGISTRY_KEY = "remove_registry_key"
     DISABLE_STARTUP_ENTRY = "disable_startup_entry"
     CLEAR_BROWSER_CACHE = "clear_browser_cache"
+    QUARANTINE_FILE = "quarantine_file"
 
 
 class ActionState(str, Enum):
@@ -275,6 +276,73 @@ class FilesystemActionTarget:
             target_type=ActionTargetType(data.get("target_type", "filesystem")),
             backup_required=data.get("backup_required", False),
             rollback_supported=data.get("rollback_supported", False),
+            backup_location=data.get("backup_location"),
+            backup_identity=data.get("backup_identity"),
+        )
+
+
+@dataclass(frozen=True)
+class QuarantineActionTarget:
+    """
+    Target for quarantine remediation actions.
+
+    Used for confirmed threat files that must be isolated (moved to
+    quarantine storage) rather than permanently deleted. Carries
+    Defender threat metadata so the quarantine executor can record
+    it in the manifest.
+    """
+
+    asset_id: str
+    canonical_path: str
+    allowed_location: str
+    scope: str
+    threat_name: str = ""
+    threat_id: str = ""
+    detection_source: str = "WINDOWS_DEFENDER"
+    detection_id: str = ""
+    target_type: ActionTargetType = ActionTargetType.FILESYSTEM
+    backup_required: bool = True
+    rollback_supported: bool = True
+    backup_location: Optional[str] = None
+    backup_identity: Optional[str] = None
+
+    def target_identity(self) -> str:
+        """Deterministic identity for deduplication."""
+        return f"{self.asset_id}|{self.canonical_path}|quarantine_file"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
+        return {
+            "target_type": self.target_type.value,
+            "asset_id": self.asset_id,
+            "canonical_path": self.canonical_path,
+            "allowed_location": self.allowed_location,
+            "scope": self.scope,
+            "threat_name": self.threat_name,
+            "threat_id": self.threat_id,
+            "detection_source": self.detection_source,
+            "detection_id": self.detection_id,
+            "backup_required": self.backup_required,
+            "rollback_supported": self.rollback_supported,
+            "backup_location": self.backup_location,
+            "backup_identity": self.backup_identity,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "QuarantineActionTarget":
+        """Deserialize from a dictionary."""
+        return cls(
+            asset_id=data.get("asset_id", ""),
+            canonical_path=data.get("canonical_path", ""),
+            allowed_location=data.get("allowed_location", ""),
+            scope=data.get("scope", ""),
+            threat_name=data.get("threat_name", ""),
+            threat_id=data.get("threat_id", ""),
+            detection_source=data.get("detection_source", "WINDOWS_DEFENDER"),
+            detection_id=data.get("detection_id", ""),
+            target_type=ActionTargetType(data.get("target_type", "filesystem")),
+            backup_required=data.get("backup_required", True),
+            rollback_supported=data.get("rollback_supported", True),
             backup_location=data.get("backup_location"),
             backup_identity=data.get("backup_identity"),
         )
@@ -1095,6 +1163,34 @@ class ActionPlanner:
                 scope=self._determine_scope(finding),
                 backup_required=action_type == ActionType.DELETE_FILE,
                 rollback_supported=action_type == ActionType.DELETE_FILE,
+            )
+
+        if action_type == ActionType.QUARANTINE_FILE:
+            # Validate path safety
+            if not is_path_safe_for_planning(snapshot.canonical_path):
+                return None
+
+            # Extract Defender threat metadata from the finding's source result.
+            source_result = getattr(finding, "source_result", None)
+            finding_meta = getattr(source_result, "metadata", None) or {}
+            threat_name = str(finding_meta.get("threat_name", "Unknown Threat"))
+            threat_id = str(finding_meta.get("threat_id", ""))
+            detection_source = str(
+                finding_meta.get("detection_source", "WINDOWS_DEFENDER")
+            )
+            detection_id = str(finding_meta.get("detection_id", ""))
+
+            return QuarantineActionTarget(
+                asset_id=finding.asset_id,
+                canonical_path=snapshot.canonical_path,
+                allowed_location=self._extract_allowed_location(finding),
+                scope=self._determine_scope(finding),
+                threat_name=threat_name,
+                threat_id=threat_id,
+                detection_source=detection_source,
+                detection_id=detection_id,
+                backup_required=True,
+                rollback_supported=True,
             )
 
         if action_type in (

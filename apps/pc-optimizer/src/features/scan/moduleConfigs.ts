@@ -94,10 +94,10 @@ export const PROTECTION_SCAN_CONFIG: UnifiedScanModuleConfig = {
   ],
   counters: [
     { id: 'filesScanned', label: 'Files Scanned', icon: 'DocumentTextIcon', format: 'number' },
-    { id: 'threatsFound', label: 'Threats Found', icon: 'ExclamationTriangleIcon', format: 'number' },
-    { id: 'protectionAreas', label: 'Protection Areas', icon: 'ShieldCheckIcon', format: 'number' },
-    { id: 'suspiciousProcesses', label: 'Suspicious Processes', icon: 'CommandLineIcon', format: 'number' },
-    { id: 'registryKeysChecked', label: 'Registry Checks', icon: 'ServerStackIcon', format: 'number' },
+    { id: 'confirmedThreats', label: 'Confirmed Threats', icon: 'ExclamationTriangleIcon', format: 'number' },
+    { id: 'suspiciousItems', label: 'Suspicious Items', icon: 'EyeIcon', format: 'number' },
+    { id: 'threatsSecured', label: 'Threats Secured', icon: 'ShieldCheckIcon', format: 'number' },
+    { id: 'threatsRemaining', label: 'Threats Remaining', icon: 'ShieldExclamationIcon', format: 'number' },
     { id: 'aiConfidence', label: 'AI Confidence', icon: 'SparklesIcon', format: 'percent' },
   ],
 };

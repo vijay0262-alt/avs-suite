@@ -642,6 +642,18 @@ class RemediationCoordinator:
                 "clear_cache",
             ):
                 return self._filesystem_context(target, action.asset_id)
+            if action_type_value == "quarantine_file":
+                ctx = self._filesystem_context(target, action.asset_id)
+                if ctx is not None:
+                    # Add threat metadata from the QuarantineActionTarget
+                    # so the quarantine executor can record it in the manifest.
+                    ctx["threat_name"] = getattr(target, "threat_name", "")
+                    ctx["threat_id"] = getattr(target, "threat_id", "")
+                    ctx["detection_source"] = getattr(
+                        target, "detection_source", "WINDOWS_DEFENDER"
+                    )
+                    ctx["detection_id"] = getattr(target, "detection_id", "")
+                return ctx
             # Registry / browser / startup targets are not supported by this
             # coordinator yet; returning None lets the executor reject live mode.
             return None

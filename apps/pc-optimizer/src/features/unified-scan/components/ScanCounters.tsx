@@ -22,6 +22,9 @@ import {
   CircleStackIcon,
   ClockIcon,
   ShieldExclamationIcon,
+  ShieldCheckIcon,
+  EyeIcon,
+  FireIcon,
   LinkIcon,
 } from '@heroicons/react/24/outline';
 import type { UnifiedScanCounterDef } from '../unifiedScanTypes';
@@ -44,6 +47,9 @@ const ICONS: Record<string, ReactNode> = {
   CircleStackIcon: <CircleStackIcon className="h-4 w-4" />,
   ClockIcon: <ClockIcon className="h-4 w-4" />,
   ShieldExclamationIcon: <ShieldExclamationIcon className="h-4 w-4" />,
+  ShieldCheckIcon: <ShieldCheckIcon className="h-4 w-4" />,
+  EyeIcon: <EyeIcon className="h-4 w-4" />,
+  FireIcon: <FireIcon className="h-4 w-4" />,
   LinkIcon: <LinkIcon className="h-4 w-4" />,
 };
 
