@@ -100,6 +100,66 @@ export interface DashboardOptimizationPlanResponse {
   error?: string;
 }
 
+export interface SecurityScoreInputs {
+  defender_status?: string;
+  active_threat_count?: number;
+  total_threat_count?: number;
+  real_time_protection_enabled?: boolean | null;
+  signatures_out_of_date?: boolean | null;
+}
+
+export interface SecurityScoreResponse {
+  ok: boolean;
+  score: number;
+  label: string;
+  available: boolean;
+  reason: string;
+  inputs: SecurityScoreInputs;
+  computed_at: string;
+  error?: string;
+}
+
+export interface DefenderThreat {
+  threat_id: string;
+  threat_name: string;
+  severity: string;
+  category: string;
+  detection_id: string;
+  file_path: string;
+  detection_time: string | null;
+  action_taken: string;
+  remediation_state: string;
+  is_active: boolean;
+}
+
+export interface DefenderProtectionState {
+  defender_available: boolean;
+  real_time_protection_enabled: boolean;
+  antivirus_enabled: boolean;
+  antispyware_enabled: boolean;
+  behavior_monitor_enabled: boolean;
+  on_access_protection_enabled: boolean;
+  ioav_protection_enabled: boolean;
+  is_tamper_protected: boolean;
+  ni_enabled: boolean;
+  signatures_out_of_date: boolean;
+  am_running_mode: string;
+  am_service_enabled: boolean;
+}
+
+export interface DefenderStatusResponse {
+  ok: boolean;
+  status: string;
+  is_available: boolean;
+  reason: string;
+  threats: DefenderThreat[];
+  active_threat_count: number;
+  total_threat_count: number;
+  protection_state: DefenderProtectionState | null;
+  queried_at: string;
+  error?: string;
+}
+
 export interface ScanService {
   scan_quick(scope?: string[]): Promise<ScanStartResponse>;
   scan_full(scope?: string[]): Promise<ScanStartResponse>;
@@ -112,6 +172,8 @@ export interface ScanService {
   smart_optimization_plan(actions: Record<string, unknown>[]): Promise<SmartOptimizationPlanResponse>;
   security_remediation_plan(actions: Record<string, unknown>[]): Promise<SecurityRemediationPlanResponse>;
   dashboard_optimization_plan(actions: Record<string, unknown>[]): Promise<DashboardOptimizationPlanResponse>;
+  security_score(): Promise<SecurityScoreResponse>;
+  defender_status(): Promise<DefenderStatusResponse>;
 }
 
 export const scanService: ScanService = {
@@ -129,4 +191,8 @@ export const scanService: ScanService = {
     client().call(RPC_METHODS.SCAN_CORE_SECURITY_REMEDIATION_PLAN, { actions }) as Promise<SecurityRemediationPlanResponse>,
   dashboard_optimization_plan: (actions: Record<string, unknown>[]) =>
     client().call(RPC_METHODS.SCAN_CORE_DASHBOARD_OPTIMIZATION_PLAN, { actions }) as Promise<DashboardOptimizationPlanResponse>,
+  security_score: () =>
+    client().call(RPC_METHODS.SCAN_CORE_SECURITY_SCORE, {}) as Promise<SecurityScoreResponse>,
+  defender_status: () =>
+    client().call(RPC_METHODS.SCAN_CORE_DEFENDER_STATUS, {}) as Promise<DefenderStatusResponse>,
 };

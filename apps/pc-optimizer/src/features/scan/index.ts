@@ -39,6 +39,10 @@ export type { UseSecurityRemediationPlanReturn } from './useSecurityRemediationP
 export { useDashboardOptimizationPlan } from './useDashboardOptimizationPlan';
 export type { UseDashboardOptimizationPlanReturn } from './useDashboardOptimizationPlan';
 
+export { useSecurityScore } from './useSecurityScore';
+export type { UseSecurityScoreReturn } from './useSecurityScore';
+export type { SecurityScoreResponse, DefenderStatusResponse, DefenderThreat, DefenderProtectionState, SecurityScoreInputs } from './scan.service';
+
 export { ResultsView, type ResultsViewProps } from './ResultsView';
 export { PlanReviewView, type PlanReviewViewProps } from './PlanReviewView';
 export { usePlanDetails } from './usePlanDetails';

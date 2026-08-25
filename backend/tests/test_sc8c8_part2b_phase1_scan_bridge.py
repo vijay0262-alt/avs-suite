@@ -30,6 +30,10 @@ def fresh_scan_bridge(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(scan_core_rpc, "_get_app_data_dir", lambda: app_dir)
     monkeypatch.setattr(scan_core_rpc, "_scan_orchestrator", None)
     monkeypatch.setattr(scan_core_rpc, "_coordinator", None)
+    # Reset the initializing flag so get_scan_orchestrator() can proceed
+    # with the temp database instead of being blocked by the eager-init
+    # thread which may still be initializing the production database.
+    monkeypatch.setattr(scan_core_rpc, "_scan_orchestrator_initializing", False)
     scan_core_rpc._scan_sessions.clear()
     monkeypatch.setenv("TEMP", str(tmp_path))
     monkeypatch.setenv("TMP", str(tmp_path))
@@ -37,6 +41,7 @@ def fresh_scan_bridge(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     scan_core_rpc._scan_sessions.clear()
     scan_core_rpc._scan_orchestrator = None
     scan_core_rpc._coordinator = None
+    scan_core_rpc._scan_orchestrator_initializing = False
 
 
 def _temp_files(tmp_path: Path, count: int = 1) -> Path:

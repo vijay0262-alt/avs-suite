@@ -56,6 +56,7 @@ def fresh_hardening(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(scan_core_rpc, "_get_app_data_dir", lambda: app_dir)
     monkeypatch.setattr(scan_core_rpc, "_scan_orchestrator", None)
     monkeypatch.setattr(scan_core_rpc, "_coordinator", None)
+    monkeypatch.setattr(scan_core_rpc, "_scan_orchestrator_initializing", False)
     scan_core_rpc._scan_sessions.clear()
     monkeypatch.setenv("TEMP", str(tmp_path))
     monkeypatch.setenv("TMP", str(tmp_path))
@@ -63,6 +64,7 @@ def fresh_hardening(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     scan_core_rpc._scan_sessions.clear()
     scan_core_rpc._scan_orchestrator = None
     scan_core_rpc._coordinator = None
+    scan_core_rpc._scan_orchestrator_initializing = False
 
 
 def _required_finding_fields(finding: dict[str, Any]) -> None:

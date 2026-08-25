@@ -1659,3 +1659,156 @@ def _scan_core_defender_status(
     except Exception as exc:
         logger.exception("scan_core.defender.status failed: %s", exc)
         return {"ok": False, "error": str(exc)}
+
+
+# =====================================================================
+# V1.0 AI Security Center — Real security score from Defender status
+# =====================================================================
+
+
+def _compute_security_score_from_defender(info: Any) -> dict[str, Any]:
+    """Compute a deterministic security score from real Defender telemetry.
+
+    Score contract:
+      Inputs (all from get_defender_threat_info):
+        - status: AVAILABLE | UNAVAILABLE | DISABLED | NOT_WINDOWS | QUERY_FAILED
+        - active_threat_count: number of active confirmed threats
+        - total_threat_count: total confirmed threats (active + remediated)
+        - protection_state: real-time protection posture flags
+
+      Weights:
+        - Defender available + healthy:        base 100
+        - Defender available + RT protection:  no penalty
+        - Defender available + RT off:         -15
+        - Defender available + signatures old: -10
+        - Defender disabled:                   base 50
+        - Defender unavailable/query_failed:   base 50 (unknown, not fake 100)
+        - Not Windows:                         base 50 (unknown)
+        - Each active confirmed threat:        -20 (capped at -60)
+        - Score clamped to [0, 100]
+
+      Missing-data behavior:
+        - When Defender telemetry is unavailable, the score is 50 ("unknown"),
+          NOT 100. The UI must display "Unknown" rather than "Secure".
+        - A successful scan alone does NOT increase the score.
+        - Score changes only when security state changes.
+
+    Returns:
+        {
+            "ok": true,
+            "score": int,
+            "label": "Secure" | "Protected" | "At Risk" | "Unprotected" | "Unknown",
+            "available": bool,
+            "reason": str,
+            "inputs": {...},
+            "computed_at": "..."
+        }
+    """
+    from avs_backend.scan_core.security.defender_integration import DefenderStatus
+
+    status = info.status
+    active_threats = len(info.active_threats)
+    total_threats = len(info.threats)
+    protection_state = info.protection_state
+
+    # Base score by Defender availability
+    if status == DefenderStatus.AVAILABLE:
+        score = 100
+        reason = "Windows Defender is active"
+    elif status == DefenderStatus.DISABLED:
+        score = 50
+        reason = info.reason or "Windows Defender is disabled"
+    elif status == DefenderStatus.NOT_WINDOWS:
+        score = 50
+        reason = "Windows Defender is not available on this platform"
+    else:
+        # UNAVAILABLE or QUERY_FAILED
+        score = 50
+        reason = info.reason or "Windows Defender status unavailable"
+
+    # Penalties for protection state (only when Defender is available)
+    if status == DefenderStatus.AVAILABLE and protection_state:
+        if not protection_state.real_time_protection_enabled:
+            score -= 15
+        if protection_state.signatures_out_of_date:
+            score -= 10
+
+    # Penalties for active confirmed threats
+    threat_penalty = min(active_threats * 20, 60)
+    score -= threat_penalty
+
+    score = max(0, min(100, score))
+
+    # Label
+    if status != DefenderStatus.AVAILABLE:
+        label = "Unknown"
+    elif score >= 90:
+        label = "Secure"
+    elif score >= 75:
+        label = "Protected"
+    elif score >= 50:
+        label = "At Risk"
+    else:
+        label = "Unprotected"
+
+    return {
+        "ok": True,
+        "score": score,
+        "label": label,
+        "available": status == DefenderStatus.AVAILABLE,
+        "reason": reason,
+        "inputs": {
+            "defender_status": status.value,
+            "active_threat_count": active_threats,
+            "total_threat_count": total_threats,
+            "real_time_protection_enabled": (
+                protection_state.real_time_protection_enabled
+                if protection_state
+                else None
+            ),
+            "signatures_out_of_date": (
+                protection_state.signatures_out_of_date
+                if protection_state
+                else None
+            ),
+        },
+        "computed_at": datetime.now(UTC).isoformat(),
+    }
+
+
+@register("scan_core.security.score")
+def _scan_core_security_score(
+    _params: Optional[dict[str, Any]],
+) -> dict[str, Any]:
+    """Compute a real security score from authoritative Defender telemetry.
+
+    The score is deterministic and based on real security posture:
+    - Defender availability and protection state
+    - Active confirmed threat count
+    - Signature freshness
+
+    NEVER fabricates a score. When Defender is unavailable, returns
+    score=50 with label="Unknown" — NOT score=100.
+
+    A successful scan alone does NOT increase the score.
+    Score changes only when security state changes.
+    """
+    try:
+        from avs_backend.scan_core.security.defender_integration import (
+            get_defender_threat_info,
+        )
+
+        info = get_defender_threat_info()
+        return _compute_security_score_from_defender(info)
+    except Exception as exc:
+        logger.exception("scan_core.security.score failed: %s", exc)
+        return {
+            "ok": False,
+            "error": str(exc),
+            "score": 50,
+            "label": "Unknown",
+            "available": False,
+            "reason": f"Security score computation failed: {exc}",
+            "inputs": {},
+            "computed_at": datetime.now(UTC).isoformat(),
+        }

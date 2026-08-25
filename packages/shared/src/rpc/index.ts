@@ -178,6 +178,10 @@ export const RPC_METHODS = {
   // Security Remediation Quarantine Listing (SC-8C14 Phase 3) — read-only
   SCAN_CORE_SECURITY_REMEDIATION_QUARANTINE_LIST: 'scan_core.security_remediation.quarantine_list',
 
+  // V1.0 AI Security Center — Real Defender-backed security score
+  SCAN_CORE_SECURITY_SCORE: 'scan_core.security.score',
+  SCAN_CORE_DEFENDER_STATUS: 'scan_core.defender.status',
+
   // Dashboard Optimization Plan Creation (SC-8C13 Phase 2)
   SCAN_CORE_DASHBOARD_OPTIMIZATION_PLAN: 'scan_core.dashboard_optimization.plan',
 
