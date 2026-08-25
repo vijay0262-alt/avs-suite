@@ -177,7 +177,7 @@ export function HealthScanModal({
 
           {/* Live stats grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="scan-live-stats">
-            <LiveStatBox label="Files Scanned" value={stats.filesScanned.toLocaleString()} icon={<CircleStackIcon className="h-4 w-4" />} />
+            <LiveStatBox label="Cleanable Files" value={stats.recommendationsFound.toLocaleString()} icon={<TrashIcon className="h-4 w-4" />} />
             <LiveStatBox label="Registry Entries" value={stats.registryEntries.toLocaleString()} icon={<ServerIcon className="h-4 w-4" />} />
             <LiveStatBox label="Startup Items" value={stats.startupItems.toLocaleString()} icon={<ServerIcon className="h-4 w-4" />} />
             <LiveStatBox label="Privacy Items" value={stats.privacyItems.toLocaleString()} icon={<ShieldCheckIcon className="h-4 w-4" />} />

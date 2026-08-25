@@ -47,6 +47,8 @@ export interface UseAutoOptimizeReturn {
   executionTotal: number;
   /** Current file path being cleaned. */
   currentFile: string;
+  /** Current cleanup category being cleaned (e.g. "Temporary Files"). */
+  currentCategory: string;
   /** Overall progress percentage (0-100). */
   overallProgress: number;
   /** Start auto-optimization for a plan. */
@@ -73,6 +75,7 @@ export function useAutoOptimize(): UseAutoOptimizeReturn {
   const [executionProgress, setExecutionProgress] = useState(0);
   const [executionTotal, setExecutionTotal] = useState(0);
   const [currentFile, setCurrentFile] = useState('');
+  const [currentCategory, setCurrentCategory] = useState('');
   const [overallProgress, setOverallProgress] = useState(0);
 
   const sessionIdRef = useRef<string | null>(null);
@@ -105,6 +108,7 @@ export function useAutoOptimize(): UseAutoOptimizeReturn {
     setExecutionProgress(0);
     setExecutionTotal(0);
     setCurrentFile('');
+    setCurrentCategory('');
     setOverallProgress(0);
   }, [stopPoll]);
 
@@ -132,6 +136,10 @@ export function useAutoOptimize(): UseAutoOptimizeReturn {
     }
     if (status.current_file !== undefined) {
       setCurrentFile(status.current_file);
+    }
+    const statusAny = status as unknown as Record<string, unknown>;
+    if (statusAny.current_category !== undefined) {
+      setCurrentCategory(String(statusAny.current_category));
     }
     if (status.overall_progress !== undefined) {
       setOverallProgress(status.overall_progress);
@@ -237,6 +245,7 @@ export function useAutoOptimize(): UseAutoOptimizeReturn {
     executionProgress,
     executionTotal,
     currentFile,
+    currentCategory,
     overallProgress,
     startAutoOptimize,
     cancelAutoOptimize,

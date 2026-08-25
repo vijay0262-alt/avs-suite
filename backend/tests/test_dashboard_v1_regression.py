@@ -436,18 +436,40 @@ class TestCleaningVerification:
 # ── 13. Recycle Bin cleanup ──────────────────────────────────────────────
 
 class TestRecycleBin:
-    """Tests that Recycle Bin is included in scan locations."""
+    """Tests that Recycle Bin is handled as a cleanup category.
+
+    V1.0: Recycle Bin is NOT traversed via filesystem enumeration
+    because Recycle Bin files belong to user SIDs and may not be
+    accessible.  Instead, Recycle Bin is handled via the Windows
+    SHEmptyRecycleBin API at cleanup time.  The category must still
+    be recognized by the cleanup category mapping.
+    """
 
     @_requires_windows_filesystem
     def test_recycle_bin_in_quick_scan_locations(self):
-        """Recycle Bin must be in the quick scan location set."""
+        """Recycle Bin must NOT be in quick scan filesystem locations.
+
+        It is handled via the Windows API, not filesystem traversal.
+        """
         from avs_backend.scan_core.orchestration.discovery import (
             FilesystemDiscoveryEngine,
         )
         engine = FilesystemDiscoveryEngine()
         locations = engine._get_quick_scan_locations()
         labels = [loc.label for loc in locations]
-        assert "Recycle Bin" in labels, "Recycle Bin must be in quick scan locations"
+        # Recycle Bin is intentionally excluded from filesystem traversal.
+        # It is handled via SHEmptyRecycleBinW API at execution time.
+        assert "Recycle Bin" not in labels, (
+            "Recycle Bin must NOT be in filesystem scan locations — "
+            "it is handled via the Windows API"
+        )
+
+    def test_recycle_bin_category_mapping(self):
+        """Recycle Bin rule_id must map to the 'Recycle Bin' category."""
+        from avs_backend.scan_core.rules.cleanup_categories import (
+            rule_id_to_category,
+        )
+        assert rule_id_to_category("junk.recycle_bin") == "Recycle Bin"
 
 
 # ── 14. Protected Windows Update file ────────────────────────────────────

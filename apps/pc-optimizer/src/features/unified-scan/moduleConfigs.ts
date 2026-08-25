@@ -34,14 +34,19 @@ export const OPTIMIZE_SCAN_CONFIG: UnifiedScanModuleConfig = {
     },
     {
       id: 'discovery',
-      label: 'Discovering',
-      description: 'Enumerating filesystem assets in scan scope',
+      label: 'Scanning',
+      description: 'Checking cleanup categories',
       startPercent: 5,
       endPercent: 50,
       activities: [
-        'Scanning temporary files...',
-        'Checking cache directories...',
-        'Enumerating filesystem assets...',
+        'Checking Temporary Files...',
+        'Checking Browser Cache...',
+        'Checking Windows Cleanup...',
+        'Checking Recycle Bin...',
+        'Checking Prefetch...',
+        'Checking Shader Cache...',
+        'Checking Windows Update Cleanup...',
+        'Checking Thumbnail Cache...',
       ],
     },
     {
@@ -100,10 +105,8 @@ export const OPTIMIZE_SCAN_CONFIG: UnifiedScanModuleConfig = {
     planning: 'planning',
   },
   counters: [
-    { id: 'filesScanned', label: 'Files Discovered', icon: 'DocumentTextIcon', format: 'number' },
-    { id: 'itemsScanned', label: 'Files Analyzed', icon: 'CircleStackIcon', format: 'number' },
-    { id: 'recommendations', label: 'Issues Found', icon: 'ExclamationTriangleIcon', format: 'number' },
-    { id: 'actionsAvailable', label: 'Actions Available', icon: 'BoltIcon', format: 'number' },
+    { id: 'recommendations', label: 'Cleanable Files', icon: 'TrashIcon', format: 'number' },
+    { id: 'actionsAvailable', label: 'Cleanable Size', icon: 'CircleStackIcon', format: 'bytes' },
   ],
 };
 
@@ -304,7 +307,6 @@ export const SECURITY_SCAN_CONFIG: UnifiedScanModuleConfig = {
     },
   ],
   counters: [
-    { id: 'filesScanned', label: 'Files Scanned', icon: 'DocumentTextIcon', format: 'number' },
     { id: 'processesAnalyzed', label: 'Processes', icon: 'CommandLineIcon', format: 'number' },
     { id: 'servicesChecked', label: 'Services', icon: 'Cog6ToothIcon', format: 'number' },
     { id: 'registryKeysChecked', label: 'Registry Keys', icon: 'ServerStackIcon', format: 'number' },
@@ -378,13 +380,11 @@ export const JUNK_SCAN_CONFIG: UnifiedScanModuleConfig = {
     },
   ],
   counters: [
-    { id: 'filesScanned', label: 'Files Scanned', icon: 'DocumentTextIcon', format: 'number' },
-    { id: 'junkFiles', label: 'Junk Files Found', icon: 'TrashIcon', format: 'number' },
-    { id: 'junkSize', label: 'Junk Size', icon: 'CircleStackIcon', format: 'bytes' },
+    { id: 'junkFiles', label: 'Cleanable Files', icon: 'TrashIcon', format: 'number' },
+    { id: 'junkSize', label: 'Total Junk Size', icon: 'CircleStackIcon', format: 'bytes' },
     { id: 'browserCache', label: 'Browser Cache', icon: 'GlobeAltIcon', format: 'bytes' },
     { id: 'recycleBin', label: 'Recycle Bin', icon: 'TrashIcon', format: 'bytes' },
     { id: 'tempFiles', label: 'Temp Files', icon: 'DocumentTextIcon', format: 'bytes' },
-    { id: 'logFiles', label: 'Log Files', icon: 'DocumentTextIcon', format: 'bytes' },
     { id: 'updateCache', label: 'Update Cache', icon: 'CircleStackIcon', format: 'bytes' },
   ],
 };
@@ -562,7 +562,6 @@ export const DUPLICATE_SCAN_CONFIG: UnifiedScanModuleConfig = {
     },
   ],
   counters: [
-    { id: 'filesScanned', label: 'Files Scanned', icon: 'DocumentTextIcon', format: 'number' },
     { id: 'duplicateFiles', label: 'Duplicate Files', icon: 'DocumentDuplicateIcon', format: 'number' },
     { id: 'duplicateGroups', label: 'Duplicate Groups', icon: 'DocumentDuplicateIcon', format: 'number' },
     { id: 'wastedSpace', label: 'Wasted Space', icon: 'CircleStackIcon', format: 'bytes' },
@@ -768,7 +767,6 @@ export const DISK_SCAN_CONFIG: UnifiedScanModuleConfig = {
     },
   ],
   counters: [
-    { id: 'filesScanned', label: 'Files Scanned', icon: 'DocumentTextIcon', format: 'number' },
     { id: 'totalSize', label: 'Total Size', icon: 'CircleStackIcon', format: 'bytes' },
     { id: 'largestFiles', label: 'Largest Files', icon: 'DocumentTextIcon', format: 'number' },
     { id: 'oldFiles', label: 'Old Files', icon: 'DocumentTextIcon', format: 'number' },

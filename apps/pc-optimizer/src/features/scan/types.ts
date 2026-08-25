@@ -180,10 +180,17 @@ export type AutoOptimizePhase =
   | 'error';
 
 export interface AutoOptimizeResult {
-  // ── V1.0 User-facing fields (ONLY these are shown) ──────────────
+  // ── V1.0 User-facing fields (Disk Cleanup style) ────────────────
   files_found: number;       // files eligible for cleanup
   files_cleaned: number;     // successfully deleted + verified
   space_recovered: number;   // verified deleted bytes
+  folders_found?: number;    // folders eligible for cleanup
+  folders_cleaned?: number;  // folders successfully removed/cleared
+  categories?: Record<string, {
+    files_found: number;
+    files_cleaned: number;
+    space_recovered: number;
+  }>;  // per-category breakdown
 
   // ── Legacy compat (kept for backward compatibility, NOT shown) ───
   detected?: number;      // alias for files_found

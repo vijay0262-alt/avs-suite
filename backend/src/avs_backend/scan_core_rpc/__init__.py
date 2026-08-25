@@ -31,6 +31,7 @@ from avs_backend.scan_core.orchestration.models import ScanProgress, ScanResult
 from avs_backend.scan_core.rules.evaluator import CancellationToken
 from avs_backend.scan_core.rules.registry import RuleRegistry
 from avs_backend.scan_core.rules.detection.junk_rules import register_junk_rules
+from avs_backend.scan_core.rules.cleanup_categories import rule_id_to_category, category_order_index
 from avs_backend.scan_core.orchestration.remediation_models import (
     RemediationExecutionStatus,
     RemediationPreview,
@@ -1185,10 +1186,15 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 session["execution_total"] = total
                 session["current_file"] = current_path
                 session["overall_progress"] = overall_pct
-                # V1.0: message is a generic status label; the current file
-                # path is surfaced separately via session["current_file"] so
-                # the frontend does not display the path twice.
-                session["message"] = f"Cleaning {completed}/{total} files..."
+                # V1.0: Extract current category from rule_id for UI display
+                rule_id = info.get("rule_id", "") if isinstance(info, dict) else ""
+                current_cat = rule_id_to_category(rule_id) if rule_id else ""
+                session["current_category"] = current_cat
+                # V1.0: message shows the current category being cleaned
+                if current_cat:
+                    session["message"] = f"Cleaning {current_cat}..."
+                else:
+                    session["message"] = f"Cleaning {completed}/{total} files..."
 
         request_id = str(uuid.uuid4())
         summary = coord.execute(
@@ -1198,6 +1204,15 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
             mode="live",
             on_progress=_on_execution_progress,
         )
+
+        # Build action_id → rule_id mapping from the plan for per-category stats
+        action_rule_map: dict[str, str] = {}
+        for action in plan.actions:
+            action_rule_map[action.action_id] = getattr(action, "rule_id", "")
+
+        # V1.0: Per-category breakdown for Disk Cleanup style UI.
+        # Tracks files_found, files_cleaned, space_recovered per category.
+        category_stats: dict[str, dict[str, int]] = {}
 
         # Calculate space recovered from VERIFIED completed actions.
         # V1.0: Only count space from actions where the file was actually
@@ -1209,6 +1224,18 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         verified_cleaned = 0
         failed_details: list[dict[str, Any]] = []
         for result in summary.results:
+            # Get rule_id and map to cleanup category
+            rule_id = action_rule_map.get(result.action_id, "")
+            cat = rule_id_to_category(rule_id) if rule_id else "Other Safe Cleanup"
+            if cat not in category_stats:
+                category_stats[cat] = {
+                    "files_found": 0,
+                    "files_cleaned": 0,
+                    "space_recovered": 0,
+                }
+            # Count as found (was a candidate)
+            category_stats[cat]["files_found"] += 1
+
             if result.status.value == "completed":
                 # Verify the file was actually deleted via after_state.
                 after_state = getattr(result, "after_state", None)
@@ -1219,6 +1246,7 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                     and after_state.get("exists") is False
                 ):
                     verified_cleaned += 1
+                    cat_size = 0
                     if (
                         before_state
                         and isinstance(before_state, dict)
@@ -1226,6 +1254,10 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                         size = before_state.get("size", 0)
                         if isinstance(size, (int, float)) and size > 0:
                             space_recovered += size
+                            cat_size = int(size)
+                    # Update per-category cleaned count and space
+                    category_stats[cat]["files_cleaned"] += 1
+                    category_stats[cat]["space_recovered"] += cat_size
                 # If after_state is missing or doesn't confirm absence,
                 # do NOT count the space — the deletion is unverified.
             elif result.status.value == "failed":
@@ -1249,6 +1281,38 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                     "locked_after": after_state.get("locked", False) if isinstance(after_state, dict) else False,
                 })
 
+        # V1.0: Count folders — only actions with action_type=delete_directory
+        # or clear_cache count as folder operations.  A folder is "found" if
+        # it was a planned safe action, and "cleaned" only if verified absent.
+        folders_found = 0
+        folders_cleaned = 0
+        for action in plan.actions:
+            if action.state.value != "planned":
+                continue
+            at = action.action_type.value
+            if at in ("delete_directory", "clear_cache"):
+                folders_found += 1
+        for result in summary.results:
+            if result.status.value != "completed":
+                continue
+            at = result.action_type
+            if at in ("delete_directory", "clear_cache"):
+                after_state = getattr(result, "after_state", None)
+                if (
+                    after_state
+                    and isinstance(after_state, dict)
+                    and after_state.get("exists") is False
+                ):
+                    folders_cleaned += 1
+
+        # V1.0: Sort category_stats by display order
+        sorted_categories = dict(
+            sorted(
+                category_stats.items(),
+                key=lambda x: category_order_index(x[0]),
+            )
+        )
+
         # V1.0: Deterministic cleanup-based health score AFTER optimization.
         # Based on remaining cleanable items, not fluctuating system metrics.
         # remaining = detected - cleaned - failed (items still present and
@@ -1256,17 +1320,20 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         remaining_after = safe_count - verified_cleaned - summary.failed
         health_after = _cleanup_health_score(remaining_after)
 
-        # V1.0 Dashboard result contract — SIMPLE:
-        # User sees ONLY: files_found, files_cleaned, space_recovered.
-        # Everything else (rejected, failed, remaining, health, etc.) is
-        # internal diagnostics only — NOT shown to the user.
+        # V1.0 Dashboard result contract — Disk Cleanup style:
+        # User sees: files_found, files_cleaned, folders_found, folders_cleaned,
+        # space_recovered, and per-category breakdown.
         # files_cleaned = verified_cleaned (only actions where after_state
         # confirms the file no longer exists on the filesystem).
         result_dict = {
-            # ── User-facing fields (ONLY these 3) ───────────────────────
+            # ── User-facing fields ──────────────────────────────────────
             "files_found": safe_count,
             "files_cleaned": verified_cleaned,
+            "folders_found": folders_found,
+            "folders_cleaned": folders_cleaned,
             "space_recovered": space_recovered,
+            # ── Per-category breakdown (Disk Cleanup style) ─────────────
+            "categories": sorted_categories,
             # ── Legacy compat (kept for any old callers, NOT shown) ─────
             "detected": safe_count,
             "cleaned": verified_cleaned,
@@ -1388,6 +1455,7 @@ def _scan_core_dashboard_auto_optimize(params: Optional[dict[str, Any]]) -> dict
             "execution_progress": 0,
             "execution_total": 0,
             "current_file": "",
+            "current_category": "",
             "overall_progress": 0,
         }
 

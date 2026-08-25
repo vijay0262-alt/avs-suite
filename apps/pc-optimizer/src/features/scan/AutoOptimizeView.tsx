@@ -1,11 +1,13 @@
 /**
- * AutoOptimizeView.tsx — shows the one-click optimization progress and
- * completion summary for the Dashboard scan workflow.
+ * AutoOptimizeView.tsx — Disk Cleanup style optimization view.
  *
- * V1.0 SIMPLE Dashboard contract:
- *   User sees ONLY: files_cleaned, space_recovered.
- *   Everything else (detected, remaining, failed, rejected, health, etc.)
- *   is internal — NOT displayed.
+ * V1.0 Disk Cleanup style:
+ *   - During scanning: shows "Scanning your PC..." with category checklist
+ *   - During cleaning: shows current category, files cleaned, space recovered
+ *   - On complete: shows per-category breakdown like Windows Disk Cleanup
+ *
+ * NEVER shows "Files Scanned" or traversal counts.
+ * Only shows CLEANABLE data: files to clean, space to clean, what was cleaned.
  */
 import { useEffect, useMemo } from 'react';
 import { Card, Button } from '@avs/ui';
@@ -15,8 +17,10 @@ import {
   XCircleIcon,
   ArrowPathIcon,
   BoltIcon,
+  TrashIcon,
+  CircleStackIcon,
 } from '@heroicons/react/24/outline';
-import type { AutoOptimizePhase } from './types';
+import type { AutoOptimizePhase, AutoOptimizeResult } from './types';
 import { useAutoOptimize } from './useAutoOptimize';
 import { optimizationEventBus, OptimizationEventType } from '../health/OptimizationEventBus';
 
@@ -51,6 +55,46 @@ function formatBytes(bytes: number): string {
 
 function formatNumber(n: number): string {
   return n.toLocaleString();
+}
+
+/**
+ * Category breakdown row — Disk Cleanup style.
+ * Shows category name, file count, and size.
+ */
+function CategoryRow({
+  name,
+  files,
+  size,
+  cleaned,
+}: {
+  name: string;
+  files: number;
+  size: number;
+  cleaned?: boolean;
+}) {
+  return (
+    <div
+      className="flex items-center justify-between py-2.5 border-b border-[var(--avs-border-subtle)] last:border-0"
+      data-testid={`category-row-${name.toLowerCase().replace(/\s+/g, '-')}`}
+    >
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        {cleaned ? (
+          <CheckCircleIcon className="h-4 w-4 text-semantic-success shrink-0" />
+        ) : (
+          <TrashIcon className="h-4 w-4 text-text-muted shrink-0" />
+        )}
+        <span className="text-small text-text-primary truncate">{name}</span>
+      </div>
+      <div className="flex items-center gap-4 shrink-0">
+        <span className="text-small text-text-muted tabular-nums">
+          {formatNumber(files)} {files === 1 ? 'file' : 'files'}
+        </span>
+        <span className="text-small font-semibold text-text-primary tabular-nums w-20 text-right">
+          {formatBytes(size)}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoOptimizeViewProps) {
@@ -114,70 +158,25 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
 
   const result = autoOpt.result;
 
-  const summaryCards = useMemo(() => {
-    if (!result) return [];
-    const cards: Array<{
-      label: string;
-      value: string;
-      icon: typeof CheckCircleIcon;
-      positive: boolean;
-    }> = [];
+  // V1.0: Build per-category breakdown from result.categories
+  const categoryEntries = useMemo(() => {
+    if (!result?.categories) return [];
+    return Object.entries(result.categories)
+      .filter(([, stats]) => stats.files_found > 0 || stats.files_cleaned > 0)
+      .map(([name, stats]) => ({
+        name,
+        files: stats.files_found,
+        cleaned: stats.files_cleaned,
+        size: stats.space_recovered,
+      }));
+  }, [result]);
 
-    // V1.0: Show Files Detected, Files Cleaned, Space Recovered, Remaining,
-    // Health Before → Health After. These are the customer-facing results.
-    const detectedCount = result.files_found ?? result.detected ?? 0;
-    const cleanedCount = result.files_cleaned ?? result.cleaned ?? 0;
-    const remainingCount = result.remaining ?? Math.max(0, detectedCount - cleanedCount);
-    const healthBefore = result.health_before ?? 0;
-    const healthAfter = result.health_after ?? 0;
-
-    if (detectedCount > 0) {
-      cards.push({
-        label: 'Files Detected',
-        value: formatNumber(detectedCount),
-        icon: CheckCircleIcon,
-        positive: true,
-      });
-    }
-
-    if (cleanedCount > 0) {
-      cards.push({
-        label: cleanedLabel,
-        value: formatNumber(cleanedCount),
-        icon: CheckCircleIcon,
-        positive: true,
-      });
-    }
-
-    if (result.space_recovered > 0) {
-      cards.push({
-        label: 'Space Recovered',
-        value: formatBytes(result.space_recovered),
-        icon: CheckCircleIcon,
-        positive: true,
-      });
-    }
-
-    if (remainingCount > 0) {
-      cards.push({
-        label: 'Remaining',
-        value: formatNumber(remainingCount),
-        icon: ExclamationTriangleIcon,
-        positive: false,
-      });
-    }
-
-    if (healthBefore > 0 || healthAfter > 0) {
-      cards.push({
-        label: 'Health',
-        value: `${healthBefore} → ${healthAfter}`,
-        icon: BoltIcon,
-        positive: healthAfter >= healthBefore,
-      });
-    }
-
-    return cards;
-  }, [result, cleanedLabel]);
+  // V1.0: Total summary for the result view
+  const totalFiles = result?.files_found ?? result?.detected ?? 0;
+  const totalCleaned = result?.files_cleaned ?? result?.cleaned ?? 0;
+  const totalSpace = result?.space_recovered ?? 0;
+  const totalFolders = result?.folders_found ?? 0;
+  const totalFoldersCleaned = result?.folders_cleaned ?? 0;
 
   // ── Error state ──────────────────────────────────────────────────
   if (isError) {
@@ -228,7 +227,7 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
     );
   }
 
-  // ── Running state ────────────────────────────────────────────────
+  // ── Running state (Cleaning) ─────────────────────────────────────
   if (isRunning) {
     return (
       <Card variant="glass" className="p-8" data-testid="auto-optimize-running">
@@ -240,7 +239,12 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
             <h3 className="text-lg font-semibold text-text-primary">
               {phaseLabel}
             </h3>
-            <p className="text-small text-text-secondary">{autoOpt.message}</p>
+            {/* V1.0: Show current category being cleaned */}
+            {autoOpt.currentCategory && autoOpt.phase === 'executing' && (
+              <p className="text-small text-text-secondary font-medium">
+                {autoOpt.currentCategory}
+              </p>
+            )}
           </div>
 
           {/* Progress bar */}
@@ -258,34 +262,29 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
             </div>
           </div>
 
-          {/* Current file being cleaned (PART: show file paths) */}
-          {autoOpt.currentFile && isRunning && autoOpt.phase === 'executing' && (
-            <div className="rounded-[var(--avs-radius-md)] bg-surface-secondary/50 p-3" data-testid="auto-optimize-current-file">
-              <div className="flex items-center gap-2">
-                <ArrowPathIcon className="h-4 w-4 text-brand-primary animate-spin shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <div className="text-caption text-text-muted">Cleaning:</div>
-                  <div className="text-small text-text-primary font-mono truncate" title={autoOpt.currentFile}>
-                    {autoOpt.currentFile}
-                  </div>
-                </div>
+          {/* V1.0: Live counters — Files Cleaned + Space Recovered */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-[var(--avs-radius-md)] bg-surface-secondary/50 p-4 text-center">
+              <div className="text-2xl font-bold text-semantic-success tabular-nums">
+                {formatNumber(autoOpt.executionProgress)}
               </div>
-              {autoOpt.executionTotal > 0 && (
-                <div className="mt-2 flex justify-between text-caption text-text-muted">
-                  <span>{formatNumber(autoOpt.executionProgress)} / {formatNumber(autoOpt.executionTotal)} files</span>
-                  <span>{autoOpt.executionTotal > 0 ? Math.round((autoOpt.executionProgress / autoOpt.executionTotal) * 100) : 0}%</span>
-                </div>
-              )}
+              <div className="text-caption text-text-muted">{cleanedLabel}</div>
+            </div>
+            <div className="rounded-[var(--avs-radius-md)] bg-surface-secondary/50 p-4 text-center">
+              <div className="text-2xl font-bold text-brand-primary tabular-nums">
+                {formatBytes(0)}
+              </div>
+              <div className="text-caption text-text-muted">Space Recovered</div>
+            </div>
+          </div>
+
+          {/* V1.0: Execution progress detail */}
+          {autoOpt.executionTotal > 0 && autoOpt.phase === 'executing' && (
+            <div className="flex justify-between text-caption text-text-muted">
+              <span>{formatNumber(autoOpt.executionProgress)} / {formatNumber(autoOpt.executionTotal)} files</span>
+              <span>{autoOpt.executionTotal > 0 ? Math.round((autoOpt.executionProgress / autoOpt.executionTotal) * 100) : 0}%</span>
             </div>
           )}
-
-          {/* Live counter: Files Cleaned so far */}
-          <div className="text-center">
-            <div className="text-3xl font-bold text-semantic-success tabular-nums">
-              {formatNumber(autoOpt.executionProgress)}
-            </div>
-            <div className="text-caption text-text-muted">{cleanedLabel}</div>
-          </div>
 
           {/* Cancel button */}
           <div className="flex justify-center">
@@ -302,10 +301,9 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
     );
   }
 
-  // ── Complete state ───────────────────────────────────────────────
+  // ── Complete state — Disk Cleanup style results ──────────────────
   if (isComplete && result) {
-    const cleanedCount = result.files_cleaned ?? result.cleaned ?? 0;
-    const nothingToClean = cleanedCount === 0;
+    const nothingToClean = totalCleaned === 0;
 
     return (
       <Card variant="glass" className="p-8" data-testid="auto-optimize-complete">
@@ -335,25 +333,53 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
             )}
           </div>
 
-          {/* Summary cards — ONLY Files Cleaned + Space Recovered */}
-          {summaryCards.length > 0 && (
-            <div className="grid grid-cols-2 gap-4" data-testid="auto-optimize-summary">
-              {summaryCards.map((card) => (
-                <div
-                  key={card.label}
-                  className="flex items-center gap-3 rounded-[var(--avs-radius-md)] bg-surface-secondary/50 p-4"
-                >
-                  <card.icon
-                    className={`h-6 w-6 ${card.positive ? 'text-semantic-success' : 'text-semantic-warning'}`}
-                  />
-                  <div>
-                    <div className="text-xl font-bold text-text-primary tabular-nums">
-                      {card.value}
-                    </div>
-                    <div className="text-caption text-text-muted">{card.label}</div>
+          {/* V1.0: Disk Cleanup style per-category breakdown */}
+          {categoryEntries.length > 0 && (
+            <div
+              className="rounded-[var(--avs-radius-md)] bg-surface-secondary/30 p-4"
+              data-testid="auto-optimize-categories"
+            >
+              <div className="text-caption uppercase tracking-wide text-text-muted mb-2">
+                Cleanup Summary
+              </div>
+              {categoryEntries.map((cat) => (
+                <CategoryRow
+                  key={cat.name}
+                  name={cat.name}
+                  files={cat.cleaned}
+                  size={cat.size}
+                  cleaned
+                />
+              ))}
+            </div>
+          )}
+
+          {/* V1.0: Total summary — Disk Cleanup style */}
+          {!nothingToClean && (
+            <div
+              className="rounded-[var(--avs-radius-md)] bg-brand-primary/5 p-4 border border-brand-primary/20"
+              data-testid="auto-optimize-total"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-caption uppercase tracking-wide text-text-muted">
+                    Total Cleaned
+                  </div>
+                  <div className="text-2xl font-bold text-text-primary tabular-nums">
+                    {formatBytes(totalSpace)}
                   </div>
                 </div>
-              ))}
+                <div className="text-right">
+                  <div className="text-small text-text-secondary tabular-nums">
+                    {formatNumber(totalCleaned)} {totalCleaned === 1 ? 'file' : 'files'}
+                  </div>
+                  {totalFoldersCleaned > 0 && (
+                    <div className="text-small text-text-secondary tabular-nums">
+                      {formatNumber(totalFoldersCleaned)} {totalFoldersCleaned === 1 ? 'folder' : 'folders'}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 

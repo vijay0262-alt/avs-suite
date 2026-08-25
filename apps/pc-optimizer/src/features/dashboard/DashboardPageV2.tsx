@@ -245,19 +245,35 @@ export default function DashboardPage() {
                     </div>
                     <div className="mt-1 text-small text-text-secondary">
                       {(() => {
-                        // V1.0 SIMPLE: After cleanup, show "X files cleaned, Y MB recovered".
-                        // Before cleanup, show "X files found".
+                        // V1.0 Disk Cleanup style: After cleanup, show files cleaned,
+                        // folders cleaned, space recovered, and health before → after.
                         const hasCleanup = snapshot.cleanupResult != null;
                         if (hasCleanup) {
                           const cleaned = snapshot.cleanupResult!.cleaned ?? 0;
+                          const foldersCleaned = snapshot.cleanupResult!.foldersCleaned ?? 0;
                           const space = snapshot.cleanupResult!.spaceRecovered ?? 0;
-                          if (cleaned > 0) {
-                            const spaceStr = space > 0
-                              ? ` · ${(space / 1024 / 1024).toFixed(1)} MB recovered`
+                          const healthBefore = snapshot.cleanupResult!.healthBefore;
+                          const healthAfter = snapshot.cleanupResult!.healthAfter;
+                          if (cleaned > 0 || foldersCleaned > 0) {
+                            const parts: string[] = [];
+                            parts.push(`${cleaned.toLocaleString()} files cleaned`);
+                            if (foldersCleaned > 0) {
+                              parts.push(`${foldersCleaned.toLocaleString()} folders cleaned`);
+                            }
+                            if (space > 0) {
+                              const mb = space / 1024 / 1024;
+                              if (mb >= 1024) {
+                                parts.push(`${(mb / 1024).toFixed(1)} GB recovered`);
+                              } else {
+                                parts.push(`${mb.toFixed(1)} MB recovered`);
+                              }
+                            }
+                            const healthStr = (healthBefore != null && healthAfter != null)
+                              ? ` · Health ${healthBefore} → ${healthAfter}`
                               : '';
                             return (
                               <span className="text-semantic-success font-medium">
-                                {cleaned} files cleaned{spaceStr}
+                                {parts.join(' · ')}{healthStr}
                               </span>
                             );
                           }

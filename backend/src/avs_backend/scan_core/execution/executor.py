@@ -154,6 +154,7 @@ class DefaultExecutor:
                             {
                                 "action_id": action.action_id,
                                 "action_type": action.action_type.value,
+                                "rule_id": getattr(action, "rule_id", ""),
                                 "status": result.status.value if "result" in dir() else "starting",
                             },
                         )
@@ -218,6 +219,7 @@ class DefaultExecutor:
                             {
                                 "action_id": action.action_id,
                                 "action_type": action.action_type.value,
+                                "rule_id": getattr(action, "rule_id", ""),
                                 "status": result.status.value,
                             },
                         )

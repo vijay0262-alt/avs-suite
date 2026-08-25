@@ -171,8 +171,8 @@ function buildSecurityResultsReport(
       icon: 'ShieldCheckIcon',
       status: 'good',
       metrics: [
-        { label: 'Files Scanned', value: summary.filesScanned.toLocaleString() },
         { label: 'Items Analyzed', value: summary.itemsScanned.toLocaleString() },
+        { label: 'Threats Found', value: summary.threatsFound.toLocaleString() },
         { label: 'Duration', value: formatDuration(summary.scanDuration) },
       ],
     },

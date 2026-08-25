@@ -5,7 +5,7 @@
  *   - Pulsing indicator with current item being scanned
  *   - Overall progress bar with percentage
  *   - Per-category / per-phase progress bars
- *   - Elapsed time and items scanned
+ *   - Elapsed time and items checked
  *
  * Can be used in two modes:
  *   1. "live" — receives real-time updates via `currentItem` and `progress`
@@ -27,7 +27,7 @@ export interface LiveScanProgressProps {
   currentItem?: string | null;
   /** Optional overall progress 0-100 (real-time mode). */
   progress?: number;
-  /** Optional total items scanned so far. */
+  /** Optional total items checked so far. */
   itemsScanned?: number;
   /** Optional threats/issues found so far. */
   itemsFound?: number;
@@ -166,7 +166,7 @@ export function LiveScanProgress({
         <div className="flex gap-6">
           {itemsScanned !== undefined && (
             <div>
-              <span className="text-caption uppercase tracking-wide text-text-muted">Items Scanned</span>
+              <span className="text-caption uppercase tracking-wide text-text-muted">Items Checked</span>
               <div className="text-section-title font-semibold tabular-nums text-text-primary">
                 {itemsScanned.toLocaleString()}
               </div>

@@ -34,6 +34,7 @@ export interface DashboardScanSnapshot {
   cleanupResult: {
     detected: number;
     cleaned: number;
+    foldersCleaned: number;
     remaining: number;
     failed: number;
     reviewRequired: number;
@@ -149,6 +150,7 @@ function buildSnapshot(
     mappedCleanupResult = {
       detected: typeof cleanupResult.files_found === 'number' ? cleanupResult.files_found : (typeof cleanupResult.detected === 'number' ? cleanupResult.detected : 0),
       cleaned: typeof cleanupResult.files_cleaned === 'number' ? cleanupResult.files_cleaned : (typeof cleanupResult.cleaned === 'number' ? cleanupResult.cleaned : 0),
+      foldersCleaned: typeof cleanupResult.folders_cleaned === 'number' ? cleanupResult.folders_cleaned : 0,
       remaining: 0,
       failed: 0,
       reviewRequired: 0,

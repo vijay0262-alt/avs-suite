@@ -117,7 +117,7 @@ export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSum
 
         {/* Detailed metrics */}
         <div className="grid grid-cols-5 gap-3">
-          <StatCard label="Files scanned" value={totalFiles} testId="cs-total" />
+          <StatCard label="Cleanable Files" value={totalFiles} testId="cs-total" />
           <StatCard label="Removed" value={filesRemoved} testId="cs-removed" />
           <StatCard label="Skipped" value={filesSkipped} testId="cs-skipped" />
           <StatCard label="Failed" value={filesFailed} testId="cs-failed" />

@@ -93,7 +93,6 @@ export const PROTECTION_SCAN_CONFIG: UnifiedScanModuleConfig = {
     },
   ],
   counters: [
-    { id: 'filesScanned', label: 'Files Scanned', icon: 'DocumentTextIcon', format: 'number' },
     { id: 'confirmedThreats', label: 'Confirmed Threats', icon: 'ExclamationTriangleIcon', format: 'number' },
     { id: 'suspiciousItems', label: 'Suspicious Items', icon: 'EyeIcon', format: 'number' },
     { id: 'threatsSecured', label: 'Threats Secured', icon: 'ShieldCheckIcon', format: 'number' },

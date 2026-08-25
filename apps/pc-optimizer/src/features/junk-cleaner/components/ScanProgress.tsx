@@ -54,7 +54,7 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
         <div>
-          <div className="text-caption uppercase tracking-wide text-text-muted">Files Scanned</div>
+          <div className="text-caption uppercase tracking-wide text-text-muted">Cleanable Files</div>
           <div
             className="mt-1 text-statistic font-semibold text-text-primary tabular-nums"
             data-testid="junk-total-files"
