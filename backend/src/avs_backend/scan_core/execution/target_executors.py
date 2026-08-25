@@ -94,9 +94,18 @@ class BaseTargetExecutor:
         return {k: v for k, v in context.items() if k in allowed}
 
 
-def get_target_executor(action_type: str):
-    """Return the appropriate executor class for an action type."""
+def get_target_executor(action_type: str, canonical_path: str = ""):
+    """Return the appropriate executor class for an action type.
+
+    For delete_file/delete_directory actions inside $Recycle.Bin,
+    routes to RecycleBinExecutor which uses SHEmptyRecycleBin.
+    """
     if action_type in ("delete_file", "delete_directory", "clear_cache"):
+        # Route Recycle Bin paths to the dedicated RecycleBinExecutor
+        if canonical_path and "$recycle.bin" in canonical_path.lower():
+            from .recycle_bin_executor import RecycleBinExecutor
+
+            return RecycleBinExecutor
         from .filesystem_executor import FilesystemExecutor
 
         return FilesystemExecutor

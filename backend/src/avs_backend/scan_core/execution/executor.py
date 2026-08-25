@@ -416,7 +416,13 @@ class DefaultExecutor:
             )
 
         # 4. Dry-run or live execution through stub target executor
-        target_executor = get_target_executor(action.action_type.value)
+        # Pass canonical_path so Recycle Bin paths route to RecycleBinExecutor
+        canonical_path = ""
+        if hasattr(action, "target") and action.target:
+            canonical_path = getattr(action.target, "canonical_path", "") or ""
+        target_executor = get_target_executor(
+            action.action_type.value, canonical_path
+        )
         if target_executor is None:
             return ExecutionResult(
                 execution_id=execution_id,

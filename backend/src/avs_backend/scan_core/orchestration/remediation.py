@@ -698,12 +698,23 @@ class RemediationCoordinator:
             )
             accessible = os.access(path, os.W_OK) if exists else False
 
+            # V1.0: Recycle Bin files are accessible via SHEmptyRecycleBin
+            # even when os.access(W_OK) returns False (files owned by other
+            # user SIDs).  Mark them as accessible so the SafetyGate doesn't
+            # reject them — the RecycleBinExecutor will handle deletion via
+            # the Windows API.
+            is_recycle_bin = "$recycle.bin" in canonical.lower()
+            if is_recycle_bin and exists:
+                accessible = True
+
             # V1.0: Actually check if the file is locked / not deletable
             # right now. This is the same CreateFileW(GENERIC_DELETE) probe
             # used by the enumerator. If the file cannot be opened with
             # DELETE access, it is locked and the SafetyGate will reject it.
+            # Skip lock check for Recycle Bin files — SHEmptyRecycleBin
+            # handles them atomically.
             locked = False
-            if exists and is_file:
+            if exists and is_file and not is_recycle_bin:
                 locked = _check_file_locked(str(path))
 
             ctx = FilesystemContext(

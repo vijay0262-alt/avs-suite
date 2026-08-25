@@ -245,8 +245,10 @@ def get_default_scan_locations() -> list[ScanLocation]:
             (os.path.join(program_data, "Microsoft", "Windows", "WER"), "Windows Error Reporting"),
             # RetailDemo
             (os.path.join(program_data, "Microsoft", "Windows", "RetailDemo"), "Retail Demo"),
-            # Recycle Bin
-            (f"{system_drive}\\$Recycle.Bin", "Recycle Bin"),
+            # Recycle Bin — NOT scanned via filesystem enumeration.
+            # Recycle Bin files belong to user SIDs and may not be
+            # accessible to the current user.  Handled via
+            # SHEmptyRecycleBin API at cleanup time.
             # Thumbnail cache
             (os.path.join(local_appdata, "Microsoft", "Windows", "Explorer"), "Thumbnail Cache"),
             # Shader caches
@@ -263,13 +265,6 @@ def get_default_scan_locations() -> list[ScanLocation]:
             (os.path.join(local_appdata, "Microsoft", "Office", "15.0", "OfficeFileCache"), "Office File Cache (15.0)"),
             (os.path.join(local_appdata, "Microsoft", "Office", "16.0", "DocumentCache"), "Office Document Cache"),
             (os.path.join(local_appdata, "Microsoft", "Office", "UnsavedFiles"), "Office Unsaved Files"),
-            # Browser caches
-            (os.path.join(local_appdata, "Google", "Chrome", "User Data"), "Chrome"),
-            (os.path.join(local_appdata, "Microsoft", "Edge", "User Data"), "Edge"),
-            (os.path.join(local_appdata, "BraveSoftware", "Brave-Browser", "User Data"), "Brave"),
-            (os.path.join(appdata, "Opera Software"), "Opera"),
-            (os.path.join(local_appdata, "Vivaldi", "User Data"), "Vivaldi"),
-            (os.path.join(appdata, "Mozilla", "Firefox", "Profiles"), "Firefox"),
             # Windows.old (detection only — cleanup requires review)
             (r"C:\Windows.old", "Windows.old"),
         ]
@@ -278,27 +273,18 @@ def get_default_scan_locations() -> list[ScanLocation]:
             if os.path.isdir(p):
                 locations.append(ScanLocation(path=p, label=label))
 
-        # Additional local fixed drive Recycle Bins
-        try:
-            import ctypes
-            GetLogicalDrives = ctypes.windll.kernel32.GetLogicalDrives
-            bitmask = GetLogicalDrives()
-            for i in range(26):
-                if bitmask & (1 << i):
-                    drive = f"{chr(65 + i)}:"
-                    if drive == system_drive:
-                        continue
-                    try:
-                        GetDriveType = ctypes.windll.kernel32.GetDriveTypeW
-                        drive_type = GetDriveType(f"{drive}\\")
-                        if drive_type == 3:  # DRIVE_FIXED
-                            rb = f"{drive}\\$Recycle.Bin"
-                            if os.path.isdir(rb):
-                                locations.append(ScanLocation(path=rb, label=f"Recycle Bin ({drive})"))
-                    except Exception:
-                        pass
-        except Exception:
-            pass
+        # Browser caches — TARGETED subdirectories only, NOT broad "User Data".
+        # Scanning the entire "User Data" directory recursively enumerates
+        # extensions, bookmarks, history DBs, IndexedDB, LevelDB, preferences,
+        # and other non-cache user data (50K-100K+ files per profile).
+        # We only scan specific cache subdirectories that are safe to clean.
+        from .rules.detection.locations import KnownLocations
+        for cache_root in KnownLocations.get_browser_cache_roots():
+            if cache_root.is_dir():
+                locations.append(ScanLocation(path=str(cache_root), label="Browser Cache"))
+
+        # V1.0: Recycle Bin on other drives — NOT scanned via filesystem
+        # enumeration.  Handled via SHEmptyRecycleBin API at cleanup time.
     else:
         # Non-Windows: scan temp dirs for testing
         for p, label in [

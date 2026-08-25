@@ -158,6 +158,29 @@ class DateRangeFilter:
 
 
 @dataclass
+class PytestTempExclusionFilter:
+    """Exclude pytest temporary directories from production scans.
+
+    Pytest creates temp directories inside %TEMP% (e.g.
+    ``pytest-of-<user>/pytest-<N>/popen-gw<N>/...``).  These are test
+    artifacts, not real cleanup targets.  This filter prevents them from
+    being enumerated by the production scanner.
+    """
+
+    _EXCLUDE_MARKER = "pytest-of-"
+
+    def matches(self, entry: FileEntry | DirectoryEntry) -> bool:
+        if self._EXCLUDE_MARKER in entry.path.lower():
+            return False
+        return True
+
+    def should_descend(self, dir_entry: DirectoryEntry) -> bool:
+        if self._EXCLUDE_MARKER in dir_entry.path.lower():
+            return False
+        return True
+
+
+@dataclass
 class FilterChain:
     """Compose multiple filters. An entry must pass ALL filters to be included."""
 

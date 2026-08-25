@@ -77,6 +77,20 @@ class FilesystemDiscoveryEngine:
 
         enumerator = FilesystemEnumerator()
         adapter = _AdapterProgress(on_progress)
+        # V1.0: Apply a filter chain that excludes pytest temp directories
+        # from production scans.  Pytest creates temp dirs inside %TEMP%
+        # (e.g. pytest-of-<user>/pytest-<N>/...) which are test artifacts,
+        # not real cleanup targets.
+        # NOTE: The filter is ONLY applied to production scan locations
+        # (quick/full scans).  When an explicit requested_scope is provided
+        # (e.g. by tests), no filter is applied so the scope is enumerated
+        # exactly as requested.
+        from ..filters import FilterChain, PytestTempExclusionFilter
+
+        filter_chain = None
+        if not scan_context.requested_scope:
+            filter_chain = FilterChain(PytestTempExclusionFilter())
+
         options = EnumerateOptions(
             cancel_event=_CancelAdapter(cancellation_token),
             progress_interval=250,
@@ -86,6 +100,7 @@ class FilesystemDiscoveryEngine:
             # actions (typically ~1K), not all discovered files (67K+).
             # Doing CreateFileW per file during discovery is too slow.
             check_locked=False,
+            filter=filter_chain,
         )
         for entry in enumerator.enumerate_locations(
             locations,
@@ -181,9 +196,12 @@ class FilesystemDiscoveryEngine:
         for root in KnownLocations.get_browser_cache_roots():
             _add(root, "Browser Cache")
 
-        # V1.0: Recycle Bin on all local fixed drives
-        for root in KnownLocations.get_recycle_bin_roots():
-            _add(root, "Recycle Bin")
+        # V1.0: Recycle Bin — NOT scanned via filesystem enumeration.
+        # Recycle Bin files belong to user SIDs and may not be accessible
+        # to the current user (WinError 5).  Instead, the Recycle Bin is
+        # handled via the Windows SHEmptyRecycleBin API at cleanup time.
+        # See RecycleBinExecutor and the auto-optimize RPC.
+        # (Do NOT add Recycle Bin roots to the filesystem scan locations.)
 
         # V1.0: Delivery Optimization cache
         for root in KnownLocations.get_delivery_optimization_roots():

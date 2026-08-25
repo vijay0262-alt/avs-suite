@@ -1202,26 +1202,32 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         # Calculate space recovered from VERIFIED completed actions.
         # V1.0: Only count space from actions where the file was actually
         # deleted (after_state confirms the file no longer exists).
+        # NEVER trust a "completed" status alone — the filesystem is
+        # authoritative.  If after_state is missing or doesn't confirm
+        # absence, the action is NOT counted as recovered space.
         space_recovered = 0
+        verified_cleaned = 0
         failed_details: list[dict[str, Any]] = []
         for result in summary.results:
             if result.status.value == "completed":
-                # Verify the file was actually deleted
+                # Verify the file was actually deleted via after_state.
                 after_state = getattr(result, "after_state", None)
-                if after_state and isinstance(after_state, dict):
-                    if after_state.get("exists") is False:
-                        # File confirmed deleted — count its size
-                        before_state = getattr(result, "before_state", None)
-                        if before_state and isinstance(before_state, dict):
-                            size = before_state.get("size", 0)
-                            if isinstance(size, (int, float)) and size > 0:
-                                space_recovered += size
-                elif hasattr(result, "before_state") and result.before_state:
-                    # Fallback: if after_state is missing, use before_state size
-                    # for completed actions (the executor verified deletion)
-                    size = result.before_state.get("size", 0)
-                    if isinstance(size, (int, float)) and size > 0:
-                        space_recovered += size
+                before_state = getattr(result, "before_state", None)
+                if (
+                    after_state
+                    and isinstance(after_state, dict)
+                    and after_state.get("exists") is False
+                ):
+                    verified_cleaned += 1
+                    if (
+                        before_state
+                        and isinstance(before_state, dict)
+                    ):
+                        size = before_state.get("size", 0)
+                        if isinstance(size, (int, float)) and size > 0:
+                            space_recovered += size
+                # If after_state is missing or doesn't confirm absence,
+                # do NOT count the space — the deletion is unverified.
             elif result.status.value == "failed":
                 # V1.0: Capture failed action details for internal diagnostics.
                 # Record: path, rule, error code, reason, whether file existed.
@@ -1247,22 +1253,24 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         # Based on remaining cleanable items, not fluctuating system metrics.
         # remaining = detected - cleaned - failed (items still present and
         # not yet attempted, excluding both cleaned and failed items)
-        remaining_after = safe_count - summary.completed - summary.failed
+        remaining_after = safe_count - verified_cleaned - summary.failed
         health_after = _cleanup_health_score(remaining_after)
 
         # V1.0 Dashboard result contract — SIMPLE:
         # User sees ONLY: files_found, files_cleaned, space_recovered.
         # Everything else (rejected, failed, remaining, health, etc.) is
         # internal diagnostics only — NOT shown to the user.
+        # files_cleaned = verified_cleaned (only actions where after_state
+        # confirms the file no longer exists on the filesystem).
         result_dict = {
             # ── User-facing fields (ONLY these 3) ───────────────────────
             "files_found": safe_count,
-            "files_cleaned": summary.completed,
+            "files_cleaned": verified_cleaned,
             "space_recovered": space_recovered,
             # ── Legacy compat (kept for any old callers, NOT shown) ─────
             "detected": safe_count,
-            "cleaned": summary.completed,
-            "remaining": max(0, safe_count - summary.completed - summary.failed),
+            "cleaned": verified_cleaned,
+            "remaining": max(0, safe_count - verified_cleaned - summary.failed),
             "failed": summary.failed,
             "health_before": health_before,
             "health_after": health_after,
@@ -1278,7 +1286,7 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 "review_required_input": review_count,
                 "blocked_input": blocked_count,
                 "failed": summary.failed,
-                "remaining": max(0, safe_count - summary.completed - summary.failed),
+                "remaining": max(0, safe_count - verified_cleaned - summary.failed),
                 "status": summary.status.value,
                 "reason": summary.reason or "",
                 "failed_details": failed_details,
@@ -1286,21 +1294,23 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 "now_missing": now_missing,
                 "now_locked": now_locked,
                 "now_inaccessible": now_inaccessible,
+                "completed_unverified": summary.completed - verified_cleaned,
             },
         }
 
         # Phase 4: Verification
-        if summary.completed > 0:
-            _update("verifying", f"Verifying {summary.completed} completed actions...")
+        if verified_cleaned > 0:
+            _update("verifying", f"Verifying {verified_cleaned} cleaned actions...")
         else:
             _update("verifying", "No actions to verify...")
 
-        # The executor already verifies each action via preconditions.
-        # We surface the verification status from the summary.
+        # The executor already verifies each action via preconditions
+        # and after_state.  We surface the verification status from
+        # the verified count, not the raw completed count.
         verification_status = "passed"
         if summary.failed > 0:
             verification_status = "partial"
-        if summary.completed == 0 and summary.failed > 0:
+        if verified_cleaned == 0 and summary.failed > 0:
             verification_status = "failed"
 
         # Phase 5: Complete
@@ -1321,7 +1331,7 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 # scan history.
                 cleanup_result = {
                     "files_found": safe_count,
-                    "files_cleaned": summary.completed,
+                    "files_cleaned": verified_cleaned,
                     "space_recovered": space_recovered,
                     "verification_status": verification_status,
                 }
