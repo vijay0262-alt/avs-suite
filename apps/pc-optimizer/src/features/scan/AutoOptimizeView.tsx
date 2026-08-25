@@ -18,9 +18,8 @@ import {
   ArrowPathIcon,
   BoltIcon,
   TrashIcon,
-  CircleStackIcon,
 } from '@heroicons/react/24/outline';
-import type { AutoOptimizePhase, AutoOptimizeResult } from './types';
+import type { AutoOptimizePhase } from './types';
 import { useAutoOptimize } from './useAutoOptimize';
 import { optimizationEventBus, OptimizationEventType } from '../health/OptimizationEventBus';
 
@@ -172,10 +171,8 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
   }, [result]);
 
   // V1.0: Total summary for the result view
-  const totalFiles = result?.files_found ?? result?.detected ?? 0;
   const totalCleaned = result?.files_cleaned ?? result?.cleaned ?? 0;
   const totalSpace = result?.space_recovered ?? 0;
-  const totalFolders = result?.folders_found ?? 0;
   const totalFoldersCleaned = result?.folders_cleaned ?? 0;
 
   // ── Error state ──────────────────────────────────────────────────
