@@ -1205,6 +1205,21 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
             on_progress=_on_execution_progress,
         )
 
+        # Load the plan to build action_id → rule_id mapping and count
+        # folders.  The plan may have been revalidated (some actions
+        # moved from PLANNED to LOCKED_TARGET / MISSING_TARGET / etc.)
+        # so we load the CURRENT state from the repository.
+        plan_repo = ActionPlanRepository(coord.database)
+        plan = plan_repo.load(plan_id)
+        if plan is None:
+            _update(
+                "error",
+                f"Failed to load plan {plan_id} after execution",
+                completed=True,
+                error=f"Plan {plan_id} not found",
+            )
+            return
+
         # Build action_id → rule_id mapping from the plan for per-category stats
         action_rule_map: dict[str, str] = {}
         for action in plan.actions:
