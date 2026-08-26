@@ -243,7 +243,7 @@ describe('Dashboard Scan UI', () => {
     });
   });
 
-  it('shows "View Progress" when scan is active', async () => {
+  it('shows "Scanning..." when scan is active (V1.0: no View Progress)', async () => {
     mockUseDashboardScan.mockReturnValue({
       session: null,
       persisted: null,
@@ -272,7 +272,7 @@ describe('Dashboard Scan UI', () => {
 
     await waitFor(() => {
       const scanBtn = screen.getByTestId('dashboard-scan-cta');
-      expect(scanBtn).toHaveTextContent('View Progress');
+      expect(scanBtn).toHaveTextContent('Scanning...');
     });
   });
 
@@ -305,11 +305,11 @@ describe('Dashboard Scan UI', () => {
     renderDashboard();
 
     await waitFor(() => {
-      // Dashboard shows "Scanning your PC" status and "View Progress" CTA
+      // Dashboard shows "Scanning your PC" status and "Scanning..." CTA
       // when scan is active. The progress percentage and current activity
       // are shown in the scan modal, not on the dashboard card itself.
       expect(screen.getByText('Scanning your PC')).toBeInTheDocument();
-      expect(screen.getByTestId('dashboard-scan-cta')).toHaveTextContent('View Progress');
+      expect(screen.getByTestId('dashboard-scan-cta')).toHaveTextContent('Scanning...');
     });
   });
 
@@ -343,10 +343,10 @@ describe('Dashboard Scan UI', () => {
     renderDashboard();
 
     // Dashboard should still render the scanning state without crashing
-    // even when progress is undefined. The "View Progress" CTA should be
+    // even when progress is undefined. The "Scanning..." CTA should be
     // present, but no numeric progress percentage is shown on the card.
     await waitFor(() => {
-      expect(screen.getByTestId('dashboard-scan-cta')).toHaveTextContent('View Progress');
+      expect(screen.getByTestId('dashboard-scan-cta')).toHaveTextContent('Scanning...');
     });
   });
 
@@ -501,14 +501,16 @@ describe('Dashboard Scan UI', () => {
     });
   });
 
-  it('shows four quick metric cards', async () => {
+  it('shows three quick metric cards (V1.0: Issues card removed)', async () => {
     renderDashboard();
 
     await waitFor(() => {
       expect(screen.getByTestId('metric-protection')).toBeInTheDocument();
       expect(screen.getByTestId('metric-performance')).toBeInTheDocument();
       expect(screen.getByTestId('metric-storage')).toBeInTheDocument();
-      expect(screen.getByTestId('metric-issues')).toBeInTheDocument();
+      // V1.0: Issues card was removed — after scan and optimize there
+      // should be no issues shown.
+      expect(screen.queryByTestId('metric-issues')).not.toBeInTheDocument();
     });
   });
 });

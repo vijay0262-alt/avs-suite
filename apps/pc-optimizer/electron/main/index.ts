@@ -12,7 +12,7 @@
  *   - The background protection service runs independently of the window
  */
 import { app, BrowserWindow, shell, Notification, nativeImage } from 'electron';
-import { exec } from 'child_process';
+import { exec, execSync } from 'child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import { installCrashHandler } from '../crash/crashReporter';
@@ -468,7 +468,6 @@ app.on('will-quit', async (event) => {
   // entire process tree.
   if (process.platform === 'win32') {
     try {
-      const { execSync } = require('node:child_process');
       execSync('taskkill /IM avs-backend.exe /T /F 2>nul', { stdio: 'ignore', timeout: 5000 });
       log.info('[shutdown] Force-killed remaining avs-backend.exe processes');
     } catch {

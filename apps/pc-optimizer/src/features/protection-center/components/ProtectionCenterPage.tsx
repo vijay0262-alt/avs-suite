@@ -1,103 +1,422 @@
-import { useEffect, useMemo, useRef, useCallback, useState } from 'react';
+/**
+ * ProtectionCenterPage.tsx — V1.0 REDESIGN
+ *
+ * "SECURITY PROTECTION HEALTH" — answers one question:
+ *   "Is my PC protected?"
+ *
+ * This is NOT a scanner. It is a clean, calm security-posture page:
+ *   1. Page header + overall status
+ *   2. Main protection score (real backend telemetry)
+ *   3. Compact protection status grid (8 cards)
+ *   4. Security provider card
+ *   5. Recommendations (real issues only)
+ *   6. Primary action: Check Protection (lightweight refresh)
+ *   7. Smart Security navigation link
+ *
+ * No junk scanning, no filesystem scan, no fake data.
+ * All values come from dashboardService.getMetrics() real backend telemetry.
+ */
+import { useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DashboardSection, LoadingState, EmptyState, Card, CollapsibleSection, Button } from '@avs/ui';
+import { Card, Button, LoadingState, EmptyState } from '@avs/ui';
 import {
   ShieldCheckIcon,
-  HeartIcon,
-  BellAlertIcon,
-  ArrowPathIcon,
+  ShieldExclamationIcon,
   EyeIcon,
   FireIcon,
-  ClockIcon,
+  GlobeAltIcon,
+  LockClosedIcon,
+  KeyIcon,
+  CpuChipIcon,
+  ArrowPathIcon,
+  ArrowRightIcon,
   BoltIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
-import { ProtectionCenterViewModel } from '../ProtectionCenterViewModel';
-import { useIsPro } from '../../sync/syncStore';
-import { DashboardViewModel } from '../../dashboard/DashboardViewModel';
+import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import { dashboardService } from '../../dashboard/dashboard.service';
-import { ScanView } from '../../scan';
+import type { DashboardMetrics, HealthScore } from '../../dashboard/dashboard.types';
 import { ProStatusBanner, ProStatusPill } from '../../licensing/ProStatusBadge';
-import { Modal } from '../../dashboard/components/Modal';
-import { ProtectionBanner } from './ProtectionBanner';
-import { ProtectionCards } from './ProtectionCards';
-import { LiveActivityTimeline } from './LiveActivityTimeline';
-import { BackgroundMonitors } from './BackgroundMonitors';
-import { ProtectionHealth } from './ProtectionHealth';
-import { SystemHealthSnapshot } from './SystemHealthSnapshot';
-import { WhatChanged } from './WhatChanged';
-import { UpcomingAutomation } from './UpcomingAutomation';
-import { QuickActions } from './QuickActions';
-import { AlertsPanel } from './AlertsPanel';
-import { ProcessOptimizer } from './ProcessOptimizer';
+
+// ── ViewModel ──────────────────────────────────────────────────
+
+interface ProtectionPostureState {
+  loading: boolean;
+  error: string | null;
+  metrics: DashboardMetrics | null;
+  healthScore: HealthScore | null;
+  lastRefresh: number | null;
+}
+
+class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
+  constructor() {
+    super({
+      loading: true,
+      error: null,
+      metrics: null,
+      healthScore: null,
+      lastRefresh: null,
+    });
+  }
+
+  async refresh(): Promise<void> {
+    this.setState({ loading: true, error: null });
+    try {
+      await dashboardService.refreshCache();
+      const [metrics, healthScore] = await Promise.all([
+        dashboardService.getMetrics(),
+        dashboardService.getHealthScore(),
+      ]);
+      this.setState({
+        loading: false,
+        metrics,
+        healthScore,
+        lastRefresh: Date.now(),
+      });
+    } catch (err) {
+      this.setState({
+        loading: false,
+        error: err instanceof Error ? err.message : 'Failed to load protection status',
+      });
+    }
+  }
+
+  async fixIssue(action: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen'): Promise<void> {
+    const rpcCall =
+      action === 'enableSmartScreen'
+        ? dashboardService.enableSmartScreen()
+        : action === 'enableDefender'
+          ? dashboardService.enableDefender()
+          : dashboardService.enableFirewall();
+    await rpcCall;
+    await this.refresh();
+  }
+}
+
+// ── Types for protection items ─────────────────────────────────
+
+type ProtectionStatus = 'protected' | 'enabled' | 'needs_attention' | 'disabled' | 'unknown';
+
+interface ProtectionItem {
+  id: string;
+  name: string;
+  status: ProtectionStatus;
+  icon: typeof ShieldCheckIcon;
+}
+
+interface Recommendation {
+  id: string;
+  title: string;
+  description: string;
+  fixAction?: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen';
+}
+
+// ── Derivation helpers ─────────────────────────────────────────
+
+function deriveProtectionItems(metrics: DashboardMetrics | null): ProtectionItem[] {
+  const sec = metrics?.security;
+  const win = metrics?.windows;
+  const items: ProtectionItem[] = [];
+
+  // 1. Antivirus
+  const defenderOn = sec?.defender.enabled ?? false;
+  const thirdPartyAV = sec?.defender.thirdPartyAV ?? null;
+  const avActive = defenderOn || !!thirdPartyAV;
+  items.push({
+    id: 'antivirus',
+    name: 'Antivirus',
+    status: avActive ? 'protected' : sec ? 'disabled' : 'unknown',
+    icon: ShieldCheckIcon,
+  });
+
+  // 2. Real-Time Protection
+  const rtp = sec?.realTimeProtection ?? false;
+  const hasThirdParty = !!thirdPartyAV;
+  items.push({
+    id: 'realtime-protection',
+    name: 'Real-Time Protection',
+    status: rtp || hasThirdParty ? 'enabled' : sec ? 'disabled' : 'unknown',
+    icon: EyeIcon,
+  });
+
+  // 3. Firewall
+  const firewallOn = sec?.firewall.enabled ?? false;
+  items.push({
+    id: 'firewall',
+    name: 'Firewall',
+    status: firewallOn ? 'enabled' : sec ? 'disabled' : 'unknown',
+    icon: FireIcon,
+  });
+
+  // 4. SmartScreen
+  const smartScreen = sec?.smartScreen ?? null;
+  items.push({
+    id: 'smartscreen',
+    name: 'SmartScreen',
+    status: smartScreen === true ? 'enabled' : smartScreen === false ? 'needs_attention' : 'unknown',
+    icon: GlobeAltIcon,
+  });
+
+  // 5. Ransomware Protection (Controlled Folder Access)
+  // Backend does not currently provide this telemetry.
+  items.push({
+    id: 'ransomware-protection',
+    name: 'Ransomware Protection',
+    status: 'unknown',
+    icon: LockClosedIcon,
+  });
+
+  // 6. Secure Boot
+  const secureBoot = win?.secureBoot ?? null;
+  items.push({
+    id: 'secure-boot',
+    name: 'Secure Boot',
+    status: secureBoot === true ? 'enabled' : secureBoot === false ? 'disabled' : 'unknown',
+    icon: KeyIcon,
+  });
+
+  // 7. Memory Integrity (Core Isolation)
+  // Backend does not currently provide this telemetry.
+  items.push({
+    id: 'memory-integrity',
+    name: 'Memory Integrity',
+    status: 'unknown',
+    icon: CpuChipIcon,
+  });
+
+  // 8. Security Updates
+  const updates = sec?.updates;
+  const pendingUpdates = updates?.pendingUpdates ?? null;
+  const updatesServiceOn = updates?.serviceEnabled ?? null;
+  items.push({
+    id: 'security-updates',
+    name: 'Security Updates',
+    status:
+      updates == null
+        ? 'unknown'
+        : pendingUpdates != null && pendingUpdates === 0 && updatesServiceOn !== false
+          ? 'enabled'
+          : pendingUpdates != null && pendingUpdates > 0
+            ? 'needs_attention'
+            : 'unknown',
+    icon: BoltIcon,
+  });
+
+  return items;
+}
+
+function deriveProvider(metrics: DashboardMetrics | null): {
+  name: string;
+  active: boolean;
+} | null {
+  const sec = metrics?.security;
+  if (!sec) return null;
+
+  const thirdPartyAV = sec.defender.thirdPartyAV ?? sec.firewall.thirdPartyAV ?? null;
+  if (thirdPartyAV) {
+    return { name: thirdPartyAV, active: true };
+  }
+
+  const activeProducts = sec.defender.activeProducts;
+  if (activeProducts && activeProducts.length > 0) {
+    return { name: activeProducts[0]!, active: true };
+  }
+
+  if (sec.defender.enabled) {
+    return { name: 'Microsoft Defender', active: true };
+  }
+
+  // No active provider — do not fabricate one.
+  return null;
+}
+
+function deriveRecommendations(metrics: DashboardMetrics | null): Recommendation[] {
+  const sec = metrics?.security;
+  if (!sec) return [];
+
+  const recs: Recommendation[] = [];
+
+  // Real-Time Protection disabled (and no third-party AV covering it)
+  const hasThirdParty = !!(sec.defender.thirdPartyAV ?? sec.firewall.thirdPartyAV);
+  if (!sec.realTimeProtection && !hasThirdParty && sec.defender.enabled === false) {
+    recs.push({
+      id: 'enable-rtp',
+      title: 'Real-Time Protection is off',
+      description: 'Enable Microsoft Defender real-time protection to block threats as they appear.',
+      fixAction: 'enableDefender',
+    });
+  }
+
+  // Firewall disabled
+  if (!sec.firewall.enabled) {
+    recs.push({
+      id: 'enable-firewall',
+      title: 'Firewall is off',
+      description: 'Enable the Windows Firewall to block unauthorized network access.',
+      fixAction: 'enableFirewall',
+    });
+  }
+
+  // SmartScreen disabled
+  if (sec.smartScreen === false) {
+    recs.push({
+      id: 'enable-smartscreen',
+      title: 'SmartScreen is off',
+      description: 'Enable SmartScreen to warn about malicious websites and downloads.',
+      fixAction: 'enableSmartScreen',
+    });
+  }
+
+  // Pending security updates
+  const pending = sec.updates.pendingUpdates;
+  if (pending != null && pending > 0) {
+    recs.push({
+      id: 'pending-updates',
+      title: `${pending} pending security update${pending === 1 ? '' : 's'}`,
+      description: 'Install pending Windows security updates to stay protected against known vulnerabilities.',
+    });
+  }
+
+  return recs;
+}
+
+type OverallStatus = 'protected' | 'at_risk' | 'action_required' | 'unknown';
+
+function deriveOverallStatus(
+  items: ProtectionItem[],
+  metrics: DashboardMetrics | null,
+): OverallStatus {
+  if (!metrics) return 'unknown';
+
+  const hasDisabled = items.some(
+    (i) => i.status === 'disabled' || i.status === 'needs_attention',
+  );
+  if (hasDisabled) return 'action_required';
+
+  const avActive = metrics.security.defender.enabled || !!metrics.security.defender.thirdPartyAV;
+  const firewallOn = metrics.security.firewall.enabled;
+  const rtpOn = metrics.security.realTimeProtection || !!metrics.security.defender.thirdPartyAV;
+
+  if (avActive && firewallOn && rtpOn) return 'protected';
+
+  // Some telemetry present but not all critical checks pass
+  return 'at_risk';
+}
+
+function deriveProtectionScore(healthScore: HealthScore | null): number | null {
+  if (!healthScore) return null;
+  const score = healthScore.categoryScores?.security;
+  if (typeof score !== 'number' || Number.isNaN(score)) return null;
+  return score;
+}
+
+// ── Status display config ──────────────────────────────────────
+
+const STATUS_CONFIG: Record<
+  ProtectionStatus,
+  { label: string; tone: 'success' | 'warning' | 'danger' | 'muted' }
+> = {
+  protected: { label: 'Protected', tone: 'success' },
+  enabled: { label: 'Enabled', tone: 'success' },
+  needs_attention: { label: 'Needs Attention', tone: 'warning' },
+  disabled: { label: 'Disabled', tone: 'danger' },
+  unknown: { label: 'Unknown', tone: 'muted' },
+};
+
+const OVERALL_CONFIG: Record<
+  OverallStatus,
+  { label: string; tone: 'success' | 'warning' | 'danger' | 'muted'; icon: typeof ShieldCheckIcon }
+> = {
+  protected: { label: 'Protected', tone: 'success', icon: ShieldCheckIcon },
+  at_risk: { label: 'At Risk', tone: 'warning', icon: ShieldExclamationIcon },
+  action_required: { label: 'Action Required', tone: 'danger', icon: ExclamationTriangleIcon },
+  unknown: { label: 'Unknown', tone: 'muted', icon: ShieldExclamationIcon },
+};
+
+function toneClasses(tone: 'success' | 'warning' | 'danger' | 'muted'): {
+  text: string;
+  bg: string;
+  border: string;
+} {
+  switch (tone) {
+    case 'success':
+      return { text: 'text-semantic-success', bg: 'bg-semantic-success/10', border: 'border-semantic-success/20' };
+    case 'warning':
+      return { text: 'text-semantic-warning', bg: 'bg-semantic-warning/10', border: 'border-semantic-warning/20' };
+    case 'danger':
+      return { text: 'text-semantic-danger', bg: 'bg-semantic-danger/10', border: 'border-semantic-danger/20' };
+    default:
+      return { text: 'text-text-muted', bg: 'bg-surface-muted', border: 'border-surface-muted' };
+  }
+}
+
+// ── Component ──────────────────────────────────────────────────
 
 export function ProtectionCenterPage() {
   const navigate = useNavigate();
-  const isPro = useIsPro();
-  const [scanModalOpen, setScanModalOpen] = useState(false);
-  const vmRef = useRef<ProtectionCenterViewModel | null>(null);
+  const vmRef = useRef<ProtectionPostureViewModel | null>(null);
 
   if (!vmRef.current) {
-    vmRef.current = new ProtectionCenterViewModel(navigate, isPro);
+    vmRef.current = new ProtectionPostureViewModel();
   }
   const vm = vmRef.current;
   const state = useViewModel(vm);
 
-  // Dashboard ViewModel for unified scan flow
-  const dashVmRef = useRef<DashboardViewModel | null>(null);
-  if (!dashVmRef.current) {
-    dashVmRef.current = new DashboardViewModel(dashboardService);
-  }
-  const dashVm = dashVmRef.current;
-  const dashState = useViewModel(dashVm);
-
   useEffect(() => {
-    void vm.init();
-    void dashVm.bootstrap();
+    void vm.refresh();
     return () => {
       vm.dispose();
-      dashVm.dispose();
     };
-  }, [vm, dashVm]);
+  }, [vm]);
 
-  const handleNavigate = useMemo(
-    () => (path: string) => navigate(path),
-    [navigate],
+  const protectionItems = useMemo(
+    () => deriveProtectionItems(state.metrics),
+    [state.metrics],
   );
 
-  const handleFixCoverage = useCallback(
-    (item: { id: string; fixAction?: { action: string; type: 'navigate' | 'rpc' } }) => {
-      if (!item.fixAction) return;
-      if (item.fixAction.type === 'navigate') {
-        navigate(item.fixAction.action);
-      } else if (item.fixAction.type === 'rpc') {
-        const action = item.fixAction.action;
-        const rpcCall =
-          action === 'security.enableSmartScreen'
-            ? dashboardService.enableSmartScreen()
-            : action === 'security.enableDefender'
-              ? dashboardService.enableDefender()
-              : action === 'security.enableFirewall'
-                ? dashboardService.enableFirewall()
-                : null;
-        if (rpcCall) {
-          void rpcCall.then(() => {
-            void dashboardService.refreshCache();
-            void vm.refreshAll();
-          });
-        }
-      }
+  const provider = useMemo(() => deriveProvider(state.metrics), [state.metrics]);
+
+  const recommendations = useMemo(
+    () => deriveRecommendations(state.metrics),
+    [state.metrics],
+  );
+
+  const overallStatus = useMemo(
+    () => deriveOverallStatus(protectionItems, state.metrics),
+    [protectionItems, state.metrics],
+  );
+
+  const protectionScore = useMemo(
+    () => deriveProtectionScore(state.healthScore),
+    [state.healthScore],
+  );
+
+  const overallConfig = OVERALL_CONFIG[overallStatus];
+  const overallTone = toneClasses(overallConfig.tone);
+
+  const handleCheckProtection = useCallback(() => {
+    void vm.refresh();
+  }, [vm]);
+
+  const handleFix = useCallback(
+    (action: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen') => {
+      void vm.fixIssue(action);
     },
-    [navigate, vm],
+    [vm],
   );
 
-  if (state.loading && !state.protectionState) {
+  if (state.loading && !state.metrics) {
     return (
-      <LoadingState message="Loading AI Protection Center…" data-testid="protection-center-loading" />
+      <LoadingState
+        message="Loading AI Protection Center…"
+        data-testid="protection-center-loading"
+      />
     );
   }
 
-  if (state.error && !state.protectionState) {
+  if (state.error && !state.metrics) {
     return (
       <EmptyState
         icon={<ShieldCheckIcon className="h-10 w-10" />}
@@ -109,202 +428,268 @@ export function ProtectionCenterPage() {
     );
   }
 
-  // If we have protection state, render immediately even if still loading.
-  // Show a subtle indicator for values being refreshed.
-
   return (
     <div
       className="space-y-5"
       role="main"
       aria-label="AI Protection Center"
+      data-testid="page-protection-center"
     >
       <ProStatusBanner compact />
 
-      {/* ── ABOVE THE FOLD ─────────────────────────────────────────── */}
-      {/* Protection Status + Scan Now */}
+      {/* ── 1. HEADER ─────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <ProtectionBanner
-            state={state.protectionState!}
-            onRefresh={() => vm.refresh()}
-            lastRefresh={state.lastRefresh}
-          />
-          {state.loading && (
-            <div className="mt-1 flex items-center gap-1.5 text-caption text-text-muted">
-              <ArrowPathIcon className="h-3 w-3 animate-spin" />
-              <span>Refreshing…</span>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            <div className="h-1 w-8 rounded-full shadow-glow" style={{ background: 'var(--avs-gradient-brand)' }} />
+            <h1 className="text-page-title text-text-primary">AI Protection Center</h1>
+          </div>
+          <p className="mt-2 max-w-2xl text-small text-text-secondary leading-relaxed">
+            See your PC&apos;s security protection at a glance.
+          </p>
+          {/* Overall status badge */}
+          <div
+            className={`mt-3 inline-flex items-center gap-2 rounded-full ${overallTone.bg} ${overallTone.border} border px-3 py-1.5 text-small font-semibold ${overallTone.text}`}
+            data-testid="protection-overall-status"
+          >
+            <overallConfig.icon className="h-4 w-4" />
+            {overallConfig.label}
+          </div>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <ProStatusPill />
           <Button
-            onClick={() => setScanModalOpen(true)}
-            size="lg"
-            leftIcon={<BoltIcon className="h-5 w-5" />}
-            data-testid="protection-scan-cta"
+            onClick={handleCheckProtection}
+            disabled={state.loading}
+            size="md"
+            leftIcon={
+              state.loading ? (
+                <ArrowPathIcon className="h-4 w-4 animate-spin" />
+              ) : (
+                <ShieldCheckIcon className="h-4 w-4" />
+              )
+            }
+            data-testid="protection-check-protection"
           >
-            Scan Now
+            Check Protection
           </Button>
         </div>
       </div>
 
-      {/* Active Alerts (only show if there are any) */}
-      {state.alerts.length > 0 && (
-        <DashboardSection
-          title="Active Alerts"
-          icon={<BellAlertIcon className="h-5 w-5" />}
-        >
-          <AlertsPanel
-            alerts={state.alerts}
-            onDismiss={(id) => vm.dismissAlert(id)}
-            onNavigate={handleNavigate}
-          />
-        </DashboardSection>
-      )}
-
-      {/* Primary: 4 Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Protection Score — V1.0 UNIFIED: matches Dashboard style */}
-        <Card variant="glass" className="p-4" data-testid="protection-score">
-          <div className="flex items-center gap-3">
-            <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${
-              state.coverage.filter(c => c.covered).length >= state.coverage.length * 0.8 ? 'bg-semantic-success/10' :
-              state.coverage.filter(c => c.covered).length >= state.coverage.length * 0.6 ? 'bg-semantic-warning/10' : 'bg-semantic-danger/10'
-            }`}>
-              <ShieldCheckIcon className={`h-5 w-5 ${
-                state.coverage.filter(c => c.covered).length >= state.coverage.length * 0.8 ? 'text-semantic-success' :
-                state.coverage.filter(c => c.covered).length >= state.coverage.length * 0.6 ? 'text-semantic-warning' : 'text-semantic-danger'
-              }`} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-caption text-text-muted">Protection Score</div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-text-primary tabular-nums">
-                  {state.coverage.filter(c => c.covered).length}
-                </span>
-                <span className="text-caption text-text-muted">/{state.coverage.length} areas</span>
-              </div>
-              <div className="text-caption text-text-muted">Coverage areas</div>
-            </div>
+      {/* ── 2. MAIN PROTECTION SCORE ──────────────────────────── */}
+      <Card variant="glass" className="p-6" data-testid="protection-score-card">
+        <div className="flex items-center gap-6">
+          <div
+            className={`relative inline-flex items-center justify-center h-24 w-24 rounded-full ${
+              protectionScore == null
+                ? 'bg-surface-muted'
+                : protectionScore >= 80
+                  ? 'bg-semantic-success/10'
+                  : protectionScore >= 60
+                    ? 'bg-semantic-warning/10'
+                    : 'bg-semantic-danger/10'
+            }`}
+          >
+            <ShieldCheckIcon
+              className={`h-10 w-10 ${
+                protectionScore == null
+                  ? 'text-text-muted'
+                  : protectionScore >= 80
+                    ? 'text-semantic-success'
+                    : protectionScore >= 60
+                      ? 'text-semantic-warning'
+                      : 'text-semantic-danger'
+              }`}
+            />
           </div>
-        </Card>
-
-        {/* Card 2: Real-Time Protection */}
-        <Card variant="glass" className="p-4" data-testid="protection-realtime">
-          <div className="flex items-center gap-3">
-            <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${
-              state.cards.filter(c => c.status === 'active').length > 0 ? 'bg-semantic-success/10' : 'bg-surface-muted'
-            }`}>
-              <EyeIcon className={`h-5 w-5 ${
-                state.cards.filter(c => c.status === 'active').length > 0 ? 'text-semantic-success' : 'text-text-muted'
-              }`} />
+          <div className="flex-1 min-w-0">
+            <div className="text-caption text-text-muted uppercase tracking-wide">
+              Security Protection Score
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-caption text-text-muted">Real-Time Protection</div>
-              <div className="text-2xl font-bold text-text-primary tabular-nums">
-                {state.cards.filter(c => c.status === 'active').length}
-              </div>
-              <div className="text-caption text-text-muted">
-                {state.cards.filter(c => c.status === 'active').length > 0 ? 'Monitoring' : 'Standby'}
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Card 3: Firewall Status */}
-        <Card variant="glass" className="p-4" data-testid="protection-firewall">
-          <div className="flex items-center gap-3">
-            <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${
-              state.cards.find(c => c.id === 'firewall')?.status === 'active' ? 'bg-semantic-success/10' : 'bg-semantic-danger/10'
-            }`}>
-              <FireIcon className={`h-5 w-5 ${
-                state.cards.find(c => c.id === 'firewall')?.status === 'active' ? 'text-semantic-success' : 'text-semantic-danger'
-              }`} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-caption text-text-muted">Firewall Status</div>
-              <div className="text-small font-semibold text-text-primary">
-                {state.cards.find(c => c.id === 'firewall')?.status === 'active' ? 'Active' : 'Inactive'}
-              </div>
-              <div className="text-caption text-text-muted">
-                {state.cards.find(c => c.id === 'firewall')?.status === 'active' ? 'Protected' : 'Check settings'}
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Card 4: Last Security Scan */}
-        <Card variant="glass" className="p-4" data-testid="protection-last-scan">
-          <div className="flex items-center gap-3">
-            <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-surface-muted">
-              <ClockIcon className="h-5 w-5 text-text-muted" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-caption text-text-muted">Last Security Scan</div>
-              <div className="text-small font-semibold text-text-primary">
-                {dashState.healthScanHistory[0] ? `${dashState.healthScanHistory[0].result === 'success' ? 'Completed' : 'Partial'} · ${new Date(dashState.healthScanHistory[0].date).toLocaleDateString()}` : 'No scans yet'}
-              </div>
-              {dashState.healthScanHistory[0] && (
-                <div className="text-caption text-text-muted">Score: {dashState.healthScanHistory[0].healthAfter}</div>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-4xl font-bold text-text-primary tabular-nums">
+                {protectionScore == null ? 'Unknown' : protectionScore}
+              </span>
+              {protectionScore != null && (
+                <span className="text-base text-text-muted">/ 100</span>
               )}
             </div>
+            <div
+              className={`mt-1 text-small font-medium ${
+                protectionScore == null
+                  ? 'text-text-muted'
+                  : protectionScore >= 80
+                    ? 'text-semantic-success'
+                    : protectionScore >= 60
+                      ? 'text-semantic-warning'
+                      : 'text-semantic-danger'
+              }`}
+            >
+              {protectionScore == null
+                ? 'No protection telemetry available'
+                : protectionScore >= 80
+                  ? 'Well protected'
+                  : protectionScore >= 60
+                    ? 'Some protection gaps'
+                    : 'Needs attention'}
+            </div>
           </div>
-        </Card>
+        </div>
+      </Card>
+
+      {/* ── 3. PROTECTION STATUS GRID ─────────────────────────── */}
+      <div>
+        <h2 className="mb-3 text-section-title font-semibold text-text-primary">
+          Protection Status
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {protectionItems.map((item) => {
+            const cfg = STATUS_CONFIG[item.status];
+            const tone = toneClasses(cfg.tone);
+            return (
+              <Card
+                key={item.id}
+                variant="glass"
+                className="p-4"
+                data-testid={`protection-card-${item.id}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2 ${tone.bg}`}>
+                    <item.icon className={`h-5 w-5 ${tone.text}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-small font-semibold text-text-primary truncate">
+                      {item.name}
+                    </div>
+                    <div className={`mt-0.5 text-caption font-medium ${tone.text}`}>
+                      {cfg.label}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       </div>
 
-      {/* ── COLLAPSIBLE SECONDARY CONTENT (2 panels) ────────────── */}
-
-      {/* Panel 1: Protection & Activity */}
-      <CollapsibleSection title="Protection & Activity" icon={<ShieldCheckIcon className="h-5 w-5" />} storageKey="pc-protection-activity">
-        <div className="space-y-5">
-          <ProtectionCards cards={state.cards} onNavigate={handleNavigate} />
-          <LiveActivityTimeline activities={state.activities} />
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div>
-              <h4 className="text-caption font-semibold uppercase tracking-wide text-text-muted mb-2">Background Monitors</h4>
-              <BackgroundMonitors monitors={state.monitors} />
+      {/* ── 4. SECURITY PROVIDER ──────────────────────────────── */}
+      <Card variant="glass" className="p-5" data-testid="protection-provider-card">
+        <div className="flex items-center gap-4">
+          <div
+            className={`shrink-0 rounded-[var(--avs-radius-md)] p-3 ${
+              provider?.active ? 'bg-semantic-success/10' : 'bg-surface-muted'
+            }`}
+          >
+            <ShieldCheckIcon
+              className={`h-6 w-6 ${
+                provider?.active ? 'text-semantic-success' : 'text-text-muted'
+              }`}
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-caption text-text-muted uppercase tracking-wide">
+              Active Security Provider
             </div>
-            <div>
-              <h4 className="text-caption font-semibold uppercase tracking-wide text-text-muted mb-2">What Changed</h4>
-              <WhatChanged changes={state.changes} />
+            <div className="mt-1 text-section-title font-bold text-text-primary">
+              {provider ? provider.name : 'No active provider'}
+            </div>
+            <div
+              className={`mt-0.5 text-small font-medium ${
+                provider?.active ? 'text-semantic-success' : 'text-text-muted'
+              }`}
+            >
+              {provider?.active ? 'Active' : 'Unknown'}
             </div>
           </div>
         </div>
-      </CollapsibleSection>
+      </Card>
 
-      {/* Panel 2: System Health & Automation */}
-      <CollapsibleSection title="System Health & Automation" icon={<HeartIcon className="h-5 w-5" />} storageKey="pc-health-automation">
-        <div className="space-y-5">
-          <div className="grid gap-4 lg:grid-cols-3">
-            <SystemHealthSnapshot data={state.systemHealth} />
-            <ProtectionHealth coverage={state.coverage} onFix={handleFixCoverage} />
-            <ProcessOptimizer onOptimize={(kill) => vm.optimizeProcesses(kill)} />
+      {/* ── 5. RECOMMENDATIONS ────────────────────────────────── */}
+      <div>
+        <h2 className="mb-3 text-section-title font-semibold text-text-primary">
+          Recommended Actions
+        </h2>
+        {recommendations.length === 0 ? (
+          <Card variant="glass" className="p-5" data-testid="protection-no-recommendations">
+            <div className="flex items-center gap-3">
+              <CheckCircleIcon className="h-6 w-6 text-semantic-success shrink-0" />
+              <p className="text-small text-text-secondary">
+                Your protection settings look good.
+              </p>
+            </div>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {recommendations.map((rec) => (
+              <Card
+                key={rec.id}
+                variant="glass"
+                className="p-4"
+                data-testid={`protection-recommendation-${rec.id}`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <ExclamationTriangleIcon className="h-5 w-5 text-semantic-warning shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-small font-semibold text-text-primary">
+                        {rec.title}
+                      </div>
+                      <p className="mt-1 text-caption text-text-secondary leading-relaxed">
+                        {rec.description}
+                      </p>
+                    </div>
+                  </div>
+                  {rec.fixAction && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleFix(rec.fixAction!)}
+                      data-testid={`protection-fix-${rec.id}`}
+                    >
+                      Fix
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            ))}
           </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <UpcomingAutomation tasks={state.scheduledTasks} isPro={state.isPro} />
-            <QuickActions actions={state.quickActions} onNavigate={handleNavigate} isPro={state.isPro} />
+        )}
+      </div>
+
+      {/* ── 6. SMART SECURITY NAVIGATION ──────────────────────── */}
+      <Card variant="glass" className="p-5" data-testid="protection-smart-security-link">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <div className="shrink-0 rounded-[var(--avs-radius-md)] p-3 bg-brand-primary/10">
+              <ShieldExclamationIcon className="h-6 w-6 text-brand-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-small font-semibold text-text-primary">
+                Looking for threats?
+              </div>
+              <p className="mt-1 text-caption text-text-secondary leading-relaxed">
+                Run a security scan to check for confirmed threats and suspicious items.
+              </p>
+            </div>
           </div>
+          <Button
+            size="md"
+            variant="primary"
+            onClick={() => navigate('/ai-smart-security')}
+            rightIcon={<ArrowRightIcon className="h-4 w-4" />}
+            data-testid="protection-open-smart-security"
+          >
+            Open AI Smart Security
+          </Button>
         </div>
-      </CollapsibleSection>
+      </Card>
 
-      {/* V1.0 UNIFIED: Scan modal — same pattern as Dashboard */}
-      <Modal
-        open={scanModalOpen}
-        onClose={() => setScanModalOpen(false)}
-        title="AI Protection Scan"
-        size="xl"
-        testId="protection-scan-modal"
-      >
-        <ScanView
-          module="protection"
-          mode="full"
-          autoStart={true}
-          buttonLabel="Scan Now"
-          onClose={() => setScanModalOpen(false)}
-        />
-      </Modal>
-
+      {state.loading && state.metrics && (
+        <div className="flex items-center gap-1.5 text-caption text-text-muted">
+          <ArrowPathIcon className="h-3 w-3 animate-spin" />
+          <span>Refreshing…</span>
+        </div>
+      )}
     </div>
   );
 }
