@@ -62,8 +62,7 @@ class TestScannerReadinessContract:
     ):
         """If the orchestrator is already initialized, wait_for_ready
         returns it immediately."""
-        with patch.object(scan_core_rpc, "_scan_orchestrator", fresh_orchestrator), \
-             patch.object(scan_core_rpc, "_scan_orchestrator_init_failed", False):
+        with patch.object(scan_core_rpc, "_scan_orchestrator", fresh_orchestrator):
             result = scan_core_rpc.get_scan_orchestrator(wait_for_ready=True, timeout_s=5.0)
             assert result is not None
             assert result is fresh_orchestrator
@@ -73,8 +72,7 @@ class TestScannerReadinessContract:
         until it's done instead of returning None."""
         # Reset state
         with patch.object(scan_core_rpc, "_scan_orchestrator", None), \
-             patch.object(scan_core_rpc, "_scan_orchestrator_initializing", True), \
-             patch.object(scan_core_rpc, "_scan_orchestrator_init_failed", False):
+             patch.object(scan_core_rpc, "_scan_orchestrator_initializing", True):
 
             # Simulate another thread finishing initialization after 0.5s
             def _finish_init():
@@ -99,18 +97,20 @@ class TestScannerReadinessContract:
             scan_core_rpc._scan_orchestrator = None
 
     def test_wait_for_ready_returns_none_on_init_failure(self):
-        """If initialization failed, wait_for_ready returns None."""
+        """If initialization fails, wait_for_ready returns None.
+        With the retry-allowed design, a failed init returns None and
+        the caller can retry later."""
         with patch.object(scan_core_rpc, "_scan_orchestrator", None), \
-             patch.object(scan_core_rpc, "_scan_orchestrator_init_failed", True):
-            result = scan_core_rpc.get_scan_orchestrator(wait_for_ready=True, timeout_s=1.0)
+             patch.object(scan_core_rpc, "_scan_orchestrator_initializing", False), \
+             patch.object(scan_core_rpc, "_get_app_data_dir", side_effect=RuntimeError("test failure")):
+            result = scan_core_rpc.get_scan_orchestrator(wait_for_ready=True, timeout_s=5.0)
             assert result is None
 
     def test_non_blocking_call_returns_none_while_initializing(self):
         """Non-blocking callers (like scan_core.scan.latest) still get None
         immediately while initialization is in progress."""
         with patch.object(scan_core_rpc, "_scan_orchestrator", None), \
-             patch.object(scan_core_rpc, "_scan_orchestrator_initializing", True), \
-             patch.object(scan_core_rpc, "_scan_orchestrator_init_failed", False):
+             patch.object(scan_core_rpc, "_scan_orchestrator_initializing", True):
             result = scan_core_rpc.get_scan_orchestrator()
             assert result is None
 

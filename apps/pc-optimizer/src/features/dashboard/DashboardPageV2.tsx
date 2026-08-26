@@ -143,6 +143,15 @@ export default function DashboardPage() {
   const isScanning = snapshot.scanStatus === 'preparing' || snapshot.scanStatus === 'scanning';
   const hasCompletedScan = snapshot.scanStatus === 'complete';
   const hasScanError = snapshot.scanStatus === 'error';
+  // V1.0: Detect initialization errors and show a friendlier message.
+  // The backend may return "Scan engine is still initializing" when the
+  // orchestrator hasn't finished booting. This is transient, not a real
+  // scan failure — show "AVS is preparing the scanner" instead of "Scan
+  // could not be completed".
+  const isInitializationError =
+    hasScanError &&
+    Boolean(snapshot.error) &&
+    /initializing|still init|not ready|not available/i.test(snapshot.error ?? '');
 
   const healthScore = state.healthScore?.overallScore ?? 0;
   const securityTone = useMemo(() => getSecurityTone(state.metrics), [state.metrics]);
@@ -297,10 +306,23 @@ export default function DashboardPage() {
                 ) : hasScanError ? (
                   <>
                     <div className="text-caption text-text-muted uppercase tracking-wide">Scan Status</div>
-                    <div className="text-section-title font-semibold text-semantic-danger">Scan could not be completed</div>
-                    <div className="mt-1 text-small text-text-secondary">
-                      {snapshot.error || 'An error occurred during the scan.'}
-                    </div>
+                    {isInitializationError ? (
+                      <>
+                        <div className="text-section-title font-semibold text-semantic-warning">
+                          AVS is preparing the scanner
+                        </div>
+                        <div className="mt-1 text-small text-text-secondary">
+                          The scan engine is warming up. Please try again in a moment.
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-section-title font-semibold text-semantic-danger">Scan could not be completed</div>
+                        <div className="mt-1 text-small text-text-secondary">
+                          {snapshot.error || 'An error occurred during the scan.'}
+                        </div>
+                      </>
+                    )}
                   </>
                 ) : (
                   <>

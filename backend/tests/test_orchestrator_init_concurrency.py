@@ -24,6 +24,7 @@ def _reset_orchestrator_state() -> None:
     """Reset the module-level orchestrator state for a clean test."""
     rpc_module._scan_orchestrator = None
     rpc_module._scan_orchestrator_initializing = False
+    rpc_module._scan_orchestrator_init_failures = 0
 
 
 def test_normal_startup_initializes_orchestrator(tmp_path) -> None:

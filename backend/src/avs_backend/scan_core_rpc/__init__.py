@@ -57,6 +57,10 @@ _lock = threading.Lock()
 _scan_orchestrator_lock = threading.Lock()
 _scan_session_lock = threading.Lock()
 _scan_sessions: dict[str, dict[str, Any]] = {}
+# V1.0: Track the last init failure count for diagnostics, but do NOT
+# permanently block retries.  A transient failure (e.g. DB locked by
+# another process) should not prevent the user from retrying.
+_scan_orchestrator_init_failures = 0
 
 # ── Auto-optimization sessions ─────────────────────────────────────────
 _auto_opt_lock = threading.Lock()
@@ -105,7 +109,6 @@ def get_coordinator() -> Optional[RemediationCoordinator]:
 
 
 _scan_orchestrator_initializing = False
-_scan_orchestrator_init_failed = False
 
 
 def get_scan_orchestrator(wait_for_ready: bool = False, timeout_s: float = 90.0) -> Optional[ScanOrchestrator]:
@@ -118,14 +121,9 @@ def get_scan_orchestrator(wait_for_ready: bool = False, timeout_s: float = 90.0)
             scanner to be ready without requiring the user to click again.
         timeout_s: Maximum seconds to wait when ``wait_for_ready`` is True.
     """
-    global _scan_orchestrator, _scan_orchestrator_initializing, _scan_orchestrator_init_failed
+    global _scan_orchestrator, _scan_orchestrator_initializing, _scan_orchestrator_init_failures
     if _scan_orchestrator is not None:
         return _scan_orchestrator
-
-    # If initialization already failed, don't retry — return None so the
-    # caller shows a real error.  The user can restart the app to retry.
-    if _scan_orchestrator_init_failed:
-        return None
 
     with _scan_orchestrator_lock:
         if _scan_orchestrator is not None:
@@ -148,9 +146,7 @@ def get_scan_orchestrator(wait_for_ready: bool = False, timeout_s: float = 90.0)
             # After waiting, check again
             if _scan_orchestrator is not None:
                 return _scan_orchestrator
-            if _scan_orchestrator_init_failed:
-                return None
-            # If still not initializing and not failed, we can try to init
+            # If still initializing, return None (don't try to init)
             if _scan_orchestrator_initializing:
                 return None
         _scan_orchestrator_initializing = True
@@ -173,13 +169,19 @@ def get_scan_orchestrator(wait_for_ready: bool = False, timeout_s: float = 90.0)
         from avs_backend.scan_core.orchestration.discovery import (
             FilesystemDiscoveryEngine,
         )
-        from avs_backend.scan_core.security.defender_discovery import (
-            DefenderThreatDiscoveryEngine,
-        )
-        discovery_engines = {
+        discovery_engines: dict[str, Any] = {
             "filesystem": FilesystemDiscoveryEngine(),
-            "defender": DefenderThreatDiscoveryEngine(),
         }
+        # V1.0: Only register the Defender threat discovery engine on
+        # Windows.  On Linux/macOS, Defender does not exist and the
+        # engine would return NOT_WINDOWS for every query, adding
+        # unnecessary overhead.  The import is conditional so that
+        # Linux CI environments don't need Windows-only dependencies.
+        if os.name == "nt":
+            from avs_backend.scan_core.security.defender_discovery import (
+                DefenderThreatDiscoveryEngine,
+            )
+            discovery_engines["defender"] = DefenderThreatDiscoveryEngine()
 
         with _scan_orchestrator_lock:
             _scan_orchestrator = ScanOrchestrator(
@@ -192,7 +194,7 @@ def get_scan_orchestrator(wait_for_ready: bool = False, timeout_s: float = 90.0)
     except Exception as exc:
         logger.exception("Failed to initialize ScanOrchestrator: %s", exc)
         with _scan_orchestrator_lock:
-            _scan_orchestrator_init_failed = True
+            _scan_orchestrator_init_failures += 1
         return None
     finally:
         with _scan_orchestrator_lock:
