@@ -44,7 +44,10 @@ DEFAULT_CAPABILITY_MATRIX: dict[tuple[RuleCategory, AssetType, str], Actionabili
         AssetType.DIRECTORY,
         "delete_directory",
     ): Actionability.ACTIONABLE,
-    (RuleCategory.CACHE, AssetType.FILE, "clear_cache"): Actionability.ACTIONABLE,
+    # V1.0: CACHE files use delete_file (not clear_cache) because the
+    # clear_cache executor expects a directory target. Individual cache
+    # files should be deleted directly via delete_file.
+    (RuleCategory.CACHE, AssetType.FILE, "delete_file"): Actionability.ACTIONABLE,
     (RuleCategory.CACHE, AssetType.DIRECTORY, "clear_cache"): Actionability.ACTIONABLE,
     # Registry cleanup
     (

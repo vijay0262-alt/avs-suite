@@ -244,6 +244,49 @@ class ScanOrchestrator:
                                 recoverable=True,
                             )
                         )
+                    # V1.0: Pre-execution revalidation.
+                    # Re-check every PLANNED action against the CURRENT
+                    # filesystem state and persist state changes.  This
+                    # ensures the scan result's ``actions_planned`` count
+                    # only includes files that are genuinely deletable
+                    # RIGHT NOW.  Locked, missing, and inaccessible items
+                    # have their state persisted as LOCKED_TARGET,
+                    # MISSING_TARGET, or NOT_FIXABLE so they are excluded
+                    # from the user-visible cleanable count.
+                    if dashboard_eligible_only:
+                        t5b = datetime.now(UTC)
+                        try:
+                            reval = self._revalidate_and_persist(
+                                action_plan.plan_id
+                            )
+                            # Reload the plan to pick up persisted state
+                            # changes so the statistics below reflect
+                            # reality.
+                            revalidated_plan = self._action_plan_repo.load(
+                                action_plan.plan_id
+                            )
+                            if revalidated_plan is not None:
+                                action_plan = revalidated_plan
+                            phase_timings["revalidation_ms"] = int(
+                                (datetime.now(UTC) - t5b).total_seconds() * 1000
+                            )
+                            logger.info(
+                                "V1.0 scan-time revalidation: "
+                                "total_planned=%d still_deletable=%d "
+                                "now_locked=%d now_missing=%d "
+                                "now_inaccessible=%d",
+                                reval.get("total_planned", 0),
+                                reval.get("still_deletable", 0),
+                                reval.get("now_locked", 0),
+                                reval.get("now_missing", 0),
+                                reval.get("now_inaccessible", 0),
+                            )
+                        except Exception as exc:
+                            logger.warning(
+                                "V1.0 scan-time revalidation failed "
+                                "(non-fatal): %s",
+                                exc,
+                            )
             else:
                 phase_timings["planning_ms"] = 0
 
@@ -787,6 +830,16 @@ class ScanOrchestrator:
             ),
             "actions_blocked": self._count_actions(action_plan, "blocked"),
             "actions_not_fixable": self._count_actions(action_plan, "not_fixable"),
+            # V1.0: Revalidation states — items that were PLANNED at scan
+            # time but failed pre-execution revalidation.  These are
+            # excluded from ``actions_planned`` so the user-visible
+            # cleanable count only includes genuinely deletable items.
+            "actions_locked_target": self._count_actions(
+                action_plan, "locked_target"
+            ),
+            "actions_missing_target": self._count_actions(
+                action_plan, "missing_target"
+            ),
             "errors_count": scan_context.error_count,
             # V1.0 Dashboard: internal diagnostic count of items excluded
             # because they were not verified-safe (locked, blocked, etc.).
@@ -934,6 +987,156 @@ class ScanOrchestrator:
             if a.state.value == state_value
             and a.action_type.value == action_type_value
         )
+
+    def _revalidate_and_persist(self, plan_id: str) -> dict[str, int]:
+        """V1.0: Re-check every PLANNED action against the CURRENT filesystem.
+
+        This is the scan-time equivalent of
+        ``RemediationCoordinator.revalidate_planned_actions``.  It
+        re-probes each PLANNED action's target file for existence,
+        accessibility, and lock status, then PERSISTS the updated
+        state so that the scan result statistics reflect reality.
+
+        Actions that fail revalidation are persisted as:
+        - ``MISSING_TARGET`` — file no longer exists
+        - ``LOCKED_TARGET`` — file is locked by another process
+        - ``NOT_FIXABLE`` — file is inaccessible (ACL/permission)
+
+        Returns:
+            Dict with keys: ``total_planned``, ``still_deletable``,
+            ``now_missing``, ``now_locked``, ``now_inaccessible``.
+        """
+        import os as _os
+        from pathlib import Path as _Path
+
+        plan = self._action_plan_repo.load(plan_id)
+        if plan is None:
+            return {
+                "total_planned": 0,
+                "still_deletable": 0,
+                "now_missing": 0,
+                "now_locked": 0,
+                "now_inaccessible": 0,
+            }
+
+        total_planned = 0
+        still_deletable = 0
+        now_missing = 0
+        now_locked = 0
+        now_inaccessible = 0
+        state_updates: list[tuple[str, str]] = []
+
+        # Import the lock probe from remediation (same CreateFileW probe)
+        try:
+            from .remediation import _check_file_locked
+        except Exception:
+            _check_file_locked = None  # type: ignore[assignment]
+
+        for action in plan.actions:
+            if action.state.value != "planned":
+                continue
+            total_planned += 1
+
+            target = getattr(action, "target", None)
+            if target is None:
+                now_missing += 1
+                state_updates.append(
+                    (action.action_id, ActionState.MISSING_TARGET.value)
+                )
+                continue
+
+            canonical = getattr(target, "canonical_path", "")
+            if not canonical:
+                now_missing += 1
+                state_updates.append(
+                    (action.action_id, ActionState.MISSING_TARGET.value)
+                )
+                continue
+
+            try:
+                p = _Path(canonical)
+                if not _os.path.lexists(p):
+                    now_missing += 1
+                    state_updates.append(
+                        (action.action_id, ActionState.MISSING_TARGET.value)
+                    )
+                    continue
+                if not _os.access(p, _os.W_OK):
+                    now_inaccessible += 1
+                    state_updates.append(
+                        (action.action_id, ActionState.NOT_FIXABLE.value)
+                    )
+                    continue
+                if p.is_file() and not _os.path.islink(p):
+                    if _check_file_locked is not None and _check_file_locked(str(p)):
+                        now_locked += 1
+                        state_updates.append(
+                            (action.action_id, ActionState.LOCKED_TARGET.value)
+                        )
+                        continue
+                still_deletable += 1
+            except (OSError, ValueError):
+                now_inaccessible += 1
+                state_updates.append(
+                    (action.action_id, ActionState.NOT_FIXABLE.value)
+                )
+                continue
+
+        # Persist state changes so the reloaded plan reflects reality.
+        # We update BOTH the remediation_actions table AND the plan_data
+        # JSON in action_plans, because ActionPlanRepository.load() reads
+        # the full plan from plan_data, not from remediation_actions.
+        if state_updates:
+            conn = self._db.get_connection()
+            cursor = conn.cursor()
+            try:
+                # Update individual action rows
+                for action_id, new_state in state_updates:
+                    cursor.execute(
+                        "UPDATE remediation_actions SET action_data = "
+                        "json_set(action_data, '$.state', ?), "
+                        "state = ? "
+                        "WHERE plan_id = ? AND action_id = ?",
+                        (new_state, new_state, plan_id, action_id),
+                    )
+                # Update the plan_data JSON in action_plans so that
+                # ActionPlanRepository.load() returns the updated states.
+                cursor.execute(
+                    "SELECT plan_data FROM action_plans WHERE plan_id = ?",
+                    (plan_id,),
+                )
+                row = cursor.fetchone()
+                if row is not None:
+                    import json as _json
+                    plan_dict = _json.loads(row[0])
+                    update_map = dict(state_updates)
+                    for a in plan_dict.get("actions", []):
+                        aid = a.get("action_id", "")
+                        if aid in update_map:
+                            a["state"] = update_map[aid]
+                    cursor.execute(
+                        "UPDATE action_plans SET plan_data = ? "
+                        "WHERE plan_id = ?",
+                        (_json.dumps(plan_dict), plan_id),
+                    )
+                conn.commit()
+            except Exception as exc:
+                conn.rollback()
+                logger.warning(
+                    "V1.0 revalidation: failed to persist state updates for %s: %s",
+                    plan_id,
+                    exc,
+                )
+            finally:
+                cursor.close()
+
+        return {
+            "total_planned": total_planned,
+            "still_deletable": still_deletable,
+            "now_missing": now_missing,
+            "now_locked": now_locked,
+            "now_inaccessible": now_inaccessible,
+        }
 
     def _actionability_summary(
         self, action_plan: Optional[ActionPlan]

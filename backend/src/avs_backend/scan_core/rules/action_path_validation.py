@@ -130,6 +130,55 @@ def _get_forbidden_roots() -> FrozenSet[str]:
 FORBIDDEN_ROOTS: FrozenSet[str] = _get_forbidden_roots()
 
 
+# ── Protected Exceptions ──────────────────────────────────────────────────────
+#
+# V1.0: Safe cleanup subdirectories that exist UNDER forbidden roots
+# (C:\Windows, C:\ProgramData) but are explicitly safe to clean.
+# These mirror KnownLocations.get_protected_exceptions() but are defined
+# locally to avoid circular imports.
+#
+# Without this exceptions list, validate_filesystem_path() rejects ALL
+# paths under C:\Windows and C:\ProgramData, which prevents the action
+# planner from building targets for Prefetch, Windows Temp, WER, Windows
+# Update Cache, and other Disk Cleanup categories.
+
+_ENV_EXCEPTION_RAW: tuple[str, ...] = (
+    r"%SystemRoot%\Temp",
+    r"%SystemRoot%\Prefetch",
+    r"%SystemRoot%\SoftwareDistribution\Download",
+    r"%SystemRoot%\SoftwareDistribution\DeliveryOptimization",
+    r"%SystemRoot%\Downloaded Program Files",
+    r"%SystemRoot%\Offline Web Pages",
+    r"%SystemRoot%\Minidump",
+    r"%SystemRoot%\LiveKernelReports",
+    r"%SystemRoot%\Installer\$PatchCache$",
+    r"%SystemRoot%\ServiceProfiles\LocalService\AppData\Local\FontCache",
+    r"%SystemRoot%\ServiceProfiles\NetworkService\AppData\Local\BranchCache",
+    r"%SystemRoot%\MEMORY.DMP",
+    r"%ProgramData%\Microsoft\Windows\WER",
+    r"%ProgramData%\Microsoft\Windows\RetailDemo",
+)
+
+
+def _get_exception_roots() -> FrozenSet[str]:
+    """Return frozen set of normalized exception paths.
+
+    These are safe cleanup subdirectories under forbidden roots.
+    Paths under these roots bypass the forbidden-root check.
+    """
+    roots: set[str] = set()
+    for raw in _ENV_EXCEPTION_RAW:
+        try:
+            expanded = _expand_env_vars(raw)
+            roots.add(_normalize_path_component(expanded))
+        except Exception:
+            continue
+    return frozenset(roots)
+
+
+EXCEPTION_ROOTS: FrozenSet[str] = _get_exception_roots()
+
+
 # ── Path Validation ────────────────────────────────────────────────────────────
 
 
@@ -206,12 +255,23 @@ def validate_filesystem_path(
                     f"Relative path contains traversal: {path}", "path_traversal"
                 )
 
-    # Check forbidden roots
-    for root in FORBIDDEN_ROOTS:
-        if normalized == root or normalized.startswith(root + "/"):
-            raise PathValidationError(
-                f"Path is in forbidden root: {path}", "forbidden_root"
-            )
+    # V1.0: Check protected exceptions FIRST.
+    # If the path is under a known-safe cleanup subdirectory (e.g.
+    # C:\Windows\Temp, C:\Windows\Prefetch), it is allowed even though
+    # it is under a forbidden root (C:\Windows).
+    _is_exception = False
+    for exception_root in EXCEPTION_ROOTS:
+        if normalized == exception_root or normalized.startswith(exception_root + "/"):
+            _is_exception = True
+            break
+
+    # Check forbidden roots (skip if path is under a protected exception)
+    if not _is_exception:
+        for root in FORBIDDEN_ROOTS:
+            if normalized == root or normalized.startswith(root + "/"):
+                raise PathValidationError(
+                    f"Path is in forbidden root: {path}", "forbidden_root"
+                )
 
     # Check for reparse-point indicators in path string
     # (actual detection requires filesystem inspection)

@@ -28,7 +28,7 @@ from avs_backend.scan_core.execution.registry_backup import RegistryBackup
 from avs_backend.scan_core.metadata.action_plan_repository import ActionPlanRepository
 from avs_backend.scan_core.metadata.database import MetadataDatabase
 from avs_backend.scan_core.metadata.execution_repository import ExecutionRepository
-from avs_backend.scan_core.rules.action import ActionPlan, RemediationAction
+from avs_backend.scan_core.rules.action import ActionPlan, ActionState, RemediationAction
 from avs_backend.scan_core.rules.action_preconditions import (
     NotJunction,
     NotReparsePoint,
@@ -292,6 +292,12 @@ class RemediationCoordinator:
         that the user-visible ``detected`` count only includes files
         that can actually be deleted RIGHT NOW.
 
+        V1.0 fix: Actions that fail revalidation now have their state
+        PERSISTED as ``LOCKED_TARGET``, ``MISSING_TARGET``, or
+        ``NOT_FIXABLE`` (inaccessible) so that subsequent loads and
+        the scan result statistics reflect reality, not the stale
+        planning-time snapshot.
+
         Returns:
             Dict with keys: ``total_planned``, ``still_deletable``,
             ``now_missing``, ``now_locked``, ``now_inaccessible``.
@@ -308,6 +314,9 @@ class RemediationCoordinator:
         now_locked = 0
         now_inaccessible = 0
 
+        # Collect state changes so we can persist them once after the loop.
+        state_updates: list[tuple[str, ActionState]] = []
+
         for action in plan.actions:
             if action.state.value != "planned":
                 continue
@@ -316,29 +325,43 @@ class RemediationCoordinator:
             target = getattr(action, "target", None)
             if target is None:
                 now_missing += 1
+                state_updates.append((action.action_id, ActionState.MISSING_TARGET))
                 continue
 
             canonical = getattr(target, "canonical_path", "")
             if not canonical:
                 now_missing += 1
+                state_updates.append((action.action_id, ActionState.MISSING_TARGET))
                 continue
 
             try:
                 p = Path(canonical)
                 if not os.path.lexists(p):
                     now_missing += 1
+                    state_updates.append((action.action_id, ActionState.MISSING_TARGET))
                     continue
                 if not os.access(p, os.W_OK):
                     now_inaccessible += 1
+                    state_updates.append((action.action_id, ActionState.NOT_FIXABLE))
                     continue
                 if p.is_file() and not os.path.islink(p):
                     if _check_file_locked(str(p)):
                         now_locked += 1
+                        state_updates.append((action.action_id, ActionState.LOCKED_TARGET))
                         continue
                 still_deletable += 1
             except (OSError, ValueError):
                 now_inaccessible += 1
+                state_updates.append((action.action_id, ActionState.NOT_FIXABLE))
                 continue
+
+        # V1.0: Persist state changes so that subsequent plan loads and
+        # scan result statistics reflect the revalidated states.  This
+        # ensures ``actions_planned`` only counts genuinely deletable
+        # items, and locked/missing/inaccessible items are excluded from
+        # the user-visible cleanable count.
+        if state_updates:
+            self._persist_action_state_updates(plan_id, state_updates)
 
         return {
             "total_planned": total_planned,
@@ -347,6 +370,38 @@ class RemediationCoordinator:
             "now_locked": now_locked,
             "now_inaccessible": now_inaccessible,
         }
+
+    def _persist_action_state_updates(
+        self,
+        plan_id: str,
+        updates: list[tuple[str, ActionState]],
+    ) -> None:
+        """Persist individual action state changes to the database.
+
+        Updates the ``state`` column of each remediation action row so
+        that subsequent ``ActionPlanRepository.load`` calls return the
+        revalidated states instead of the stale planning-time states.
+        """
+        conn = self.database.get_connection()
+        cursor = conn.cursor()
+        try:
+            for action_id, new_state in updates:
+                cursor.execute(
+                    "UPDATE remediation_actions SET action_data = "
+                    "json_set(action_data, '$.state', ?) "
+                    "WHERE plan_id = ? AND action_id = ?",
+                    (new_state.value, plan_id, action_id),
+                )
+            conn.commit()
+        except Exception as exc:
+            conn.rollback()
+            logger.warning(
+                "revalidate_planned_actions: failed to persist state updates for %s: %s",
+                plan_id,
+                exc,
+            )
+        finally:
+            cursor.close()
 
     def get_status(self, execution_id: str) -> RemediationExecutionStatus:
         """Return the persisted status for an execution request."""

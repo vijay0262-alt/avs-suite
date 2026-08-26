@@ -233,8 +233,11 @@ class TestCapabilityContract:
         )
 
     def test_cache_file_clear_cache_actionable(self):
+        # V1.0: CACHE files use delete_file (not clear_cache) because the
+        # clear_cache executor expects a directory target. Individual cache
+        # files are deleted directly via delete_file.
         assert (
-            self._resolve(RuleCategory.CACHE, AssetType.FILE, "clear_cache")
+            self._resolve(RuleCategory.CACHE, AssetType.FILE, "delete_file")
             == Actionability.ACTIONABLE
         )
 
@@ -386,7 +389,9 @@ class TestActionPlanner:
         target.mkdir()
         plan = self._plan("cache.browser.test", AssetType.FILE, str(target))
         action = plan.actions[0]
-        assert action.action_type == ActionType.CLEAR_CACHE
+        # V1.0: CACHE files use delete_file (not clear_cache) because the
+        # clear_cache executor expects a directory target.
+        assert action.action_type == ActionType.DELETE_FILE
         assert action.state == ActionState.PLANNED
 
     def test_registry_value_planned_remove(self):
