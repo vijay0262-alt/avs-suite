@@ -37,13 +37,10 @@ import { ScanHeader } from './ScanHeader';
 import { ScanProgress } from './ScanProgress';
 import { ScanCounters } from './ScanCounters';
 import { ScanTree } from './ScanTree';
-import { ScanAnimation } from './ScanAnimation';
 import { ScanFooter } from './ScanFooter';
 import { ScanSummary } from './ScanSummary';
 import { ActivityStream } from './ActivityStream';
-import { CurrentOperationCard } from './CurrentOperationCard';
 import type { ActivityEntry } from './ActivityStream';
-import type { CurrentOperationCardProps } from './CurrentOperationCard';
 import { useElapsedTimer } from '../useAnimatedCounter';
 import type {
   UnifiedScanStep,
@@ -75,8 +72,6 @@ export interface UnifiedScanViewProps {
   children?: ReactNode;
   /** Real-time activity log entries from backend */
   activityLog?: ActivityEntry[];
-  /** Current operation details from backend */
-  currentOperation?: CurrentOperationCardProps | null;
 }
 
 export function UnifiedScanView({
@@ -97,7 +92,6 @@ export function UnifiedScanView({
   isOptimizing = false,
   children,
   activityLog = [],
-  currentOperation = null,
 }: UnifiedScanViewProps) {
   const elapsed = useElapsedTimer(startTime);
   const currentPhase = config.phases[currentPhaseIndex];
@@ -157,43 +151,6 @@ export function UnifiedScanView({
           currentFile={liveStatus.currentFile}
           isOptimizing={isOptimizing}
         />
-
-        {/* Activity message */}
-        {isScanning && currentPhase && (
-          <ScanAnimation
-            activities={currentPhase.activities}
-            isScanning={isScanning && step !== 'paused'}
-          />
-        )}
-
-        {/* Current operation card — large detailed status from backend */}
-        {isScanning && currentOperation && (
-          <CurrentOperationCard {...currentOperation} />
-        )}
-
-        {/* Live status details */}
-        {(liveStatus.currentFolder || liveStatus.currentModule || liveStatus.currentCategory) && isScanning && (
-          <div className="grid grid-cols-2 gap-2 text-caption">
-            {liveStatus.currentModule && (
-              <div className="rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface-muted)] px-2.5 py-1.5">
-                <span className="text-text-muted">Module: </span>
-                <span className="font-medium text-text-primary">{liveStatus.currentModule}</span>
-              </div>
-            )}
-            {liveStatus.currentCategory && (
-              <div className="rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface-muted)] px-2.5 py-1.5">
-                <span className="text-text-muted">Category: </span>
-                <span className="font-medium text-text-primary">{liveStatus.currentCategory}</span>
-              </div>
-            )}
-            {liveStatus.currentFolder && (
-              <div className="col-span-2 rounded-[var(--avs-radius-sm)] bg-[var(--avs-surface-muted)] px-2.5 py-1.5 truncate">
-                <span className="text-text-muted">Folder: </span>
-                <span className="font-mono text-text-secondary">{liveStatus.currentFolder}</span>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Counters + Tree side by side on large screens */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -28,7 +28,7 @@ export class DocumentationGenerator {
     return {
       id: 'architecture',
       title: 'AVS Shield Architecture Documentation',
-      description: 'Complete architecture overview of the AVS PC Optimizer platform.',
+      description: 'Complete architecture overview of the AVS AI Shield platform.',
       sections: [
         {
           title: 'Overview',
@@ -214,7 +214,7 @@ export class DocumentationGenerator {
     return {
       id: 'user-manual',
       title: 'AVS Shield User Manual',
-      description: 'Complete user guide for AVS Shield Optimizer.',
+      description: 'Complete user guide for AVS AI Shield.',
       sections: [
         {
           title: 'Getting Started',
@@ -300,7 +300,7 @@ export class DocumentationGenerator {
       sections: [
         {
           title: 'Application won\'t start',
-          content: '1. Check if antivirus is blocking the application. 2. Run as administrator. 3. Check the log files in %APPDATA%/AVS Shield Optimizer/logs/. 4. Try repairing the installation.',
+          content: '1. Check if antivirus is blocking the application. 2. Run as administrator. 3. Check the log files in %APPDATA%/AVS AI Shield/logs/. 4. Try repairing the installation.',
           subsections: [],
         },
         {

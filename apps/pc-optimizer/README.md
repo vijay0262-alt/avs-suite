@@ -1,6 +1,6 @@
 # apps/pc-optimizer
 
-The AVS PC Optimizer desktop application.
+The AVS AI Shield: Security & System Intelligence desktop application.
 
 ## Layout
 

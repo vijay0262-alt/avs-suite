@@ -1,4 +1,4 @@
-# AVS PC Optimizer — Installation Guide
+# AVS AI Shield: Security & System Intelligence — Installation Guide
 
 **Version 1.0.0** | Build 1001
 
@@ -16,11 +16,11 @@
 
 ### Method 1: NSIS Installer (Recommended)
 
-1. Download `AVS PC Optimizer-Setup-1.0.0.exe` from the official website.
+1. Download `AVS AI Shield: Security & System Intelligence-Setup-1.0.0.exe` from the official website.
 2. Right-click the installer and select **Run as administrator**.
 3. Follow the installation wizard:
    - Accept the License Agreement
-   - Choose installation directory (default: `C:\Users\<user>\AppData\Local\Programs\AVS PC Optimizer`)
+   - Choose installation directory (default: `C:\Users\<user>\AppData\Local\Programs\AVS AI Shield: Security & System Intelligence`)
    - Select Start Menu shortcut
    - Select Desktop shortcut
 4. Click **Install** and wait for completion.
@@ -30,7 +30,7 @@
 
 1. Download the portable ZIP package.
 2. Extract to any folder.
-3. Run `AVS PC Optimizer.exe` from the extracted folder.
+3. Run `AVS AI Shield: Security & System Intelligence.exe` from the extracted folder.
 
 ## Post-Installation
 
@@ -50,7 +50,7 @@
 
 ### NSIS Install
 1. Go to **Settings > Apps > Installed apps**
-2. Find "AVS PC Optimizer"
+2. Find "AVS AI Shield: Security & System Intelligence"
 3. Click **Uninstall**
 4. Follow the uninstaller wizard
 
@@ -76,7 +76,7 @@ Delete the extracted folder.
 ## Silent Installation (Enterprise)
 
 ```cmd
-AVS PC Optimizer-Setup-1.0.0.exe /S /D=C:\Program Files\AVS PC Optimizer
+AVS AI Shield: Security & System Intelligence-Setup-1.0.0.exe /S /D=C:\Program Files\AVS AI Shield: Security & System Intelligence
 ```
 
 - `/S` — Silent install (no UI)

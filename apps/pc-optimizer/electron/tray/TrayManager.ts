@@ -20,7 +20,7 @@ import {
   getPauseRemainingMs,
   type ProtectionState,
 } from './traySettings';
-import { showMainWindow, getMainWindow } from '../main/windowManager';
+import { showMainWindow, getMainWindow, setIsQuitting } from '../main/windowManager';
 
 // ── Icon loading ──────────────────────────────────────────────
 
@@ -31,27 +31,35 @@ let _baseIcon: Electron.NativeImage | null = null;
 function getBaseTrayIcon(): Electron.NativeImage {
   if (_baseIcon) return _baseIcon;
 
-  // Use the SAME PNG icon that works without admin.
-  // Do NOT use icon.ico — it has multiple embedded sizes that get distorted
-  // when Electron resizes them, especially in admin mode.
-  // The tray-icon.png (256x256) renders cleanly at any size.
-  // We do NOT resize — let Windows/Electron handle scaling natively.
-  const candidates = [
-    // 1. Direct in resources folder (outside asar — most reliable in admin mode)
-    path.join(process.resourcesPath || '', 'tray-icon.png'),
-    path.join(process.resourcesPath || '', 'icon.png'),
-    // 2. Inside asar via resourcesPath
-    path.join(process.resourcesPath || '', 'app.asar', 'build', 'tray-icon.png'),
-    path.join(process.resourcesPath || '', 'app.asar', 'build', 'icon.png'),
-    // 3. Inside asar via app.getAppPath()
-    path.join(app.getAppPath(), 'build', 'tray-icon.png'),
-    path.join(app.getAppPath(), 'build', 'icon.png'),
-    // 4. Relative to __dirname (development)
-    path.join(__dirname, '..', '..', 'build', 'tray-icon.png'),
-    path.join(__dirname, '..', '..', 'build', 'icon.png'),
-    path.join(__dirname, '..', '..', '..', 'build', 'tray-icon.png'),
-    path.join(__dirname, '..', '..', '..', 'build', 'icon.png'),
-  ];
+  // V1.0: Use icon.ico directly on Windows — the ICO has proper embedded
+  // sizes (16, 32, 48, 64, 128, 256) so Windows can pick the right size
+  // without Electron resizing/re-rendering the image.  This prevents the
+  // color shift that happens when Electron resizes a PNG.
+  // On non-Windows, fall back to PNG.
+  const candidates = process.platform === 'win32'
+    ? [
+        // 1. ICO direct in resources folder (outside asar — most reliable)
+        path.join(process.resourcesPath || '', 'icon.ico'),
+        // 2. ICO inside asar
+        path.join(process.resourcesPath || '', 'app.asar', 'build', 'icon.ico'),
+        path.join(app.getAppPath(), 'build', 'icon.ico'),
+        // 3. ICO relative to __dirname (development)
+        path.join(__dirname, '..', '..', 'build', 'icon.ico'),
+        path.join(__dirname, '..', '..', '..', 'build', 'icon.ico'),
+        // 4. Fall back to PNG if ICO not found
+        path.join(process.resourcesPath || '', 'tray-icon.png'),
+        path.join(process.resourcesPath || '', 'icon.png'),
+        path.join(process.resourcesPath || '', 'app.asar', 'build', 'tray-icon.png'),
+        path.join(app.getAppPath(), 'build', 'tray-icon.png'),
+        path.join(__dirname, '..', '..', 'build', 'tray-icon.png'),
+      ]
+    : [
+        path.join(process.resourcesPath || '', 'tray-icon.png'),
+        path.join(process.resourcesPath || '', 'icon.png'),
+        path.join(process.resourcesPath || '', 'app.asar', 'build', 'tray-icon.png'),
+        path.join(app.getAppPath(), 'build', 'tray-icon.png'),
+        path.join(__dirname, '..', '..', 'build', 'tray-icon.png'),
+      ];
 
   // Log all candidate paths for debugging
   console.log('[tray-icon] Searching for tray icon...');
@@ -62,8 +70,6 @@ function getBaseTrayIcon(): Electron.NativeImage {
       if (!exists) continue;
       const img = nativeImage.createFromPath(iconPath);
       if (!img.isEmpty()) {
-        // Do NOT resize — the 256x256 PNG scales cleanly.
-        // Resizing to 16x16 was causing distortion in admin mode.
         _baseIcon = img;
         console.log(`[tray-icon] SUCCESS: Loaded tray icon from: ${iconPath} (${img.getSize().width}x${img.getSize().height})`);
         break;
@@ -347,6 +353,9 @@ export class TrayManager {
 
     if (choice === 0) {
       this.logger.info('[tray] User confirmed exit — quitting application');
+      // Set isQuitting so the window close handler doesn't intercept
+      // and hide-to-tray instead of actually closing.
+      setIsQuitting(true);
       // Destroy the tray before quitting
       this.destroy();
       app.quit();

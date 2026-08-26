@@ -82,7 +82,7 @@ def _make_update_check(
     """Create a mock UpdateCheckResult."""
     r = MagicMock()
     r.product_found = True
-    r.product_name = "AVS PC Optimizer"
+    r.product_name = "AVS AI Shield"
     r.update_available = update_available
     r.force_upgrade = force_upgrade
     r.critical = critical

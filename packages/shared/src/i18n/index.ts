@@ -30,7 +30,7 @@ export const DEFAULT_LOCALE: LocaleCode = 'en';
  */
 export const en = {
   app: {
-    name: 'AVS PC Optimizer',
+    name: 'AVS AI Shield: Security & System Intelligence',
     tagline: 'Keep your Windows PC fast, clean, and secure.',
   },
   nav: {

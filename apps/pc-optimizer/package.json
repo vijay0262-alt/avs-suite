@@ -2,7 +2,7 @@
   "name": "@avs/pc-optimizer",
   "version": "1.0.0",
   "private": true,
-  "description": "AVS PC Optimizer — Windows performance, cleanup, and privacy utility.",
+  "description": "AVS AI Shield: Security & System Intelligence — Windows performance, cleanup, and security utility.",
   "author": {
     "name": "Advanced Vision Software LLC",
     "email": "help@avsshield.com"
@@ -55,7 +55,7 @@
   },
   "build": {
     "appId": "com.avs.pcoptimizer",
-    "productName": "AVS Shield Optimizer",
+    "productName": "AVS AI Shield",
     "copyright": "Copyright © 2024-2026 Advanced Vision Software LLC. All rights reserved.",
     "directories": {
       "output": "release",

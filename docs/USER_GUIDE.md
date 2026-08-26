@@ -1,4 +1,4 @@
-# AVS PC Optimizer — User Guide
+# AVS AI Shield: Security & System Intelligence — User Guide
 
 **Version 1.0.0** | Build 1001 | Release Channel: Stable
 
@@ -33,9 +33,9 @@
 
 ### Installation
 
-1. Download the AVS PC Optimizer installer from the official website.
+1. Download the AVS AI Shield: Security & System Intelligence installer from the official website.
 2. Run the installer and follow the on-screen instructions.
-3. Launch AVS PC Optimizer from the Start Menu or Desktop shortcut.
+3. Launch AVS AI Shield: Security & System Intelligence from the Start Menu or Desktop shortcut.
 
 ### First Launch
 

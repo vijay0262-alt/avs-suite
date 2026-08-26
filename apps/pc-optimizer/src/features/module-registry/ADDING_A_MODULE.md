@@ -1,4 +1,4 @@
-# Adding a New Module to AVS PC Optimizer
+# Adding a New Module to AVS AI Shield: Security & System Intelligence
 
 This guide walks through adding a new optimization module. The modular
 plugin architecture means **no Dashboard, Health Engine, or FeatureGate

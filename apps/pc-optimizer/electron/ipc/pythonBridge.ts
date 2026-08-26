@@ -6,7 +6,7 @@
  *   - dev:   backend/src/avs_backend/api/rpc_server.py (invoked via python)
  *   - prod:  <resources>/backend/avs-backend(.exe) — a PyInstaller bundle
  */
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { spawn, execSync, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import path from 'node:path';
 import { app } from 'electron';
 
@@ -279,7 +279,20 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
         cb.reject(new Error('Backend shutting down'));
       }
       pending.clear();
-      activeChild.kill();
+      // Kill the backend process tree.  On Windows, child.kill() only
+      // kills the immediate process — PyInstaller bundles spawn child
+      // processes that survive.  Use taskkill /T /F to kill the entire
+      // tree so no avs-backend.exe instances are left running.
+      if (process.platform === 'win32' && activeChild.pid) {
+        try {
+          execSync(`taskkill /PID ${activeChild.pid} /T /F`, { stdio: 'ignore', timeout: 5000 });
+        } catch {
+          // Fall back to regular kill
+          activeChild.kill();
+        }
+      } else {
+        activeChild.kill();
+      }
     },
     onReconnect(callback: () => void): void {
       reconnectCallbacks.push(callback);

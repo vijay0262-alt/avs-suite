@@ -1,6 +1,6 @@
 /**
  * Entitlement service — synchronizes the desktop with the customer's
- * AVS Shield Optimizer entitlement via the License Server provisioning API.
+ * AVS AI Shield entitlement via the License Server provisioning API.
  *
  * Endpoint:
  *   POST /api/customer/products/{code}/provision

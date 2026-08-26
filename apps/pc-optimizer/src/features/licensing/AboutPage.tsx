@@ -73,7 +73,7 @@ export default function AboutPage() {
           <div>
             <div className="text-text-muted">Product</div>
             <div className="font-medium text-text-primary mt-1">
-              {info?.product_code ?? 'AVS PC Optimizer'}
+              {info?.product_code ?? 'AVS AI Shield'}
             </div>
           </div>
           <div>

@@ -1,4 +1,4 @@
-# AVS PC Optimizer — Release Notes
+# AVS AI Shield: Security & System Intelligence — Release Notes
 
 ## Version 1.0.0 — Build 1001 — Stable
 
@@ -59,8 +59,8 @@ This is the first commercial release. No upgrade path is required.
 
 ## Download
 
-- **Installer:** `AVS PC Optimizer-Setup-1.0.0.exe`
-- **Portable:** `AVS PC Optimizer-1.0.0-portable.zip`
+- **Installer:** `AVS AI Shield: Security & System Intelligence-Setup-1.0.0.exe`
+- **Portable:** `AVS AI Shield: Security & System Intelligence-1.0.0-portable.zip`
 
 ---
 

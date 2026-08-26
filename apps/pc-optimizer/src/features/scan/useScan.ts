@@ -59,13 +59,12 @@ function getProgressValue<T>(progress: Record<string, unknown> | null | undefine
 
 function mapStatusCounters(
   progress: Record<string, unknown> | null | undefined,
+  config: UnifiedScanModuleConfig,
 ): Record<string, number> {
   // These field names match the backend's ScanProgress.to_dict() output:
   //   scan_id, phase, current_operation, assets_discovered, assets_evaluated,
   //   findings, actions_available, elapsed_time_ms, is_cancelled, completion_percent
-  // V1.0 Protection Center: security-specific counters from the orchestrator:
-  //   confirmed_threats, suspicious_items, threats_secured, threats_remaining
-  return {
+  const counters: Record<string, number> = {
     filesScanned: getProgressValue<number>(progress, 'assets_discovered', 0),
     itemsScanned: getProgressValue<number>(progress, 'assets_evaluated', 0),
     recommendations: getProgressValue<number>(progress, 'findings', 0),
@@ -84,6 +83,22 @@ function mapStatusCounters(
     memoryRecovery: 0,
     startupImprovement: 0,
   };
+
+  // V1.0: Populate config-specific counters using backendCounterMap.
+  // This ensures Security and Protection counters update during scan.
+  if (config.backendCounterMap) {
+    for (const [counterId, backendField] of Object.entries(config.backendCounterMap)) {
+      const rawValue = getProgressValue<number>(progress, backendField, 0);
+      // For aiConfidence mapped to completion_percent, convert to 0-100 percent.
+      if (counterId === 'aiConfidence' && backendField === 'completion_percent') {
+        counters[counterId] = Math.min(100, Math.max(0, rawValue));
+      } else {
+        counters[counterId] = rawValue;
+      }
+    }
+  }
+
+  return counters;
 }
 
 function mapCurrentOperation(
@@ -200,14 +215,24 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
         return;
       }
 
-      const phaseIndex = currentPhase ? config.phases.findIndex((p) => p.id === currentPhase) : -1;
-      if (phaseIndex >= 0) {
-        scan.setPhase(phaseIndex);
-      }
-
       // Use the backend's completion_percent directly — it is the canonical
       // progress value derived from actual scan work, not a UI animation.
       const completionPercent = getProgressValue<number>(progress, 'completion_percent', 0);
+
+      const phaseIndex = currentPhase ? config.phases.findIndex((p) => p.id === currentPhase) : -1;
+      if (phaseIndex >= 0) {
+        scan.setPhase(phaseIndex);
+      } else if (completionPercent > 0) {
+        // V1.0: If no backendPhaseMap match, derive the phase from
+        // completion_percent by finding which phase range contains it.
+        const derivedIndex = config.phases.findIndex(
+          (p) => completionPercent >= p.startPercent && completionPercent < p.endPercent,
+        );
+        if (derivedIndex >= 0) {
+          scan.setPhase(derivedIndex);
+        }
+      }
+
       const currentOperation =
         getProgressValue<string | null>(progress, 'current_operation', null) ??
         currentPhase ??
@@ -219,7 +244,7 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
         currentActivity: currentOperation,
       });
 
-      scan.updateCounters(mapStatusCounters(progress));
+      scan.updateCounters(mapStatusCounters(progress, config));
 
       const currentPhaseConfig = config.phases[phaseIndex] ?? config.phases[scan.currentPhaseIndex] ?? config.phases[0];
       if (currentPhaseConfig) {

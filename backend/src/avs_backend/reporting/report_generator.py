@@ -81,7 +81,7 @@ def generate_html_report(data: ReportData) -> str:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AVS PC Optimizer - Optimization Report</title>
+    <title>AVS AI Shield - Optimization Report</title>
     <style>
         body {{
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -184,7 +184,7 @@ def generate_html_report(data: ReportData) -> str:
 </head>
 <body>
     <div class="container">
-        <h1>🖥️ AVS PC Optimizer - Optimization Report</h1>
+        <h1>🖥️ AVS AI Shield - Optimization Report</h1>
         
         <div class="health-status">System Health: {data.health_status.upper()}</div>
         <div class="health-score">{data.health_score:.1f}%</div>
@@ -275,7 +275,7 @@ def generate_html_report(data: ReportData) -> str:
     html += f"""
         <div class="footer">
             <p>Report generated on {data.generated_at}</p>
-            <p>AVS PC Optimizer - Phase 2B</p>
+            <p>AVS AI Shield - Phase 2B</p>
         </div>
     </div>
 </body>
@@ -360,7 +360,7 @@ ERRORS
 
     text += f"""
 {'=' * 60}
-AVS PC Optimizer - Phase 2B
+AVS AI Shield - Phase 2B
 {'=' * 60}
 """
 

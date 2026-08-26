@@ -1,6 +1,6 @@
 # Support Information
 
-**AVS PC Optimizer**  
+**AVS AI Shield: Security & System Intelligence**  
 **Version:** 1.0.0
 
 ---

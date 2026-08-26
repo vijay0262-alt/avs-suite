@@ -104,6 +104,11 @@ export const OPTIMIZE_SCAN_CONFIG: UnifiedScanModuleConfig = {
     prioritizing: 'prioritizing',
     planning: 'planning',
   },
+  // V1.0: Map frontend counter IDs to backend ScanProgress fields.
+  backendCounterMap: {
+    recommendations: 'findings',
+    actionsAvailable: 'actions_available',
+  },
   counters: [
     { id: 'recommendations', label: 'Cleanable Files', icon: 'TrashIcon', format: 'number' },
     { id: 'actionsAvailable', label: 'Cleanable Size', icon: 'CircleStackIcon', format: 'bytes' },
@@ -306,6 +311,30 @@ export const SECURITY_SCAN_CONFIG: UnifiedScanModuleConfig = {
       ],
     },
   ],
+  // V1.0: Map backend canonical phases to security-specific frontend phases.
+  // The backend emits: initializing, discovery, evaluating, aggregating, prioritizing, planning.
+  backendPhaseMap: {
+    initializing: 'initialization',
+    discovery: 'processes',
+    evaluating: 'system_dirs',
+    aggregating: 'behavior',
+    prioritizing: 'threat_investigation',
+    planning: 'remediation_planning',
+  },
+  // V1.0: Map frontend counter IDs to backend ScanProgress fields.
+  backendCounterMap: {
+    processesAnalyzed: 'assets_evaluated',
+    servicesChecked: 'assets_evaluated',
+    registryKeysChecked: 'assets_evaluated',
+    browserObjects: 'assets_evaluated',
+    scriptsInspected: 'assets_evaluated',
+    scheduledTasks: 'assets_evaluated',
+    persistenceEntries: 'assets_evaluated',
+    threatsFound: 'findings',
+    suspiciousProcesses: 'findings',
+    unsignedExecutables: 'findings',
+    aiConfidence: 'completion_percent',
+  },
   counters: [
     { id: 'processesAnalyzed', label: 'Processes', icon: 'CommandLineIcon', format: 'number' },
     { id: 'servicesChecked', label: 'Services', icon: 'Cog6ToothIcon', format: 'number' },

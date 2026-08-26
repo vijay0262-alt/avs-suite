@@ -51,6 +51,8 @@ export interface UseAutoOptimizeReturn {
   currentCategory: string;
   /** Overall progress percentage (0-100). */
   overallProgress: number;
+  /** Live space recovered in bytes during execution. */
+  spaceRecovered: number;
   /** Start auto-optimization for a plan. */
   startAutoOptimize: (planId: string) => Promise<void>;
   /** Cancel the running optimization. */
@@ -77,6 +79,7 @@ export function useAutoOptimize(): UseAutoOptimizeReturn {
   const [currentFile, setCurrentFile] = useState('');
   const [currentCategory, setCurrentCategory] = useState('');
   const [overallProgress, setOverallProgress] = useState(0);
+  const [spaceRecovered, setSpaceRecovered] = useState(0);
 
   const sessionIdRef = useRef<string | null>(null);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -110,6 +113,7 @@ export function useAutoOptimize(): UseAutoOptimizeReturn {
     setCurrentFile('');
     setCurrentCategory('');
     setOverallProgress(0);
+    setSpaceRecovered(0);
   }, [stopPoll]);
 
   const processStatus = useCallback((status: AutoOptimizeStatus) => {
@@ -143,6 +147,9 @@ export function useAutoOptimize(): UseAutoOptimizeReturn {
     }
     if (status.overall_progress !== undefined) {
       setOverallProgress(status.overall_progress);
+    }
+    if (status.space_recovered !== undefined) {
+      setSpaceRecovered(Number(status.space_recovered) || 0);
     }
 
     if (status.error) {
@@ -247,6 +254,7 @@ export function useAutoOptimize(): UseAutoOptimizeReturn {
     currentFile,
     currentCategory,
     overallProgress,
+    spaceRecovered,
     startAutoOptimize,
     cancelAutoOptimize,
     reset,

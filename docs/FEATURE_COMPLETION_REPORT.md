@@ -52,7 +52,7 @@ All Phase 4 Feature Completion tasks are complete. The application was audited f
 **Fix:**
 - Updated doc comment to accurately describe the page
 - Auto-update: Changed to "Automatic update checks run every 24 hours" with an "Enabled" badge (the auto-check is implemented in the UpdateManager)
-- Telemetry: Changed to "Help improve AVS Shield Optimizer by sending anonymous diagnostics. No personal data is collected." with a "Disabled" badge
+- Telemetry: Changed to "Help improve AVS AI Shield by sending anonymous diagnostics. No personal data is collected." with a "Disabled" badge
 
 ### 4. Undo/Restore Backend Not Wired to Frontend (High)
 

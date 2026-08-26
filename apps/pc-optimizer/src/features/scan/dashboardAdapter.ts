@@ -127,7 +127,8 @@ function buildSnapshot(
 
   const canReview =
     (status === 'complete' && issuesFound > 0 && Boolean(planId)) ||
-    (status === 'complete' && issuesFound > 0 && actionableCount > 0 && Boolean(planId));
+    (status === 'complete' && actionableCount > 0 && Boolean(planId)) ||
+    (status === 'complete' && Boolean(planId) && (issuesFound > 0 || actionableCount > 0 || reviewCount > 0 || blockedCount > 0));
 
   const canApprove = remediationStatus === 'awaiting_approval';
 
@@ -211,7 +212,7 @@ export function toDashboardSnapshot(
       session.execution,
       session.rollbackSummary,
       session.error,
-      null, // cleanup_result not available in active session
+      session.cleanupResult ?? null, // V1.0: cleanup result from auto-optimize
     );
   }
 

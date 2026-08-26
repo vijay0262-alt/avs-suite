@@ -92,6 +92,23 @@ export const PROTECTION_SCAN_CONFIG: UnifiedScanModuleConfig = {
       ],
     },
   ],
+  // V1.0: Map backend canonical phases to protection-specific frontend phases.
+  backendPhaseMap: {
+    initializing: 'preparing',
+    discovery: 'firewall',
+    evaluating: 'antivirus',
+    aggregating: 'realtime',
+    prioritizing: 'threat_intel',
+    planning: 'finalizing',
+  },
+  // V1.0: Map frontend counter IDs to backend ScanProgress fields.
+  backendCounterMap: {
+    confirmedThreats: 'findings',
+    suspiciousItems: 'assets_evaluated',
+    threatsSecured: 'actions_available',
+    threatsRemaining: 'findings',
+    aiConfidence: 'completion_percent',
+  },
   counters: [
     { id: 'confirmedThreats', label: 'Confirmed Threats', icon: 'ExclamationTriangleIcon', format: 'number' },
     { id: 'suspiciousItems', label: 'Suspicious Items', icon: 'EyeIcon', format: 'number' },

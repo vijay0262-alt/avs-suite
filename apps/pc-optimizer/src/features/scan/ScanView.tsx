@@ -102,14 +102,15 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
   const autoOptimizeClose = useMemo(
     () => () => {
       setShowAutoOptimize(false);
-      scan.reset();
+      // V1.0: Do NOT call scan.reset() here — that would clear the
+      // local scan state and prevent "Review Findings" from working
+      // on the dashboard. The unifiedScanState still holds the
+      // completed session with planId and statistics, which the
+      // DashboardScanStatusCard needs for the "Review Findings" button.
       // V1.0: Close the modal entirely after cleanup Done is clicked.
-      // Do NOT reset to idle — that would re-trigger autoStart and
-      // reopen the scan modal. The Dashboard cards refresh via the
-      // OptimizationEventBus CleaningCompleted event.
       onClose();
     },
-    [scan, onClose],
+    [onClose],
   );
 
   const findings = useMemo<ScanFinding[]>(() => {
@@ -242,7 +243,6 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
       onCancel={scan.cancelScan}
       onClose={() => { scan.reset(); onClose(); }}
       activityLog={scan.activityLog}
-      currentOperation={scan.currentOperation}
     />
   );
 }

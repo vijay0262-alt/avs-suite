@@ -42,3 +42,18 @@ export function hideMainWindow(): void {
 export function isMainWindowVisible(): boolean {
   return mainWindow?.isVisible() ?? false;
 }
+
+// ── Quit state ─────────────────────────────────────────────────
+// Tracks whether the user explicitly chose "Exit AVS Shield" from
+// the tray menu.  When true, the window close handler lets the
+// window close instead of hiding to tray.
+
+let _isQuitting = false;
+
+export function setIsQuitting(value: boolean): void {
+  _isQuitting = value;
+}
+
+export function getIsQuitting(): boolean {
+  return _isQuitting;
+}

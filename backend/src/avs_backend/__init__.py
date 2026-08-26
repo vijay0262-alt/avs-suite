@@ -1,4 +1,4 @@
-"""AVS PC Optimizer — Python backend package.
+"""AVS AI Shield — Python backend package.
 
 The backend runs as a child process of the Electron main process and
 communicates over stdio using JSON-RPC 2.0. See ``api/rpc_server.py``.

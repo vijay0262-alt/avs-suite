@@ -1,6 +1,6 @@
 # AVS Suite
 
-AVS Suite — monorepo hosting AVS PC Optimizer, Security, Driver Updater, File Recovery, and VPN products.
+AVS Suite — monorepo hosting AVS AI Shield: Security & System Intelligence, Security, Driver Updater, File Recovery, and VPN products.
 
 ## Development Environment Setup
 

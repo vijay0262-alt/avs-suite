@@ -73,7 +73,7 @@ describe('syncService', () => {
           last_refreshed_at: '2025-07-27T00:00:00Z',
           signature: 'sig',
           product_code: 'optimizer',
-          product_name: 'AVS PC Optimizer',
+          product_name: 'AVS AI Shield',
         },
         features: ['JUNK_CLEANER', 'REGISTRY_CLEANER', 'STARTUP_MANAGER'],
         devices: [],

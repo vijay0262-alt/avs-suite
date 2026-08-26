@@ -21,7 +21,7 @@ import { runStartup, shutdownStartup, getRpcClient } from '../startup/startupSta
 import { TrayManager } from '../tray/TrayManager';
 import { BackgroundProtectionService } from '../tray/BackgroundProtectionService';
 import { getTraySettings } from '../tray/traySettings';
-import { setMainWindow, showMainWindow } from './windowManager';
+import { setMainWindow, showMainWindow, getIsQuitting } from './windowManager';
 
 // Local environment configuration (mirrors @avs/shared/env to avoid ES module import in Electron main)
 type AppEnvironment = 'development' | 'staging' | 'production';
@@ -85,29 +85,36 @@ let mainWindow: BrowserWindow | null = null;
 let splashWindow: BrowserWindow | null = null;
 let trayManager: TrayManager | null = null;
 let bgProtection: BackgroundProtectionService | null = null;
-let isQuitting = false;
 
 function getAppIcon(): Electron.NativeImage | undefined {
-  // Use the SAME PNG icon that works without admin.
-  // Do NOT use icon.ico — it has multiple embedded sizes that get distorted
-  // when Electron resizes them, especially in admin mode.
-  // The tray-icon.png (256x256) renders cleanly at any size.
-  const candidates = [
-    // 1. Direct in resources folder (outside asar — most reliable in admin mode)
-    path.join(process.resourcesPath || '', 'tray-icon.png'),
-    path.join(process.resourcesPath || '', 'icon.png'),
-    // 2. Inside asar via resourcesPath
-    path.join(process.resourcesPath || '', 'app.asar', 'build', 'tray-icon.png'),
-    path.join(process.resourcesPath || '', 'app.asar', 'build', 'icon.png'),
-    // 3. Inside asar via app.getAppPath()
-    path.join(app.getAppPath(), 'build', 'tray-icon.png'),
-    path.join(app.getAppPath(), 'build', 'icon.png'),
-    // 4. Relative to __dirname (development)
-    path.join(__dirname, '..', '..', 'build', 'tray-icon.png'),
-    path.join(__dirname, '..', '..', 'build', 'icon.png'),
-    path.join(__dirname, '..', '..', '..', 'build', 'tray-icon.png'),
-    path.join(__dirname, '..', '..', '..', 'build', 'icon.png'),
-  ];
+  // V1.0: Prefer icon.ico on Windows — the ICO has proper embedded sizes
+  // (16, 32, 48, 64, 128, 256) so Windows picks the right size without
+  // Electron resizing/re-rendering.  This prevents the color shift that
+  // occurs when Electron resizes a PNG.
+  const candidates = process.platform === 'win32'
+    ? [
+        // 1. ICO direct in resources folder (outside asar — most reliable)
+        path.join(process.resourcesPath || '', 'icon.ico'),
+        // 2. ICO inside asar
+        path.join(process.resourcesPath || '', 'app.asar', 'build', 'icon.ico'),
+        path.join(app.getAppPath(), 'build', 'icon.ico'),
+        // 3. ICO relative to __dirname (development)
+        path.join(__dirname, '..', '..', 'build', 'icon.ico'),
+        path.join(__dirname, '..', '..', '..', 'build', 'icon.ico'),
+        // 4. Fall back to PNG if ICO not found
+        path.join(process.resourcesPath || '', 'tray-icon.png'),
+        path.join(process.resourcesPath || '', 'icon.png'),
+        path.join(process.resourcesPath || '', 'app.asar', 'build', 'tray-icon.png'),
+        path.join(app.getAppPath(), 'build', 'tray-icon.png'),
+        path.join(__dirname, '..', '..', 'build', 'tray-icon.png'),
+      ]
+    : [
+        path.join(process.resourcesPath || '', 'tray-icon.png'),
+        path.join(process.resourcesPath || '', 'icon.png'),
+        path.join(process.resourcesPath || '', 'app.asar', 'build', 'tray-icon.png'),
+        path.join(app.getAppPath(), 'build', 'tray-icon.png'),
+        path.join(__dirname, '..', '..', 'build', 'tray-icon.png'),
+      ];
 
   for (const iconPath of candidates) {
     try {
@@ -187,7 +194,7 @@ function createSplashWindow(): BrowserWindow {
       </head>
       <body>
         <div class="container">
-          <div class="logo">AVS Shield Optimizer</div>
+          <div class="logo">AVS AI Shield</div>
           <div class="spinner"></div>
           <div class="loading">Loading...</div>
         </div>
@@ -271,7 +278,7 @@ async function createMainWindow(): Promise<void> {
   // window instead of destroying it.  This keeps the renderer
   // state alive and protection running in the background.
   mainWindow.on('close', (event) => {
-    if (!isQuitting) {
+    if (!getIsQuitting()) {
       const settings = getTraySettings();
       if (settings.closeBehavior === 'minimize-to-tray') {
         event.preventDefault();
@@ -353,7 +360,7 @@ app.disableHardwareAcceleration();
 
 app.whenReady().then(async () => {
   const appStart = Date.now();
-  log.info(`[startup] AVS Shield Optimizer starting (env=${env.env}, version=${app.getVersion()})`);
+  log.info(`[startup] AVS AI Shield starting (env=${env.env}, version=${app.getVersion()})`);
 
   // Ensure Notification support is available
   if (!Notification.isSupported()) {
@@ -431,23 +438,47 @@ app.on('window-all-closed', (event: Electron.Event) => {
 
 // ── Application shutdown ──────────────────────────────────────
 app.on('will-quit', async (event) => {
+  // Prevent default quit so we can do async cleanup first
+  event.preventDefault();
+
   // Shutdown background protection and tray
   if (trayManager) {
     trayManager.destroy();
     trayManager = null;
   }
   if (bgProtection) {
-    event.preventDefault();
-    await bgProtection.shutdown();
+    try {
+      await bgProtection.shutdown();
+    } catch {
+      // Best-effort
+    }
     bgProtection = null;
-    // Continue with the quit
-    shutdownStartup();
-    log.info('AVS Shield Optimizer shutting down');
-    app.exit(0);
-  } else {
-    shutdownStartup();
-    log.info('AVS Shield Optimizer shutting down');
   }
+
+  // Await the startup shutdown (kills the Python backend process)
+  try {
+    await shutdownStartup();
+  } catch {
+    // Best-effort
+  }
+
+  // V1.0: Force-kill any remaining avs-backend.exe processes on Windows.
+  // The Python backend (PyInstaller bundle) may spawn child processes
+  // that survive a simple kill() call.  Use taskkill /T /F to kill the
+  // entire process tree.
+  if (process.platform === 'win32') {
+    try {
+      const { execSync } = require('node:child_process');
+      execSync('taskkill /IM avs-backend.exe /T /F 2>nul', { stdio: 'ignore', timeout: 5000 });
+      log.info('[shutdown] Force-killed remaining avs-backend.exe processes');
+    } catch {
+      // No remaining processes or taskkill failed — not an error
+    }
+  }
+
+  log.info('AVS AI Shield shutting down');
+  // Force exit — all cleanup is done
+  app.exit(0);
 });
 
 // ── Export for IPC handlers ───────────────────────────────────
@@ -457,8 +488,4 @@ export function getTrayManager(): TrayManager | null {
 
 export function getBackgroundProtection(): BackgroundProtectionService | null {
   return bgProtection;
-}
-
-export function setIsQuitting(value: boolean): void {
-  isQuitting = value;
 }

@@ -1,4 +1,4 @@
-# AVS PC Optimizer — Commercial Release Checklist
+# AVS AI Shield: Security & System Intelligence — Commercial Release Checklist
 
 **Version 1.0.0** | Build 1001 | Date: 2026-07-23
 

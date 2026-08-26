@@ -7,7 +7,7 @@
  * Renders ContextualTips above page content for non-dismissed tips.
  * Provides a hook to re-trigger onboarding from Settings.
  */
-import { useState, useCallback, useEffect, type ReactNode } from 'react';
+import { useState, useCallback, type ReactNode } from 'react';
 import { WelcomeDialog } from './WelcomeDialog';
 import { FirstScanDialog } from './FirstScanDialog';
 import { ContextualTips } from './ContextualTips';
@@ -18,36 +18,19 @@ interface OnboardingProviderProps {
 }
 
 export function OnboardingProvider({ children }: OnboardingProviderProps) {
-  const [welcomeOpen, setWelcomeOpen] = useState(() => {
-    try {
-      const sessionSeen = sessionStorage.getItem('avs-welcome-session-seen');
-      if (sessionSeen) return false;
-      sessionStorage.setItem('avs-welcome-session-seen', '1');
-      return true;
-    } catch {
-      return false;
-    }
-  });
+  // V1.0: Do NOT show any modal dialogs on startup.  The user requested
+  // that the application open cleanly without modal popups.  The
+  // WelcomeDialog and FirstScanDialog are kept available for manual
+  // re-trigger from Settings, but they default to closed.
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [firstScanOpen, setFirstScanOpen] = useState(false);
 
   const closeWelcome = useCallback(() => {
     setWelcomeOpen(false);
-    // After welcome dialog closes, check if first scan is needed
-    if (!onboardingService.hasCompletedFirstScan()) {
-      setFirstScanOpen(true);
-    }
   }, []);
 
   const closeFirstScan = useCallback(() => {
     setFirstScanOpen(false);
-  }, []);
-
-  // If onboarding is already done but first scan hasn't been completed,
-  // show the first scan dialog on mount
-  useEffect(() => {
-    if (onboardingService.hasCompletedOnboarding() && !onboardingService.hasCompletedFirstScan()) {
-      setFirstScanOpen(true);
-    }
   }, []);
 
   return (

@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
 /**
- * Vite config for the AVS PC Optimizer renderer process.
+ * Vite config for the AVS AI Shield renderer process.
  *
  * - Alias `@` -> src (feature-relative imports).
  * - Alias `@avs/*` -> workspace packages for HMR without needing a build step.

@@ -606,7 +606,12 @@ class FilesystemExecutor:
 
     @classmethod
     def _clear_cache(cls, path: Path, cancellation_token: Any) -> list[Path]:
-        """Clear the contents of an approved cache directory."""
+        """Clear the contents of an approved cache directory.
+
+        V1.0: Recursively deletes files and subdirectories within the
+        cache directory.  This ensures that temp, prefetch, and other
+        cleanup categories are fully cleared — no empty folders remain.
+        """
         _check_cancelled(cancellation_token)
         if not path.is_dir():
             raise _FilesystemExecutionError(
@@ -614,8 +619,21 @@ class FilesystemExecutor:
                 message="Cache target is not a directory",
             )
 
-        children = list(os.scandir(path))
+        removed: list[Path] = cls._clear_dir_recursive(path, cancellation_token)
+        return removed
+
+    @classmethod
+    def _clear_dir_recursive(cls, path: Path, cancellation_token: Any) -> list[Path]:
+        """Recursively delete all files and subdirectories inside ``path``.
+
+        V1.0: Walks the tree bottom-up so that directories are emptied
+        before being removed.  This leaves no empty folders behind in
+        temp, prefetch, or other cleanup target directories.
+        """
+        _check_cancelled(cancellation_token)
         removed: list[Path] = []
+
+        children = list(os.scandir(path))
         for child in children:
             _check_cancelled(cancellation_token)
             child_path = Path(child.path)
@@ -623,26 +641,33 @@ class FilesystemExecutor:
             # Re-read and validate every child independently.
             child_live = cls._read_live_state(child_path)
             if child_live.is_symlink or child_live.is_junction or child_live.is_reparse:
-                raise _FilesystemExecutionError(
-                    code="REJECTED",
-                    message=f"Cache child is a reparse point: {child_path}",
-                )
+                # Skip reparse points — do not follow or delete them.
+                continue
 
             if child_live.is_file:
-                cls._delete_file(child_path, cancellation_token)
-                removed.append(child_path)
+                try:
+                    cls._delete_file(child_path, cancellation_token)
+                    removed.append(child_path)
+                except _FilesystemExecutionError:
+                    # Permission/lock errors on individual files are
+                    # non-fatal during cache clearing — skip and continue.
+                    pass
             elif child_live.is_dir:
-                if any(os.scandir(child_path)):
-                    raise _FilesystemExecutionError(
-                        code="DIRECTORY_NOT_EMPTY",
-                        message=f"Cache child is not empty: {child_path}",
-                    )
-                cls._delete_directory(child_path, cancellation_token)
-                removed.append(child_path)
+                # Recurse into subdirectory first to empty it.
+                sub_removed = cls._clear_dir_recursive(child_path, cancellation_token)
+                removed.extend(sub_removed)
+                # Now the subdirectory should be empty — remove it.
+                try:
+                    _check_cancelled(cancellation_token)
+                    if not any(os.scandir(child_path)):
+                        os.rmdir(child_path)
+                        removed.append(child_path)
+                except (OSError, PermissionError):
+                    # If we can't remove the empty dir (permission, etc.),
+                    # skip it — the contents are already deleted.
+                    pass
             else:
-                raise _FilesystemExecutionError(
-                    code="UNKNOWN_CHILD_TYPE",
-                    message=f"Cache child has unknown type: {child_path}",
-                )
+                # Unknown type — skip.
+                pass
 
         return removed

@@ -20,6 +20,7 @@ import { useEditionLimits } from '../licensing/editionLimits';
 import { useIsPro } from '../sync/syncStore';
 import { ProStatusBanner, ProStatusPill, ProOnlySection, ProFeatureIndicator } from '../licensing/ProStatusBadge';
 import { ScanView, PlanReviewView, useSmartOptimizationPlan } from '../scan';
+import { useDashboardScan } from '../scan/useDashboardScan';
 import { Modal } from '../dashboard/components/Modal';
 import { dashboardService } from '../dashboard/dashboard.service';
 import { formatDataSize } from '@avs/shared/utils';
@@ -241,6 +242,7 @@ export default function SmartOptimizationPage() {
   const limits = useEditionLimits();
   const isPro = useIsPro();
   const smartPlan = useSmartOptimizationPlan();
+  const { snapshot } = useDashboardScan();
   const [scanModalOpen, setScanModalOpen] = useState(false);
 
   useEffect(() => {
@@ -313,31 +315,44 @@ export default function SmartOptimizationPage() {
       />
 
       {/* ── ABOVE THE FOLD ─────────────────────────────────────────── */}
-      {/* 4 Summary Cards */}
+      {/* 4 Summary Cards — V1.0: Synced with actual scan/cleanup results */}
       {dash && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Optimization Score — V1.0 UNIFIED: matches Dashboard style */}
+          {/* Card 1: Optimization Score — V1.0: Use actual health score from scan */}
           <Card variant="glass" className="p-4" data-testid="smart-opt-score">
             <div className="flex items-center gap-3">
-              <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${
-                dash.summary.currentHealthScore >= 80 ? 'bg-semantic-success/10' : dash.summary.currentHealthScore >= 60 ? 'bg-semantic-warning/10' : 'bg-semantic-danger/10'
-              }`}>
-                <ArrowTrendingUpIcon className={`h-5 w-5 ${
-                  dash.summary.currentHealthScore >= 80 ? 'text-semantic-success' : dash.summary.currentHealthScore >= 60 ? 'text-semantic-warning' : 'text-semantic-danger'
-                }`} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-caption text-text-muted">Optimization Score</div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-bold text-text-primary tabular-nums">{dash.summary.currentHealthScore}</span>
-                  <span className="text-caption text-text-muted">/100</span>
-                </div>
-                <div className="text-caption text-semantic-success">+{dash.summary.potentialHealthScore - dash.summary.currentHealthScore} possible</div>
-              </div>
+              {(() => {
+                // V1.0: Use actual health score from cleanup result if available,
+                // otherwise fall back to engine's estimated score.
+                const healthAfter = snapshot.cleanupResult?.healthAfter;
+                const score = healthAfter != null
+                  ? healthAfter
+                  : dash.summary.currentHealthScore;
+                const potential = dash.summary.potentialHealthScore;
+                return (
+                  <>
+                    <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${
+                      score >= 80 ? 'bg-semantic-success/10' : score >= 60 ? 'bg-semantic-warning/10' : 'bg-semantic-danger/10'
+                    }`}>
+                      <ArrowTrendingUpIcon className={`h-5 w-5 ${
+                        score >= 80 ? 'text-semantic-success' : score >= 60 ? 'text-semantic-warning' : 'text-semantic-danger'
+                      }`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-caption text-text-muted">Optimization Score</div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-bold text-text-primary tabular-nums">{score}</span>
+                        <span className="text-caption text-text-muted">/100</span>
+                      </div>
+                      <div className="text-caption text-semantic-success">+{Math.max(0, potential - score)} possible</div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </Card>
 
-          {/* Card 2: Storage Recovered */}
+          {/* Card 2: Storage Recovered — V1.0: Use actual space recovered from cleanup */}
           <Card variant="glass" className="p-4" data-testid="smart-opt-storage">
             <div className="flex items-center gap-3">
               <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-semantic-success/10">
@@ -346,14 +361,26 @@ export default function SmartOptimizationPage() {
               <div className="flex-1 min-w-0">
                 <div className="text-caption text-text-muted">Storage Recovered</div>
                 <div className="text-2xl font-bold text-text-primary tabular-nums">
-                  {formatDataSize(dash.summary.estimatedTotalRecoveryMB * 1024 * 1024)}
+                  {(() => {
+                    // V1.0: Show actual recovered space from cleanup, not estimated.
+                    const actualSpace = snapshot.cleanupResult?.spaceRecovered ?? 0;
+                    if (actualSpace > 0) {
+                      return formatDataSize(actualSpace);
+                    }
+                    // Fall back to estimated if no cleanup has been run yet.
+                    return formatDataSize(dash.summary.estimatedTotalRecoveryMB * 1024 * 1024);
+                  })()}
                 </div>
-                <div className="text-caption text-text-muted">Estimated</div>
+                <div className="text-caption text-text-muted">
+                  {snapshot.cleanupResult?.spaceRecovered != null && snapshot.cleanupResult.spaceRecovered > 0
+                    ? 'Recovered'
+                    : 'Estimated'}
+                </div>
               </div>
             </div>
           </Card>
 
-          {/* Card 3: Items Fixed */}
+          {/* Card 3: Items Fixed — V1.0: Use actual items cleaned from cleanup */}
           <Card variant="glass" className="p-4" data-testid="smart-opt-items">
             <div className="flex items-center gap-3">
               <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-semantic-warning/10">
@@ -362,14 +389,26 @@ export default function SmartOptimizationPage() {
               <div className="flex-1 min-w-0">
                 <div className="text-caption text-text-muted">Items Fixed</div>
                 <div className="text-2xl font-bold text-text-primary tabular-nums">
-                  {dash.summary.totalAvailableActions}
+                  {(() => {
+                    // V1.0: Show actual items cleaned from cleanup, not available actions.
+                    const actualCleaned = snapshot.cleanupResult?.cleaned ?? 0;
+                    if (actualCleaned > 0) {
+                      return actualCleaned;
+                    }
+                    // Fall back to available actions if no cleanup has been run yet.
+                    return dash.summary.totalAvailableActions;
+                  })()}
                 </div>
-                <div className="text-caption text-text-muted">Available actions</div>
+                <div className="text-caption text-text-muted">
+                  {snapshot.cleanupResult?.cleaned != null && snapshot.cleanupResult.cleaned > 0
+                    ? 'Files cleaned'
+                    : 'Available actions'}
+                </div>
               </div>
             </div>
           </Card>
 
-          {/* Card 4: Last Optimization */}
+          {/* Card 4: Last Optimization — V1.0: Use actual last scan/completion time */}
           <Card variant="glass" className="p-4" data-testid="smart-opt-last">
             <div className="flex items-center gap-3">
               <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-surface-muted">
@@ -378,7 +417,21 @@ export default function SmartOptimizationPage() {
               <div className="flex-1 min-w-0">
                 <div className="text-caption text-text-muted">Last Optimization</div>
                 <div className="text-small font-semibold text-text-primary">
-                  Not yet run
+                  {(() => {
+                    // V1.0: Show actual last optimization time from scan history.
+                    if (snapshot.completedAt) {
+                      const date = new Date(snapshot.completedAt);
+                      const now = new Date();
+                      const diffMs = now.getTime() - date.getTime();
+                      const diffMin = Math.floor(diffMs / 60000);
+                      if (diffMin < 1) return 'Just now';
+                      if (diffMin < 60) return `${diffMin} min ago`;
+                      const diffHr = Math.floor(diffMin / 60);
+                      if (diffHr < 24) return `${diffHr} hr ago`;
+                      return date.toLocaleDateString();
+                    }
+                    return 'Not yet run';
+                  })()}
                 </div>
                 <div className="text-caption text-text-muted">
                   {`Est. ${formatDuration(dash.summary.estimatedDurationSeconds)}`}

@@ -206,7 +206,7 @@ def set_startup_with_windows(enabled: bool) -> bool:
         import winreg
 
         key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
-        app_name = "AVS PC Optimizer"
+        app_name = "AVS AI Shield"
 
         # Get the application path (this would need to be set properly)
         app_path = os.path.abspath(__file__)
@@ -245,7 +245,7 @@ def is_startup_with_windows() -> bool:
         import winreg
 
         key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
-        app_name = "AVS PC Optimizer"
+        app_name = "AVS AI Shield"
 
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_READ) as key:
             try:

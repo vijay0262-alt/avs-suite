@@ -1,5 +1,5 @@
 /**
- * @avs/licensing — licensing foundation for AVS PC Optimizer.
+ * @avs/licensing — licensing foundation for AVS AI Shield.
  *
  * This package provides:
  *   - License model and states

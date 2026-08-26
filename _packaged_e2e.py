@@ -1,5 +1,5 @@
 """
-Packaged E2E test: Launch the packaged AVS Shield Optimizer,
+Packaged E2E test: Launch the packaged AVS AI Shield,
 create test fixtures, run a scan via RPC, clean, and verify.
 """
 import os
@@ -12,7 +12,7 @@ import socket
 from pathlib import Path
 
 # Configuration
-PACKAGED_APP = r"C:\Users\HPBP\Documents\GitHub\avs-suite\release\win-unpacked\AVS Shield Optimizer.exe"
+PACKAGED_APP = r"C:\Users\HPBP\Documents\GitHub\avs-suite\release\win-unpacked\AVS AI Shield.exe"
 BACKEND_EXE = r"C:\Users\HPBP\Documents\GitHub\avs-suite\backend\dist\backend-py\avs-backend.exe"
 RPC_PORT = 8765
 TEMP_DIR = Path(os.environ.get("TEMP", tempfile.gettempdir()))

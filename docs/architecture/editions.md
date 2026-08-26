@@ -1,6 +1,6 @@
 # Editions
 
-AVS PC Optimizer ships one binary for all editions. The active edition
+AVS AI Shield: Security & System Intelligence ships one binary for all editions. The active edition
 is resolved at runtime by `@avs/licensing` and cached in memory.
 
 | Edition | Description |

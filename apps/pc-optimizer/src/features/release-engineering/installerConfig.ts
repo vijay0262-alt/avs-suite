@@ -68,7 +68,7 @@ export class InstallerConfigBuilder {
   toElectronBuilderConfig(): Record<string, unknown> {
     const config: Record<string, unknown> = {
       appId: 'com.avs.pcoptimizer',
-      productName: 'AVS Shield Optimizer',
+      productName: 'AVS AI Shield',
       copyright: 'Copyright © 2024-2026 Advanced Vision Software LLC. All rights reserved.',
       directories: {
         output: 'release',

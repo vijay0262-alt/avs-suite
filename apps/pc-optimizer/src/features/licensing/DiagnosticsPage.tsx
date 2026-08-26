@@ -135,7 +135,7 @@ export default function DiagnosticsPage() {
           <div>
             <div className="text-text-muted">Product</div>
             <div className="font-medium text-text-primary mt-1">
-              {diag?.product_code ?? 'AVS PC Optimizer'}
+              {diag?.product_code ?? 'AVS AI Shield'}
             </div>
           </div>
         </div>

@@ -312,15 +312,20 @@ export function getLicenseBridge(): LicenseBridge | null {
 }
 
 /**
- * Shutdown — clean up resources.
+ * Shutdown — clean up resources.  Must be awaited so the backend
+ * process is actually killed before the Electron process exits.
  */
-export function shutdownStartup(): void {
+export async function shutdownStartup(): Promise<void> {
   if (licenseBridge) {
     licenseBridge.close().catch(() => {});
     licenseBridge = null;
   }
   if (rpcClient) {
-    rpcClient.shutdown().catch(() => {});
+    try {
+      await rpcClient.shutdown();
+    } catch {
+      // Best-effort — the backend may already be dead
+    }
     rpcClient = null;
   }
   cleanupAllHandlers();

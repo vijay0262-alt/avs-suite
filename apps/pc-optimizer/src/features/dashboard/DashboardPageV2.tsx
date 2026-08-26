@@ -13,7 +13,6 @@ import {
   ChartBarIcon,
   FireIcon,
   Battery50Icon,
-  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { DashboardViewModel } from './DashboardViewModel';
@@ -337,43 +336,34 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Primary Scan CTA — V1.0 Dashboard: single Scan Now button */}
+              {/* Primary Scan CTA — V1.0 Dashboard: single Scan Now button.
+                  V1.0: Removed "View Progress" — the 4 scan modules are
+                  independent. The Dashboard scan is its own scan; it does
+                  not redirect to or show progress of other modules' scans. */}
               <div className="shrink-0">
-                {isScanning ? (
-                  <Button
-                    onClick={() => {
-                      setReviewPlanId(null);
-                      setScanModalOpen(true);
-                    }}
-                    size="lg"
-                    variant="secondary"
-                    leftIcon={<ArrowPathIcon className="h-5 w-5 animate-spin" />}
-                    data-testid="dashboard-scan-cta"
-                  >
-                    View Progress
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => {
-                      setReviewPlanId(null);
-                      setScanModalOpen(true);
-                    }}
-                    disabled={isScanning}
-                    size="lg"
-                    leftIcon={<BoltIcon className="h-5 w-5" />}
-                    data-testid="dashboard-scan-cta"
-                  >
-                    {hasScanError ? 'Try Again' : 'Scan Now'}
-                  </Button>
-                )}
+                <Button
+                  onClick={() => {
+                    setReviewPlanId(null);
+                    setScanModalOpen(true);
+                  }}
+                  disabled={isScanning}
+                  size="lg"
+                  leftIcon={isScanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <BoltIcon className="h-5 w-5" />}
+                  data-testid="dashboard-scan-cta"
+                >
+                  {isScanning ? 'Scanning...' : hasScanError ? 'Try Again' : 'Scan Now'}
+                </Button>
               </div>
             </div>
           </div>
         </div>
       </Card>
 
-      {/* ── SECONDARY: QUICK METRICS ─────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── SECONDARY: QUICK METRICS ───────────────────────────────
+          V1.0: Removed "Issues" card — after scan and optimize there
+          should be no issues shown. The 3 remaining metrics are
+          Protection, CPU Usage, and Storage. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card variant="glass" className="p-4" data-testid="metric-protection">
           <div className="flex items-center gap-3">
             <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${
@@ -410,24 +400,6 @@ export default function DashboardPage() {
             <div className="flex-1 min-w-0">
               <div className="text-caption text-text-muted">Storage</div>
               <div className="text-small font-semibold text-text-primary tabular-nums">{storageValue}</div>
-            </div>
-          </div>
-        </Card>
-
-        <Card variant="glass" className="p-4" data-testid="metric-issues">
-          <div className="flex items-center gap-3">
-            <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${
-              state.healthScore && state.healthScore.issues.length > 0 ? 'bg-semantic-warning/10' : 'bg-semantic-success/10'
-            }`}>
-              <ExclamationTriangleIcon className={`h-5 w-5 ${
-                state.healthScore && state.healthScore.issues.length > 0 ? 'text-semantic-warning' : 'text-semantic-success'
-              }`} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-caption text-text-muted">Issues</div>
-              <div className="text-small font-semibold text-text-primary tabular-nums">
-                {state.healthScore?.issues.length ?? 0}
-              </div>
             </div>
           </div>
         </Card>

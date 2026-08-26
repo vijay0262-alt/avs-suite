@@ -89,13 +89,13 @@ export function getProductFeatures(productCode: string): readonly ManagedFeature
   return registry.get(productCode)?.features ?? [];
 }
 
-// ── Built-in product: AVS PC Optimizer ──────────────────────────
+// ── Built-in product: AVS AI Shield ──────────────────────────
 
 export const AVS_PC_OPTIMIZER = PRODUCT_CODES.optimizer;
 
 const PC_OPTIMIZER_REGISTRATION: ProductRegistration = {
   productCode: AVS_PC_OPTIMIZER,
-  productName: 'AVS Shield Optimizer',
+  productName: 'AVS AI Shield: Security & System Intelligence',
   features: [
     'junk.scan', 'junk.preview', 'junk.clean', 'junk.clean_unlimited', 'junk.deep_scan',
     'registry.scan', 'registry.fix',

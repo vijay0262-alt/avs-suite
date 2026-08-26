@@ -1,6 +1,6 @@
 # License Events
 
-**AVS PC Optimizer** — Commercial Licensing Foundation  
+**AVS AI Shield: Security & System Intelligence** — Commercial Licensing Foundation  
 **Version:** 1.0.0 | **Date:** 2026-07-23
 
 ---

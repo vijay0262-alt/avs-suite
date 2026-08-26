@@ -998,6 +998,59 @@ def _scan_core_dashboard_optimization_plan(
 #   - Verification runs after execution.
 
 
+def _remove_empty_cleanup_dirs() -> int:
+    """Remove empty subdirectories from cleanup target areas.
+
+    V1.0: After file deletion, empty folders remain in temp, prefetch,
+    and other cleanup directories.  This function walks those directories
+    bottom-up and removes any empty subdirectories (but never the root
+    directory itself, which is owned by the OS).
+
+    Returns the number of empty directories removed.
+    """
+    import os as _os
+    import platform as _platform
+
+    # Cleanup target directories whose empty subdirs should be removed.
+    # The root directory itself is NEVER deleted — only its contents.
+    target_dirs: list[str] = []
+    if _platform.system() == "Windows":
+        target_dirs = [
+            _os.path.expandvars(r"%TEMP%"),
+            _os.path.expandvars(r"%SystemRoot%\Temp"),
+            _os.path.expandvars(r"%SystemRoot%\Prefetch"),
+        ]
+    else:
+        # Non-Windows: clean the user's temp directory.
+        import tempfile as _tempfile
+        target_dirs = [_tempfile.gettempdir()]
+
+    removed_count = 0
+    for target in target_dirs:
+        if not _os.path.isdir(target):
+            continue
+        try:
+            # Walk bottom-up so we can remove directories after their
+            # children are gone.
+            for root, dirs, _files in _os.walk(target, topdown=False):
+                # Skip the root directory itself — never delete it.
+                if _os.path.realpath(root) == _os.path.realpath(target):
+                    continue
+                for d in dirs:
+                    dir_path = _os.path.join(root, d)
+                    try:
+                        # Only remove if truly empty (no files, no subdirs).
+                        if not any(_os.scandir(dir_path)):
+                            _os.rmdir(dir_path)
+                            removed_count += 1
+                    except (OSError, PermissionError):
+                        pass
+        except (OSError, PermissionError):
+            pass
+
+    return removed_count
+
+
 def _run_auto_optimize(session_id: str, plan_id: str) -> None:
     """Background target that runs the full auto-optimization pipeline."""
     coord = get_coordinator()
@@ -1222,17 +1275,30 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 session = _auto_opt_sessions.get(session_id)
                 if session is None:
                     return
-                # Calculate actual progress: 10% (prepare) + 80% (execute) + 10% (verify)
-                # Execute phase maps from 10% to 90%
+                # V1.0: Progress maps execute phase from 10% to 90%.
+                # When all actions are completed, jump to 95% (verify takes
+                # the last 5%).  This ensures the progress bar matches the
+                # actual file count progress shown in the UI.
                 if total > 0:
                     exec_pct = (completed / total) * 80
                     overall_pct = 10 + int(exec_pct)
+                    if completed >= total:
+                        overall_pct = 95
                 else:
                     overall_pct = 10
                 session["execution_progress"] = completed
                 session["execution_total"] = total
                 session["current_file"] = current_path
                 session["overall_progress"] = overall_pct
+                # V1.0: Track live space recovered from info dict.
+                # The coordinator passes the file size in info["size"]
+                # for each completed action.
+                live_space = session.get("space_recovered", 0)
+                if isinstance(info, dict):
+                    size = info.get("size", 0)
+                    if isinstance(size, (int, float)) and size > 0:
+                        live_space += int(size)
+                session["space_recovered"] = live_space
                 # V1.0: Extract current category from rule_id for UI display
                 rule_id = info.get("rule_id", "") if isinstance(info, dict) else ""
                 current_cat = rule_id_to_category(rule_id) if rule_id else ""
@@ -1530,9 +1596,17 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
 
         # Phase 4: Verification
         if verified_cleaned > 0:
-            _update("verifying", f"Verifying {verified_cleaned} cleaned actions...")
+            _update("verifying", f"Verifying {verified_cleaned} cleaned actions...", overall_progress=97)
         else:
-            _update("verifying", "No actions to verify...")
+            _update("verifying", "No actions to verify...", overall_progress=97)
+
+        # V1.0: Post-cleanup — remove empty directories from cleanup
+        # target areas (temp, prefetch, etc.).  The rules only create
+        # delete_file actions for individual files; after all files are
+        # deleted, empty subdirectories remain.  This step walks the
+        # cleanup target directories and removes any empty folders so
+        # the user sees a fully clean directory, not just deleted files.
+        folders_cleaned += _remove_empty_cleanup_dirs()
 
         # The executor already verifies each action via preconditions
         # and after_state.  We surface the verification status from
@@ -1548,6 +1622,7 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
             "complete",
             "Optimization complete",
             completed=True,
+            overall_progress=100,
             result=result_dict,
             verification_status=verification_status,
         )
@@ -1620,6 +1695,7 @@ def _scan_core_dashboard_auto_optimize(params: Optional[dict[str, Any]]) -> dict
             "current_file": "",
             "current_category": "",
             "overall_progress": 0,
+            "space_recovered": 0,
         }
 
     # Start the background thread — get_coordinator() is called from

@@ -79,7 +79,7 @@ const PROFESSIONAL_FEATURES = [
 export const PRODUCT_CATALOG: readonly ProductCatalogEntry[] = [
   {
     productCode: PRODUCT_CODES.optimizer,
-    productName: 'AVS Shield Optimizer',
+    productName: 'AVS AI Shield: Security & System Intelligence',
     tagline: 'Professional Windows PC Optimization',
     description:
       'Clean junk files, fix registry errors, manage startup programs, and boost your PC performance. The complete Windows optimization suite.',

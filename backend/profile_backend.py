@@ -1,4 +1,4 @@
-"""Performance profiling script for AVS PC Optimizer backend.
+"""Performance profiling script for AVS AI Shield backend.
 
 Measures import time, RPC handler execution time, and identifies bottlenecks.
 Run: python profile_backend.py
@@ -291,7 +291,7 @@ def profile_thread_contention():
 
 def main():
     print("=" * 70)
-    print("AVS PC Optimizer — Backend Performance Profile")
+    print("AVS AI Shield — Backend Performance Profile")
     print("=" * 70)
     print(f"Python: {sys.version}")
     print(f"Platform: {sys.platform}")

@@ -558,7 +558,7 @@ describe('Safety', () => {
   });
 
   it('protected app patterns include AVS Shield', () => {
-    expect(isProtectedApp('AVS Shield Optimizer')).toBe(true);
+    expect(isProtectedApp('AVS AI Shield')).toBe(true);
   });
 
   it('protected app patterns include security software', () => {

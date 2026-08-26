@@ -212,6 +212,14 @@ class DefaultExecutor:
                             or target_dict.get("entry_id")
                             or action.action_id
                         )
+                        # V1.0: Include file size in progress info so the
+                        # UI can show live space recovered during cleaning.
+                        file_size = 0
+                        before_state = getattr(result, "before_state", None)
+                        if isinstance(before_state, dict):
+                            size_val = before_state.get("size", 0)
+                            if isinstance(size_val, (int, float)) and size_val > 0:
+                                file_size = int(size_val)
                         on_progress(
                             current_path,
                             idx + 1,
@@ -221,6 +229,7 @@ class DefaultExecutor:
                                 "action_type": action.action_type.value,
                                 "rule_id": getattr(action, "rule_id", ""),
                                 "status": result.status.value,
+                                "size": file_size if result.status.value == "completed" else 0,
                             },
                         )
                     except Exception:

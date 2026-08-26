@@ -2,7 +2,7 @@
   "name": "avs-suite",
   "version": "0.1.0",
   "private": true,
-  "description": "AVS Suite — monorepo hosting AVS PC Optimizer, Security, Driver Updater, File Recovery, and VPN products.",
+  "description": "AVS Suite — monorepo hosting AVS AI Shield: Security & System Intelligence, Security, Driver Updater, File Recovery, and VPN products.",
   "author": "AVS Software",
   "license": "UNLICENSED",
   "workspaces": [

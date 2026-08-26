@@ -1,4 +1,4 @@
-# AVS PC Optimizer — Known Limitations
+# AVS AI Shield: Security & System Intelligence — Known Limitations
 
 **Version 1.0.0** | Build 1001
 

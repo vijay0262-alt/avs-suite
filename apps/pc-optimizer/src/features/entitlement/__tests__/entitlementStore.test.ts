@@ -25,7 +25,7 @@ const PROVISION_CREATED = {
   entitlement: {
     uuid: 'ent-uuid-123',
     product_code: 'optimizer',
-    product_name: 'AVS Shield Optimizer',
+    product_name: 'AVS AI Shield',
     edition: 'FREE',
     status: 'ACTIVE',
     activation_type: 'LIFETIME',
@@ -40,7 +40,7 @@ const PROVISION_EXISTING = {
   entitlement: {
     uuid: 'ent-uuid-456',
     product_code: 'optimizer',
-    product_name: 'AVS Shield Optimizer',
+    product_name: 'AVS AI Shield',
     edition: 'PROFESSIONAL',
     status: 'ACTIVE',
     activation_type: 'SUBSCRIPTION',

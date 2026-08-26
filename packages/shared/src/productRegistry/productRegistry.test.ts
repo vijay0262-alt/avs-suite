@@ -41,7 +41,7 @@ describe('Product Registry', () => {
     registerBuiltinProducts();
     const product = getProduct(AVS_PC_OPTIMIZER);
     expect(product).toBeDefined();
-    expect(product?.productName).toBe('AVS Shield Optimizer');
+    expect(product?.productName).toBe('AVS AI Shield: Security & System Intelligence');
     expect(product?.active).toBe(true);
   });
 

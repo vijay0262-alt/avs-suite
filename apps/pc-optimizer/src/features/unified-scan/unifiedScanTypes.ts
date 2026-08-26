@@ -138,9 +138,14 @@ export interface UnifiedScanModuleConfig {
   /**
    * Maps backend scan_core phase IDs to frontend phase IDs.
    * Backend phases: initializing, discovery, evaluating, aggregating, prioritizing, planning.
-   * If not provided, the frontend will use the backend phase ID directly.
+   * If not provided, the frontend will derive the phase from completion_percent.
    */
   backendPhaseMap?: Record<string, string>;
+  /**
+   * Maps frontend counter IDs to backend ScanProgress field names.
+   * If not provided, counters will fall back to assets_evaluated.
+   */
+  backendCounterMap?: Record<string, string>;
 }
 
 // ── Scan State (used by the hook) ───────────────────────────────

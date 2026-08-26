@@ -1,6 +1,6 @@
 # End User License Agreement (EULA)
 
-**AVS PC Optimizer**  
+**AVS AI Shield: Security & System Intelligence**  
 **Effective Date:** 2026-07-23  
 **Version:** 1.0.0
 
@@ -8,7 +8,7 @@
 
 ## License Agreement
 
-This End User License Agreement ("EULA") is a legal agreement between you ("Licensee") and Advanced Vision Software LLC ("Licensor") for the use of AVS PC Optimizer ("Software"). By installing, copying, or otherwise using the Software, you agree to be bound by the terms of this EULA. If you do not agree, do not install or use the Software.
+This End User License Agreement ("EULA") is a legal agreement between you ("Licensee") and Advanced Vision Software LLC ("Licensor") for the use of AVS AI Shield: Security & System Intelligence ("Software"). By installing, copying, or otherwise using the Software, you agree to be bound by the terms of this EULA. If you do not agree, do not install or use the Software.
 
 ---
 

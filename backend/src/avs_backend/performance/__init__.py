@@ -240,7 +240,7 @@ _CRITICAL_PROCESSES = {
     "System", "System Idle Process", "Registry", "smss.exe", "csrss.exe",
     "wininit.exe", "services.exe", "lsass.exe", "svchost.exe", "winlogon.exe",
     "fontdrvhost.exe", "dwm.exe", "explorer.exe", "Taskmgr.exe",
-    "AVS Shield Optimizer.exe", "electron.exe", "node.exe",
+    "AVS AI Shield.exe", "electron.exe", "node.exe",
     "powershell.exe", "python.exe", "pwsh.exe",
 }
 

@@ -8,7 +8,7 @@
 import { COMPANY, URLS, CONTACT } from '../platformConfig';
 
 export const APP_METADATA = {
-  name: 'AVS Shield Optimizer',
+  name: 'AVS AI Shield: Security & System Intelligence',
   vendor: COMPANY.vendor,
   copyright: COMPANY.copyright,
   supportEmail: CONTACT.supportEmail,

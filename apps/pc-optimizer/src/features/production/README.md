@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Production Readiness Framework provides enterprise-grade stability, diagnostics, and resilience for AVS PC Optimizer. It consists of 14 parts covering error handling, module isolation, logging, diagnostics, startup validation, performance monitoring, background tasks, resource management, configuration, retry logic, user messages, health checks, safe shutdown, and telemetry readiness.
+The Production Readiness Framework provides enterprise-grade stability, diagnostics, and resilience for AVS AI Shield: Security & System Intelligence. It consists of 14 parts covering error handling, module isolation, logging, diagnostics, startup validation, performance monitoring, background tasks, resource management, configuration, retry logic, user messages, health checks, safe shutdown, and telemetry readiness.
 
 ## Architecture
 

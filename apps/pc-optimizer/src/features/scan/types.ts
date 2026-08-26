@@ -199,6 +199,7 @@ export interface AutoOptimizeResult {
   failed?: number;
   health_before?: number;
   health_after?: number;
+  verification_status?: string;
 
   // ── Internal diagnostics (NOT shown to Dashboard user) ──────────
   _diagnostics?: {
@@ -249,6 +250,7 @@ export interface AutoOptimizeStatus {
   execution_total?: number;
   current_file?: string;
   overall_progress?: number;
+  space_recovered?: number;
 }
 
 export interface AutoOptimizeStartResponse {

@@ -556,7 +556,7 @@ describe('Diagnostics Service (Part 4)', () => {
 
   it('getSummary returns readable summary string', async () => {
     const summary = await diagnosticsReportService.getSummary();
-    expect(summary).toContain('AVS PC Optimizer');
+    expect(summary).toContain('AVS AI Shield');
     expect(summary).toContain('Edition:');
     expect(summary).toContain('Modules:');
     expect(summary).toContain('Health Score:');

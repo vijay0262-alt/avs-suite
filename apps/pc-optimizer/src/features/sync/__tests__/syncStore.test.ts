@@ -49,7 +49,7 @@ function createMockSyncResponse(plan: string = 'FREE'): SyncResponse {
       last_refreshed_at: null,
       signature: 'sig',
       product_code: 'optimizer',
-      product_name: 'AVS PC Optimizer',
+      product_name: 'AVS AI Shield',
     } : null,
     features: plan === 'PROFESSIONAL' ? ['JUNK_CLEANER', 'REGISTRY_CLEANER', 'STARTUP_MANAGER'] : ['JUNK_CLEANER'],
     devices: [],

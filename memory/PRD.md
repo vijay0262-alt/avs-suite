@@ -6,7 +6,7 @@
 
 ## Original problem statement
 
-Build **AVS PC Optimizer**, a commercial Windows desktop application
+Build **AVS AI Shield: Security & System Intelligence**, a commercial Windows desktop application
 organised as **`avs-suite`** — a scalable monorepo that will host sibling
 products (Security, Driver Updater, File Recovery, VPN). Everything must
 follow Clean Architecture, SOLID, MVVM, be plugin-ready, edition-aware

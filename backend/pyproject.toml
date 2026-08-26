@@ -1,7 +1,7 @@
 [project]
 name = "avs-backend"
 version = "0.1.0"
-description = "AVS PC Optimizer — Python backend (JSON-RPC over stdio)"
+description = "AVS AI Shield — Python backend (JSON-RPC over stdio)"
 requires-python = ">=3.12"
 license = { text = "Proprietary" }
 

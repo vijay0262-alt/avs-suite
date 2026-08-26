@@ -1,6 +1,6 @@
 # Terms of Service
 
-**AVS PC Optimizer**  
+**AVS AI Shield: Security & System Intelligence**  
 **Effective Date:** 2026-07-23  
 **Version:** 1.0.0
 
@@ -8,7 +8,7 @@
 
 ## 1. Acceptance of Terms
 
-By installing and using AVS PC Optimizer ("the Software"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not install or use the Software.
+By installing and using AVS AI Shield: Security & System Intelligence ("the Software"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not install or use the Software.
 
 ## 2. License Grant
 

@@ -65,7 +65,7 @@ export default function StartupPage() {
         if (msg === 'Already Disabled') {
           await vm.loadEntries();
         } else if (isPermissionError(msg)) {
-          if (confirm(`${msg}\n\nWould you like to restart AVS PC Optimizer as administrator?`)) {
+          if (confirm(`${msg}\n\nWould you like to restart AVS AI Shield as administrator?`)) {
             const w = window as unknown as { avs?: { app?: { relaunchAsAdmin?: () => Promise<unknown> } } };
             await w.avs?.app?.relaunchAsAdmin?.();
           }
@@ -76,7 +76,7 @@ export default function StartupPage() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to disable entry';
       if (isPermissionError(msg)) {
-        if (confirm(`${msg}\n\nWould you like to restart AVS PC Optimizer as administrator?`)) {
+        if (confirm(`${msg}\n\nWould you like to restart AVS AI Shield as administrator?`)) {
           const w = window as unknown as { avs?: { app?: { relaunchAsAdmin?: () => Promise<unknown> } } };
           await w.avs?.app?.relaunchAsAdmin?.();
         }
@@ -92,7 +92,7 @@ export default function StartupPage() {
       if (!result.success) {
         const msg = result.message || 'Failed to enable entry';
         if (isPermissionError(msg)) {
-          if (confirm(`${msg}\n\nWould you like to restart AVS PC Optimizer as administrator?`)) {
+          if (confirm(`${msg}\n\nWould you like to restart AVS AI Shield as administrator?`)) {
             const w = window as unknown as { avs?: { app?: { relaunchAsAdmin?: () => Promise<unknown> } } };
             await w.avs?.app?.relaunchAsAdmin?.();
           }
@@ -103,7 +103,7 @@ export default function StartupPage() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to enable entry';
       if (isPermissionError(msg)) {
-        if (confirm(`${msg}\n\nWould you like to restart AVS PC Optimizer as administrator?`)) {
+        if (confirm(`${msg}\n\nWould you like to restart AVS AI Shield as administrator?`)) {
           const w = window as unknown as { avs?: { app?: { relaunchAsAdmin?: () => Promise<unknown> } } };
           await w.avs?.app?.relaunchAsAdmin?.();
         }

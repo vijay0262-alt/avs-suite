@@ -250,7 +250,7 @@ class DiagnosticsServiceImpl {
   async getSummary(): Promise<string> {
     const report = await this.generateReport();
     const lines = [
-      `AVS PC Optimizer v${report.application.version} (Build ${report.application.buildNumber})`,
+      `AVS AI Shield v${report.application.version} (Build ${report.application.buildNumber})`,
       `Edition: ${report.license.edition}`,
       `Platform: ${report.system.platform}`,
       `Modules: ${report.modules.loaded} loaded, ${report.modules.lazy} lazy, ${report.modules.inError} in error`,

@@ -1,13 +1,13 @@
 # Open Source Licenses & Third-Party Acknowledgements
 
-**AVS PC Optimizer**  
+**AVS AI Shield: Security & System Intelligence**  
 **Version:** 1.0.0
 
 ---
 
 ## Open Source Components
 
-AVS PC Optimizer incorporates the following open source software. We gratefully acknowledge the contributions of these projects and their authors.
+AVS AI Shield: Security & System Intelligence incorporates the following open source software. We gratefully acknowledge the contributions of these projects and their authors.
 
 ### Frontend
 
@@ -97,7 +97,7 @@ See https://docs.python.org/3/license.html for full text.
 
 ## Trademarks
 
-AVS PC Optimizer and the AVS logo are trademarks of Advanced Vision Software LLC. All other trademarks are the property of their respective owners.
+AVS AI Shield: Security & System Intelligence and the AVS logo are trademarks of Advanced Vision Software LLC. All other trademarks are the property of their respective owners.
 
 ---
 

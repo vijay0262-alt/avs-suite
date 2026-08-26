@@ -742,10 +742,10 @@ class KnownLocations:
             r"%ProgramFiles(x86)%",
             # AVS Shield installation directories
             r"%ProgramFiles%\AVS Shield",
-            r"%ProgramFiles%\AVS Shield Optimizer",
+            r"%ProgramFiles%\AVS AI Shield",
             r"%ProgramFiles(x86)%\AVS Shield",
-            r"%ProgramFiles(x86)%\AVS Shield Optimizer",
-            r"%LOCALAPPDATA%\Programs\AVS Shield Optimizer",
+            r"%ProgramFiles(x86)%\AVS AI Shield",
+            r"%LOCALAPPDATA%\Programs\AVS AI Shield",
             # User personal data
             r"%USERPROFILE%\Documents",
             r"%USERPROFILE%\Desktop",

@@ -22,6 +22,7 @@ import {
 import type { AutoOptimizePhase } from './types';
 import { useAutoOptimize } from './useAutoOptimize';
 import { optimizationEventBus, OptimizationEventType } from '../health/OptimizationEventBus';
+import { unifiedScanState } from './unifiedScanState';
 
 export interface AutoOptimizeViewProps {
   planId: string;
@@ -109,6 +110,9 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
 
   // When optimization completes, emit a CleaningCompleted event so the
   // Dashboard recalculates the health score from fresh metrics.
+  // Also update unifiedScanState with the cleanup result so that
+  // useDashboardScan (used by Dashboard and Smart Optimize) reflects
+  // the actual recovered space, items cleaned, and completion time.
   useEffect(() => {
     if (autoOpt.phase === 'complete' && autoOpt.result) {
       optimizationEventBus.emit({
@@ -118,6 +122,23 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
         bytesRecovered: autoOpt.result.space_recovered,
         itemsProcessed: autoOpt.result.files_cleaned ?? autoOpt.result.cleaned ?? 0,
         timestamp: Date.now(),
+      });
+      // V1.0: Update unifiedScanState with cleanup result so all
+      // dashboard cards and Smart Optimize cards sync with actual data.
+      unifiedScanState.updateLatest({
+        remediationStatus: 'completed',
+        cleanupResult: {
+          detected: autoOpt.result.files_found ?? autoOpt.result.detected ?? 0,
+          cleaned: autoOpt.result.files_cleaned ?? autoOpt.result.cleaned ?? 0,
+          foldersCleaned: autoOpt.result.folders_cleaned ?? 0,
+          remaining: autoOpt.result.remaining ?? 0,
+          failed: autoOpt.result.failed ?? 0,
+          reviewRequired: autoOpt.result.requires_review ?? 0,
+          spaceRecovered: autoOpt.result.space_recovered ?? 0,
+          healthBefore: autoOpt.result.health_before,
+          healthAfter: autoOpt.result.health_after,
+          verificationStatus: autoOpt.result.verification_status,
+        },
       });
     }
   }, [autoOpt.phase, autoOpt.result]);
@@ -135,9 +156,9 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
   const phaseAlreadyClean = isSecurity ? 'Your PC is secure' : 'Your PC is already clean';
   const phaseAlreadyCleanDesc = isSecurity ? 'No threats required cleanup.' : 'Nothing required cleanup.';
 
-  // Use actual progress from backend when available (during execution phase)
+  // Use actual progress from backend when available (during execution and verifying phases)
   // Otherwise fall back to phase-based progress
-  const progress = autoOpt.phase === 'executing' && autoOpt.overallProgress > 0
+  const progress = (autoOpt.phase === 'executing' || autoOpt.phase === 'verifying') && autoOpt.overallProgress > 0
     ? autoOpt.overallProgress
     : PHASE_PROGRESS[autoOpt.phase] ?? 0;
   // V1.0: Map internal phases to user-friendly labels.
@@ -269,7 +290,7 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
             </div>
             <div className="rounded-[var(--avs-radius-md)] bg-surface-secondary/50 p-4 text-center">
               <div className="text-2xl font-bold text-brand-primary tabular-nums">
-                {formatBytes(0)}
+                {formatBytes(autoOpt.spaceRecovered)}
               </div>
               <div className="text-caption text-text-muted">Space Recovered</div>
             </div>

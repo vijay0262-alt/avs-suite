@@ -54,6 +54,19 @@ export interface AppScanSession {
   execution?: RemediationExecution;
   rollbackSummary?: RollbackSummary;
   error: string | null;
+  /** V1.0: Cleanup result from auto-optimize, used by dashboard cards. */
+  cleanupResult?: {
+    detected: number;
+    cleaned: number;
+    foldersCleaned: number;
+    remaining: number;
+    failed: number;
+    reviewRequired: number;
+    spaceRecovered: number;
+    healthBefore?: number;
+    healthAfter?: number;
+    verificationStatus?: string;
+  } | null;
 }
 
 export type AppScanSessionUpdate = Partial<AppScanSession>;

@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**AVS PC Optimizer**  
+**AVS AI Shield: Security & System Intelligence**  
 **Effective Date:** 2026-07-23  
 **Version:** 1.0.0
 
@@ -8,7 +8,7 @@
 
 ## Overview
 
-Advanced Vision Software LLC ("we", "us", "our") respects your privacy. This Privacy Policy describes how AVS PC Optimizer ("the application") handles your data.
+Advanced Vision Software LLC ("we", "us", "our") respects your privacy. This Privacy Policy describes how AVS AI Shield: Security & System Intelligence ("the application") handles your data.
 
 ## Information We Collect
 
@@ -30,7 +30,7 @@ Advanced Vision Software LLC ("we", "us", "our") respects your privacy. This Pri
 
 All data is stored locally on your device in:
 - `%APPDATA%\@avs\pc-optimizer\` — Application data, logs, settings
-- `%LOCALAPPDATA%\Programs\AVS PC Optimizer\` — Application installation
+- `%LOCALAPPDATA%\Programs\AVS AI Shield: Security & System Intelligence\` — Application installation
 
 ## Data Usage
 
