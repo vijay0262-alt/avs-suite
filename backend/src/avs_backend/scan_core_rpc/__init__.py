@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 import threading
+import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -103,22 +105,54 @@ def get_coordinator() -> Optional[RemediationCoordinator]:
 
 
 _scan_orchestrator_initializing = False
+_scan_orchestrator_init_failed = False
 
 
-def get_scan_orchestrator() -> Optional[ScanOrchestrator]:
-    """Return the module-level ScanOrchestrator singleton, or None on failure."""
-    global _scan_orchestrator, _scan_orchestrator_initializing
+def get_scan_orchestrator(wait_for_ready: bool = False, timeout_s: float = 90.0) -> Optional[ScanOrchestrator]:
+    """Return the module-level ScanOrchestrator singleton, or None on failure.
+
+    Args:
+        wait_for_ready: If True, block until initialization completes (or
+            timeout expires) instead of returning None immediately.  This
+            lets RPC callers like ``scan_core.scan.quick`` wait for the
+            scanner to be ready without requiring the user to click again.
+        timeout_s: Maximum seconds to wait when ``wait_for_ready`` is True.
+    """
+    global _scan_orchestrator, _scan_orchestrator_initializing, _scan_orchestrator_init_failed
     if _scan_orchestrator is not None:
         return _scan_orchestrator
+
+    # If initialization already failed, don't retry — return None so the
+    # caller shows a real error.  The user can restart the app to retry.
+    if _scan_orchestrator_init_failed:
+        return None
 
     with _scan_orchestrator_lock:
         if _scan_orchestrator is not None:
             return _scan_orchestrator
-        # If the eager-init thread is already initializing, don't block —
-        # return None so RPC callers get a graceful "not ready" response
-        # instead of timing out waiting for the lock.
         if _scan_orchestrator_initializing:
-            return None
+            # Another thread is already initializing.  If the caller asked
+            # us to wait, poll until it's done (or timeout).  Otherwise
+            # return None immediately for non-blocking callers.
+            if not wait_for_ready:
+                return None
+            deadline = time.monotonic() + timeout_s
+            while _scan_orchestrator_initializing and _scan_orchestrator is None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    logger.warning("get_scan_orchestrator: timed out after %.1fs waiting for initialization", timeout_s)
+                    return None
+                _scan_orchestrator_lock.release()
+                time.sleep(min(0.5, remaining))
+                _scan_orchestrator_lock.acquire()
+            # After waiting, check again
+            if _scan_orchestrator is not None:
+                return _scan_orchestrator
+            if _scan_orchestrator_init_failed:
+                return None
+            # If still not initializing and not failed, we can try to init
+            if _scan_orchestrator_initializing:
+                return None
         _scan_orchestrator_initializing = True
 
     # Run initialization outside the lock so other callers don't block.
@@ -157,6 +191,8 @@ def get_scan_orchestrator() -> Optional[ScanOrchestrator]:
             return _scan_orchestrator
     except Exception as exc:
         logger.exception("Failed to initialize ScanOrchestrator: %s", exc)
+        with _scan_orchestrator_lock:
+            _scan_orchestrator_init_failed = True
         return None
     finally:
         with _scan_orchestrator_lock:
@@ -490,14 +526,23 @@ def _run_scan(scan_id: str, scan_type: str, scope: Optional[list[str]]) -> None:
 
 
 def _start_scan(scan_type: str, params: dict[str, Any]) -> dict[str, Any]:
-    """Start a quick or full scan in a background thread."""
+    """Start a quick or full scan in a background thread.
+
+    V1.0: Waits for the scan orchestrator to be ready (up to 90s) instead
+    of returning "still initializing" on the first click.  This eliminates
+    the "AVS is preparing the scanner" error that required multiple clicks.
+    """
     ok, scope, error = _validate_scope(params)
     if not ok:
         return {"ok": False, "error": error}
 
-    orchestrator = get_scan_orchestrator()
+    # Wait for the orchestrator to be ready instead of failing immediately.
+    # The eager-init thread starts at import time, so this usually returns
+    # instantly.  On first run (cold start), this may block for 30-60s
+    # while the database schema is created.
+    orchestrator = get_scan_orchestrator(wait_for_ready=True, timeout_s=90.0)
     if orchestrator is None:
-        return {"ok": False, "error": "Scan engine is still initializing. Please try again in a moment."}
+        return {"ok": False, "error": "Scan engine failed to initialize. Please restart the application."}
 
     scan_id = str(uuid.uuid4())
     started_at = datetime.now(UTC).isoformat()
@@ -1328,6 +1373,107 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
             )
         )
 
+        # V1.0: Recycle Bin cleanup via SHEmptyRecycleBin API.
+        # The Recycle Bin is NOT scanned via filesystem enumeration (files
+        # belong to user SIDs and may be inaccessible).  Instead, we call
+        # the Windows SHEmptyRecycleBin API which handles all SIDs and
+        # internal metadata correctly.  This runs AFTER the file-based
+        # execution so that file deletions are not affected.
+        recycle_bin_cleaned = 0
+        recycle_bin_bytes = 0
+        recycle_bin_failed = 0
+        if sys.platform == "win32":
+            try:
+                from avs_backend.scan_core.execution.recycle_bin_executor import (
+                    RecycleBinExecutor,
+                )
+                from avs_backend.scan_core.rules.detection.locations import KnownLocations
+
+                # Measure Recycle Bin size before cleanup
+                rb_roots = KnownLocations.get_recycle_bin_roots()
+                rb_bytes_before = 0
+                rb_files_before = 0
+                for root in rb_roots:
+                    if root.exists():
+                        for f in root.rglob("*"):
+                            if f.is_file():
+                                try:
+                                    rb_bytes_before += f.stat().st_size
+                                    rb_files_before += 1
+                                except (OSError, PermissionError):
+                                    pass
+
+                if rb_files_before > 0:
+                    # Empty Recycle Bin on all local fixed drives
+                    import ctypes
+                    bitmask = ctypes.windll.kernel32.GetLogicalDrives()
+                    system_drive = os.environ.get("SystemDrive", "C:")
+                    for i in range(26):
+                        if bitmask & (1 << i):
+                            drive = f"{chr(65 + i)}:"
+                            try:
+                                GetDriveType = ctypes.windll.kernel32.GetDriveTypeW
+                                if GetDriveType(f"{drive}\\") == 3:  # DRIVE_FIXED
+                                    result_code = RecycleBinExecutor._empty_recycle_bin(f"{drive}\\")
+                                    logger.info(
+                                        "SHEmptyRecycleBin('%s\\') returned %d",
+                                        drive,
+                                        result_code,
+                                    )
+                            except Exception as exc:
+                                logger.warning("Recycle Bin cleanup error for drive %s: %s", drive, exc)
+
+                    # Measure Recycle Bin size after cleanup
+                    rb_bytes_after = 0
+                    rb_files_after = 0
+                    for root in rb_roots:
+                        if root.exists():
+                            for f in root.rglob("*"):
+                                if f.is_file():
+                                    try:
+                                        rb_bytes_after += f.stat().st_size
+                                        rb_files_after += 1
+                                    except (OSError, PermissionError):
+                                        pass
+
+                    recycle_bin_cleaned = max(0, rb_files_before - rb_files_after)
+                    recycle_bin_bytes = max(0, rb_bytes_before - rb_bytes_after)
+
+                    # Add to category stats
+                    rb_cat = "Recycle Bin"
+                    if rb_cat not in sorted_categories:
+                        sorted_categories[rb_cat] = {
+                            "files_found": rb_files_before,
+                            "files_cleaned": recycle_bin_cleaned,
+                            "space_recovered": recycle_bin_bytes,
+                        }
+                    else:
+                        sorted_categories[rb_cat]["files_found"] += rb_files_before
+                        sorted_categories[rb_cat]["files_cleaned"] += recycle_bin_cleaned
+                        sorted_categories[rb_cat]["space_recovered"] += recycle_bin_bytes
+
+                    # Re-sort with the new category
+                    sorted_categories = dict(
+                        sorted(
+                            sorted_categories.items(),
+                            key=lambda x: category_order_index(x[0]),
+                        )
+                    )
+
+                    logger.info(
+                        "Recycle Bin cleanup: %d files cleaned, %d bytes recovered",
+                        recycle_bin_cleaned,
+                        recycle_bin_bytes,
+                    )
+            except Exception as exc:
+                logger.warning("Recycle Bin cleanup failed: %s", exc)
+                recycle_bin_failed = 1
+
+        # Add Recycle Bin results to totals
+        recycle_bin_found = recycle_bin_cleaned + (rb_files_after if rb_files_before > 0 else 0)
+        verified_cleaned += recycle_bin_cleaned
+        space_recovered += recycle_bin_bytes
+
         # V1.0: Deterministic cleanup-based health score AFTER optimization.
         # Based on remaining cleanable items, not fluctuating system metrics.
         # remaining = detected - cleaned - failed (items still present and
@@ -1342,7 +1488,7 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         # confirms the file no longer exists on the filesystem).
         result_dict = {
             # ── User-facing fields ──────────────────────────────────────
-            "files_found": safe_count,
+            "files_found": safe_count + recycle_bin_found,
             "files_cleaned": verified_cleaned,
             "folders_found": folders_found,
             "folders_cleaned": folders_cleaned,
@@ -1350,10 +1496,10 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
             # ── Per-category breakdown (Disk Cleanup style) ─────────────
             "categories": sorted_categories,
             # ── Legacy compat (kept for any old callers, NOT shown) ─────
-            "detected": safe_count,
+            "detected": safe_count + recycle_bin_found,
             "cleaned": verified_cleaned,
-            "remaining": max(0, safe_count - verified_cleaned - summary.failed),
-            "failed": summary.failed,
+            "remaining": max(0, safe_count + recycle_bin_found - verified_cleaned - summary.failed),
+            "failed": summary.failed + recycle_bin_failed,
             "health_before": health_before,
             "health_after": health_after,
             # ── Internal diagnostics (NOT shown to Dashboard user) ──────

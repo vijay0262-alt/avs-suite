@@ -827,14 +827,17 @@ class TestNoUnsafeRemediation:
         assert safety.is_blocked
         assert not safety.is_safe
 
-    def test_mei_directory_not_safe(self):
-        """_mei* directory files must be REVIEW_REQUIRED, not SAFE."""
+    def test_mei_directory_safe(self):
+        """_mei* directory files should be SAFE (not blanket-excluded).
+
+        Stale _mei* directories from crashed processes are deletable.
+        The lock check and execution phase handle actually-locked files.
+        """
         path = r"C:\Users\HPBP\AppData\Local\Temp\_mei0000069c2\vcruntime140_1.dll"
         asset = _make_asset(path)
         snapshot = _make_snapshot(asset)
         safety = SafetyPolicy.assess(asset=asset, snapshot=snapshot)
-        assert safety.requires_review, "_mei* files must be REVIEW_REQUIRED"
-        assert not safety.is_safe, "_mei* files must NOT be SAFE"
+        assert safety.is_safe, "_mei* files should be SAFE (lock check handles in-use files)"
 
     def test_protected_file_not_safe(self):
         """Protected files (pagefile.sys etc.) must be BLOCKED."""

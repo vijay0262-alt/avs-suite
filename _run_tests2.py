@@ -8,6 +8,7 @@ result = subprocess.run(
      "tests/test_sc8c4_phase_c_actionability.py",
      "tests/test_sc8c4_phase_a_safety_hardening.py",
      "tests/test_quick_scan_scope.py",
+     "tests/test_v1_scan_workflow_fix.py",
      "--tb=short", "-q"],
     capture_output=True, text=True, timeout=300
 )

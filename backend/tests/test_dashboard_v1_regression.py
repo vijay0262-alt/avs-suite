@@ -629,14 +629,20 @@ class TestBrowserCacheInvalidation:
 class TestDashboardEligibilityFilter:
     """Tests that the V1.0 Dashboard filter excludes non-safe findings."""
 
-    def test_mei_directory_excluded(self):
-        """Files in _mei* PyInstaller temp directories must be REVIEW_REQUIRED."""
+    def test_mei_directory_not_blanket_excluded(self):
+        """Files in _mei* PyInstaller temp directories are NOT blanket-excluded.
+
+        Stale _mei* directories from crashed/exited processes contain
+        deletable files. The safety policy should classify them as SAFE
+        and let the execution phase handle actual deletion failures
+        (CCleaner-like behavior). Locked files from running processes
+        will be caught by the lock check or fail during execution.
+        """
         path = r"C:\Users\HPBP\AppData\Local\Temp\_mei0000069c2\vcruntime140_1.dll"
         asset = _make_asset(path)
         snapshot = _make_snapshot(asset, locked=False, exists=True)
         safety = SafetyPolicy.assess(asset=asset, snapshot=snapshot)
-        assert safety.requires_review, "_mei* files must be REVIEW_REQUIRED"
-        assert not safety.is_safe, "_mei* files must NOT be SAFE"
+        assert safety.is_safe, "_mei* files should be SAFE (lock check handles in-use files)"
 
     def test_mei_directory_with_normal_path_not_affected(self):
         """Files with '_mei' in the name but not in a _mei* directory are OK."""
@@ -645,11 +651,11 @@ class TestDashboardEligibilityFilter:
         asset = _make_asset(path)
         snapshot = _make_snapshot(asset, locked=False, exists=True)
         safety = SafetyPolicy.assess(asset=asset, snapshot=snapshot)
-        # Should be SAFE (not in a _mei* directory)
+        # Should be SAFE
         assert safety.is_safe, "Files not in _mei* directories should not be affected"
 
     def test_safe_temp_file_is_safe(self):
-        """A normal temp file (not locked, not in _mei*) must be SAFE."""
+        """A normal temp file (not locked) must be SAFE."""
         path = r"C:\Users\HPBP\AppData\Local\Temp\safe_temp_file.tmp"
         asset = _make_asset(path)
         snapshot = _make_snapshot(asset, locked=False, exists=True)

@@ -30,9 +30,12 @@ export interface ScanViewProps {
   buttonLabel?: string;
   /** Auto-start the scan immediately on mount (V1.0 Dashboard). */
   autoStart?: boolean;
+  /** V1.0: When set, show the previous scan's results (PlanReviewView)
+   * instead of starting a new scan. Used by "Review Findings" button. */
+  reviewPlanId?: string | null;
 }
 
-export function ScanView({ module, mode = 'full', onClose, className, buttonLabel, autoStart }: ScanViewProps) {
+export function ScanView({ module, mode = 'full', onClose, className, buttonLabel, autoStart, reviewPlanId }: ScanViewProps) {
   const config = useMemo(() => getScanConfig(module), [module]);
   const scan = useScan({ mode, config });
   const [showResults, setShowResults] = useState(false);
@@ -44,6 +47,12 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
     onClose();
   }, [setSearchParams, onClose]);
 
+  // V1.0: "Review Findings" — show previous scan results without starting
+  // a new scan. Takes priority over autoStart and URL planIdParam.
+  const reviewClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
   // V1.0 UNIFIED: auto-start scan on mount when autoStart is set.
   useEffect(() => {
     if (autoStart && scan.step === 'idle' && !scan.sessionId) {
@@ -54,10 +63,11 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
 
   // V1.0 UNIFIED: ALL modules auto-start optimization when scan completes.
   // No more manual "Review & Remediate" — scan → detect → clean → results.
+  // If there are zero findings or zero safe actions, auto-optimize still
+  // runs so the user sees a "PC is clean" result instead of a blank state.
   const shouldAutoOptimize =
     scan.step === 'complete' &&
     Boolean(scan.report?.planId) &&
-    (scan.report?.issuesFound ?? 0) > 0 &&
     !showResults &&
     !showAutoOptimize;
 
@@ -114,6 +124,19 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
 
   const planId = scan.report?.planId ?? (scan.result?.action_plan_id as string | undefined);
 
+  // V1.0: "Review Findings" — show previous scan results (PlanReviewView).
+  // This takes priority over autoStart so clicking "Review Findings" does
+  // NOT start a new scan — it shows the findings from the last scan.
+  if (reviewPlanId) {
+    return (
+      <PlanReviewView
+        planId={reviewPlanId}
+        module={module}
+        onClose={reviewClose}
+      />
+    );
+  }
+
   if (planIdParam) {
     return (
       <PlanReviewView
@@ -124,7 +147,9 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
     );
   }
 
-  // V1.0 UNIFIED: Auto-optimization view for ALL modules
+  // V1.0 UNIFIED: Auto-optimization view for ALL modules.
+  // If planId is null (zero cleanable files), show results directly
+  // instead of failing with "No Plan Defined".
   if (showAutoOptimize && planId) {
     return (
       <AutoOptimizeView
@@ -134,6 +159,26 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
         onReviewRequired={(_pid) => {
           setShowAutoOptimize(false);
           setShowResults(true);
+        }}
+      />
+    );
+  }
+
+  // V1.0: Scan completed but no plan was created (zero findings or
+  // zero safe actions).  Show results directly — this is NOT an error.
+  if (showAutoOptimize && !planId) {
+    return (
+      <ResultsView
+        moduleName={config.moduleName}
+        moduleIcon={config.moduleIcon}
+        statistics={statistics}
+        findings={findings}
+        planId={undefined}
+        onClose={autoOptimizeClose}
+        onRestart={() => {
+          setShowAutoOptimize(false);
+          scan.reset();
+          void scan.startScan();
         }}
       />
     );

@@ -118,6 +118,9 @@ export default function DashboardPage() {
   const state = useViewModel(vm);
   const { snapshot } = useDashboardScan();
   const [scanModalOpen, setScanModalOpen] = useState(false);
+  // V1.0: When set, the modal shows previous scan results (Review Findings)
+  // instead of auto-starting a new scan. null = start a new scan.
+  const [reviewPlanId, setReviewPlanId] = useState<string | null>(null);
 
   useEffect(() => {
     void vm.bootstrap();
@@ -296,9 +299,7 @@ export default function DashboardPage() {
                     <div className="text-caption text-text-muted uppercase tracking-wide">Scan Status</div>
                     <div className="text-section-title font-semibold text-semantic-danger">Scan could not be completed</div>
                     <div className="mt-1 text-small text-text-secondary">
-                      {snapshot.error?.includes('initializing') 
-                        ? 'AVS is preparing the scanner. Please try again in a moment.'
-                        : snapshot.error || 'An error occurred during the scan.'}
+                      {snapshot.error || 'An error occurred during the scan.'}
                     </div>
                   </>
                 ) : (
@@ -318,7 +319,10 @@ export default function DashboardPage() {
               <div className="shrink-0">
                 {isScanning ? (
                   <Button
-                    onClick={() => setScanModalOpen(true)}
+                    onClick={() => {
+                      setReviewPlanId(null);
+                      setScanModalOpen(true);
+                    }}
                     size="lg"
                     variant="secondary"
                     leftIcon={<ArrowPathIcon className="h-5 w-5 animate-spin" />}
@@ -328,7 +332,10 @@ export default function DashboardPage() {
                   </Button>
                 ) : (
                   <Button
-                    onClick={() => setScanModalOpen(true)}
+                    onClick={() => {
+                      setReviewPlanId(null);
+                      setScanModalOpen(true);
+                    }}
                     disabled={isScanning}
                     size="lg"
                     leftIcon={<BoltIcon className="h-5 w-5" />}
@@ -407,7 +414,18 @@ export default function DashboardPage() {
       {/* ── SECONDARY ACTION: REMOVED — V1.0 Dashboard uses single Scan Now → Clean → Results modal ── */}
 
       {/* Latest unified scan/remediation status from scan_core */}
-      <DashboardScanStatusCard onOpenScan={() => setScanModalOpen(true)} />
+      <DashboardScanStatusCard
+        onOpenScan={() => {
+          // V1.0: If the previous scan has reviewable findings, show them.
+          // Otherwise, start a new scan.
+          if (snapshot.canReview && snapshot.planId) {
+            setReviewPlanId(snapshot.planId);
+          } else {
+            setReviewPlanId(null);
+          }
+          setScanModalOpen(true);
+        }}
+      />
 
       {/* ── COLLAPSIBLE SECONDARY CONTENT (2 panels) ─────────────── */}
 
@@ -526,9 +544,13 @@ export default function DashboardPage() {
         <ScanView
           module="optimize"
           mode="quick"
-          onClose={() => setScanModalOpen(false)}
+          onClose={() => {
+            setScanModalOpen(false);
+            setReviewPlanId(null);
+          }}
           buttonLabel="Scan Now"
-          autoStart
+          autoStart={!reviewPlanId}
+          reviewPlanId={reviewPlanId}
         />
       </Modal>
 

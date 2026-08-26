@@ -70,25 +70,6 @@ class SafetyPolicy:
                 blockers=[SafetyBlocker.SYSTEM_CRITICAL],
             )
 
-        # 1b. PyInstaller _mei* temp directories — REVIEW_REQUIRED
-        # These directories contain loaded DLLs/.pyd files for running
-        # PyInstaller-packaged processes. The files pass the CreateFileW
-        # DELETE check but os.remove() fails with WinError 5 because
-        # Windows prevents deletion of loaded modules.
-        # PyInstaller cleans these up automatically when the process exits.
-        path_lower = asset.canonical_path.lower().replace("/", "\\")
-        if "\\_mei" in path_lower:
-            import re
-            # Match _mei followed by hex chars (PyInstaller temp dir pattern)
-            if re.search(r"\\_mei[0-9a-f]+\\", path_lower):
-                return SafetyAssessment.create_review_required(
-                    reason=(
-                        "File is in a PyInstaller temporary extraction "
-                        "directory for a running process — cannot delete "
-                        "loaded module files"
-                    ),
-                )
-
         # 2. Missing asset — not actionable
         if snapshot and not snapshot.exists:
             return SafetyAssessment.create_review_required(

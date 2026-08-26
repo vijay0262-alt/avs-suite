@@ -710,4 +710,184 @@ describe('ScanView', () => {
 
 
   });
+
+  // ── V1.0 Critical Four-Scan Workflow Fix regression tests ───────────
+
+  describe('V1.0 Critical Scan Workflow Fix', () => {
+    it('scan with zero cleanable files completes successfully (no "No Plan Defined")', async () => {
+      // Simulate a scan that finds zero issues and has no plan_id.
+      // The scan should complete successfully, NOT show "No Plan Defined".
+      mockResult = {
+        ok: true,
+        result: {
+          scan_id: 'test-session-clean',
+          findings_count: 0,
+          action_plan_id: null,
+          elapsed_time_ms: 0,
+          statistics: {
+            assets_discovered: 0,
+            assets_evaluated: 0,
+            matches: 0,
+            rules_evaluated: 0,
+          },
+        },
+      };
+
+      render(<ScanView module="optimize" mode="quick" onClose={() => {}} />);
+      fireEvent.click(screen.getByTestId('scan-start-btn'));
+
+      currentStatus = {
+        ...currentStatus,
+        completed: true,
+        progress: { ...currentStatus.progress, completion_percent: 100 },
+      };
+
+      // The scan should complete without showing an error.
+      // It should NOT display "No Plan Defined" or any failure state.
+      await waitFor(
+        () => {
+          const completeView = screen.queryByTestId('unified-scan-view-complete');
+          const resultsView = screen.queryByTestId('results-view');
+          const autoOptView = screen.queryByTestId('auto-optimize-complete') ||
+                             screen.queryByTestId('auto-optimize-loading');
+          // One of these success states should be present
+          expect(completeView || resultsView || autoOptView).not.toBeNull();
+        },
+        { timeout: 5000 },
+      );
+    });
+
+    it('scan with findings but zero safe actions shows results (no failure)', async () => {
+      // Simulate a scan with findings but no action_plan_id (all blocked).
+      // This should NOT show "No Plan Defined" as an error.
+      mockResult = {
+        ok: true,
+        result: {
+          scan_id: 'test-session-blocked',
+          findings_count: 5,
+          action_plan_id: null,
+          elapsed_time_ms: 100,
+          statistics: {
+            assets_discovered: 10,
+            assets_evaluated: 10,
+            matches: 5,
+            rules_evaluated: 3,
+          },
+          findings: [],
+        },
+      };
+
+      render(<ScanView module="security" mode="full" onClose={() => {}} />);
+      fireEvent.click(screen.getByTestId('scan-start-btn'));
+
+      currentStatus = {
+        ...currentStatus,
+        completed: true,
+        progress: {
+          ...currentStatus.progress,
+          completion_percent: 100,
+          findings: 5,
+        },
+      };
+
+      // Should complete without crashing or showing "No Plan Defined"
+      await waitFor(
+        () => {
+          const completeView = screen.queryByTestId('unified-scan-view-complete');
+          const resultsView = screen.queryByTestId('results-view');
+          const autoOptView = screen.queryByTestId('auto-optimize-complete') ||
+                             screen.queryByTestId('auto-optimize-loading') ||
+                             screen.queryByTestId('auto-optimize-error');
+          expect(completeView || resultsView || autoOptView).not.toBeNull();
+        },
+        { timeout: 5000 },
+      );
+    });
+
+    it('plan persisted correctly — action_plan_id flows from scan result to auto-optimize', async () => {
+      // The plan_id from the scan result must be passed to auto_optimize.
+      mockResult = {
+        ok: true,
+        result: {
+          scan_id: 'test-session-plan',
+          findings_count: 3,
+          action_plan_id: 'plan-abc-123',
+          elapsed_time_ms: 200,
+          statistics: {
+            assets_discovered: 5,
+            assets_evaluated: 5,
+            matches: 3,
+            rules_evaluated: 2,
+          },
+          findings: [
+            {
+              finding_id: 'f1',
+              display_name: 'Temp file',
+              rule_id: 'junk.temp',
+              rule_category: 'junk',
+              severity: 'low',
+              confidence: 0.9,
+              safety: 'safe',
+              reason: 'Safe to remove',
+              recommended_action: 'delete',
+              estimated_size: 1024,
+              is_blocked: false,
+              requires_review: false,
+              is_actionable: true,
+              canonical_path: '',
+            },
+          ],
+        },
+      };
+
+      render(<ScanView module="optimize" mode="quick" onClose={() => {}} />);
+      fireEvent.click(screen.getByTestId('scan-start-btn'));
+
+      currentStatus = {
+        ...currentStatus,
+        completed: true,
+        progress: {
+          ...currentStatus.progress,
+          completion_percent: 100,
+          findings: 3,
+        },
+      };
+
+      // The auto-optimize flow should be called with the correct plan_id.
+      await waitFor(
+        () => {
+          expect(mockCall).toHaveBeenCalledWith(
+            RPC_METHODS.SCAN_CORE_DASHBOARD_AUTO_OPTIMIZE,
+            expect.objectContaining({
+              plan_id: 'plan-abc-123',
+            }),
+          );
+        },
+        { timeout: 5000 },
+      );
+    });
+
+    it('does not show "AVS is preparing the scanner" on first click', async () => {
+      // V1.0: The backend now waits for readiness instead of returning
+      // "still initializing". The frontend should NOT show the
+      // "preparing the scanner" message.
+      // This test verifies the frontend doesn't map "initializing" errors
+      // to the old "try again in a moment" message.
+      render(<ScanView module="optimize" mode="quick" onClose={() => {}} />);
+      fireEvent.click(screen.getByTestId('scan-start-btn'));
+
+      // The scan should start — no "preparing the scanner" message.
+      await waitFor(
+        () => {
+          const activeView = screen.queryByTestId('unified-scan-view-active');
+          const completeView = screen.queryByTestId('unified-scan-view-complete');
+          expect(activeView || completeView).not.toBeNull();
+          // Verify no "preparing the scanner" text is shown
+          const preparingText = screen.queryByText(/preparing the scanner/i);
+          expect(preparingText).toBeNull();
+        },
+        { timeout: 5000 },
+      );
+    });
+  });
 });

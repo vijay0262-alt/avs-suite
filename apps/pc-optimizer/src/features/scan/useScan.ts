@@ -273,12 +273,13 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
     hookStartScan();
     try {
       const startMethod = mode === 'quick' ? scanService.scan_quick : scanService.scan_full;
+      // V1.0: The backend now waits for the orchestrator to be ready
+      // (up to 90s) instead of returning "still initializing" on the
+      // first click.  This call may block for a while on cold start,
+      // but the backend will start the scan as soon as it's ready.
       const response = (await startMethod()) as { ok?: boolean; session_id?: string; started_at?: string; error?: string };
       if (response.ok === false) {
         const backendError = response.error ?? 'Scan could not start';
-        if (backendError.toLowerCase().includes('initializing')) {
-          throw new Error('AVS is preparing the scanner. Please try again in a moment.');
-        }
         throw new Error(backendError);
       }
       const sid = response.session_id;
