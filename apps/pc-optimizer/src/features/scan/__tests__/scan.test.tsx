@@ -198,9 +198,13 @@ describe('ScanView', () => {
       },
     };
 
+    // V1.0 UNIFIED: scan → detect → auto-optimize → results.
+    // With a non-null planId, ScanView auto-transitions to AutoOptimizeView.
+    // The mock auto-optimize status returns phase='complete', so the
+    // auto-optimize complete card should appear.
     await waitFor(
       () => {
-        expect(screen.getByText(/5 issues found/)).toBeDefined();
+        expect(screen.queryByTestId('auto-optimize-complete')).toBeDefined();
       },
       { timeout: 5000 },
     );
