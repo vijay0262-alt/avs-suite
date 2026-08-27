@@ -1476,6 +1476,8 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         recycle_bin_cleaned = 0
         recycle_bin_bytes = 0
         recycle_bin_failed = 0
+        rb_files_before = 0
+        rb_files_after = 0
         if sys.platform == "win32":
             try:
                 from avs_backend.scan_core.execution.recycle_bin_executor import (
@@ -1563,20 +1565,43 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 logger.warning("Recycle Bin cleanup failed: %s", exc)
                 recycle_bin_failed = 1
 
-        # Add Recycle Bin results to totals
-        recycle_bin_found = recycle_bin_cleaned + (rb_files_after if rb_files_before > 0 else 0)
+        # V1.0 Recycle Bin accounting:
+        # The Recycle Bin is cleaned via the Windows SHEmptyRecycleBin API,
+        # which is an all-or-nothing operation per drive.  We CANNOT
+        # individually verify each Recycle Bin item as "cleanable" before
+        # the API call — the API decides what it can remove.
+        #
+        # Therefore, only items ACTUALLY REMOVED by the API count as
+        # "Detected" in the user-visible totals.  Items that remain after
+        # the API call were NOT cleanable (protected, in use, or the API
+        # chose not to remove them) and must NOT inflate the Detected count.
+        #
+        # The category breakdown still shows rb_files_before for
+        # transparency, but the totals only include recycle_bin_cleaned.
+        recycle_bin_found = recycle_bin_cleaned  # only actually removed items
         verified_cleaned += recycle_bin_cleaned
         space_recovered += recycle_bin_bytes
 
+        # V1.0 Accounting contract:
+        #   Detected = Cleaned + Failed + Remaining
+        #
+        # Where:
+        #   Detected = safe_count + recycle_bin_cleaned
+        #            (filesystem actions verified cleanable + RB items removed)
+        #   Cleaned   = verified_cleaned (includes RB cleaned)
+        #   Failed    = summary.failed + recycle_bin_failed
+        #            (attempted but file still exists)
+        #   Remaining = Detected - Cleaned - Failed
+        #
+        # Locked/inaccessible/missing items were already excluded from
+        # safe_count by the dashboard_eligible_only filter and
+        # revalidation, so they never enter Detected.
+        total_detected = safe_count + recycle_bin_found
+        total_failed = summary.failed + recycle_bin_failed
+        remaining_after = max(0, total_detected - verified_cleaned - total_failed)
+
         # V1.0: Deterministic cleanup-based health score AFTER optimization.
         # Based on remaining cleanable items, not fluctuating system metrics.
-        # remaining = detected - cleaned - failed (items still present and
-        # not yet attempted, excluding both cleaned and failed items)
-        # NOTE: verified_cleaned may include Recycle Bin files that were
-        # not part of safe_count (Recycle Bin is cleaned via Windows API,
-        # not via the action plan).  Clamp to >= 0 to avoid negative
-        # remaining which would inflate the health score above 100.
-        remaining_after = max(0, safe_count - verified_cleaned - summary.failed)
         health_after = _cleanup_health_score(remaining_after)
 
         # V1.0 Dashboard result contract — Disk Cleanup style:
@@ -1586,7 +1611,7 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         # confirms the file no longer exists on the filesystem).
         result_dict = {
             # ── User-facing fields ──────────────────────────────────────
-            "files_found": safe_count + recycle_bin_found,
+            "files_found": total_detected,
             "files_cleaned": verified_cleaned,
             "folders_found": folders_found,
             "folders_cleaned": folders_cleaned,
@@ -1594,10 +1619,10 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
             # ── Per-category breakdown (Disk Cleanup style) ─────────────
             "categories": sorted_categories,
             # ── Legacy compat (kept for any old callers, NOT shown) ─────
-            "detected": safe_count + recycle_bin_found,
+            "detected": total_detected,
             "cleaned": verified_cleaned,
-            "remaining": max(0, safe_count + recycle_bin_found - verified_cleaned - summary.failed),
-            "failed": summary.failed + recycle_bin_failed,
+            "remaining": remaining_after,
+            "failed": total_failed,
             "health_before": health_before,
             "health_after": health_after,
             # ── Internal diagnostics (NOT shown to Dashboard user) ──────
@@ -1612,7 +1637,7 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 "review_required_input": review_count,
                 "blocked_input": blocked_count,
                 "failed": summary.failed,
-                "remaining": max(0, safe_count - verified_cleaned - summary.failed),
+                "remaining": remaining_after,
                 "status": summary.status.value,
                 "reason": summary.reason or "",
                 "failed_details": failed_details,
@@ -1621,6 +1646,10 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 "now_locked": now_locked,
                 "now_inaccessible": now_inaccessible,
                 "completed_unverified": summary.completed - verified_cleaned,
+                "recycle_bin_before": rb_files_before,
+                "recycle_bin_after": rb_files_after,
+                "recycle_bin_cleaned": recycle_bin_cleaned,
+                "recycle_bin_failed": recycle_bin_failed,
             },
         }
 
