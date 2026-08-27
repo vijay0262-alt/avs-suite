@@ -302,7 +302,10 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
       // (up to 90s) instead of returning "still initializing" on the
       // first click.  This call may block for a while on cold start,
       // but the backend will start the scan as soon as it's ready.
-      const response = (await startMethod()) as { ok?: boolean; session_id?: string; started_at?: string; error?: string };
+      //
+      // V1.0 Architecture separation: pass ruleCategories from the module
+      // config so the security scan only runs security rules, not junk/temp.
+      const response = (await startMethod(undefined, config.ruleCategories)) as { ok?: boolean; session_id?: string; started_at?: string; error?: string };
       if (response.ok === false) {
         const backendError = response.error ?? 'Scan could not start';
         throw new Error(backendError);
@@ -332,7 +335,7 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
     } finally {
       startingRef.current = false;
     }
-  }, [hookStartScan, mode, startPoll, scan, stopPoll, config.moduleId]);
+  }, [hookStartScan, mode, startPoll, scan, stopPoll, config.moduleId, config.ruleCategories]);
 
   const cancelScan = useCallback(() => {
     const sid = sessionIdRef.current;

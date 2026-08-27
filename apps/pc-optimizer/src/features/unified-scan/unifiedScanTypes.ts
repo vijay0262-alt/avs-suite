@@ -146,6 +146,13 @@ export interface UnifiedScanModuleConfig {
    * If not provided, counters will fall back to assets_evaluated.
    */
   backendCounterMap?: Record<string, string>;
+  /**
+   * V1.0 Architecture separation: only run rules in the specified categories.
+   * When set, the backend filters rules to only these categories.
+   * e.g. ['security'] for AI Smart Security, ['junk', 'cache', 'temporary'] for Dashboard.
+   * When undefined, all enabled rules run (legacy behavior).
+   */
+  ruleCategories?: string[];
 }
 
 // ── Scan State (used by the hook) ───────────────────────────────

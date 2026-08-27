@@ -204,6 +204,11 @@ export const SECURITY_SCAN_CONFIG: UnifiedScanModuleConfig = {
     threatsSecured: 'threats_secured',
     threatsRemaining: 'threats_remaining',
   },
+  // V1.0 Architecture separation: only run security-category rules.
+  // This prevents the security scan from scanning for junk/temp files
+  // (which is the Dashboard's job) and ensures it only runs
+  // DefenderConfirmedThreatRule and other security rules.
+  ruleCategories: ['security', 'suspicious'],
   counters: [
     { id: 'confirmedThreats', label: 'Confirmed Threats', icon: 'ExclamationTriangleIcon', format: 'number' },
     { id: 'suspiciousItems', label: 'Suspicious Items', icon: 'EyeIcon', format: 'number' },

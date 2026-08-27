@@ -30,6 +30,7 @@ from ..rules.enums import RuleCategory
 from ..rules.evaluator import CancellationToken, RuleEvaluator
 from ..rules.priority import FindingPrioritizer, RuleCapability
 from ..rules.registry import RuleRegistry
+from ..rules.rule import Rule
 from .discovery import DiscoveryEngine, FilesystemDiscoveryEngine
 from .models import ScanOrchestratorError, ScanProgress, ScanResult
 
@@ -82,6 +83,7 @@ class ScanOrchestrator:
         on_progress: Optional[ProgressCallback] = None,
         generate_action_plan: bool = True,
         dashboard_eligible_only: bool = False,
+        rule_categories: Optional[list[RuleCategory]] = None,
     ) -> ScanResult:
         """Run a complete scan workflow and return an immutable result.
 
@@ -96,6 +98,11 @@ class ScanOrchestrator:
                 the ActionPlanner, so the user only sees items that can be
                 automatically cleaned. Internal diagnostic counts are still
                 tracked in statistics.
+            rule_categories: V1.0 Architecture separation — only run rules
+                in the specified categories. When None, all enabled rules
+                run (legacy behavior). When set (e.g. [RuleCategory.SECURITY]),
+                only rules in those categories are evaluated, so the security
+                scan does NOT scan for junk/temp files.
         """
         scan_id = generate_scan_id()
         token = CancellationToken()
@@ -147,8 +154,19 @@ class ScanOrchestrator:
                 assets_discovered=discovered_count,
             )
             t2 = datetime.now(UTC)
+            # V1.0 Architecture separation: filter rules by category when
+            # rule_categories is specified. This ensures the security scan
+            # only runs security rules, not junk/temp rules.
+            eval_rules: Optional[list[Rule]] = None
+            if rule_categories is not None:
+                all_rules = self._registry.list_enabled()
+                eval_rules = [
+                    r for r in all_rules
+                    if r.metadata.category in rule_categories
+                ]
             eval_batch = self._evaluator.evaluate_scan(
                 scan_context,
+                rules=eval_rules,
                 cancellation_token=token,
             )
             phase_timings["evaluation_ms"] = int(
@@ -359,13 +377,22 @@ class ScanOrchestrator:
         *,
         on_progress: Optional[ProgressCallback] = None,
         generate_action_plan: bool = True,
+        rule_categories: Optional[list[RuleCategory]] = None,
     ) -> ScanResult:
-        """Run a full scan."""
+        """Run a full scan.
+
+        Args:
+            rule_categories: V1.0 Architecture separation — only run rules
+                in the specified categories. When None, all enabled rules
+                run. When set (e.g. [RuleCategory.SECURITY]), only rules
+                in those categories are evaluated.
+        """
         return self.scan(
             ScanType.FULL,
             scope=scope,
             on_progress=on_progress,
             generate_action_plan=generate_action_plan,
+            rule_categories=rule_categories,
         )
 
     def get_latest_scan_history(self) -> Optional[dict[str, Any]]:

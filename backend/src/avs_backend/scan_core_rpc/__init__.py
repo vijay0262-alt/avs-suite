@@ -479,7 +479,12 @@ def _on_progress(scan_id: str, progress: ScanProgress) -> None:
             session["progress"] = progress.to_dict()
 
 
-def _run_scan(scan_id: str, scan_type: str, scope: Optional[list[str]]) -> None:
+def _run_scan(
+    scan_id: str,
+    scan_type: str,
+    scope: Optional[list[str]],
+    rule_categories: Optional[list[str]] = None,
+) -> None:
     """Background target that runs the scan and records the result."""
     orchestrator = get_scan_orchestrator()
     if orchestrator is None:
@@ -497,6 +502,19 @@ def _run_scan(scan_id: str, scan_type: str, scope: Optional[list[str]]) -> None:
         _orchestrator_module.generate_scan_id = original_generate_scan_id
         return scan_id
 
+    # V1.0 Architecture separation: convert category strings to RuleCategory enums.
+    parsed_categories: Optional[list] = None
+    if rule_categories:
+        from avs_backend.scan_core.rules.enums import RuleCategory
+        parsed_categories = []
+        for cat_str in rule_categories:
+            try:
+                parsed_categories.append(RuleCategory(cat_str))
+            except ValueError:
+                logger.warning("Unknown rule category '%s' — ignoring", cat_str)
+        if not parsed_categories:
+            parsed_categories = None
+
     try:
         _orchestrator_module.generate_scan_id = _generate_scan_id_for_session
         if scan_type == "quick":
@@ -508,6 +526,7 @@ def _run_scan(scan_id: str, scan_type: str, scope: Optional[list[str]]) -> None:
             result = orchestrator.scan_full(
                 scope=scope,
                 on_progress=lambda p: _on_progress(scan_id, p),
+                rule_categories=parsed_categories,
             )
         with _scan_session_lock:
             session = _scan_sessions.get(scan_id)
@@ -546,6 +565,13 @@ def _start_scan(scan_type: str, params: dict[str, Any]) -> dict[str, Any]:
     if orchestrator is None:
         return {"ok": False, "error": "Scan engine failed to initialize. Please restart the application."}
 
+    # V1.0 Architecture separation: extract rule_categories from params.
+    # When specified, only rules in the given categories are evaluated.
+    # e.g. rule_categories=["security"] for AI Smart Security.
+    rule_categories = params.get("rule_categories") if isinstance(params, dict) else None
+    if rule_categories is not None and not isinstance(rule_categories, list):
+        rule_categories = None
+
     scan_id = str(uuid.uuid4())
     started_at = datetime.now(UTC).isoformat()
 
@@ -563,7 +589,7 @@ def _start_scan(scan_type: str, params: dict[str, Any]) -> dict[str, Any]:
 
     thread = threading.Thread(
         target=_run_scan,
-        args=(scan_id, scan_type, scope),
+        args=(scan_id, scan_type, scope, rule_categories),
         daemon=True,
         name=f"scan-core-{scan_type}-{scan_id}",
     )
