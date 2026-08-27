@@ -81,14 +81,22 @@ describe('Helper Functions', () => {
   it('isProtectedApp detects protected patterns', () => {
     expect(isProtectedApp('Windows Defender')).toBe(true);
     expect(isProtectedApp('AVS Shield')).toBe(true);
+    expect(isProtectedApp('AVS AI Shield')).toBe(true);
     expect(isProtectedApp('Microsoft Defender Antivirus')).toBe(true);
     expect(isProtectedApp('Chrome')).toBe(false);
     expect(isProtectedApp('Spotify')).toBe(false);
   });
 
+  it('isProtectedApp rejects unrelated applications', () => {
+    expect(isProtectedApp('Notepad')).toBe(false);
+    expect(isProtectedApp('Visual Studio Code')).toBe(false);
+    expect(isProtectedApp('AVS Video Editor')).toBe(false);
+  });
+
   it('PROTECTED_APP_PATTERNS includes critical entries', () => {
     expect(PROTECTED_APP_PATTERNS).toContain('windows defender');
     expect(PROTECTED_APP_PATTERNS).toContain('avsshield');
+    expect(PROTECTED_APP_PATTERNS).toContain('avs ai shield');
     expect(PROTECTED_APP_PATTERNS).toContain('microsoft defender');
   });
 

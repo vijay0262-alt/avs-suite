@@ -263,6 +263,7 @@ export const PROTECTED_APP_PATTERNS: readonly string[] = [
   'securityhealthservice',
   'avsshield',
   'avs shield',
+  'avs ai shield',
   'avs-suite',
   'avg',
   'avast',

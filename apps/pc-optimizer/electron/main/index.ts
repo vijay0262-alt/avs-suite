@@ -12,7 +12,7 @@
  *   - The background protection service runs independently of the window
  */
 import { app, BrowserWindow, shell, Notification, nativeImage } from 'electron';
-import { exec, execSync } from 'child_process';
+import { exec } from 'child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import { installCrashHandler } from '../crash/crashReporter';
@@ -466,12 +466,30 @@ app.on('will-quit', async (event) => {
   // The Python backend (PyInstaller bundle) may spawn child processes
   // that survive a simple kill() call.  Use taskkill /T /F to kill the
   // entire process tree.
+  //
+  // V1.0: Use the asynchronous `exec` API (not the synchronous variant)
+  // so the Electron main process is never blocked during shutdown.  The
+  // Promise resolves before app.exit(0) is called below, preserving
+  // graceful shutdown.
   if (process.platform === 'win32') {
     try {
-      execSync('taskkill /IM avs-backend.exe /T /F 2>nul', { stdio: 'ignore', timeout: 5000 });
-      log.info('[shutdown] Force-killed remaining avs-backend.exe processes');
+      await new Promise<void>((resolve) => {
+        exec(
+          'taskkill /IM avs-backend.exe /T /F 2>nul',
+          { timeout: 5000, windowsHide: true },
+          (err: Error | null) => {
+            if (err) {
+              // No remaining processes or taskkill failed — not an error
+              resolve();
+              return;
+            }
+            log.info('[shutdown] Force-killed remaining avs-backend.exe processes');
+            resolve();
+          },
+        );
+      });
     } catch {
-      // No remaining processes or taskkill failed — not an error
+      // Best-effort — never block shutdown
     }
   }
 
