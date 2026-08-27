@@ -1130,15 +1130,38 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
             + preview.safety_state_counts.get("locked_target", 0)
         )
 
-        # V1.0: Deterministic cleanup-based health score.
-        # penalty = min(40, safe_count * 0.02)  — each cleanable item = 0.02 points
-        # This means: 0 items → 100, 500 items → 90, 2000 items → 60 (floor)
-        def _cleanup_health_score(cleanable_count: int) -> int:
-            """Deterministic score based on remaining cleanup opportunities."""
-            penalty = min(40, max(0, cleanable_count) * 0.02)
+        # V1.0: Bytes-based health score.
+        # The score reflects the actual cleanup BURDEN (bytes recoverable),
+        # not just the file count.  A log10 scale is used so that:
+        #   0 bytes cleanable  -> score 100 (perfectly clean)
+        #   1 KB  (10^3)       -> penalty  6 -> score 94
+        #   1 MB  (10^6)       -> penalty 12 -> score 88
+        #   100 MB (10^8)      -> penalty 16 -> score 84
+        #   1 GB  (10^9)       -> penalty 18 -> score 82
+        #   10 GB (10^10)      -> penalty 20 -> score 80
+        #   100 GB (10^11)     -> penalty 22 -> score 78
+        #   1 TB  (10^12)      -> penalty 24 -> score 76
+        # Floor at 60, cap at 100.
+        import math as _math
+
+        # Track total cleanable bytes for health scoring.
+        # preview.estimated_size is the sum of planned action sizes.
+        cleanable_bytes_before = int(preview.estimated_size or 0)
+
+        def _cleanup_health_score(cleanable_bytes: int) -> int:
+            """Bytes-based health score (0-100).
+
+            Higher score = less cleanup burden.
+            Based on log10 of cleanable bytes so both small and large
+            junk amounts produce meaningful, differentiated scores.
+            """
+            b = max(0, cleanable_bytes)
+            if b == 0:
+                return 100
+            penalty = min(40, _math.log10(b + 1) * 2.0)
             return max(60, min(100, round(100 - penalty)))
 
-        health_before = _cleanup_health_score(safe_count)
+        health_before = _cleanup_health_score(cleanable_bytes_before)
 
         with _auto_opt_lock:
             session = _auto_opt_sessions.get(session_id)
@@ -1233,7 +1256,18 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         # planning count. Files that became locked/missing/inaccessible
         # are removed from the user-visible cleanup set BEFORE cleanup.
         safe_count = still_deletable
-        health_before = _cleanup_health_score(safe_count)
+        # Recalculate cleanable_bytes_before based on revalidated actions.
+        # preview.estimated_size includes ALL planned actions, but after
+        # revalidation some are locked/missing/inaccessible.  We need the
+        # bytes of only the still-deletable actions.
+        # Estimate: proportional reduction based on count.
+        if originally_planned > 0 and still_deletable > 0:
+            cleanable_bytes_before = int(
+                cleanable_bytes_before * (still_deletable / originally_planned)
+            )
+        else:
+            cleanable_bytes_before = 0
+        health_before = _cleanup_health_score(cleanable_bytes_before)
 
         with _auto_opt_lock:
             session = _auto_opt_sessions.get(session_id)
@@ -1377,6 +1411,9 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         space_recovered = 0
         verified_cleaned = 0
         failed_details: list[dict[str, Any]] = []
+        # Track total bytes of all executed actions for accurate
+        # health score calculation (cleanable_bytes_after_revalidation).
+        executed_bytes_total = 0
         for result in summary.results:
             # Get rule_id and map to cleanup category
             rule_id = action_rule_map.get(result.action_id, "")
@@ -1389,6 +1426,13 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                 }
             # Count as found (was a candidate)
             category_stats[cat]["files_found"] += 1
+
+            # Track total bytes of all executed actions for health score.
+            bs = getattr(result, "before_state", None)
+            if bs and isinstance(bs, dict):
+                sz = bs.get("size", 0)
+                if isinstance(sz, (int, float)) and sz > 0:
+                    executed_bytes_total += int(sz)
 
             if result.status.value == "completed":
                 # Verify the file was actually deleted via after_state.
@@ -1600,9 +1644,16 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         total_failed = summary.failed + recycle_bin_failed
         remaining_after = max(0, total_detected - verified_cleaned - total_failed)
 
-        # V1.0: Deterministic cleanup-based health score AFTER optimization.
-        # Based on remaining cleanable items, not fluctuating system metrics.
-        health_after = _cleanup_health_score(remaining_after)
+        # V1.0: Bytes-based health score AFTER optimization.
+        # remaining_bytes = executed_bytes_total - filesystem_space_recovered
+        # This is the bytes of actions that were attempted but NOT
+        # successfully cleaned (failed actions whose files still exist).
+        # We use executed_bytes_total (sum of before_state.size for all
+        # executed actions) rather than the preview estimate, because
+        # the preview includes actions that were removed by revalidation.
+        filesystem_space_recovered = space_recovered - recycle_bin_bytes
+        remaining_bytes = max(0, executed_bytes_total - filesystem_space_recovered)
+        health_after = _cleanup_health_score(remaining_bytes)
 
         # V1.0 Dashboard result contract — Disk Cleanup style:
         # User sees: files_found, files_cleaned, folders_found, folders_cleaned,
