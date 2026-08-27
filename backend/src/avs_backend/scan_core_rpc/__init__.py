@@ -1135,8 +1135,8 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         # This means: 0 items → 100, 500 items → 90, 2000 items → 60 (floor)
         def _cleanup_health_score(cleanable_count: int) -> int:
             """Deterministic score based on remaining cleanup opportunities."""
-            penalty = min(40, cleanable_count * 0.02)
-            return max(60, round(100 - penalty))
+            penalty = min(40, max(0, cleanable_count) * 0.02)
+            return max(60, min(100, round(100 - penalty)))
 
         health_before = _cleanup_health_score(safe_count)
 
@@ -1572,7 +1572,11 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         # Based on remaining cleanable items, not fluctuating system metrics.
         # remaining = detected - cleaned - failed (items still present and
         # not yet attempted, excluding both cleaned and failed items)
-        remaining_after = safe_count - verified_cleaned - summary.failed
+        # NOTE: verified_cleaned may include Recycle Bin files that were
+        # not part of safe_count (Recycle Bin is cleaned via Windows API,
+        # not via the action plan).  Clamp to >= 0 to avoid negative
+        # remaining which would inflate the health score above 100.
+        remaining_after = max(0, safe_count - verified_cleaned - summary.failed)
         health_after = _cleanup_health_score(remaining_after)
 
         # V1.0 Dashboard result contract — Disk Cleanup style:
