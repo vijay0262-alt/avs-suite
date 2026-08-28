@@ -1348,12 +1348,28 @@ def _get_tpm_status() -> bool:
 
 
 def _decode_wsc_product_state(state: int) -> tuple[str, str]:
-    """Decode WSC productState into (status, sub_status)."""
+    """Decode WSC productState into (status, sub_status).
+
+    The WSC productState is a packed integer:
+      Bits 16-23: Product state (1=On, 2=Off, 3=Expired/Snoozed)
+      Bits 8-15:  Status (0=Up to date, 1=Out of date, 2=Not tracked)
+      Bits 0-7:   Sub-status (0=No action needed, 1=Action recommended)
+
+    See: https://learn.microsoft.com/en-us/windows/win32/secwmi/wsc-product-state
+    """
     if state <= 0:
         return ("inactive", "unknown")
     upper = (state >> 16) & 0xFF
     if upper == 0:
         return ("inactive", "disabled")
+    if upper == 1:
+        return ("active", "protected")
+    if upper == 2:
+        return ("inactive", "disabled")
+    if upper == 3:
+        return ("warning", "expired")
+    # Fallback: treat high state values as active (some AVs use
+    # non-standard state values).
     if state >= 266000:
         return ("active", "protected")
     return ("inactive", "unknown")

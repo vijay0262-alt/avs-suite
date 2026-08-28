@@ -48,6 +48,8 @@ interface ProtectionPostureState {
   metrics: DashboardMetrics | null;
   healthScore: HealthScore | null;
   lastRefresh: number | null;
+  fixMessage: string | null;
+  fixSuccess: boolean;
 }
 
 class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
@@ -58,13 +60,20 @@ class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
       metrics: null,
       healthScore: null,
       lastRefresh: null,
+      fixMessage: null,
+      fixSuccess: false,
     });
   }
 
-  async refresh(): Promise<void> {
+  async refresh(forceRefresh = false): Promise<void> {
     this.setState({ loading: true, error: null });
     try {
-      await dashboardService.refreshCache();
+      // Only invalidate caches on explicit "Check Protection" click,
+      // not on initial page load. This makes the page load fast using
+      // cached data from the Dashboard.
+      if (forceRefresh) {
+        await dashboardService.refreshCache();
+      }
       const [metrics, healthScore] = await Promise.all([
         dashboardService.getMetrics(),
         dashboardService.getHealthScore(),
@@ -84,14 +93,31 @@ class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
   }
 
   async fixIssue(action: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen'): Promise<void> {
-    const rpcCall =
-      action === 'enableSmartScreen'
-        ? dashboardService.enableSmartScreen()
-        : action === 'enableDefender'
-          ? dashboardService.enableDefender()
-          : dashboardService.enableFirewall();
-    await rpcCall;
-    await this.refresh();
+    this.setState({ fixMessage: null, fixSuccess: false });
+    try {
+      const rpcCall =
+        action === 'enableSmartScreen'
+          ? dashboardService.enableSmartScreen()
+          : action === 'enableDefender'
+            ? dashboardService.enableDefender()
+            : dashboardService.enableFirewall();
+      const result = await rpcCall as { enabled?: boolean; message?: string };
+      const message = result?.message ?? (result?.enabled ? 'Fix applied successfully' : 'Fix failed');
+      this.setState({
+        fixMessage: message,
+        fixSuccess: result?.enabled === true,
+      });
+      await this.refresh(true);  // Force refresh after a fix to show updated state
+    } catch (err) {
+      this.setState({
+        fixMessage: err instanceof Error ? err.message : 'Fix failed',
+        fixSuccess: false,
+      });
+    }
+  }
+
+  clearFixMessage(): void {
+    this.setState({ fixMessage: null, fixSuccess: false });
   }
 }
 
@@ -365,7 +391,8 @@ export function ProtectionCenterPage() {
   const state = useViewModel(vm);
 
   useEffect(() => {
-    void vm.refresh();
+    // Initial load: use cached data (fast). Don't force a backend refresh.
+    void vm.refresh(false);
     return () => {
       vm.dispose();
     };
@@ -397,7 +424,8 @@ export function ProtectionCenterPage() {
   const overallTone = toneClasses(overallConfig.tone);
 
   const handleCheckProtection = useCallback(() => {
-    void vm.refresh();
+    // Explicit "Check Protection" click: force a fresh backend query.
+    void vm.refresh(true);
   }, [vm]);
 
   const handleFix = useCallback(
@@ -406,6 +434,10 @@ export function ProtectionCenterPage() {
     },
     [vm],
   );
+
+  const handleDismissFixMessage = useCallback(() => {
+    vm.clearFixMessage();
+  }, [vm]);
 
   if (state.loading && !state.metrics) {
     return (
@@ -475,6 +507,35 @@ export function ProtectionCenterPage() {
           </Button>
         </div>
       </div>
+
+      {/* ── Fix result banner ─────────────────────────────────── */}
+      {state.fixMessage && (
+        <div
+          className={`rounded-[var(--avs-radius-md)] p-3 flex items-center justify-between gap-3 ${
+            state.fixSuccess
+              ? 'bg-semantic-success/10 border border-semantic-success/20'
+              : 'bg-semantic-warning/10 border border-semantic-warning/20'
+          }`}
+          data-testid="protection-fix-message"
+        >
+          <div className="flex items-center gap-2">
+            {state.fixSuccess ? (
+              <CheckCircleIcon className="h-5 w-5 text-semantic-success shrink-0" />
+            ) : (
+              <ExclamationTriangleIcon className="h-5 w-5 text-semantic-warning shrink-0" />
+            )}
+            <span className={`text-small ${state.fixSuccess ? 'text-semantic-success' : 'text-semantic-warning'}`}>
+              {state.fixMessage}
+            </span>
+          </div>
+          <button
+            onClick={handleDismissFixMessage}
+            className="text-caption text-text-muted hover:text-text-primary"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* ── 2. MAIN PROTECTION SCORE ──────────────────────────── */}
       <Card variant="glass" className="p-6" data-testid="protection-score-card">

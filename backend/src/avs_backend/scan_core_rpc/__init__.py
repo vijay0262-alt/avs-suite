@@ -485,13 +485,18 @@ def _run_scan(
     scope: Optional[list[str]],
     rule_categories: Optional[list[str]] = None,
 ) -> None:
-    """Background target that runs the scan and records the result."""
-    orchestrator = get_scan_orchestrator()
+    """Background target that runs the scan and records the result.
+
+    V1.0: Waits for the orchestrator to be ready inside this background
+    thread, so the RPC call returns immediately and the UI shows
+    "Preparing..." while the orchestrator initializes.
+    """
+    orchestrator = get_scan_orchestrator(wait_for_ready=True, timeout_s=90.0)
     if orchestrator is None:
         with _scan_session_lock:
             session = _scan_sessions.get(scan_id)
             if session is not None:
-                session["error"] = "Scan orchestrator is not available"
+                session["error"] = "Scan engine failed to initialize. Please restart the application."
                 session["completed"] = True
         return
 
@@ -549,25 +554,15 @@ def _run_scan(
 def _start_scan(scan_type: str, params: dict[str, Any]) -> dict[str, Any]:
     """Start a quick or full scan in a background thread.
 
-    V1.0: Waits for the scan orchestrator to be ready (up to 90s) instead
-    of returning "still initializing" on the first click.  This eliminates
-    the "AVS is preparing the scanner" error that required multiple clicks.
+    V1.0: Returns immediately with a session_id.  The orchestrator
+    initialization happens inside the background thread, so the UI
+    shows "Preparing..." instead of blocking the RPC call for 60s.
     """
     ok, scope, error = _validate_scope(params)
     if not ok:
         return {"ok": False, "error": error}
 
-    # Wait for the orchestrator to be ready instead of failing immediately.
-    # The eager-init thread starts at import time, so this usually returns
-    # instantly.  On first run (cold start), this may block for 30-60s
-    # while the database schema is created.
-    orchestrator = get_scan_orchestrator(wait_for_ready=True, timeout_s=90.0)
-    if orchestrator is None:
-        return {"ok": False, "error": "Scan engine failed to initialize. Please restart the application."}
-
     # V1.0 Architecture separation: extract rule_categories from params.
-    # When specified, only rules in the given categories are evaluated.
-    # e.g. rule_categories=["security"] for AI Smart Security.
     rule_categories = params.get("rule_categories") if isinstance(params, dict) else None
     if rule_categories is not None and not isinstance(rule_categories, list):
         rule_categories = None
@@ -580,7 +575,17 @@ def _start_scan(scan_type: str, params: dict[str, Any]) -> dict[str, Any]:
             "scan_id": scan_id,
             "token": None,
             "thread": None,
-            "progress": None,
+            "progress": {
+                "phase": "preparing",
+                "current_operation": "Preparing scan engine...",
+                "assets_discovered": 0,
+                "assets_evaluated": 0,
+                "findings": 0,
+                "actions_available": 0,
+                "elapsed_time_ms": 0,
+                "is_cancelled": False,
+                "completion_percent": 0,
+            },
             "result": None,
             "cancelled": False,
             "completed": False,
@@ -1045,6 +1050,8 @@ def _remove_empty_cleanup_dirs() -> int:
             _os.path.expandvars(r"%TEMP%"),
             _os.path.expandvars(r"%SystemRoot%\Temp"),
             _os.path.expandvars(r"%SystemRoot%\Prefetch"),
+            _os.path.expandvars(r"%LOCALAPPDATA%\D3DSCache"),
+            _os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\Windows\Explorer"),
         ]
     else:
         # Non-Windows: clean the user's temp directory.

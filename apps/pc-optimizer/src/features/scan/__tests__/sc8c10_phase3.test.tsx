@@ -69,7 +69,7 @@ describe('SC-8C10 Phase 3 — Persistence & Recovery', () => {
         expect(screen.getByTestId('dashboard-scan-issues').textContent).toBe('5 issues');
       });
 
-      expect(screen.getByTestId('dashboard-scan-action').textContent).toBe('Review Findings');
+      expect(screen.getByTestId('dashboard-scan-action').textContent).toBe('View Results');
 
       // Verify no scan was started
       const scanCalls = mockCall.mock.calls.filter(

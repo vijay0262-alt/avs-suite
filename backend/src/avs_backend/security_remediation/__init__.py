@@ -99,11 +99,25 @@ def enable_smartscreen(_params: dict[str, Any] | None = None) -> dict[str, Any]:
     if os.name != "nt":
         return {"enabled": False, "error": "Not supported on this platform"}
 
+    # Check if running as admin
+    try:
+        import ctypes
+        is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+    except Exception:
+        is_admin = False
+
+    if not is_admin:
+        return {
+            "enabled": False,
+            "message": "Administrator privileges required. Please run AVS AI Shield as Administrator to enable SmartScreen.",
+            "timestamp": _now_iso(),
+        }
+
     ps_script = r"""
     # Enable SmartScreen for Windows Explorer
-    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer' -Name 'SmartScreenEnabled' -Value 'On' -ErrorAction SilentlyContinue
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer' -Name 'SmartScreenEnabled' -Value 'On' -ErrorAction Stop
     # Enable SmartScreen for Edge
-    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\System' -Name 'EnableSmartScreen' -Value 1 -Type DWord -ErrorAction SilentlyContinue
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\System' -Name 'EnableSmartScreen' -Value 1 -Type DWord -ErrorAction Stop
     # Enable SmartScreen for Edge (per-user policy)
     Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost' -Name 'EnableWebContentEvaluation' -Value 1 -Type DWord -ErrorAction SilentlyContinue
     Write-Output 'OK'

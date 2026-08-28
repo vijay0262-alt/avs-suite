@@ -73,8 +73,8 @@ export function ScanProgress({ progress, subProgress, step, currentFile, isOptim
         )}
       </div>
 
-      {/* Sub-progress for current file/operation */}
-      {currentFile && subProgress !== undefined && isActive && (
+      {/* Current file/folder being scanned — show even without subProgress */}
+      {currentFile && isActive && (
         <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2">
           <div className="flex items-center gap-2">
             <span className="relative flex h-2.5 w-2.5 shrink-0">
@@ -85,12 +85,14 @@ export function ScanProgress({ progress, subProgress, step, currentFile, isOptim
               {currentFile}
             </span>
           </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--avs-surface-muted)]">
-            <div
-              className="h-full rounded-full bg-brand-primary/60 transition-all duration-300 ease-out"
-              style={{ width: `${subProgress}%` }}
-            />
-          </div>
+          {subProgress !== undefined && (
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--avs-surface-muted)]">
+              <div
+                className="h-full rounded-full bg-brand-primary/60 transition-all duration-300 ease-out"
+                style={{ width: `${subProgress}%` }}
+              />
+            </div>
+          )}
         </div>
       )}
 

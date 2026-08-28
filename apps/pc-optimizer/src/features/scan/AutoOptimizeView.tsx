@@ -247,12 +247,17 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
 
   // ── Running state (Cleaning) ─────────────────────────────────────
   if (isRunning) {
+    const isVerifying = autoOpt.phase === 'verifying';
     return (
       <Card variant="glass" className="p-8" data-testid="auto-optimize-running">
         <div className="space-y-6">
           <div className="text-center space-y-2">
-            <div className="inline-flex p-3 rounded-full bg-brand-primary/10 animate-pulse">
-              <BoltIcon className="h-8 w-8 text-brand-primary" />
+            <div className={`inline-flex p-3 rounded-full bg-brand-primary/10 ${isVerifying ? 'animate-spin' : 'animate-pulse'}`}>
+              {isVerifying ? (
+                <ArrowPathIcon className="h-8 w-8 text-brand-primary" />
+              ) : (
+                <BoltIcon className="h-8 w-8 text-brand-primary" />
+              )}
             </div>
             <h3 className="text-lg font-semibold text-text-primary">
               {phaseLabel}
@@ -263,17 +268,28 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
                 {autoOpt.currentCategory}
               </p>
             )}
+            {/* V1.0: Show reassuring message during verification */}
+            {isVerifying && (
+              <p className="text-caption text-text-muted">
+                Verifying all files were safely removed...
+              </p>
+            )}
           </div>
 
-          {/* Progress bar */}
+          {/* Progress bar with animated stripe during verification */}
           <div className="space-y-2">
             <div className="flex justify-between text-small text-text-muted">
-              <span>{autoOpt.phase === 'verifying' ? 'Verifying' : autoOpt.phase === 'preparing' || autoOpt.phase === 'starting' || autoOpt.phase === 'validating' ? 'Preparing' : 'Cleaning'}</span>
-              <span>{progress}%</span>
+              <span className="flex items-center gap-1.5">
+                {isVerifying && (
+                  <ArrowPathIcon className="h-3 w-3 animate-spin" />
+                )}
+                {autoOpt.phase === 'verifying' ? 'Verifying' : autoOpt.phase === 'preparing' || autoOpt.phase === 'starting' || autoOpt.phase === 'validating' ? 'Preparing' : 'Cleaning'}
+              </span>
+              <span className="tabular-nums">{progress}%</span>
             </div>
             <div className="h-2 rounded-full bg-surface-secondary overflow-hidden">
               <div
-                className="h-full rounded-full bg-brand-primary transition-all duration-300"
+                className={`h-full rounded-full bg-brand-primary transition-all duration-300 ${isVerifying ? 'animate-pulse' : ''}`}
                 style={{ width: `${progress}%` }}
                 data-testid="auto-optimize-progress-bar"
               />

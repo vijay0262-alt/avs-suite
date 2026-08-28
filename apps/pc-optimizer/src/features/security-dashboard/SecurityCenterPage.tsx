@@ -14,12 +14,14 @@
  * Suspicious heuristic findings are NEVER presented as confirmed malware.
  * Only Defender-confirmed threats are auto-quarantined.
  */
-import { useCallback, useState, useMemo } from 'react';
+import { useCallback, useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button } from '@avs/ui';
 import { ScanView, useSecurityScore } from '../scan';
 import { Modal } from '../dashboard/components/Modal';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
+import { dashboardService } from '../dashboard/dashboard.service';
+import type { DashboardMetrics } from '../dashboard/dashboard.types';
 import {
   ShieldCheckIcon,
   ShieldExclamationIcon,
@@ -66,6 +68,14 @@ export function SecurityCenterPage() {
   const navigate = useNavigate();
   const [scanModalOpen, setScanModalOpen] = useState(false);
   const { score, defender, loading, error, refresh } = useSecurityScore();
+  const [dashboardMetrics, setDashboardMetrics] = useState<DashboardMetrics | null>(null);
+
+  // Fetch dashboard metrics to check for third-party AV (e.g. Trend Micro)
+  useEffect(() => {
+    void dashboardService.getMetrics().then(setDashboardMetrics).catch(() => {});
+  }, []);
+
+  const thirdPartyAV = dashboardMetrics?.security?.defender?.thirdPartyAV ?? null;
 
   const handleModalClose = useCallback(() => {
     setScanModalOpen(false);
@@ -73,15 +83,23 @@ export function SecurityCenterPage() {
   }, [refresh]);
 
   // Derive page status badge from real Defender telemetry + scan modal state
+  // When a third-party AV is active, Defender being off is EXPECTED —
+  // the PC is still protected.
   const pageStatus: ScanStatus = useMemo(() => {
     if (scanModalOpen) return 'scanning';
     if (loading && !defender) return 'ready';
-    if (!defender || !defender.ok) return 'ready';
+    if (!defender || !defender.ok) {
+      // If third-party AV is active, show as protected
+      if (thirdPartyAV) return 'protected';
+      return 'ready';
+    }
     const activeThreats = defender.active_threat_count ?? 0;
     if (activeThreats > 0) return 'threats_found';
     if (defender.is_available) return 'protected';
+    // Defender not available but third-party AV is active
+    if (thirdPartyAV) return 'protected';
     return 'ready';
-  }, [defender, loading, scanModalOpen]);
+  }, [defender, loading, scanModalOpen, thirdPartyAV]);
 
   const statusConfig = STATUS_CONFIG[pageStatus];
   const statusTone = toneClasses(statusConfig.tone);
@@ -216,7 +234,25 @@ export function SecurityCenterPage() {
       </div>
 
       {/* ── 4. DEFENDER STATUS (compact) ──────────────────────── */}
-      {defender && defender.ok && defender.protection_state && (
+      {/* When a third-party AV is active, Defender is correctly disabled
+          by Windows. Show the third-party AV info instead of showing
+          all Defender fields as "Off" (which would falsely suggest the
+          PC is unprotected). */}
+      {thirdPartyAV && (!defender || !defender.is_available) ? (
+        <Card variant="glass" className="p-5" data-testid="defender-status-card">
+          <div className="flex items-center gap-3 mb-3">
+            <ShieldCheckIcon className="h-5 w-5 text-semantic-success" />
+            <h3 className="text-small font-semibold text-text-primary">Antivirus Protection</h3>
+            <span className="text-caption font-medium text-semantic-success" data-testid="defender-status-label">
+              {thirdPartyAV} Active
+            </span>
+          </div>
+          <p className="text-small text-text-secondary">
+            {thirdPartyAV} is protecting your PC. Windows Defender is correctly disabled
+            because a third-party antivirus is active. Your PC is protected.
+          </p>
+        </Card>
+      ) : defender && defender.ok && defender.protection_state ? (
         <Card variant="glass" className="p-5" data-testid="defender-status-card">
           <div className="flex items-center gap-3 mb-3">
             <ShieldCheckIcon
@@ -263,7 +299,7 @@ export function SecurityCenterPage() {
             />
           </div>
         </Card>
-      )}
+      ) : null}
 
       {/* ── 5. PROTECTION CENTER NAVIGATION ───────────────────── */}
       <Card variant="glass" className="p-5" data-testid="security-protection-center-link">

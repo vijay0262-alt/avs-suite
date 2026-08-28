@@ -202,8 +202,7 @@ describe('Dashboard scan state', () => {
     });
     render(<DashboardScanStatusCard />, { wrapper: Wrapper });
     expect(screen.getByTestId('dashboard-scan-issues').textContent).toBe('7 issues');
-    expect(screen.getByTestId('dashboard-scan-actionable').textContent).toBe('5 actionable');
-    expect(screen.getByTestId('dashboard-scan-action').textContent).toBe('Review Findings');
+    expect(screen.getByTestId('dashboard-scan-action').textContent).toBe('View Results');
   });
 
   it('does not expose legacy orchestrator or security remediation RPCs in scan components', () => {
@@ -248,7 +247,7 @@ describe('Dashboard scan state', () => {
     await vi.waitFor(() => {
       expect(screen.getByTestId('dashboard-scan-issues').textContent).toBe('3 issues');
     });
-    expect(screen.getByTestId('dashboard-scan-action').textContent).toBe('Review Findings');
+    expect(screen.getByTestId('dashboard-scan-action').textContent).toBe('View Results');
   });
 
   it('active in-memory session takes precedence over persisted history', () => {

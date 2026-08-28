@@ -24,6 +24,14 @@ const statusTone: Record<string, 'success' | 'warning' | 'danger' | 'muted'> = {
   cancelled: 'muted',
 };
 
+function formatBytesCompact(bytes: number): string {
+  if (bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  const value = bytes / Math.pow(1024, i);
+  return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
 function StatusLabel({ status }: { status: string }) {
   return (
     <span
@@ -50,9 +58,15 @@ export interface DashboardScanStatusCardProps {
 export function DashboardScanStatusCard({ onOpenScan }: DashboardScanStatusCardProps = {}) {
   const { snapshot } = useDashboardScan();
 
+  // V1.0: Show cleanup results instead of "Review Findings"
+  // After a scan + cleanup, show "View Results" which opens the scan modal
+  // showing the cleanup summary (files cleaned, space recovered).
   const primaryAction = (() => {
+    if (snapshot.cleanupResult && snapshot.cleanupResult.cleaned > 0) {
+      return { label: 'View Results' };
+    }
     if (snapshot.canReview) {
-      return { label: 'Review Findings' };
+      return { label: 'View Results' };
     }
     if (snapshot.canApprove) {
       return { label: 'Approve & Fix' };
@@ -110,11 +124,19 @@ export function DashboardScanStatusCard({ onOpenScan }: DashboardScanStatusCardP
             <StatusLabel status={snapshot.scanStatus} />
             {snapshot.hasActiveSession && (
               <>
-                <span data-testid="dashboard-scan-issues">{snapshot.issuesFound} issues</span>
-                {snapshot.actionableCount > 0 && (
-                  <span data-testid="dashboard-scan-actionable">
-                    {snapshot.actionableCount} actionable
-                  </span>
+                {snapshot.cleanupResult && snapshot.cleanupResult.cleaned > 0 ? (
+                  <>
+                    <span data-testid="dashboard-scan-cleaned">
+                      {snapshot.cleanupResult.cleaned} files cleaned
+                    </span>
+                    {snapshot.cleanupResult.spaceRecovered > 0 && (
+                      <span data-testid="dashboard-scan-space">
+                        {formatBytesCompact(snapshot.cleanupResult.spaceRecovered)} recovered
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span data-testid="dashboard-scan-issues">{snapshot.issuesFound} issues</span>
                 )}
                 {snapshot.error && (
                   <span className="text-semantic-danger" data-testid="dashboard-scan-error">

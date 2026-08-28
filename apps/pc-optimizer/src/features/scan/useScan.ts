@@ -242,6 +242,9 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
         overallProgress: completionPercent,
         currentModule: currentPhase ?? undefined,
         currentActivity: currentOperation,
+        // V1.0: Pass the current folder/file path so the UI can show
+        // what is being scanned in real time.
+        currentFile: getProgressValue<string | null>(progress, 'current_folder', null) ?? undefined,
       });
 
       scan.updateCounters(mapStatusCounters(progress, config));
