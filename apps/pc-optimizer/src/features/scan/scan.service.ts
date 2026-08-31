@@ -161,8 +161,8 @@ export interface DefenderStatusResponse {
 }
 
 export interface ScanService {
-  scan_quick(scope?: string[], ruleCategories?: string[]): Promise<ScanStartResponse>;
-  scan_full(scope?: string[], ruleCategories?: string[]): Promise<ScanStartResponse>;
+  scan_quick(scope?: string[], ruleCategories?: string[], source?: string): Promise<ScanStartResponse>;
+  scan_full(scope?: string[], ruleCategories?: string[], source?: string): Promise<ScanStartResponse>;
   cancel_scan(sessionId: string): Promise<ScanCancelResponse>;
   status(sessionId: string): Promise<Record<string, unknown>>;
   result(sessionId: string): Promise<Record<string, unknown>>;
@@ -177,10 +177,10 @@ export interface ScanService {
 }
 
 export const scanService: ScanService = {
-  scan_quick: (scope?: string[], ruleCategories?: string[]) =>
-    client().call(RPC_METHODS.SCAN_CORE_SCAN_QUICK, { scope, rule_categories: ruleCategories }),
-  scan_full: (scope?: string[], ruleCategories?: string[]) =>
-    client().call(RPC_METHODS.SCAN_CORE_SCAN_FULL, { scope, rule_categories: ruleCategories }),
+  scan_quick: (scope?: string[], ruleCategories?: string[], source?: string) =>
+    client().call(RPC_METHODS.SCAN_CORE_SCAN_QUICK, { scope, rule_categories: ruleCategories, source }),
+  scan_full: (scope?: string[], ruleCategories?: string[], source?: string) =>
+    client().call(RPC_METHODS.SCAN_CORE_SCAN_FULL, { scope, rule_categories: ruleCategories, source }),
   cancel_scan: (sessionId: string) => client().call(RPC_METHODS.SCAN_CORE_SCAN_CANCEL, { session_id: sessionId }),
   status: (sessionId: string) => client().call(RPC_METHODS.SCAN_CORE_SCAN_STATUS, { session_id: sessionId }),
   result: (sessionId: string) => client().call(RPC_METHODS.SCAN_CORE_SCAN_RESULT, { session_id: sessionId }),

@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 from avs_backend.history.history_manager import (
     ModuleType,
     OptimizationType,
@@ -149,6 +150,7 @@ def history_clear(_params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("history.export")
+@require_feature("optimization.history")
 def history_export(params: dict[str, Any] | None) -> dict[str, Any]:
     """Export history to CSV file."""
     try:

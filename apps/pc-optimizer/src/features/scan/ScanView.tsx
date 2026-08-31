@@ -33,11 +33,13 @@ export interface ScanViewProps {
   /** V1.0: When set, show the previous scan's results (PlanReviewView)
    * instead of starting a new scan. Used by "Review Findings" button. */
   reviewPlanId?: string | null;
+  /** V1.0: Identifies the entry point for edition gating — "dashboard" or "smart_optimize". */
+  source?: string;
 }
 
-export function ScanView({ module, mode = 'full', onClose, className, buttonLabel, autoStart, reviewPlanId }: ScanViewProps) {
+export function ScanView({ module, mode = 'full', onClose, className, buttonLabel, autoStart, reviewPlanId, source }: ScanViewProps) {
   const config = useMemo(() => getScanConfig(module), [module]);
-  const scan = useScan({ mode, config });
+  const scan = useScan({ mode, config, source });
   const [showResults, setShowResults] = useState(false);
   const [showAutoOptimize, setShowAutoOptimize] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();

@@ -8,6 +8,7 @@
 import { useMemo } from 'react';
 import { UnifiedResultsView } from '../unified-results/components/UnifiedResultsView';
 import { useScanHistory } from '../unified-results/useScanHistory';
+import { useFeatureGuard } from '../licensing/useFeatureGuard';
 import type {
   UnifiedResultsReport,
   UnifiedIssue,
@@ -31,6 +32,7 @@ export interface UnifiedSecurityScanResultsProps {
 export function UnifiedSecurityScanResults({ vm, isPro = false }: UnifiedSecurityScanResultsProps) {
   const s = vm.state;
   const { history, addEntry } = useScanHistory(isPro);
+  const { guard, dialogElement } = useFeatureGuard();
 
   const resultsReport = useMemo(() => {
     if (!s.aiSummary) return null;
@@ -47,6 +49,7 @@ export function UnifiedSecurityScanResults({ vm, isPro = false }: UnifiedSecurit
   if (!resultsReport) return null;
 
   return (
+    <>
     <UnifiedResultsView
       report={resultsReport}
       history={history}
@@ -56,19 +59,24 @@ export function UnifiedSecurityScanResults({ vm, isPro = false }: UnifiedSecurit
       extraActions={[
         {
           id: 'quarantine',
-          label: 'Quarantine All',
+          label: isPro ? 'Quarantine All' : 'Upgrade to Quarantine',
           icon: 'ShieldCheckIcon',
           variant: 'primary',
           action: () => {
-            if (s.lastScanResult && s.lastScanResult.threats.length > 0) {
-              const inv = s.investigations.find((i) =>
-                i.threatIds.some((tid) => s.lastScanResult!.threats.some((t) => t.id === tid)),
-              );
-              if (inv) {
-                vm.createRemediationPlan(inv.id);
-                vm.setActiveTab('remediation');
+            guard('security.quarantine', 'Security Center', () => {
+              if (s.lastScanResult && s.lastScanResult.threats.length > 0) {
+                const inv = s.investigations.find((i) =>
+                  i.threatIds.some((tid) => s.lastScanResult!.threats.some((t) => t.id === tid)),
+                );
+                if (inv) {
+                  vm.createRemediationPlan(inv.id);
+                  vm.setActiveTab('remediation');
+                }
               }
-            }
+            }, {
+              limitDescription: 'Free users can detect threats but cannot quarantine them.',
+              proBenefit: 'Quarantine detected threats, execute remediation plans, and restore files safely.',
+            });
           },
         },
         {
@@ -90,6 +98,8 @@ export function UnifiedSecurityScanResults({ vm, isPro = false }: UnifiedSecurit
         },
       ]}
     />
+    {dialogElement}
+    </>
   );
 }
 

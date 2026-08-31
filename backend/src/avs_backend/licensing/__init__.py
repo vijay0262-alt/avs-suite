@@ -376,8 +376,28 @@ _FEATURE_EDITION_RANK: dict[str, int] = {
 _LOCKED_RPC_METHODS: dict[str, str] = {
     "privacy.clean": "professional",
     "updater.upgrade": "professional",
-    "updater.upgradeAll": "ultimate",
+    "updater.upgradeAll": "professional",
     "performance.optimize": "professional",
+    # Security remediation — quarantine and remove threats
+    "scan_core.remediation.execute": "professional",
+    "scan_core.remediation.rollback": "professional",
+    "scan_core.dashboard.auto_optimize": "professional",
+    # Uninstaller — standard and deep uninstall
+    "uninstaller.uninstall": "professional",
+    "uninstaller.scanLeftovers": "professional",
+    # Real-time protection — start/stop requires Pro
+    "realtime.start": "professional",
+    "realtime.stop": "professional",
+    # Scheduled maintenance — create/update/run requires Pro
+    "scheduler.create": "professional",
+    "scheduler.update": "professional",
+    "scheduler.runNow": "professional",
+    # History export — Pro only (Free gets view only)
+    "history.export": "professional",
+    # Predictive health forecast — Pro only (Free gets snapshot only)
+    "predictive.forecast": "professional",
+    "predictive.trends": "professional",
+    "predictive.history": "professional",
 }
 
 

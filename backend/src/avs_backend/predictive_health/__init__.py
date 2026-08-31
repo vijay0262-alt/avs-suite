@@ -35,6 +35,7 @@ from typing import Any
 import psutil
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 
 log = logging.getLogger("avs.predictive")
 
@@ -233,6 +234,7 @@ def capture_snapshot(_params: dict[str, Any] | None = None) -> dict[str, Any]:
 # =====================================================================
 
 @register("predictive.trends")
+@require_feature("health.timeline")
 def get_trends(params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Get trend data for metrics over time.
 
@@ -295,6 +297,7 @@ def get_trends(params: dict[str, Any] | None = None) -> dict[str, Any]:
 # =====================================================================
 
 @register("predictive.forecast")
+@require_feature("health.timeline")
 def get_forecast(params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Get forecast predictions for a metric.
 
@@ -421,6 +424,7 @@ def get_forecast(params: dict[str, Any] | None = None) -> dict[str, Any]:
 # =====================================================================
 
 @register("predictive.history")
+@require_feature("health.timeline")
 def get_history(params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Get historical health snapshots.
 

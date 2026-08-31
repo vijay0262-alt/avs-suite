@@ -15,6 +15,7 @@ from typing import Any, Optional
 import uuid
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import _get_current_edition, get_edition_limit, require_feature
 from avs_backend.scan_core.metadata.database import DatabaseConfig, MetadataDatabase
 from avs_backend.scan_core.orchestration import RemediationCoordinator
 from avs_backend.scan_core.orchestration import orchestrator as _orchestrator_module
@@ -377,6 +378,7 @@ def _scan_core_remediation_validate(params: Optional[dict[str, Any]]) -> dict[st
 
 
 @register("scan_core.remediation.execute")
+@require_feature("security.remediate")
 def _scan_core_remediation_execute(params: Optional[dict[str, Any]]) -> dict[str, Any]:
     params = _safe_params(params)
     for key in ("plan_id", "request_id"):
@@ -453,6 +455,7 @@ def _scan_core_remediation_status(params: Optional[dict[str, Any]]) -> dict[str,
 
 
 @register("scan_core.remediation.rollback")
+@require_feature("security.remediate")
 def _scan_core_remediation_rollback(params: Optional[dict[str, Any]]) -> dict[str, Any]:
     params = _safe_params(params)
     ok, execution_id = _require_str(params, "execution_id")
@@ -489,7 +492,7 @@ def _on_progress(scan_id: str, progress: ScanProgress) -> None:
             session["progress"] = progress.to_dict()
 
 
-def _run_direct_cleanup(scan_id: str) -> None:
+def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
     """V1.0: Simple direct cleanup for Dashboard quick scans.
 
     Like CCleaner/Disk Cleanup: for each category, scan → delete files →
@@ -512,7 +515,20 @@ def _run_direct_cleanup(scan_id: str) -> None:
 
     Everything inside these folders IS junk by definition.
     Locked/in-use files are skipped (they'll be cleanable on reboot).
+
+    V1.0 Edition gating: Free edition is limited to 500 MB per run.
+    Once the limit is reached, remaining files are counted as
+    skipped_due_to_limit and the cleanup stops.
     """
+    import fnmatch
+
+    # V1.0: Determine edition and byte limit for this run.
+    edition = _get_current_edition()
+    is_free = edition in ("free",)
+    byte_limit = get_edition_limit("junk.bytes_per_run") if is_free else None
+    limit_reached = False
+
+    local_app_data = os.environ.get("LOCALAPPDATA", "")
     import fnmatch
 
     local_app_data = os.environ.get("LOCALAPPDATA", "")
@@ -680,18 +696,26 @@ def _run_direct_cleanup(scan_id: str) -> None:
         cat_name: str,
         base_pct: int,
         pct_span: int,
-    ) -> tuple[int, int, int]:
-        """Delete files, return (deleted, skipped, bytes_recovered)."""
+    ) -> tuple[int, int, int, int]:
+        """Delete files, return (deleted, skipped, bytes_recovered, skipped_due_to_limit)."""
         deleted = 0
         skipped = 0
         recovered = 0
+        skipped_limit = 0
         total = len(files)
+        nonlocal limit_reached
         for i, (file_path, file_size) in enumerate(files):
             # Check cancellation
             with _scan_session_lock:
                 session = _scan_sessions.get(scan_id)
                 if session is None or session.get("cancelled"):
-                    return deleted, skipped, recovered
+                    return deleted, skipped, recovered, skipped_limit
+
+            # V1.0: Free edition byte limit — stop deleting once limit reached
+            if byte_limit is not None and (total_bytes_recovered + recovered) >= byte_limit:
+                limit_reached = True
+                skipped_limit = total - i
+                break
 
             try:
                 os.unlink(file_path)
@@ -717,7 +741,7 @@ def _run_direct_cleanup(scan_id: str) -> None:
                     pct,
                 )
 
-        return deleted, skipped, recovered
+        return deleted, skipped, recovered, skipped_limit
 
     # ─── Helper: remove empty directories ──────────────────────────
     def _remove_dirs(dirs: list[str], cat_index: int, cat_name: str, base_pct: int, pct_span: int) -> int:
@@ -788,7 +812,7 @@ def _run_direct_cleanup(scan_id: str) -> None:
 
         # ── Phase B: Delete files ───────────────────────────────────
         delete_span = int(cat_span * 0.5)  # 50% of category for deleting
-        d_deleted, d_skipped, d_recovered = _delete_files(
+        d_deleted, d_skipped, d_recovered, d_skipped_limit = _delete_files(
             cat_files,
             cat_index,
             cat_name,
@@ -797,7 +821,7 @@ def _run_direct_cleanup(scan_id: str) -> None:
         )
 
         total_files_deleted += d_deleted
-        total_files_skipped += d_skipped
+        total_files_skipped += d_skipped + d_skipped_limit
         total_bytes_recovered += d_recovered
 
         # ── Phase C: Remove empty folders ───────────────────────────
@@ -819,11 +843,37 @@ def _run_direct_cleanup(scan_id: str) -> None:
             "path": cat_path,
             "files_found": cat_f_found,
             "files_deleted": d_deleted,
-            "files_skipped": d_skipped,
+            "files_skipped": d_skipped + d_skipped_limit,
             "folders_removed": d_removed,
             "bytes_recovered": d_recovered,
             "mb_recovered": cat_mb,
+            "skipped_due_to_limit": d_skipped_limit,
         })
+
+        # V1.0: If Free edition byte limit reached, skip remaining categories
+        if limit_reached:
+            # Count remaining categories' files as skipped_due_to_limit
+            for remaining_cat in categories[cat_index + 1:]:
+                r_path = remaining_cat["path"]
+                r_type = remaining_cat["type"]
+                if r_type == "folder":
+                    _, _, r_f_found, _ = _scan_folder(r_path)
+                else:
+                    r_files = _scan_pattern(r_path, remaining_cat["pattern"])
+                    r_f_found = len(r_files)
+                total_files_found += r_f_found
+                category_results.append({
+                    "name": remaining_cat["name"],
+                    "path": r_path,
+                    "files_found": r_f_found,
+                    "files_deleted": 0,
+                    "files_skipped": r_f_found,
+                    "folders_removed": 0,
+                    "bytes_recovered": 0,
+                    "mb_recovered": 0.0,
+                    "skipped_due_to_limit": r_f_found,
+                })
+            break
 
     # ─── Final results ─────────────────────────────────────────────
     mb_recovered = round(total_bytes_recovered / (1024 * 1024), 2)
@@ -848,6 +898,9 @@ def _run_direct_cleanup(scan_id: str) -> None:
             "elapsed_time_ms": elapsed_ms,
             "is_cancelled": False,
             "completion_percent": 100,
+            "edition": edition,
+            "limit_reached": limit_reached,
+            "byte_limit": byte_limit,
         }
         session["result"] = {
             "scan_id": scan_id,
@@ -891,6 +944,9 @@ def _run_direct_cleanup(scan_id: str) -> None:
                 "remaining": 0,
                 "space_recovered": total_bytes_recovered,
                 "categories": category_results,
+                "edition": edition,
+                "limit_reached": limit_reached,
+                "byte_limit": byte_limit,
             },
         }
         session["completed"] = True
@@ -901,6 +957,7 @@ def _run_scan(
     scan_type: str,
     scope: Optional[list[str]],
     rule_categories: Optional[list[str]] = None,
+    source: str = "dashboard",
 ) -> None:
     """Background target that runs the scan and records the result.
 
@@ -914,7 +971,7 @@ def _run_scan(
     """
     # V1.0: Quick scans use direct cleanup — no orchestrator needed
     if scan_type == "quick" and not scope:
-        _run_direct_cleanup(scan_id)
+        _run_direct_cleanup(scan_id, source=source)
         return
 
     orchestrator = get_scan_orchestrator(wait_for_ready=True, timeout_s=90.0)
@@ -983,6 +1040,10 @@ def _start_scan(scan_type: str, params: dict[str, Any]) -> dict[str, Any]:
     V1.0: Returns immediately with a session_id.  The orchestrator
     initialization happens inside the background thread, so the UI
     shows "Preparing..." instead of blocking the RPC call for 60s.
+
+    V1.0 Edition gating: AI Smart Optimize (source="smart_optimize")
+    requires Professional edition. Dashboard cleanup (source="dashboard"
+    or unset) is allowed for Free with a 500 MB byte limit.
     """
     ok, scope, error = _validate_scope(params)
     if not ok:
@@ -992,6 +1053,23 @@ def _start_scan(scan_type: str, params: dict[str, Any]) -> dict[str, Any]:
     rule_categories = params.get("rule_categories") if isinstance(params, dict) else None
     if rule_categories is not None and not isinstance(rule_categories, list):
         rule_categories = None
+
+    # V1.0 Edition gating: extract source to differentiate entry points.
+    source = params.get("source") if isinstance(params, dict) else None
+    if not isinstance(source, str):
+        source = "dashboard"
+
+    # AI Smart Optimize requires Professional edition.
+    if scan_type == "quick" and source == "smart_optimize":
+        edition = _get_current_edition()
+        if edition in ("free",):
+            return {
+                "ok": False,
+                "error": "AI Smart Optimization requires Professional edition. Please upgrade to use this feature.",
+                "error_code": "EDITION_LOCKED",
+                "required_edition": "professional",
+                "current_edition": edition,
+            }
 
     scan_id = str(uuid.uuid4())
     started_at = datetime.now(UTC).isoformat()
@@ -1020,7 +1098,7 @@ def _start_scan(scan_type: str, params: dict[str, Any]) -> dict[str, Any]:
 
     thread = threading.Thread(
         target=_run_scan,
-        args=(scan_id, scan_type, scope, rule_categories),
+        args=(scan_id, scan_type, scope, rule_categories, source),
         daemon=True,
         name=f"scan-core-{scan_type}-{scan_id}",
     )
@@ -2199,6 +2277,7 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
 
 
 @register("scan_core.dashboard.auto_optimize")
+@require_feature("performance.optimize")
 def _scan_core_dashboard_auto_optimize(params: Optional[dict[str, Any]]) -> dict[str, Any]:
     """Start automatic optimization of safe actions from a scan plan.
 

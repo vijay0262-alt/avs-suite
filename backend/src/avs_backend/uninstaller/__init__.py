@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 from avs_backend.uninstaller.program_manager import (
     list_programs,
     scan_leftovers,
@@ -32,6 +33,7 @@ def uninstaller_list(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("uninstaller.uninstall")
+@require_feature("uninstaller.standard")
 def uninstaller_uninstall(params: dict[str, Any] | None) -> dict[str, Any]:
     """Launch a program's uninstaller."""
     if not params or "program" not in params:
@@ -45,6 +47,7 @@ def uninstaller_uninstall(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("uninstaller.scanLeftovers")
+@require_feature("uninstaller.deep")
 def uninstaller_scan_leftovers(params: dict[str, Any] | None) -> dict[str, Any]:
     """Scan for leftover folders belonging to a program."""
     if not params or "program" not in params:

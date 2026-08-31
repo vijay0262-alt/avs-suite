@@ -8,6 +8,8 @@ import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleEmptyState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
 import { SharedConfirmDialog } from '../../components/SharedConfirmDialog';
 import { HelpButton } from '../../components/HelpButton';
+import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
+import { useIsPro } from '../sync/syncStore';
 import { UninstallerViewModel, type SortKey } from './UninstallerViewModel';
 import { uninstallerService } from './uninstaller.service';
 import type { Program } from './uninstaller.types';
@@ -28,6 +30,7 @@ export default function UninstallerPage() {
   const vm = useMemo(() => new UninstallerViewModel(uninstallerService), []);
   const state = useViewModel(vm);
   const [confirm, setConfirm] = useState<Program | null>(null);
+  const isPro = useIsPro();
 
   useEffect(() => {
     void vm.bootstrap();
@@ -38,11 +41,41 @@ export default function UninstallerPage() {
 
   return (
     <div data-testid="page-uninstaller">
+      <ProStatusBanner compact />
       <PageHeader
         title="Uninstaller"
         description="Review installed programs and remove the ones you no longer need."
-        actions={<HelpButton text="Browse installed programs and launch their uninstallers. Search by name or publisher, sort by size or install date. The program's own uninstaller will guide you through removal." />}
+        actions={
+          <div className="flex items-center gap-2">
+            <ProStatusPill />
+            <HelpButton text="Browse installed programs and launch their uninstallers. Search by name or publisher, sort by size or install date. The program's own uninstaller will guide you through removal." />
+          </div>
+        }
       />
+
+      {!isPro && (
+        <Card variant="glass" className="p-6 mb-6 border-amber-500/30 bg-amber-500/5" data-testid="uninstaller-free-notice">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center">
+              <span className="text-amber-500 text-xl font-bold">PRO</span>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-white mb-1">Uninstaller is a Professional Feature</h3>
+              <p className="text-sm text-white/60 mb-4">
+                Free users can view installed programs but cannot uninstall them through AVS Shield.
+                Upgrade to Professional to uninstall programs and scan for leftover files and registry entries.
+              </p>
+              <Button
+                onClick={() => window.open('https://www.avsshield.com/upgrade', '_blank')}
+                variant="primary"
+                data-testid="uninstaller-upgrade-cta"
+              >
+                Upgrade to Professional
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {state.bootstrap === 'error' && (
         <ModuleErrorState
@@ -118,10 +151,10 @@ export default function UninstallerPage() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    disabled={state.busyId === p.id}
-                    onClick={() => setConfirm(p)}
+                    disabled={state.busyId === p.id || !isPro}
+                    onClick={() => isPro && setConfirm(p)}
                   >
-                    {state.busyId === p.id ? 'Working…' : 'Uninstall'}
+                    {state.busyId === p.id ? 'Working…' : isPro ? 'Uninstall' : 'PRO'}
                   </Button>
                 </div>
               ))}

@@ -244,6 +244,7 @@ export default function SmartOptimizationPage() {
   const smartPlan = useSmartOptimizationPlan();
   const { snapshot } = useDashboardScan();
   const [scanModalOpen, setScanModalOpen] = useState(false);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
   useEffect(() => {
     vm.bootstrap();
@@ -303,16 +304,44 @@ export default function SmartOptimizationPage() {
           <div className="flex items-center gap-2">
             <ProStatusPill />
             <Button
-              onClick={() => setScanModalOpen(true)}
+              onClick={() => {
+                if (!isPro) {
+                  setUpgradeModalOpen(true);
+                } else {
+                  setScanModalOpen(true);
+                }
+              }}
               size="lg"
               leftIcon={<BoltIcon className="h-5 w-5" />}
               data-testid="smart-opt-scan-cta"
             >
-              Optimize Now
+              {isPro ? 'Optimize Now' : 'Upgrade to Optimize'}
             </Button>
           </div>
         }
       />
+
+      {/* V1.0: Free edition — show upgrade notice instead of optimization plan */}
+      {!isPro && (
+        <Card variant="glass" className="p-6 border-amber-500/30 bg-amber-500/5" data-testid="smart-opt-free-notice">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center">
+              <BoltIcon className="h-6 w-6 text-amber-500" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-white mb-1">AI Smart Optimization is a Professional Feature</h3>
+              <p className="text-sm text-white/60 mb-4">
+                Free users can view optimization recommendations but cannot execute automatic optimizations.
+                Upgrade to Professional to unlock one-click AI-driven optimization with automatic sequencing,
+                rollback, scheduling, and background execution.
+              </p>
+              <Button onClick={() => setUpgradeModalOpen(true)} variant="primary" data-testid="smart-opt-upgrade-cta">
+                Upgrade to Professional
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* ── ABOVE THE FOLD ─────────────────────────────────────────── */}
       {/* 4 Summary Cards — V1.0: Synced with actual scan/cleanup results */}
@@ -687,8 +716,50 @@ export default function SmartOptimizationPage() {
           mode="quick"
           autoStart={true}
           buttonLabel="Optimize Now"
+          source="smart_optimize"
           onClose={() => setScanModalOpen(false)}
         />
+      </Modal>
+
+      {/* V1.0: Upgrade modal for Free users */}
+      <Modal
+        open={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        title="Upgrade to Professional"
+        size="md"
+      >
+        <div className="p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center">
+              <BoltIcon className="h-6 w-6 text-amber-500" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">AI Smart Optimization</h3>
+              <p className="text-sm text-white/60">A Professional edition feature</p>
+            </div>
+          </div>
+          <p className="text-sm text-white/70">
+            Unlock AI-driven automatic system optimization with:
+          </p>
+          <ul className="text-sm text-white/70 space-y-2 list-disc list-inside">
+            <li>One-click optimization with automatic sequencing</li>
+            <li>Rollback protection for every action</li>
+            <li>Scheduled and background optimization</li>
+            <li>Unlimited junk cleaning (no 500 MB cap)</li>
+            <li>Smart recommendations and optimization history</li>
+          </ul>
+          <div className="flex gap-3 pt-2">
+            <Button onClick={() => setUpgradeModalOpen(false)} variant="ghost">
+              Maybe Later
+            </Button>
+            <Button onClick={() => {
+              setUpgradeModalOpen(false);
+              window.open('https://www.avsshield.com/upgrade', '_blank');
+            }} variant="primary" data-testid="upgrade-modal-cta">
+              Upgrade Now
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

@@ -21,6 +21,7 @@ import type { DashboardMetrics, LiveMetrics, HardwareSensorReading } from './das
 import { DashboardScanStatusCard } from '../scan/components/DashboardScanStatusCard';
 import { useDashboardScan } from '../scan/useDashboardScan';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
+import { useIsPro } from '../sync/syncStore';
 import { ScanView } from '../scan';
 import { Modal } from './components/Modal';
 import { optimizationEventBus, OptimizationEventType } from '../health/OptimizationEventBus';
@@ -117,6 +118,7 @@ export default function DashboardPage() {
   const state = useViewModel(vm);
   const { snapshot } = useDashboardScan();
   const [scanModalOpen, setScanModalOpen] = useState(false);
+  const isPro = useIsPro();
   // V1.0: When set, the modal shows previous scan results (Review Findings)
   // instead of auto-starting a new scan. null = start a new scan.
   const [reviewPlanId, setReviewPlanId] = useState<string | null>(null);
@@ -353,6 +355,11 @@ export default function DashboardPage() {
                 >
                   {isScanning ? 'Scanning...' : hasScanError ? 'Try Again' : 'Scan Now'}
                 </Button>
+                {!isPro && (
+                  <p className="text-xs text-white/40 mt-1.5 text-right" data-testid="dashboard-free-limit-hint">
+                    Free edition: up to 500 MB per scan
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -538,6 +545,7 @@ export default function DashboardPage() {
         <ScanView
           module="optimize"
           mode="quick"
+          source="dashboard"
           onClose={() => {
             setScanModalOpen(false);
             setReviewPlanId(null);

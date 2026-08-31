@@ -31,6 +31,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 
 log = logging.getLogger("avs.scheduler")
 
@@ -126,6 +127,7 @@ def list_scheduled_tasks(_params: dict[str, Any] | None = None) -> dict[str, Any
 
 
 @register("scheduler.create")
+@require_feature("scheduled.optimization")
 def create_scheduled_task(params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Create a new scheduled maintenance task.
 
@@ -182,6 +184,7 @@ def create_scheduled_task(params: dict[str, Any] | None = None) -> dict[str, Any
 
 
 @register("scheduler.update")
+@require_feature("scheduled.optimization")
 def update_scheduled_task(params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Update an existing scheduled task.
 
@@ -235,6 +238,7 @@ def delete_scheduled_task(params: dict[str, Any] | None = None) -> dict[str, Any
 
 
 @register("scheduler.runNow")
+@require_feature("scheduled.optimization")
 def run_scheduled_task_now(params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Run a scheduled task immediately.
 

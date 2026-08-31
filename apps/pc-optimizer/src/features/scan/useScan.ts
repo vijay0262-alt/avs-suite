@@ -25,6 +25,8 @@ import type { CurrentOperationCardProps } from '../unified-scan/components/Curre
 export interface UseScanOptions {
   mode?: 'quick' | 'full';
   config: UnifiedScanModuleConfig;
+  /** V1.0: Identifies the entry point — "dashboard" or "smart_optimize" — for edition gating. */
+  source?: string;
 }
 
 export interface UseScanReturn extends Omit<UseUnifiedScanReturn, 'startScan' | 'cancelScan'> {
@@ -120,7 +122,7 @@ function mapCurrentOperation(
   };
 }
 
-export function useScan({ mode = 'full', config }: UseScanOptions): UseScanReturn {
+export function useScan({ mode = 'full', config, source }: UseScanOptions): UseScanReturn {
   const {
     startScan: hookStartScan,
     reset: hookReset,
@@ -315,7 +317,7 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
       //
       // V1.0 Architecture separation: pass ruleCategories from the module
       // config so the security scan only runs security rules, not junk/temp.
-      const response = (await startMethod(undefined, config.ruleCategories)) as { ok?: boolean; session_id?: string; started_at?: string; error?: string };
+      const response = (await startMethod(undefined, config.ruleCategories, source)) as { ok?: boolean; session_id?: string; started_at?: string; error?: string; error_code?: string; required_edition?: string };
       if (response.ok === false) {
         const backendError = response.error ?? 'Scan could not start';
         throw new Error(backendError);
@@ -345,7 +347,7 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
     } finally {
       startingRef.current = false;
     }
-  }, [hookStartScan, mode, startPoll, scan, stopPoll, config.moduleId, config.ruleCategories]);
+  }, [hookStartScan, mode, startPoll, scan, stopPoll, config.moduleId, config.ruleCategories, source]);
 
   const cancelScan = useCallback(() => {
     const sid = sessionIdRef.current;
