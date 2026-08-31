@@ -17,7 +17,7 @@ import { UnifiedScanView } from '../unified-scan/components/UnifiedScanView';
 import type { UnifiedScanAction } from '../unified-scan/unifiedScanTypes';
 import { useScan } from './useScan';
 import { getScanConfig } from './moduleConfigs';
-import { ResultsView } from './ResultsView';
+import { ResultsView, type ResultsViewProps } from './ResultsView';
 import { PlanReviewView } from './PlanReviewView';
 import { AutoOptimizeView } from './AutoOptimizeView';
 import type { ScanFinding, ScanStatistics } from './types';
@@ -167,7 +167,12 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
 
   // V1.0: Scan completed but no plan was created (zero findings or
   // zero safe actions).  Show results directly — this is NOT an error.
+  // V1.0: For direct cleanup (Dashboard quick scan), pass cleanup_summary
+  // so ResultsView can show "files deleted" and "space recovered".
   if (showAutoOptimize && !planId) {
+    const cleanupSummary = scan.result?.cleanup_summary as
+      | ResultsViewProps['cleanupSummary']
+      | undefined;
     return (
       <ResultsView
         moduleName={config.moduleName}
@@ -175,6 +180,7 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
         statistics={statistics}
         findings={findings}
         planId={undefined}
+        cleanupSummary={cleanupSummary}
         onClose={autoOptimizeClose}
         onRestart={() => {
           setShowAutoOptimize(false);

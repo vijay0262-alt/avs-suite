@@ -23,6 +23,15 @@ export interface ResultsViewProps {
   statistics: ScanStatistics;
   findings: ScanFinding[];
   planId?: string;
+  cleanupSummary?: {
+    files_found?: number;
+    files_deleted?: number;
+    files_skipped?: number;
+    folders_found?: number;
+    folders_deleted?: number;
+    bytes_recovered?: number;
+    mb_recovered?: number;
+  };
   onClose: () => void;
   onRestart?: () => void;
 }
@@ -49,6 +58,7 @@ export function ResultsView({
   statistics,
   findings,
   planId,
+  cleanupSummary,
   onClose,
   onRestart,
 }: ResultsViewProps) {
@@ -250,6 +260,63 @@ export function ResultsView({
   }
 
   if (findingsCount === 0) {
+    // V1.0: If we have a cleanup summary (direct cleanup), show the
+    // actual results: files deleted, space recovered, etc.
+    if (cleanupSummary && (cleanupSummary.files_deleted || 0) > 0) {
+      const mb = cleanupSummary.mb_recovered ?? 0;
+      const mbStr = mb >= 1024
+        ? `${(mb / 1024).toFixed(2)} GB`
+        : `${mb.toFixed(2)} MB`;
+      return (
+        <Card variant="glass" className="p-8" data-testid="results-view-cleanup">
+          <div className="text-center space-y-4">
+            <div className="inline-flex p-3 rounded-full bg-semantic-success/10">
+              <ModuleIcon icon={moduleIcon} />
+            </div>
+            <h3 className="text-lg font-semibold text-text-primary">{moduleName}</h3>
+            <p className="text-small text-text-secondary">Cleanup Complete</p>
+
+            <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
+              <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 text-center">
+                <div className="text-2xl font-bold text-semantic-success tabular-nums">
+                  {cleanupSummary.files_deleted?.toLocaleString() ?? 0}
+                </div>
+                <div className="text-caption text-[var(--avs-text-muted)]">Files Deleted</div>
+              </div>
+              <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 text-center">
+                <div className="text-2xl font-bold text-brand-primary tabular-nums">
+                  {mbStr}
+                </div>
+                <div className="text-caption text-[var(--avs-text-muted)]">Space Recovered</div>
+              </div>
+              <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 text-center">
+                <div className="text-2xl font-bold text-text-secondary tabular-nums">
+                  {cleanupSummary.folders_deleted?.toLocaleString() ?? 0}
+                </div>
+                <div className="text-caption text-[var(--avs-text-muted)]">Folders Removed</div>
+              </div>
+            </div>
+
+            {(cleanupSummary.files_skipped ?? 0) > 0 && (
+              <p className="text-caption text-text-muted">
+                {cleanupSummary.files_skipped} file(s) skipped (in use or locked)
+              </p>
+            )}
+
+            <div className="flex items-center justify-center gap-3">
+              <Button variant="secondary" onClick={onClose} data-testid="results-close-btn">
+                Close
+              </Button>
+              {onRestart && (
+                <Button onClick={onRestart} data-testid="results-restart-btn">
+                  Scan Again
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
+      );
+    }
     return (
       <Card variant="glass" className="p-8" data-testid="results-view-no-issues">
         <div className="text-center space-y-4">
