@@ -78,8 +78,9 @@ function mapStatusCounters(
     // Legacy counter aliases for backward compatibility with other configs.
     threatsFound: getProgressValue<number>(progress, 'confirmed_threats', 0),
     threatsChecked: getProgressValue<number>(progress, 'assets_discovered', 0),
-    storageRecovered: 0,
-    bytesRecovered: 0,
+    // V1.0: Direct cleanup counters — bytes recovered from backend.
+    storageRecovered: getProgressValue<number>(progress, 'bytes_recovered', 0),
+    bytesRecovered: getProgressValue<number>(progress, 'bytes_recovered', 0),
     memoryRecovery: 0,
     startupImprovement: 0,
   };
@@ -243,8 +244,12 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
         currentModule: currentPhase ?? undefined,
         currentActivity: currentOperation,
         // V1.0: Pass the current folder/file path so the UI can show
-        // what is being scanned in real time.
-        currentFile: getProgressValue<string | null>(progress, 'current_folder', null) ?? undefined,
+        // what is being scanned in real time. Fall back to current_operation
+        // so the user always sees what's happening.
+        currentFile:
+          getProgressValue<string | null>(progress, 'current_folder', null) ??
+          getProgressValue<string | null>(progress, 'current_operation', null) ??
+          undefined,
       });
 
       scan.updateCounters(mapStatusCounters(progress, config));

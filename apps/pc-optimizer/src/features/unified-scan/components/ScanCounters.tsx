@@ -26,6 +26,7 @@ import {
   EyeIcon,
   FireIcon,
   LinkIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import type { UnifiedScanCounterDef } from '../unifiedScanTypes';
 import { formatCounterValue } from '../unifiedScanTypes';
@@ -51,6 +52,7 @@ const ICONS: Record<string, ReactNode> = {
   EyeIcon: <EyeIcon className="h-4 w-4" />,
   FireIcon: <FireIcon className="h-4 w-4" />,
   LinkIcon: <LinkIcon className="h-4 w-4" />,
+  CheckCircleIcon: <CheckCircleIcon className="h-4 w-4" />,
 };
 
 export interface ScanCountersProps {

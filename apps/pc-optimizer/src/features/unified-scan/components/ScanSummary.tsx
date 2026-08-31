@@ -51,6 +51,93 @@ export function ScanSummary({ report, actions, onClose }: ScanSummaryProps) {
   const hasIssues = report.issuesFound > 0 || (report.threatsFound ?? 0) > 0;
   const isVerified = report.aiSummary.aiConfidence >= 0.9;
 
+  // V1.0: For optimize module, threatsFound is undefined (no threats).
+  // Show "PC is Optimized" instead of "Scan Complete" when files were cleaned.
+  const isOptimizeModule = report.moduleName === 'AI Smart Optimize' || report.moduleName === 'Dashboard';
+  const hasCleanupResults = report.results.some(
+    (r) => r.id === 'files-deleted' || r.id === 'space-recovered',
+  );
+
+  // V1.0: For optimize with cleanup results, show a clean summary
+  // without threats, verification status, or health score before/after.
+  if (isOptimizeModule && hasCleanupResults) {
+    const filesCard = report.results.find((r) => r.id === 'files-deleted');
+    const spaceCard = report.results.find((r) => r.id === 'space-recovered');
+    const filesDeleted = filesCard ? parseInt(filesCard.improvedValue, 10) || 0 : 0;
+    const spaceStr = spaceCard?.improvedValue ?? '0 MB';
+
+    return (
+      <div className="space-y-6" data-testid="unified-scan-summary">
+        {/* Success header */}
+        <div className="text-center" data-testid="summary-header">
+          <div className="inline-flex p-3 rounded-full mb-3 bg-semantic-success/10">
+            <CheckCircleIcon className="h-10 w-10 text-semantic-success animate-[scaleIn_500ms_ease-out]" aria-hidden />
+          </div>
+          <h3 className="text-xl font-semibold text-text-primary">
+            {filesDeleted > 0 ? 'PC is Optimized' : 'PC is Already Clean'}
+          </h3>
+          <p className="mt-1 text-small text-text-secondary">
+            {filesDeleted > 0
+              ? `Cleaned ${filesDeleted.toLocaleString()} files · ${spaceStr} recovered · ${formatDuration(report.durationMs)}`
+              : `No junk files found · ${formatDuration(report.durationMs)}`}
+          </p>
+        </div>
+
+        {/* Cleanup stats grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-4 text-center">
+            <div className="text-2xl font-bold tabular-nums text-semantic-success">
+              {filesDeleted.toLocaleString()}
+            </div>
+            <div className="text-caption text-text-muted mt-1">Files Cleaned</div>
+          </div>
+          <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-4 text-center">
+            <div className="text-2xl font-bold tabular-nums text-brand-primary">
+              {spaceStr}
+            </div>
+            <div className="text-caption text-text-muted mt-1">Space Recovered</div>
+          </div>
+          <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-4 text-center">
+            <div className="text-2xl font-bold tabular-nums text-text-primary">
+              {formatDuration(report.durationMs)}
+            </div>
+            <div className="text-caption text-text-muted mt-1">Time Taken</div>
+          </div>
+        </div>
+
+        {/* Result cards */}
+        {report.results.length > 0 && <ResultCards cards={report.results} />}
+
+        {/* Action buttons */}
+        <div className="flex items-center justify-end gap-2 border-t border-[var(--avs-border)] pt-4">
+          <Button variant="secondary" onClick={onClose}>
+            Close
+          </Button>
+          {actions.map((action) => (
+            <Button
+              key={action.id}
+              variant={ACTION_VARIANTS[action.variant] ?? 'secondary'}
+              onClick={action.action}
+            >
+              {action.label}
+            </Button>
+          ))}
+        </div>
+
+        <style>{`
+          @keyframes scaleIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .animate-\\[scaleIn_500ms_ease-out\\] { animation: none !important; }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // Default summary for security/protection modules
   return (
     <div className="space-y-6" data-testid="unified-scan-summary">
       {/* Success animation header */}

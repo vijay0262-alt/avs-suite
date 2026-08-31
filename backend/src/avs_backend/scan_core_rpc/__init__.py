@@ -571,10 +571,12 @@ def _run_direct_cleanup(scan_id: str) -> None:
             session["progress"] = {
                 "phase": "discovering",
                 "current_operation": f"Scanning {root_name}...",
+                "current_folder": root_path,
                 "assets_discovered": files_found,
                 "assets_evaluated": 0,
                 "findings": files_found,
                 "actions_available": files_found,
+                "bytes_recovered": 0,
                 "elapsed_time_ms": int((time.time() - start_time) * 1000),
                 "is_cancelled": False,
                 "completion_percent": 30,
@@ -590,10 +592,12 @@ def _run_direct_cleanup(scan_id: str) -> None:
             session["progress"] = {
                 "phase": "complete",
                 "current_operation": "Nothing to clean",
+                "current_folder": None,
                 "assets_discovered": 0,
                 "assets_evaluated": 0,
                 "findings": 0,
                 "actions_available": 0,
+                "bytes_recovered": 0,
                 "elapsed_time_ms": int((time.time() - start_time) * 1000),
                 "is_cancelled": False,
                 "completion_percent": 100,
@@ -656,8 +660,8 @@ def _run_direct_cleanup(scan_id: str) -> None:
             files_skipped += 1
 
         processed += 1
-        # Update progress every 500 files or every 2 seconds
-        if processed % 500 == 0 or processed == len(all_files):
+        # Update progress every 200 files for more responsive UI
+        if processed % 200 == 0 or processed == len(all_files):
             with _scan_session_lock:
                 session = _scan_sessions.get(scan_id)
                 if session is None:
@@ -666,10 +670,12 @@ def _run_direct_cleanup(scan_id: str) -> None:
                 session["progress"] = {
                     "phase": "cleaning",
                     "current_operation": f"Deleting files... ({files_deleted} deleted, {files_skipped} skipped)",
+                    "current_folder": file_path,
                     "assets_discovered": files_found,
                     "assets_evaluated": processed,
                     "findings": files_found,
                     "actions_available": files_deleted,
+                    "bytes_recovered": bytes_recovered,
                     "elapsed_time_ms": int((time.time() - start_time) * 1000),
                     "is_cancelled": False,
                     "completion_percent": pct,
@@ -704,10 +710,12 @@ def _run_direct_cleanup(scan_id: str) -> None:
                 session["progress"] = {
                     "phase": "finalizing",
                     "current_operation": f"Removing empty folders... ({folders_deleted} removed)",
+                    "current_folder": dir_path,
                     "assets_discovered": files_found,
                     "assets_evaluated": len(all_files),
                     "findings": files_found,
                     "actions_available": files_deleted,
+                    "bytes_recovered": bytes_recovered,
                     "elapsed_time_ms": int((time.time() - start_time) * 1000),
                     "is_cancelled": False,
                     "completion_percent": pct,
@@ -724,10 +732,12 @@ def _run_direct_cleanup(scan_id: str) -> None:
         session["progress"] = {
             "phase": "complete",
             "current_operation": f"Cleaned {files_deleted} files, {mb_recovered} MB recovered",
+            "current_folder": None,
             "assets_discovered": files_found,
             "assets_evaluated": files_found,
             "findings": files_found,
             "actions_available": files_deleted,
+            "bytes_recovered": bytes_recovered,
             "elapsed_time_ms": elapsed_ms,
             "is_cancelled": False,
             "completion_percent": 100,

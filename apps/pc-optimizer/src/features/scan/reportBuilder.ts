@@ -37,10 +37,14 @@ export function buildScanReport(
   result: Record<string, unknown>,
 ): UnifiedScanReport {
   const statistics = getResultValue<Record<string, unknown>>(result, 'statistics', {});
+  const cleanupSummary = getResultValue<Record<string, unknown> | undefined>(result, 'cleanup_summary', undefined);
 
   const totalIssues = getResultValue<number>(result, 'findings_count', 0);
   const issuesFound = totalIssues;
   const hasIssues = issuesFound > 0;
+
+  // V1.0: Determine if this is an optimize/cleanup module (no threats).
+  const isOptimizeModule = moduleName === 'AI Smart Optimize' || moduleName === 'Dashboard';
 
   const moduleIcon = getModuleIcon(moduleName);
   const reportId =
@@ -49,7 +53,20 @@ export function buildScanReport(
       : `scan-${Date.now()}`;
 
   const overallScore = getResultValue<number>(result, 'overallScore', 100);
-  const durationMs = getResultValue<number>(result, 'elapsed_time_ms', 0);
+  const durationMs = getResultValue<number>(result, 'elapsed_time_ms', 0) ||
+    getResultValue<number>(result, 'duration_ms', 0);
+
+  // V1.0: For optimize/direct cleanup, use cleanup_summary data.
+  const filesDeleted = cleanupSummary
+    ? getResultValue<number>(cleanupSummary, 'files_deleted', 0)
+    : getResultValue<number>(statistics, 'files_cleaned', 0);
+  const bytesRecovered = cleanupSummary
+    ? getResultValue<number>(cleanupSummary, 'bytes_recovered', 0)
+    : getResultValue<number>(statistics, 'space_recovered', 0) ||
+      getResultValue<number>(statistics, 'bytes_recovered', 0);
+  const foldersDeleted = cleanupSummary
+    ? getResultValue<number>(cleanupSummary, 'folders_deleted', 0)
+    : getResultValue<number>(statistics, 'folders_cleaned', 0);
 
   const itemsAnalyzed =
     typeof statistics.assets_evaluated === 'number'
@@ -60,8 +77,36 @@ export function buildScanReport(
       ? Number(statistics.rules_evaluated)
       : 1;
 
+  // V1.0: For optimize module, build cleanup result cards.
+  // For security module, build threat result cards.
   const results: UnifiedResultCard[] = [];
-  if (hasIssues) {
+  if (isOptimizeModule && cleanupSummary) {
+    // Optimize: show files deleted and space recovered
+    if (filesDeleted > 0) {
+      const mb = bytesRecovered / (1024 * 1024);
+      const sizeStr = mb >= 1024
+        ? `${(mb / 1024).toFixed(2)} GB`
+        : `${mb.toFixed(2)} MB`;
+      results.push({
+        id: 'files-deleted',
+        title: 'Files Cleaned',
+        icon: 'TrashIcon',
+        currentValue: '0',
+        improvedValue: `${filesDeleted}`,
+        difference: `+${filesDeleted}`,
+        positive: true,
+      });
+      results.push({
+        id: 'space-recovered',
+        title: 'Space Recovered',
+        icon: 'CircleStackIcon',
+        currentValue: '0 MB',
+        improvedValue: sizeStr,
+        difference: sizeStr,
+        positive: true,
+      });
+    }
+  } else if (hasIssues) {
     results.push({
       id: 'issues-found',
       title: 'Issues Found',
@@ -73,11 +118,16 @@ export function buildScanReport(
     });
   }
 
-  const threatsFound = issuesFound;
+  // V1.0: Only show threats for security modules, not optimize.
+  const threatsFound = isOptimizeModule ? undefined : issuesFound;
 
-  const verdict = hasIssues
-    ? `Scan found ${issuesFound} issue${issuesFound === 1 ? '' : 's'}. Review the results to learn more.`
-    : 'No issues found. Your system is in good shape.';
+  const verdict = isOptimizeModule
+    ? (filesDeleted > 0
+      ? `Cleaned ${filesDeleted} files and recovered ${(bytesRecovered / (1024 * 1024)).toFixed(2)} MB of space.`
+      : 'Your PC is already clean.')
+    : hasIssues
+      ? `Scan found ${issuesFound} issue${issuesFound === 1 ? '' : 's'}. Review the results to learn more.`
+      : 'No issues found. Your system is in good shape.';
 
   const aiSummary: UnifiedAISummary = {
     overallScore,
