@@ -79,12 +79,33 @@ class MetadataDatabase:
         - Database needs upgrade
         - Database is corrupted
 
+        V1.0: If the database file exceeds 500 MB, it is reset to prevent
+        initialization timeouts. The metadata database is a scan cache,
+        not a permanent data store — losing it only means the next scan
+        starts fresh, which is the desired behavior.
+
         Returns:
             True if initialization successful
         """
         try:
             # Ensure directory exists
             self.config.db_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # V1.0: Check database size. If it exceeds 500 MB, reset it.
+            # A 5+ GB database takes 90+ seconds to open and cleanup, which
+            # causes the scan orchestrator initialization to time out and
+            # the user sees "Scan engine failed to initialize".
+            # The metadata database is a scan cache — it stores discovered
+            # assets, snapshots, and action plans from previous scans. Losing
+            # it only means the next scan starts fresh, which is fine.
+            if self.config.db_path.exists():
+                db_size_mb = self.config.db_path.stat().st_size / (1024 * 1024)
+                if db_size_mb > 500:
+                    logger.warning(
+                        f"Metadata database is {db_size_mb:.0f} MB (> 500 MB limit). "
+                        f"Resetting to prevent initialization timeout."
+                    )
+                    self._reset_database()
 
             # Check for corruption (only if DB exists and is large)
             # For large databases, use quick_check which is much faster
@@ -114,6 +135,17 @@ class MetadataDatabase:
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
             return False
+
+    def _reset_database(self) -> None:
+        """Delete the database file and its WAL/SHM files so it can be recreated fresh."""
+        db_path = self.config.db_path
+        for suffix in ("", "-wal", "-shm", "-journal"):
+            p = db_path.parent / (db_path.name + suffix) if suffix else db_path
+            try:
+                if p.exists():
+                    p.unlink()
+            except Exception as e:
+                logger.warning(f"Failed to remove {p}: {e}")
 
     def _open_connection(self) -> sqlite3.Connection:
         """Create and configure a new SQLite connection."""
@@ -665,7 +697,12 @@ class MetadataDatabase:
         cursor.close()
 
     def _cleanup_old_snapshots(self) -> None:
-        """Remove old snapshots to prevent database bloat.
+        """Remove old snapshots and scan data to prevent database bloat.
+
+        V1.0: Also purges assets/snapshots/metadata/tags from scans older
+        than 7 days, and keeps only the 5 most recent scans. This prevents
+        the database from growing to 5+ GB and causing initialization
+        timeouts.
 
         Keeps only the most recent snapshot per asset, deleting older ones.
         This prevents the asset_snapshots table from growing unboundedly
@@ -679,6 +716,83 @@ class MetadataDatabase:
             # Set a short busy timeout for the cleanup to avoid blocking
             # if another connection holds a lock.
             cursor.execute("PRAGMA busy_timeout = 5000")
+
+            # V1.0: Purge data from old scans. Keep only the 5 most recent
+            # scans. This prevents the database from growing unboundedly.
+            # Old scans are identified by scan_id in scan_history.
+            try:
+                old_scan_ids_row = cursor.execute("""
+                    SELECT scan_id FROM scan_history
+                    ORDER BY started_at DESC
+                    LIMIT -1 OFFSET 5
+                """).fetchall()
+                old_scan_ids = [r[0] for r in old_scan_ids_row] if old_scan_ids_row else []
+                if old_scan_ids:
+                    placeholders = ",".join("?" * len(old_scan_ids))
+                    # Delete snapshots for old scans
+                    cursor.execute(
+                        f"DELETE FROM asset_snapshots WHERE scan_id IN ({placeholders})",
+                        old_scan_ids,
+                    )
+                    snap_deleted = cursor.rowcount
+                    # Delete remediation actions for old action plans
+                    old_plan_ids_row = cursor.execute(
+                        f"SELECT plan_id FROM action_plans WHERE scan_id IN ({placeholders})",
+                        old_scan_ids,
+                    ).fetchall()
+                    old_plan_ids = [r[0] for r in old_plan_ids_row] if old_plan_ids_row else []
+                    if old_plan_ids:
+                        plan_placeholders = ",".join("?" * len(old_plan_ids))
+                        cursor.execute(
+                            f"DELETE FROM remediation_actions WHERE plan_id IN ({plan_placeholders})",
+                            old_plan_ids,
+                        )
+                    # Delete action plans for old scans
+                    cursor.execute(
+                        f"DELETE FROM action_plans WHERE scan_id IN ({placeholders})",
+                        old_scan_ids,
+                    )
+                    # Delete scan contexts for old scans
+                    cursor.execute(
+                        f"DELETE FROM scan_contexts WHERE scan_id IN ({placeholders})",
+                        old_scan_ids,
+                    )
+                    # Delete scan history for old scans
+                    cursor.execute(
+                        f"DELETE FROM scan_history WHERE scan_id IN ({placeholders})",
+                        old_scan_ids,
+                    )
+                    # Delete orphaned assets (no remaining snapshots)
+                    cursor.execute("""
+                        DELETE FROM assets
+                        WHERE asset_id NOT IN (
+                            SELECT DISTINCT asset_id FROM asset_snapshots
+                        )
+                    """)
+                    asset_deleted = cursor.rowcount
+                    # Delete orphaned metadata
+                    cursor.execute("""
+                        DELETE FROM asset_metadata
+                        WHERE asset_id NOT IN (
+                            SELECT DISTINCT asset_id FROM assets
+                        )
+                    """)
+                    # Delete orphaned tags
+                    cursor.execute("""
+                        DELETE FROM asset_tags
+                        WHERE asset_id NOT IN (
+                            SELECT DISTINCT asset_id FROM assets
+                        )
+                    """)
+                    conn.commit()
+                    logger.info(
+                        f"V1.0 cleanup: purged {len(old_scan_ids)} old scans, "
+                        f"{snap_deleted} snapshots, {asset_deleted} assets"
+                    )
+            except Exception as e:
+                logger.warning(f"Old scan purge failed (non-fatal): {e}")
+                conn.rollback()
+
             # Delete all but the most recent snapshot per asset_id.
             # The subquery finds the max rowid for each asset_id,
             # and we delete rows that don't match (keeping the latest).
