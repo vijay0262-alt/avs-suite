@@ -213,34 +213,32 @@ class Rule(ABC):
         return None
 
     def get_applicable_roots_cached(self) -> list[Path] | None:
-        """Cached version of get_applicable_roots() for performance.
+        """Get applicable roots, relying on KnownLocations for caching.
 
-        Computes roots once and caches the result on the instance.
-        Rules are singletons (registered once), so the cache is safe.
+        V1.0: The Rule-level cache was removed because it didn't
+        invalidate when env vars changed (e.g. during tests via
+        monkeypatch.setenv). The underlying KnownLocations cache
+        handles env-var invalidation and is fast enough.
 
         Returns:
             List of root Paths, or None if the rule is universal.
         """
-        if self._applicable_roots_cache is False:
-            self._applicable_roots_cache = self.get_applicable_roots()
-        return self._applicable_roots_cache
+        return self.get_applicable_roots()
 
     def get_applicable_roots_normalized(self) -> list[list[str]] | None:
         """V1.0: Get pre-normalized applicable root parts for fast matching.
 
-        Caches the normalized form so ApplicabilityEngine doesn't need
-        to call _normalize_windows_path() for every root on every asset.
+        Delegates to get_applicable_roots() and normalizes. Does NOT
+        cache at the Rule level because KnownLocations invalidates
+        when env vars change.
 
         Returns:
             List of normalized root part lists, or None if universal.
         """
-        roots = self.get_applicable_roots_cached()
+        roots = self.get_applicable_roots()
         if roots is None:
             return None
-        cache_attr = '_applicable_roots_normalized_cache'
-        if not hasattr(self, cache_attr) or getattr(self, cache_attr) is None:
-            from ..rules.detection.locations import KnownLocations
-            setattr(self, cache_attr, [
-                KnownLocations._normalize_windows_path(str(r)) for r in roots
-            ])
-        return getattr(self, cache_attr)
+        from ..rules.detection.locations import KnownLocations
+        return [
+            KnownLocations._normalize_windows_path(str(r)) for r in roots
+        ]

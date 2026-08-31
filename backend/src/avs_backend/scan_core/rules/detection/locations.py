@@ -45,15 +45,28 @@ class KnownLocations:
     # These are called once per asset during evaluation (86,000+ times
     # for large Temp directories), so caching eliminates redundant
     # env-var expansion and Path object creation.
+    #
+    # IMPORTANT: The cache key includes the env var values that were used
+    # to build the cache. If the env vars change (e.g. during tests via
+    # monkeypatch.setenv), the cache is invalidated and rebuilt.
     _user_temp_roots_cache: list[Path] | None = None
     _user_temp_roots_normalized_cache: list[list[str]] | None = None
+    _user_temp_roots_env_key: str | None = None
     _windows_temp_root_cache: Path | None = None
     _windows_temp_root_normalized_cache: list[str] | None = None
+    _windows_temp_root_env_key: str | None = None
     _protected_roots_cache: list[Path] | None = None
     _protected_roots_normalized_cache: list[list[str]] | None = None
+    _protected_roots_env_key: str | None = None
     _protected_exceptions_cache: list[Path] | None = None
     _protected_exceptions_normalized_cache: list[list[str]] | None = None
+    _protected_exceptions_env_key: str | None = None
     _protected_files_cache: set[str] | None = None
+
+    @staticmethod
+    def _env_key(vars_: list[str]) -> str:
+        """Build a cache key from env var values. If any change, cache is invalidated."""
+        return "|".join(f"{v}={os.environ.get(v, '')}" for v in vars_)
 
     @staticmethod
     def expand(template: str) -> Path:
@@ -84,12 +97,18 @@ class KnownLocations:
 
         V1.0: Result is cached on first call. Temp roots don't change
         during a scan session, so caching eliminates redundant env-var
-        expansion for 86,000+ files.
+        expansion for 86,000+ files. The cache is automatically
+        invalidated if the TEMP/TMP/LOCALAPPDATA env vars change
+        (e.g. during tests via monkeypatch.setenv).
 
         Returns:
             List of user temp directory paths
         """
-        if KnownLocations._user_temp_roots_cache is not None:
+        env_key = KnownLocations._env_key(["TEMP", "TMP", "LOCALAPPDATA", "USER"])
+        if (
+            KnownLocations._user_temp_roots_cache is not None
+            and KnownLocations._user_temp_roots_env_key == env_key
+        ):
             return KnownLocations._user_temp_roots_cache
 
         seen: set[str] = set()
@@ -119,6 +138,7 @@ class KnownLocations:
             roots.append(p)
 
         KnownLocations._user_temp_roots_cache = roots
+        KnownLocations._user_temp_roots_env_key = env_key
         # Pre-compute normalized parts for fast is_under_path checks
         KnownLocations._user_temp_roots_normalized_cache = [
             KnownLocations._normalize_windows_path(str(r)) for r in roots
@@ -141,18 +161,24 @@ class KnownLocations:
         """
         Get Windows system temporary directory.
 
-        V1.0: Result is cached on first call.
+        V1.0: Result is cached on first call. Cache is invalidated if
+        the SystemRoot env var changes.
 
         Returns:
             Windows temp directory path
         """
-        if KnownLocations._windows_temp_root_cache is not None:
+        env_key = KnownLocations._env_key(["SystemRoot"])
+        if (
+            KnownLocations._windows_temp_root_cache is not None
+            and KnownLocations._windows_temp_root_env_key == env_key
+        ):
             return KnownLocations._windows_temp_root_cache
         # Always resolve as a Windows-style path (real env vars on
         # Windows, hardcoded defaults elsewhere). Rule matching is
         # pure string comparison, so this works on any host OS.
         root = KnownLocations.expand(r"%SystemRoot%\Temp")
         KnownLocations._windows_temp_root_cache = root
+        KnownLocations._windows_temp_root_env_key = env_key
         KnownLocations._windows_temp_root_normalized_cache = (
             KnownLocations._normalize_windows_path(str(root))
         )
@@ -789,6 +815,8 @@ class KnownLocations:
         """
         Get protected system roots that should NOT be classified as junk.
 
+        V1.0: Result is cached with env-var invalidation.
+
         This is NOT exhaustive - it's a safety check.
         Rules should use SafetyAssessment for proper safety evaluation.
 
@@ -839,6 +867,16 @@ class KnownLocations:
             r"C:\Windows.old",
         ]
 
+        env_key = KnownLocations._env_key([
+            "SystemRoot", "ProgramFiles", "ProgramFiles(x86)",
+            "LOCALAPPDATA", "USERPROFILE",
+        ])
+        if (
+            KnownLocations._protected_roots_cache is not None
+            and KnownLocations._protected_roots_env_key == env_key
+        ):
+            return KnownLocations._protected_roots_cache
+
         roots: list[Path] = []
         for template in protected:
             try:
@@ -848,6 +886,7 @@ class KnownLocations:
                 continue
 
         KnownLocations._protected_roots_cache = roots
+        KnownLocations._protected_roots_env_key = env_key
         KnownLocations._protected_roots_normalized_cache = [
             KnownLocations._normalize_windows_path(str(r)) for r in roots
         ]
@@ -947,6 +986,13 @@ class KnownLocations:
             # It is a diagnostic snapshot, safe to clean.
             r"%SystemRoot%\MEMORY.DMP",
         ]
+        env_key = KnownLocations._env_key(["SystemRoot"])
+        if (
+            KnownLocations._protected_exceptions_cache is not None
+            and KnownLocations._protected_exceptions_env_key == env_key
+        ):
+            return KnownLocations._protected_exceptions_cache
+
         roots: list[Path] = []
         for template in candidates:
             try:
@@ -955,6 +1001,7 @@ class KnownLocations:
             except Exception:
                 continue
         KnownLocations._protected_exceptions_cache = roots
+        KnownLocations._protected_exceptions_env_key = env_key
         KnownLocations._protected_exceptions_normalized_cache = [
             KnownLocations._normalize_windows_path(str(r)) for r in roots
         ]
