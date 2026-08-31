@@ -100,6 +100,8 @@ export interface UnifiedScanReport {
   results: UnifiedResultCard[];
   aiSummary: UnifiedAISummary;
   actions: UnifiedScanAction[];
+  /** V1.0: Per-category breakdown from direct cleanup */
+  cleanupCategories?: { name: string; path: string; files: number }[];
 }
 
 // ── Scan Action ─────────────────────────────────────────────────

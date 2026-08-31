@@ -492,14 +492,25 @@ def _on_progress(scan_id: str, progress: ScanProgress) -> None:
 def _run_direct_cleanup(scan_id: str) -> None:
     """V1.0: Simple direct cleanup for Dashboard quick scans.
 
-    Like CCleaner/Disk Cleanup: enumerate the 3 known junk folders,
+    Like CCleaner/Disk Cleanup: enumerate known junk folders,
     delete everything inside them (skip locked files), report results.
     No rule evaluation, no safety policy, no database persistence.
 
-    Folders cleaned:
-      1. C:\\Users\\<user>\\AppData\\Local\\Temp  (user temp)
-      2. C:\\Windows\\Temp                        (windows temp)
-      3. C:\\Windows\\Prefetch                     (prefetch)
+    Categories cleaned (like Windows Disk Cleanup + CCleaner):
+      Standard:
+        1. User Temp            (%LOCALAPPDATA%\\Temp)
+        2. Windows Temp         (C:\\Windows\\Temp)
+        3. Prefetch             (C:\\Windows\\Prefetch)
+        4. Temporary Internet Files (%LOCALAPPDATA%\\Microsoft\\Windows\\INetCache)
+        5. Downloaded Program Files (C:\\Windows\\Downloaded Program Files)
+        6. Recycle Bin          (C:\\$Recycle.Bin and other drives)
+        7. Thumbnails           (thumbcache_*.db in Explorer folder)
+        8. DirectX Shader Cache (%LOCALAPPDATA%\\D3DSCache)
+        9. Error Reports        (%LOCALAPPDATA%\\Microsoft\\Windows\\WER,
+                                   C:\\ProgramData\\Microsoft\\Windows\\WER)
+      System:
+        10. Windows Update Cleanup (C:\\Windows\\SoftwareDistribution\\Download)
+        11. Previous Windows Installs (C:\\Windows.old)
 
     Everything inside these folders IS junk by definition.
     Locked/in-use files are skipped (they'll be cleanable on reboot).
@@ -507,19 +518,75 @@ def _run_direct_cleanup(scan_id: str) -> None:
     import shutil
     import stat as stat_mod
 
-    # Resolve the 3 cleanup roots
+    # Resolve cleanup roots
     local_app_data = os.environ.get("LOCALAPPDATA", "")
-    user_temp = os.path.join(local_app_data, "Temp") if local_app_data else os.environ.get("TEMP", "")
-    windows_temp = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "Temp")
-    prefetch = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "Prefetch")
+    system_root = os.environ.get("SystemRoot", r"C:\Windows")
 
-    roots: list[tuple[str, str]] = []
+    # Folder-based categories: (name, path) — delete everything inside
+    folder_roots: list[tuple[str, str]] = []
+
+    # 1. User Temp
+    user_temp = os.path.join(local_app_data, "Temp") if local_app_data else os.environ.get("TEMP", "")
     if user_temp and os.path.isdir(user_temp):
-        roots.append(("User Temp", user_temp))
+        folder_roots.append(("User Temp", user_temp))
+
+    # 2. Windows Temp
+    windows_temp = os.path.join(system_root, "Temp")
     if os.path.isdir(windows_temp):
-        roots.append(("Windows Temp", windows_temp))
+        folder_roots.append(("Windows Temp", windows_temp))
+
+    # 3. Prefetch
+    prefetch = os.path.join(system_root, "Prefetch")
     if os.path.isdir(prefetch):
-        roots.append(("Prefetch", prefetch))
+        folder_roots.append(("Prefetch", prefetch))
+
+    # 4. Temporary Internet Files (browser cache)
+    inet_cache = os.path.join(local_app_data, "Microsoft", "Windows", "INetCache")
+    if os.path.isdir(inet_cache):
+        folder_roots.append(("Temporary Internet Files", inet_cache))
+
+    # 5. Downloaded Program Files
+    downloaded_prog = os.path.join(system_root, "Downloaded Program Files")
+    if os.path.isdir(downloaded_prog):
+        folder_roots.append(("Downloaded Program Files", downloaded_prog))
+
+    # 6. Recycle Bin (on all drives)
+    for drive in ["C:", "D:", "E:", "F:"]:
+        recycle_bin = os.path.join(drive + os.sep, "$Recycle.Bin")
+        if os.path.isdir(recycle_bin):
+            folder_roots.append(("Recycle Bin", recycle_bin))
+
+    # 8. DirectX Shader Cache
+    d3d_cache = os.path.join(local_app_data, "D3DSCache")
+    if os.path.isdir(d3d_cache):
+        folder_roots.append(("DirectX Shader Cache", d3d_cache))
+
+    # 9. Error Reports (user + system)
+    wer_user = os.path.join(local_app_data, "Microsoft", "Windows", "WER")
+    if os.path.isdir(wer_user):
+        folder_roots.append(("Error Reports (User)", wer_user))
+    wer_system = os.path.join(os.environ.get("ProgramData", r"C:\ProgramData"), "Microsoft", "Windows", "WER")
+    if os.path.isdir(wer_system):
+        folder_roots.append(("Error Reports (System)", wer_system))
+
+    # 10. Windows Update Cleanup
+    wu_download = os.path.join(system_root, "SoftwareDistribution", "Download")
+    if os.path.isdir(wu_download):
+        folder_roots.append(("Windows Update Cleanup", wu_download))
+
+    # 11. Previous Windows Installations
+    windows_old = os.path.join(system_root[:2] + os.sep, "Windows.old")
+    if os.path.isdir(windows_old):
+        folder_roots.append(("Previous Windows Installation", windows_old))
+
+    # File-pattern categories: (name, dir, pattern) — delete matching files only
+    file_patterns: list[tuple[str, str, str]] = []
+
+    # 7. Thumbnails (thumbcache_*.db and iconcache_*.db)
+    explorer_dir = os.path.join(local_app_data, "Microsoft", "Windows", "Explorer")
+    if os.path.isdir(explorer_dir):
+        file_patterns.append(("Thumbnails", explorer_dir, "thumbcache_*.db"))
+        file_patterns.append(("Icon Cache", explorer_dir, "iconcache_*.db"))
 
     start_time = time.time()
     files_found = 0
@@ -528,12 +595,15 @@ def _run_direct_cleanup(scan_id: str) -> None:
     folders_found = 0
     folders_deleted = 0
     bytes_recovered = 0
+    categories_cleaned: list[dict] = []
 
     # Phase 1: Enumerate and count (fast, just stat)
     all_files: list[tuple[str, int]] = []  # (path, size)
     all_dirs: list[str] = []
 
-    for root_name, root_path in roots:
+    # Enumerate folder-based categories
+    for root_name, root_path in folder_roots:
+        cat_files_before = len(all_files)
         try:
             for entry in os.scandir(root_path):
                 if entry.is_dir(follow_symlinks=False):
@@ -563,6 +633,14 @@ def _run_direct_cleanup(scan_id: str) -> None:
         except OSError as e:
             logger.warning("Failed to scan %s: %s", root_path, e)
 
+        cat_file_count = len(all_files) - cat_files_before
+        if cat_file_count > 0 or root_name in ("Recycle Bin", "Previous Windows Installation"):
+            categories_cleaned.append({
+                "name": root_name,
+                "path": root_path,
+                "files": cat_file_count,
+            })
+
         # Update progress: enumeration done for this root
         with _scan_session_lock:
             session = _scan_sessions.get(scan_id)
@@ -581,6 +659,30 @@ def _run_direct_cleanup(scan_id: str) -> None:
                 "is_cancelled": False,
                 "completion_percent": 30,
             }
+
+    # Enumerate file-pattern categories (thumbnails, icon cache)
+    for cat_name, cat_dir, pattern in file_patterns:
+        cat_files_before = len(all_files)
+        try:
+            import fnmatch
+            for entry in os.scandir(cat_dir):
+                if entry.is_file(follow_symlinks=False) and fnmatch.fnmatch(entry.name, pattern):
+                    try:
+                        sz = entry.stat().st_size
+                        files_found += 1
+                        all_files.append((entry.path, sz))
+                    except OSError:
+                        files_skipped += 1
+        except OSError as e:
+            logger.warning("Failed to scan %s/%s: %s", cat_dir, pattern, e)
+
+        cat_file_count = len(all_files) - cat_files_before
+        if cat_file_count > 0:
+            categories_cleaned.append({
+                "name": cat_name,
+                "path": cat_dir,
+                "files": cat_file_count,
+            })
 
     total_items = len(all_files) + len(all_dirs)
     if total_items == 0:
@@ -633,6 +735,7 @@ def _run_direct_cleanup(scan_id: str) -> None:
                     "folders_deleted": 0,
                     "bytes_recovered": 0,
                     "mb_recovered": 0,
+                    "categories": [],
                 },
             }
             session["completed"] = True
@@ -785,6 +888,8 @@ def _run_direct_cleanup(scan_id: str) -> None:
                 "failed": files_skipped,
                 "remaining": 0,
                 "space_recovered": bytes_recovered,
+                # V1.0: Per-category breakdown for results page
+                "categories": categories_cleaned,
             },
         }
         session["completed"] = True

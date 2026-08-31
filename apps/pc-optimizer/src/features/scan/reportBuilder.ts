@@ -150,6 +150,15 @@ export function buildScanReport(
     },
   ];
 
+  // V1.0: Pass per-category breakdown from direct cleanup
+  const cleanupCategories = cleanupSummary
+    ? getResultValue<{ name: string; path: string; files: number }[] | undefined>(
+        cleanupSummary as Record<string, unknown>,
+        'categories',
+        undefined,
+      )
+    : undefined;
+
   return {
     reportId,
     moduleName,
@@ -163,5 +172,6 @@ export function buildScanReport(
     results,
     aiSummary,
     actions,
+    cleanupCategories,
   };
 }

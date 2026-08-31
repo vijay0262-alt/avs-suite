@@ -105,6 +105,31 @@ export function ScanSummary({ report, actions, onClose }: ScanSummaryProps) {
           </div>
         </div>
 
+        {/* V1.0: Per-category breakdown */}
+        {report.cleanupCategories && report.cleanupCategories.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-caption font-semibold uppercase tracking-wide text-text-muted">
+              Categories Cleaned
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {report.cleanupCategories.map((cat) => (
+                <div
+                  key={cat.name}
+                  className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <CheckCircleIcon className="h-4 w-4 text-semantic-success shrink-0" aria-hidden />
+                    <span className="text-small text-text-primary truncate">{cat.name}</span>
+                  </div>
+                  <span className="text-small font-semibold tabular-nums text-text-secondary shrink-0 ml-2">
+                    {cat.files.toLocaleString()} files
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Result cards */}
         {report.results.length > 0 && <ResultCards cards={report.results} />}
 
