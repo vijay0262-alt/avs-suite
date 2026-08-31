@@ -105,27 +105,47 @@ export function ScanSummary({ report, actions, onClose }: ScanSummaryProps) {
           </div>
         </div>
 
-        {/* V1.0: Per-category breakdown */}
+        {/* V1.0: Per-category breakdown with files + space recovered */}
         {report.cleanupCategories && report.cleanupCategories.length > 0 && (
           <div className="space-y-2">
             <div className="text-caption font-semibold uppercase tracking-wide text-text-muted">
               Categories Cleaned
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {report.cleanupCategories.map((cat) => (
-                <div
-                  key={cat.name}
-                  className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <CheckCircleIcon className="h-4 w-4 text-semantic-success shrink-0" aria-hidden />
-                    <span className="text-small text-text-primary truncate">{cat.name}</span>
+            <div className="space-y-1.5">
+              {report.cleanupCategories.map((cat) => {
+                const catMb = cat.bytes_recovered
+                  ? cat.bytes_recovered / (1024 * 1024)
+                  : (cat as { mb_recovered?: number }).mb_recovered ?? 0;
+                const catSizeStr = catMb >= 1024
+                  ? `${(catMb / 1024).toFixed(2)} GB`
+                  : catMb > 0
+                    ? `${catMb.toFixed(2)} MB`
+                    : '';
+                const catFiles = cat.files_deleted ?? cat.files ?? 0;
+                return (
+                  <div
+                    key={cat.name}
+                    className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-3 py-2.5"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <CheckCircleIcon className="h-4 w-4 text-semantic-success shrink-0" aria-hidden />
+                      <span className="text-small text-text-primary truncate">{cat.name}</span>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 ml-2">
+                      {catFiles > 0 && (
+                        <span className="text-small font-semibold tabular-nums text-text-secondary">
+                          {catFiles.toLocaleString()} files
+                        </span>
+                      )}
+                      {catSizeStr && (
+                        <span className="text-small tabular-nums text-brand-primary font-medium">
+                          {catSizeStr}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-small font-semibold tabular-nums text-text-secondary shrink-0 ml-2">
-                    {cat.files.toLocaleString()} files
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

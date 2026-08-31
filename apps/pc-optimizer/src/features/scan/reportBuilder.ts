@@ -152,7 +152,19 @@ export function buildScanReport(
 
   // V1.0: Pass per-category breakdown from direct cleanup
   const cleanupCategories = cleanupSummary
-    ? getResultValue<{ name: string; path: string; files: number }[] | undefined>(
+    ? getResultValue<
+        {
+          name: string;
+          path: string;
+          files_found?: number;
+          files_deleted?: number;
+          files_skipped?: number;
+          folders_removed?: number;
+          bytes_recovered?: number;
+          mb_recovered?: number;
+          files?: number;
+        }[] | undefined
+      >(
         cleanupSummary as Record<string, unknown>,
         'categories',
         undefined,

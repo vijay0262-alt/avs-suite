@@ -101,7 +101,18 @@ export interface UnifiedScanReport {
   aiSummary: UnifiedAISummary;
   actions: UnifiedScanAction[];
   /** V1.0: Per-category breakdown from direct cleanup */
-  cleanupCategories?: { name: string; path: string; files: number }[];
+  cleanupCategories?: {
+    name: string;
+    path: string;
+    files_found?: number;
+    files_deleted?: number;
+    files_skipped?: number;
+    folders_removed?: number;
+    bytes_recovered?: number;
+    mb_recovered?: number;
+    // Legacy field for backward compat
+    files?: number;
+  }[];
 }
 
 // ── Scan Action ─────────────────────────────────────────────────

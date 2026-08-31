@@ -130,6 +130,12 @@ export function UnifiedScanView({
   }
 
   // Scanning / preparing / paused view
+  // V1.0: For optimize module, show category-wise cleaning instead of
+  // the generic phase tree. The backend sends current_category and
+  // current_folder in progress updates.
+  const isOptimizeModule = config.moduleId === 'optimize';
+  const currentCategory = liveStatus.currentCategory;
+
   return (
     <Card variant="glass" data-testid="unified-scan-view-active" role="region" aria-label="System scan in progress">
       <div className="space-y-5">
@@ -137,7 +143,11 @@ export function UnifiedScanView({
         <ScanHeader
           moduleIcon={<ModuleIcon icon={config.moduleIcon} />}
           moduleName={config.moduleName}
-          currentPhaseLabel={liveStatus.currentPhase || currentPhase?.label || 'Preparing...'}
+          currentPhaseLabel={
+            isOptimizeModule && currentCategory
+              ? `Cleaning ${currentCategory}`
+              : liveStatus.currentPhase || currentPhase?.label || 'Preparing...'
+          }
           elapsedMs={elapsed}
           overallProgress={liveStatus.overallProgress}
           step={step as 'preparing' | 'scanning' | 'paused' | 'complete' | 'error'}
@@ -152,26 +162,58 @@ export function UnifiedScanView({
           isOptimizing={isOptimizing}
         />
 
+        {/* V1.0: For optimize module, show current category prominently */}
+        {isOptimizeModule && currentCategory && isScanning && (
+          <div className="rounded-[var(--avs-radius-md)] bg-brand-primary/5 border border-brand-primary/10 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-3 w-3 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-primary opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-brand-primary" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-small font-semibold text-text-primary uppercase tracking-wide">
+                  Cleaning {currentCategory}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Counters + Tree side by side on large screens */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Scan tree */}
-          <div>
-            <div className="mb-2 text-caption font-semibold uppercase tracking-wide text-text-muted">
-              Scan Phases
+          {/* V1.0: For optimize, show live counters only (no phase tree) */}
+          {isOptimizeModule ? (
+            <div className="lg:col-span-2">
+              <div className="mb-2 text-caption font-semibold uppercase tracking-wide text-text-muted">
+                Live Counters
+              </div>
+              <ScanCounters
+                definitions={config.counters}
+                values={counters}
+              />
             </div>
-            <ScanTree nodes={treeNodes} />
-          </div>
+          ) : (
+            <>
+              {/* Scan tree (security/protection modules) */}
+              <div>
+                <div className="mb-2 text-caption font-semibold uppercase tracking-wide text-text-muted">
+                  Scan Phases
+                </div>
+                <ScanTree nodes={treeNodes} />
+              </div>
 
-          {/* Live counters */}
-          <div>
-            <div className="mb-2 text-caption font-semibold uppercase tracking-wide text-text-muted">
-              Live Counters
-            </div>
-            <ScanCounters
-              definitions={config.counters}
-              values={counters}
-            />
-          </div>
+              {/* Live counters */}
+              <div>
+                <div className="mb-2 text-caption font-semibold uppercase tracking-wide text-text-muted">
+                  Live Counters
+                </div>
+                <ScanCounters
+                  definitions={config.counters}
+                  values={counters}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Real-time activity stream from backend */}

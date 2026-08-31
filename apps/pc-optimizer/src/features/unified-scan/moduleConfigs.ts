@@ -17,76 +17,34 @@ export const OPTIMIZE_SCAN_CONFIG: UnifiedScanModuleConfig = {
   moduleIcon: 'SparklesIcon',
   supportsPause: false,
   supportsCancel: true,
-  // V1.0: Phases match the direct cleanup backend flow:
-  // discovering (0-30%) → cleaning (30-70%) → finalizing (70-100%)
+  // V1.0: Single phase — the backend sends category names via
+  // current_operation and current_category. The ScanTree is replaced
+  // by a live category list from the backend.
   phases: [
-    {
-      id: 'preparing',
-      label: 'Preparing',
-      description: 'Starting cleanup scan',
-      startPercent: 0,
-      endPercent: 5,
-      activities: [
-        'Starting cleanup scan...',
-      ],
-    },
-    {
-      id: 'discovering',
-      label: 'Scanning',
-      description: 'Scanning all cleanup categories',
-      startPercent: 5,
-      endPercent: 30,
-      activities: [
-        'Scanning User Temp...',
-        'Scanning Windows Temp...',
-        'Scanning Prefetch...',
-        'Scanning Temporary Internet Files...',
-        'Scanning Recycle Bin...',
-        'Scanning Thumbnails...',
-        'Scanning DirectX Shader Cache...',
-        'Scanning Windows Update Cleanup...',
-        'Scanning Error Reports...',
-        'Counting files and folders...',
-      ],
-    },
     {
       id: 'cleaning',
       label: 'Cleaning',
-      description: 'Deleting junk files',
-      startPercent: 30,
-      endPercent: 70,
-      activities: [
-        'Deleting temporary files...',
-        'Removing junk files...',
-        'Cleaning up cache...',
-      ],
-    },
-    {
-      id: 'finalizing',
-      label: 'Finalizing',
-      description: 'Removing empty folders and finalizing',
-      startPercent: 70,
+      description: 'Cleaning junk files',
+      startPercent: 0,
       endPercent: 100,
       activities: [
-        'Removing empty folders...',
-        'Finalizing cleanup...',
+        'Preparing cleanup...',
       ],
     },
   ],
-  // V1.0: Map direct cleanup backend phases to frontend phases.
   backendPhaseMap: {
-    initializing: 'preparing',
-    discovery: 'discovering',
-    discovering: 'discovering',
+    initializing: 'cleaning',
+    preparing: 'cleaning',
+    discovery: 'cleaning',
+    discovering: 'cleaning',
     evaluating: 'cleaning',
     cleaning: 'cleaning',
-    aggregating: 'finalizing',
-    prioritizing: 'finalizing',
-    planning: 'finalizing',
-    finalizing: 'finalizing',
-    complete: 'finalizing',
+    aggregating: 'cleaning',
+    prioritizing: 'cleaning',
+    planning: 'cleaning',
+    finalizing: 'cleaning',
+    complete: 'cleaning',
   },
-  // V1.0: Map frontend counter IDs to backend ScanProgress fields.
   backendCounterMap: {
     filesFound: 'assets_discovered',
     filesCleaned: 'actions_available',

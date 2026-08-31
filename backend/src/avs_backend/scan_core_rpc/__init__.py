@@ -492,340 +492,341 @@ def _on_progress(scan_id: str, progress: ScanProgress) -> None:
 def _run_direct_cleanup(scan_id: str) -> None:
     """V1.0: Simple direct cleanup for Dashboard quick scans.
 
-    Like CCleaner/Disk Cleanup: enumerate known junk folders,
-    delete everything inside them (skip locked files), report results.
-    No rule evaluation, no safety policy, no database persistence.
+    Like CCleaner/Disk Cleanup: for each category, scan → delete files →
+    remove empty folders → report results. Category-by-category so the
+    UI shows "CLEANING USER TEMPORARY FILES", then "CLEANING WINDOWS TEMP",
+    etc., with live file paths and progress bar.
 
     Categories cleaned (like Windows Disk Cleanup + CCleaner):
-      Standard:
-        1. User Temp            (%LOCALAPPDATA%\\Temp)
-        2. Windows Temp         (C:\\Windows\\Temp)
-        3. Prefetch             (C:\\Windows\\Prefetch)
-        4. Temporary Internet Files (%LOCALAPPDATA%\\Microsoft\\Windows\\INetCache)
-        5. Downloaded Program Files (C:\\Windows\\Downloaded Program Files)
-        6. Recycle Bin          (C:\\$Recycle.Bin and other drives)
-        7. Thumbnails           (thumbcache_*.db in Explorer folder)
-        8. DirectX Shader Cache (%LOCALAPPDATA%\\D3DSCache)
-        9. Error Reports        (%LOCALAPPDATA%\\Microsoft\\Windows\\WER,
-                                   C:\\ProgramData\\Microsoft\\Windows\\WER)
-      System:
-        10. Windows Update Cleanup (C:\\Windows\\SoftwareDistribution\\Download)
-        11. Previous Windows Installs (C:\\Windows.old)
+      1. User Temporary Files
+      2. Windows Temporary Files
+      3. Prefetch Data
+      4. Temporary Internet Files
+      5. Downloaded Program Files
+      6. Recycle Bin
+      7. Thumbnails
+      8. DirectX Shader Cache
+      9. Error Reports
+      10. Windows Update Cleanup
+      11. Previous Windows Installation
 
     Everything inside these folders IS junk by definition.
     Locked/in-use files are skipped (they'll be cleanable on reboot).
     """
-    import shutil
-    import stat as stat_mod
+    import fnmatch
 
-    # Resolve cleanup roots
     local_app_data = os.environ.get("LOCALAPPDATA", "")
     system_root = os.environ.get("SystemRoot", r"C:\Windows")
+    program_data = os.environ.get("ProgramData", r"C:\ProgramData")
 
-    # Folder-based categories: (name, path) — delete everything inside
-    folder_roots: list[tuple[str, str]] = []
+    # Build the list of categories to clean.
+    # Each category is: (display_name, type, path, [pattern])
+    #   type = "folder"  → delete everything inside the folder
+    #   type = "pattern" → delete only matching files in the folder
+    categories: list[dict] = []
 
-    # 1. User Temp
+    def add_folder(name: str, path: str) -> None:
+        if path and os.path.isdir(path):
+            categories.append({"name": name, "type": "folder", "path": path})
+
+    def add_pattern(name: str, path: str, pattern: str) -> None:
+        if os.path.isdir(path):
+            categories.append({"name": name, "type": "pattern", "path": path, "pattern": pattern})
+
+    # 1. User Temporary Files
     user_temp = os.path.join(local_app_data, "Temp") if local_app_data else os.environ.get("TEMP", "")
-    if user_temp and os.path.isdir(user_temp):
-        folder_roots.append(("User Temp", user_temp))
+    add_folder("User Temporary Files", user_temp)
 
-    # 2. Windows Temp
-    windows_temp = os.path.join(system_root, "Temp")
-    if os.path.isdir(windows_temp):
-        folder_roots.append(("Windows Temp", windows_temp))
+    # 2. Windows Temporary Files
+    add_folder("Windows Temporary Files", os.path.join(system_root, "Temp"))
 
-    # 3. Prefetch
-    prefetch = os.path.join(system_root, "Prefetch")
-    if os.path.isdir(prefetch):
-        folder_roots.append(("Prefetch", prefetch))
+    # 3. Prefetch Data
+    add_folder("Prefetch Data", os.path.join(system_root, "Prefetch"))
 
-    # 4. Temporary Internet Files (browser cache)
-    inet_cache = os.path.join(local_app_data, "Microsoft", "Windows", "INetCache")
-    if os.path.isdir(inet_cache):
-        folder_roots.append(("Temporary Internet Files", inet_cache))
+    # 4. Temporary Internet Files
+    add_folder("Temporary Internet Files", os.path.join(local_app_data, "Microsoft", "Windows", "INetCache"))
 
     # 5. Downloaded Program Files
-    downloaded_prog = os.path.join(system_root, "Downloaded Program Files")
-    if os.path.isdir(downloaded_prog):
-        folder_roots.append(("Downloaded Program Files", downloaded_prog))
+    add_folder("Downloaded Program Files", os.path.join(system_root, "Downloaded Program Files"))
 
-    # 6. Recycle Bin (on all drives)
-    for drive in ["C:", "D:", "E:", "F:"]:
-        recycle_bin = os.path.join(drive + os.sep, "$Recycle.Bin")
-        if os.path.isdir(recycle_bin):
-            folder_roots.append(("Recycle Bin", recycle_bin))
+    # 6. Recycle Bin (all drives)
+    for drive_letter in "CDEFGH":
+        drive = f"{drive_letter}:"
+        rb_path = os.path.join(drive + os.sep, "$Recycle.Bin")
+        if os.path.isdir(rb_path):
+            categories.append({"name": f"Recycle Bin ({drive})", "type": "folder", "path": rb_path})
+
+    # 7. Thumbnails
+    explorer_dir = os.path.join(local_app_data, "Microsoft", "Windows", "Explorer")
+    add_pattern("Thumbnails", explorer_dir, "thumbcache_*.db")
+    add_pattern("Icon Cache", explorer_dir, "iconcache_*.db")
 
     # 8. DirectX Shader Cache
-    d3d_cache = os.path.join(local_app_data, "D3DSCache")
-    if os.path.isdir(d3d_cache):
-        folder_roots.append(("DirectX Shader Cache", d3d_cache))
+    add_folder("DirectX Shader Cache", os.path.join(local_app_data, "D3DSCache"))
 
-    # 9. Error Reports (user + system)
-    wer_user = os.path.join(local_app_data, "Microsoft", "Windows", "WER")
-    if os.path.isdir(wer_user):
-        folder_roots.append(("Error Reports (User)", wer_user))
-    wer_system = os.path.join(os.environ.get("ProgramData", r"C:\ProgramData"), "Microsoft", "Windows", "WER")
-    if os.path.isdir(wer_system):
-        folder_roots.append(("Error Reports (System)", wer_system))
+    # 9. Error Reports
+    add_folder("Error Reports (User)", os.path.join(local_app_data, "Microsoft", "Windows", "WER"))
+    add_folder("Error Reports (System)", os.path.join(program_data, "Microsoft", "Windows", "WER"))
 
     # 10. Windows Update Cleanup
-    wu_download = os.path.join(system_root, "SoftwareDistribution", "Download")
-    if os.path.isdir(wu_download):
-        folder_roots.append(("Windows Update Cleanup", wu_download))
+    add_folder("Windows Update Cleanup", os.path.join(system_root, "SoftwareDistribution", "Download"))
 
-    # 11. Previous Windows Installations
-    windows_old = os.path.join(system_root[:2] + os.sep, "Windows.old")
-    if os.path.isdir(windows_old):
-        folder_roots.append(("Previous Windows Installation", windows_old))
-
-    # File-pattern categories: (name, dir, pattern) — delete matching files only
-    file_patterns: list[tuple[str, str, str]] = []
-
-    # 7. Thumbnails (thumbcache_*.db and iconcache_*.db)
-    explorer_dir = os.path.join(local_app_data, "Microsoft", "Windows", "Explorer")
-    if os.path.isdir(explorer_dir):
-        file_patterns.append(("Thumbnails", explorer_dir, "thumbcache_*.db"))
-        file_patterns.append(("Icon Cache", explorer_dir, "iconcache_*.db"))
+    # 11. Previous Windows Installation
+    add_folder("Previous Windows Installation", os.path.join(system_root[:2] + os.sep, "Windows.old"))
 
     start_time = time.time()
-    files_found = 0
-    files_deleted = 0
-    files_skipped = 0
-    folders_found = 0
-    folders_deleted = 0
-    bytes_recovered = 0
-    categories_cleaned: list[dict] = []
+    total_categories = len(categories)
 
-    # Phase 1: Enumerate and count (fast, just stat)
-    all_files: list[tuple[str, int]] = []  # (path, size)
-    all_dirs: list[str] = []
+    # Totals across all categories
+    total_files_found = 0
+    total_files_deleted = 0
+    total_files_skipped = 0
+    total_folders_found = 0
+    total_folders_deleted = 0
+    total_bytes_recovered = 0
 
-    # Enumerate folder-based categories
-    for root_name, root_path in folder_roots:
-        cat_files_before = len(all_files)
+    # Per-category results for the results page
+    category_results: list[dict] = []
+
+    # ─── Helper: update progress ───────────────────────────────────
+    def _update_progress(
+        phase: str,
+        operation: str,
+        current_folder: str | None,
+        cat_index: int,
+        files_found: int,
+        files_deleted: int,
+        files_skipped: int,
+        bytes_recovered: int,
+        pct: int,
+    ) -> bool:
+        """Update session progress. Returns False if cancelled."""
+        with _scan_session_lock:
+            session = _scan_sessions.get(scan_id)
+            if session is None or session.get("cancelled"):
+                return False
+            session["progress"] = {
+                "phase": phase,
+                "current_operation": operation,
+                "current_folder": current_folder,
+                "current_category": categories[cat_index]["name"] if cat_index < total_categories else None,
+                "category_index": cat_index,
+                "total_categories": total_categories,
+                "assets_discovered": total_files_found + files_found,
+                "assets_evaluated": total_files_deleted + files_deleted,
+                "findings": total_files_found + files_found,
+                "actions_available": total_files_deleted + files_deleted,
+                "bytes_recovered": total_bytes_recovered + bytes_recovered,
+                "elapsed_time_ms": int((time.time() - start_time) * 1000),
+                "is_cancelled": False,
+                "completion_percent": pct,
+            }
+            return True
+
+    # ─── Helper: scan a folder recursively ─────────────────────────
+    def _scan_folder(root_path: str) -> tuple[list[tuple[str, int]], list[str], int, int]:
+        """Returns (files, dirs, files_found_count, folders_found_count)."""
+        files: list[tuple[str, int]] = []
+        dirs: list[str] = []
+        f_count = 0
+        d_count = 0
         try:
             for entry in os.scandir(root_path):
                 if entry.is_dir(follow_symlinks=False):
-                    folders_found += 1
-                    all_dirs.append(entry.path)
-                    # Recursively walk subdirectory
+                    d_count += 1
+                    dirs.append(entry.path)
                     for sub_root, sub_dirs, sub_files in os.walk(entry.path, topdown=False):
                         for d in sub_dirs:
-                            full_d = os.path.join(sub_root, d)
-                            folders_found += 1
-                            all_dirs.append(full_d)
+                            dirs.append(os.path.join(sub_root, d))
+                            d_count += 1
                         for f in sub_files:
-                            full_f = os.path.join(sub_root, f)
+                            fp = os.path.join(sub_root, f)
                             try:
-                                sz = os.path.getsize(full_f)
-                                files_found += 1
-                                all_files.append((full_f, sz))
+                                sz = os.path.getsize(fp)
+                                files.append((fp, sz))
+                                f_count += 1
                             except OSError:
-                                files_skipped += 1
+                                pass
                 elif entry.is_file(follow_symlinks=False):
                     try:
                         sz = entry.stat().st_size
-                        files_found += 1
-                        all_files.append((entry.path, sz))
+                        files.append((entry.path, sz))
+                        f_count += 1
                     except OSError:
-                        files_skipped += 1
+                        pass
         except OSError as e:
             logger.warning("Failed to scan %s: %s", root_path, e)
+        return files, dirs, f_count, d_count
 
-        cat_file_count = len(all_files) - cat_files_before
-        if cat_file_count > 0 or root_name in ("Recycle Bin", "Previous Windows Installation"):
-            categories_cleaned.append({
-                "name": root_name,
-                "path": root_path,
-                "files": cat_file_count,
-            })
-
-        # Update progress: enumeration done for this root
-        with _scan_session_lock:
-            session = _scan_sessions.get(scan_id)
-            if session is None or session.get("cancelled"):
-                return
-            session["progress"] = {
-                "phase": "discovering",
-                "current_operation": f"Scanning {root_name}...",
-                "current_folder": root_path,
-                "assets_discovered": files_found,
-                "assets_evaluated": 0,
-                "findings": files_found,
-                "actions_available": files_found,
-                "bytes_recovered": 0,
-                "elapsed_time_ms": int((time.time() - start_time) * 1000),
-                "is_cancelled": False,
-                "completion_percent": 30,
-            }
-
-    # Enumerate file-pattern categories (thumbnails, icon cache)
-    for cat_name, cat_dir, pattern in file_patterns:
-        cat_files_before = len(all_files)
+    # ─── Helper: scan pattern-matched files ────────────────────────
+    def _scan_pattern(dir_path: str, pattern: str) -> list[tuple[str, int]]:
+        files: list[tuple[str, int]] = []
         try:
-            import fnmatch
-            for entry in os.scandir(cat_dir):
+            for entry in os.scandir(dir_path):
                 if entry.is_file(follow_symlinks=False) and fnmatch.fnmatch(entry.name, pattern):
                     try:
                         sz = entry.stat().st_size
-                        files_found += 1
-                        all_files.append((entry.path, sz))
+                        files.append((entry.path, sz))
                     except OSError:
-                        files_skipped += 1
+                        pass
         except OSError as e:
-            logger.warning("Failed to scan %s/%s: %s", cat_dir, pattern, e)
+            logger.warning("Failed to scan %s/%s: %s", dir_path, pattern, e)
+        return files
 
-        cat_file_count = len(all_files) - cat_files_before
-        if cat_file_count > 0:
-            categories_cleaned.append({
-                "name": cat_name,
-                "path": cat_dir,
-                "files": cat_file_count,
-            })
-
-    total_items = len(all_files) + len(all_dirs)
-    if total_items == 0:
-        # Nothing to clean
-        with _scan_session_lock:
-            session = _scan_sessions.get(scan_id)
-            if session is None:
-                return
-            session["progress"] = {
-                "phase": "complete",
-                "current_operation": "Nothing to clean",
-                "current_folder": None,
-                "assets_discovered": 0,
-                "assets_evaluated": 0,
-                "findings": 0,
-                "actions_available": 0,
-                "bytes_recovered": 0,
-                "elapsed_time_ms": int((time.time() - start_time) * 1000),
-                "is_cancelled": False,
-                "completion_percent": 100,
-            }
-            session["result"] = {
-                "scan_id": scan_id,
-                "scan_type": "quick",
-                "started_at": datetime.now(UTC).isoformat(),
-                "completed_at": datetime.now(UTC).isoformat(),
-                "duration_ms": int((time.time() - start_time) * 1000),
-                "cancelled": False,
-                "completed": True,
-                "error_count": 0,
-                "findings_count": 0,
-                "action_plan_id": None,
-                "actionable_count": 0,
-                "review_count": 0,
-                "blocked_count": 0,
-                "not_fixable_count": 0,
-                "statistics": {
-                    "matches": 0,
-                    "actionable": 0,
-                    "blocked": 0,
-                    "review": 0,
-                    "not_fixable": 0,
-                },
-                "findings": [],
-                "cleanup_summary": {
-                    "files_found": 0,
-                    "files_deleted": 0,
-                    "files_skipped": 0,
-                    "folders_found": 0,
-                    "folders_deleted": 0,
-                    "bytes_recovered": 0,
-                    "mb_recovered": 0,
-                    "categories": [],
-                },
-            }
-            session["completed"] = True
-        return
-
-    # Phase 2: Delete files (with live progress updates)
-    processed = 0
-    for file_path, file_size in all_files:
-        # Check cancellation
-        with _scan_session_lock:
-            session = _scan_sessions.get(scan_id)
-            if session is None or session.get("cancelled"):
-                return
-
-        try:
-            # Try to delete the file
-            os.unlink(file_path)
-            files_deleted += 1
-            bytes_recovered += file_size
-        except PermissionError:
-            # Locked or in-use — skip it
-            files_skipped += 1
-        except OSError:
-            # File doesn't exist anymore or other error — skip
-            files_skipped += 1
-
-        processed += 1
-        # Update progress every 200 files for more responsive UI
-        if processed % 200 == 0 or processed == len(all_files):
+    # ─── Helper: delete files ──────────────────────────────────────
+    def _delete_files(
+        files: list[tuple[str, int]],
+        cat_index: int,
+        cat_name: str,
+        base_pct: int,
+        pct_span: int,
+    ) -> tuple[int, int, int]:
+        """Delete files, return (deleted, skipped, bytes_recovered)."""
+        deleted = 0
+        skipped = 0
+        recovered = 0
+        total = len(files)
+        for i, (file_path, file_size) in enumerate(files):
+            # Check cancellation
             with _scan_session_lock:
                 session = _scan_sessions.get(scan_id)
-                if session is None:
-                    return
-                pct = 30 + int(40 * processed / max(len(all_files), 1))
-                session["progress"] = {
-                    "phase": "cleaning",
-                    "current_operation": f"Deleting files... ({files_deleted} deleted, {files_skipped} skipped)",
-                    "current_folder": file_path,
-                    "assets_discovered": files_found,
-                    "assets_evaluated": processed,
-                    "findings": files_found,
-                    "actions_available": files_deleted,
-                    "bytes_recovered": bytes_recovered,
-                    "elapsed_time_ms": int((time.time() - start_time) * 1000),
-                    "is_cancelled": False,
-                    "completion_percent": pct,
-                }
+                if session is None or session.get("cancelled"):
+                    return deleted, skipped, recovered
 
-    # Phase 3: Delete empty directories (children first, then parents)
-    # all_dirs is already in topdown=False order from os.walk
-    # But we need to sort by depth (deepest first)
-    all_dirs.sort(key=lambda d: d.count(os.sep), reverse=True)
-    dirs_processed = 0
-    for dir_path in all_dirs:
-        with _scan_session_lock:
-            session = _scan_sessions.get(scan_id)
-            if session is None or session.get("cancelled"):
-                return
+            try:
+                os.unlink(file_path)
+                deleted += 1
+                recovered += file_size
+            except PermissionError:
+                skipped += 1
+            except OSError:
+                skipped += 1
 
-        try:
-            # Only remove if empty (children already deleted)
-            os.rmdir(dir_path)
-            folders_deleted += 1
-        except OSError:
-            # Not empty or locked — skip
-            pass
+            # Update progress every 200 files or at the end
+            if (i + 1) % 200 == 0 or (i + 1) == total:
+                pct = base_pct + int(pct_span * (i + 1) / max(total, 1))
+                _update_progress(
+                    "cleaning",
+                    f"Cleaning {cat_name}...",
+                    file_path,
+                    cat_index,
+                    total,
+                    deleted,
+                    skipped,
+                    recovered,
+                    pct,
+                )
 
-        dirs_processed += 1
-        if dirs_processed % 200 == 0 or dirs_processed == len(all_dirs):
+        return deleted, skipped, recovered
+
+    # ─── Helper: remove empty directories ──────────────────────────
+    def _remove_dirs(dirs: list[str], cat_index: int, cat_name: str, base_pct: int, pct_span: int) -> int:
+        dirs.sort(key=lambda d: d.count(os.sep), reverse=True)
+        removed = 0
+        total = len(dirs)
+        for i, dir_path in enumerate(dirs):
             with _scan_session_lock:
                 session = _scan_sessions.get(scan_id)
-                if session is None:
-                    return
-                pct = 70 + int(30 * dirs_processed / max(len(all_dirs), 1))
-                session["progress"] = {
-                    "phase": "finalizing",
-                    "current_operation": f"Removing empty folders... ({folders_deleted} removed)",
-                    "current_folder": dir_path,
-                    "assets_discovered": files_found,
-                    "assets_evaluated": len(all_files),
-                    "findings": files_found,
-                    "actions_available": files_deleted,
-                    "bytes_recovered": bytes_recovered,
-                    "elapsed_time_ms": int((time.time() - start_time) * 1000),
-                    "is_cancelled": False,
-                    "completion_percent": pct,
-                }
+                if session is None or session.get("cancelled"):
+                    return removed
+            try:
+                os.rmdir(dir_path)
+                removed += 1
+            except OSError:
+                pass
+            if (i + 1) % 200 == 0 or (i + 1) == total:
+                pct = base_pct + int(pct_span * (i + 1) / max(total, 1))
+                _update_progress(
+                    "finalizing",
+                    f"Removing folders in {cat_name}...",
+                    dir_path,
+                    cat_index,
+                    0,
+                    0,
+                    0,
+                    0,
+                    pct,
+                )
+        return removed
 
-    # Phase 4: Done — report results
-    mb_recovered = round(bytes_recovered / (1024 * 1024), 2)
+    # ─── Main loop: process each category ──────────────────────────
+    for cat_index, cat in enumerate(categories):
+        cat_name = cat["name"]
+        cat_path = cat["path"]
+        cat_type = cat["type"]
+
+        # Calculate progress range for this category
+        # Each category gets an equal slice of 5%..95%
+        cat_start = 5 + int(90 * cat_index / max(total_categories, 1))
+        cat_end = 5 + int(90 * (cat_index + 1) / max(total_categories, 1))
+        cat_span = cat_end - cat_start
+
+        # ── Phase A: Scan ───────────────────────────────────────────
+        scan_span = int(cat_span * 0.3)  # 30% of category for scanning
+        if cat_type == "folder":
+            cat_files, cat_dirs, cat_f_found, cat_d_found = _scan_folder(cat_path)
+        else:  # pattern
+            cat_files = _scan_pattern(cat_path, cat["pattern"])
+            cat_dirs = []
+            cat_f_found = len(cat_files)
+            cat_d_found = 0
+
+        total_files_found += cat_f_found
+        total_folders_found += cat_d_found
+
+        _update_progress(
+            "discovering",
+            f"Scanning {cat_name}...",
+            cat_path,
+            cat_index,
+            cat_f_found,
+            0,
+            0,
+            0,
+            cat_start + scan_span,
+        )
+
+        # ── Phase B: Delete files ───────────────────────────────────
+        delete_span = int(cat_span * 0.5)  # 50% of category for deleting
+        d_deleted, d_skipped, d_recovered = _delete_files(
+            cat_files,
+            cat_index,
+            cat_name,
+            cat_start + scan_span,
+            delete_span,
+        )
+
+        total_files_deleted += d_deleted
+        total_files_skipped += d_skipped
+        total_bytes_recovered += d_recovered
+
+        # ── Phase C: Remove empty folders ───────────────────────────
+        folder_span = cat_span - scan_span - delete_span  # remaining 20%
+        d_removed = _remove_dirs(
+            cat_dirs,
+            cat_index,
+            cat_name,
+            cat_start + scan_span + delete_span,
+            folder_span,
+        )
+
+        total_folders_deleted += d_removed
+
+        # Record per-category result
+        cat_mb = round(d_recovered / (1024 * 1024), 2)
+        category_results.append({
+            "name": cat_name,
+            "path": cat_path,
+            "files_found": cat_f_found,
+            "files_deleted": d_deleted,
+            "files_skipped": d_skipped,
+            "folders_removed": d_removed,
+            "bytes_recovered": d_recovered,
+            "mb_recovered": cat_mb,
+        })
+
+    # ─── Final results ─────────────────────────────────────────────
+    mb_recovered = round(total_bytes_recovered / (1024 * 1024), 2)
     elapsed_ms = int((time.time() - start_time) * 1000)
 
     with _scan_session_lock:
@@ -834,13 +835,16 @@ def _run_direct_cleanup(scan_id: str) -> None:
             return
         session["progress"] = {
             "phase": "complete",
-            "current_operation": f"Cleaned {files_deleted} files, {mb_recovered} MB recovered",
+            "current_operation": f"Cleaned {total_files_deleted} files, {mb_recovered} MB recovered",
             "current_folder": None,
-            "assets_discovered": files_found,
-            "assets_evaluated": files_found,
-            "findings": files_found,
-            "actions_available": files_deleted,
-            "bytes_recovered": bytes_recovered,
+            "current_category": None,
+            "category_index": total_categories,
+            "total_categories": total_categories,
+            "assets_discovered": total_files_found,
+            "assets_evaluated": total_files_found,
+            "findings": total_files_found,
+            "actions_available": total_files_deleted,
+            "bytes_recovered": total_bytes_recovered,
             "elapsed_time_ms": elapsed_ms,
             "is_cancelled": False,
             "completion_percent": 100,
@@ -854,42 +858,39 @@ def _run_direct_cleanup(scan_id: str) -> None:
             "cancelled": False,
             "completed": True,
             "error_count": 0,
-            "findings_count": files_found,
+            "findings_count": total_files_found,
             "action_plan_id": None,
-            "actionable_count": files_deleted,
+            "actionable_count": total_files_deleted,
             "review_count": 0,
-            "blocked_count": files_skipped,
+            "blocked_count": total_files_skipped,
             "not_fixable_count": 0,
             "statistics": {
-                "matches": files_found,
-                "actionable": files_deleted,
-                "blocked": files_skipped,
+                "matches": total_files_found,
+                "actionable": total_files_deleted,
+                "blocked": total_files_skipped,
                 "review": 0,
                 "not_fixable": 0,
-                # V1.0: Direct cleanup results — files already deleted
-                "files_cleaned": files_deleted,
-                "files_found": files_found,
-                "folders_cleaned": folders_deleted,
-                "space_recovered": bytes_recovered,
-                "bytes_recovered": bytes_recovered,
+                "files_cleaned": total_files_deleted,
+                "files_found": total_files_found,
+                "folders_cleaned": total_folders_deleted,
+                "space_recovered": total_bytes_recovered,
+                "bytes_recovered": total_bytes_recovered,
             },
             "findings": [],
             "cleanup_summary": {
-                "files_found": files_found,
-                "files_deleted": files_deleted,
-                "files_skipped": files_skipped,
-                "folders_found": folders_found,
-                "folders_deleted": folders_deleted,
-                "bytes_recovered": bytes_recovered,
+                "files_found": total_files_found,
+                "files_deleted": total_files_deleted,
+                "files_skipped": total_files_skipped,
+                "folders_found": total_folders_found,
+                "folders_deleted": total_folders_deleted,
+                "bytes_recovered": total_bytes_recovered,
                 "mb_recovered": mb_recovered,
-                # Also expose in the flat format the frontend expects
-                "detected": files_found,
-                "cleaned": files_deleted,
-                "failed": files_skipped,
+                "detected": total_files_found,
+                "cleaned": total_files_deleted,
+                "failed": total_files_skipped,
                 "remaining": 0,
-                "space_recovered": bytes_recovered,
-                # V1.0: Per-category breakdown for results page
-                "categories": categories_cleaned,
+                "space_recovered": total_bytes_recovered,
+                "categories": category_results,
             },
         }
         session["completed"] = True

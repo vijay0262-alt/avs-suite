@@ -250,6 +250,8 @@ export function useScan({ mode = 'full', config }: UseScanOptions): UseScanRetur
           getProgressValue<string | null>(progress, 'current_folder', null) ??
           getProgressValue<string | null>(progress, 'current_operation', null) ??
           undefined,
+        // V1.0: Pass the current category name for category-wise display
+        currentCategory: getProgressValue<string | null>(progress, 'current_category', null) ?? undefined,
       });
 
       scan.updateCounters(mapStatusCounters(progress, config));
