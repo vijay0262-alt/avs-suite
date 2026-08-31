@@ -64,9 +64,6 @@ export function buildScanReport(
     ? getResultValue<number>(cleanupSummary, 'bytes_recovered', 0)
     : getResultValue<number>(statistics, 'space_recovered', 0) ||
       getResultValue<number>(statistics, 'bytes_recovered', 0);
-  const foldersDeleted = cleanupSummary
-    ? getResultValue<number>(cleanupSummary, 'folders_deleted', 0)
-    : getResultValue<number>(statistics, 'folders_cleaned', 0);
 
   const itemsAnalyzed =
     typeof statistics.assets_evaluated === 'number'
