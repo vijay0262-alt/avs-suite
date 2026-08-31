@@ -249,7 +249,14 @@ class RemediationCoordinator:
     def _finalize_status(
         self, request_id: str, summary: ExecutionSummary
     ) -> ExecutionSummary:
-        """Persist a serializable execution status independent of the executor."""
+        """Persist a serializable execution status independent of the executor.
+
+        V1.0: Persistence failures are NON-FATAL. The actual file deletions
+        have already happened — this is just audit logging. Marking the
+        execution as FAILED because the audit log couldn't be saved would
+        mislead the user into thinking cleanup failed when it actually
+        succeeded. We log the error and return the original summary.
+        """
         try:
             sanitized = dataclasses.replace(summary, ledger=None)
             self._exec_repo.save_summary(request_id, sanitized)
@@ -264,12 +271,9 @@ class RemediationCoordinator:
             logger.error(
                 f"Coordinator status persistence failed for {request_id}: {exc}"
             )
-            return dataclasses.replace(
-                summary,
-                status=ExecutionStatus.FAILED,
-                reason=f"Execution completed but coordinator audit persistence failed: {exc}",
-                ledger=None,
-            )
+            # V1.0: Return the original summary with ledger stripped.
+            # Do NOT override the status — the actual execution succeeded.
+            return dataclasses.replace(summary, ledger=None)
 
     def cancel(self, execution_id: str) -> bool:
         """Request cancellation of a running execution."""

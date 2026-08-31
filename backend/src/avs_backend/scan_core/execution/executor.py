@@ -83,10 +83,21 @@ class DefaultExecutor:
 
         try:
             # 1. Persist plan before any execution begins.
+            # V1.0: The plan was already saved by the scan orchestrator.
+            # Re-saving is for crash recovery (in case the plan wasn't
+            # persisted). If this fails (e.g. database is locked), we
+            # continue anyway — the plan is already in the DB from the
+            # scan phase. Persistence failures here are non-fatal.
             if self.action_plan_repository is not None:
-                self.action_plan_repository.save(
-                    request.plan, status=ExecutionState.PLANNED
-                )
+                try:
+                    self.action_plan_repository.save(
+                        request.plan, status=ExecutionState.PLANNED
+                    )
+                except Exception as plan_exc:
+                    logger.warning(
+                        f"Plan re-persistence failed (non-fatal, plan "
+                        f"already saved by orchestrator): {plan_exc}"
+                    )
 
             # 2. Persist execution request.
             if self.execution_repository is not None:
@@ -246,12 +257,17 @@ class DefaultExecutor:
             )
             if not self._finalize_persistence(request, summary, started_at):
                 persistence_failed = True
+            # V1.0: Persistence failures are NON-FATAL. The actual file
+            # deletions have already happened. Audit logging failures
+            # must NOT override the execution status — the user needs to
+            # see that cleanup succeeded, not be told it failed because
+            # the audit log couldn't be saved.
             if persistence_failed:
-                return dataclasses.replace(
-                    summary,
-                    status=ExecutionStatus.FAILED,
-                    reason=f"Execution completed but audit persistence failed",
-                    ledger=None,
+                logger.warning(
+                    f"Audit persistence failed for {request.request_id} "
+                    f"but execution completed with status={summary.status.value} "
+                    f"(completed={summary.completed}, failed={summary.failed}). "
+                    f"Returning original execution result."
                 )
             return summary
 
@@ -575,6 +591,10 @@ class DefaultExecutor:
         elif dry_run == total:
             batch_status = ExecutionStatus.DRY_RUN
         elif completed == total:
+            batch_status = ExecutionStatus.COMPLETED
+        elif completed > 0:
+            # V1.0: Mixed result — some completed, some rejected/skipped.
+            # This is a successful partial execution, not a dry run.
             batch_status = ExecutionStatus.COMPLETED
         else:
             batch_status = ExecutionStatus.DRY_RUN

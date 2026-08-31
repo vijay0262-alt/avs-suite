@@ -97,7 +97,17 @@ def get_coordinator() -> Optional[RemediationCoordinator]:
             app_dir = _get_app_data_dir()
             app_dir.mkdir(parents=True, exist_ok=True)
 
-            db = MetadataDatabase(DatabaseConfig(db_path=app_dir / "metadata.db"))
+            # V1.0: Share the same database instance as the scan orchestrator
+            # to avoid FOREIGN KEY constraint failures caused by WAL
+            # transaction isolation between separate connections.
+            # The scan orchestrator saves action plans; the coordinator
+            # loads them. If they use different connections, the plan
+            # may not be visible to the coordinator yet.
+            orch = get_scan_orchestrator(wait_for_ready=False)
+            if orch is not None and getattr(orch, '_db', None) is not None:
+                db = orch._db
+            else:
+                db = MetadataDatabase(DatabaseConfig(db_path=app_dir / "metadata.db"))
             _coordinator = RemediationCoordinator(
                 database=db,
                 backup_root=app_dir / "backups",

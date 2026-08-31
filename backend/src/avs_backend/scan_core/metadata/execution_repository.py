@@ -37,50 +37,62 @@ class ExecutionRepository:
         request: ExecutionRequest,
         status: str = ExecutionState.PLANNED,
     ) -> bool:
-        """Persist an ExecutionRequest before execution."""
-        conn = self.db.get_connection()
-        cursor = conn.cursor()
+        """Persist an ExecutionRequest before execution.
 
-        try:
-            plan_id = request.plan.plan_id
-            if plan_id is None:
-                raise ValueError("ExecutionRequest.plan must have a plan_id")
+        V1.0: Retries on "database is locked" to handle concurrent access
+        from the scan orchestrator and remediation coordinator threads.
+        """
+        import time as _time
 
-            cursor.execute(
-                """
-                INSERT INTO execution_requests (
-                    request_id, plan_id, mode, status, requested_at,
-                    execution_context, context_data, schema_version, created_at
+        plan_id = request.plan.plan_id
+        if plan_id is None:
+            raise ValueError("ExecutionRequest.plan must have a plan_id")
+
+        max_retries = 3
+        for attempt in range(max_retries):
+            conn = self.db.get_connection()
+            cursor = conn.cursor()
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO execution_requests (
+                        request_id, plan_id, mode, status, requested_at,
+                        execution_context, context_data, schema_version, created_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(request_id) DO UPDATE SET
+                        mode=excluded.mode,
+                        status=excluded.status,
+                        requested_at=excluded.requested_at,
+                        execution_context=excluded.execution_context,
+                        context_data=excluded.context_data,
+                        schema_version=excluded.schema_version,
+                        created_at=excluded.created_at
+                    """,
+                    (
+                        request.request_id,
+                        plan_id,
+                        request.mode,
+                        status,
+                        self._now(),
+                        json.dumps(request.execution_context),
+                        json.dumps(request.to_dict()),
+                        _SCHEMA_VERSION,
+                        self._now(),
+                    ),
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(request_id) DO UPDATE SET
-                    mode=excluded.mode,
-                    status=excluded.status,
-                    requested_at=excluded.requested_at,
-                    execution_context=excluded.execution_context,
-                    context_data=excluded.context_data,
-                    schema_version=excluded.schema_version,
-                    created_at=excluded.created_at
-                """,
-                (
-                    request.request_id,
-                    plan_id,
-                    request.mode,
-                    status,
-                    self._now(),
-                    json.dumps(request.execution_context),
-                    json.dumps(request.to_dict()),
-                    _SCHEMA_VERSION,
-                    self._now(),
-                ),
-            )
-            conn.commit()
-            return True
-        except Exception as exc:
-            conn.rollback()
-            raise RuntimeError(f"Failed to save execution request: {exc}") from exc
-        finally:
-            cursor.close()
+                conn.commit()
+                return True
+            except Exception as exc:
+                conn.rollback()
+                if "locked" in str(exc).lower() and attempt < max_retries - 1:
+                    cursor.close()
+                    _time.sleep(0.5 * (attempt + 1))
+                    continue
+                raise RuntimeError(f"Failed to save execution request: {exc}") from exc
+            finally:
+                cursor.close()
+        return False
 
     def get_request_status(self, request_id: str) -> Optional[str]:
         """Return the persisted status of an execution request."""
@@ -155,98 +167,121 @@ class ExecutionRepository:
         request_id: str,
         result: ExecutionResult,
     ) -> bool:
-        """Persist a single action's ExecutionResult."""
-        conn = self.db.get_connection()
-        cursor = conn.cursor()
+        """Persist a single action's ExecutionResult.
 
-        try:
-            error_data = None
-            if result.error is not None:
-                error_data = json.dumps(result.error.to_dict())
+        V1.0: Retries on "database is locked" to handle concurrent writes
+        during bulk action execution (88+ actions in rapid succession).
+        """
+        import time as _time
 
-            cursor.execute(
-                """
-                INSERT INTO execution_results (
-                    request_id, action_id, status, started_at, completed_at,
-                    result_data, backup_identity, backup_location, error_data,
-                    schema_version, created_at
+        error_data = None
+        if result.error is not None:
+            error_data = json.dumps(result.error.to_dict())
+
+        max_retries = 3
+        for attempt in range(max_retries):
+            conn = self.db.get_connection()
+            cursor = conn.cursor()
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO execution_results (
+                        request_id, action_id, status, started_at, completed_at,
+                        result_data, backup_identity, backup_location, error_data,
+                        schema_version, created_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(request_id, action_id) DO UPDATE SET
+                        status=excluded.status,
+                        started_at=excluded.started_at,
+                        completed_at=excluded.completed_at,
+                        result_data=excluded.result_data,
+                        backup_identity=excluded.backup_identity,
+                        backup_location=excluded.backup_location,
+                        error_data=excluded.error_data,
+                        schema_version=excluded.schema_version,
+                        created_at=excluded.created_at
+                    """,
+                    (
+                        request_id,
+                        result.action_id,
+                        result.status.value,
+                        self._now(),
+                        self._now(),
+                        json.dumps(result.to_dict()),
+                        result.backup_identity,
+                        result.backup_location,
+                        error_data,
+                        _SCHEMA_VERSION,
+                        self._now(),
+                    ),
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(request_id, action_id) DO UPDATE SET
-                    status=excluded.status,
-                    started_at=excluded.started_at,
-                    completed_at=excluded.completed_at,
-                    result_data=excluded.result_data,
-                    backup_identity=excluded.backup_identity,
-                    backup_location=excluded.backup_location,
-                    error_data=excluded.error_data,
-                    schema_version=excluded.schema_version,
-                    created_at=excluded.created_at
-                """,
-                (
-                    request_id,
-                    result.action_id,
-                    result.status.value,
-                    self._now(),
-                    self._now(),
-                    json.dumps(result.to_dict()),
-                    result.backup_identity,
-                    result.backup_location,
-                    error_data,
-                    _SCHEMA_VERSION,
-                    self._now(),
-                ),
-            )
-            conn.commit()
-            return True
-        except Exception as exc:
-            conn.rollback()
-            raise RuntimeError(f"Failed to save action result: {exc}") from exc
-        finally:
-            cursor.close()
+                conn.commit()
+                return True
+            except Exception as exc:
+                conn.rollback()
+                if "locked" in str(exc).lower() and attempt < max_retries - 1:
+                    cursor.close()
+                    _time.sleep(0.1 * (attempt + 1))
+                    continue
+                raise RuntimeError(f"Failed to save action result: {exc}") from exc
+            finally:
+                cursor.close()
+        return False
 
     def save_summary(
         self,
         request_id: str,
         summary: ExecutionSummary,
     ) -> bool:
-        """Persist an ExecutionSummary."""
-        conn = self.db.get_connection()
-        cursor = conn.cursor()
+        """Persist an ExecutionSummary.
 
-        try:
-            completed_at = summary.completed_at
-            cursor.execute(
-                """
-                INSERT INTO execution_summaries (
-                    request_id, status, started_at, completed_at,
-                    summary_data, schema_version, created_at
+        V1.0: Retries on "database is locked" to handle concurrent access.
+        """
+        import time as _time
+
+        max_retries = 3
+        for attempt in range(max_retries):
+            conn = self.db.get_connection()
+            cursor = conn.cursor()
+            try:
+                completed_at = summary.completed_at
+                cursor.execute(
+                    """
+                    INSERT INTO execution_summaries (
+                        request_id, status, started_at, completed_at,
+                        summary_data, schema_version, created_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(request_id) DO UPDATE SET
+                        status=excluded.status,
+                        completed_at=excluded.completed_at,
+                        summary_data=excluded.summary_data,
+                        schema_version=excluded.schema_version,
+                        created_at=excluded.created_at
+                    """,
+                    (
+                        request_id,
+                        summary.status.value,
+                        summary.started_at.isoformat(),
+                        completed_at.isoformat() if completed_at else None,
+                        json.dumps(summary.to_dict()),
+                        _SCHEMA_VERSION,
+                        self._now(),
+                    ),
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(request_id) DO UPDATE SET
-                    status=excluded.status,
-                    completed_at=excluded.completed_at,
-                    summary_data=excluded.summary_data,
-                    schema_version=excluded.schema_version,
-                    created_at=excluded.created_at
-                """,
-                (
-                    request_id,
-                    summary.status.value,
-                    summary.started_at.isoformat(),
-                    completed_at.isoformat() if completed_at else None,
-                    json.dumps(summary.to_dict()),
-                    _SCHEMA_VERSION,
-                    self._now(),
-                ),
-            )
-            conn.commit()
-            return True
-        except Exception as exc:
-            conn.rollback()
-            raise RuntimeError(f"Failed to save execution summary: {exc}") from exc
-        finally:
-            cursor.close()
+                conn.commit()
+                return True
+            except Exception as exc:
+                conn.rollback()
+                if "locked" in str(exc).lower() and attempt < max_retries - 1:
+                    cursor.close()
+                    _time.sleep(0.5 * (attempt + 1))
+                    continue
+                raise RuntimeError(f"Failed to save execution summary: {exc}") from exc
+            finally:
+                cursor.close()
+        return False
 
     def get_completed_action_ids(self, plan_id: str) -> set[str]:
         """

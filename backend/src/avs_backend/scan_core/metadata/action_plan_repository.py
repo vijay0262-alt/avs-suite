@@ -32,6 +32,9 @@ class ActionPlanRepository:
         """
         Persist an ActionPlan and its individual RemediationActions.
 
+        V1.0: Retries on "database is locked" to handle concurrent access
+        from the scan orchestrator and remediation coordinator threads.
+
         Args:
             plan: ActionPlan to persist
             status: Persisted plan status
@@ -39,77 +42,85 @@ class ActionPlanRepository:
         Returns:
             True if successful
         """
-        conn = self.db.get_connection()
-        cursor = conn.cursor()
-        now = datetime.now(UTC).isoformat()
+        import time as _time
 
         plan_id = plan.plan_id
         if plan_id is None:
             raise ValueError("ActionPlan must have a plan_id to be persisted")
 
         plan_data = json.dumps(plan.to_dict())
+        now = datetime.now(UTC).isoformat()
 
-        try:
-            cursor.execute(
-                """
-                INSERT INTO action_plans (
-                    plan_id, generated_at, status, plan_data,
-                    schema_version, created_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(plan_id) DO UPDATE SET
-                    generated_at=excluded.generated_at,
-                    status=excluded.status,
-                    plan_data=excluded.plan_data,
-                    schema_version=excluded.schema_version,
-                    created_at=excluded.created_at
-                """,
-                (
-                    plan_id,
-                    plan.generated_at.isoformat(),
-                    status,
-                    plan_data,
-                    _SCHEMA_VERSION,
-                    now,
-                ),
-            )
-
-            for action in plan.actions:
-                action_data = json.dumps(action.to_dict())
+        max_retries = 3
+        for attempt in range(max_retries):
+            conn = self.db.get_connection()
+            cursor = conn.cursor()
+            try:
                 cursor.execute(
                     """
-                    INSERT INTO remediation_actions (
-                        plan_id, action_id, action_type, asset_id,
-                        state, action_data, schema_version, created_at
+                    INSERT INTO action_plans (
+                        plan_id, generated_at, status, plan_data,
+                        schema_version, created_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(action_id) DO UPDATE SET
-                        action_type=excluded.action_type,
-                        asset_id=excluded.asset_id,
-                        state=excluded.state,
-                        action_data=excluded.action_data,
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(plan_id) DO UPDATE SET
+                        generated_at=excluded.generated_at,
+                        status=excluded.status,
+                        plan_data=excluded.plan_data,
                         schema_version=excluded.schema_version,
                         created_at=excluded.created_at
                     """,
                     (
                         plan_id,
-                        action.action_id,
-                        action.action_type.value,
-                        action.asset_id,
-                        action.state.value,
-                        action_data,
+                        plan.generated_at.isoformat(),
+                        status,
+                        plan_data,
                         _SCHEMA_VERSION,
                         now,
                     ),
                 )
 
-            conn.commit()
-            return True
-        except Exception as exc:
-            conn.rollback()
-            raise RuntimeError(f"Failed to save action plan: {exc}") from exc
-        finally:
-            cursor.close()
+                for action in plan.actions:
+                    action_data = json.dumps(action.to_dict())
+                    cursor.execute(
+                        """
+                        INSERT INTO remediation_actions (
+                            plan_id, action_id, action_type, asset_id,
+                            state, action_data, schema_version, created_at
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(action_id) DO UPDATE SET
+                            action_type=excluded.action_type,
+                            asset_id=excluded.asset_id,
+                            state=excluded.state,
+                            action_data=excluded.action_data,
+                            schema_version=excluded.schema_version,
+                            created_at=excluded.created_at
+                        """,
+                        (
+                            plan_id,
+                            action.action_id,
+                            action.action_type.value,
+                            action.asset_id,
+                            action.state.value,
+                            action_data,
+                            _SCHEMA_VERSION,
+                            now,
+                        ),
+                    )
+
+                conn.commit()
+                return True
+            except Exception as exc:
+                conn.rollback()
+                if "locked" in str(exc).lower() and attempt < max_retries - 1:
+                    cursor.close()
+                    _time.sleep(0.5 * (attempt + 1))
+                    continue
+                raise RuntimeError(f"Failed to save action plan: {exc}") from exc
+            finally:
+                cursor.close()
+        return False
 
     def load(self, plan_id: str) -> Optional[ActionPlan]:
         """Load an ActionPlan by plan_id."""
