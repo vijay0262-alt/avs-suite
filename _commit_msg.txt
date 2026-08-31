@@ -1,0 +1,41 @@
+Fix Temp cleanup: scan all 86,000+ files, 5x faster scan performance
+
+Root cause: The PytestTempExclusionFilter was excluding 99.9% of user Temp
+files (86,585 of 86,633 files in pytest-of-* directories). The filter was
+meant to protect test fixtures during AVS's own test suite, but it was
+also active in production builds, causing AVS to only detect ~78 Temp
+files instead of 86,000+.
+
+Fixes:
+- PytestTempExclusionFilter now only active during pytest runs (detected
+  via PYTEST_CURRENT_TEST env var or pytest in sys.modules)
+- In production, pytest-of-* directories are legitimate cleanup targets
+
+Performance optimizations (1181s → 219s, 5.4x faster):
+- Skip DB persistence for quick scans (497s → 19s discovery)
+  The orchestrator evaluates in-memory instead of saving 126K assets to
+  SQLite then reading them back
+- In-memory evaluation bypasses 100K+ asset_repository.get() DB calls
+- Prefix map for fast rule matching (avoids checking 15 rules per asset)
+- Fast path in UserTempRule.evaluate() for common case (accessible, not
+  locked) — skips evidence/confidence/safety object creation
+- Cached normalized path roots in KnownLocations (eliminates 86K+ redundant
+  _normalize_windows_path calls for protected roots, temp roots, etc.)
+- Use st_file_attributes from stat() instead of separate GetFileAttributesW
+  calls in the enumerator (eliminates 86K+ WinAPI calls)
+- Skip CreateFileW lock check during revalidation for non-_MEI files
+  (88s → 0s for large action plans; executor catches locks at execution)
+- Skip revalidation entirely for quick scans with >5000 planned actions
+- Increased batch size from 200 to 2000 for DB writes
+- Fixed snapshot get_for_scan limit (100K → 500K)
+
+Verified:
+- Scan finds 87,032 cleanable items (up from 78)
+- 86,913 user Temp files detected
+- Backend tests: 1204 passed
+- Frontend tests: 8272 passed
+- Typecheck: passed
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

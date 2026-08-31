@@ -224,3 +224,23 @@ class Rule(ABC):
         if self._applicable_roots_cache is False:
             self._applicable_roots_cache = self.get_applicable_roots()
         return self._applicable_roots_cache
+
+    def get_applicable_roots_normalized(self) -> list[list[str]] | None:
+        """V1.0: Get pre-normalized applicable root parts for fast matching.
+
+        Caches the normalized form so ApplicabilityEngine doesn't need
+        to call _normalize_windows_path() for every root on every asset.
+
+        Returns:
+            List of normalized root part lists, or None if universal.
+        """
+        roots = self.get_applicable_roots_cached()
+        if roots is None:
+            return None
+        cache_attr = '_applicable_roots_normalized_cache'
+        if not hasattr(self, cache_attr) or getattr(self, cache_attr) is None:
+            from ..rules.detection.locations import KnownLocations
+            setattr(self, cache_attr, [
+                KnownLocations._normalize_windows_path(str(r)) for r in roots
+            ])
+        return getattr(self, cache_attr)

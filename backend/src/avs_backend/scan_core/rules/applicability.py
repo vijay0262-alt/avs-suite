@@ -124,15 +124,16 @@ class ApplicabilityEngine:
             )
 
         # Path-based pre-filtering (performance optimization)
-        roots = rule.get_applicable_roots_cached()
-        if roots:
+        # V1.0: Use pre-normalized cached roots to avoid redundant
+        # _normalize_windows_path() calls for 86,000+ assets.
+        normalized_roots = rule.get_applicable_roots_normalized()
+        if normalized_roots:
             from ..rules.detection.locations import KnownLocations
 
             # Pre-compute asset path parts once for this asset
             asset_parts = KnownLocations._normalize_windows_path(asset.canonical_path)
             matched = False
-            for root in roots:
-                root_parts = KnownLocations._normalize_windows_path(str(root))
+            for root_parts in normalized_roots:
                 if len(asset_parts) >= len(root_parts) and asset_parts[:len(root_parts)] == root_parts:
                     matched = True
                     break

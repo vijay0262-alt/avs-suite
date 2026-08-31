@@ -159,22 +159,51 @@ class DateRangeFilter:
 
 @dataclass
 class PytestTempExclusionFilter:
-    """Exclude pytest temporary directories from production scans.
+    """Exclude pytest temporary directories from scans during test runs.
 
     Pytest creates temp directories inside %TEMP% (e.g.
-    ``pytest-of-<user>/pytest-<N>/popen-gw<N>/...``).  These are test
-    artifacts, not real cleanup targets.  This filter prevents them from
-    being enumerated by the production scanner.
+    ``pytest-of-<user>/pytest-<N>/popen-gw<N>/...``).  During AVS's own
+    test suite, these directories contain active test fixtures that must
+    NOT be deleted by the scanner.
+
+    V1.0: In PRODUCTION, pytest temp directories are legitimate cleanup
+    targets — they are leftover artifacts from previous test runs and
+    are safe to delete.  This filter only excludes them when running
+    under pytest (detected via PYTEST_CURRENT_TEST or _PYTEST_SESSION).
     """
 
     _EXCLUDE_MARKER = "pytest-of-"
 
+    def __init__(self) -> None:
+        # Only exclude pytest dirs when actually running under pytest.
+        # In production builds, pytest-of-* dirs are legitimate junk.
+        self._active = self._is_pytest_running()
+
+    @staticmethod
+    def _is_pytest_running() -> bool:
+        """Detect whether we are running inside a pytest session."""
+        import sys
+        # PYTEST_CURRENT_TEST is set by pytest during test execution
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            return True
+        # Check if pytest is in sys.modules (running under pytest)
+        if "pytest" in sys.modules:
+            return True
+        # Check for the pytest runner in sys.argv
+        if any("pytest" in arg for arg in sys.argv[:3]):
+            return True
+        return False
+
     def matches(self, entry: FileEntry | DirectoryEntry) -> bool:
+        if not self._active:
+            return True
         if self._EXCLUDE_MARKER in entry.path.lower():
             return False
         return True
 
     def should_descend(self, dir_entry: DirectoryEntry) -> bool:
+        if not self._active:
+            return True
         if self._EXCLUDE_MARKER in dir_entry.path.lower():
             return False
         return True

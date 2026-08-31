@@ -22,6 +22,7 @@ from ..evidence import Evidence, EvidenceCollection
 from ..models import RuleIdentifier, RuleVersion
 from ..result import RuleResult
 from ..rule import Rule, RuleMetadata
+from ..safety import SafetyAssessment
 from .locations import KnownLocations
 from .safety_policy import SafetyPolicy
 
@@ -68,28 +69,25 @@ class UserTempRule(Rule):
         snapshot: Optional[AssetSnapshot] = None,
         context: Optional[ScanContext] = None,
     ) -> RuleResult:
-        """Evaluate if asset is a user temporary file."""
+        """Evaluate if asset is a user temporary file.
 
-        # Check if asset is under any user temp root
-        user_temp_roots = KnownLocations.get_user_temp_roots()
-        is_under_temp = False
-        matched_root: Optional[str] = None
+        V1.0: Fast path for the common case (accessible, not locked, in
+        user Temp) — skips evidence/confidence/safety object creation
+        that was the evaluation bottleneck for 86,000+ files. The fast
+        path creates a minimal RuleResult directly, while the slow path
+        retains full evidence/confidence/safety assessment for edge cases.
+        """
 
-        for root in user_temp_roots:
-            if KnownLocations.is_under_path(asset.canonical_path, root):
-                is_under_temp = True
-                matched_root = str(root)
-                break
+        # V1.0: Use pre-normalized cached roots for fast path matching.
+        normalized_roots = KnownLocations.get_user_temp_roots_normalized()
 
-        if not is_under_temp:
+        if not KnownLocations.is_under_any_root(asset.canonical_path, normalized_roots):
             return RuleResult.create_no_match(
                 rule_id=self.rule_id,
                 rule_version=str(self.version),
                 asset_id=asset.asset_id,
                 reason="Asset is not located in a user temporary directory",
             )
-
-        assert matched_root is not None
 
         # Skip missing assets — not actionable
         if SafetyPolicy.should_skip_missing(snapshot):
@@ -99,6 +97,63 @@ class UserTempRule(Rule):
                 asset_id=asset.asset_id,
                 reason="Asset no longer exists on filesystem",
             )
+
+        # V1.0: Fast path — for the common case (accessible, not locked),
+        # create a minimal RuleResult directly. This avoids creating 5-6
+        # Evidence objects, 3-4 ConfidenceScore objects, a Confidence
+        # object, and calling SafetyPolicy.assess() (which calls
+        # is_in_protected_location) for 86,000+ files.
+        #
+        # User Temp is NOT a protected location, so is_in_protected_location
+        # will always return False for these files. Skipping it saves
+        # ~0.14ms per file (12 seconds for 86,000 files).
+        if snapshot and snapshot.exists and snapshot.accessible and not snapshot.locked:
+            # Get file size if available
+            estimated_size: Optional[int] = None
+            size_value = asset.custom_metadata.get("size")
+            if size_value is not None and isinstance(size_value, (int, float)):
+                estimated_size = int(size_value)
+
+            return RuleResult.create_matched(
+                rule_id=self.rule_id,
+                rule_version=str(self.version),
+                asset_id=asset.asset_id,
+                severity=self.metadata.severity,
+                confidence=Confidence(
+                    score=85.0,
+                    factors=(
+                        ConfidenceScore(
+                            factor=ConfidenceFactor.PATH_MATCH,
+                            score=90.0,
+                            description="Asset is in a well-known user temporary directory",
+                        ),
+                        ConfidenceScore(
+                            factor=ConfidenceFactor.ASSET_TYPE_MATCH,
+                            score=80.0,
+                            description="Asset type is FILE",
+                        ),
+                    ),
+                ),
+                safety=SafetyAssessment.create_safe(
+                    reason="Asset is in user temporary directory and is accessible",
+                ),
+                reason="Temporary file in user temporary directory",
+                evidence=EvidenceCollection((
+                    Evidence(
+                        evidence_type=EvidenceType.KNOWN_LOCATION,
+                        source=self.rule_id,
+                        description="Asset is located under user temporary directory",
+                        value="user_temp",
+                    ),
+                )),
+                recommended_action=ActionType.DELETE,
+                estimated_size=estimated_size,
+            )
+
+        # Slow path — full evaluation for edge cases (locked, inaccessible, etc.)
+        # Get the matched root for evidence
+        user_temp_roots = KnownLocations.get_user_temp_roots()
+        matched_root = str(user_temp_roots[0]) if user_temp_roots else "user temp"
 
         # Build evidence
         evidence_items: list[Evidence] = []
@@ -289,10 +344,11 @@ class WindowsTempRule(Rule):
     ) -> RuleResult:
         """Evaluate if asset is a Windows temporary file."""
 
-        # Check if asset is under Windows temp root
+        # V1.0: Use pre-normalized cached root for fast path matching.
         windows_temp_root = KnownLocations.get_windows_temp_root()
+        normalized_root = KnownLocations.get_windows_temp_root_normalized()
 
-        if not KnownLocations.is_under_path(asset.canonical_path, windows_temp_root):
+        if not KnownLocations.is_under_any_root(asset.canonical_path, [normalized_root]):
             return RuleResult.create_no_match(
                 rule_id=self.rule_id,
                 rule_version=str(self.version),

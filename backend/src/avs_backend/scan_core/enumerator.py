@@ -598,7 +598,11 @@ class FilesystemEnumerator:
         if opts.include_directories:
             try:
                 stat_result = os.stat(dir_path, follow_symlinks=not opts.follow_symlinks)
-                attrs = _get_win_attributes(dir_path)
+                # V1.0: Use st_file_attributes from stat result when available
+                # to avoid a separate GetFileAttributesW call per directory.
+                attrs = getattr(stat_result, 'st_file_attributes', None)
+                if attrs is None:
+                    attrs = _get_win_attributes(dir_path)
                 is_symlink = os.path.islink(dir_path)
                 is_reparse_point = bool(attrs & FILE_ATTRIBUTE_REPARSE_POINT)
 
@@ -646,8 +650,27 @@ class FilesystemEnumerator:
 
                 try:
                     is_symlink = entry.is_symlink()
-                    attrs = _get_win_attributes(entry_path)
-                    is_reparse_point = bool(attrs & FILE_ATTRIBUTE_REPARSE_POINT)
+
+                    # V1.0: Optimized attribute retrieval.
+                    # On Windows, os.scandir() caches WIN32_FIND_DATA which
+                    # includes dwFileAttributes. We use entry.stat() with
+                    # follow_symlinks=False to get the cached attributes
+                    # (including FILE_ATTRIBUTE_REPARSE_POINT) without a
+                    # separate GetFileAttributesW call. This eliminates
+                    # 86,000+ WinAPI calls for large Temp directories.
+                    # entry.is_dir() and entry.is_file() also use cached info.
+                    if is_symlink:
+                        is_reparse_point = False
+                    elif _is_windows:
+                        # Fast path: use cached stat for reparse point check
+                        try:
+                            st = entry.stat(follow_symlinks=False)
+                            attrs = getattr(st, 'st_file_attributes', 0)
+                            is_reparse_point = bool(attrs & FILE_ATTRIBUTE_REPARSE_POINT)
+                        except (PermissionError, OSError):
+                            is_reparse_point = False
+                    else:
+                        is_reparse_point = False
 
                     # Never descend into reparse points (junctions, mount points).
                     # Non-symlink reparse points are not emitted; symlinks are
@@ -713,7 +736,15 @@ class FilesystemEnumerator:
         depth: int,
         opts: EnumerateOptions,
     ) -> Optional[FileEntry]:
-        """Build a FileEntry from a DirEntry, handling errors gracefully."""
+        """Build a FileEntry from a DirEntry, handling errors gracefully.
+
+        V1.0: Optimized to use st_file_attributes from the stat result
+        instead of making a separate GetFileAttributesW WinAPI call.
+        On Windows, os.scandir() + stat() already includes file attributes
+        via WIN32_FIND_DATA, so the extra GetFileAttributesW call is
+        redundant and was a major bottleneck for large Temp directories
+        (86,000+ files → 86,000 fewer WinAPI calls).
+        """
         try:
             stat_result = scandir_entry.stat(follow_symlinks=opts.follow_symlinks)
         except (PermissionError, OSError):
@@ -721,8 +752,16 @@ class FilesystemEnumerator:
 
         name = scandir_entry.name
         parent_dir = os.path.dirname(path)
-        attrs = _get_win_attributes(path)
         is_symlink = scandir_entry.is_symlink()
+
+        # V1.0: Use st_file_attributes from stat result (cached by
+        # os.scandir on Windows) instead of a separate GetFileAttributesW
+        # call. Falls back to GetFileAttributesW if st_file_attributes
+        # is not available (non-Windows or older Python).
+        attrs = getattr(stat_result, 'st_file_attributes', None)
+        if attrs is None:
+            attrs = _get_win_attributes(path)
+
         is_reparse_point = bool(attrs & FILE_ATTRIBUTE_REPARSE_POINT)
 
         is_locked = False
@@ -755,7 +794,6 @@ class FilesystemEnumerator:
         """Build a FileEntry for a symlink without following it."""
         name = scandir_entry.name
         parent_dir = os.path.dirname(path)
-        attrs = _get_win_attributes(path)
 
         # Stat the symlink itself (not the target)
         try:
@@ -763,6 +801,11 @@ class FilesystemEnumerator:
         except (PermissionError, OSError):
             # If we can't stat the symlink itself, use a zero-size fallback
             stat_result = os.stat_result((0o120777, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+
+        # V1.0: Use st_file_attributes from stat result when available
+        attrs = getattr(stat_result, 'st_file_attributes', None)
+        if attrs is None:
+            attrs = _get_win_attributes(path)
 
         # Resolve the target path
         symlink_target = None

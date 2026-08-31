@@ -250,7 +250,7 @@ class SnapshotRepository:
         except Exception as e:
             raise RuntimeError(f"Failed to get snapshot history: {e}")
     
-    def get_for_scan(self, scan_id: str, limit: int = 100000) -> List[AssetSnapshot]:
+    def get_for_scan(self, scan_id: str, limit: int = 500000) -> List[AssetSnapshot]:
         """
         Get all snapshots for a scan.
         
