@@ -414,6 +414,10 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     # PUP scanner — ignore/unignore requires Pro (Free can scan)
     "pup.ignore": "professional",
     "pup.unignore": "professional",
+    # Browser extension manager — remove/disable/enable requires Pro (Free can view)
+    "browser_ext.remove": "professional",
+    "browser_ext.disable": "professional",
+    "browser_ext.enable": "professional",
 }
 
 

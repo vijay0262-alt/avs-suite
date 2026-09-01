@@ -63,6 +63,7 @@ export type NavItemId =
   | 'file-shredder'
   | 'disk-optimizer'
   | 'pup-scanner'
+  | 'browser-extensions'
   | 'driver-updater'
   | 'security-history'
   | 'antispyware-malware-removal'

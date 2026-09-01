@@ -32,6 +32,7 @@ import {
   FireIcon,
   ArrowDownTrayIcon,
   CircleStackIcon,
+  PuzzlePieceIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import { useIsPro } from '../features/sync/syncStore';
@@ -87,6 +88,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'junk-cleaner', to: '/junk-cleaner', labelKey: 'nav.junkCleaner', Icon: TrashIcon },
       { id: 'startup-manager', to: '/startup-manager', labelKey: 'nav.startupManager', Icon: RocketLaunchIcon },
       { id: 'browser-cleaner', to: '/browser-cleaner', labelKey: 'nav.browserCleaner', Icon: GlobeAltIcon, proEnhanced: true },
+      { id: 'browser-extensions', to: '/browser-extensions', labelKey: 'nav.browserExtensions', Icon: PuzzlePieceIcon, proEnhanced: true },
       { id: 'registry-cleaner', to: '/registry-cleaner', labelKey: 'nav.registryCleaner', Icon: WrenchScrewdriverIcon },
       { id: 'duplicate-finder', to: '/duplicate-finder', labelKey: 'nav.duplicateFinder', Icon: DocumentDuplicateIcon, proEnhanced: true },
       { id: 'uninstaller', to: '/uninstaller', labelKey: 'nav.uninstaller', Icon: ArchiveBoxXMarkIcon, proEnhanced: true },

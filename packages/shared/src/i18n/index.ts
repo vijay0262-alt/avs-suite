@@ -100,6 +100,7 @@ export const en = {
     fileShredder: 'File Shredder',
     diskOptimizer: 'Disk Optimizer',
     pupScanner: 'PUP Scanner',
+    browserExtensions: 'Browser Extensions',
     driverUpdater: 'Driver Updater',
     securityHistory: 'Security History',
     antispywareMalwareRemoval: 'Antispyware/Malware Removal',

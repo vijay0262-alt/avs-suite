@@ -77,6 +77,7 @@ _FEATURE_MODULES = [
     "avs_backend.junk_monitor",
     "avs_backend.disk_optimizer",
     "avs_backend.pup_scanner",
+    "avs_backend.browser_extensions",
 ]
 
 # Track which modules have finished importing (success or failure)

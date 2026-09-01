@@ -270,6 +270,13 @@ export const RPC_METHODS = {
   PUP_SUMMARY: 'pup.summary',
   PUP_IGNORE: 'pup.ignore',
   PUP_UNIGNORE: 'pup.unignore',
+
+  // Browser Extension Manager
+  BROWSER_EXT_LIST: 'browser_ext.list',
+  BROWSER_EXT_SUMMARY: 'browser_ext.summary',
+  BROWSER_EXT_REMOVE: 'browser_ext.remove',
+  BROWSER_EXT_DISABLE: 'browser_ext.disable',
+  BROWSER_EXT_ENABLE: 'browser_ext.enable',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];
