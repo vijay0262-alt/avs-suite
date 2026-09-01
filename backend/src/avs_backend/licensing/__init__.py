@@ -442,6 +442,12 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     # Smart notifications — configure/action requires Pro (Free can view/dismiss)
     "smart_notifications.configure": "professional",
     "smart_notifications.action": "professional",
+    # App freezer — freeze/unfreeze/configure requires Pro (Free can view candidates/status)
+    "app_freezer.freeze": "professional",
+    "app_freezer.unfreeze": "professional",
+    "app_freezer.freezeAll": "professional",
+    "app_freezer.unfreezeAll": "professional",
+    "app_freezer.configure": "professional",
 }
 
 

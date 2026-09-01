@@ -328,6 +328,16 @@ export const RPC_METHODS = {
   SMART_NOTIF_CLEAR_ALL: 'smart_notifications.clearAll',
   SMART_NOTIF_STATS: 'smart_notifications.stats',
   SMART_NOTIF_CONFIGURE: 'smart_notifications.configure',
+
+  // AI App Freeze/Sleep
+  APP_FREEZER_LIST_CANDIDATES: 'app_freezer.listCandidates',
+  APP_FREEZER_LIST_FROZEN: 'app_freezer.listFrozen',
+  APP_FREEZER_FREEZE: 'app_freezer.freeze',
+  APP_FREEZER_UNFREEZE: 'app_freezer.unfreeze',
+  APP_FREEZER_FREEZE_ALL: 'app_freezer.freezeAll',
+  APP_FREEZER_UNFREEZE_ALL: 'app_freezer.unfreezeAll',
+  APP_FREEZER_STATUS: 'app_freezer.status',
+  APP_FREEZER_CONFIGURE: 'app_freezer.configure',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

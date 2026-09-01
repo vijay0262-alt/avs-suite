@@ -71,6 +71,7 @@ export type NavItemId =
   | 'workload'
   | 'predictive'
   | 'smart-notifications'
+  | 'app-freezer'
   | 'driver-updater'
   | 'security-history'
   | 'antispyware-malware-removal'

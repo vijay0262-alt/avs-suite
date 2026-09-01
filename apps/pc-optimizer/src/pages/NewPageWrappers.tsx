@@ -34,6 +34,7 @@ const AutoCarePageImpl = lazy(() => import('../features/auto-care/AutoCarePage')
 const WorkloadDetectionPageImpl = lazy(() => import('../features/workload/WorkloadDetectionPage'));
 const PredictiveMaintenancePageImpl = lazy(() => import('../features/predictive/PredictiveMaintenancePage'));
 const SmartNotificationsPageImpl = lazy(() => import('../features/smart-notifications/SmartNotificationsPage'));
+const AppFreezerPageImpl = lazy(() => import('../features/app-freezer/AppFreezerPage'));
 
 // Helper to wrap lazy components in Suspense
 function withSuspense(Component: React.LazyExoticComponent<React.ComponentType>) {
@@ -89,6 +90,7 @@ export const AutoCarePage = withSuspense(AutoCarePageImpl);
 export const WorkloadDetectionPage = withSuspense(WorkloadDetectionPageImpl);
 export const PredictiveMaintenancePage = withSuspense(PredictiveMaintenancePageImpl);
 export const SmartNotificationsPage = withSuspense(SmartNotificationsPageImpl);
+export const AppFreezerPage = withSuspense(AppFreezerPageImpl);
 
 // ── ACCOUNT ───────────────────────────────────────────────────
 

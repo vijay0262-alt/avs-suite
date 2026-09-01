@@ -107,6 +107,7 @@ export const en = {
     workload: 'Workload Detection',
     predictive: 'Predictive Maintenance',
     smartNotifications: 'Smart Notifications',
+    appFreezer: 'App Freeze/Sleep',
     driverUpdater: 'Driver Updater',
     securityHistory: 'Security History',
     antispywareMalwareRemoval: 'Antispyware/Malware Removal',
