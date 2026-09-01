@@ -36,6 +36,7 @@ const PredictiveMaintenancePageImpl = lazy(() => import('../features/predictive/
 const SmartNotificationsPageImpl = lazy(() => import('../features/smart-notifications/SmartNotificationsPage'));
 const AppFreezerPageImpl = lazy(() => import('../features/app-freezer/AppFreezerPage'));
 const SelfLearningPageImpl = lazy(() => import('../features/self-learning/SelfLearningPage'));
+const AnomalyDetectionPageImpl = lazy(() => import('../features/anomaly/AnomalyDetectionPage'));
 
 // Helper to wrap lazy components in Suspense
 function withSuspense(Component: React.LazyExoticComponent<React.ComponentType>) {
@@ -93,6 +94,7 @@ export const PredictiveMaintenancePage = withSuspense(PredictiveMaintenancePageI
 export const SmartNotificationsPage = withSuspense(SmartNotificationsPageImpl);
 export const AppFreezerPage = withSuspense(AppFreezerPageImpl);
 export const SelfLearningPage = withSuspense(SelfLearningPageImpl);
+export const AnomalyDetectionPage = withSuspense(AnomalyDetectionPageImpl);
 
 // ── ACCOUNT ───────────────────────────────────────────────────
 

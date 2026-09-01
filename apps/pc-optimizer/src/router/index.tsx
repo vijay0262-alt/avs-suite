@@ -84,6 +84,7 @@ import {
   SmartNotificationsPage,
   AppFreezerPage,
   SelfLearningPage,
+  AnomalyDetectionPage,
   UpgradePage,
   HelpPage,
   NotificationsPageWrapper,
@@ -225,6 +226,7 @@ export const router = createHashRouter([
       { path: 'smart-notifications', element: wrap(SmartNotificationsPage) },
       { path: 'app-freezer', element: wrap(AppFreezerPage) },
       { path: 'self-learning', element: wrap(SelfLearningPage) },
+      { path: 'anomaly', element: wrap(AnomalyDetectionPage) },
       { path: 'restoration', element: <RestorationPage /> },
       // ACCOUNT
       { path: 'license', element: wrap(ActivationPage) },

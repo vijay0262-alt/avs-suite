@@ -451,6 +451,9 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     # Self-learning — reset/configure requires Pro (Free can record and view habits)
     "self_learning.reset": "professional",
     "self_learning.configure": "professional",
+    # Anomaly detection — configure/getBaseline requires Pro (Free can scan/view/dismiss)
+    "anomaly.configure": "professional",
+    "anomaly.getBaseline": "professional",
 }
 
 

@@ -75,6 +75,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'smart-notifications', to: '/smart-notifications', labelKey: 'nav.smartNotifications', Icon: BellIcon, proEnhanced: true },
       { id: 'app-freezer', to: '/app-freezer', labelKey: 'nav.appFreezer', Icon: PauseIcon, proEnhanced: true },
       { id: 'self-learning', to: '/self-learning', labelKey: 'nav.selfLearning', Icon: AcademicCapIcon, proEnhanced: true },
+      { id: 'anomaly', to: '/anomaly', labelKey: 'nav.anomaly', Icon: ShieldExclamationIcon, proEnhanced: true },
     ],
   },
   // ── SYSTEM HEALTH — V1.0: Hidden to simplify the app.

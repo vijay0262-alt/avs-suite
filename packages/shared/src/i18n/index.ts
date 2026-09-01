@@ -109,6 +109,7 @@ export const en = {
     smartNotifications: 'Smart Notifications',
     appFreezer: 'App Freeze/Sleep',
     selfLearning: 'Self-Learning Cleanup',
+    anomaly: 'Anomaly Detection',
     driverUpdater: 'Driver Updater',
     securityHistory: 'Security History',
     antispywareMalwareRemoval: 'Antispyware/Malware Removal',

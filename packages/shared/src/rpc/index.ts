@@ -348,6 +348,16 @@ export const RPC_METHODS = {
   SELF_LEARNING_STATUS: 'self_learning.status',
   SELF_LEARNING_RESET: 'self_learning.reset',
   SELF_LEARNING_CONFIGURE: 'self_learning.configure',
+
+  // AI Anomaly Detection
+  ANOMALY_SCAN: 'anomaly.scan',
+  ANOMALY_STATUS: 'anomaly.status',
+  ANOMALY_LIST: 'anomaly.listAnomalies',
+  ANOMALY_DISMISS: 'anomaly.dismiss',
+  ANOMALY_CLEAR_ALL: 'anomaly.clearAll',
+  ANOMALY_HISTORY: 'anomaly.history',
+  ANOMALY_CONFIGURE: 'anomaly.configure',
+  ANOMALY_GET_BASELINE: 'anomaly.getBaseline',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];
