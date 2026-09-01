@@ -97,6 +97,7 @@ export const en = {
     driverInformation: 'Driver Information',
     backupRestore: 'Backup & Restore',
     recoveryCenter: 'Recovery Center',
+    fileShredder: 'File Shredder',
     securityHistory: 'Security History',
     antispywareMalwareRemoval: 'Antispyware/Malware Removal',
     restoration: 'Restoration',

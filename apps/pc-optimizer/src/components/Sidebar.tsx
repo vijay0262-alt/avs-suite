@@ -29,6 +29,7 @@ import {
   ArrowPathRoundedSquareIcon,
   ChatBubbleLeftRightIcon,
   StarIcon,
+  FireIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import { useIsPro } from '../features/sync/syncStore';
@@ -116,6 +117,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
     labelKey: 'nav.section.tools',
     entries: [
       { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
+      { id: 'file-shredder', to: '/file-shredder', labelKey: 'nav.fileShredder', Icon: FireIcon, proEnhanced: true },
       { id: 'restoration', to: '/restoration', labelKey: 'nav.restoration', Icon: ArrowPathRoundedSquareIcon },
     ],
   },

@@ -70,6 +70,7 @@ import {
   RestorationPage,
   HelpSupportPage,
   RecoveryCenterPage,
+  FileShredderPage,
   UpgradePage,
   HelpPage,
   NotificationsPageWrapper,
@@ -197,6 +198,7 @@ export const router = createHashRouter([
       { path: 'driver-information', element: wrap(DriverInformationPage) },
       { path: 'backup-restore', element: wrap(BackupRestorePage) },
       { path: 'recovery-center', element: wrap(RecoveryCenterPage) },
+      { path: 'file-shredder', element: wrap(FileShredderPage) },
       { path: 'restoration', element: <RestorationPage /> },
       // ACCOUNT
       { path: 'license', element: wrap(ActivationPage) },

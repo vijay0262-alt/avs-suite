@@ -405,6 +405,8 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     "predictive.forecast": "professional",
     "predictive.trends": "professional",
     "predictive.history": "professional",
+    # Secure file shredder — free-space wipe requires Pro
+    "wiper.wipeFreeSpace": "professional",
 }
 
 

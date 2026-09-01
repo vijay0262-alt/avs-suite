@@ -247,6 +247,11 @@ export const RPC_METHODS = {
   SETTINGS_GET: 'settings.get',
   SETTINGS_UPDATE: 'settings.update',
   SETTINGS_RESET: 'settings.reset',
+
+  // Secure File Shredder
+  WIPER_DRIVES: 'wiper.drives',
+  WIPER_SHRED: 'wiper.shred',
+  WIPER_WIPE_FREE_SPACE: 'wiper.wipeFreeSpace',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

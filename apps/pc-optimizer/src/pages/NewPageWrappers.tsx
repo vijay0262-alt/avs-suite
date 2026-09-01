@@ -22,6 +22,7 @@ const UpgradePageImpl = lazy(() => import('../features/licensing/UpgradePage'));
 const DriverInformationPageImpl = lazy(() => import('../features/drivers/DriverInformationPage'));
 const BackupRestorePageImpl = lazy(() => import('../features/backup-restore/BackupRestorePage'));
 const SecurityHistoryPageImpl = lazy(() => import('../features/security-history/SecurityHistoryPage'));
+const FileShredderPageImpl = lazy(() => import('../features/file-shredder/FileShredderPage'));
 
 // Helper to wrap lazy components in Suspense
 function withSuspense(Component: React.LazyExoticComponent<React.ComponentType>) {
@@ -65,6 +66,7 @@ export function HelpSupportPage() {
 }
 
 export const RecoveryCenterPage = withSuspense(RecoveryCenterPageImpl);
+export const FileShredderPage = withSuspense(FileShredderPageImpl);
 
 // ── ACCOUNT ───────────────────────────────────────────────────
 
