@@ -83,6 +83,7 @@ _FEATURE_MODULES = [
     "avs_backend.quarantine",
     "avs_backend.auto_care",
     "avs_backend.workload",
+    "avs_backend.predictive",
 ]
 
 # Track which modules have finished importing (success or failure)

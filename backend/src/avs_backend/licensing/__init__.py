@@ -436,6 +436,9 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     # Workload detection — configure/setMode requires Pro (Free can detect/view)
     "workload.configure": "professional",
     "workload.setMode": "professional",
+    # Predictive maintenance — configure/clearData requires Pro (Free can view status)
+    "predictive.configure": "professional",
+    "predictive.clearData": "professional",
 }
 
 

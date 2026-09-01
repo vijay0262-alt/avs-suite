@@ -105,6 +105,7 @@ export const en = {
     contextMenu: 'Context Menu Manager',
     autoCare: 'AI Auto-Care',
     workload: 'Workload Detection',
+    predictive: 'Predictive Maintenance',
     driverUpdater: 'Driver Updater',
     securityHistory: 'Security History',
     antispywareMalwareRemoval: 'Antispyware/Malware Removal',

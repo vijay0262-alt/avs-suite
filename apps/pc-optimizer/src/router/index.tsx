@@ -80,6 +80,7 @@ import {
   QuarantineVaultPage,
   AutoCarePage,
   WorkloadDetectionPage,
+  PredictiveMaintenancePage,
   UpgradePage,
   HelpPage,
   NotificationsPageWrapper,
@@ -217,6 +218,7 @@ export const router = createHashRouter([
       { path: 'quarantine-vault', element: wrap(QuarantineVaultPage) },
       { path: 'auto-care', element: wrap(AutoCarePage) },
       { path: 'workload', element: wrap(WorkloadDetectionPage) },
+      { path: 'predictive', element: wrap(PredictiveMaintenancePage) },
       { path: 'restoration', element: <RestorationPage /> },
       // ACCOUNT
       { path: 'license', element: wrap(ActivationPage) },

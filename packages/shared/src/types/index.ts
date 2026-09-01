@@ -69,6 +69,7 @@ export type NavItemId =
   | 'quarantine'
   | 'auto-care'
   | 'workload'
+  | 'predictive'
   | 'driver-updater'
   | 'security-history'
   | 'antispyware-malware-removal'

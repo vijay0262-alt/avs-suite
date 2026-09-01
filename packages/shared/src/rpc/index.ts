@@ -312,6 +312,13 @@ export const RPC_METHODS = {
   WORKLOAD_CONFIGURE: 'workload.configure',
   WORKLOAD_SET_MODE: 'workload.setMode',
   WORKLOAD_HISTORY: 'workload.history',
+
+  // AI Predictive Maintenance
+  PREDICTIVE_SAMPLE: 'predictive.sample',
+  PREDICTIVE_STATUS: 'predictive.status',
+  PREDICTIVE_HISTORY: 'predictive.history',
+  PREDICTIVE_CONFIGURE: 'predictive.configure',
+  PREDICTIVE_CLEAR_DATA: 'predictive.clearData',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

@@ -32,6 +32,7 @@ const ContextMenuManagerPageImpl = lazy(() => import('../features/context-menu/C
 const QuarantineVaultPageImpl = lazy(() => import('../features/quarantine/QuarantinePage'));
 const AutoCarePageImpl = lazy(() => import('../features/auto-care/AutoCarePage'));
 const WorkloadDetectionPageImpl = lazy(() => import('../features/workload/WorkloadDetectionPage'));
+const PredictiveMaintenancePageImpl = lazy(() => import('../features/predictive/PredictiveMaintenancePage'));
 
 // Helper to wrap lazy components in Suspense
 function withSuspense(Component: React.LazyExoticComponent<React.ComponentType>) {
@@ -85,6 +86,7 @@ export const ContextMenuManagerPage = withSuspense(ContextMenuManagerPageImpl);
 export const QuarantineVaultPage = withSuspense(QuarantineVaultPageImpl);
 export const AutoCarePage = withSuspense(AutoCarePageImpl);
 export const WorkloadDetectionPage = withSuspense(WorkloadDetectionPageImpl);
+export const PredictiveMaintenancePage = withSuspense(PredictiveMaintenancePageImpl);
 
 // ── ACCOUNT ───────────────────────────────────────────────────
 
