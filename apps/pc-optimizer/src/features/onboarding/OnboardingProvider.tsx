@@ -1,13 +1,13 @@
 /**
  * OnboardingProvider — wraps the app and manages first-run onboarding.
  *
- * Shows the WelcomeDialog on first launch.
- * Shows the FirstScanDialog after welcome (or on returning login) if the
- * user hasn't completed their first system health scan yet.
- * Renders ContextualTips above page content for non-dismissed tips.
+ * Shows the WelcomeDialog on first launch only.
+ * Shows the FirstScanDialog after welcome if the user hasn't completed
+ * their first system health scan yet.
+ * ContextualTips remain disabled (user preference: no tips on top of pages).
  * Provides a hook to re-trigger onboarding from Settings.
  */
-import { useState, useCallback, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import { WelcomeDialog } from './WelcomeDialog';
 import { FirstScanDialog } from './FirstScanDialog';
 import { ContextualTips } from './ContextualTips';
@@ -18,15 +18,26 @@ interface OnboardingProviderProps {
 }
 
 export function OnboardingProvider({ children }: OnboardingProviderProps) {
-  // V1.0: Do NOT show any modal dialogs on startup.  The user requested
-  // that the application open cleanly without modal popups.  The
-  // WelcomeDialog and FirstScanDialog are kept available for manual
-  // re-trigger from Settings, but they default to closed.
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [firstScanOpen, setFirstScanOpen] = useState(false);
 
+  // On mount, check if this is a first-run user who hasn't completed
+  // onboarding yet. Show the WelcomeDialog only once per user.
+  useEffect(() => {
+    if (onboardingService.shouldShowWelcome()) {
+      setWelcomeOpen(true);
+    } else if (!onboardingService.hasCompletedFirstScan()) {
+      // Returning user who completed welcome but never ran their first scan.
+      setFirstScanOpen(true);
+    }
+  }, []);
+
   const closeWelcome = useCallback(() => {
     setWelcomeOpen(false);
+    // After welcome, show the first scan prompt if they haven't scanned yet.
+    if (!onboardingService.hasCompletedFirstScan()) {
+      setFirstScanOpen(true);
+    }
   }, []);
 
   const closeFirstScan = useCallback(() => {
@@ -41,6 +52,15 @@ export function OnboardingProvider({ children }: OnboardingProviderProps) {
       {children}
     </>
   );
+}
+
+/** Re-trigger the welcome flow (used by Settings page). */
+export function replayWelcome(): void {
+  onboardingService.resetOnboarding();
+  // Reload the app to trigger the OnboardingProvider's first-run check.
+  if (typeof window !== 'undefined') {
+    window.location.reload();
+  }
 }
 
 export { onboardingService };

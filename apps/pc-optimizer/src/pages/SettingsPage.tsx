@@ -13,6 +13,7 @@ import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, StarIcon, Che
 import { useTraySettings } from '../hooks/useTraySettings';
 import { useScheduledCleanup } from '../features/scheduled-cleanup/useScheduledCleanup';
 import { useJunkMonitor } from '../features/scheduled-cleanup/useJunkMonitor';
+import { replayWelcome } from '../features/onboarding';
 
 const THEMES: readonly { id: ThemeMode; label: string }[] = [
   { id: 'light', label: 'Light' },
@@ -539,7 +540,26 @@ export default function SettingsPage() {
         {/* Feature Engine disabled */}
         {/* Updates section disabled */}
         {/* Developer section disabled */}
-        {/* Onboarding & Help disabled */}
+
+        <Card title="Help & Onboarding" variant="glass">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-small font-medium text-text-primary">Replay Welcome Tour</div>
+              <p className="text-caption text-text-secondary">
+                See the introductory tour and first-scan prompt again.
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => replayWelcome()}
+              data-testid="settings-replay-welcome"
+            >
+              Replay
+            </Button>
+          </div>
+        </Card>
+
         {/* Keyboard Shortcuts disabled */}
       </div>
     </div>

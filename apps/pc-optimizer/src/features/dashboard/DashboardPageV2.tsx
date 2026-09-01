@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Button, Card, EmptyState, LoadingState } from '@avs/ui';
 import { ModuleErrorBanner } from '../../components/ModuleStates';
 import {
@@ -72,6 +73,7 @@ export default function DashboardPage() {
   const { snapshot } = useDashboardScan();
   const [scanModalOpen, setScanModalOpen] = useState(false);
   const isPro = useIsPro();
+  const location = useLocation();
   // V1.0: When set, the modal shows previous scan results (Review Findings)
   // instead of auto-starting a new scan. null = start a new scan.
   const [reviewPlanId, setReviewPlanId] = useState<string | null>(null);
@@ -85,6 +87,17 @@ export default function DashboardPage() {
     void vm.bootstrap();
     return () => vm.dispose();
   }, [vm]);
+
+  // Onboarding: auto-open scan modal when navigated from FirstScanDialog
+  // with location state { action: 'auto-scan' }.
+  useEffect(() => {
+    const navState = location.state as { action?: string } | null;
+    if (navState?.action === 'auto-scan') {
+      setReviewPlanId(null);
+      setViewCleanupResults(false);
+      setScanModalOpen(true);
+    }
+  }, [location.state]);
 
   // V1.0: Refresh dashboard metrics after cleanup completes.
   // The ViewModel already listens via dashboardRefreshManager, but
