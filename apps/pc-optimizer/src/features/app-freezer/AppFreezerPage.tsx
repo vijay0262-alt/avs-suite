@@ -162,7 +162,11 @@ export default function AppFreezerPage() {
   };
 
   const handleToggleEnabled = async () => {
-    if (!isPro || !status) return;
+    if (!isPro) {
+      showUpgrade('App Freeze/Sleep');
+      return;
+    }
+    if (!status) return;
     setConfiguring(true);
     try {
       const result = await appFreezerService.configure({ enabled: !status.enabled });

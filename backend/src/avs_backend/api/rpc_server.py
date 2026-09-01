@@ -112,6 +112,7 @@ def _build_method_to_module_map() -> None:
         "registry": "avs_backend.registry_cleaner",
         "disk": "avs_backend.disk_analyzer",
         "duplicate": "avs_backend.duplicate_finder",
+        "duplicate_intel": "avs_backend.duplicate_intel",
         "cleaner": "avs_backend.cleaner",
         "system": "avs_backend.system_information",
         "job": "avs_backend.common.job_rpc",
@@ -122,11 +123,14 @@ def _build_method_to_module_map() -> None:
         "backup": "avs_backend.backup_restore",
         "hardware": "avs_backend.hardware_monitor",
         "security": "avs_backend.security",
-        "predictive": "avs_backend.predictive_health",
+        "health": "avs_backend.predictive_health",
+        "predictive": "avs_backend.predictive",
         "realtime": "avs_backend.realtime_protection",
         "restore": "avs_backend.system_restore",
         "scheduler": "avs_backend.scheduler",
         "scan_core": "avs_backend.scan_core_rpc",
+        "process_priority": "avs_backend.process_priority",
+        "ai_integration": "avs_backend.ai_integration",
     }
     _METHOD_TO_MODULE.update(_explicit)
 
@@ -144,7 +148,9 @@ _build_method_to_module_map()
 def _module_for_method(method: str) -> str | None:
     """Return the feature module that should register *method*, or None."""
     # Try exact prefix matches: "dashboard.metrics" -> "dashboard"
-    for prefix, mod_name in _METHOD_TO_MODULE.items():
+    # Sort by prefix length descending so longer prefixes (e.g. "duplicate_intel")
+    # are checked before shorter ones (e.g. "duplicate") to avoid false matches.
+    for prefix, mod_name in sorted(_METHOD_TO_MODULE.items(), key=lambda x: len(x[0]), reverse=True):
         if method.startswith(prefix + ".") or method.startswith(prefix + "_"):
             return mod_name
     return None

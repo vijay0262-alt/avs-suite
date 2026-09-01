@@ -112,7 +112,7 @@ def _now_iso() -> str:
 # Snapshot Collection
 # =====================================================================
 
-@register("predictive.snapshot")
+@register("health.snapshot")
 def capture_snapshot(_params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Capture a health snapshot and store it in the database.
 
@@ -233,7 +233,7 @@ def capture_snapshot(_params: dict[str, Any] | None = None) -> dict[str, Any]:
 # Trend Retrieval
 # =====================================================================
 
-@register("predictive.trends")
+@register("health.trends")
 @require_feature("health.timeline")
 def get_trends(params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Get trend data for metrics over time.
@@ -296,7 +296,7 @@ def get_trends(params: dict[str, Any] | None = None) -> dict[str, Any]:
 # Forecasting
 # =====================================================================
 
-@register("predictive.forecast")
+@register("health.forecast")
 @require_feature("health.timeline")
 def get_forecast(params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Get forecast predictions for a metric.
@@ -423,7 +423,7 @@ def get_forecast(params: dict[str, Any] | None = None) -> dict[str, Any]:
 # History Retrieval
 # =====================================================================
 
-@register("predictive.history")
+@register("health.history")
 @require_feature("health.timeline")
 def get_history(params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Get historical health snapshots.

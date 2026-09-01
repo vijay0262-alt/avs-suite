@@ -244,7 +244,7 @@ export default function ProcessPriorityPage() {
                 <button
                   key={mode.id}
                   onClick={() => handleSetMode(mode.id as PriorityMode)}
-                  disabled={!isPro || applying}
+                  disabled={applying}
                   className={`text-left rounded-[var(--avs-radius-md)] border p-4 transition-all disabled:opacity-50 ${
                     isActive
                       ? 'border-brand-primary bg-brand-primary/10'

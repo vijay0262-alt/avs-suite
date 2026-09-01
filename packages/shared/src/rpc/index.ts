@@ -191,10 +191,10 @@ export const RPC_METHODS = {
   SCAN_CORE_DASHBOARD_AUTO_OPTIMIZE_CANCEL: 'scan_core.dashboard.auto_optimize_cancel',
 
   // Predictive Health
-  PREDICTIVE_HEALTH_SNAPSHOT: 'predictive.snapshot',
-  PREDICTIVE_HEALTH_TRENDS: 'predictive.trends',
-  PREDICTIVE_HEALTH_FORECAST: 'predictive.forecast',
-  PREDICTIVE_HEALTH_HISTORY: 'predictive.history',
+  PREDICTIVE_HEALTH_SNAPSHOT: 'health.snapshot',
+  PREDICTIVE_HEALTH_TRENDS: 'health.trends',
+  PREDICTIVE_HEALTH_FORECAST: 'health.forecast',
+  PREDICTIVE_HEALTH_HISTORY: 'health.history',
 
   // Real-Time Protection
   REALTIME_PROTECTION_STATUS: 'realtime.status',

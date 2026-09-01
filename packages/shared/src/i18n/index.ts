@@ -36,6 +36,7 @@ export const en = {
   nav: {
     section: {
       home: 'Home',
+      aiIntelligence: 'AI Intelligence',
       systemHealth: 'System Health',
       security: 'Security',
       optimization: 'Optimization',

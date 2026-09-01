@@ -402,9 +402,9 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     # History export — Pro only (Free gets view only)
     "history.export": "professional",
     # Predictive health forecast — Pro only (Free gets snapshot only)
-    "predictive.forecast": "professional",
-    "predictive.trends": "professional",
-    "predictive.history": "professional",
+    "health.forecast": "professional",
+    "health.trends": "professional",
+    "health.history": "professional",
     # Secure file shredder — free-space wipe requires Pro
     "wiper.wipeFreeSpace": "professional",
     # Driver updater — installing updates requires Pro (Free can scan)
