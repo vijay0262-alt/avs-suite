@@ -22,6 +22,19 @@ from avs_backend.scan_core_rpc import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _mock_professional_edition():
+    """Override edition to professional so require_feature decorators pass.
+
+    The auto_optimize RPC is Pro-gated via @require_feature("performance.optimize").
+    In the test environment there is no license SDK, so the edition defaults to
+    'free' and the decorator blocks the call. These tests exercise the handler
+    logic, not the licensing gate, so we mock the edition as 'professional'.
+    """
+    with patch("avs_backend.licensing._get_current_edition", return_value="professional"):
+        yield
+
+
 class TestAutoOptimizeRPC:
     """Test the auto-optimization RPC endpoints."""
 
