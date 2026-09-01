@@ -15,6 +15,7 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { DashboardViewModel } from './DashboardViewModel';
 import { dashboardService } from './dashboard.service';
 import { useJunkMonitor } from '../scheduled-cleanup/useJunkMonitor';
+import { performanceService, type MemoryOptimizeResult } from '../performance/performance.service';
 import type { DashboardMetrics, LiveMetrics } from './dashboard.types';
 import { DashboardScanStatusCard } from '../scan/components/DashboardScanStatusCard';
 import { useDashboardScan } from '../scan/useDashboardScan';
@@ -57,6 +58,13 @@ function getPerformanceValue(live: LiveMetrics | null): string {
   return `${Math.round(live.cpu.usage)}%`;
 }
 
+function formatBytes(b: number): string {
+  if (b >= 1024 ** 3) return `${(b / 1024 ** 3).toFixed(2)} GB`;
+  if (b >= 1024 ** 2) return `${(b / 1024 ** 2).toFixed(1)} MB`;
+  if (b >= 1024) return `${(b / 1024).toFixed(1)} KB`;
+  return `${b} B`;
+}
+
 export default function DashboardPage() {
   const vm = useMemo(() => new DashboardViewModel(dashboardService), []);
   const state = useViewModel(vm);
@@ -69,6 +77,8 @@ export default function DashboardPage() {
   const [viewCleanupResults, setViewCleanupResults] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const { status: junkStatus } = useJunkMonitor();
+  const [boosting, setBoosting] = useState(false);
+  const [boostResult, setBoostResult] = useState<MemoryOptimizeResult | null>(null);
 
   useEffect(() => {
     void vm.bootstrap();
@@ -87,6 +97,25 @@ export default function DashboardPage() {
       }
     });
   }, [vm]);
+
+  const handleBoostMemory = async () => {
+    if (!isPro) {
+      setUpgradeModalOpen(true);
+      return;
+    }
+    setBoosting(true);
+    setBoostResult(null);
+    try {
+      const result = await performanceService.optimizeMemory();
+      setBoostResult(result);
+      // Refresh dashboard metrics after boost
+      void vm.loadMetrics();
+    } catch {
+      setBoostResult(null);
+    } finally {
+      setBoosting(false);
+    }
+  };
 
   const isScanning = snapshot.scanStatus === 'preparing' || snapshot.scanStatus === 'scanning';
   const hasCompletedScan = snapshot.scanStatus === 'complete';
@@ -361,6 +390,49 @@ export default function DashboardPage() {
       </div>
 
       {/* ── SECONDARY ACTION: REMOVED — V1.0 Dashboard uses single Scan Now → Clean → Results modal ── */}
+
+      {/* ── BOOST MEMORY (Feature #2) ─────────────────────────────
+          One-click RAM optimizer. Calls performance.memory.optimize
+          which trims working sets of inactive processes via
+          EmptyWorkingSet, releases cached memory, and refreshes
+          standby memory. Professional feature — Free users see
+          upgrade modal. */}
+      <Card variant="glass" className="p-4" data-testid="dashboard-boost-memory">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-brand-primary/10">
+              <BoltIcon className="h-5 w-5 text-brand-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-caption text-text-muted">RAM Optimizer</div>
+              <div className="text-small font-semibold text-text-primary">
+                {boosting
+                  ? 'Optimizing memory...'
+                  : boostResult && boostResult.memoryFreed > 0
+                    ? `Freed ${formatBytes(boostResult.memoryFreed)}`
+                    : boostResult && boostResult.status === 'completed'
+                      ? 'Memory optimized'
+                      : 'Free up RAM instantly'}
+              </div>
+              {boostResult && boostResult.processesOptimized > 0 && !boosting && (
+                <div className="text-caption text-text-muted mt-0.5">
+                  {boostResult.processesOptimized} processes optimized
+                </div>
+              )}
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant={isPro ? 'primary' : 'secondary'}
+            leftIcon={boosting ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <BoltIcon className="h-4 w-4" />}
+            onClick={handleBoostMemory}
+            disabled={boosting}
+            data-testid="dashboard-boost-memory-btn"
+          >
+            {boosting ? 'Boosting...' : isPro ? 'Boost Memory' : 'Upgrade'}
+          </Button>
+        </div>
+      </Card>
 
       {/* ── JUNK MONITOR INDICATOR ──────────────────────────────
           V1.0 Feature #1: Shows current junk accumulation.
