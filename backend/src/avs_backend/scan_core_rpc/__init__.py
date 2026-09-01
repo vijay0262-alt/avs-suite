@@ -535,10 +535,37 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
     # Everything else is safe to auto-clean.
     cleaners = [c for c in cleaners if c.id != "browser-history"]
 
-    # Build category list from cleaners for progress reporting
+    # V1.0: Also include the original Dashboard/Smart Optimize categories
+    # that are NOT in the Junk Cleaner system. This COMBINES both sets
+    # so Dashboard/Smart Optimize cleans MORE than Junk Cleaner alone.
+    local_app_data = os.environ.get("LOCALAPPDATA", "")
+    system_root = os.environ.get("SystemRoot", r"C:\Windows")
+    program_data = os.environ.get("ProgramData", r"C:\ProgramData")
+
+    extra_folder_categories: list[tuple[str, str]] = []
+    # Temporary Internet Files (IE/Edge INetCache) — not in all_cleaners()
+    inet_cache = os.path.join(local_app_data, "Microsoft", "Windows", "INetCache")
+    if inet_cache and os.path.isdir(inet_cache):
+        extra_folder_categories.append(("Temporary Internet Files", inet_cache))
+    # Downloaded Program Files — not in all_cleaners()
+    dlp = os.path.join(system_root, "Downloaded Program Files")
+    if os.path.isdir(dlp):
+        extra_folder_categories.append(("Downloaded Program Files", dlp))
+    # Error Reports (System) — crash-dumps cleaner only covers user WER
+    sys_wer = os.path.join(program_data, "Microsoft", "Windows", "WER")
+    if os.path.isdir(sys_wer):
+        extra_folder_categories.append(("Error Reports (System)", sys_wer))
+    # Previous Windows Installation — not in all_cleaners()
+    win_old = os.path.join(system_root[:2] + os.sep, "Windows.old")
+    if os.path.isdir(win_old):
+        extra_folder_categories.append(("Previous Windows Installation", win_old))
+
+    # Build category list from cleaners + extra folders for progress reporting
     categories: list[dict] = []
     for c in cleaners:
         categories.append({"name": c.name, "cleaner_id": c.id})
+    for name, path in extra_folder_categories:
+        categories.append({"name": name, "cleaner_id": None, "path": path})
 
     start_time = time.time()
     total_categories = len(categories)
@@ -590,11 +617,18 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
             }
             return True
 
-    # ─── Main loop: scan + clean each cleaner ──────────────────────
+    # ─── Main loop: scan + clean each category ──────────────────────
+    # Iterates over both cleaner objects AND extra folder categories.
     cancel_event = Event()
 
-    for cat_index, cleaner in enumerate(cleaners):
-        cat_name = cleaner.name
+    # Build a unified list of (name, cleaner_or_none, path_or_none)
+    all_entries: list[tuple[str, object | None, str | None]] = []
+    for c in cleaners:
+        all_entries.append((c.name, c, None))
+    for name, path in extra_folder_categories:
+        all_entries.append((name, None, path))
+
+    for cat_index, (cat_name, cleaner, extra_path) in enumerate(all_entries):
 
         # Check cancellation
         with _scan_session_lock:
@@ -614,15 +648,46 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
         def _on_scan_progress(pct: int) -> None:
             pass  # Progress tracked per-category below
 
-        scan_result = cleaner.scan(
-            cancel_event,
-            _on_scan_progress,
-            on_file=None,
-        )
-
-        cat_f_found = scan_result.total_files
-        cat_bytes_found = scan_result.total_bytes
-        cat_files = [(item.path, item.size) for item in scan_result.items]
+        if cleaner is not None:
+            # Use the cleaner's scan method
+            scan_result = cleaner.scan(
+                cancel_event,
+                _on_scan_progress,
+                on_file=None,
+            )
+            cat_f_found = scan_result.total_files
+            cat_bytes_found = scan_result.total_bytes
+            cat_files = [(item.path, item.size) for item in scan_result.items]
+            cat_path_str = str(next(iter(cleaner.targets()), ""))
+        else:
+            # Extra folder category — scan manually
+            cat_path_str = extra_path or ""
+            cat_files = []
+            cat_f_found = 0
+            cat_bytes_found = 0
+            try:
+                for entry in os.scandir(cat_path_str):
+                    if entry.is_dir(follow_symlinks=False):
+                        for sub_root, sub_dirs, sub_files in os.walk(entry.path, topdown=False):
+                            for f in sub_files:
+                                fp = os.path.join(sub_root, f)
+                                try:
+                                    sz = os.path.getsize(fp)
+                                    cat_files.append((fp, sz))
+                                    cat_f_found += 1
+                                    cat_bytes_found += sz
+                                except OSError:
+                                    pass
+                    elif entry.is_file(follow_symlinks=False):
+                        try:
+                            sz = entry.stat().st_size
+                            cat_files.append((entry.path, sz))
+                            cat_f_found += 1
+                            cat_bytes_found += sz
+                        except OSError:
+                            pass
+            except OSError as e:
+                logger.warning("Failed to scan %s: %s", cat_path_str, e)
 
         total_files_found += cat_f_found
         total_bytes_found += cat_bytes_found
@@ -630,7 +695,7 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
         _update_progress(
             "discovering",
             f"Scanning {cat_name}...",
-            str(cleaner.targets()) if hasattr(cleaner, 'targets') else None,
+            cat_path_str,
             cat_index,
             cat_f_found,
             0,
@@ -645,7 +710,7 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
             # Record what was found but don't delete anything
             category_results.append({
                 "name": cat_name,
-                "path": str(next(iter(cleaner.targets()), "")),
+                "path": cat_path_str,
                 "files_found": cat_f_found,
                 "files_deleted": 0,
                 "files_skipped": 0,
@@ -669,22 +734,39 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
             continue
 
         # Pro users: clean everything
-        # Get candidate paths for cleaning
-        candidate_paths = [item.path for item in scan_result.items]
+        if cleaner is not None:
+            # Use the cleaner's clean method
+            candidate_paths = [item.path for item in scan_result.items]
 
-        def _on_clean_progress(pct: int) -> None:
-            pass  # Progress tracked below
+            def _on_clean_progress(pct: int) -> None:
+                pass  # Progress tracked below
 
-        clean_result = cleaner.clean(
-            candidate_paths,
-            cancel_event,
-            _on_clean_progress,
-            on_file=None,
-        )
-
-        d_deleted = clean_result.files_removed
-        d_recovered = clean_result.bytes_recovered
-        d_skipped = clean_result.files_skipped
+            clean_result = cleaner.clean(
+                candidate_paths,
+                cancel_event,
+                _on_clean_progress,
+                on_file=None,
+            )
+            d_deleted = clean_result.files_removed
+            d_recovered = clean_result.bytes_recovered
+            d_skipped = clean_result.files_skipped
+        else:
+            # Extra folder category — delete files manually
+            d_deleted = 0
+            d_recovered = 0
+            d_skipped = 0
+            for file_path, file_size in cat_files:
+                with _scan_session_lock:
+                    session = _scan_sessions.get(scan_id)
+                    if session is None or session.get("cancelled"):
+                        cancel_event.set()
+                        return
+                try:
+                    os.unlink(file_path)
+                    d_deleted += 1
+                    d_recovered += file_size
+                except (PermissionError, OSError):
+                    d_skipped += 1
 
         # Update progress during cleaning
         _update_progress(
@@ -709,10 +791,13 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
         folder_span = cat_span - scan_span - delete_span
         d_removed = 0
         try:
-            for root in cleaner.targets():
-                if root and root.exists() and root.is_dir():
+            if cleaner is not None:
+                roots_to_clean = cleaner.targets()
+            else:
+                roots_to_clean = [Path(cat_path_str)] if cat_path_str else []
+            for root in roots_to_clean:
+                if root and hasattr(root, 'exists') and root.exists() and root.is_dir():
                     try:
-                        # Remove empty subdirectories (deepest first)
                         for sub_root, sub_dirs, _ in os.walk(str(root), topdown=False):
                             for d in sub_dirs:
                                 dir_path = os.path.join(sub_root, d)
@@ -744,14 +829,14 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
         cat_mb = round(d_recovered / (1024 * 1024), 2)
         category_results.append({
             "name": cat_name,
-            "path": str(next(iter(cleaner.targets()), "")),
+            "path": cat_path_str,
             "files_found": cat_f_found,
             "files_deleted": d_deleted,
             "files_skipped": d_skipped,
             "folders_removed": d_removed,
             "bytes_recovered": d_recovered,
             "mb_recovered": cat_mb,
-            "skipped_due_to_limit": skipped_limit,
+            "skipped_due_to_limit": 0,
         })
 
     # ─── Final results ─────────────────────────────────────────────
