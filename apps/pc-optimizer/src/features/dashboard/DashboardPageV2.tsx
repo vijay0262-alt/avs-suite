@@ -23,6 +23,7 @@ import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
 import { useIsPro } from '../sync/syncStore';
 import { ScanView } from '../scan';
 import { Modal } from './components/Modal';
+import { AIStatusOverview } from './components/AIStatusOverview';
 import { optimizationEventBus, OptimizationEventType } from '../health/OptimizationEventBus';
 
 function getGreeting(): string {
@@ -388,6 +389,12 @@ export default function DashboardPage() {
           </div>
         </Card>
       </div>
+
+      {/* ── AI SUBSYSTEMS OVERVIEW ──────────────────────────────────
+          Consolidated AI feature status with quick navigation links.
+          Shows which AI subsystems are active and provides one-click
+          access to each feature's dedicated page. */}
+      <AIStatusOverview />
 
       {/* ── SECONDARY ACTION: REMOVED — V1.0 Dashboard uses single Scan Now → Clean → Results modal ── */}
 
