@@ -500,27 +500,16 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
     UI shows "CLEANING USER TEMPORARY FILES", then "CLEANING WINDOWS TEMP",
     etc., with live file paths and progress bar.
 
-    Categories cleaned (like Windows Disk Cleanup + CCleaner):
-      1. User Temporary Files
-      2. Windows Temporary Files
-      3. Prefetch Data
-      4. Temporary Internet Files
-      5. Downloaded Program Files
-      6. Recycle Bin
-      7. Thumbnails
-      8. DirectX Shader Cache
-      9. Error Reports
-      10. Windows Update Cleanup
-      11. Previous Windows Installation
-
-    Everything inside these folders IS junk by definition.
-    Locked/in-use files are skipped (they'll be cleanable on reboot).
+    V1.0 UNIFIED: Uses the same ``all_cleaners()`` system as the Junk
+    Cleaner feature so both paths clean exactly the same categories.
+    This ensures that after AI Smart Optimize / Dashboard scan, the
+    Junk Cleaner also shows everything as clean.
 
     V1.0 Edition gating: Free edition is limited to 500 MB per run.
     Once the limit is reached, remaining files are counted as
     skipped_due_to_limit and the cleanup stops.
     """
-    import fnmatch
+    from threading import Event
 
     # V1.0: Determine edition and byte limit for this run.
     edition = _get_current_edition()
@@ -528,67 +517,22 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
     byte_limit = get_edition_limit("junk.bytes_per_run") if is_free else None
     limit_reached = False
 
-    local_app_data = os.environ.get("LOCALAPPDATA", "")
-    import fnmatch
+    # V1.0 UNIFIED: Use the same cleaner system as Junk Cleaner.
+    # This ensures both paths clean exactly the same categories.
+    try:
+        from avs_backend.cleaner.cleaners import all_cleaners
+        cleaners = all_cleaners()
+    except Exception:
+        cleaners = []
 
-    local_app_data = os.environ.get("LOCALAPPDATA", "")
-    system_root = os.environ.get("SystemRoot", r"C:\Windows")
-    program_data = os.environ.get("ProgramData", r"C:\ProgramData")
+    # Skip Browser History & Cookies — it's opt-in for privacy.
+    # Everything else is safe to auto-clean.
+    cleaners = [c for c in cleaners if c.id != "browser-history"]
 
-    # Build the list of categories to clean.
-    # Each category is: (display_name, type, path, [pattern])
-    #   type = "folder"  → delete everything inside the folder
-    #   type = "pattern" → delete only matching files in the folder
+    # Build category list from cleaners for progress reporting
     categories: list[dict] = []
-
-    def add_folder(name: str, path: str) -> None:
-        if path and os.path.isdir(path):
-            categories.append({"name": name, "type": "folder", "path": path})
-
-    def add_pattern(name: str, path: str, pattern: str) -> None:
-        if os.path.isdir(path):
-            categories.append({"name": name, "type": "pattern", "path": path, "pattern": pattern})
-
-    # 1. User Temporary Files
-    user_temp = os.path.join(local_app_data, "Temp") if local_app_data else os.environ.get("TEMP", "")
-    add_folder("User Temporary Files", user_temp)
-
-    # 2. Windows Temporary Files
-    add_folder("Windows Temporary Files", os.path.join(system_root, "Temp"))
-
-    # 3. Prefetch Data
-    add_folder("Prefetch Data", os.path.join(system_root, "Prefetch"))
-
-    # 4. Temporary Internet Files
-    add_folder("Temporary Internet Files", os.path.join(local_app_data, "Microsoft", "Windows", "INetCache"))
-
-    # 5. Downloaded Program Files
-    add_folder("Downloaded Program Files", os.path.join(system_root, "Downloaded Program Files"))
-
-    # 6. Recycle Bin (all drives) — emptied via SHEmptyRecycleBin API
-    for drive_letter in "CDEFGH":
-        drive = f"{drive_letter}:"
-        rb_path = os.path.join(drive + os.sep, "$Recycle.Bin")
-        if os.path.isdir(rb_path):
-            categories.append({"name": f"Recycle Bin ({drive})", "type": "recycle_bin", "path": rb_path, "drive": drive})
-
-    # 7. Thumbnails
-    explorer_dir = os.path.join(local_app_data, "Microsoft", "Windows", "Explorer")
-    add_pattern("Thumbnails", explorer_dir, "thumbcache_*.db")
-    add_pattern("Icon Cache", explorer_dir, "iconcache_*.db")
-
-    # 8. DirectX Shader Cache
-    add_folder("DirectX Shader Cache", os.path.join(local_app_data, "D3DSCache"))
-
-    # 9. Error Reports
-    add_folder("Error Reports (User)", os.path.join(local_app_data, "Microsoft", "Windows", "WER"))
-    add_folder("Error Reports (System)", os.path.join(program_data, "Microsoft", "Windows", "WER"))
-
-    # 10. Windows Update Cleanup
-    add_folder("Windows Update Cleanup", os.path.join(system_root, "SoftwareDistribution", "Download"))
-
-    # 11. Previous Windows Installation
-    add_folder("Previous Windows Installation", os.path.join(system_root[:2] + os.sep, "Windows.old"))
+    for c in cleaners:
+        categories.append({"name": c.name, "cleaner_id": c.id})
 
     start_time = time.time()
     total_categories = len(categories)
@@ -640,242 +584,47 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
             }
             return True
 
-    # ─── Helper: scan a folder recursively ─────────────────────────
-    def _scan_folder(root_path: str) -> tuple[list[tuple[str, int]], list[str], int, int]:
-        """Returns (files, dirs, files_found_count, folders_found_count)."""
-        files: list[tuple[str, int]] = []
-        dirs: list[str] = []
-        f_count = 0
-        d_count = 0
-        try:
-            for entry in os.scandir(root_path):
-                if entry.is_dir(follow_symlinks=False):
-                    d_count += 1
-                    dirs.append(entry.path)
-                    for sub_root, sub_dirs, sub_files in os.walk(entry.path, topdown=False):
-                        for d in sub_dirs:
-                            dirs.append(os.path.join(sub_root, d))
-                            d_count += 1
-                        for f in sub_files:
-                            fp = os.path.join(sub_root, f)
-                            try:
-                                sz = os.path.getsize(fp)
-                                files.append((fp, sz))
-                                f_count += 1
-                            except OSError:
-                                pass
-                elif entry.is_file(follow_symlinks=False):
-                    try:
-                        sz = entry.stat().st_size
-                        files.append((entry.path, sz))
-                        f_count += 1
-                    except OSError:
-                        pass
-        except OSError as e:
-            logger.warning("Failed to scan %s: %s", root_path, e)
-        return files, dirs, f_count, d_count
+    # ─── Main loop: scan + clean each cleaner ──────────────────────
+    cancel_event = Event()
 
-    # ─── Helper: scan pattern-matched files ────────────────────────
-    def _scan_pattern(dir_path: str, pattern: str) -> list[tuple[str, int]]:
-        files: list[tuple[str, int]] = []
-        try:
-            for entry in os.scandir(dir_path):
-                if entry.is_file(follow_symlinks=False) and fnmatch.fnmatch(entry.name, pattern):
-                    try:
-                        sz = entry.stat().st_size
-                        files.append((entry.path, sz))
-                    except OSError:
-                        pass
-        except OSError as e:
-            logger.warning("Failed to scan %s/%s: %s", dir_path, pattern, e)
-        return files
+    for cat_index, cleaner in enumerate(cleaners):
+        cat_name = cleaner.name
 
-    # ─── Helper: delete files ──────────────────────────────────────
-    def _delete_files(
-        files: list[tuple[str, int]],
-        cat_index: int,
-        cat_name: str,
-        base_pct: int,
-        pct_span: int,
-    ) -> tuple[int, int, int, int]:
-        """Delete files, return (deleted, skipped, bytes_recovered, skipped_due_to_limit)."""
-        deleted = 0
-        skipped = 0
-        recovered = 0
-        skipped_limit = 0
-        total = len(files)
-        nonlocal limit_reached
-        for i, (file_path, file_size) in enumerate(files):
-            # Check cancellation
-            with _scan_session_lock:
-                session = _scan_sessions.get(scan_id)
-                if session is None or session.get("cancelled"):
-                    return deleted, skipped, recovered, skipped_limit
-
-            # V1.0: Free edition byte limit — stop deleting once limit reached
-            if byte_limit is not None and (total_bytes_recovered + recovered) >= byte_limit:
-                limit_reached = True
-                skipped_limit = total - i
-                break
-
-            try:
-                os.unlink(file_path)
-                deleted += 1
-                recovered += file_size
-            except PermissionError:
-                skipped += 1
-            except OSError:
-                skipped += 1
-
-            # Update progress every 200 files or at the end
-            if (i + 1) % 200 == 0 or (i + 1) == total:
-                pct = base_pct + int(pct_span * (i + 1) / max(total, 1))
-                _update_progress(
-                    "cleaning",
-                    f"Cleaning {cat_name}...",
-                    file_path,
-                    cat_index,
-                    total,
-                    deleted,
-                    skipped,
-                    recovered,
-                    pct,
-                )
-
-        return deleted, skipped, recovered, skipped_limit
-
-    # ─── Helper: remove empty directories ──────────────────────────
-    def _remove_dirs(dirs: list[str], cat_index: int, cat_name: str, base_pct: int, pct_span: int) -> int:
-        dirs.sort(key=lambda d: d.count(os.sep), reverse=True)
-        removed = 0
-        total = len(dirs)
-        for i, dir_path in enumerate(dirs):
-            with _scan_session_lock:
-                session = _scan_sessions.get(scan_id)
-                if session is None or session.get("cancelled"):
-                    return removed
-            try:
-                os.rmdir(dir_path)
-                removed += 1
-            except OSError:
-                pass
-            if (i + 1) % 200 == 0 or (i + 1) == total:
-                pct = base_pct + int(pct_span * (i + 1) / max(total, 1))
-                _update_progress(
-                    "finalizing",
-                    f"Removing folders in {cat_name}...",
-                    dir_path,
-                    cat_index,
-                    0,
-                    0,
-                    0,
-                    0,
-                    pct,
-                )
-        return removed
-
-    # ─── Helper: empty Recycle Bin via Windows API ────────────────
-    def _empty_recycle_bin_category(
-        drive: str,
-        rb_path: str,
-        scanned_files: list[tuple[str, int]],
-        cat_index: int,
-        cat_name: str,
-        base_pct: int,
-        pct_span: int,
-    ) -> tuple[int, int, int, int]:
-        """Empty Recycle Bin using SHEmptyRecycleBin API.
-
-        Returns (deleted, skipped, bytes_recovered, skipped_due_to_limit).
-        """
-        rb_files_before = len(scanned_files)
-        rb_bytes_before = sum(sz for _, sz in scanned_files)
-
-        _update_progress(
-            "cleaning",
-            f"Emptying {cat_name}...",
-            rb_path,
-            cat_index,
-            rb_files_before,
-            0,
-            0,
-            0,
-            base_pct + int(pct_span * 0.5),
-        )
-
-        try:
-            if sys.platform == "win32":
-                from avs_backend.scan_core.execution.recycle_bin_executor import (
-                    RecycleBinExecutor,
-                )
-                result_code = RecycleBinExecutor._empty_recycle_bin(f"{drive}\\")
-                if result_code != 0:
-                    logger.warning("SHEmptyRecycleBin('%s\\') returned %d", drive, result_code)
-
-            # Count remaining files after cleanup
-            _, _, rb_files_after, _ = _scan_folder(rb_path)
-            deleted = max(0, rb_files_before - rb_files_after)
-            # Estimate bytes recovered from the files that are gone
-            if deleted > 0 and rb_files_before > 0:
-                avg_bytes = rb_bytes_before / rb_files_before
-                recovered = int(avg_bytes * deleted)
-            else:
-                recovered = 0
-            skipped = rb_files_after
-        except Exception as exc:
-            logger.warning("Recycle Bin cleanup error for %s: %s", drive, exc)
-            deleted = 0
-            recovered = 0
-            skipped = rb_files_before
-
-        _update_progress(
-            "cleaning",
-            f"Cleaned {cat_name}",
-            rb_path,
-            cat_index,
-            rb_files_before,
-            deleted,
-            skipped,
-            recovered,
-            base_pct + pct_span,
-        )
-
-        return deleted, skipped, recovered, 0
-
-    # ─── Main loop: process each category ──────────────────────────
-    for cat_index, cat in enumerate(categories):
-        cat_name = cat["name"]
-        cat_path = cat["path"]
-        cat_type = cat["type"]
+        # Check cancellation
+        with _scan_session_lock:
+            session = _scan_sessions.get(scan_id)
+            if session is None or session.get("cancelled"):
+                cancel_event.set()
+                return
 
         # Calculate progress range for this category
-        # Each category gets an equal slice of 5%..95%
         cat_start = 5 + int(90 * cat_index / max(total_categories, 1))
         cat_end = 5 + int(90 * (cat_index + 1) / max(total_categories, 1))
         cat_span = cat_end - cat_start
+        scan_span = int(cat_span * 0.3)
+        delete_span = int(cat_span * 0.5)
 
         # ── Phase A: Scan ───────────────────────────────────────────
-        scan_span = int(cat_span * 0.3)  # 30% of category for scanning
-        if cat_type == "recycle_bin":
-            # Recycle Bin: count files for reporting, but actual cleanup
-            # is done via SHEmptyRecycleBin API in Phase B
-            cat_files, cat_dirs, cat_f_found, cat_d_found = _scan_folder(cat_path)
-        elif cat_type == "folder":
-            cat_files, cat_dirs, cat_f_found, cat_d_found = _scan_folder(cat_path)
-        else:  # pattern
-            cat_files = _scan_pattern(cat_path, cat["pattern"])
-            cat_dirs = []
-            cat_f_found = len(cat_files)
-            cat_d_found = 0
+        def _on_scan_progress(pct: int) -> None:
+            pass  # Progress tracked per-category below
+
+        scan_result = cleaner.scan(
+            cancel_event,
+            _on_scan_progress,
+            on_file=None,
+        )
+
+        cat_f_found = scan_result.total_files
+        cat_bytes_found = scan_result.total_bytes
+        cat_files = [(item.path, item.size) for item in scan_result.items]
 
         total_files_found += cat_f_found
-        total_folders_found += cat_d_found
-        total_bytes_found += sum(sz for _, sz in cat_files)
+        total_bytes_found += cat_bytes_found
 
         _update_progress(
             "discovering",
             f"Scanning {cat_name}...",
-            cat_path,
+            str(cleaner.targets()) if hasattr(cleaner, 'targets') else None,
             cat_index,
             cat_f_found,
             0,
@@ -884,86 +633,122 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
             cat_start + scan_span,
         )
 
-        # ── Phase B: Delete files ───────────────────────────────────
-        delete_span = int(cat_span * 0.5)  # 50% of category for deleting
-        if cat_type == "recycle_bin":
-            # Empty Recycle Bin via Windows SHEmptyRecycleBin API
-            d_deleted, d_skipped, d_recovered, d_skipped_limit = _empty_recycle_bin_category(
-                cat.get("drive", "C:"),
-                cat_path,
-                cat_files,
-                cat_index,
-                cat_name,
-                cat_start + scan_span,
-                delete_span,
-            )
+        # ── Phase B: Clean (delete files) ───────────────────────────
+        if limit_reached:
+            # Free edition limit already reached — skip this category
+            category_results.append({
+                "name": cat_name,
+                "path": "",
+                "files_found": cat_f_found,
+                "files_deleted": 0,
+                "files_skipped": cat_f_found,
+                "folders_removed": 0,
+                "bytes_recovered": 0,
+                "mb_recovered": 0.0,
+                "skipped_due_to_limit": cat_f_found,
+            })
+            total_files_skipped += cat_f_found
+            continue
+
+        # Get candidate paths for cleaning
+        candidate_paths = [item.path for item in scan_result.items]
+
+        # V1.0: Free edition byte limit — truncate candidate list
+        if byte_limit is not None:
+            truncated_paths = []
+            truncated_bytes = 0
+            for p, (fp, sz) in zip(candidate_paths, cat_files):
+                if truncated_bytes + sz > byte_limit:
+                    limit_reached = True
+                    break
+                truncated_paths.append(p)
+                truncated_bytes += sz
+            candidate_paths = truncated_paths
+            skipped_limit = len(candidate_paths) - len(candidate_paths)
         else:
-            d_deleted, d_skipped, d_recovered, d_skipped_limit = _delete_files(
-                cat_files,
-                cat_index,
-                cat_name,
-                cat_start + scan_span,
-                delete_span,
-            )
+            skipped_limit = 0
+
+        def _on_clean_progress(pct: int) -> None:
+            pass  # Progress tracked below
+
+        clean_result = cleaner.clean(
+            candidate_paths,
+            cancel_event,
+            _on_clean_progress,
+            on_file=None,
+        )
+
+        d_deleted = clean_result.files_removed
+        d_recovered = clean_result.bytes_recovered
+        d_skipped = clean_result.files_skipped + skipped_limit
+
+        # Update progress during cleaning
+        _update_progress(
+            "cleaning",
+            f"Cleaning {cat_name}...",
+            None,
+            cat_index,
+            cat_f_found,
+            d_deleted,
+            d_skipped,
+            d_recovered,
+            cat_start + scan_span + delete_span,
+        )
 
         total_files_deleted += d_deleted
-        total_files_skipped += d_skipped + d_skipped_limit
+        total_files_skipped += d_skipped
         total_bytes_recovered += d_recovered
 
-        # ── Phase C: Remove empty folders ───────────────────────────
-        folder_span = cat_span - scan_span - delete_span  # remaining 20%
-        if cat_type == "recycle_bin":
-            # Don't remove Recycle Bin folders — the OS manages them
-            d_removed = 0
-        else:
-            d_removed = _remove_dirs(
-                cat_dirs,
-                cat_index,
-                cat_name,
-                cat_start + scan_span + delete_span,
-                folder_span,
-            )
+        # ── Phase C: Remove empty folders (best-effort) ─────────────
+        # The cleaner system handles file deletion; empty folder removal
+        # is done as a best-effort pass on the target roots.
+        folder_span = cat_span - scan_span - delete_span
+        d_removed = 0
+        try:
+            for root in cleaner.targets():
+                if root and root.exists() and root.is_dir():
+                    try:
+                        # Remove empty subdirectories (deepest first)
+                        for sub_root, sub_dirs, _ in os.walk(str(root), topdown=False):
+                            for d in sub_dirs:
+                                dir_path = os.path.join(sub_root, d)
+                                try:
+                                    os.rmdir(dir_path)
+                                    d_removed += 1
+                                except OSError:
+                                    pass
+                    except OSError:
+                        pass
+        except Exception:
+            pass
 
         total_folders_deleted += d_removed
+
+        _update_progress(
+            "finalizing",
+            f"Cleaned {cat_name}",
+            None,
+            cat_index,
+            cat_f_found,
+            d_deleted,
+            d_skipped,
+            d_recovered,
+            cat_end,
+        )
 
         # Record per-category result
         cat_mb = round(d_recovered / (1024 * 1024), 2)
         category_results.append({
             "name": cat_name,
-            "path": cat_path,
+            "path": str(next(iter(cleaner.targets()), "")),
             "files_found": cat_f_found,
             "files_deleted": d_deleted,
-            "files_skipped": d_skipped + d_skipped_limit,
+            "files_skipped": d_skipped,
             "folders_removed": d_removed,
             "bytes_recovered": d_recovered,
             "mb_recovered": cat_mb,
-            "skipped_due_to_limit": d_skipped_limit,
+            "skipped_due_to_limit": skipped_limit,
         })
-
-        # V1.0: If Free edition byte limit reached, skip remaining categories
-        if limit_reached:
-            # Count remaining categories' files as skipped_due_to_limit
-            for remaining_cat in categories[cat_index + 1:]:
-                r_path = remaining_cat["path"]
-                r_type = remaining_cat["type"]
-                if r_type in ("folder", "recycle_bin"):
-                    _, _, r_f_found, _ = _scan_folder(r_path)
-                else:
-                    r_files = _scan_pattern(r_path, remaining_cat["pattern"])
-                    r_f_found = len(r_files)
-                total_files_found += r_f_found
-                category_results.append({
-                    "name": remaining_cat["name"],
-                    "path": r_path,
-                    "files_found": r_f_found,
-                    "files_deleted": 0,
-                    "files_skipped": r_f_found,
-                    "folders_removed": 0,
-                    "bytes_recovered": 0,
-                    "mb_recovered": 0.0,
-                    "skipped_due_to_limit": r_f_found,
-                })
-            break
 
     # ─── Final results ─────────────────────────────────────────────
     mb_recovered = round(total_bytes_recovered / (1024 * 1024), 2)
