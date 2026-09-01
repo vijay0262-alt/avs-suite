@@ -40,6 +40,7 @@ import {
   PauseIcon,
   AcademicCapIcon,
   AdjustmentsHorizontalIcon,
+  ArrowsRightLeftIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import { useIsPro } from '../features/sync/syncStore';
@@ -79,6 +80,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'anomaly', to: '/anomaly', labelKey: 'nav.anomaly', Icon: ShieldExclamationIcon, proEnhanced: true },
       { id: 'duplicate-intel', to: '/duplicate-intel', labelKey: 'nav.duplicateIntel', Icon: DocumentDuplicateIcon, proEnhanced: true },
       { id: 'process-priority', to: '/process-priority', labelKey: 'nav.processPriority', Icon: AdjustmentsHorizontalIcon, proEnhanced: true },
+      { id: 'ai-integration', to: '/ai-integration', labelKey: 'nav.aiIntegration', Icon: ArrowsRightLeftIcon, proEnhanced: true },
     ],
   },
   // ── SYSTEM HEALTH — V1.0: Hidden to simplify the app.

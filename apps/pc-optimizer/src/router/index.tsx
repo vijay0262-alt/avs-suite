@@ -87,6 +87,7 @@ import {
   AnomalyDetectionPage,
   DuplicateIntelligencePage,
   ProcessPriorityPage,
+  AIIntegrationPage,
   UpgradePage,
   HelpPage,
   NotificationsPageWrapper,
@@ -231,6 +232,7 @@ export const router = createHashRouter([
       { path: 'anomaly', element: wrap(AnomalyDetectionPage) },
       { path: 'duplicate-intel', element: wrap(DuplicateIntelligencePage) },
       { path: 'process-priority', element: wrap(ProcessPriorityPage) },
+      { path: 'ai-integration', element: wrap(AIIntegrationPage) },
       { path: 'restoration', element: <RestorationPage /> },
       // ACCOUNT
       { path: 'license', element: wrap(ActivationPage) },

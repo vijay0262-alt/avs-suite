@@ -465,6 +465,8 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     "process_priority.setAffinity": "professional",
     "process_priority.resetAll": "professional",
     "process_priority.configure": "professional",
+    # AI integration — applyWorkloadPriority requires Pro (Free can view recommendations)
+    "ai_integration.applyWorkloadPriority": "professional",
 }
 
 

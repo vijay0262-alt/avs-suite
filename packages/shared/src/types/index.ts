@@ -76,6 +76,7 @@ export type NavItemId =
   | 'anomaly'
   | 'duplicate-intel'
   | 'process-priority'
+  | 'ai-integration'
   | 'driver-updater'
   | 'security-history'
   | 'antispyware-malware-removal'

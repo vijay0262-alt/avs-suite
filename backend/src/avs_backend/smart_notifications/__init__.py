@@ -405,6 +405,59 @@ def _analyze_security(data: dict[str, Any], config: dict[str, Any]) -> list[dict
     return notifications
 
 
+def _analyze_anomaly(data: dict[str, Any], config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Anomaly detection integration — generate notifications for critical/high anomalies."""
+    notifications: list[dict[str, Any]] = []
+    if not config.get("categories", {}).get("security", True):
+        return notifications
+
+    try:
+        from avs_backend.anomaly import anomaly_list_anomalies
+        result = anomaly_list_anomalies({"limit": 10, "minScore": 50})
+        anomalies = result.get("anomalies", [])
+
+        critical_anomalies = [a for a in anomalies if a.get("severity") == "critical"]
+        high_anomalies = [a for a in anomalies if a.get("severity") == "high"]
+
+        if critical_anomalies:
+            if _check_rate_limit("anomaly_critical", config):
+                names = ", ".join(a.get("name", "unknown") for a in critical_anomalies[:3])
+                notifications.append(_create_notification(
+                    "security",
+                    "critical",
+                    "Critical Behavioral Anomaly Detected",
+                    f"{len(critical_anomalies)} critical anomaly detected: {names}. These processes show behavior patterns consistent with malware.",
+                    action={
+                        "label": "View Anomalies",
+                        "rpcMethod": "anomaly.listAnomalies",
+                        "params": {"minScore": 50},
+                    },
+                    context={"criticalCount": len(critical_anomalies), "names": names},
+                ))
+                _update_rate_limit("anomaly_critical")
+
+        elif high_anomalies:
+            if _check_rate_limit("anomaly_high", config):
+                names = ", ".join(a.get("name", "unknown") for a in high_anomalies[:3])
+                notifications.append(_create_notification(
+                    "security",
+                    "high",
+                    "Suspicious Process Behavior Detected",
+                    f"{len(high_anomalies)} suspicious process(es) detected: {names}. Review these anomalies to ensure system safety.",
+                    action={
+                        "label": "Review Anomalies",
+                        "rpcMethod": "anomaly.listAnomalies",
+                        "params": {"minScore": 50},
+                    },
+                    context={"highCount": len(high_anomalies), "names": names},
+                ))
+                _update_rate_limit("anomaly_high")
+    except Exception:
+        pass
+
+    return notifications
+
+
 def _deduplicate(notifications: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Remove duplicate notifications by category+title."""
     seen: set[str] = set()
@@ -442,6 +495,7 @@ def smart_notifications_generate(_params: dict[str, Any] | None) -> dict[str, An
     all_notifications.extend(_analyze_performance(data, config))
     all_notifications.extend(_analyze_auto_care(data, config))
     all_notifications.extend(_analyze_security(data, config))
+    all_notifications.extend(_analyze_anomaly(data, config))
 
     # Deduplicate
     all_notifications = _deduplicate(all_notifications)

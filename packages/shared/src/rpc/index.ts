@@ -378,6 +378,12 @@ export const RPC_METHODS = {
   PROC_PRIORITY_SET_AFFINITY: 'process_priority.setAffinity',
   PROC_PRIORITY_RESET_ALL: 'process_priority.resetAll',
   PROC_PRIORITY_CONFIGURE: 'process_priority.configure',
+
+  // AI Integration Hub
+  AI_INTEGRATION_GET_RECOMMENDED_CLEANERS: 'ai_integration.getRecommendedCleaners',
+  AI_INTEGRATION_APPLY_WORKLOAD_PRIORITY: 'ai_integration.applyWorkloadPriority',
+  AI_INTEGRATION_GET_AUTOCARE_SUGGESTIONS: 'ai_integration.getAutoCareSuggestions',
+  AI_INTEGRATION_GET_STATUS: 'ai_integration.getStatus',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

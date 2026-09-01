@@ -90,6 +90,7 @@ _FEATURE_MODULES = [
     "avs_backend.anomaly",
     "avs_backend.duplicate_intel",
     "avs_backend.process_priority",
+    "avs_backend.ai_integration",
 ]
 
 # Track which modules have finished importing (success or failure)

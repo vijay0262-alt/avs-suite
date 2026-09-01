@@ -112,6 +112,7 @@ export const en = {
     anomaly: 'Anomaly Detection',
     duplicateIntel: 'Duplicate Intelligence',
     processPriority: 'Process Prioritization',
+    aiIntegration: 'AI Integration Hub',
     driverUpdater: 'Driver Updater',
     securityHistory: 'Security History',
     antispywareMalwareRemoval: 'Antispyware/Malware Removal',
