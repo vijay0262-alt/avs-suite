@@ -16,6 +16,7 @@ from typing import Any
 import psutil
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 
 logger = logging.getLogger(__name__)
 
@@ -354,6 +355,7 @@ def disk_analyze(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("disk.deleteFiles")
+@require_feature("disk.deleteFiles")
 def disk_delete_files(params: dict[str, Any] | None) -> dict[str, Any]:
     """Delete a list of files selected by the user.
     

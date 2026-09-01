@@ -10,6 +10,7 @@ import { SharedConfirmDialog } from '../../components/SharedConfirmDialog';
 import { HelpButton } from '../../components/HelpButton';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
 import { useIsPro } from '../sync/syncStore';
+import { useUpgradeDialog } from '../../components/UpgradeDialog';
 import { UninstallerViewModel, type SortKey } from './UninstallerViewModel';
 import { uninstallerService } from './uninstaller.service';
 import type { Program } from './uninstaller.types';
@@ -31,6 +32,7 @@ export default function UninstallerPage() {
   const state = useViewModel(vm);
   const [confirm, setConfirm] = useState<Program | null>(null);
   const isPro = useIsPro();
+  const { show: showUpgrade } = useUpgradeDialog();
 
   useEffect(() => {
     void vm.bootstrap();
@@ -66,7 +68,7 @@ export default function UninstallerPage() {
                 Upgrade to Professional to uninstall programs and scan for leftover files and registry entries.
               </p>
               <Button
-                onClick={() => window.open('https://www.avsshield.com/upgrade', '_blank')}
+                onClick={() => showUpgrade('Uninstaller')}
                 variant="primary"
                 data-testid="uninstaller-upgrade-cta"
               >
@@ -151,10 +153,16 @@ export default function UninstallerPage() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    disabled={state.busyId === p.id || !isPro}
-                    onClick={() => isPro && setConfirm(p)}
+                    disabled={state.busyId === p.id}
+                    onClick={() => {
+                      if (!isPro) {
+                        showUpgrade('Uninstaller');
+                        return;
+                      }
+                      setConfirm(p);
+                    }}
                   >
-                    {state.busyId === p.id ? 'Working…' : isPro ? 'Uninstall' : 'PRO'}
+                    {state.busyId === p.id ? 'Working…' : isPro ? 'Uninstall' : 'Uninstall (PRO)'}
                   </Button>
                 </div>
               ))}

@@ -250,6 +250,7 @@ _DISK_THRESHOLD = 50.0
 
 
 @register("performance.optimizeProcesses")
+@require_feature("performance.optimizeProcesses")
 def performance_optimize_processes(params: dict[str, Any] | None) -> dict[str, Any]:
     """Detect and optionally terminate processes consuming excessive resources.
 

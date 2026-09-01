@@ -150,7 +150,7 @@ def history_clear(_params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("history.export")
-@require_feature("optimization.history")
+@require_feature("history.export")
 def history_export(params: dict[str, Any] | None) -> dict[str, Any]:
     """Export history to CSV file."""
     try:

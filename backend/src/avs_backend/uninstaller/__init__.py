@@ -33,7 +33,7 @@ def uninstaller_list(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("uninstaller.uninstall")
-@require_feature("uninstaller.standard")
+@require_feature("uninstaller.uninstall")
 def uninstaller_uninstall(params: dict[str, Any] | None) -> dict[str, Any]:
     """Launch a program's uninstaller."""
     if not params or "program" not in params:
@@ -47,7 +47,7 @@ def uninstaller_uninstall(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("uninstaller.scanLeftovers")
-@require_feature("uninstaller.deep")
+@require_feature("uninstaller.scanLeftovers")
 def uninstaller_scan_leftovers(params: dict[str, Any] | None) -> dict[str, Any]:
     """Scan for leftover folders belonging to a program."""
     if not params or "program" not in params:

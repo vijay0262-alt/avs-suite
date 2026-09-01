@@ -239,12 +239,39 @@ def cleaner_clean_execute(params: dict[str, Any] | None) -> dict[str, str]:
     only = _optional_str_list(params, "only")
     log.info("[RPC] cleaner.clean.execute called for taskId=%s, only=%s", scan_task_id, only)
     start = time.monotonic()
+
+    # Enforce Free edition limit: max 500 MB per cleaning session.
+    # The frontend filters categories to stay under the limit, but the
+    # backend must also enforce it so the limit cannot be bypassed by
+    # calling the RPC directly.
+    from avs_backend.licensing import get_edition_limit
+
+    limit = get_edition_limit("junk.bytes_per_run")
+    if limit is not None:
+        try:
+            previews = _cleaning_manager.preview(scan_task_id, only)
+            total_bytes = sum(p.total_bytes for p in previews)
+            if total_bytes > limit:
+                log.warning(
+                    "Clean execute blocked: %d bytes exceed Free limit of %d",
+                    total_bytes, limit,
+                )
+                raise RpcError(
+                    INVALID_PARAMS,
+                    f"Free edition cleans up to {limit // (1024 * 1024)} MB per session. "
+                    f"Requested {total_bytes} bytes. Upgrade to Professional for unlimited cleaning.",
+                )
+        except RpcError:
+            raise
+        except Exception as e:
+            log.warning("Could not pre-check clean size limit: %s", e)
+
     try:
         cleaning_task_id = _cleaning_manager.execute(scan_task_id, only)
     except ValueError as e:
         log.error("[RPC] cleaner.clean.execute failed with ValueError: %s", e)
         raise RpcError(INVALID_PARAMS, str(e)) from e
-    log.info("[RPC] cleaner.clean.execute completed in %.2fs, cleaningTaskId=%s", 
+    log.info("[RPC] cleaner.clean.execute completed in %.2fs, cleaningTaskId=%s",
              time.monotonic() - start, cleaning_task_id)
     return {"cleaningTaskId": cleaning_task_id}
 

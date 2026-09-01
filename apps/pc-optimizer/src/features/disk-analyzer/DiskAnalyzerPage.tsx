@@ -13,6 +13,7 @@ import { DiskAnalyzerViewModel } from './DiskAnalyzerViewModel';
 import { diskAnalyzerService } from './disk-analyzer.service';
 import { useIsPro } from '../sync/syncStore';
 import { useFeatureGuard } from '../licensing/useFeatureGuard';
+import { useUpgradeDialog } from '../../components/UpgradeDialog';
 import { ProStatusPill, ProFeatureIndicator } from '../licensing/ProStatusBadge';
 import {
   SparklesIcon,
@@ -43,6 +44,7 @@ export default function DiskAnalyzerPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const isPro = useIsPro();
   const { guard, dialogElement } = useFeatureGuard();
+  const { show: showUpgrade } = useUpgradeDialog();
 
   useEffect(() => {
     void vm.bootstrap();
@@ -275,7 +277,13 @@ export default function DiskAnalyzerPage() {
                     <Button
                       variant="primary"
                       disabled={selectedCount === 0 || state.deleting}
-                      onClick={() => setConfirmDelete(true)}
+                      onClick={() => {
+                        if (!isPro) {
+                          showUpgrade('Disk Analyzer — Delete Files');
+                          return;
+                        }
+                        setConfirmDelete(true);
+                      }}
                     >
                       {state.deleting ? 'Deleting...' : `Delete Selected (${selectedCount})`}
                     </Button>

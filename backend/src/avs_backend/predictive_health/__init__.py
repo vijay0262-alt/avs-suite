@@ -234,7 +234,7 @@ def capture_snapshot(_params: dict[str, Any] | None = None) -> dict[str, Any]:
 # =====================================================================
 
 @register("health.trends")
-@require_feature("health.timeline")
+@require_feature("health.trends")
 def get_trends(params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Get trend data for metrics over time.
 
@@ -297,7 +297,7 @@ def get_trends(params: dict[str, Any] | None = None) -> dict[str, Any]:
 # =====================================================================
 
 @register("health.forecast")
-@require_feature("health.timeline")
+@require_feature("health.forecast")
 def get_forecast(params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Get forecast predictions for a metric.
 
@@ -424,7 +424,7 @@ def get_forecast(params: dict[str, Any] | None = None) -> dict[str, Any]:
 # =====================================================================
 
 @register("health.history")
-@require_feature("health.timeline")
+@require_feature("health.history")
 def get_history(params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Get historical health snapshots.
 

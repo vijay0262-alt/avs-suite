@@ -385,6 +385,7 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     "updater.upgrade": "professional",
     "updater.upgradeAll": "professional",
     "performance.optimize": "professional",
+    "performance.optimizeProcesses": "professional",
     # Security remediation — quarantine and remove threats
     "scan_core.remediation.execute": "professional",
     "scan_core.remediation.rollback": "professional",
@@ -411,6 +412,8 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     "drivers.update": "professional",
     # Disk optimizer — defrag/TRIM requires Pro (Free can analyze)
     "disk.optimize": "professional",
+    # Disk analyzer — deleting files requires Pro (Free can analyze and view)
+    "disk.deleteFiles": "professional",
     # PUP scanner — ignore/unignore requires Pro (Free can scan)
     "pup.ignore": "professional",
     "pup.unignore": "professional",

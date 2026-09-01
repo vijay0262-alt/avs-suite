@@ -378,7 +378,7 @@ def _scan_core_remediation_validate(params: Optional[dict[str, Any]]) -> dict[st
 
 
 @register("scan_core.remediation.execute")
-@require_feature("security.remediate")
+@require_feature("scan_core.remediation.execute")
 def _scan_core_remediation_execute(params: Optional[dict[str, Any]]) -> dict[str, Any]:
     params = _safe_params(params)
     for key in ("plan_id", "request_id"):
@@ -455,7 +455,7 @@ def _scan_core_remediation_status(params: Optional[dict[str, Any]]) -> dict[str,
 
 
 @register("scan_core.remediation.rollback")
-@require_feature("security.remediate")
+@require_feature("scan_core.remediation.rollback")
 def _scan_core_remediation_rollback(params: Optional[dict[str, Any]]) -> dict[str, Any]:
     params = _safe_params(params)
     ok, execution_id = _require_str(params, "execution_id")
@@ -2261,7 +2261,7 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
 
 
 @register("scan_core.dashboard.auto_optimize")
-@require_feature("performance.optimize")
+@require_feature("scan_core.dashboard.auto_optimize")
 def _scan_core_dashboard_auto_optimize(params: Optional[dict[str, Any]]) -> dict[str, Any]:
     """Start automatic optimization of safe actions from a scan plan.
 

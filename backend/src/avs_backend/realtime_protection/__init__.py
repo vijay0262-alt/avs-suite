@@ -253,7 +253,7 @@ def get_protection_status(_params: dict[str, Any] | None = None) -> dict[str, An
 
 
 @register("realtime.start")
-@require_feature("real_time.protection")
+@require_feature("realtime.start")
 def start_protection(_params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Start real-time protection monitoring."""
     global _monitor_thread
@@ -285,7 +285,7 @@ def start_protection(_params: dict[str, Any] | None = None) -> dict[str, Any]:
 
 
 @register("realtime.stop")
-@require_feature("real_time.protection")
+@require_feature("realtime.stop")
 def stop_protection(_params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Stop real-time protection monitoring."""
     with _monitor_lock:
