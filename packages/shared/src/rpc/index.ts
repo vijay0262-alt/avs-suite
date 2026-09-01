@@ -222,6 +222,12 @@ export const RPC_METHODS = {
   SCHEDULER_DELETE: 'scheduler.delete',
   SCHEDULER_RUN_NOW: 'scheduler.runNow',
   SCHEDULER_STATUS: 'scheduler.status',
+  SCHEDULER_CONFIGURE: 'scheduler.configureFromSettings',
+
+  // Junk Monitor
+  JUNK_MONITOR_STATUS: 'junk_monitor.status',
+  JUNK_MONITOR_SCAN: 'junk_monitor.scanNow',
+  JUNK_MONITOR_HISTORY: 'junk_monitor.history',
 
   // Optimization Orchestrator — unified pipeline
   ORCHESTRATOR_START: 'orchestrator.start',
@@ -236,6 +242,11 @@ export const RPC_METHODS = {
   // Licensing — edition sync from frontend
   LICENSING_SET_EDITION: 'licensing.set_edition',
   LICENSING_GET_EDITION: 'licensing.get_edition',
+
+  // Settings
+  SETTINGS_GET: 'settings.get',
+  SETTINGS_UPDATE: 'settings.update',
+  SETTINGS_RESET: 'settings.reset',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

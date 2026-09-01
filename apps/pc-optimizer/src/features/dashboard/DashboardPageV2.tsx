@@ -9,10 +9,12 @@ import {
   ArrowPathIcon,
   CheckCircleIcon,
   BoltIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { DashboardViewModel } from './DashboardViewModel';
 import { dashboardService } from './dashboard.service';
+import { useJunkMonitor } from '../scheduled-cleanup/useJunkMonitor';
 import type { DashboardMetrics, LiveMetrics } from './dashboard.types';
 import { DashboardScanStatusCard } from '../scan/components/DashboardScanStatusCard';
 import { useDashboardScan } from '../scan/useDashboardScan';
@@ -66,6 +68,7 @@ export default function DashboardPage() {
   const [reviewPlanId, setReviewPlanId] = useState<string | null>(null);
   const [viewCleanupResults, setViewCleanupResults] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const { status: junkStatus } = useJunkMonitor();
 
   useEffect(() => {
     void vm.bootstrap();
@@ -358,6 +361,52 @@ export default function DashboardPage() {
       </div>
 
       {/* ── SECONDARY ACTION: REMOVED — V1.0 Dashboard uses single Scan Now → Clean → Results modal ── */}
+
+      {/* ── JUNK MONITOR INDICATOR ──────────────────────────────
+          V1.0 Feature #1: Shows current junk accumulation.
+          Only shows when junk > 0 so the dashboard stays clean. */}
+      {junkStatus && junkStatus.total_bytes > 0 && (
+        <Card variant="glass" className="p-4" data-testid="dashboard-junk-monitor">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${
+                junkStatus.threshold_exceeded
+                  ? 'bg-semantic-warning/10'
+                  : 'bg-surface-muted'
+              }`}>
+                <TrashIcon className={`h-5 w-5 ${
+                  junkStatus.threshold_exceeded
+                    ? 'text-semantic-warning'
+                    : 'text-text-muted'
+                }`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-caption text-text-muted">Junk Files Detected</div>
+                <div className="text-small font-semibold text-text-primary">
+                  {junkStatus.total_files.toLocaleString()} files · {junkStatus.total_gb >= 1
+                    ? `${junkStatus.total_gb.toFixed(2)} GB`
+                    : `${junkStatus.total_mb.toFixed(2)} MB`}
+                </div>
+              </div>
+            </div>
+            {junkStatus.threshold_exceeded && (
+              <Button
+                size="sm"
+                variant="primary"
+                leftIcon={<BoltIcon className="h-4 w-4" />}
+                onClick={() => {
+                  setReviewPlanId(null);
+                  setViewCleanupResults(false);
+                  setScanModalOpen(true);
+                }}
+                data-testid="dashboard-junk-clean-now"
+              >
+                Clean Now
+              </Button>
+            )}
+          </div>
+        </Card>
+      )}
 
       {/* Latest unified scan/remediation status from scan_core */}
       <DashboardScanStatusCard

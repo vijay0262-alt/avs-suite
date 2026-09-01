@@ -334,3 +334,65 @@ def get_scheduler_status(_params: dict[str, Any] | None = None) -> dict[str, Any
         "availableActions": list(_MAINTENANCE_ACTIONS.keys()),
         "capturedAt": _now_iso(),
     }
+
+
+@register("scheduler.configureFromSettings")
+def configure_from_settings(_params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Read scheduled cleanup settings and create/update/delete tasks.
+
+    Called when the user changes scheduled cleanup settings in the UI.
+    - If enabled: creates/updates the scheduled task for each action
+    - If disabled: deletes all AVS scheduled tasks
+    """
+    try:
+        from avs_backend.settings.settings_manager import load_settings
+        s = load_settings()
+    except Exception as e:
+        return {"configured": False, "error": f"Failed to load settings: {e}"}
+
+    if not s.scheduled_cleanup_enabled:
+        # Delete all existing scheduled tasks
+        deleted = []
+        for action in _MAINTENANCE_ACTIONS:
+            result = delete_scheduled_task({"action": action})
+            if result.get("deleted"):
+                deleted.append(action)
+        return {
+            "configured": True,
+            "enabled": False,
+            "deleted": deleted,
+        }
+
+    # Create/update tasks for each configured action
+    results = []
+    for action in s.scheduled_cleanup_actions:
+        if action not in _MAINTENANCE_ACTIONS:
+            continue
+        params = {
+            "action": action,
+            "schedule": s.scheduled_cleanup_frequency,
+            "time": s.scheduled_cleanup_time,
+            "day": s.scheduled_cleanup_day,
+        }
+        # Try update first (which deletes + creates)
+        result = update_scheduled_task(params)
+        if result.get("updated"):
+            results.append({"action": action, "status": "updated"})
+        else:
+            # Fall back to create
+            result = create_scheduled_task(params)
+            if result.get("created"):
+                results.append({"action": action, "status": "created"})
+            else:
+                results.append({"action": action, "status": "failed", "error": result.get("error")})
+
+    return {
+        "configured": True,
+        "enabled": True,
+        "frequency": s.scheduled_cleanup_frequency,
+        "time": s.scheduled_cleanup_time,
+        "day": s.scheduled_cleanup_day,
+        "actions": s.scheduled_cleanup_actions,
+        "results": results,
+    }
+

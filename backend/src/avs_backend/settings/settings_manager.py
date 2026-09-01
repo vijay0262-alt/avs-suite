@@ -93,6 +93,17 @@ class Settings:
     backup_before_changes: bool = True
     max_history_entries: int = 1000
 
+    # Scheduled Cleaning (V1.0 Feature #1)
+    scheduled_cleanup_enabled: bool = False
+    scheduled_cleanup_frequency: str = "daily"  # daily, weekly, on_idle
+    scheduled_cleanup_time: str = "03:00"  # HH:MM
+    scheduled_cleanup_day: str = "SUN"  # for weekly
+    scheduled_cleanup_actions: list = field(default_factory=lambda: ["junk_clean"])
+
+    # Junk Monitor (V1.0 Feature #1)
+    junk_monitor_enabled: bool = True
+    junk_monitor_threshold_gb: float = 2.0  # notify when this much junk accumulates
+
 
 # Settings file path
 SETTINGS_DIR = Path.home() / ".avs"
@@ -132,6 +143,13 @@ def load_settings() -> Settings:
             "createRestorePoints": "create_restore_points",
             "backupBeforeChanges": "backup_before_changes",
             "maxHistoryEntries": "max_history_entries",
+            "scheduledCleanupEnabled": "scheduled_cleanup_enabled",
+            "scheduledCleanupFrequency": "scheduled_cleanup_frequency",
+            "scheduledCleanupTime": "scheduled_cleanup_time",
+            "scheduledCleanupDay": "scheduled_cleanup_day",
+            "scheduledCleanupActions": "scheduled_cleanup_actions",
+            "junkMonitorEnabled": "junk_monitor_enabled",
+            "junkMonitorThresholdGb": "junk_monitor_threshold_gb",
         }
         for old_key, new_key in key_map.items():
             if old_key in data:

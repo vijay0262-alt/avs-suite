@@ -11,6 +11,8 @@ import { useAuthStore } from '../features/auth/authStore';
 import { useSubscriptionStore } from '../features/subscription/subscriptionStore';
 import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, StarIcon, CheckCircleIcon, CloudArrowDownIcon, RocketLaunchIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useTraySettings } from '../hooks/useTraySettings';
+import { useScheduledCleanup } from '../features/scheduled-cleanup/useScheduledCleanup';
+import { useJunkMonitor } from '../features/scheduled-cleanup/useJunkMonitor';
 
 const THEMES: readonly { id: ThemeMode; label: string }[] = [
   { id: 'light', label: 'Light' },
@@ -31,6 +33,8 @@ export default function SettingsPage() {
   const { settings: traySettings, startupEnabled, loading: trayLoading, updateSettings: updateTray, enableStartup, disableStartup } = useTraySettings();
   const { customer, session, logout } = useAuthStore();
   const subscription = useSubscriptionStore((s) => s.subscription);
+  const { settings: schedSettings, loading: schedLoading, saving: schedSaving, saveSettings: saveSchedSettings } = useScheduledCleanup();
+  const { status: junkStatus } = useJunkMonitor();
 
   useEffect(() => {
     // Sync dev mode state from localStorage
@@ -161,6 +165,152 @@ export default function SettingsPage() {
             English is currently the default. Additional locales will be enabled once
             translations complete.
           </p>
+        </Card>
+
+        {/* ── Scheduled Cleaning ─────────────────────────────── */}
+        <Card title="Scheduled Cleaning" variant="glass" data-testid="settings-scheduled-cleanup">
+          <div className="space-y-4">
+            {edition === 'free' && (
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-small font-medium text-text-primary">Automatic Cleanup Schedule</div>
+                  <p className="text-caption text-text-secondary">
+                    Professional feature. Schedule automatic cleanup when your PC is idle — no manual scanning needed.
+                  </p>
+                </div>
+                <Button variant="primary" onClick={() => showUpgrade('Scheduled Cleaning')} leftIcon={<StarIcon className="h-4 w-4" />} data-testid="scheduled-cleanup-upgrade">
+                  Upgrade
+                </Button>
+              </div>
+            )}
+            {edition === 'professional' && (
+              <>
+                {/* Enable toggle */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-small font-medium text-text-primary">Enable Scheduled Cleanup</div>
+                    <p className="text-caption text-text-secondary">Automatically clean junk files on a schedule.</p>
+                  </div>
+                  <button
+                    onClick={() => saveSchedSettings({ scheduled_cleanup_enabled: !schedSettings.scheduled_cleanup_enabled })}
+                    disabled={schedSaving || schedLoading}
+                    className={`relative h-6 w-11 rounded-full transition-colors ${schedSettings.scheduled_cleanup_enabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'}`}
+                    data-testid="scheduled-cleanup-toggle"
+                  >
+                    <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${schedSettings.scheduled_cleanup_enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+
+                {schedSettings.scheduled_cleanup_enabled && (
+                  <div className="border-t border-[var(--avs-border)] pt-4 space-y-4">
+                    {/* Frequency */}
+                    <div>
+                      <div className="text-small font-medium text-text-primary mb-2">Frequency</div>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { id: 'daily', label: 'Daily' },
+                          { id: 'weekly', label: 'Weekly' },
+                          { id: 'on_idle', label: 'When PC is Idle' },
+                        ].map((opt) => (
+                          <Button
+                            key={opt.id}
+                            variant={schedSettings.scheduled_cleanup_frequency === opt.id ? 'primary' : 'secondary'}
+                            onClick={() => saveSchedSettings({ scheduled_cleanup_frequency: opt.id })}
+                            disabled={schedSaving}
+                            data-testid={`scheduled-cleanup-freq-${opt.id}`}
+                          >
+                            {opt.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Time (for daily/weekly) */}
+                    {schedSettings.scheduled_cleanup_frequency !== 'on_idle' && (
+                      <div>
+                        <div className="text-small font-medium text-text-primary mb-2">Time</div>
+                        <input
+                          type="time"
+                          value={schedSettings.scheduled_cleanup_time}
+                          onChange={(e) => saveSchedSettings({ scheduled_cleanup_time: e.target.value })}
+                          disabled={schedSaving}
+                          className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-small text-text-primary"
+                          data-testid="scheduled-cleanup-time"
+                        />
+                      </div>
+                    )}
+
+                    {/* Day (for weekly) */}
+                    {schedSettings.scheduled_cleanup_frequency === 'weekly' && (
+                      <div>
+                        <div className="text-small font-medium text-text-primary mb-2">Day of Week</div>
+                        <div className="flex flex-wrap gap-2">
+                          {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d) => (
+                            <Button
+                              key={d}
+                              variant={schedSettings.scheduled_cleanup_day === d ? 'primary' : 'secondary'}
+                              onClick={() => saveSchedSettings({ scheduled_cleanup_day: d })}
+                              disabled={schedSaving}
+                              data-testid={`scheduled-cleanup-day-${d}`}
+                            >
+                              {d}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Junk Monitor */}
+                <div className="border-t border-[var(--avs-border)] pt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-small font-medium text-text-primary">Junk Accumulation Monitor</div>
+                      <p className="text-caption text-text-secondary">
+                        Get notified when junk files exceed a threshold.
+                        {junkStatus && junkStatus.total_bytes > 0 && (
+                          <span className="block mt-1 text-text-muted">
+                            Current: {(junkStatus.total_gb).toFixed(2)} GB detected
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => saveSchedSettings({ junk_monitor_enabled: !schedSettings.junk_monitor_enabled })}
+                      disabled={schedSaving || schedLoading}
+                      className={`relative h-6 w-11 rounded-full transition-colors ${schedSettings.junk_monitor_enabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'}`}
+                      data-testid="junk-monitor-toggle"
+                    >
+                      <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${schedSettings.junk_monitor_enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {schedSettings.junk_monitor_enabled && (
+                  <div className="border-t border-[var(--avs-border)] pt-4">
+                    <div className="text-small font-medium text-text-primary mb-2">Notify when junk exceeds</div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="10"
+                        step="0.5"
+                        value={schedSettings.junk_monitor_threshold_gb}
+                        onChange={(e) => saveSchedSettings({ junk_monitor_threshold_gb: parseFloat(e.target.value) })}
+                        disabled={schedSaving}
+                        className="flex-1 accent-[var(--avs-brand-primary)]"
+                        data-testid="junk-monitor-threshold"
+                      />
+                      <span className="text-small font-medium text-text-primary tabular-nums w-16 text-right">
+                        {schedSettings.junk_monitor_threshold_gb} GB
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </Card>
 
         <Card title="Edition" variant="glass">
