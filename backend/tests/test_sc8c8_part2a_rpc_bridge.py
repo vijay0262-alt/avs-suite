@@ -7,6 +7,7 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -25,6 +26,22 @@ from avs_backend.scan_core.rules.action import (
 )
 from avs_backend.scan_core.rules.action_preconditions import PreconditionSet
 from avs_backend.scan_core.rules.priority import Fixability, RuleCapability
+
+
+@pytest.fixture(autouse=True)
+def _mock_professional_edition():
+    """Override edition to professional so require_feature decorators pass.
+
+    The remediation execute/rollback RPCs are Pro-gated via
+    @require_feature("scan_core.remediation.execute") and
+    @require_feature("scan_core.remediation.rollback"). In the test
+    environment there is no license SDK, so the edition defaults to
+    'free' and the decorator blocks the call. These tests exercise the
+    handler logic, not the licensing gate, so we mock the edition as
+    'professional'.
+    """
+    with patch("avs_backend.licensing._get_current_edition", return_value="professional"):
+        yield
 
 
 def _make_filesystem_target(
