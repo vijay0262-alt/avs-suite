@@ -84,6 +84,18 @@ a = Analysis(
         # These are imported dynamically by junk_rules.register_junk_rules()
         # and may not be detected by PyInstaller static analysis.
         "avs_backend.scan_core.rules.detection.cleanup_providers",
+        # ── AI features (Phase 3-4) — dynamically loaded via importlib ──
+        "avs_backend.quarantine",
+        "avs_backend.auto_care",
+        "avs_backend.workload",
+        "avs_backend.predictive",
+        "avs_backend.smart_notifications",
+        "avs_backend.app_freezer",
+        "avs_backend.self_learning",
+        "avs_backend.anomaly",
+        "avs_backend.duplicate_intel",
+        "avs_backend.process_priority",
+        "avs_backend.ai_integration",
     ],
     hookspath=[],
     hooksconfig={},
