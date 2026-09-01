@@ -6,7 +6,7 @@
  * `Approve & Fix` button inside `useResults.approve`.
  */
 import { Card, Button, LoadingState } from '@avs/ui';
-import { ShieldCheckIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { ShieldCheckIcon, ExclamationTriangleIcon, CheckCircleIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useResults } from './useResults';
 import { FindingsList } from './FindingsList';
 import { PreviewPanel } from './PreviewPanel';
@@ -16,6 +16,18 @@ import { TerminalStatePanel } from './TerminalStatePanel';
 import { RollbackConfirmationPanel } from './RollbackConfirmationPanel';
 import { RollbackResultPanel } from './RollbackResultPanel';
 import type { ScanFinding, ScanStatistics } from './types';
+
+export interface CleanupCategoryResult {
+  name: string;
+  path?: string;
+  files_found?: number;
+  files_deleted?: number;
+  files_skipped?: number;
+  folders_removed?: number;
+  bytes_recovered?: number;
+  mb_recovered?: number;
+  skipped_due_to_limit?: number;
+}
 
 export interface ResultsViewProps {
   moduleName: string;
@@ -31,6 +43,7 @@ export interface ResultsViewProps {
     folders_deleted?: number;
     bytes_recovered?: number;
     mb_recovered?: number;
+    categories?: CleanupCategoryResult[];
   };
   onClose: () => void;
   onRestart?: () => void;
@@ -50,6 +63,43 @@ function ModuleIcon({ icon }: { icon: string }) {
 function getCount(statistics: ScanStatistics, key: string): number {
   const value = statistics[key];
   return typeof value === 'number' ? value : 0;
+}
+
+function formatBytesLocal(bytes: number): string {
+  if (bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  const value = bytes / Math.pow(1024, i);
+  return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+/** Category row — Disk Cleanup style per-category breakdown. */
+function CleanupCategoryRow({ cat }: { cat: CleanupCategoryResult }) {
+  const files = cat.files_deleted ?? 0;
+  const size = cat.bytes_recovered ?? 0;
+  return (
+    <div
+      className="flex items-center justify-between py-2.5 border-b border-[var(--avs-border-subtle)] last:border-0"
+      data-testid={`cleanup-cat-${(cat.name || '').toLowerCase().replace(/\s+/g, '-')}`}
+    >
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        {files > 0 ? (
+          <CheckCircleIcon className="h-4 w-4 text-semantic-success shrink-0" />
+        ) : (
+          <TrashIcon className="h-4 w-4 text-text-muted shrink-0" />
+        )}
+        <span className="text-small text-text-primary truncate">{cat.name}</span>
+      </div>
+      <div className="flex items-center gap-4 shrink-0">
+        <span className="text-small text-text-muted tabular-nums">
+          {files.toLocaleString()} {files === 1 ? 'file' : 'files'}
+        </span>
+        <span className="text-small font-semibold text-text-primary tabular-nums w-20 text-right">
+          {formatBytesLocal(size)}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export function ResultsView({
@@ -267,6 +317,9 @@ export function ResultsView({
       const mbStr = mb >= 1024
         ? `${(mb / 1024).toFixed(2)} GB`
         : `${mb.toFixed(2)} MB`;
+      const categories = cleanupSummary.categories?.filter(
+        (c) => (c.files_deleted ?? 0) > 0 || (c.files_found ?? 0) > 0,
+      ) ?? [];
       return (
         <Card variant="glass" className="p-8" data-testid="results-view-cleanup">
           <div className="text-center space-y-4">
@@ -301,6 +354,21 @@ export function ResultsView({
               <p className="text-caption text-text-muted">
                 {cleanupSummary.files_skipped} file(s) skipped (in use or locked)
               </p>
+            )}
+
+            {/* V1.0: Per-category breakdown — Disk Cleanup style */}
+            {categories.length > 0 && (
+              <div
+                className="rounded-[var(--avs-radius-md)] bg-surface-secondary/30 p-4 text-left"
+                data-testid="results-view-categories"
+              >
+                <div className="text-caption uppercase tracking-wide text-text-muted mb-2">
+                  Cleanup Summary by Category
+                </div>
+                {categories.map((cat) => (
+                  <CleanupCategoryRow key={cat.name} cat={cat} />
+                ))}
+              </div>
             )}
 
             <div className="flex items-center justify-center gap-3">
