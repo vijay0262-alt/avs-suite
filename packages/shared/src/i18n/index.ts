@@ -98,6 +98,7 @@ export const en = {
     backupRestore: 'Backup & Restore',
     recoveryCenter: 'Recovery Center',
     fileShredder: 'File Shredder',
+    diskOptimizer: 'Disk Optimizer',
     driverUpdater: 'Driver Updater',
     securityHistory: 'Security History',
     antispywareMalwareRemoval: 'Antispyware/Malware Removal',

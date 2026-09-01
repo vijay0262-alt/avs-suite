@@ -258,6 +258,12 @@ export const RPC_METHODS = {
   DRIVERS_SUMMARY: 'drivers.summary',
   DRIVERS_SCAN_OUTDATED: 'drivers.scanOutdated',
   DRIVERS_UPDATE: 'drivers.update',
+
+  // Disk Optimizer (Defrag + TRIM)
+  DISK_OPTIMIZER_LIST_DRIVES: 'disk_optimizer.listDrives',
+  DISK_OPTIMIZER_ANALYZE: 'disk_optimizer.analyze',
+  DISK_OPTIMIZER_OPTIMIZE: 'disk_optimizer.optimize',
+  DISK_OPTIMIZER_STATUS: 'disk_optimizer.status',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];
