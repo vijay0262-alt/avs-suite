@@ -76,7 +76,7 @@ def _run_junk_clean() -> dict[str, Any]:
         drive = f"{drive_letter}:"
         rb_path = os.path.join(drive + os.sep, "$Recycle.Bin")
         if os.path.isdir(rb_path):
-            categories.append({"name": f"Recycle Bin ({drive})", "type": "folder", "path": rb_path})
+            categories.append({"name": f"Recycle Bin ({drive})", "type": "recycle_bin", "path": rb_path, "drive": drive})
 
     explorer_dir = os.path.join(local_app_data, "Microsoft", "Windows", "Explorer")
     add_pattern("Thumbnails", explorer_dir, "thumbcache_*.db")
@@ -140,6 +140,56 @@ def _run_junk_clean() -> dict[str, Any]:
                             cat_files_skipped += 1
             except OSError as e:
                 _log_to_file(f"Error scanning {root_path}: {e}", "junk_clean")
+
+        elif cat["type"] == "recycle_bin":
+            # Empty Recycle Bin via Windows SHEmptyRecycleBin API.
+            # This handles all SIDs and properly empties the Recycle Bin
+            # without needing to enumerate individual files.
+            drive = cat.get("drive", "C:")
+            root_path = cat["path"]
+            rb_files_before = 0
+            rb_bytes_before = 0
+            try:
+                for entry in os.scandir(root_path):
+                    if entry.is_file(follow_symlinks=False):
+                        rb_files_before += 1
+                        try:
+                            rb_bytes_before += entry.stat().st_size
+                        except OSError:
+                            pass
+            except OSError:
+                pass
+            try:
+                if sys.platform == "win32":
+                    from avs_backend.scan_core.execution.recycle_bin_executor import (
+                        RecycleBinExecutor,
+                    )
+                    result_code = RecycleBinExecutor._empty_recycle_bin(f"{drive}\\")
+                    if result_code != 0:
+                        _log_to_file(
+                            f"SHEmptyRecycleBin('{drive}\\') returned {result_code}",
+                            "junk_clean",
+                        )
+                # Count remaining files after cleanup
+                rb_files_after = 0
+                rb_bytes_after = 0
+                try:
+                    for entry in os.scandir(root_path):
+                        if entry.is_file(follow_symlinks=False):
+                            rb_files_after += 1
+                            try:
+                                rb_bytes_after += entry.stat().st_size
+                            except OSError:
+                                pass
+                except OSError:
+                    pass
+                cat_files_found = rb_files_before
+                cat_files_deleted = max(0, rb_files_before - rb_files_after)
+                cat_bytes = max(0, rb_bytes_before - rb_bytes_after)
+                cat_files_skipped = rb_files_after
+            except Exception as exc:
+                _log_to_file(f"Recycle Bin cleanup error for {drive}: {exc}", "junk_clean")
+                cat_files_skipped = rb_files_before
 
         elif cat["type"] == "pattern":
             root_path = cat["path"]

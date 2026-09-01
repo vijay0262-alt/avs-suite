@@ -23,6 +23,13 @@ log = logging.getLogger("avs_backend.licensing")
 
 _client: Any = None  # LicenseClient instance, lazily initialized
 
+# ── Edition override ──────────────────────────────────────────
+# The frontend pushes the current edition (from sync data) to the
+# backend via the licensing.set_edition RPC. This override takes
+# precedence over the SDK client status, so the backend enforces
+# the correct edition even when the license server is unreachable.
+_edition_override: str | None = None
+
 
 def _get_client() -> Any:
     """Get or create the singleton LicenseClient."""
@@ -402,10 +409,17 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
 
 
 def _get_current_edition() -> str:
-    """Get the current license edition from the SDK client.
+    """Get the current license edition.
 
-    Returns 'free' if the SDK is unavailable or no license is active.
+    Checks the frontend-pushed override first, then falls back to the
+    SDK client status. Returns 'free' if neither is available.
     """
+    # Check the frontend-pushed override first
+    if _edition_override is not None:
+        edition = _edition_override.lower()
+        if edition in _FEATURE_EDITION_RANK:
+            return edition
+    # Fall back to the SDK client
     try:
         client = _get_client()
         status = client.get_status()
@@ -491,3 +505,50 @@ def _get_sdk_version() -> str:
         return __version__
     except Exception:
         return "unknown"
+
+
+# ── RPC: Edition sync from frontend ────────────────────────────
+
+@registry.register("licensing.set_edition")
+def set_edition(params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Set the current edition from the frontend sync data.
+
+    The frontend determines the edition from the sync response (subscription
+    plan + license info). This RPC pushes that edition to the backend so
+    the require_feature decorator and _get_current_edition() enforce the
+    correct restrictions even when the license SDK server is unreachable.
+
+    Params:
+        edition: str — "free", "professional", "ultimate", or "trial"
+    """
+    global _edition_override
+    if not params or "edition" not in params:
+        return {"ok": False, "error": "Missing edition parameter"}
+
+    edition = str(params["edition"]).lower().strip()
+    valid_editions = {"free", "professional", "pro", "enterprise", "ultimate", "trial", "total_security"}
+    if edition not in valid_editions:
+        return {"ok": False, "error": f"Invalid edition: {edition}"}
+
+    # Normalize aliases to canonical editions
+    canonical = {
+        "pro": "professional",
+        "enterprise": "professional",
+        "total_security": "professional",
+    }
+    edition = canonical.get(edition, edition)
+
+    _edition_override = edition
+    log.info("Edition override set to '%s' from frontend", edition)
+    return {"ok": True, "edition": edition}
+
+
+@registry.register("licensing.get_edition")
+def get_edition(_params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Get the current edition used by the backend for enforcement."""
+    edition = _get_current_edition()
+    return {
+        "ok": True,
+        "edition": edition,
+        "source": "override" if _edition_override is not None else "sdk",
+    }

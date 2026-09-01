@@ -29,6 +29,7 @@ import {
   type SyncServiceError,
   type SyncErrorCode,
 } from './syncService';
+import { rpc } from '../../services/rpc';
 
 // ── Cache persistence ───────────────────────────────────────────
 
@@ -138,6 +139,43 @@ export function planToEdition(
 const SYNC_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 let syncIntervalId: ReturnType<typeof setInterval> | null = null;
 
+/**
+ * Push the current edition to the backend so require_feature decorators
+ * enforce the correct restrictions. The backend's license SDK may not
+ * be able to reach the license server, so the frontend-pushed override
+ * is the authoritative source for edition enforcement.
+ */
+async function pushEditionToBackend(data: SyncResponse): Promise<void> {
+  try {
+    const edition = planToEdition(data.subscription.plan, data.license?.edition);
+    const backendEdition = edition === 'PROFESSIONAL' ? 'professional' : 'free';
+    await rpc.raw('licensing.set_edition', { edition: backendEdition });
+  } catch {
+    // Backend may not be ready yet or running outside Electron — silently ignore
+  }
+}
+
+/**
+ * Push edition to backend (fire-and-forget). Safe to call anywhere,
+ * including outside Electron (tests, Storybook). Synchronous errors
+ * from the RPC client are caught and silently ignored.
+ */
+function syncEditionToBackend(data: SyncResponse | null): void {
+  if (!data) return;
+  void pushEditionToBackend(data);
+}
+
+/**
+ * Reset backend edition to free (fire-and-forget). Safe to call anywhere.
+ */
+function resetBackendEdition(): void {
+  try {
+    void rpc.raw('licensing.set_edition', { edition: 'free' }).catch(() => {});
+  } catch {
+    // Running outside Electron — silently ignore
+  }
+}
+
 export const useSyncStore = create<SyncStoreState>((set, _get) => ({
   data: null,
   phase: 'idle',
@@ -161,6 +199,7 @@ export const useSyncStore = create<SyncStoreState>((set, _get) => ({
         isOffline: false,
         fromCache: false,
       });
+      void pushEditionToBackend(data);
       return true;
     } catch (err) {
       const syncErr = err as SyncServiceError;
@@ -179,6 +218,7 @@ export const useSyncStore = create<SyncStoreState>((set, _get) => ({
             isOffline: true,
             fromCache: true,
           });
+          syncEditionToBackend(cached.data);
           return true;
         }
       }
@@ -203,6 +243,7 @@ export const useSyncStore = create<SyncStoreState>((set, _get) => ({
       isOffline: true,
       fromCache: true,
     });
+    syncEditionToBackend(cached.data);
     return true;
   },
 
@@ -221,6 +262,8 @@ export const useSyncStore = create<SyncStoreState>((set, _get) => ({
       isOffline: false,
       fromCache: false,
     });
+    // Reset backend edition to free on logout
+    resetBackendEdition();
   },
 
   clearError: () => {

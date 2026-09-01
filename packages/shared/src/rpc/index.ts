@@ -232,6 +232,10 @@ export const RPC_METHODS = {
   ORCHESTRATOR_CANCEL: 'orchestrator.cancel',
   ORCHESTRATOR_FULL: 'orchestrator.full',
   ORCHESTRATOR_FULL_ASYNC: 'orchestrator.fullAsync',
+
+  // Licensing — edition sync from frontend
+  LICENSING_SET_EDITION: 'licensing.set_edition',
+  LICENSING_GET_EDITION: 'licensing.get_edition',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

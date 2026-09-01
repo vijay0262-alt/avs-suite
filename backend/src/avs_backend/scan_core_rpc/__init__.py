@@ -565,12 +565,12 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
     # 5. Downloaded Program Files
     add_folder("Downloaded Program Files", os.path.join(system_root, "Downloaded Program Files"))
 
-    # 6. Recycle Bin (all drives)
+    # 6. Recycle Bin (all drives) — emptied via SHEmptyRecycleBin API
     for drive_letter in "CDEFGH":
         drive = f"{drive_letter}:"
         rb_path = os.path.join(drive + os.sep, "$Recycle.Bin")
         if os.path.isdir(rb_path):
-            categories.append({"name": f"Recycle Bin ({drive})", "type": "folder", "path": rb_path})
+            categories.append({"name": f"Recycle Bin ({drive})", "type": "recycle_bin", "path": rb_path, "drive": drive})
 
     # 7. Thumbnails
     explorer_dir = os.path.join(local_app_data, "Microsoft", "Windows", "Explorer")
@@ -773,6 +773,74 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
                 )
         return removed
 
+    # ─── Helper: empty Recycle Bin via Windows API ────────────────
+    def _empty_recycle_bin_category(
+        drive: str,
+        rb_path: str,
+        scanned_files: list[tuple[str, int]],
+        cat_index: int,
+        cat_name: str,
+        base_pct: int,
+        pct_span: int,
+    ) -> tuple[int, int, int, int]:
+        """Empty Recycle Bin using SHEmptyRecycleBin API.
+
+        Returns (deleted, skipped, bytes_recovered, skipped_due_to_limit).
+        """
+        rb_files_before = len(scanned_files)
+        rb_bytes_before = sum(sz for _, sz in scanned_files)
+
+        _update_progress(
+            "cleaning",
+            f"Emptying {cat_name}...",
+            rb_path,
+            cat_index,
+            rb_files_before,
+            0,
+            0,
+            0,
+            base_pct + int(pct_span * 0.5),
+        )
+
+        try:
+            if sys.platform == "win32":
+                from avs_backend.scan_core.execution.recycle_bin_executor import (
+                    RecycleBinExecutor,
+                )
+                result_code = RecycleBinExecutor._empty_recycle_bin(f"{drive}\\")
+                if result_code != 0:
+                    logger.warning("SHEmptyRecycleBin('%s\\') returned %d", drive, result_code)
+
+            # Count remaining files after cleanup
+            _, _, rb_files_after, _ = _scan_folder(rb_path)
+            deleted = max(0, rb_files_before - rb_files_after)
+            # Estimate bytes recovered from the files that are gone
+            if deleted > 0 and rb_files_before > 0:
+                avg_bytes = rb_bytes_before / rb_files_before
+                recovered = int(avg_bytes * deleted)
+            else:
+                recovered = 0
+            skipped = rb_files_after
+        except Exception as exc:
+            logger.warning("Recycle Bin cleanup error for %s: %s", drive, exc)
+            deleted = 0
+            recovered = 0
+            skipped = rb_files_before
+
+        _update_progress(
+            "cleaning",
+            f"Cleaned {cat_name}",
+            rb_path,
+            cat_index,
+            rb_files_before,
+            deleted,
+            skipped,
+            recovered,
+            base_pct + pct_span,
+        )
+
+        return deleted, skipped, recovered, 0
+
     # ─── Main loop: process each category ──────────────────────────
     for cat_index, cat in enumerate(categories):
         cat_name = cat["name"]
@@ -787,7 +855,11 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
 
         # ── Phase A: Scan ───────────────────────────────────────────
         scan_span = int(cat_span * 0.3)  # 30% of category for scanning
-        if cat_type == "folder":
+        if cat_type == "recycle_bin":
+            # Recycle Bin: count files for reporting, but actual cleanup
+            # is done via SHEmptyRecycleBin API in Phase B
+            cat_files, cat_dirs, cat_f_found, cat_d_found = _scan_folder(cat_path)
+        elif cat_type == "folder":
             cat_files, cat_dirs, cat_f_found, cat_d_found = _scan_folder(cat_path)
         else:  # pattern
             cat_files = _scan_pattern(cat_path, cat["pattern"])
@@ -812,13 +884,25 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
 
         # ── Phase B: Delete files ───────────────────────────────────
         delete_span = int(cat_span * 0.5)  # 50% of category for deleting
-        d_deleted, d_skipped, d_recovered, d_skipped_limit = _delete_files(
-            cat_files,
-            cat_index,
-            cat_name,
-            cat_start + scan_span,
-            delete_span,
-        )
+        if cat_type == "recycle_bin":
+            # Empty Recycle Bin via Windows SHEmptyRecycleBin API
+            d_deleted, d_skipped, d_recovered, d_skipped_limit = _empty_recycle_bin_category(
+                cat.get("drive", "C:"),
+                cat_path,
+                cat_files,
+                cat_index,
+                cat_name,
+                cat_start + scan_span,
+                delete_span,
+            )
+        else:
+            d_deleted, d_skipped, d_recovered, d_skipped_limit = _delete_files(
+                cat_files,
+                cat_index,
+                cat_name,
+                cat_start + scan_span,
+                delete_span,
+            )
 
         total_files_deleted += d_deleted
         total_files_skipped += d_skipped + d_skipped_limit
@@ -826,13 +910,17 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
 
         # ── Phase C: Remove empty folders ───────────────────────────
         folder_span = cat_span - scan_span - delete_span  # remaining 20%
-        d_removed = _remove_dirs(
-            cat_dirs,
-            cat_index,
-            cat_name,
-            cat_start + scan_span + delete_span,
-            folder_span,
-        )
+        if cat_type == "recycle_bin":
+            # Don't remove Recycle Bin folders — the OS manages them
+            d_removed = 0
+        else:
+            d_removed = _remove_dirs(
+                cat_dirs,
+                cat_index,
+                cat_name,
+                cat_start + scan_span + delete_span,
+                folder_span,
+            )
 
         total_folders_deleted += d_removed
 
@@ -856,7 +944,7 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
             for remaining_cat in categories[cat_index + 1:]:
                 r_path = remaining_cat["path"]
                 r_type = remaining_cat["type"]
-                if r_type == "folder":
+                if r_type in ("folder", "recycle_bin"):
                     _, _, r_f_found, _ = _scan_folder(r_path)
                 else:
                     r_files = _scan_pattern(r_path, remaining_cat["pattern"])
