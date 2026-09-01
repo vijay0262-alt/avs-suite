@@ -36,7 +36,7 @@ function createTestEngine(): RealTimeProtectionEngine {
 }
 
 function createTestVM(): SecurityDashboardViewModel {
-  return new SecurityDashboardViewModel(createTestEngine());
+  return new SecurityDashboardViewModel(createTestEngine(), true);
 }
 
 // ── ViewModel Tests ──────────────────────────────────────────────────

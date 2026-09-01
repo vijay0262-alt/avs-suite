@@ -79,6 +79,7 @@ a = Analysis(
         "avs_backend.full_system_scan",
         "avs_backend.scan_core_rpc",
         "avs_backend.process_intelligence",
+        "avs_backend.maintenance_cli",
         # ── V1.0 Disk Cleanup+ cleanup providers ──
         # These are imported dynamically by junk_rules.register_junk_rules()
         # and may not be detected by PyInstaller static analysis.

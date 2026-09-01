@@ -289,6 +289,16 @@ export function useIsPro(): boolean {
 }
 
 /**
+ * Non-hook version of useIsPro — check if the customer has PROFESSIONAL
+ * from the current store state. Safe to call outside React components.
+ */
+export function getIsPro(): boolean {
+  const s = useSyncStore.getState();
+  if (!s.data) return false;
+  return planToEdition(s.data.subscription.plan, s.data.license?.edition) === 'PROFESSIONAL';
+}
+
+/**
  * Get the license info from sync data.
  */
 export function useLicense(): SyncResponse['license'] | null {

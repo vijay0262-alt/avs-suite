@@ -25,6 +25,7 @@ import logging
 import os
 import platform
 import subprocess
+import sys
 import threading
 import time
 from datetime import datetime, timezone
@@ -73,6 +74,52 @@ def _run_schtasks(args: list[str], timeout: float = 10.0) -> tuple[int, str, str
 def _task_name(action: str) -> str:
     """Get the full Windows Task Scheduler name for an AVS task."""
     return f"{_TASK_PREFIX}{action}"
+
+
+def _resolve_backend_exe() -> str | None:
+    """Resolve the path to the avs-backend executable.
+
+    In packaged mode, the exe is alongside the currently running process.
+    In dev mode, we use the Python interpreter with the rpc_server module.
+    """
+    # When running as PyInstaller bundle, sys.executable is avs-backend.exe
+    exe = sys.executable
+    if exe and os.path.isfile(exe):
+        basename = os.path.basename(exe).lower()
+        if basename in ("avs-backend.exe", "avs-backend"):
+            return exe
+
+    # Fallback: look in common locations relative to the current process
+    candidates = [
+        os.path.join(os.path.dirname(exe), "avs-backend.exe"),
+        os.path.join(os.path.dirname(exe), "..", "backend", "avs-backend.exe"),
+    ]
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+
+    # Dev mode: use Python interpreter
+    if exe and os.path.isfile(exe):
+        return exe
+
+    return None
+
+
+def _build_maintenance_command(action: str) -> str:
+    """Build the schtasks /TR command string for a maintenance action."""
+    exe = _resolve_backend_exe()
+
+    if exe is None:
+        # Fallback: just log (shouldn't happen in production)
+        return f'powershell -NoProfile -WindowStyle Hidden -Command "Write-Output \\"AVS Shield maintenance: {action} (no backend found)\\""'
+
+    basename = os.path.basename(exe).lower()
+    if basename in ("avs-backend.exe", "avs-backend"):
+        # Packaged mode: call the exe directly with --maintenance flags
+        return f'"{exe}" --maintenance --action {action}'
+
+    # Dev mode: call Python with the rpc_server module
+    return f'"{exe}" -u -m avs_backend.api.rpc_server --maintenance --action {action}'
 
 
 # =====================================================================
@@ -153,8 +200,8 @@ def create_scheduled_task(params: dict[str, Any] | None = None) -> dict[str, Any
 
     task_name = _task_name(action)
 
-    # Build the command to run
-    command = f'powershell -NoProfile -WindowStyle Hidden -Command "Write-Output \\"AVS Shield maintenance: {action}\\""'
+    # Build the command to run the headless maintenance CLI
+    command = _build_maintenance_command(action)
 
     # Build schtasks arguments
     schtask_type_map = {

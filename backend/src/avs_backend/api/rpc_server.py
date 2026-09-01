@@ -295,6 +295,14 @@ def _dispatch(request: dict[str, Any]) -> None:
 
 
 def main() -> None:
+    # ── Headless maintenance mode ──────────────────────────────────
+    # When invoked with --maintenance --action <action>, skip the JSON-RPC
+    # server and run the maintenance CLI directly. This allows Windows Task
+    # Scheduler to run cleanup tasks without the Electron app.
+    if "--maintenance" in sys.argv:
+        from avs_backend.maintenance_cli import main as maintenance_main
+        sys.exit(maintenance_main())
+
     import atexit
 
     def _cleanup() -> None:

@@ -19,6 +19,7 @@ import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import { RealTimeProtectionEngine } from '../realtime-protection';
 import { ProtectionFactory } from '../realtime-protection';
 import { protectionEventBus } from '../realtime-protection';
+import { getIsPro } from '../sync/syncStore';
 import type {
   ProtectionDashboardData,
   ProtectionStatistics,
@@ -177,7 +178,7 @@ export class SecurityDashboardViewModel extends ViewModel<SecurityDashboardState
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private eventUnsub: (() => void) | null = null;
 
-  constructor(engine?: RealTimeProtectionEngine) {
+  constructor(engine?: RealTimeProtectionEngine, private readonly isProOverride?: boolean) {
     super({
       bootstrap: 'idle',
       bootstrapError: null,
@@ -223,7 +224,13 @@ export class SecurityDashboardViewModel extends ViewModel<SecurityDashboardState
   async bootstrap(): Promise<void> {
     this.setState({ bootstrap: 'loading', bootstrapError: null });
     try {
-      this.engine.start();
+      // Only start the real-time protection engine for Professional users.
+      // Free users can still view the dashboard but backend monitoring
+      // (realtime.start) is Pro-gated and would fail silently.
+      const shouldStartEngine = this.isProOverride ?? getIsPro();
+      if (shouldStartEngine) {
+        this.engine.start();
+      }
       this.subscribeToEvents();
       this.refresh();
       this.startPolling();

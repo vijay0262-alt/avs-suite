@@ -98,7 +98,7 @@ export default function JunkCleanerPage() {
     void (async () => {
       try {
         const result = await schedulerBackendService.listTasks();
-        const junkTask = result.tasks.find((t) => t.action === 'junk_cleaner');
+        const junkTask = result.tasks.find((t) => t.action === 'junk_clean');
         if (junkTask) {
           setScheduleEnabled(true);
           const freq = junkTask.nextRun ? 'weekly' : 'weekly';
@@ -113,7 +113,7 @@ export default function JunkCleanerPage() {
     if (!enabled) {
       try {
         setScheduleLoading(true);
-        await schedulerBackendService.deleteTask('junk_cleaner');
+        await schedulerBackendService.deleteTask('junk_clean');
       } catch { /* ignore */ } finally {
         setScheduleLoading(false);
       }
@@ -121,7 +121,7 @@ export default function JunkCleanerPage() {
       try {
         setScheduleLoading(true);
         await schedulerBackendService.createTask({
-          action: 'junk_cleaner',
+          action: 'junk_clean',
           schedule: scheduleFreq,
           time: '03:00',
         });
@@ -137,7 +137,7 @@ export default function JunkCleanerPage() {
       try {
         setScheduleLoading(true);
         await schedulerBackendService.updateTask({
-          action: 'junk_cleaner',
+          action: 'junk_clean',
           schedule: freq,
           time: '03:00',
         });
