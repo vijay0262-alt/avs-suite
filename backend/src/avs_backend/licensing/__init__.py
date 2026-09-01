@@ -454,6 +454,10 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     # Anomaly detection — configure/getBaseline requires Pro (Free can scan/view/dismiss)
     "anomaly.configure": "professional",
     "anomaly.getBaseline": "professional",
+    # Duplicate intelligence — delete/configure requires Pro (Free can scan/view/dismiss)
+    "duplicate_intel.deleteFile": "professional",
+    "duplicate_intel.deleteRecommended": "professional",
+    "duplicate_intel.configure": "professional",
 }
 
 

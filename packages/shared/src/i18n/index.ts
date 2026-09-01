@@ -110,6 +110,7 @@ export const en = {
     appFreezer: 'App Freeze/Sleep',
     selfLearning: 'Self-Learning Cleanup',
     anomaly: 'Anomaly Detection',
+    duplicateIntel: 'Duplicate Intelligence',
     driverUpdater: 'Driver Updater',
     securityHistory: 'Security History',
     antispywareMalwareRemoval: 'Antispyware/Malware Removal',

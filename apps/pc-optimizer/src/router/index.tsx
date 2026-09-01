@@ -85,6 +85,7 @@ import {
   AppFreezerPage,
   SelfLearningPage,
   AnomalyDetectionPage,
+  DuplicateIntelligencePage,
   UpgradePage,
   HelpPage,
   NotificationsPageWrapper,
@@ -227,6 +228,7 @@ export const router = createHashRouter([
       { path: 'app-freezer', element: wrap(AppFreezerPage) },
       { path: 'self-learning', element: wrap(SelfLearningPage) },
       { path: 'anomaly', element: wrap(AnomalyDetectionPage) },
+      { path: 'duplicate-intel', element: wrap(DuplicateIntelligencePage) },
       { path: 'restoration', element: <RestorationPage /> },
       // ACCOUNT
       { path: 'license', element: wrap(ActivationPage) },

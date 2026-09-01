@@ -88,6 +88,7 @@ _FEATURE_MODULES = [
     "avs_backend.app_freezer",
     "avs_backend.self_learning",
     "avs_backend.anomaly",
+    "avs_backend.duplicate_intel",
 ]
 
 # Track which modules have finished importing (success or failure)

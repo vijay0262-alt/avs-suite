@@ -74,6 +74,7 @@ export type NavItemId =
   | 'app-freezer'
   | 'self-learning'
   | 'anomaly'
+  | 'duplicate-intel'
   | 'driver-updater'
   | 'security-history'
   | 'antispyware-malware-removal'

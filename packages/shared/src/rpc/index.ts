@@ -358,6 +358,16 @@ export const RPC_METHODS = {
   ANOMALY_HISTORY: 'anomaly.history',
   ANOMALY_CONFIGURE: 'anomaly.configure',
   ANOMALY_GET_BASELINE: 'anomaly.getBaseline',
+
+  // AI Duplicate Intelligence
+  DUP_INTEL_SCAN: 'duplicate_intel.scan',
+  DUP_INTEL_STATUS: 'duplicate_intel.status',
+  DUP_INTEL_LIST_GROUPS: 'duplicate_intel.listGroups',
+  DUP_INTEL_DISMISS_GROUP: 'duplicate_intel.dismissGroup',
+  DUP_INTEL_DELETE_FILE: 'duplicate_intel.deleteFile',
+  DUP_INTEL_DELETE_RECOMMENDED: 'duplicate_intel.deleteRecommended',
+  DUP_INTEL_CLEAR_ALL: 'duplicate_intel.clearAll',
+  DUP_INTEL_CONFIGURE: 'duplicate_intel.configure',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];
