@@ -68,6 +68,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'ai-smart-optimize', to: '/ai-smart-optimize', labelKey: 'nav.aiSmartOptimize', Icon: BoltIcon, proEnhanced: true },
       { id: 'ai-smart-security', to: '/ai-smart-security', labelKey: 'nav.aiSmartSecurity', Icon: ShieldCheckIcon },
       { id: 'auto-care', to: '/auto-care', labelKey: 'nav.autoCare', Icon: SparklesIcon, proEnhanced: true },
+      { id: 'workload', to: '/workload', labelKey: 'nav.workload', Icon: CpuChipIcon, proEnhanced: true },
     ],
   },
   // ── SYSTEM HEALTH — V1.0: Hidden to simplify the app.

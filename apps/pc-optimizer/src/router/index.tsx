@@ -79,6 +79,7 @@ import {
   ContextMenuManagerPage,
   QuarantineVaultPage,
   AutoCarePage,
+  WorkloadDetectionPage,
   UpgradePage,
   HelpPage,
   NotificationsPageWrapper,
@@ -215,6 +216,7 @@ export const router = createHashRouter([
       { path: 'context-menu', element: wrap(ContextMenuManagerPage) },
       { path: 'quarantine-vault', element: wrap(QuarantineVaultPage) },
       { path: 'auto-care', element: wrap(AutoCarePage) },
+      { path: 'workload', element: wrap(WorkloadDetectionPage) },
       { path: 'restoration', element: <RestorationPage /> },
       // ACCOUNT
       { path: 'license', element: wrap(ActivationPage) },

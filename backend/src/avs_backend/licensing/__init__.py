@@ -433,6 +433,9 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     "auto_care.configure": "professional",
     "auto_care.runNow": "professional",
     "auto_care.clearLog": "professional",
+    # Workload detection — configure/setMode requires Pro (Free can detect/view)
+    "workload.configure": "professional",
+    "workload.setMode": "professional",
 }
 
 

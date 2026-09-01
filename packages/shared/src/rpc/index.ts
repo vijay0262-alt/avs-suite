@@ -305,6 +305,13 @@ export const RPC_METHODS = {
   AUTO_CARE_GET_LOG: 'auto_care.getActivityLog',
   AUTO_CARE_RUN_NOW: 'auto_care.runNow',
   AUTO_CARE_CLEAR_LOG: 'auto_care.clearLog',
+
+  // AI Workload Detection + Game Mode
+  WORKLOAD_DETECT: 'workload.detect',
+  WORKLOAD_STATUS: 'workload.status',
+  WORKLOAD_CONFIGURE: 'workload.configure',
+  WORKLOAD_SET_MODE: 'workload.setMode',
+  WORKLOAD_HISTORY: 'workload.history',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

@@ -104,6 +104,7 @@ export const en = {
     networkOptimizer: 'Network Optimizer',
     contextMenu: 'Context Menu Manager',
     autoCare: 'AI Auto-Care',
+    workload: 'Workload Detection',
     driverUpdater: 'Driver Updater',
     securityHistory: 'Security History',
     antispywareMalwareRemoval: 'Antispyware/Malware Removal',

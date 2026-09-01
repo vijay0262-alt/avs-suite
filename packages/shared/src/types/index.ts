@@ -68,6 +68,7 @@ export type NavItemId =
   | 'context-menu'
   | 'quarantine'
   | 'auto-care'
+  | 'workload'
   | 'driver-updater'
   | 'security-history'
   | 'antispyware-malware-removal'
