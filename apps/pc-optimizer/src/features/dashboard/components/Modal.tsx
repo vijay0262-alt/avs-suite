@@ -9,6 +9,9 @@ export interface ModalProps {
   actions?: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   testId?: string;
+  /** Hide the X close button in the header. Useful when the inner
+   * content has its own close/done button to avoid showing two. */
+  hideCloseButton?: boolean;
 }
 
 export function Modal({
@@ -19,6 +22,7 @@ export function Modal({
   actions,
   size = 'md',
   testId,
+  hideCloseButton = false,
 }: ModalProps) {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') onClose();
@@ -65,13 +69,15 @@ export function Modal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--avs-border)]">
           <h2 id={titleId} className="text-section-title font-semibold text-text-primary">{title}</h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-[var(--avs-radius-md)] hover:bg-[var(--avs-surface-muted)] text-text-secondary hover:text-text-primary transition-colors outline-none focus-visible:shadow-focus"
-            aria-label="Close dialog"
-          >
-            <XMarkIcon className="h-5 w-5" aria-hidden="true" />
-          </button>
+          {!hideCloseButton && (
+            <button
+              onClick={onClose}
+              className="p-1 rounded-[var(--avs-radius-md)] hover:bg-[var(--avs-surface-muted)] text-text-secondary hover:text-text-primary transition-colors outline-none focus-visible:shadow-focus"
+              aria-label="Close dialog"
+            >
+              <XMarkIcon className="h-5 w-5" aria-hidden="true" />
+            </button>
+          )}
         </div>
 
         {/* Content */}

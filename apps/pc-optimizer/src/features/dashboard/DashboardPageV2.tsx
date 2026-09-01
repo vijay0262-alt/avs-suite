@@ -122,6 +122,7 @@ export default function DashboardPage() {
   // V1.0: When set, the modal shows previous scan results (Review Findings)
   // instead of auto-starting a new scan. null = start a new scan.
   const [reviewPlanId, setReviewPlanId] = useState<string | null>(null);
+  const [viewCleanupResults, setViewCleanupResults] = useState(false);
 
   useEffect(() => {
     void vm.bootstrap();
@@ -346,6 +347,7 @@ export default function DashboardPage() {
                 <Button
                   onClick={() => {
                     setReviewPlanId(null);
+                    setViewCleanupResults(false);
                     setScanModalOpen(true);
                   }}
                   disabled={isScanning}
@@ -418,11 +420,17 @@ export default function DashboardPage() {
       <DashboardScanStatusCard
         onOpenScan={() => {
           // V1.0: If the previous scan has reviewable findings, show them.
+          // If it has cleanup results (direct cleanup), show those.
           // Otherwise, start a new scan.
           if (snapshot.canReview && snapshot.planId) {
             setReviewPlanId(snapshot.planId);
+            setViewCleanupResults(false);
+          } else if (snapshot.cleanupResult && snapshot.cleanupResult.cleaned > 0) {
+            setReviewPlanId(null);
+            setViewCleanupResults(true);
           } else {
             setReviewPlanId(null);
+            setViewCleanupResults(false);
           }
           setScanModalOpen(true);
         }}
@@ -541,6 +549,7 @@ export default function DashboardPage() {
         title="System Scan"
         size="xl"
         testId="dashboard-scan-modal"
+        hideCloseButton
       >
         <ScanView
           module="optimize"
@@ -549,10 +558,12 @@ export default function DashboardPage() {
           onClose={() => {
             setScanModalOpen(false);
             setReviewPlanId(null);
+            setViewCleanupResults(false);
           }}
           buttonLabel="Scan Now"
-          autoStart={!reviewPlanId}
+          autoStart={!reviewPlanId && !viewCleanupResults}
           reviewPlanId={reviewPlanId}
+          viewCleanupResults={viewCleanupResults}
         />
       </Modal>
 

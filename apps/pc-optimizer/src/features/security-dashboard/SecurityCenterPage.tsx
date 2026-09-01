@@ -178,9 +178,14 @@ export function SecurityCenterPage() {
                   {error}
                 </p>
               )}
-              {!error && score && !score.available && (
+              {!error && score && !score.available && !thirdPartyAV && (
                 <p className="mt-1 text-caption text-semantic-warning" data-testid="defender-unavailable-notice">
                   {score.reason}
+                </p>
+              )}
+              {!error && score && !score.available && thirdPartyAV && (
+                <p className="mt-1 text-caption text-semantic-success" data-testid="third-party-av-notice">
+                  {thirdPartyAV} is active. Windows Defender is correctly disabled.
                 </p>
               )}
             </div>
@@ -336,6 +341,7 @@ export function SecurityCenterPage() {
         title="AI Smart Security Scan"
         size="xl"
         testId="security-scan-modal"
+        hideCloseButton
       >
         <ScanView
           module="security"

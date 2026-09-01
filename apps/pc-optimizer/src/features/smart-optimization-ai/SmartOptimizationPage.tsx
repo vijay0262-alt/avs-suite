@@ -303,6 +303,7 @@ export default function SmartOptimizationPage() {
         onClose={() => setScanModalOpen(false)}
         title="AI Smart Optimization"
         size="xl"
+        hideCloseButton
       >
         <ScanView
           module="optimize"

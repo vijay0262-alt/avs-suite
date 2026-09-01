@@ -21,6 +21,7 @@ import { ResultsView, type ResultsViewProps } from './ResultsView';
 import { PlanReviewView } from './PlanReviewView';
 import { AutoOptimizeView } from './AutoOptimizeView';
 import type { ScanFinding, ScanStatistics } from './types';
+import { unifiedScanState } from './unifiedScanState';
 
 export interface ScanViewProps {
   module: 'protection' | 'optimize' | 'security';
@@ -35,9 +36,13 @@ export interface ScanViewProps {
   reviewPlanId?: string | null;
   /** V1.0: Identifies the entry point for edition gating — "dashboard" or "smart_optimize". */
   source?: string;
+  /** V1.0: When set, show the cleanup results from the previous scan
+   * instead of starting a new scan. Used by "View Results" button when
+   * the previous scan was a direct cleanup (no planId). */
+  viewCleanupResults?: boolean;
 }
 
-export function ScanView({ module, mode = 'full', onClose, className, buttonLabel, autoStart, reviewPlanId, source }: ScanViewProps) {
+export function ScanView({ module, mode = 'full', onClose, className, buttonLabel, autoStart, reviewPlanId, source, viewCleanupResults }: ScanViewProps) {
   const config = useMemo(() => getScanConfig(module), [module]);
   const scan = useScan({ mode, config, source });
   const [showResults, setShowResults] = useState(false);
@@ -148,6 +153,39 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
         onClose={handlePlanClose}
       />
     );
+  }
+
+  // V1.0: "View Results" — show the previous scan's cleanup results
+  // without starting a new scan. Used when the previous scan was a
+  // direct cleanup (no planId) and the user clicks "View Results".
+  if (viewCleanupResults) {
+    const prevSession = unifiedScanState.getLatest();
+    const prevResult = prevSession?.result as Record<string, unknown> | null;
+    const cleanupSummary = prevResult?.cleanup_summary as
+      | ResultsViewProps['cleanupSummary']
+      | undefined;
+    const prevStats = prevSession?.statistics ?? {};
+    const prevFindings: ScanFinding[] = Array.isArray(prevResult?.findings)
+      ? (prevResult!.findings as ScanFinding[])
+      : [];
+    if (cleanupSummary && (cleanupSummary.files_deleted ?? 0) > 0) {
+      return (
+        <ResultsView
+          moduleName={config.moduleName}
+          moduleIcon={config.moduleIcon}
+          statistics={prevStats}
+          findings={prevFindings}
+          planId={undefined}
+          cleanupSummary={cleanupSummary}
+          onClose={onClose}
+          onRestart={() => {
+            scan.reset();
+            void scan.startScan();
+          }}
+        />
+      );
+    }
+    // No cleanup results to show — fall through to start a new scan
   }
 
   // V1.0 UNIFIED: Auto-optimization view for ALL modules.
