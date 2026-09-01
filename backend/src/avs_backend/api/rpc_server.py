@@ -84,6 +84,7 @@ _FEATURE_MODULES = [
     "avs_backend.auto_care",
     "avs_backend.workload",
     "avs_backend.predictive",
+    "avs_backend.smart_notifications",
 ]
 
 # Track which modules have finished importing (success or failure)

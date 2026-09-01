@@ -319,6 +319,15 @@ export const RPC_METHODS = {
   PREDICTIVE_HISTORY: 'predictive.history',
   PREDICTIVE_CONFIGURE: 'predictive.configure',
   PREDICTIVE_CLEAR_DATA: 'predictive.clearData',
+
+  // AI Smart Notifications
+  SMART_NOTIF_GENERATE: 'smart_notifications.generate',
+  SMART_NOTIF_LIST: 'smart_notifications.list',
+  SMART_NOTIF_DISMISS: 'smart_notifications.dismiss',
+  SMART_NOTIF_ACTION: 'smart_notifications.action',
+  SMART_NOTIF_CLEAR_ALL: 'smart_notifications.clearAll',
+  SMART_NOTIF_STATS: 'smart_notifications.stats',
+  SMART_NOTIF_CONFIGURE: 'smart_notifications.configure',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

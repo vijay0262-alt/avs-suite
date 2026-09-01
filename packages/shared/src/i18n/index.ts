@@ -106,6 +106,7 @@ export const en = {
     autoCare: 'AI Auto-Care',
     workload: 'Workload Detection',
     predictive: 'Predictive Maintenance',
+    smartNotifications: 'Smart Notifications',
     driverUpdater: 'Driver Updater',
     securityHistory: 'Security History',
     antispywareMalwareRemoval: 'Antispyware/Malware Removal',

@@ -70,6 +70,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'auto-care', to: '/auto-care', labelKey: 'nav.autoCare', Icon: SparklesIcon, proEnhanced: true },
       { id: 'workload', to: '/workload', labelKey: 'nav.workload', Icon: CpuChipIcon, proEnhanced: true },
       { id: 'predictive', to: '/predictive', labelKey: 'nav.predictive', Icon: ChartBarIcon, proEnhanced: true },
+      { id: 'smart-notifications', to: '/smart-notifications', labelKey: 'nav.smartNotifications', Icon: BellIcon, proEnhanced: true },
     ],
   },
   // ── SYSTEM HEALTH — V1.0: Hidden to simplify the app.

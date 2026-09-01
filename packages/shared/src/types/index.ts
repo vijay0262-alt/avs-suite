@@ -70,6 +70,7 @@ export type NavItemId =
   | 'auto-care'
   | 'workload'
   | 'predictive'
+  | 'smart-notifications'
   | 'driver-updater'
   | 'security-history'
   | 'antispyware-malware-removal'

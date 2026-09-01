@@ -439,6 +439,9 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     # Predictive maintenance — configure/clearData requires Pro (Free can view status)
     "predictive.configure": "professional",
     "predictive.clearData": "professional",
+    # Smart notifications — configure/action requires Pro (Free can view/dismiss)
+    "smart_notifications.configure": "professional",
+    "smart_notifications.action": "professional",
 }
 
 
