@@ -103,6 +103,7 @@ export const en = {
     browserExtensions: 'Browser Extensions',
     networkOptimizer: 'Network Optimizer',
     contextMenu: 'Context Menu Manager',
+    autoCare: 'AI Auto-Care',
     driverUpdater: 'Driver Updater',
     securityHistory: 'Security History',
     antispywareMalwareRemoval: 'Antispyware/Malware Removal',

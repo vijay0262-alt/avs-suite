@@ -30,6 +30,7 @@ const BrowserExtensionManagerPageImpl = lazy(() => import('../features/browser-e
 const NetworkOptimizerPageImpl = lazy(() => import('../features/network-optimizer/NetworkOptimizerPage'));
 const ContextMenuManagerPageImpl = lazy(() => import('../features/context-menu/ContextMenuManagerPage'));
 const QuarantineVaultPageImpl = lazy(() => import('../features/quarantine/QuarantinePage'));
+const AutoCarePageImpl = lazy(() => import('../features/auto-care/AutoCarePage'));
 
 // Helper to wrap lazy components in Suspense
 function withSuspense(Component: React.LazyExoticComponent<React.ComponentType>) {
@@ -81,6 +82,7 @@ export const BrowserExtensionManagerPage = withSuspense(BrowserExtensionManagerP
 export const NetworkOptimizerPage = withSuspense(NetworkOptimizerPageImpl);
 export const ContextMenuManagerPage = withSuspense(ContextMenuManagerPageImpl);
 export const QuarantineVaultPage = withSuspense(QuarantineVaultPageImpl);
+export const AutoCarePage = withSuspense(AutoCarePageImpl);
 
 // ── ACCOUNT ───────────────────────────────────────────────────
 

@@ -78,6 +78,7 @@ import {
   NetworkOptimizerPage,
   ContextMenuManagerPage,
   QuarantineVaultPage,
+  AutoCarePage,
   UpgradePage,
   HelpPage,
   NotificationsPageWrapper,
@@ -213,6 +214,7 @@ export const router = createHashRouter([
       { path: 'network-optimizer', element: wrap(NetworkOptimizerPage) },
       { path: 'context-menu', element: wrap(ContextMenuManagerPage) },
       { path: 'quarantine-vault', element: wrap(QuarantineVaultPage) },
+      { path: 'auto-care', element: wrap(AutoCarePage) },
       { path: 'restoration', element: <RestorationPage /> },
       // ACCOUNT
       { path: 'license', element: wrap(ActivationPage) },

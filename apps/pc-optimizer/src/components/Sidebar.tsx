@@ -36,6 +36,7 @@ import {
   WifiIcon,
   ClipboardDocumentListIcon,
   LockClosedIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import { useIsPro } from '../features/sync/syncStore';
@@ -66,6 +67,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'protection-center', to: '/protection-center', labelKey: 'nav.protectionCenter', Icon: ShieldExclamationIcon },
       { id: 'ai-smart-optimize', to: '/ai-smart-optimize', labelKey: 'nav.aiSmartOptimize', Icon: BoltIcon, proEnhanced: true },
       { id: 'ai-smart-security', to: '/ai-smart-security', labelKey: 'nav.aiSmartSecurity', Icon: ShieldCheckIcon },
+      { id: 'auto-care', to: '/auto-care', labelKey: 'nav.autoCare', Icon: SparklesIcon, proEnhanced: true },
     ],
   },
   // ── SYSTEM HEALTH — V1.0: Hidden to simplify the app.

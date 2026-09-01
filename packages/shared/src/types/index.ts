@@ -67,6 +67,7 @@ export type NavItemId =
   | 'network-optimizer'
   | 'context-menu'
   | 'quarantine'
+  | 'auto-care'
   | 'driver-updater'
   | 'security-history'
   | 'antispyware-malware-removal'

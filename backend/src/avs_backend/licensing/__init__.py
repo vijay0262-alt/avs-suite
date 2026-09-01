@@ -429,6 +429,10 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     "quarantine.restore": "professional",
     "quarantine.delete": "professional",
     "quarantine.clear": "professional",
+    # Auto-Care — configure/runNow/clearLog requires Pro (Free can view status/log)
+    "auto_care.configure": "professional",
+    "auto_care.runNow": "professional",
+    "auto_care.clearLog": "professional",
 }
 
 

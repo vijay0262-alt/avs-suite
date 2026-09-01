@@ -298,6 +298,13 @@ export const RPC_METHODS = {
   QUARANTINE_RESTORE: 'quarantine.restore',
   QUARANTINE_DELETE: 'quarantine.delete',
   QUARANTINE_CLEAR: 'quarantine.clear',
+
+  // AI Auto-Care (Idle Maintenance)
+  AUTO_CARE_STATUS: 'auto_care.status',
+  AUTO_CARE_CONFIGURE: 'auto_care.configure',
+  AUTO_CARE_GET_LOG: 'auto_care.getActivityLog',
+  AUTO_CARE_RUN_NOW: 'auto_care.runNow',
+  AUTO_CARE_CLEAR_LOG: 'auto_care.clearLog',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];
