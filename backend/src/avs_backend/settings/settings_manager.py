@@ -87,6 +87,12 @@ class Settings:
     notification_enabled: bool = True
     notification_priority: NotificationPriority = NotificationPriority.NORMAL_AND_HIGH
     notification_sound: bool = True
+    # Notification category toggles (for granular control)
+    notification_security: bool = True
+    notification_health: bool = True
+    notification_performance: bool = True
+    notification_maintenance: bool = True
+    notification_frequency: str = "instant"  # instant, hourly, daily
 
     # Advanced
     create_restore_points: bool = True
@@ -150,6 +156,11 @@ def load_settings() -> Settings:
             "scheduledCleanupActions": "scheduled_cleanup_actions",
             "junkMonitorEnabled": "junk_monitor_enabled",
             "junkMonitorThresholdGb": "junk_monitor_threshold_gb",
+            "notificationSecurity": "notification_security",
+            "notificationHealth": "notification_health",
+            "notificationPerformance": "notification_performance",
+            "notificationMaintenance": "notification_maintenance",
+            "notificationFrequency": "notification_frequency",
         }
         for old_key, new_key in key_map.items():
             if old_key in data:

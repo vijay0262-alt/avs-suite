@@ -47,6 +47,25 @@ def settings_get(_params: dict[str, Any] | None) -> dict[str, Any]:
             "createRestorePoints": settings.create_restore_points,
             "backupBeforeChanges": settings.backup_before_changes,
             "maxHistoryEntries": settings.max_history_entries,
+            # Scheduled cleanup (camelCase to match RPC convention)
+            "scheduledCleanupEnabled": settings.scheduled_cleanup_enabled,
+            "scheduledCleanupFrequency": settings.scheduled_cleanup_frequency,
+            "scheduledCleanupTime": settings.scheduled_cleanup_time,
+            "scheduledCleanupDay": settings.scheduled_cleanup_day,
+            "scheduledCleanupActions": settings.scheduled_cleanup_actions,
+            # Junk monitor
+            "junkMonitorEnabled": settings.junk_monitor_enabled,
+            "junkMonitorThresholdGb": settings.junk_monitor_threshold_gb,
+            # Nested notifications object for granular category control
+            "notifications": {
+                "security": settings.notification_security,
+                "health": settings.notification_health,
+                "performance": settings.notification_performance,
+                "maintenance": settings.notification_maintenance,
+                "soundEnabled": settings.notification_sound,
+                "desktopNotifications": settings.notification_enabled,
+                "frequency": settings.notification_frequency,
+            },
         }
     except Exception as e:
         logger.error(f"Failed to get settings: {e}")
@@ -94,6 +113,42 @@ def settings_update(params: dict[str, Any] | None) -> dict[str, Any]:
             settings.backup_before_changes = params["backupBeforeChanges"]
         if "maxHistoryEntries" in params:
             settings.max_history_entries = params["maxHistoryEntries"]
+
+        # Scheduled cleanup settings (camelCase from frontend)
+        if "scheduledCleanupEnabled" in params:
+            settings.scheduled_cleanup_enabled = params["scheduledCleanupEnabled"]
+        if "scheduledCleanupFrequency" in params:
+            settings.scheduled_cleanup_frequency = params["scheduledCleanupFrequency"]
+        if "scheduledCleanupTime" in params:
+            settings.scheduled_cleanup_time = params["scheduledCleanupTime"]
+        if "scheduledCleanupDay" in params:
+            settings.scheduled_cleanup_day = params["scheduledCleanupDay"]
+        if "scheduledCleanupActions" in params:
+            settings.scheduled_cleanup_actions = params["scheduledCleanupActions"]
+        if "junkMonitorEnabled" in params:
+            settings.junk_monitor_enabled = params["junkMonitorEnabled"]
+        if "junkMonitorThresholdGb" in params:
+            settings.junk_monitor_threshold_gb = params["junkMonitorThresholdGb"]
+
+        # Nested notifications object (granular category control)
+        if "notifications" in params:
+            notif = params["notifications"]
+            if not isinstance(notif, dict):
+                return {"success": False, "errors": ["notifications must be an object"]}
+            if "security" in notif:
+                settings.notification_security = bool(notif["security"])
+            if "health" in notif:
+                settings.notification_health = bool(notif["health"])
+            if "performance" in notif:
+                settings.notification_performance = bool(notif["performance"])
+            if "maintenance" in notif:
+                settings.notification_maintenance = bool(notif["maintenance"])
+            if "soundEnabled" in notif:
+                settings.notification_sound = bool(notif["soundEnabled"])
+            if "desktopNotifications" in notif:
+                settings.notification_enabled = bool(notif["desktopNotifications"])
+            if "frequency" in notif:
+                settings.notification_frequency = str(notif["frequency"])
 
         # Validate settings
         errors = validate_settings(settings)

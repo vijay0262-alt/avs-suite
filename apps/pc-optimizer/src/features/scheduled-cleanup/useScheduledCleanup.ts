@@ -38,15 +38,15 @@ export function useScheduledCleanup() {
     try {
       const s = await rpc.raw<Record<string, unknown>>(RPC_METHODS.SETTINGS_GET);
       setSettings({
-        scheduled_cleanup_enabled: Boolean(s.scheduled_cleanup_enabled ?? false),
-        scheduled_cleanup_frequency: String(s.scheduled_cleanup_frequency ?? 'daily'),
-        scheduled_cleanup_time: String(s.scheduled_cleanup_time ?? '03:00'),
-        scheduled_cleanup_day: String(s.scheduled_cleanup_day ?? 'SUN'),
-        scheduled_cleanup_actions: Array.isArray(s.scheduled_cleanup_actions)
-          ? s.scheduled_cleanup_actions as string[]
+        scheduled_cleanup_enabled: Boolean(s.scheduledCleanupEnabled ?? false),
+        scheduled_cleanup_frequency: String(s.scheduledCleanupFrequency ?? 'daily'),
+        scheduled_cleanup_time: String(s.scheduledCleanupTime ?? '03:00'),
+        scheduled_cleanup_day: String(s.scheduledCleanupDay ?? 'SUN'),
+        scheduled_cleanup_actions: Array.isArray(s.scheduledCleanupActions)
+          ? s.scheduledCleanupActions as string[]
           : ['junk_clean'],
-        junk_monitor_enabled: Boolean(s.junk_monitor_enabled ?? true),
-        junk_monitor_threshold_gb: Number(s.junk_monitor_threshold_gb ?? 2.0),
+        junk_monitor_enabled: Boolean(s.junkMonitorEnabled ?? true),
+        junk_monitor_threshold_gb: Number(s.junkMonitorThresholdGb ?? 2.0),
       });
       setError(null);
     } catch (e) {
