@@ -411,6 +411,9 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     "drivers.update": "professional",
     # Disk optimizer — defrag/TRIM requires Pro (Free can analyze)
     "disk.optimize": "professional",
+    # PUP scanner — ignore/unignore requires Pro (Free can scan)
+    "pup.ignore": "professional",
+    "pup.unignore": "professional",
 }
 
 

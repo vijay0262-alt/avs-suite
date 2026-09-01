@@ -99,6 +99,7 @@ export const en = {
     recoveryCenter: 'Recovery Center',
     fileShredder: 'File Shredder',
     diskOptimizer: 'Disk Optimizer',
+    pupScanner: 'PUP Scanner',
     driverUpdater: 'Driver Updater',
     securityHistory: 'Security History',
     antispywareMalwareRemoval: 'Antispyware/Malware Removal',

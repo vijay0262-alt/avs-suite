@@ -62,6 +62,7 @@ export type NavItemId =
   | 'recovery-center'
   | 'file-shredder'
   | 'disk-optimizer'
+  | 'pup-scanner'
   | 'driver-updater'
   | 'security-history'
   | 'antispyware-malware-removal'

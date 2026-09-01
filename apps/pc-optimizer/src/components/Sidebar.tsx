@@ -103,6 +103,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'quick-scan', to: '/quick-scan', labelKey: 'nav.quickScan', Icon: MagnifyingGlassIcon },
       { id: 'full-scan', to: '/full-scan', labelKey: 'nav.fullScan', Icon: ShieldCheckIcon },
       { id: 'custom-scan', to: '/custom-scan', labelKey: 'nav.customScan', Icon: FolderOpenIcon },
+      { id: 'pup-scanner', to: '/pup-scanner', labelKey: 'nav.pupScanner', Icon: ShieldExclamationIcon, proEnhanced: true },
     ],
   },
   // ── REPORTS ───────────────────────────────────────────────────

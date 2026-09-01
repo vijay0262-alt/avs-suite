@@ -264,6 +264,12 @@ export const RPC_METHODS = {
   DISK_OPTIMIZER_ANALYZE: 'disk_optimizer.analyze',
   DISK_OPTIMIZER_OPTIMIZE: 'disk_optimizer.optimize',
   DISK_OPTIMIZER_STATUS: 'disk_optimizer.status',
+
+  // PUP Scanner (Potentially Unwanted Programs)
+  PUP_SCAN: 'pup.scan',
+  PUP_SUMMARY: 'pup.summary',
+  PUP_IGNORE: 'pup.ignore',
+  PUP_UNIGNORE: 'pup.unignore',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];
