@@ -338,6 +338,16 @@ export const RPC_METHODS = {
   APP_FREEZER_UNFREEZE_ALL: 'app_freezer.unfreezeAll',
   APP_FREEZER_STATUS: 'app_freezer.status',
   APP_FREEZER_CONFIGURE: 'app_freezer.configure',
+
+  // AI Self-Learning Cleanup
+  SELF_LEARNING_RECORD_CLEANUP: 'self_learning.recordCleanup',
+  SELF_LEARNING_RECORD_SELECTION: 'self_learning.recordSelection',
+  SELF_LEARNING_RECORD_EXCLUSION: 'self_learning.recordExclusion',
+  SELF_LEARNING_GET_HABITS: 'self_learning.getHabits',
+  SELF_LEARNING_GET_RECOMMENDATIONS: 'self_learning.getRecommendations',
+  SELF_LEARNING_STATUS: 'self_learning.status',
+  SELF_LEARNING_RESET: 'self_learning.reset',
+  SELF_LEARNING_CONFIGURE: 'self_learning.configure',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

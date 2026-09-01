@@ -38,6 +38,7 @@ import {
   LockClosedIcon,
   SparklesIcon,
   PauseIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import { useIsPro } from '../features/sync/syncStore';
@@ -73,6 +74,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'predictive', to: '/predictive', labelKey: 'nav.predictive', Icon: ChartBarIcon, proEnhanced: true },
       { id: 'smart-notifications', to: '/smart-notifications', labelKey: 'nav.smartNotifications', Icon: BellIcon, proEnhanced: true },
       { id: 'app-freezer', to: '/app-freezer', labelKey: 'nav.appFreezer', Icon: PauseIcon, proEnhanced: true },
+      { id: 'self-learning', to: '/self-learning', labelKey: 'nav.selfLearning', Icon: AcademicCapIcon, proEnhanced: true },
     ],
   },
   // ── SYSTEM HEALTH — V1.0: Hidden to simplify the app.

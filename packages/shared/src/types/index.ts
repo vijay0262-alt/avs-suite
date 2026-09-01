@@ -72,6 +72,7 @@ export type NavItemId =
   | 'predictive'
   | 'smart-notifications'
   | 'app-freezer'
+  | 'self-learning'
   | 'driver-updater'
   | 'security-history'
   | 'antispyware-malware-removal'

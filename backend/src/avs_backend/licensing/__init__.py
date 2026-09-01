@@ -448,6 +448,9 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     "app_freezer.freezeAll": "professional",
     "app_freezer.unfreezeAll": "professional",
     "app_freezer.configure": "professional",
+    # Self-learning — reset/configure requires Pro (Free can record and view habits)
+    "self_learning.reset": "professional",
+    "self_learning.configure": "professional",
 }
 
 

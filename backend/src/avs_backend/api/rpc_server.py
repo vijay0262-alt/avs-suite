@@ -86,6 +86,7 @@ _FEATURE_MODULES = [
     "avs_backend.predictive",
     "avs_backend.smart_notifications",
     "avs_backend.app_freezer",
+    "avs_backend.self_learning",
 ]
 
 # Track which modules have finished importing (success or failure)

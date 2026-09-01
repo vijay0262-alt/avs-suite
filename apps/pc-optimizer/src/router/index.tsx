@@ -83,6 +83,7 @@ import {
   PredictiveMaintenancePage,
   SmartNotificationsPage,
   AppFreezerPage,
+  SelfLearningPage,
   UpgradePage,
   HelpPage,
   NotificationsPageWrapper,
@@ -223,6 +224,7 @@ export const router = createHashRouter([
       { path: 'predictive', element: wrap(PredictiveMaintenancePage) },
       { path: 'smart-notifications', element: wrap(SmartNotificationsPage) },
       { path: 'app-freezer', element: wrap(AppFreezerPage) },
+      { path: 'self-learning', element: wrap(SelfLearningPage) },
       { path: 'restoration', element: <RestorationPage /> },
       // ACCOUNT
       { path: 'license', element: wrap(ActivationPage) },

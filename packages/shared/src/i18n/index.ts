@@ -108,6 +108,7 @@ export const en = {
     predictive: 'Predictive Maintenance',
     smartNotifications: 'Smart Notifications',
     appFreezer: 'App Freeze/Sleep',
+    selfLearning: 'Self-Learning Cleanup',
     driverUpdater: 'Driver Updater',
     securityHistory: 'Security History',
     antispywareMalwareRemoval: 'Antispyware/Malware Removal',
