@@ -75,6 +75,7 @@ export type NavItemId =
   | 'self-learning'
   | 'anomaly'
   | 'duplicate-intel'
+  | 'process-priority'
   | 'driver-updater'
   | 'security-history'
   | 'antispyware-malware-removal'

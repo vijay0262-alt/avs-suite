@@ -458,6 +458,13 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     "duplicate_intel.deleteFile": "professional",
     "duplicate_intel.deleteRecommended": "professional",
     "duplicate_intel.configure": "professional",
+    # Process priority — all adjustments require Pro (Free can view status/processes)
+    "process_priority.setMode": "professional",
+    "process_priority.applyMode": "professional",
+    "process_priority.setPriority": "professional",
+    "process_priority.setAffinity": "professional",
+    "process_priority.resetAll": "professional",
+    "process_priority.configure": "professional",
 }
 
 

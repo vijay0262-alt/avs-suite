@@ -368,6 +368,16 @@ export const RPC_METHODS = {
   DUP_INTEL_DELETE_RECOMMENDED: 'duplicate_intel.deleteRecommended',
   DUP_INTEL_CLEAR_ALL: 'duplicate_intel.clearAll',
   DUP_INTEL_CONFIGURE: 'duplicate_intel.configure',
+
+  // AI Process Prioritization
+  PROC_PRIORITY_GET_STATUS: 'process_priority.getStatus',
+  PROC_PRIORITY_LIST_PROCESSES: 'process_priority.listProcesses',
+  PROC_PRIORITY_SET_MODE: 'process_priority.setMode',
+  PROC_PRIORITY_APPLY_MODE: 'process_priority.applyMode',
+  PROC_PRIORITY_SET_PRIORITY: 'process_priority.setPriority',
+  PROC_PRIORITY_SET_AFFINITY: 'process_priority.setAffinity',
+  PROC_PRIORITY_RESET_ALL: 'process_priority.resetAll',
+  PROC_PRIORITY_CONFIGURE: 'process_priority.configure',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

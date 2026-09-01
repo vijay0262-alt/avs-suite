@@ -38,6 +38,7 @@ const AppFreezerPageImpl = lazy(() => import('../features/app-freezer/AppFreezer
 const SelfLearningPageImpl = lazy(() => import('../features/self-learning/SelfLearningPage'));
 const AnomalyDetectionPageImpl = lazy(() => import('../features/anomaly/AnomalyDetectionPage'));
 const DuplicateIntelligencePageImpl = lazy(() => import('../features/duplicate-intel/DuplicateIntelligencePage'));
+const ProcessPriorityPageImpl = lazy(() => import('../features/process-priority/ProcessPriorityPage'));
 
 // Helper to wrap lazy components in Suspense
 function withSuspense(Component: React.LazyExoticComponent<React.ComponentType>) {
@@ -97,6 +98,7 @@ export const AppFreezerPage = withSuspense(AppFreezerPageImpl);
 export const SelfLearningPage = withSuspense(SelfLearningPageImpl);
 export const AnomalyDetectionPage = withSuspense(AnomalyDetectionPageImpl);
 export const DuplicateIntelligencePage = withSuspense(DuplicateIntelligencePageImpl);
+export const ProcessPriorityPage = withSuspense(ProcessPriorityPageImpl);
 
 // ── ACCOUNT ───────────────────────────────────────────────────
 

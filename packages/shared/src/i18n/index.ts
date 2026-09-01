@@ -111,6 +111,7 @@ export const en = {
     selfLearning: 'Self-Learning Cleanup',
     anomaly: 'Anomaly Detection',
     duplicateIntel: 'Duplicate Intelligence',
+    processPriority: 'Process Prioritization',
     driverUpdater: 'Driver Updater',
     securityHistory: 'Security History',
     antispywareMalwareRemoval: 'Antispyware/Malware Removal',

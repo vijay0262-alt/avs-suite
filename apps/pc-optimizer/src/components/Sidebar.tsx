@@ -39,6 +39,7 @@ import {
   SparklesIcon,
   PauseIcon,
   AcademicCapIcon,
+  AdjustmentsHorizontalIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import { useIsPro } from '../features/sync/syncStore';
@@ -77,6 +78,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'self-learning', to: '/self-learning', labelKey: 'nav.selfLearning', Icon: AcademicCapIcon, proEnhanced: true },
       { id: 'anomaly', to: '/anomaly', labelKey: 'nav.anomaly', Icon: ShieldExclamationIcon, proEnhanced: true },
       { id: 'duplicate-intel', to: '/duplicate-intel', labelKey: 'nav.duplicateIntel', Icon: DocumentDuplicateIcon, proEnhanced: true },
+      { id: 'process-priority', to: '/process-priority', labelKey: 'nav.processPriority', Icon: AdjustmentsHorizontalIcon, proEnhanced: true },
     ],
   },
   // ── SYSTEM HEALTH — V1.0: Hidden to simplify the app.

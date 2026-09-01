@@ -86,6 +86,7 @@ import {
   SelfLearningPage,
   AnomalyDetectionPage,
   DuplicateIntelligencePage,
+  ProcessPriorityPage,
   UpgradePage,
   HelpPage,
   NotificationsPageWrapper,
@@ -229,6 +230,7 @@ export const router = createHashRouter([
       { path: 'self-learning', element: wrap(SelfLearningPage) },
       { path: 'anomaly', element: wrap(AnomalyDetectionPage) },
       { path: 'duplicate-intel', element: wrap(DuplicateIntelligencePage) },
+      { path: 'process-priority', element: wrap(ProcessPriorityPage) },
       { path: 'restoration', element: <RestorationPage /> },
       // ACCOUNT
       { path: 'license', element: wrap(ActivationPage) },
