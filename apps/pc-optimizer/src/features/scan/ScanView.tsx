@@ -40,9 +40,12 @@ export interface ScanViewProps {
    * instead of starting a new scan. Used by "View Results" button when
    * the previous scan was a direct cleanup (no planId). */
   viewCleanupResults?: boolean;
+  /** V1.0: Upgrade callback — shown when free user scan finds files
+   * but cleaning requires Professional edition. */
+  onUpgrade?: () => void;
 }
 
-export function ScanView({ module, mode = 'full', onClose, className, buttonLabel, autoStart, reviewPlanId, source, viewCleanupResults }: ScanViewProps) {
+export function ScanView({ module, mode = 'full', onClose, className, buttonLabel, autoStart, reviewPlanId, source, viewCleanupResults, onUpgrade }: ScanViewProps) {
   const config = useMemo(() => getScanConfig(module), [module]);
   const scan = useScan({ mode, config, source });
   const [showResults, setShowResults] = useState(false);
@@ -168,7 +171,7 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
     const prevFindings: ScanFinding[] = Array.isArray(prevResult?.findings)
       ? (prevResult!.findings as ScanFinding[])
       : [];
-    if (cleanupSummary && (cleanupSummary.files_deleted ?? 0) > 0) {
+    if (cleanupSummary && ((cleanupSummary.files_deleted ?? 0) > 0 || cleanupSummary.requires_upgrade)) {
       return (
         <ResultsView
           moduleName={config.moduleName}
@@ -178,6 +181,7 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
           planId={undefined}
           cleanupSummary={cleanupSummary}
           onClose={onClose}
+          onUpgrade={onUpgrade}
           onRestart={() => {
             scan.reset();
             void scan.startScan();
@@ -222,6 +226,7 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
         planId={undefined}
         cleanupSummary={cleanupSummary}
         onClose={autoOptimizeClose}
+        onUpgrade={onUpgrade}
         onRestart={() => {
           setShowAutoOptimize(false);
           scan.reset();

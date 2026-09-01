@@ -43,10 +43,13 @@ export interface ResultsViewProps {
     folders_deleted?: number;
     bytes_recovered?: number;
     mb_recovered?: number;
+    mb_found?: number;
     categories?: CleanupCategoryResult[];
+    requires_upgrade?: boolean;
   };
   onClose: () => void;
   onRestart?: () => void;
+  onUpgrade?: () => void;
 }
 
 const iconMap: Record<string, typeof ShieldCheckIcon> = {
@@ -111,6 +114,7 @@ export function ResultsView({
   cleanupSummary,
   onClose,
   onRestart,
+  onUpgrade,
 }: ResultsViewProps) {
   const {
     step,
@@ -310,6 +314,82 @@ export function ResultsView({
   }
 
   if (findingsCount === 0) {
+    // V1.0: Free user — scan found files but cleaning requires upgrade.
+    // Show what was found + upgrade prompt instead of cleaning.
+    if (cleanupSummary && cleanupSummary.requires_upgrade && (cleanupSummary.files_found || 0) > 0) {
+      const mbFound = cleanupSummary.mb_found ?? cleanupSummary.mb_recovered ?? 0;
+      const mbStr = mbFound >= 1024
+        ? `${(mbFound / 1024).toFixed(2)} GB`
+        : `${mbFound.toFixed(2)} MB`;
+      const categories = cleanupSummary.categories?.filter(
+        (c) => (c.files_found ?? 0) > 0,
+      ) ?? [];
+      return (
+        <Card variant="glass" className="p-8" data-testid="results-view-upgrade">
+          <div className="text-center space-y-4">
+            <div className="inline-flex p-3 rounded-full bg-brand-primary/10">
+              <ModuleIcon icon={moduleIcon} />
+            </div>
+            <h3 className="text-lg font-semibold text-text-primary">{moduleName}</h3>
+            <p className="text-small text-text-secondary">
+              Found {cleanupSummary.files_found?.toLocaleString() ?? 0} cleanable files ({mbStr})
+            </p>
+
+            <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+              <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 text-center">
+                <div className="text-2xl font-bold text-brand-primary tabular-nums">
+                  {cleanupSummary.files_found?.toLocaleString() ?? 0}
+                </div>
+                <div className="text-caption text-[var(--avs-text-muted)]">Files Found</div>
+              </div>
+              <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 text-center">
+                <div className="text-2xl font-bold text-brand-primary tabular-nums">
+                  {mbStr}
+                </div>
+                <div className="text-caption text-[var(--avs-text-muted)]">Space to Clean</div>
+              </div>
+            </div>
+
+            {/* Per-category breakdown of what was found */}
+            {categories.length > 0 && (
+              <div
+                className="rounded-[var(--avs-radius-md)] bg-surface-secondary/30 p-4 text-left"
+                data-testid="results-view-categories"
+              >
+                <div className="text-caption uppercase tracking-wide text-text-muted mb-2">
+                  Categories Found
+                </div>
+                {categories.map((cat) => (
+                  <CleanupCategoryRow key={cat.name} cat={cat} />
+                ))}
+              </div>
+            )}
+
+            {/* Upgrade prompt */}
+            <div className="rounded-[var(--avs-radius-md)] bg-brand-primary/5 p-4 border border-brand-primary/20">
+              <p className="text-small font-semibold text-text-primary">
+                Upgrade to Professional for 1-Click Optimization
+              </p>
+              <p className="text-caption text-text-secondary mt-1">
+                Clean all {cleanupSummary.files_found?.toLocaleString() ?? 0} files instantly,
+                or use Junk Cleaner to clean manually.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-3">
+              {onUpgrade && (
+                <Button onClick={onUpgrade} data-testid="results-upgrade-btn">
+                  Upgrade to Professional
+                </Button>
+              )}
+              <Button variant="secondary" onClick={onClose} data-testid="results-close-btn">
+                Close
+              </Button>
+            </div>
+          </div>
+        </Card>
+      );
+    }
     // V1.0: If we have a cleanup summary (direct cleanup), show the
     // actual results: files deleted, space recovered, etc.
     if (cleanupSummary && (cleanupSummary.files_deleted || 0) > 0) {

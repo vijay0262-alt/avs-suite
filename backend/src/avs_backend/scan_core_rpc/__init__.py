@@ -505,17 +505,23 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
     This ensures that after AI Smart Optimize / Dashboard scan, the
     Junk Cleaner also shows everything as clean.
 
-    V1.0 Edition gating: Free edition is limited to 500 MB per run.
-    Once the limit is reached, remaining files are counted as
-    skipped_due_to_limit and the cleanup stops.
+    V1.0 Edition gating:
+      - Professional: Scans AND cleans all categories. After this,
+        Junk Cleaner shows nothing to clean.
+      - Free: Scans all categories (shows everything found) but does
+        NOT delete anything. The result includes ``requires_upgrade``
+        so the frontend shows "Upgrade to Professional for 1-click
+        optimization" and directs the user to Junk Cleaner for
+        manual cleaning.
     """
     from threading import Event
 
-    # V1.0: Determine edition and byte limit for this run.
+    # V1.0: Determine edition.
     edition = _get_current_edition()
     is_free = edition in ("free",)
-    byte_limit = get_edition_limit("junk.bytes_per_run") if is_free else None
-    limit_reached = False
+    # Free users: scan everything but don't clean (upgrade required).
+    # Pro users: scan and clean everything.
+    requires_upgrade = is_free
 
     # V1.0 UNIFIED: Use the same cleaner system as Junk Cleaner.
     # This ensures both paths clean exactly the same categories.
@@ -634,39 +640,37 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
         )
 
         # ── Phase B: Clean (delete files) ───────────────────────────
-        if limit_reached:
-            # Free edition limit already reached — skip this category
+        # V1.0: Free users — scan but don't clean. Show upgrade prompt.
+        if requires_upgrade:
+            # Record what was found but don't delete anything
             category_results.append({
                 "name": cat_name,
-                "path": "",
+                "path": str(next(iter(cleaner.targets()), "")),
                 "files_found": cat_f_found,
                 "files_deleted": 0,
-                "files_skipped": cat_f_found,
+                "files_skipped": 0,
                 "folders_removed": 0,
                 "bytes_recovered": 0,
                 "mb_recovered": 0.0,
-                "skipped_due_to_limit": cat_f_found,
+                "skipped_due_to_limit": 0,
+                "requires_upgrade": True,
             })
-            total_files_skipped += cat_f_found
+            _update_progress(
+                "scanning",
+                f"Found {cat_f_found} files in {cat_name}",
+                None,
+                cat_index,
+                cat_f_found,
+                0,
+                0,
+                0,
+                cat_end,
+            )
             continue
 
+        # Pro users: clean everything
         # Get candidate paths for cleaning
         candidate_paths = [item.path for item in scan_result.items]
-
-        # V1.0: Free edition byte limit — truncate candidate list
-        if byte_limit is not None:
-            truncated_paths = []
-            truncated_bytes = 0
-            for p, (fp, sz) in zip(candidate_paths, cat_files):
-                if truncated_bytes + sz > byte_limit:
-                    limit_reached = True
-                    break
-                truncated_paths.append(p)
-                truncated_bytes += sz
-            candidate_paths = truncated_paths
-            skipped_limit = len(candidate_paths) - len(candidate_paths)
-        else:
-            skipped_limit = 0
 
         def _on_clean_progress(pct: int) -> None:
             pass  # Progress tracked below
@@ -680,7 +684,7 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
 
         d_deleted = clean_result.files_removed
         d_recovered = clean_result.bytes_recovered
-        d_skipped = clean_result.files_skipped + skipped_limit
+        d_skipped = clean_result.files_skipped
 
         # Update progress during cleaning
         _update_progress(
@@ -752,6 +756,7 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
 
     # ─── Final results ─────────────────────────────────────────────
     mb_recovered = round(total_bytes_recovered / (1024 * 1024), 2)
+    mb_found = round(total_bytes_found / (1024 * 1024), 2)
     elapsed_ms = int((time.time() - start_time) * 1000)
 
     # V1.0: Calculate health score before/after cleanup.
@@ -772,9 +777,13 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
         session = _scan_sessions.get(scan_id)
         if session is None:
             return
+        if requires_upgrade:
+            completion_msg = f"Found {total_files_found} files, {mb_found} MB — Upgrade to clean"
+        else:
+            completion_msg = f"Cleaned {total_files_deleted} files, {mb_recovered} MB recovered"
         session["progress"] = {
             "phase": "complete",
-            "current_operation": f"Cleaned {total_files_deleted} files, {mb_recovered} MB recovered",
+            "current_operation": completion_msg,
             "current_folder": None,
             "current_category": None,
             "category_index": total_categories,
@@ -788,8 +797,7 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
             "is_cancelled": False,
             "completion_percent": 100,
             "edition": edition,
-            "limit_reached": limit_reached,
-            "byte_limit": byte_limit,
+            "requires_upgrade": requires_upgrade,
         }
         session["result"] = {
             "scan_id": scan_id,
@@ -827,15 +835,15 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
                 "folders_deleted": total_folders_deleted,
                 "bytes_recovered": total_bytes_recovered,
                 "mb_recovered": mb_recovered,
+                "mb_found": mb_found,
                 "detected": total_files_found,
                 "cleaned": total_files_deleted,
                 "failed": total_files_skipped,
-                "remaining": 0,
+                "remaining": total_files_found - total_files_deleted,
                 "space_recovered": total_bytes_recovered,
                 "categories": category_results,
                 "edition": edition,
-                "limit_reached": limit_reached,
-                "byte_limit": byte_limit,
+                "requires_upgrade": requires_upgrade,
                 "health_before": health_before,
                 "health_after": health_after,
             },

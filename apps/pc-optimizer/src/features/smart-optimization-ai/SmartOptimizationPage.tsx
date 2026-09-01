@@ -312,6 +312,10 @@ export default function SmartOptimizationPage() {
           buttonLabel="Optimize Now"
           source="smart_optimize"
           onClose={() => setScanModalOpen(false)}
+          onUpgrade={() => {
+            setScanModalOpen(false);
+            setUpgradeModalOpen(true);
+          }}
         />
       </Modal>
 

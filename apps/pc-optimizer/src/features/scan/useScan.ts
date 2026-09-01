@@ -194,6 +194,7 @@ export function useScan({ mode = 'full', config, source }: UseScanOptions): UseS
               healthBefore: typeof cleanupSummary.health_before === 'number' ? cleanupSummary.health_before : undefined,
               healthAfter: typeof cleanupSummary.health_after === 'number' ? cleanupSummary.health_after : undefined,
               verificationStatus: typeof cleanupSummary.verification_status === 'string' ? cleanupSummary.verification_status : undefined,
+              requiresUpgrade: typeof cleanupSummary.requires_upgrade === 'boolean' ? cleanupSummary.requires_upgrade : undefined,
             }
           : undefined;
 

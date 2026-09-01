@@ -66,6 +66,7 @@ export interface AppScanSession {
     healthBefore?: number;
     healthAfter?: number;
     verificationStatus?: string;
+    requiresUpgrade?: boolean;
   } | null;
 }
 

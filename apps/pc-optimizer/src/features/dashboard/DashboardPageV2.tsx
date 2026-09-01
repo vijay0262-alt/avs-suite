@@ -123,6 +123,7 @@ export default function DashboardPage() {
   // instead of auto-starting a new scan. null = start a new scan.
   const [reviewPlanId, setReviewPlanId] = useState<string | null>(null);
   const [viewCleanupResults, setViewCleanupResults] = useState(false);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
   useEffect(() => {
     void vm.bootstrap();
@@ -564,7 +565,45 @@ export default function DashboardPage() {
           autoStart={!reviewPlanId && !viewCleanupResults}
           reviewPlanId={reviewPlanId}
           viewCleanupResults={viewCleanupResults}
+          onUpgrade={() => {
+            setScanModalOpen(false);
+            setUpgradeModalOpen(true);
+          }}
         />
+      </Modal>
+
+      {/* ── Upgrade Modal ─────────────────────────────────────── */}
+      <Modal
+        open={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        title="Upgrade to Professional"
+        size="md"
+        testId="dashboard-upgrade-modal"
+      >
+        <div className="text-center space-y-4 py-4">
+          <h3 className="text-lg font-semibold text-text-primary">
+            Unlock 1-Click Optimization
+          </h3>
+          <p className="text-small text-text-secondary">
+            Professional edition cleans all junk files, browser caches, temp files,
+            and more in a single click. Free users can clean manually from Junk Cleaner.
+          </p>
+          <div className="flex justify-center gap-3">
+            <Button onClick={() => setUpgradeModalOpen(false)} variant="secondary">
+              Maybe Later
+            </Button>
+            <Button
+              onClick={() => {
+                setUpgradeModalOpen(false);
+                window.open('https://avsshield.com/upgrade', '_blank');
+              }}
+              variant="primary"
+              data-testid="dashboard-upgrade-cta"
+            >
+              Upgrade Now
+            </Button>
+          </div>
+        </div>
       </Modal>
 
     </div>
