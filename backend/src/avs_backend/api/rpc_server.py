@@ -80,6 +80,7 @@ _FEATURE_MODULES = [
     "avs_backend.browser_extensions",
     "avs_backend.network_optimizer",
     "avs_backend.context_menu",
+    "avs_backend.quarantine",
 ]
 
 # Track which modules have finished importing (success or failure)

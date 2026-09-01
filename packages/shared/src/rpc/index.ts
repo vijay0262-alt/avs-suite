@@ -290,6 +290,14 @@ export const RPC_METHODS = {
   CONTEXT_MENU_DISABLE: 'context_menu.disable',
   CONTEXT_MENU_ENABLE: 'context_menu.enable',
   CONTEXT_MENU_REMOVE: 'context_menu.remove',
+
+  // Quarantine System
+  QUARANTINE_LIST: 'quarantine.list',
+  QUARANTINE_SUMMARY: 'quarantine.summary',
+  QUARANTINE_ADD: 'quarantine.add',
+  QUARANTINE_RESTORE: 'quarantine.restore',
+  QUARANTINE_DELETE: 'quarantine.delete',
+  QUARANTINE_CLEAR: 'quarantine.clear',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

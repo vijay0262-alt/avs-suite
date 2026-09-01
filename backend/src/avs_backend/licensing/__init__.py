@@ -425,6 +425,10 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     "context_menu.disable": "professional",
     "context_menu.enable": "professional",
     "context_menu.remove": "professional",
+    # Quarantine — restore/delete/clear requires Pro (Free can view quarantined items)
+    "quarantine.restore": "professional",
+    "quarantine.delete": "professional",
+    "quarantine.clear": "professional",
 }
 
 
