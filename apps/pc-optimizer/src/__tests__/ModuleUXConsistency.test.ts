@@ -100,13 +100,13 @@ describe('Module UX Consistency', () => {
       });
     });
 
-    it('Dashboard: uses custom hero layout (greeting + health score + collapsible sections) instead of PageHeader', () => {
+    it('Dashboard: uses custom hero layout (greeting + health score) instead of PageHeader', () => {
       const page = allPages.find((p) => p.name === 'DashboardPageV2.tsx');
       expect(page, 'File DashboardPageV2.tsx not found').toBeDefined();
-      // Dashboard V2 has its own hero section with greeting, inline health score card,
-      // and CollapsibleSection components for secondary content
+      // Dashboard V2 has its own hero section with greeting and inline health score card.
+      // V1.0: CollapsibleSection panels (System Health, Recent Activity) were removed
+      // to simplify the dashboard — users have plenty of info from the primary cards.
       expect(page!.content).toContain('getGreeting');
-      expect(page!.content).toContain('CollapsibleSection');
     });
   });
 

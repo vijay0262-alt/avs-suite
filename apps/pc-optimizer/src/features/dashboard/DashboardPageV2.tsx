@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, memo } from 'react';
-import { Button, Card, ChartCard, Sparkline, EmptyState, LoadingState, CollapsibleSection } from '@avs/ui';
+import { useEffect, useMemo, useState } from 'react';
+import { Button, Card, EmptyState, LoadingState } from '@avs/ui';
 import { ModuleErrorBanner } from '../../components/ModuleStates';
 import {
   ShieldExclamationIcon,
@@ -8,16 +8,12 @@ import {
   HeartIcon,
   ArrowPathIcon,
   CheckCircleIcon,
-  ClockIcon,
   BoltIcon,
-  ChartBarIcon,
-  FireIcon,
-  Battery50Icon,
 } from '@heroicons/react/24/outline';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { DashboardViewModel } from './DashboardViewModel';
 import { dashboardService } from './dashboard.service';
-import type { DashboardMetrics, LiveMetrics, HardwareSensorReading } from './dashboard.types';
+import type { DashboardMetrics, LiveMetrics } from './dashboard.types';
 import { DashboardScanStatusCard } from '../scan/components/DashboardScanStatusCard';
 import { useDashboardScan } from '../scan/useDashboardScan';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
@@ -58,60 +54,6 @@ function getPerformanceValue(live: LiveMetrics | null): string {
   if (!live) return '—';
   return `${Math.round(live.cpu.usage)}%`;
 }
-
-function findSensor(sensors: HardwareSensorReading[] | undefined, ...keywords: string[]): HardwareSensorReading | undefined {
-  if (!sensors) return undefined;
-  return sensors.find((s) => keywords.some((kw) => s.name.toLowerCase().includes(kw)));
-}
-
-function formatSensorValue(sensor: HardwareSensorReading | undefined, suffix: string): string {
-  if (!sensor) return 'Unsupported';
-  return `${Math.round(sensor.value)}${suffix}`;
-}
-
-function formatClockValue(clock: { current: number; unit: string; name: string } | undefined): string {
-  if (!clock) return 'Unsupported';
-  return `${Math.round(clock.current)} ${clock.unit === 'mhz' ? 'MHz' : clock.unit}`;
-}
-
-const LiveMetricsMonitor = memo(function LiveMetricsMonitor({ liveMetrics }: { liveMetrics: LiveMetrics | null }) {
-  const [cpuHistory, setCpuHistory] = useState<number[]>([]);
-  const [memHistory, setMemHistory] = useState<number[]>([]);
-
-  useEffect(() => {
-    if (liveMetrics) {
-      setCpuHistory((prev) => [...prev.slice(-19), liveMetrics.cpu.usage]);
-      setMemHistory((prev) => [...prev.slice(-19), liveMetrics.memory.usage]);
-    }
-  }, [liveMetrics]);
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
-      <ChartCard title="CPU Usage" icon={<CpuChipIcon className="h-4 w-4" />}>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-statistic text-text-primary tabular-nums">
-            {liveMetrics ? `${Math.round(liveMetrics.cpu.usage)}%` : '—'}
-          </span>
-          <span className="text-caption text-text-muted">
-            {liveMetrics ? `${liveMetrics.cpu.logicalProcessors} cores` : ''}
-          </span>
-        </div>
-        <Sparkline data={cpuHistory.length > 1 ? cpuHistory : [0, 0]} width={280} height={60} />
-      </ChartCard>
-      <ChartCard title="Memory Usage" icon={<CircleStackIcon className="h-4 w-4" />}>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-statistic text-text-primary tabular-nums">
-            {liveMetrics ? `${Math.round(liveMetrics.memory.usage)}%` : '—'}
-          </span>
-          <span className="text-caption text-text-muted">
-            {liveMetrics ? `${Math.round(liveMetrics.memory.used / 1_000_000_000)} / ${Math.round(liveMetrics.memory.total / 1_000_000_000)} GB` : ''}
-          </span>
-        </div>
-        <Sparkline data={memHistory.length > 1 ? memHistory : [0, 0]} width={280} height={60} stroke="var(--avs-success)" fill="var(--avs-success)" />
-      </ChartCard>
-    </div>
-  );
-});
 
 export default function DashboardPage() {
   const vm = useMemo(() => new DashboardViewModel(dashboardService), []);
@@ -437,111 +379,10 @@ export default function DashboardPage() {
         }}
       />
 
-      {/* ── COLLAPSIBLE SECONDARY CONTENT (2 panels) ─────────────── */}
-
-      {/* Panel 1: System Health (live metrics + hardware sensors) */}
-      <CollapsibleSection title="System Health" icon={<ChartBarIcon className="h-5 w-5" />} storageKey="dash-system-health">
-        <div className="space-y-4">
-          <LiveMetricsMonitor liveMetrics={state.liveMetrics} />
-          {state.hardwareSensorsError && (
-            <ModuleErrorBanner
-              message={`Failed to load hardware sensors: ${state.hardwareSensorsError}`}
-              onRetry={() => vm.loadHardwareSensors()}
-              onDismiss={() => vm.clearHardwareSensorsError()}
-              testId="dashboard-hardware-sensors-error"
-            />
-          )}
-          {state.hardwareSensorsLoading && !state.hardwareSensors ? (
-            <LoadingState message="Loading hardware sensors..." data-testid="hardware-sensors-loading" />
-          ) : state.hardwareSensors ? (
-          (() => {
-            const hw = state.hardwareSensors!;
-            const temps = hw.temperature.sensors;
-            const fans = hw.fans.sensors;
-            const clocks = hw.clocks.clocks;
-            const cpuTemp = findSensor(temps, 'cpu', 'core');
-            const gpuTemp = findSensor(temps, 'gpu');
-            const motherboardTemp = findSensor(temps, 'motherboard', 'board', 'system');
-            const ssdTemp = findSensor(temps, 'ssd', 'solid');
-            const hddTemp = findSensor(temps, 'hdd', 'hard');
-            const cpuFan = findSensor(fans, 'cpu', 'processor');
-            const gpuFan = findSensor(fans, 'gpu');
-            const systemFan = findSensor(fans, 'system', 'case', 'chassis');
-            const cpuClock = clocks.find((c) => c.name.toLowerCase().includes('cpu'));
-            const gpuClock = clocks.find((c) => c.name.toLowerCase().includes('gpu'));
-
-            return (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <ChartCard title="Temperatures" icon={<FireIcon className="h-4 w-4" />}>
-                  <div className="space-y-2 text-small">
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">CPU</span>
-                      <span className="text-text-primary font-medium tabular-nums">{formatSensorValue(cpuTemp, '°C')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">GPU</span>
-                      <span className="text-text-primary font-medium tabular-nums">{formatSensorValue(gpuTemp, '°C')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">Motherboard</span>
-                      <span className="text-text-primary font-medium tabular-nums">{formatSensorValue(motherboardTemp, '°C')}</span>
-                    </div>
-                    {(ssdTemp || hddTemp) && (
-                      <div className="flex justify-between">
-                        <span className="text-text-secondary">Storage</span>
-                        <span className="text-text-primary font-medium tabular-nums">{formatSensorValue(ssdTemp || hddTemp, '°C')}</span>
-                      </div>
-                    )}
-                  </div>
-                </ChartCard>
-
-                <ChartCard title="Fan Speeds" icon={<Battery50Icon className="h-4 w-4" />}>
-                  <div className="space-y-2 text-small">
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">CPU Fan</span>
-                      <span className="text-text-primary font-medium tabular-nums">{formatSensorValue(cpuFan, ' RPM')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">GPU Fan</span>
-                      <span className="text-text-primary font-medium tabular-nums">{formatSensorValue(gpuFan, ' RPM')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">System Fan</span>
-                      <span className="text-text-primary font-medium tabular-nums">{formatSensorValue(systemFan, ' RPM')}</span>
-                    </div>
-                  </div>
-                </ChartCard>
-
-                <ChartCard title="Clock Speeds" icon={<CpuChipIcon className="h-4 w-4" />}>
-                  <div className="space-y-2 text-small">
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">CPU</span>
-                      <span className="text-text-primary font-medium tabular-nums">{formatClockValue(cpuClock)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">GPU</span>
-                      <span className="text-text-primary font-medium tabular-nums">{formatClockValue(gpuClock)}</span>
-                    </div>
-                  </div>
-                </ChartCard>
-              </div>
-            );
-          })()
-          ) : null}
-        </div>
-      </CollapsibleSection>
-
-      {/* Panel 2: Recent Activity - Placeholder for future implementation */}
-      <CollapsibleSection title="Recent Activity" icon={<ClockIcon className="h-5 w-5" />} storageKey="dash-recent-activity">
-        <div className="space-y-4">
-          <EmptyState
-            icon={<ClockIcon className="h-6 w-6" />}
-            title="No recent activity"
-            description="System events and actions will appear here."
-            data-testid="recent-activity-empty"
-          />
-        </div>
-      </CollapsibleSection>
+      {/* ── COLLAPSIBLE SECONDARY CONTENT ───────────────────────────
+          V1.0: System Health and Recent Activity panels hidden to
+          simplify the dashboard. Users have plenty of info already
+          from the primary health card, quick metrics, and scan status. */}
 
       {/* Scan modal — V1.0 Dashboard: single modal handles Scan → Clean → Verify → Results */}
       <Modal

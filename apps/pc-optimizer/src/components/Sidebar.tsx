@@ -12,7 +12,6 @@ import {
   ChartBarIcon,
   BoltIcon,
   CpuChipIcon,
-  ComputerDesktopIcon,
   ShieldCheckIcon,
   Cog6ToothIcon,
   InformationCircleIcon,
@@ -21,11 +20,9 @@ import {
   ArrowPathIcon,
   KeyIcon,
   DocumentChartBarIcon,
-  HeartIcon,
   MagnifyingGlassIcon,
   GlobeAltIcon,
   LifebuoyIcon,
-  ArrowTrendingUpIcon,
   ArrowUpTrayIcon,
   FolderOpenIcon,
   BellIcon,
@@ -62,36 +59,24 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'protection-center', to: '/protection-center', labelKey: 'nav.protectionCenter', Icon: ShieldExclamationIcon },
       { id: 'ai-smart-optimize', to: '/ai-smart-optimize', labelKey: 'nav.aiSmartOptimize', Icon: BoltIcon, proEnhanced: true },
       { id: 'ai-smart-security', to: '/ai-smart-security', labelKey: 'nav.aiSmartSecurity', Icon: ShieldCheckIcon },
-      // AI Assistant and AI Daily Briefing disabled — replaced by AI Smart Security
-      // { id: 'ai-assistant', to: '/ai-assistant', labelKey: 'nav.aiAssistant', Icon: SparklesIcon },
-      // { id: 'ai-daily-briefing', to: '/ai-daily-briefing', labelKey: 'nav.aiDailyBriefing', Icon: LightBulbIcon },
-      // AI Workspace disabled — kept in codebase for future use
-      // { id: 'ai-workspace', to: '/ai-workspace', labelKey: 'nav.aiWorkspace', Icon: CommandLineIcon },
     ],
   },
-  // ── SYSTEM HEALTH ─────────────────────────────────────────────
-  {
-    id: 'system-health',
-    labelKey: 'nav.section.systemHealth',
-    entries: [
-      { id: 'system-health', to: '/system-health', labelKey: 'nav.systemHealth', Icon: HeartIcon },
-      { id: 'hardware-center', to: '/hardware-center', labelKey: 'nav.hardwareCenter', Icon: ComputerDesktopIcon },
-      { id: 'process-intelligence', to: '/process-intelligence', labelKey: 'nav.processIntelligence', Icon: CpuChipIcon },
-      { id: 'predictive-health', to: '/predictive-health', labelKey: 'nav.predictiveHealth', Icon: ArrowTrendingUpIcon },
-      { id: 'performance-analytics', to: '/performance-analytics', labelKey: 'nav.performanceAnalytics', Icon: ChartBarIcon, proEnhanced: true },
-    ],
-  },
-  // ── SECURITY ──────────────────────────────────────────────────
-  {
-    id: 'security',
-    labelKey: 'nav.section.security',
-    entries: [
-      { id: 'quick-scan', to: '/quick-scan', labelKey: 'nav.quickScan', Icon: MagnifyingGlassIcon },
-      { id: 'full-scan', to: '/full-scan', labelKey: 'nav.fullScan', Icon: ShieldCheckIcon },
-      { id: 'custom-scan', to: '/custom-scan', labelKey: 'nav.customScan', Icon: FolderOpenIcon },
-    ],
-  },
-  // ── OPTIMIZATION ──────────────────────────────────────────────
+  // ── SYSTEM HEALTH — V1.0: Hidden to simplify the app.
+  // System Health, Hardware Center, Process Intelligence, Predictive Health,
+  // and Performance Analytics are kept in the codebase but hidden from the
+  // sidebar. Users already have plenty of info on the Dashboard.
+  // {
+  //   id: 'system-health',
+  //   labelKey: 'nav.section.systemHealth',
+  //   entries: [
+  //     { id: 'system-health', to: '/system-health', labelKey: 'nav.systemHealth', Icon: HeartIcon },
+  //     { id: 'hardware-center', to: '/hardware-center', labelKey: 'nav.hardwareCenter', Icon: ComputerDesktopIcon },
+  //     { id: 'process-intelligence', to: '/process-intelligence', labelKey: 'nav.processIntelligence', Icon: CpuChipIcon },
+  //     { id: 'predictive-health', to: '/predictive-health', labelKey: 'nav.predictiveHealth', Icon: ArrowTrendingUpIcon },
+  //     { id: 'performance-analytics', to: '/performance-analytics', labelKey: 'nav.performanceAnalytics', Icon: ChartBarIcon, proEnhanced: true },
+  //   ],
+  // },
+  // ── OPTIMIZATION — V1.0: Moved above Security per user request. ──
   {
     id: 'optimization',
     labelKey: 'nav.section.optimization',
@@ -101,14 +86,20 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'browser-cleaner', to: '/browser-cleaner', labelKey: 'nav.browserCleaner', Icon: GlobeAltIcon, proEnhanced: true },
       { id: 'registry-cleaner', to: '/registry-cleaner', labelKey: 'nav.registryCleaner', Icon: WrenchScrewdriverIcon },
       { id: 'duplicate-finder', to: '/duplicate-finder', labelKey: 'nav.duplicateFinder', Icon: DocumentDuplicateIcon, proEnhanced: true },
-      // Large Files disabled — merged into Disk Analyzer
-      // { id: 'large-files', to: '/large-files', labelKey: 'nav.largeFiles', Icon: CircleStackIcon },
       { id: 'uninstaller', to: '/uninstaller', labelKey: 'nav.uninstaller', Icon: ArchiveBoxXMarkIcon, proEnhanced: true },
       { id: 'software-updater', to: '/software-updater', labelKey: 'nav.softwareUpdater', Icon: ArrowPathIcon, proEnhanced: true },
-      // Maintenance History disabled
-      // { id: 'maintenance-history', to: '/maintenance-history', labelKey: 'nav.maintenanceHistory', Icon: ClipboardDocumentListIcon, proEnhanced: true },
       { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon, proEnhanced: true },
       { id: 'recovery-center', to: '/recovery-center', labelKey: 'nav.recoveryCenter', Icon: LifebuoyIcon },
+    ],
+  },
+  // ── SECURITY — V1.0: Moved below Optimization per user request. ──
+  {
+    id: 'security',
+    labelKey: 'nav.section.security',
+    entries: [
+      { id: 'quick-scan', to: '/quick-scan', labelKey: 'nav.quickScan', Icon: MagnifyingGlassIcon },
+      { id: 'full-scan', to: '/full-scan', labelKey: 'nav.fullScan', Icon: ShieldCheckIcon },
+      { id: 'custom-scan', to: '/custom-scan', labelKey: 'nav.customScan', Icon: FolderOpenIcon },
     ],
   },
   // ── REPORTS ───────────────────────────────────────────────────
@@ -117,12 +108,6 @@ const NAV_SECTIONS: readonly NavSection[] = [
     labelKey: 'nav.section.reports',
     entries: [
       { id: 'reports', to: '/reports', labelKey: 'nav.reports', Icon: DocumentChartBarIcon },
-      // Reports Timeline disabled
-      // { id: 'reports-timeline', to: '/reports-timeline', labelKey: 'nav.reportsTimeline', Icon: ClockIcon },
-      // Analytics disabled
-      // { id: 'analytics', to: '/analytics', labelKey: 'nav.analytics', Icon: ChartBarIcon },
-      // Export Center disabled
-      // { id: 'export-center', to: '/export-center', labelKey: 'nav.exportCenter', Icon: DocumentArrowDownIcon },
     ],
   },
   // ── TOOLS ─────────────────────────────────────────────────────
@@ -131,8 +116,6 @@ const NAV_SECTIONS: readonly NavSection[] = [
     labelKey: 'nav.section.tools',
     entries: [
       { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
-      // Network Information hidden — backend module unavailable
-      // { id: 'network-information', to: '/network-information', labelKey: 'nav.networkInformation', Icon: WifiIcon },
       { id: 'restoration', to: '/restoration', labelKey: 'nav.restoration', Icon: ArrowPathRoundedSquareIcon },
     ],
   },
