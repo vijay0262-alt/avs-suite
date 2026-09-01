@@ -177,12 +177,33 @@ export function useScan({ mode = 'full', config, source }: UseScanOptions): UseS
           (report.planId as string | undefined) ??
           undefined;
 
+        // V1.0: Extract cleanup_summary from the scan result.
+        // For direct cleanup (quick scan), the cleanup already happened
+        // during the scan itself. Map it to cleanupResult so dashboard
+        // cards and Smart Optimize cards show real data immediately.
+        const cleanupSummary = result?.cleanup_summary as Record<string, unknown> | undefined;
+        const cleanupResult = cleanupSummary && typeof cleanupSummary === 'object'
+          ? {
+              detected: typeof cleanupSummary.files_found === 'number' ? cleanupSummary.files_found : (typeof cleanupSummary.detected === 'number' ? cleanupSummary.detected : 0),
+              cleaned: typeof cleanupSummary.files_deleted === 'number' ? cleanupSummary.files_deleted : (typeof cleanupSummary.files_cleaned === 'number' ? cleanupSummary.files_cleaned : (typeof cleanupSummary.cleaned === 'number' ? cleanupSummary.cleaned : 0)),
+              foldersCleaned: typeof cleanupSummary.folders_deleted === 'number' ? cleanupSummary.folders_deleted : (typeof cleanupSummary.folders_cleaned === 'number' ? cleanupSummary.folders_cleaned : 0),
+              remaining: typeof cleanupSummary.remaining === 'number' ? cleanupSummary.remaining : 0,
+              failed: typeof cleanupSummary.files_skipped === 'number' ? cleanupSummary.files_skipped : (typeof cleanupSummary.failed === 'number' ? cleanupSummary.failed : 0),
+              reviewRequired: typeof cleanupSummary.requires_review === 'number' ? cleanupSummary.requires_review : 0,
+              spaceRecovered: typeof cleanupSummary.space_recovered === 'number' ? cleanupSummary.space_recovered : (typeof cleanupSummary.bytes_recovered === 'number' ? cleanupSummary.bytes_recovered : 0),
+              healthBefore: typeof cleanupSummary.health_before === 'number' ? cleanupSummary.health_before : undefined,
+              healthAfter: typeof cleanupSummary.health_after === 'number' ? cleanupSummary.health_after : undefined,
+              verificationStatus: typeof cleanupSummary.verification_status === 'string' ? cleanupSummary.verification_status : undefined,
+            }
+          : undefined;
+
         unifiedScanState.updateLatest({
           status: 'complete',
           completedAt: new Date().toISOString(),
           result,
           statistics,
           planId,
+          cleanupResult: cleanupResult ?? null,
         });
       } catch (err) {
         scan.failScan(err instanceof Error ? err.message : 'Failed to fetch scan result');
