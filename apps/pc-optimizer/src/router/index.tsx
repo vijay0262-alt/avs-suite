@@ -75,6 +75,7 @@ import {
   DiskOptimizerPage,
   PUPScannerPage,
   BrowserExtensionManagerPage,
+  NetworkOptimizerPage,
   UpgradePage,
   HelpPage,
   NotificationsPageWrapper,
@@ -207,6 +208,7 @@ export const router = createHashRouter([
       { path: 'disk-optimizer', element: wrap(DiskOptimizerPage) },
       { path: 'pup-scanner', element: wrap(PUPScannerPage) },
       { path: 'browser-extensions', element: wrap(BrowserExtensionManagerPage) },
+      { path: 'network-optimizer', element: wrap(NetworkOptimizerPage) },
       { path: 'restoration', element: <RestorationPage /> },
       // ACCOUNT
       { path: 'license', element: wrap(ActivationPage) },

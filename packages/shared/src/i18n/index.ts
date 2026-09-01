@@ -101,6 +101,7 @@ export const en = {
     diskOptimizer: 'Disk Optimizer',
     pupScanner: 'PUP Scanner',
     browserExtensions: 'Browser Extensions',
+    networkOptimizer: 'Network Optimizer',
     driverUpdater: 'Driver Updater',
     securityHistory: 'Security History',
     antispywareMalwareRemoval: 'Antispyware/Malware Removal',

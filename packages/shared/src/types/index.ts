@@ -64,6 +64,7 @@ export type NavItemId =
   | 'disk-optimizer'
   | 'pup-scanner'
   | 'browser-extensions'
+  | 'network-optimizer'
   | 'driver-updater'
   | 'security-history'
   | 'antispyware-malware-removal'

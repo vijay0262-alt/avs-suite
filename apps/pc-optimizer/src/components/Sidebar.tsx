@@ -33,6 +33,7 @@ import {
   ArrowDownTrayIcon,
   CircleStackIcon,
   PuzzlePieceIcon,
+  WifiIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import { useIsPro } from '../features/sync/syncStore';
@@ -124,6 +125,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
       { id: 'driver-updater', to: '/driver-updater', labelKey: 'nav.driverUpdater', Icon: ArrowDownTrayIcon, proEnhanced: true },
       { id: 'disk-optimizer', to: '/disk-optimizer', labelKey: 'nav.diskOptimizer', Icon: CircleStackIcon, proEnhanced: true },
+      { id: 'network-optimizer', to: '/network-optimizer', labelKey: 'nav.networkOptimizer', Icon: WifiIcon, proEnhanced: true },
       { id: 'file-shredder', to: '/file-shredder', labelKey: 'nav.fileShredder', Icon: FireIcon, proEnhanced: true },
       { id: 'restoration', to: '/restoration', labelKey: 'nav.restoration', Icon: ArrowPathRoundedSquareIcon },
     ],

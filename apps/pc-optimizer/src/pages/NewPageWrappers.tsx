@@ -27,6 +27,7 @@ const FileShredderPageImpl = lazy(() => import('../features/file-shredder/FileSh
 const DiskOptimizerPageImpl = lazy(() => import('../features/disk-optimizer/DiskOptimizerPage'));
 const PUPScannerPageImpl = lazy(() => import('../features/pup-scanner/PUPScannerPage'));
 const BrowserExtensionManagerPageImpl = lazy(() => import('../features/browser-extensions/BrowserExtensionManagerPage'));
+const NetworkOptimizerPageImpl = lazy(() => import('../features/network-optimizer/NetworkOptimizerPage'));
 
 // Helper to wrap lazy components in Suspense
 function withSuspense(Component: React.LazyExoticComponent<React.ComponentType>) {
@@ -75,6 +76,7 @@ export const FileShredderPage = withSuspense(FileShredderPageImpl);
 export const DiskOptimizerPage = withSuspense(DiskOptimizerPageImpl);
 export const PUPScannerPage = withSuspense(PUPScannerPageImpl);
 export const BrowserExtensionManagerPage = withSuspense(BrowserExtensionManagerPageImpl);
+export const NetworkOptimizerPage = withSuspense(NetworkOptimizerPageImpl);
 
 // ── ACCOUNT ───────────────────────────────────────────────────
 

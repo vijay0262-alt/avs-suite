@@ -277,6 +277,12 @@ export const RPC_METHODS = {
   BROWSER_EXT_REMOVE: 'browser_ext.remove',
   BROWSER_EXT_DISABLE: 'browser_ext.disable',
   BROWSER_EXT_ENABLE: 'browser_ext.enable',
+
+  // Network Optimizer (NetBooster)
+  NETWORK_OPT_ANALYZE: 'network_opt.analyze',
+  NETWORK_OPT_OPTIMIZE: 'network_opt.optimize',
+  NETWORK_OPT_REVERT: 'network_opt.revert',
+  NETWORK_OPT_STATUS: 'network_opt.status',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

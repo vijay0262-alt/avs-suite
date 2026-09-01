@@ -418,6 +418,9 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     "browser_ext.remove": "professional",
     "browser_ext.disable": "professional",
     "browser_ext.enable": "professional",
+    # Network optimizer — optimize/revert requires Pro (Free can analyze)
+    "network_opt.optimize": "professional",
+    "network_opt.revert": "professional",
 }
 
 
