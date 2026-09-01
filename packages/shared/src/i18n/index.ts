@@ -102,6 +102,7 @@ export const en = {
     pupScanner: 'PUP Scanner',
     browserExtensions: 'Browser Extensions',
     networkOptimizer: 'Network Optimizer',
+    contextMenu: 'Context Menu Manager',
     driverUpdater: 'Driver Updater',
     securityHistory: 'Security History',
     antispywareMalwareRemoval: 'Antispyware/Malware Removal',

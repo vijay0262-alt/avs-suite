@@ -421,6 +421,10 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     # Network optimizer — optimize/revert requires Pro (Free can analyze)
     "network_opt.optimize": "professional",
     "network_opt.revert": "professional",
+    # Context menu manager — disable/enable/remove requires Pro (Free can view)
+    "context_menu.disable": "professional",
+    "context_menu.enable": "professional",
+    "context_menu.remove": "professional",
 }
 
 

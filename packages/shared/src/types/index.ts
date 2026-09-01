@@ -65,6 +65,7 @@ export type NavItemId =
   | 'pup-scanner'
   | 'browser-extensions'
   | 'network-optimizer'
+  | 'context-menu'
   | 'driver-updater'
   | 'security-history'
   | 'antispyware-malware-removal'

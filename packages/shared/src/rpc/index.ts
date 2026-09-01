@@ -283,6 +283,13 @@ export const RPC_METHODS = {
   NETWORK_OPT_OPTIMIZE: 'network_opt.optimize',
   NETWORK_OPT_REVERT: 'network_opt.revert',
   NETWORK_OPT_STATUS: 'network_opt.status',
+
+  // Context Menu Manager
+  CONTEXT_MENU_LIST: 'context_menu.list',
+  CONTEXT_MENU_SUMMARY: 'context_menu.summary',
+  CONTEXT_MENU_DISABLE: 'context_menu.disable',
+  CONTEXT_MENU_ENABLE: 'context_menu.enable',
+  CONTEXT_MENU_REMOVE: 'context_menu.remove',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

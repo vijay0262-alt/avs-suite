@@ -76,6 +76,7 @@ import {
   PUPScannerPage,
   BrowserExtensionManagerPage,
   NetworkOptimizerPage,
+  ContextMenuManagerPage,
   UpgradePage,
   HelpPage,
   NotificationsPageWrapper,
@@ -209,6 +210,7 @@ export const router = createHashRouter([
       { path: 'pup-scanner', element: wrap(PUPScannerPage) },
       { path: 'browser-extensions', element: wrap(BrowserExtensionManagerPage) },
       { path: 'network-optimizer', element: wrap(NetworkOptimizerPage) },
+      { path: 'context-menu', element: wrap(ContextMenuManagerPage) },
       { path: 'restoration', element: <RestorationPage /> },
       // ACCOUNT
       { path: 'license', element: wrap(ActivationPage) },
