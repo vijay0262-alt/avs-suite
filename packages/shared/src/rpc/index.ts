@@ -252,6 +252,12 @@ export const RPC_METHODS = {
   WIPER_DRIVES: 'wiper.drives',
   WIPER_SHRED: 'wiper.shred',
   WIPER_WIPE_FREE_SPACE: 'wiper.wipeFreeSpace',
+
+  // Driver Updater
+  DRIVERS_LIST: 'drivers.list',
+  DRIVERS_SUMMARY: 'drivers.summary',
+  DRIVERS_SCAN_OUTDATED: 'drivers.scanOutdated',
+  DRIVERS_UPDATE: 'drivers.update',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

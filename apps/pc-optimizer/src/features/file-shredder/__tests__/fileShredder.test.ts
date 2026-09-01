@@ -15,7 +15,7 @@ vi.mock('@avs/shared/rpc', () => ({
 
 // Mock window.avs.rpc
 beforeEach(() => {
-  (globalThis as any).window = {
+  (globalThis as Record<string, unknown>).window = {
     avs: {
       rpc: {
         call: mockCall,

@@ -20,6 +20,7 @@ const NotificationsPage = lazy(() => import('../features/notifications/Notificat
 const HelpCenterPage = lazy(() => import('../features/help-center/HelpCenterPage'));
 const UpgradePageImpl = lazy(() => import('../features/licensing/UpgradePage'));
 const DriverInformationPageImpl = lazy(() => import('../features/drivers/DriverInformationPage'));
+const DriverUpdaterPageImpl = lazy(() => import('../features/drivers/DriverUpdaterPage'));
 const BackupRestorePageImpl = lazy(() => import('../features/backup-restore/BackupRestorePage'));
 const SecurityHistoryPageImpl = lazy(() => import('../features/security-history/SecurityHistoryPage'));
 const FileShredderPageImpl = lazy(() => import('../features/file-shredder/FileShredderPage'));
@@ -50,6 +51,7 @@ export function BrowserCleanerPage() {
 // ── TOOLS ─────────────────────────────────────────────────────
 
 export const DriverInformationPage = withSuspense(DriverInformationPageImpl);
+export const DriverUpdaterPage = withSuspense(DriverUpdaterPageImpl);
 export const BackupRestorePage = withSuspense(BackupRestorePageImpl);
 export const SecurityHistoryPage = withSuspense(SecurityHistoryPageImpl);
 

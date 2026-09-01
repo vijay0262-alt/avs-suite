@@ -407,6 +407,8 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     "predictive.history": "professional",
     # Secure file shredder — free-space wipe requires Pro
     "wiper.wipeFreeSpace": "professional",
+    # Driver updater — installing updates requires Pro (Free can scan)
+    "drivers.update": "professional",
 }
 
 

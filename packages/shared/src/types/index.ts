@@ -61,6 +61,7 @@ export type NavItemId =
   | 'backup-restore'
   | 'recovery-center'
   | 'file-shredder'
+  | 'driver-updater'
   | 'security-history'
   | 'antispyware-malware-removal'
   | 'restoration'

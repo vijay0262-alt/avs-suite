@@ -64,6 +64,7 @@ import {
   PerformanceAnalyticsPage,
   BrowserCleanerPage,
   DriverInformationPage,
+  DriverUpdaterPage,
   BackupRestorePage,
   SecurityHistoryPage,
   AntispywareMalwareRemovalPage,
@@ -196,6 +197,7 @@ export const router = createHashRouter([
       // Network Information hidden — backend module unavailable, redirect to dashboard
       { path: 'network-information', element: <Navigate to="/dashboard" replace /> },
       { path: 'driver-information', element: wrap(DriverInformationPage) },
+      { path: 'driver-updater', element: wrap(DriverUpdaterPage) },
       { path: 'backup-restore', element: wrap(BackupRestorePage) },
       { path: 'recovery-center', element: wrap(RecoveryCenterPage) },
       { path: 'file-shredder', element: wrap(FileShredderPage) },
