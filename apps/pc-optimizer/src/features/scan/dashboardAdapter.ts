@@ -144,21 +144,25 @@ function buildSnapshot(
     isTerminal(remediationStatus) &&
     completedActions > 0;
 
-  // Map cleanup_result from backend format to frontend format
-  // V1.0 SIMPLE: only files_cleaned and space_recovered matter.
+  // Map cleanup_result from backend format to frontend format.
+  // Handles BOTH backend field names (snake_case: files_found, space_recovered)
+  // AND frontend field names (camelCase: detected, spaceRecovered) because
+  // unifiedScanState.cleanupResult is already in frontend format (set by
+  // useScan.ts handleComplete or AutoOptimizeView), while PersistedScanRecord
+  // stores backend format from the database.
   let mappedCleanupResult: DashboardScanSnapshot['cleanupResult'] = null;
   if (cleanupResult && typeof cleanupResult === 'object') {
     mappedCleanupResult = {
       detected: typeof cleanupResult.files_found === 'number' ? cleanupResult.files_found : (typeof cleanupResult.detected === 'number' ? cleanupResult.detected : 0),
-      cleaned: typeof cleanupResult.files_cleaned === 'number' ? cleanupResult.files_cleaned : (typeof cleanupResult.cleaned === 'number' ? cleanupResult.cleaned : 0),
-      foldersCleaned: typeof cleanupResult.folders_cleaned === 'number' ? cleanupResult.folders_cleaned : 0,
-      remaining: 0,
-      failed: 0,
-      reviewRequired: 0,
-      spaceRecovered: typeof cleanupResult.space_recovered === 'number' ? cleanupResult.space_recovered : 0,
-      healthBefore: typeof cleanupResult.health_before === 'number' ? cleanupResult.health_before : undefined,
-      healthAfter: typeof cleanupResult.health_after === 'number' ? cleanupResult.health_after : undefined,
-      verificationStatus: typeof cleanupResult.verification_status === 'string' ? cleanupResult.verification_status : undefined,
+      cleaned: typeof cleanupResult.files_deleted === 'number' ? cleanupResult.files_deleted : (typeof cleanupResult.files_cleaned === 'number' ? cleanupResult.files_cleaned : (typeof cleanupResult.cleaned === 'number' ? cleanupResult.cleaned : 0)),
+      foldersCleaned: typeof cleanupResult.folders_deleted === 'number' ? cleanupResult.folders_deleted : (typeof cleanupResult.folders_cleaned === 'number' ? cleanupResult.folders_cleaned : (typeof cleanupResult.foldersCleaned === 'number' ? cleanupResult.foldersCleaned : 0)),
+      remaining: typeof cleanupResult.remaining === 'number' ? cleanupResult.remaining : 0,
+      failed: typeof cleanupResult.files_skipped === 'number' ? cleanupResult.files_skipped : (typeof cleanupResult.failed === 'number' ? cleanupResult.failed : 0),
+      reviewRequired: typeof cleanupResult.requires_review === 'number' ? cleanupResult.requires_review : (typeof cleanupResult.reviewRequired === 'number' ? cleanupResult.reviewRequired : 0),
+      spaceRecovered: typeof cleanupResult.space_recovered === 'number' ? cleanupResult.space_recovered : (typeof cleanupResult.bytes_recovered === 'number' ? cleanupResult.bytes_recovered : (typeof cleanupResult.spaceRecovered === 'number' ? cleanupResult.spaceRecovered : 0)),
+      healthBefore: typeof cleanupResult.health_before === 'number' ? cleanupResult.health_before : (typeof cleanupResult.healthBefore === 'number' ? cleanupResult.healthBefore : undefined),
+      healthAfter: typeof cleanupResult.health_after === 'number' ? cleanupResult.health_after : (typeof cleanupResult.healthAfter === 'number' ? cleanupResult.healthAfter : undefined),
+      verificationStatus: typeof cleanupResult.verification_status === 'string' ? cleanupResult.verification_status : (typeof cleanupResult.verificationStatus === 'string' ? cleanupResult.verificationStatus : undefined),
     };
   }
 

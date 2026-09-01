@@ -19,8 +19,15 @@ export function formatBytes(bytes: number, decimals = 1): string {
  * - Otherwise show in MB with 2-3 significant digits.
  */
 export function formatDataSize(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes < 0) return '0 MB';
-  const mb = bytes / (1024 * 1024);
+  if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) {
+    if (kb >= 100) return `${kb.toFixed(0)} KB`;
+    if (kb >= 10) return `${kb.toFixed(1)} KB`;
+    return `${kb.toFixed(2)} KB`;
+  }
+  const mb = kb / 1024;
   if (mb > 1000) {
     const gb = mb / 1024;
     return `${gb.toFixed(2)} GB`;

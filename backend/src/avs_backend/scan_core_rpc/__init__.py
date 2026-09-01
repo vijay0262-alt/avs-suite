@@ -600,6 +600,7 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
     total_folders_found = 0
     total_folders_deleted = 0
     total_bytes_recovered = 0
+    total_bytes_found = 0
 
     # Per-category results for the results page
     category_results: list[dict] = []
@@ -869,6 +870,7 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
 
         total_files_found += cat_f_found
         total_folders_found += cat_d_found
+        total_bytes_found += sum(sz for _, sz in cat_files)
 
         _update_progress(
             "discovering",
@@ -967,6 +969,20 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
     mb_recovered = round(total_bytes_recovered / (1024 * 1024), 2)
     elapsed_ms = int((time.time() - start_time) * 1000)
 
+    # V1.0: Calculate health score before/after cleanup.
+    # Uses the same log10-based formula as the auto-optimize path.
+    import math as _math
+    def _cleanup_health_score(cleanable_bytes: int) -> int:
+        b = max(0, cleanable_bytes)
+        if b == 0:
+            return 100
+        penalty = min(40, _math.log10(b + 1) * 2.0)
+        return max(60, min(100, round(100 - penalty)))
+
+    remaining_bytes = max(0, total_bytes_found - total_bytes_recovered)
+    health_before = _cleanup_health_score(total_bytes_found)
+    health_after = _cleanup_health_score(remaining_bytes)
+
     with _scan_session_lock:
         session = _scan_sessions.get(scan_id)
         if session is None:
@@ -1035,6 +1051,8 @@ def _run_direct_cleanup(scan_id: str, source: str = "dashboard") -> None:
                 "edition": edition,
                 "limit_reached": limit_reached,
                 "byte_limit": byte_limit,
+                "health_before": health_before,
+                "health_after": health_after,
             },
         }
         session["completed"] = True
