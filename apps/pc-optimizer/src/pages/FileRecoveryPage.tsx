@@ -2,7 +2,7 @@
  * FileRecoveryPage — recover deleted files from Recycle Bin and shadow copies.
  */
 import { useEffect, useState, useCallback } from 'react';
-import { Card, Button, Badge } from '@avs/ui';
+import { Card, Button } from '@avs/ui';
 import { PageHeader } from '../components/PageHeader';
 import { HelpButton } from '../components/HelpButton';
 import { rpc } from '../services/rpc';
@@ -49,6 +49,10 @@ export default function FileRecoveryPage() {
   const [restoring, setRestoring] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [shadowRestore, setShadowRestore] = useState<ShadowCopy | null>(null);
+  const [shadowFilePath, setShadowFilePath] = useState('');
+  const [shadowDestPath, setShadowDestPath] = useState('');
+  const [shadowRestoring, setShadowRestoring] = useState(false);
 
   const isPro = edition === 'professional';
 
@@ -111,6 +115,38 @@ export default function FileRecoveryPage() {
       setError(String(e));
     }
     setLoading(false);
+  };
+
+  const handleShadowRecover = async () => {
+    if (!shadowRestore || !shadowFilePath || !shadowDestPath) return;
+    if (!isPro) {
+      showUpgrade();
+      return;
+    }
+    setShadowRestoring(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await rpc.raw<{ success: boolean; recovered_path?: string; error?: string }>(
+        RPC_METHODS.FILE_RECOVERY_SHADOW_RECOVER,
+        {
+          shadow_device: shadowRestore.DeviceObject,
+          original_path: shadowFilePath,
+          dest_path: shadowDestPath,
+        },
+      );
+      if (res.success) {
+        setMessage(`Recovered to: ${res.recovered_path || shadowDestPath}`);
+        setShadowRestore(null);
+        setShadowFilePath('');
+        setShadowDestPath('');
+      } else {
+        setError(res.error || 'Recovery failed');
+      }
+    } catch (e) {
+      setError(String(e));
+    }
+    setShadowRestoring(false);
   };
 
   return (
@@ -223,12 +259,79 @@ export default function FileRecoveryPage() {
                       Created: {sc.CreationTime ? new Date(sc.CreationTime).toLocaleString() : 'Unknown'}
                     </div>
                   </div>
-                  <Badge tone="neutral">Shadow Copy</Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShadowRestore(sc);
+                      setShadowFilePath('');
+                      setShadowDestPath('');
+                    }}
+                    disabled={!isPro}
+                    data-testid={`shadow-recover-${sc.ID}`}
+                  >
+                    Recover File
+                  </Button>
                 </div>
               ))}
             </div>
           )}
+          {!isPro && shadows.length > 0 && (
+            <p className="text-caption text-brand-primary mt-2">Professional edition required for shadow copy recovery.</p>
+          )}
         </Card>
+
+        {/* Shadow Copy Restore Dialog */}
+        {shadowRestore && (
+          <Card title="Recover File from Shadow Copy" variant="glass">
+            <div className="space-y-3">
+              <div>
+                <div className="text-caption text-text-muted mb-1">Shadow Copy</div>
+                <div className="text-small text-text-primary">{shadowRestore.VolumeName}</div>
+                <div className="text-caption text-text-muted">
+                  Created: {shadowRestore.CreationTime ? new Date(shadowRestore.CreationTime).toLocaleString() : 'Unknown'}
+                </div>
+              </div>
+              <div>
+                <label className="text-caption text-text-muted block mb-1">Original file path (e.g. C:\Users\You\Documents\file.txt)</label>
+                <input
+                  type="text"
+                  placeholder="C:\Users\You\Documents\important.docx"
+                  value={shadowFilePath}
+                  onChange={(e) => setShadowFilePath(e.target.value)}
+                  className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-small text-text-primary placeholder:text-text-muted focus:border-brand-primary focus:outline-none"
+                  data-testid="shadow-file-path-input"
+                />
+              </div>
+              <div>
+                <label className="text-caption text-text-muted block mb-1">Destination path (where to save the recovered file)</label>
+                <input
+                  type="text"
+                  placeholder="C:\Users\You\Documents\recovered_important.docx"
+                  value={shadowDestPath}
+                  onChange={(e) => setShadowDestPath(e.target.value)}
+                  className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-small text-text-primary placeholder:text-text-muted focus:border-brand-primary focus:outline-none"
+                  data-testid="shadow-dest-path-input"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setShadowRestore(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleShadowRecover}
+                  disabled={shadowRestoring || !shadowFilePath || !shadowDestPath}
+                  leftIcon={<ArrowUturnLeftIcon className="h-4 w-4" />}
+                  data-testid="shadow-recover-button"
+                >
+                  {shadowRestoring ? 'Recovering...' : 'Recover File'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );

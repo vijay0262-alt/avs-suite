@@ -57,6 +57,7 @@ export type NavItemId =
   | 'system-information'
   | 'disk-analyzer'
   | 'cloud-drive-cleaner'
+  | 'file-recovery'
   | 'safe-folder'
   | 'threat-engine'
   | 'realtime-threat'

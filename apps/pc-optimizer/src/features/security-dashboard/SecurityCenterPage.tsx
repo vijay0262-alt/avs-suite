@@ -22,6 +22,10 @@ import { Modal } from '../dashboard/components/Modal';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
 import { dashboardService } from '../dashboard/dashboard.service';
 import type { DashboardMetrics } from '../dashboard/dashboard.types';
+import { rpc } from '../../services/rpc';
+import { RPC_METHODS } from '@avs/shared/rpc';
+import { useEdition } from '../../config/EditionManager';
+import { useUpgradeDialog } from '../../components/UpgradeDialog';
 import {
   ShieldCheckIcon,
   ShieldExclamationIcon,
@@ -29,6 +33,7 @@ import {
   BoltIcon,
   ArrowPathIcon,
   ArrowRightIcon,
+  EyeIcon,
 } from '@heroicons/react/24/outline';
 
 // ── Status badge types ──────────────────────────────────────────
@@ -69,6 +74,37 @@ export function SecurityCenterPage() {
   const [scanModalOpen, setScanModalOpen] = useState(false);
   const { score, defender, loading, error, refresh } = useSecurityScore();
   const [dashboardMetrics, setDashboardMetrics] = useState<DashboardMetrics | null>(null);
+  const edition = useEdition();
+  const { show: showUpgrade } = useUpgradeDialog();
+  const [rtGuardEnabled, setRtGuardEnabled] = useState(false);
+  const [rtGuardLoading, setRtGuardLoading] = useState(false);
+
+  // Load real-time guard status
+  useEffect(() => {
+    rpc.raw<{ monitoring: boolean }>(RPC_METHODS.REALTIME_THREAT_STATUS)
+      .then((res) => setRtGuardEnabled(!!res?.monitoring))
+      .catch(() => {});
+  }, []);
+
+  const toggleRtGuard = useCallback(async () => {
+    if (edition === 'free') {
+      showUpgrade();
+      return;
+    }
+    setRtGuardLoading(true);
+    try {
+      if (rtGuardEnabled) {
+        await rpc.raw(RPC_METHODS.REALTIME_THREAT_STOP);
+        setRtGuardEnabled(false);
+      } else {
+        await rpc.raw(RPC_METHODS.REALTIME_THREAT_START);
+        setRtGuardEnabled(true);
+      }
+    } catch {
+      /* ignore */
+    }
+    setRtGuardLoading(false);
+  }, [rtGuardEnabled, edition, showUpgrade]);
 
   // Fetch dashboard metrics to check for third-party AV (e.g. Trend Micro)
   useEffect(() => {
@@ -198,6 +234,39 @@ export function SecurityCenterPage() {
           >
             Scan Now
           </Button>
+        </div>
+      </Card>
+
+      {/* ── 2b. REAL-TIME GUARD TOGGLE ─────────────────────────── */}
+      <Card variant="glass" className="p-4" data-testid="realtime-guard-card">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${rtGuardEnabled ? 'bg-semantic-success/10' : 'bg-surface-muted'}`}>
+              <EyeIcon className={`h-6 w-6 ${rtGuardEnabled ? 'text-semantic-success' : 'text-text-muted'}`} />
+            </div>
+            <div className="min-w-0">
+              <div className="text-small font-semibold text-text-primary">Real-Time Guard</div>
+              <p className="text-caption text-text-secondary">
+                {rtGuardEnabled
+                  ? 'Monitoring files, processes, USB devices, and network activity for threats.'
+                  : 'Enable continuous background monitoring for malware, suspicious processes, and USB threats.'}
+              </p>
+              {edition === 'free' && (
+                <p className="text-caption text-brand-primary mt-0.5">Professional edition required.</p>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={toggleRtGuard}
+            disabled={rtGuardLoading}
+            className={`relative h-7 w-12 rounded-full transition-colors shrink-0 ${
+              rtGuardEnabled ? 'bg-semantic-success' : 'bg-[var(--avs-border)]'
+            } ${rtGuardLoading ? 'opacity-50' : ''}`}
+            data-testid="realtime-guard-toggle"
+            aria-label={rtGuardEnabled ? 'Disable real-time guard' : 'Enable real-time guard'}
+          >
+            <div className={`absolute top-0.5 h-6 w-6 rounded-full bg-white transition-transform ${rtGuardEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+          </button>
         </div>
       </Card>
 

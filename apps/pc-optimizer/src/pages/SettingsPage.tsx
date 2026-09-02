@@ -3,7 +3,7 @@ import { useTheme } from '@avs/ui';
 import { PageHeader } from '../components/PageHeader';
 import { HelpButton } from '../components/HelpButton';
 import type { ThemeMode } from '@avs/shared/types';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useEdition } from '../config/EditionManager';
 import { getVersionString, getBuildString, getChannelString, getEditionString } from '../config/version';
 import { useUpgradeDialog } from '../components/UpgradeDialog';
@@ -596,6 +596,15 @@ export default function SettingsPage() {
           </div>
         </Card>
 
+        <Card title="Threat Engine" variant="glass">
+          <div className="space-y-4">
+            <p className="text-caption text-text-secondary">
+              Configure signature-based malware detection engines. These run during Security Center scans alongside behavioral analysis.
+            </p>
+            <ThreatEngineConfig />
+          </div>
+        </Card>
+
         <Card title="AVS Shield Account" variant="glass">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -685,6 +694,131 @@ export default function SettingsPage() {
         </Card>
 
         {/* Keyboard Shortcuts disabled */}
+      </div>
+    </div>
+  );
+}
+
+// ── Threat Engine Configuration ───────────────────────────────
+
+function ThreatEngineConfig() {
+  const [status, setStatus] = useState<{
+    enabled_sources: Record<string, boolean>;
+    definitions: Record<string, number>;
+    config: { virustotal_configured: boolean; auto_quarantine: boolean };
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    try {
+      const res = await rpc.raw<{
+        enabled_sources: Record<string, boolean>;
+        definitions: Record<string, number>;
+        config: { virustotal_configured: boolean; auto_quarantine: boolean };
+      }>(RPC_METHODS.THREAT_STATUS);
+      setStatus({
+        enabled_sources: res.enabled_sources || {},
+        definitions: res.definitions || {},
+        config: res.config || { virustotal_configured: false, auto_quarantine: false },
+      });
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const toggleSource = async (source: string, enabled: boolean) => {
+    setLoading(true);
+    try {
+      await rpc.raw(RPC_METHODS.THREAT_CONFIGURE, {
+        enabled_sources: { [source]: !enabled },
+      });
+      refresh();
+    } catch {
+      /* ignore */
+    }
+    setLoading(false);
+  };
+
+  const toggleAutoQuarantine = async () => {
+    setLoading(true);
+    try {
+      await rpc.raw(RPC_METHODS.THREAT_CONFIGURE, {
+        auto_quarantine: !status?.config.auto_quarantine,
+      });
+      refresh();
+    } catch {
+      /* ignore */
+    }
+    setLoading(false);
+  };
+
+  if (!status) {
+    return <p className="text-caption text-text-muted">Loading threat engine status...</p>;
+  }
+
+  const sources: Array<{ key: string; label: string; desc: string }> = [
+    { key: 'hash_blocklist', label: 'Hash Blocklist', desc: 'NIST NSRL, Abuse.ch, MalwareBazaar hash matching' },
+    { key: 'yara', label: 'YARA Rules', desc: 'Rule-based threat detection' },
+    { key: 'amsi', label: 'AMSI', desc: 'Windows Anti-Malware Scan Interface' },
+    { key: 'defender', label: 'Windows Defender', desc: 'Microsoft Defender integration' },
+    { key: 'heuristic', label: 'Heuristic Analysis', desc: 'Behavioral heuristics and anomaly detection' },
+    { key: 'clamav', label: 'ClamAV', desc: 'Open-source antivirus signature scanning' },
+    { key: 'virustotal', label: 'VirusTotal', desc: 'Cloud hash lookup (requires API key)' },
+  ];
+
+  return (
+    <div className="space-y-3">
+      {sources.map((src) => {
+        const enabled = status.enabled_sources[src.key] ?? false;
+        const defCount = status.definitions[src.key];
+        return (
+          <div key={src.key} className="flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <div className="text-small font-medium text-text-primary">{src.label}</div>
+              <div className="text-caption text-text-muted">
+                {src.desc}
+                {defCount !== undefined && defCount > 0 && ` — ${defCount.toLocaleString()} definitions`}
+              </div>
+            </div>
+            <button
+              onClick={() => toggleSource(src.key, enabled)}
+              disabled={loading || (src.key === 'virustotal' && !status.config.virustotal_configured)}
+              className={`relative h-6 w-11 rounded-full transition-colors shrink-0 ${
+                enabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'
+              } ${(src.key === 'virustotal' && !status.config.virustotal_configured) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              data-testid={`threat-engine-${src.key}-toggle`}
+            >
+              <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+            </button>
+          </div>
+        );
+      })}
+
+      <div className="flex items-center justify-between border-t border-[var(--avs-border)] pt-3">
+        <div>
+          <div className="text-small font-medium text-text-primary">Auto-quarantine detected threats</div>
+          <div className="text-caption text-text-secondary">Automatically quarantine files when a threat is detected</div>
+        </div>
+        <button
+          onClick={toggleAutoQuarantine}
+          disabled={loading}
+          className={`relative h-6 w-11 rounded-full transition-colors shrink-0 ${
+            status.config.auto_quarantine ? 'bg-semantic-danger' : 'bg-[var(--avs-border)]'
+          }`}
+          data-testid="threat-engine-auto-quarantine-toggle"
+        >
+          <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${status.config.auto_quarantine ? 'translate-x-5' : 'translate-x-0.5'}`} />
+        </button>
+      </div>
+
+      <div className="flex justify-end">
+        <Button variant="ghost" size="sm" onClick={refresh} disabled={loading}>
+          Refresh Status
+        </Button>
       </div>
     </div>
   );

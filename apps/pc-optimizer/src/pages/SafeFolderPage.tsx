@@ -20,6 +20,8 @@ import {
   StopIcon,
   BellAlertIcon,
   AdjustmentsHorizontalIcon,
+  CameraIcon,
+  ArrowUturnLeftIcon,
 } from '@heroicons/react/24/outline';
 
 interface ProtectedFolder {
@@ -57,6 +59,8 @@ export default function SafeFolderPage() {
   const [newFolderName, setNewFolderName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [snapshots, setSnapshots] = useState<Array<{ snapshot_id: string; folder_path: string; created_at: string; file_count: number }>>([]);
+  const [snapshotLoading, setSnapshotLoading] = useState<string | null>(null);
 
   const isPro = edition === 'professional';
 
@@ -167,6 +171,52 @@ export default function SafeFolderPage() {
     } catch (e) {
       setError(String(e));
     }
+  };
+
+  const refreshSnapshots = useCallback(async () => {
+    try {
+      const res = await rpc.raw<{ snapshots: typeof snapshots }>(RPC_METHODS.SAFE_FOLDER_SNAPSHOTS);
+      setSnapshots(res.snapshots || []);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshSnapshots();
+  }, [refreshSnapshots]);
+
+  const handleCreateSnapshot = async (folderPath: string) => {
+    if (!isPro) {
+      showUpgrade();
+      return;
+    }
+    setSnapshotLoading(folderPath);
+    setError(null);
+    try {
+      await rpc.raw(RPC_METHODS.SAFE_FOLDER_SNAPSHOT, { path: folderPath });
+      refreshSnapshots();
+    } catch (e) {
+      setError(String(e));
+    }
+    setSnapshotLoading(null);
+  };
+
+  const handleRestoreSnapshot = async (snapshotId: string) => {
+    if (!isPro) {
+      showUpgrade();
+      return;
+    }
+    setSnapshotLoading(snapshotId);
+    setError(null);
+    try {
+      await rpc.raw(RPC_METHODS.SAFE_FOLDER_RESTORE, { snapshot_id: snapshotId });
+      refreshSnapshots();
+      refreshStatus();
+    } catch (e) {
+      setError(String(e));
+    }
+    setSnapshotLoading(null);
   };
 
   const alertTone = (type: string): 'danger' | 'warning' | 'neutral' => {
@@ -369,6 +419,61 @@ export default function SafeFolderPage() {
             </>
           )}
         </Card>
+
+        {/* Snapshots */}
+        {status && status.folders.length > 0 && (
+          <Card title={`Folder Snapshots (${snapshots.length})`} variant="glass">
+            <p className="text-caption text-text-secondary mb-3">
+              Create backup snapshots of protected folders. If ransomware strikes, restore from a snapshot to recover your files.
+            </p>
+            {/* Create snapshot buttons for each protected folder */}
+            <div className="space-y-2 mb-4">
+              {status.folders.map((f) => (
+                <div key={f.path} className="flex items-center justify-between py-1">
+                  <div className="text-small text-text-primary truncate flex-1 min-w-0">{f.name}</div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCreateSnapshot(f.path)}
+                    disabled={snapshotLoading === f.path || !isPro}
+                    leftIcon={<CameraIcon className="h-4 w-4" />}
+                  >
+                    {snapshotLoading === f.path ? 'Creating...' : 'Snapshot'}
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            {/* Existing snapshots */}
+            {snapshots.length > 0 && (
+              <div className="space-y-2 max-h-64 overflow-y-auto border-t border-[var(--avs-border)] pt-3">
+                {snapshots.map((s) => (
+                  <div key={s.snapshot_id} className="flex items-center gap-2 py-2 px-3 rounded border border-[var(--avs-border)]">
+                    <CameraIcon className="h-4 w-4 text-text-muted shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-small text-text-primary truncate">{s.folder_path}</div>
+                      <div className="text-caption text-text-muted">
+                        {new Date(s.created_at).toLocaleString()} — {s.file_count} files
+                      </div>
+                    </div>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleRestoreSnapshot(s.snapshot_id)}
+                      disabled={snapshotLoading === s.snapshot_id || !isPro}
+                      leftIcon={<ArrowUturnLeftIcon className="h-4 w-4" />}
+                    >
+                      {snapshotLoading === s.snapshot_id ? 'Restoring...' : 'Restore'}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!isPro && (
+              <p className="text-caption text-brand-primary mt-2">Professional edition required for snapshots.</p>
+            )}
+          </Card>
+        )}
       </div>
     </div>
   );

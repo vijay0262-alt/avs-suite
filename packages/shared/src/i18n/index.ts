@@ -104,6 +104,7 @@ export const en = {
     driverInformation: 'Driver Information',
     backupRestore: 'Backup & Restore',
     recoveryCenter: 'Recovery Center',
+    fileRecovery: 'File Recovery',
     fileShredder: 'File Shredder',
     diskOptimizer: 'Disk Optimizer',
     pupScanner: 'PUP Scanner',

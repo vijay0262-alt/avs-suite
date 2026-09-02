@@ -482,6 +482,7 @@ export class SecurityCenterViewModel extends ViewModel<SecurityCenterState> {
       const behaviorPhaseIdx = isFullScan ? 10 : 4;
       setPhaseProgress(behaviorPhaseIdx, 0);
       updateTreeNode('behavior', 'scanning');
+      updateTreeNode('threat_engine', 'scanning');
 
       const result = await this.service.scan(scanType);
 
@@ -490,6 +491,14 @@ export class SecurityCenterViewModel extends ViewModel<SecurityCenterState> {
         threatsFound: result.threats.length,
         processesAnalyzed: result.itemsScanned > 0 ? Math.max(this.state.scanLiveStats.processesAnalyzed, result.itemsScanned) : this.state.scanLiveStats.processesAnalyzed,
       });
+
+      // Mark threat engine node complete
+      const engineThreats = result.threats.filter((t) =>
+        t.detectionSource && typeof t.detectionSource === 'string' &&
+        ['clamav', 'yara', 'amsi', 'defender', 'hash_detector', 'heuristic', 'virustotal'].includes(t.detectionSource)
+      );
+      updateTreeNode('threat_engine', 'complete', engineThreats.length > 0 ? result.itemsScanned : 0, engineThreats.length);
+      updateTreeNode('behavior', 'complete', result.itemsScanned, result.threats.length - engineThreats.length);
 
       // Update AI confidence from scan
       if (result.threats.length > 0) {
@@ -615,6 +624,7 @@ export class SecurityCenterViewModel extends ViewModel<SecurityCenterState> {
     }
     baseNodes.push(
       { id: 'behavior', label: 'Behavior Analysis', status: 'pending', itemsScanned: 0, threatsFound: 0 },
+      { id: 'threat_engine', label: 'AV Engine (ClamAV/YARA/AMSI/Defender)', status: 'pending', itemsScanned: 0, threatsFound: 0 },
     );
     if (isFull) {
       baseNodes.push(
