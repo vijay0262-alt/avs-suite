@@ -311,7 +311,7 @@ export default function JunkCleanerPage() {
                 <ExclamationTriangleIcon className="h-5 w-5 text-semantic-warning shrink-0" />
                 <div>
                   <span className="text-small font-medium text-text-primary">
-                    Free edition cleans up to 500 MB per session
+                    Free edition cleans up to 500 MB per run
                   </span>
                   <p className="text-caption text-text-secondary mt-0.5">
                     {(totalJunkBytes / (1024 * 1024)).toFixed(0)} MB detected. Only the largest categories under 500 MB will be cleaned. Upgrade to Professional for unlimited cleaning.

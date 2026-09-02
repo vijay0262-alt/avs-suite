@@ -37,7 +37,7 @@ interface FeatureRow {
 const COMPARISON: readonly FeatureRow[] = [
   { feature: 'Junk Cleaner (Basic)', free: true, professional: true, ultimate: true },
   { feature: 'Junk Cleaner (Deep Scan)', free: false, professional: true, ultimate: true },
-  { feature: 'Unlimited Junk Cleaning', free: '500 MB/day', professional: true, ultimate: true },
+  { feature: 'Unlimited Junk Cleaning', free: '500 MB/run', professional: true, ultimate: true },
   { feature: 'Registry Fix', free: true, professional: true, ultimate: true },
   { feature: 'Startup Disable', free: true, professional: true, ultimate: true },
   { feature: 'Privacy Cleaning', free: false, professional: true, ultimate: true },

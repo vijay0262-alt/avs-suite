@@ -124,8 +124,17 @@ export default function DashboardPage() {
       setBoostResult(result);
       // Refresh dashboard metrics after boost
       void vm.loadMetrics();
-    } catch {
-      setBoostResult(null);
+    } catch (e) {
+      setBoostResult({
+        status: 'error',
+        memoryFreed: 0,
+        optimizationTimeMs: 0,
+        processesOptimized: 0,
+        errors: [e instanceof Error ? e.message : 'Memory optimization failed'],
+        healthImprovement: 0,
+        beforeMemory: null,
+        afterMemory: null,
+      });
     } finally {
       setBoosting(false);
     }
@@ -286,7 +295,7 @@ export default function DashboardPage() {
                         if (issueCount > 0) {
                           return (
                             <span className="text-semantic-warning font-medium">
-                              {issueCount} files found
+                              {issueCount} issues found
                             </span>
                           );
                         }
@@ -344,11 +353,11 @@ export default function DashboardPage() {
                   leftIcon={isScanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <BoltIcon className="h-5 w-5" />}
                   data-testid="dashboard-scan-cta"
                 >
-                  {isScanning ? 'Scanning...' : hasScanError ? 'Try Again' : 'Scan Now'}
+                  {isScanning ? 'Scanning...' : hasScanError ? 'Try Again' : 'Optimize Now'}
                 </Button>
                 {!isPro && (
                   <p className="text-xs text-white/40 mt-1.5 text-right" data-testid="dashboard-free-limit-hint">
-                    Free edition: up to 500 MB per scan
+                    Free edition: up to 500 MB per run
                   </p>
                 )}
               </div>
@@ -428,11 +437,13 @@ export default function DashboardPage() {
               <div className="text-small font-semibold text-text-primary">
                 {boosting
                   ? 'Optimizing memory...'
-                  : boostResult && boostResult.memoryFreed > 0
-                    ? `Freed ${formatBytes(boostResult.memoryFreed)}`
-                    : boostResult && boostResult.status === 'completed'
-                      ? 'Memory optimized'
-                      : 'Free up RAM instantly'}
+                  : boostResult && boostResult.status === 'error'
+                    ? 'Optimization failed'
+                    : boostResult && boostResult.memoryFreed > 0
+                      ? `Freed ${formatBytes(boostResult.memoryFreed)}`
+                      : boostResult && boostResult.status === 'completed'
+                        ? 'Memory optimized'
+                        : 'Free up RAM instantly'}
               </div>
               {boostResult && boostResult.processesOptimized > 0 && !boosting && (
                 <div className="text-caption text-text-muted mt-0.5">

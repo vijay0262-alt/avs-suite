@@ -1,0 +1,13 @@
+UX polish: dashboard CTA, edition indicator, consistent free-limit copy
+
+- Dashboard CTA renamed from "Scan Now" to "Optimize Now" to accurately
+  reflect the scan-and-clean workflow
+- "files found" corrected to "issues found" for accurate messaging
+- Boost memory errors now surfaced to user instead of silently swallowed
+- FreeStatusPill added so free users always see their edition badge
+- Free-limit copy standardized to "500 MB per run" across dashboard,
+  junk cleaner, and upgrade dialog
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

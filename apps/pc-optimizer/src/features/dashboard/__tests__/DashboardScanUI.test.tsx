@@ -130,12 +130,12 @@ describe('Dashboard Scan UI', () => {
     });
   });
 
-  it('renders primary scan CTA with "Scan Now" label when idle', async () => {
+  it('renders primary scan CTA with "Optimize Now" label when idle', async () => {
     renderDashboard();
     await waitFor(() => {
       const scanBtn = screen.getByTestId('dashboard-scan-cta');
       expect(scanBtn).toBeInTheDocument();
-      expect(scanBtn).toHaveTextContent('Scan Now');
+      expect(scanBtn).toHaveTextContent('Optimize Now');
     });
   });
 
@@ -147,7 +147,7 @@ describe('Dashboard Scan UI', () => {
     });
   });
 
-  it('opens scan modal when Scan Now is clicked', async () => {
+  it('opens scan modal when Optimize Now is clicked', async () => {
     renderDashboard();
 
     await waitFor(() => {
@@ -350,7 +350,7 @@ describe('Dashboard Scan UI', () => {
     });
   });
 
-  it('shows "Scan Now" when scan completes with findings (V1.0: no Review Results)', async () => {
+  it('shows "Optimize Now" when scan completes with findings (V1.0: no Review Results)', async () => {
     mockUseDashboardScan.mockReturnValue({
       session: null,
       persisted: null,
@@ -379,8 +379,8 @@ describe('Dashboard Scan UI', () => {
 
     await waitFor(() => {
       const scanBtn = screen.getByTestId('dashboard-scan-cta');
-      // V1.0: Dashboard always shows "Scan Now" — no "Review Results" button
-      expect(scanBtn).toHaveTextContent('Scan Now');
+      // V1.0: Dashboard always shows "Optimize Now" — no "Review Results" button
+      expect(scanBtn).toHaveTextContent('Optimize Now');
     });
   });
 

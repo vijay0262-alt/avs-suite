@@ -26,7 +26,7 @@ interface ProStatusPillProps {
 
 export function ProStatusPill({ className = '' }: ProStatusPillProps) {
   const isPro = useIsPro();
-  if (!isPro) return null;
+  if (!isPro) return <FreeStatusPill className={className} />;
 
   return (
     <span
@@ -35,6 +35,21 @@ export function ProStatusPill({ className = '' }: ProStatusPillProps) {
     >
       <StarIcon className="h-3.5 w-3.5" />
       Professional
+    </span>
+  );
+}
+
+/**
+ * FreeStatusPill — shows "Free Edition" badge for non-Pro users.
+ * Ensures users always know which edition they're running.
+ */
+export function FreeStatusPill({ className = '' }: ProStatusPillProps) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full bg-[var(--avs-surface)] border border-[var(--avs-border)] px-3 py-1 text-caption font-medium text-text-secondary ${className}`}
+      data-testid="free-status-pill"
+    >
+      Free Edition
     </span>
   );
 }
