@@ -94,6 +94,7 @@ export const en = {
     exportCenter: 'Export Center',
     systemInformation: 'System Information',
     diskAnalyzer: 'Disk Analyzer',
+    cloudDriveCleaner: 'Cloud Drive Cleaner',
     networkInformation: 'Network Information',
     driverInformation: 'Driver Information',
     backupRestore: 'Backup & Restore',

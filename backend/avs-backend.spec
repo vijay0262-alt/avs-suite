@@ -97,6 +97,7 @@ a = Analysis(
         "avs_backend.process_priority",
         "avs_backend.ai_integration",
         "avs_backend.auto_browser_clean",
+        "avs_backend.cloud_drive_cleaner",
         # ── Modules loaded dynamically via importlib but not detected by
         # PyInstaller static analysis — must be listed explicitly ──
         "avs_backend.junk_monitor",

@@ -42,6 +42,7 @@ import {
   ArrowsRightLeftIcon,
   ClockIcon,
   EyeIcon,
+  CloudArrowUpIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import { useIsPro } from '../features/sync/syncStore';
@@ -120,6 +121,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'uninstaller', to: '/uninstaller', labelKey: 'nav.uninstaller', Icon: ArchiveBoxXMarkIcon, proEnhanced: true },
       { id: 'software-updater', to: '/software-updater', labelKey: 'nav.softwareUpdater', Icon: ArrowPathIcon, proEnhanced: true },
       { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon, proEnhanced: true },
+      { id: 'cloud-drive-cleaner', to: '/cloud-drive-cleaner', labelKey: 'nav.cloudDriveCleaner', Icon: CloudArrowUpIcon, proEnhanced: true },
       { id: 'recovery-center', to: '/recovery-center', labelKey: 'nav.recoveryCenter', Icon: LifebuoyIcon },
     ],
   },

@@ -393,6 +393,12 @@ export const RPC_METHODS = {
   AUTO_BROWSER_CLEAN_STOP: 'auto_browser_clean.stop',
   AUTO_BROWSER_CLEAN_UPDATE_CATEGORIES: 'auto_browser_clean.updateCategories',
 
+  // Cloud Drive Cleaner
+  CLOUD_DRIVE_DETECT: 'cloud_drive.detect',
+  CLOUD_DRIVE_SCAN: 'cloud_drive.scan',
+  CLOUD_DRIVE_STATUS: 'cloud_drive.status',
+  CLOUD_DRIVE_CLEAN: 'cloud_drive.clean',
+
   // Multi-Device License Management
   LICENSE_LIST_DEVICES: 'license.list_devices',
   LICENSE_DEACTIVATE_DEVICE: 'license.deactivate_device',
