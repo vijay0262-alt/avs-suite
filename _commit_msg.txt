@@ -1,0 +1,58 @@
+Sidebar compact + 5 remaining enhancements: ClamAV auto-update, Analytics, Updates, Developer
+
+Sidebar improvements:
+- Merged Reports and Tools sections into "Reports & Tools" (6→5 sections)
+- Reduced entry padding from py-2 to py-1.5
+- Reduced icon size from h-5 w-5 to h-4 w-4
+- Reduced gap between entries from gap-0.5 to gap-0
+- Reduced gap between sections from gap-4 to gap-3
+- Added Large Files, Reports Timeline, and Analytics to sidebar
+
+1. ClamAV definition auto-update scheduling:
+   - Added freshclam auto-update scheduler to clamav_setup.py
+   - Runs freshclam daily (checks hourly) to keep virus definitions current
+   - New RPC methods: threat.clamavAutoUpdateStart/Stop/Status
+   - Auto-update toggle in ThreatEnginePage (shows when ClamAV installed)
+   - Shows last update timestamp
+
+2. Sidebar entries for Reports Timeline and Large Files:
+   - Large Files added to Optimization section
+   - Reports Timeline added to Reports & Tools section
+   - Analytics added to Reports & Tools section
+   - Added nav.largeFiles, nav.reportsTimeline, nav.analytics translations
+   - Added nav.section.reportsTools translation
+
+3. Analytics page:
+   - New /analytics route (was redirect to /reports)
+   - Summary cards: Total Scans, Cleanups, Files Deleted, Space Freed
+   - Security summary: Threats Detected, Quarantined, Resolved
+   - CPU usage trend sparkline chart
+   - Optimization impact metrics (avg files/space per cleanup)
+   - Uses AI_TIMELINE_SUMMARY, JUNK_MONITOR_HISTORY, THREAT_HISTORY,
+     PERFORMANCE_MONITOR_GRAPH_HISTORY
+
+4. Updates section in Settings:
+   - "Check for updates" button using updateStore.checkForUpdates
+   - Auto-update toggle with localStorage persistence
+
+5. Developer section in Settings:
+   - Debug mode toggle (verbose logging)
+   - Backend RPC ping button (tests backend connection)
+
+New RPC constants:
+- THREAT_CLAMAV_AUTO_UPDATE_START
+- THREAT_CLAMAV_AUTO_UPDATE_STOP
+- THREAT_CLAMAV_AUTO_UPDATE_STATUS
+
+New pages:
+- AnalyticsPage.tsx
+
+Validation:
+- ESLint: 0 warnings
+- TypeScript build: passed
+- Vitest: 159 test files, 8098 tests passed
+- PyInstaller: backend rebuilt successfully
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

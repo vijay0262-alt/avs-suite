@@ -46,6 +46,7 @@ const NetworkInformationPage = lazy(() => import('../features/network-info/Netwo
 const FileRecoveryPage = lazy(() => import('../pages/FileRecoveryPage'));
 const ReportsTimelinePage = lazy(() => import('../pages/ReportsTimelinePage'));
 const LargeFilesPage = lazy(() => import('../pages/LargeFilesPage'));
+const AnalyticsPage = lazy(() => import('../pages/AnalyticsPage'));
 
 // v2.0 security sub-pages and new route wrappers
 import {
@@ -219,7 +220,7 @@ export const router = createHashRouter([
       { path: 'optimization-reports', element: wrap(OptimizationReportsPage) },
       // Reports Timeline
       { path: 'reports-timeline', element: wrap(ReportsTimelinePage) },
-      { path: 'analytics', element: <Navigate to="/reports" replace /> },
+      { path: 'analytics', element: wrap(AnalyticsPage) },
       { path: 'export-center', element: wrap(ExportCenterPage) },
       // TOOLS
       { path: 'system-information', element: wrap(SystemInformationPage) },

@@ -42,6 +42,7 @@ export const en = {
       optimization: 'Optimization',
       reports: 'Reports',
       tools: 'Tools',
+      reportsTools: 'Reports & Tools',
       account: 'Account',
       // Legacy aliases
       overview: 'Home',
@@ -89,7 +90,7 @@ export const en = {
     softwareUpdater: 'Software Updater',
     maintenanceHistory: 'Maintenance History',
     reports: 'Reports',
-    reportsTimeline: 'Timeline',
+    reportsTimeline: 'Reports Timeline',
     analytics: 'Analytics',
     exportCenter: 'Export Center',
     systemInformation: 'System Information',

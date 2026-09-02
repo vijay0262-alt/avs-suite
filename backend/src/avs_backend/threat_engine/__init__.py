@@ -792,6 +792,36 @@ def threat_clamav_uninstall(params: dict[str, Any] | None) -> dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
+@register("threat.clamavAutoUpdateStart")
+def threat_clamav_auto_update_start(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Start the ClamAV auto-update scheduler (runs freshclam daily)."""
+    try:
+        from avs_backend.threat_engine.clamav_setup import start_auto_update
+        return start_auto_update()
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@register("threat.clamavAutoUpdateStop")
+def threat_clamav_auto_update_stop(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Stop the ClamAV auto-update scheduler."""
+    try:
+        from avs_backend.threat_engine.clamav_setup import stop_auto_update
+        return stop_auto_update()
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@register("threat.clamavAutoUpdateStatus")
+def threat_clamav_auto_update_status(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get ClamAV auto-update scheduler status."""
+    try:
+        from avs_backend.threat_engine.clamav_setup import get_auto_update_status
+        return {"success": True, "status": get_auto_update_status()}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 @register("threat.listThreats")
 def threat_list_threats(params: dict[str, Any] | None) -> dict[str, Any]:
     """List all detected threats from last scan or history."""

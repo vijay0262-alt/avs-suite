@@ -11,6 +11,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, Button, Badge } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
 import { HelpButton } from '../../components/HelpButton';
+import { rpc } from '../../services/rpc';
+import { RPC_METHODS } from '@avs/shared/rpc';
 import {
   ModuleLoadingState,
   ModuleErrorState,
@@ -157,6 +159,8 @@ export default function ThreatEnginePage() {
   const [clamAvSetupLoading, setClamAvSetupLoading] = useState(false);
   const [clamAvStarting, setClamAvStarting] = useState(false);
   const [clamAvMessage, setClamAvMessage] = useState<string | null>(null);
+  const [clamAvAutoUpdateStatus, setClamAvAutoUpdateStatus] = useState<{ running: boolean; last_update: string | null } | null>(null);
+  const [clamAvAutoUpdateLoading, setClamAvAutoUpdateLoading] = useState(false);
 
   // Config
   const [configOpen, setConfigOpen] = useState(false);
@@ -214,15 +218,25 @@ export default function ThreatEnginePage() {
     } catch { /* ignore */ }
   }, []);
 
+  const loadClamAvAutoUpdateStatus = useCallback(async () => {
+    try {
+      const res = await rpc.raw<{ status: { running: boolean; last_update: string | null } }>(RPC_METHODS.THREAT_CLAMAV_AUTO_UPDATE_STATUS);
+      setClamAvAutoUpdateStatus(res.status);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
       await loadStatus();
       await loadHistory();
       void loadClamAvStatus();
+      void loadClamAvAutoUpdateStatus();
       setLoading(false);
     })();
-  }, [loadStatus, loadHistory, loadClamAvStatus]);
+  }, [loadStatus, loadHistory, loadClamAvStatus, loadClamAvAutoUpdateStatus]);
 
   // ── Scan polling ───────────────────────────────────────────────
 
@@ -446,6 +460,21 @@ export default function ThreatEnginePage() {
     } finally {
       setClamAvStarting(false);
     }
+  };
+
+  const toggleClamAvAutoUpdate = async () => {
+    setClamAvAutoUpdateLoading(true);
+    try {
+      if (clamAvAutoUpdateStatus?.running) {
+        await rpc.raw(RPC_METHODS.THREAT_CLAMAV_AUTO_UPDATE_STOP);
+      } else {
+        await rpc.raw(RPC_METHODS.THREAT_CLAMAV_AUTO_UPDATE_START);
+      }
+      void loadClamAvAutoUpdateStatus();
+    } catch {
+      /* ignore */
+    }
+    setClamAvAutoUpdateLoading(false);
   };
 
   // ── Config ─────────────────────────────────────────────────────
@@ -805,6 +834,31 @@ export default function ThreatEnginePage() {
         {clamAvMessage && (
           <div className="mt-3 text-caption text-text-secondary" data-testid="clamav-message">
             {clamAvMessage}
+          </div>
+        )}
+
+        {/* Auto-update toggle */}
+        {clamAvStatus?.installed && (
+          <div className="mt-4 flex items-center justify-between border-t border-[var(--avs-border)] pt-3" data-testid="clamav-autoupdate-row">
+            <div>
+              <div className="text-small font-medium text-text-primary">Auto-update virus definitions</div>
+              <div className="text-caption text-text-secondary">
+                Automatically run freshclam daily to keep signatures current.
+                {clamAvAutoUpdateStatus?.last_update && (
+                  <span className="block mt-0.5">Last update: {new Date(clamAvAutoUpdateStatus.last_update).toLocaleString()}</span>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={toggleClamAvAutoUpdate}
+              disabled={clamAvAutoUpdateLoading}
+              className={`relative h-6 w-11 rounded-full transition-colors shrink-0 ${
+                clamAvAutoUpdateStatus?.running ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'
+              }`}
+              data-testid="clamav-autoupdate-toggle"
+            >
+              <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${clamAvAutoUpdateStatus?.running ? 'translate-x-5' : 'translate-x-0.5'}`} />
+            </button>
           </div>
         )}
       </Card>

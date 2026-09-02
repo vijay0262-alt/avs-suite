@@ -674,8 +674,110 @@ export default function SettingsPage() {
         {/* Optimizer Entitlement disabled */}
         {/* Subscription disabled */}
         {/* Feature Engine disabled */}
-        {/* Updates section disabled */}
-        {/* Developer section disabled */}
+
+        {/* Updates */}
+        <Card title="App Updates" variant="glass">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-small font-medium text-text-primary">Check for updates</div>
+                <p className="text-caption text-text-secondary">
+                  Check if a new version of AVS Shield is available.
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const { useUpdateStore } = await import('../features/update/updateStore');
+                    await useUpdateStore.getState().checkForUpdates('optimizer');
+                  } catch { /* ignore */ }
+                }}
+                data-testid="settings-check-updates-btn"
+              >
+                Check Now
+              </Button>
+            </div>
+            <div className="flex items-center justify-between border-t border-[var(--avs-border)] pt-3">
+              <div>
+                <div className="text-small font-medium text-text-primary">Auto-update</div>
+                <p className="text-caption text-text-secondary">
+                  Automatically download and install updates when available.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  const newVal = !(typeof window !== 'undefined' && window.localStorage.getItem('avs-auto-update') === 'true');
+                  try {
+                    if (newVal) window.localStorage.setItem('avs-auto-update', 'true');
+                    else window.localStorage.removeItem('avs-auto-update');
+                  } catch { /* ignore */ }
+                  setAutoBrowserCleanEnabled((v) => v);
+                }}
+                className={`relative h-6 w-11 rounded-full transition-colors shrink-0 ${
+                  (typeof window !== 'undefined' && window.localStorage.getItem('avs-auto-update') === 'true') ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'
+                }`}
+                data-testid="auto-update-toggle"
+              >
+                <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${(typeof window !== 'undefined' && window.localStorage.getItem('avs-auto-update') === 'true') ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
+          </div>
+        </Card>
+
+        {/* Developer */}
+        <Card title="Developer" variant="glass">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-small font-medium text-text-primary">Debug mode</div>
+                <p className="text-caption text-text-secondary">
+                  Enable verbose logging and RPC diagnostics for troubleshooting.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  const newVal = !(typeof window !== 'undefined' && window.localStorage.getItem('avs-debug-mode') === 'true');
+                  try {
+                    if (newVal) window.localStorage.setItem('avs-debug-mode', 'true');
+                    else window.localStorage.removeItem('avs-debug-mode');
+                  } catch { /* ignore */ }
+                  setAutoBrowserCleanEnabled((v) => v);
+                }}
+                className={`relative h-6 w-11 rounded-full transition-colors shrink-0 ${
+                  (typeof window !== 'undefined' && window.localStorage.getItem('avs-debug-mode') === 'true') ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'
+                }`}
+                data-testid="debug-mode-toggle"
+              >
+                <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${(typeof window !== 'undefined' && window.localStorage.getItem('avs-debug-mode') === 'true') ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
+            <div className="flex items-center justify-between border-t border-[var(--avs-border)] pt-3">
+              <div>
+                <div className="text-small font-medium text-text-primary">Backend RPC ping</div>
+                <p className="text-caption text-text-secondary">
+                  Test the connection to the AVS Shield backend.
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const res = await rpc.raw<{ pong: boolean }>(RPC_METHODS.SYSTEM_PING);
+                    alert(res?.pong ? 'Backend is responding' : 'Backend responded but no pong');
+                  } catch (e) {
+                    alert(`Backend ping failed: ${String(e)}`);
+                  }
+                }}
+                data-testid="settings-rpc-ping-btn"
+              >
+                Ping Backend
+              </Button>
+            </div>
+          </div>
+        </Card>
 
         <Card title="Help & Onboarding" variant="glass">
           <div className="flex items-center justify-between">

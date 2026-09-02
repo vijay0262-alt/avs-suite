@@ -71,9 +71,131 @@ _setup_lock = threading.Lock()
 _setup_in_progress = False
 _setup_progress: dict[str, Any] = {}
 
+# Auto-update scheduler state
+_auto_update_timer: threading.Timer | None = None
+_auto_update_running = False
+_LAST_UPDATE_FILE = _DATA_DIR / "last_update.txt"
+_UPDATE_INTERVAL_SECONDS = 24 * 60 * 60  # 24 hours
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _run_freshclam() -> dict[str, Any]:
+    """Run freshclam to update signature database."""
+    state = _load_state()
+    if not state.get("installed"):
+        return {"success": False, "error": "ClamAV not installed"}
+
+    freshclam_exe = _DATA_DIR / "freshclam.exe"
+    if not freshclam_exe.exists():
+        return {"success": False, "error": "freshclam.exe not found"}
+
+    try:
+        result = subprocess.run(
+            [str(freshclam_exe), "--config-file", str(_DATA_DIR / "freshclam.conf"), "--no-dns"],
+            capture_output=True,
+            text=True,
+            timeout=300,
+            creationflags=_NO_WINDOW,
+        )
+        success = result.returncode == 0
+        if success:
+            _LAST_UPDATE_FILE.write_text(_now_iso(), encoding="utf-8")
+        log.info("freshclam update: success=%s rc=%s", success, result.returncode)
+        return {
+            "success": success,
+            "returncode": result.returncode,
+            "stdout": result.stdout[-500:] if result.stdout else "",
+            "stderr": result.stderr[-500:] if result.stderr else "",
+        }
+    except subprocess.TimeoutExpired:
+        return {"success": False, "error": "freshclam timed out"}
+    except Exception as e:
+        log.error("freshclam failed: %s", e)
+        return {"success": False, "error": str(e)}
+
+
+def _auto_update_tick() -> None:
+    """Background tick that runs freshclam if 24h elapsed since last update."""
+    global _auto_update_running
+    if not _auto_update_running:
+        return
+
+    state = _load_state()
+    if not state.get("installed"):
+        _schedule_next_update()
+        return
+
+    # Check if 24h has passed since last update
+    should_update = True
+    if _LAST_UPDATE_FILE.exists():
+        try:
+            last = _LAST_UPDATE_FILE.read_text(encoding="utf-8").strip()
+            from datetime import datetime as _dt
+            last_dt = _dt.fromisoformat(last)
+            elapsed = (datetime.now(timezone.utc) - last_dt).total_seconds()
+            if elapsed < _UPDATE_INTERVAL_SECONDS:
+                should_update = False
+        except Exception:
+            pass
+
+    if should_update:
+        log.info("ClamAV auto-update: running freshclam")
+        _run_freshclam()
+
+    _schedule_next_update()
+
+
+def _schedule_next_update() -> None:
+    """Schedule the next auto-update tick (checks every hour)."""
+    global _auto_update_timer
+    if not _auto_update_running:
+        return
+    _auto_update_timer = threading.Timer(3600, _auto_update_tick)  # check hourly
+    _auto_update_timer.daemon = True
+    _auto_update_timer.start()
+
+
+def start_auto_update() -> dict[str, Any]:
+    """Start the ClamAV auto-update scheduler.
+
+    Runs freshclam daily (checks hourly) to keep virus definitions current.
+    """
+    global _auto_update_running
+    if _auto_update_running:
+        return {"success": True, "message": "Auto-update already running"}
+    _auto_update_running = True
+    _schedule_next_update()
+    log.info("ClamAV auto-update scheduler started")
+    return {"success": True, "message": "Auto-update started"}
+
+
+def stop_auto_update() -> dict[str, Any]:
+    """Stop the ClamAV auto-update scheduler."""
+    global _auto_update_running, _auto_update_timer
+    _auto_update_running = False
+    if _auto_update_timer:
+        _auto_update_timer.cancel()
+        _auto_update_timer = None
+    log.info("ClamAV auto-update scheduler stopped")
+    return {"success": True, "message": "Auto-update stopped"}
+
+
+def get_auto_update_status() -> dict[str, Any]:
+    """Get auto-update status."""
+    last_update = None
+    if _LAST_UPDATE_FILE.exists():
+        try:
+            last_update = _LAST_UPDATE_FILE.read_text(encoding="utf-8").strip()
+        except Exception:
+            pass
+    return {
+        "running": _auto_update_running,
+        "last_update": last_update,
+        "interval_hours": _UPDATE_INTERVAL_SECONDS // 3600,
+    }
 
 
 def _load_state() -> dict[str, Any]:

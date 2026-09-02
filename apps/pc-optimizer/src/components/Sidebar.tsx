@@ -125,6 +125,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'uninstaller', to: '/uninstaller', labelKey: 'nav.uninstaller', Icon: ArchiveBoxXMarkIcon, proEnhanced: true },
       { id: 'software-updater', to: '/software-updater', labelKey: 'nav.softwareUpdater', Icon: ArrowPathIcon, proEnhanced: true },
       { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon, proEnhanced: true },
+      { id: 'large-files', to: '/large-files', labelKey: 'nav.largeFiles', Icon: ChartBarIcon, proEnhanced: true },
       { id: 'cloud-drive-cleaner', to: '/cloud-drive-cleaner', labelKey: 'nav.cloudDriveCleaner', Icon: CloudArrowUpIcon, proEnhanced: true },
       { id: 'file-recovery', to: '/file-recovery', labelKey: 'nav.fileRecovery', Icon: ArrowUturnLeftIcon, proEnhanced: true },
       { id: 'recovery-center', to: '/recovery-center', labelKey: 'nav.recoveryCenter', Icon: LifebuoyIcon },
@@ -147,19 +148,14 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'quarantine', to: '/quarantine-vault', labelKey: 'nav.quarantine', Icon: LockClosedIcon, proEnhanced: true },
     ],
   },
-  // ── REPORTS ───────────────────────────────────────────────────
+  // ── REPORTS & TOOLS ───────────────────────────────────────────
   {
-    id: 'reports',
-    labelKey: 'nav.section.reports',
+    id: 'reports-tools',
+    labelKey: 'nav.section.reportsTools',
     entries: [
       { id: 'reports', to: '/reports', labelKey: 'nav.reports', Icon: DocumentChartBarIcon },
-    ],
-  },
-  // ── TOOLS ─────────────────────────────────────────────────────
-  {
-    id: 'tools',
-    labelKey: 'nav.section.tools',
-    entries: [
+      { id: 'reports-timeline', to: '/reports-timeline', labelKey: 'nav.reportsTimeline', Icon: ClockIcon, proEnhanced: true },
+      { id: 'analytics', to: '/analytics', labelKey: 'nav.analytics', Icon: ChartBarIcon, proEnhanced: true },
       { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
       { id: 'driver-updater', to: '/driver-updater', labelKey: 'nav.driverUpdater', Icon: ArrowDownTrayIcon, proEnhanced: true },
       { id: 'disk-optimizer', to: '/disk-optimizer', labelKey: 'nav.diskOptimizer', Icon: CircleStackIcon, proEnhanced: true },
@@ -206,7 +202,7 @@ function NavSectionView({
       <span className="text-micro font-semibold uppercase tracking-[var(--avs-tracking-widest)] text-text-muted/60 px-3">
         {t(section.labelKey)}
       </span>
-      <div className="flex flex-col gap-0.5 mt-1.5">
+      <div className="flex flex-col gap-0 mt-1">
         {entries.map(({ id, to, labelKey, Icon, proEnhanced }) => (
           <NavLink
             key={id}
@@ -214,7 +210,7 @@ function NavSectionView({
             data-testid={`sidebar-link-${id}`}
             className={({ isActive }) =>
               clsx(
-                'group relative flex items-center gap-3 rounded-[var(--avs-radius-md)] px-3 py-2 text-small font-medium',
+                'group relative flex items-center gap-2.5 rounded-[var(--avs-radius-md)] px-3 py-1.5 text-small font-medium',
                 'transition-all duration-[var(--avs-duration-fast)] ease-[var(--avs-easing)]',
                 'outline-none focus-visible:shadow-focus',
                 isActive
@@ -239,7 +235,7 @@ function NavSectionView({
                 )}
                 <Icon
                   className={clsx(
-                    'relative h-5 w-5 shrink-0 transition-colors',
+                    'relative h-4 w-4 shrink-0 transition-colors',
                     isActive ? 'text-brand-primary' : 'text-text-muted group-hover:text-text-secondary',
                   )}
                   aria-hidden
@@ -298,7 +294,7 @@ export function Sidebar() {
       <div className="mb-5">
         <GlobalSearch entries={allEntries} />
       </div>
-      <nav aria-label="Primary navigation" className="flex flex-col gap-4">
+      <nav aria-label="Primary navigation" className="flex flex-col gap-3">
         {NAV_SECTIONS.map((section) => (
           <NavSectionView
             key={section.id}
