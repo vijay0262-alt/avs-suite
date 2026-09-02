@@ -99,6 +99,7 @@ a = Analysis(
         "avs_backend.auto_browser_clean",
         "avs_backend.cloud_drive_cleaner",
         "avs_backend.safe_folder",
+        "avs_backend.file_recovery",
         # ── Threat Engine (Phase 3 — real antivirus) ──
         "avs_backend.threat_engine",
         "avs_backend.threat_engine.hash_detector",

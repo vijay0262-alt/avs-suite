@@ -43,6 +43,7 @@ const AIWorkspacePage = lazy(() => import('../features/ai-workspace/AIWorkspaceP
 const MaintenanceHistoryPage = lazy(() => import('../features/maintenance-ui/MaintenanceHistoryPage'));
 const ExportCenterPage = lazy(() => import('../features/export-center/ExportCenterPage'));
 const NetworkInformationPage = lazy(() => import('../features/network-info/NetworkInformationPage'));
+const FileRecoveryPage = lazy(() => import('../pages/FileRecoveryPage'));
 
 // v2.0 security sub-pages and new route wrappers
 import {
@@ -234,6 +235,7 @@ export const router = createHashRouter([
       { path: 'backup-restore', element: wrap(BackupRestorePage) },
       { path: 'recovery-center', element: wrap(RecoveryCenterPage) },
       { path: 'file-shredder', element: wrap(FileShredderPage) },
+      { path: 'file-recovery', element: wrap(FileRecoveryPage) },
       { path: 'disk-optimizer', element: wrap(DiskOptimizerPage) },
       { path: 'pup-scanner', element: wrap(PUPScannerPage) },
       { path: 'browser-extensions', element: wrap(BrowserExtensionManagerPage) },

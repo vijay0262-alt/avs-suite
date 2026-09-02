@@ -411,6 +411,16 @@ export const RPC_METHODS = {
   SAFE_FOLDER_ALERTS: 'safe_folder.alerts',
   SAFE_FOLDER_CLEAR_ALERTS: 'safe_folder.clear_alerts',
   SAFE_FOLDER_CONFIGURE: 'safe_folder.configure',
+  SAFE_FOLDER_SNAPSHOT: 'safe_folder.snapshot',
+  SAFE_FOLDER_SNAPSHOTS: 'safe_folder.snapshots',
+  SAFE_FOLDER_RESTORE: 'safe_folder.restore',
+
+  // File Recovery
+  FILE_RECOVERY_RECYCLABLE: 'file_recovery.recyclable',
+  FILE_RECOVERY_RESTORE: 'file_recovery.restore',
+  FILE_RECOVERY_SHADOW_COPIES: 'file_recovery.shadow_copies',
+  FILE_RECOVERY_SHADOW_RECOVER: 'file_recovery.shadow_recover',
+  FILE_RECOVERY_SEARCH: 'file_recovery.search',
 
   // Threat Engine — unified antivirus/anti-malware scanning
   THREAT_SCAN: 'threat.scan',

@@ -50,7 +50,7 @@ import type {
   RemediationEventListener,
 } from '../security-remediation/types';
 
-import { securityBackendService, type SecuritySnapshotData, type FullSystemScanData } from './securityBackendService';
+import { securityBackendService, type SecuritySnapshotData, type FullSystemScanData, type ThreatEngineThreat } from './securityBackendService';
 import { securityDataAdapter } from './securityDataAdapter';
 
 export interface ScanProgress {
@@ -171,6 +171,24 @@ export class SecurityCenterService {
     }
 
     const result = await this.securityEngine.scan(scanType, scanTargets, scanOptions);
+
+    // ── Run backend threat engine (ClamAV/YARA/AMSI/Defender/Hash/Heuristic) ──
+    // This performs real signature-based malware scanning on files.
+    // It runs concurrently with the frontend behavioral providers and
+    // merges detected threats into the unified result.
+    try {
+      const engineThreats = await this.runThreatEngineScan(scanType);
+      if (engineThreats.length > 0) {
+        // Convert threat engine results to frontend Threat format and merge
+        const converted = this.convertThreatEngineThreats(engineThreats);
+        result.threats = [...result.threats, ...converted];
+        result.itemsScanned += engineThreats.length; // files scanned by engine
+      }
+    } catch (err) {
+      // Threat engine failure should not block the scan result
+      console.warn('[SecurityCenter] Threat engine scan failed:', err);
+    }
+
     this.currentScan = result;
 
     this.scanProgress = {
@@ -197,6 +215,118 @@ export class SecurityCenterService {
     }
 
     return result;
+  }
+
+  /**
+   * Run the backend threat engine scan (ClamAV, YARA, AMSI, Defender,
+   * hash blocklist, heuristics). Returns detected threats.
+   *
+   * The threat engine runs asynchronously in the backend. This method
+   * starts the scan, polls for completion, and returns the results.
+   */
+  private async runThreatEngineScan(scanType: ScanType): Promise<ThreatEngineThreat[]> {
+    // Start the scan
+    const startResult = scanType === 'full'
+      ? await securityBackendService.threatFullScan()
+      : await securityBackendService.threatQuickScan();
+
+    if (!startResult.success || !startResult.scan_id) {
+      return [];
+    }
+
+    const scanId = startResult.scan_id;
+
+    // Poll for completion (max 120 seconds)
+    const pollIntervalMs = 1000;
+    const maxWaitMs = 120000;
+    let elapsed = 0;
+
+    while (elapsed < maxWaitMs) {
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+      elapsed += pollIntervalMs;
+
+      const status = await securityBackendService.threatScanStatus(scanId);
+      if (!status.success) break;
+
+      // Update progress
+      if (this.scanProgress) {
+        this.scanProgress = {
+          ...this.scanProgress,
+          currentPhase: `Threat engine: ${status.files_scanned}/${status.files_total} files (${status.threats_found} threats)`,
+        };
+      }
+
+      if (status.status === 'complete' || status.status === 'cancelled' || status.status === 'error') {
+        break;
+      }
+    }
+
+    // Get results
+    const result = await securityBackendService.threatScanResult(scanId);
+    if (!result.success) return [];
+
+    return result.threats ?? [];
+  }
+
+  /**
+   * Convert backend threat engine threats to frontend Threat format
+   * so they merge seamlessly with behavioral provider results.
+   */
+  private convertThreatEngineThreats(engineThreats: ThreatEngineThreat[]): Threat[] {
+    return engineThreats.map((et) => ({
+      id: et.id,
+      name: et.threat_name,
+      category: this.mapThreatTypeToCategory(et.threat_type),
+      severity: et.severity as 'info' | 'low' | 'medium' | 'high' | 'critical',
+      confidence: et.confidence,
+      confidenceLabel: et.confidence >= 0.9 ? 'high' : et.confidence >= 0.7 ? 'medium' : 'low',
+      risk: et.severity === 'critical' ? 'severe' : et.severity === 'high' ? 'high' : et.severity === 'medium' ? 'moderate' : 'low',
+      evidence: [{
+        source: et.detection_source,
+        type: 'signature_detection',
+        value: et.sha256 ?? et.file_path,
+        description: `${et.detection_source}: ${et.threat_name}`,
+        timestamp: et.detected_at,
+      }],
+      detectionSource: et.detection_source,
+      detectionTime: et.detected_at,
+      affectedAssets: [{
+        type: 'file',
+        path: et.file_path,
+        name: et.file_name,
+        size: et.file_size,
+      }],
+      recommendation: et.status === 'quarantined'
+        ? 'Threat has been quarantined. Review in Quarantine Vault.'
+        : 'Quarantine or remove this threat immediately.',
+      explanation: `${et.detection_source} detected "${et.threat_name}" (${et.threat_type}) in ${et.file_name}. Confidence: ${(et.confidence * 100).toFixed(0)}%.`,
+      mitreAttack: undefined,
+      canRemediate: true,
+      remediationActions: et.status === 'quarantined' ? [] : [
+        { type: 'quarantine', label: 'Quarantine', available: true },
+        { type: 'remove', label: 'Remove', available: true },
+      ],
+    } as unknown as Threat));
+  }
+
+  /**
+   * Map backend threat_type strings to frontend category names
+   * that the Security Center UI knows how to display.
+   */
+  private mapThreatTypeToCategory(threatType: string): string {
+    const lower = threatType.toLowerCase();
+    if (lower.includes('trojan')) return 'trojans';
+    if (lower.includes('worm')) return 'worms';
+    if (lower.includes('ransom') || lower.includes('crypt')) return 'ransomware';
+    if (lower.includes('spy') || lower.includes('keylog')) return 'spyware';
+    if (lower.includes('adware')) return 'adware';
+    if (lower.includes('pup') || lower.includes('potentially')) return 'pups';
+    if (lower.includes('rootkit')) return 'rootkits';
+    if (lower.includes('backdoor')) return 'backdoors';
+    if (lower.includes('miner') || lower.includes('crypto')) return 'crypto_miners';
+    if (lower.includes('virus')) return 'viruses';
+    if (lower.includes('malware')) return 'malware';
+    return 'malware';
   }
 
   /**

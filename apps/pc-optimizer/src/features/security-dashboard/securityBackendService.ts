@@ -164,6 +164,72 @@ export interface QuarantineEntry {
   detectionReason: string | null;
 }
 
+// ── Threat Engine (ClamAV/YARA/AMSI/Defender/Hash/Heuristic) ────
+
+export interface ThreatEngineScanResult {
+  success: boolean;
+  scan_id: string;
+  files_total: number;
+  error?: string;
+}
+
+export interface ThreatEngineScanStatus {
+  success: boolean;
+  scan_id: string;
+  status: 'scanning' | 'complete' | 'cancelled' | 'error' | 'idle';
+  progress: number;
+  files_scanned: number;
+  files_total: number;
+  threats_found: number;
+}
+
+export interface ThreatEngineThreat {
+  id: string;
+  file_path: string;
+  file_name: string;
+  file_size: number;
+  detection_source: string;
+  threat_name: string;
+  threat_type: string;
+  severity: string;
+  confidence: number;
+  details: Record<string, unknown>;
+  sha256: string | null;
+  md5: string | null;
+  detected_at: string;
+  status: 'detected' | 'quarantined' | 'removed' | 'ignored';
+  quarantine_id?: string;
+}
+
+export interface ThreatEngineScanResultFull {
+  success: boolean;
+  scan_id: string;
+  status: string;
+  scan_type: string;
+  started_at: string | null;
+  completed_at: string | null;
+  files_scanned: number;
+  files_total: number;
+  threats_found: number;
+  threats: ThreatEngineThreat[];
+  errors: string[];
+}
+
+export interface ThreatEngineStatus {
+  success: boolean;
+  status: 'active' | 'idle';
+  active_scans: number;
+  enabled_sources: Record<string, boolean>;
+  definitions: Record<string, number>;
+  config: {
+    scan_max_file_size_mb: number;
+    scan_archives: boolean;
+    auto_quarantine: boolean;
+    exclude_paths: string[];
+    virustotal_configured: boolean;
+  };
+}
+
 // ── Service ────────────────────────────────────────────────────
 
 export const securityBackendService = {
@@ -171,6 +237,36 @@ export const securityBackendService = {
 
   async getSnapshot(): Promise<SecuritySnapshotData> {
     return rpc.raw<SecuritySnapshotData>(RPC_METHODS.SECURITY_SNAPSHOT);
+  },
+
+  // ── Threat engine (signature-based AV scanning) ────────────
+
+  async threatQuickScan(): Promise<ThreatEngineScanResult> {
+    return rpc.raw<ThreatEngineScanResult>(RPC_METHODS.THREAT_QUICK_SCAN);
+  },
+
+  async threatFullScan(): Promise<ThreatEngineScanResult> {
+    return rpc.raw<ThreatEngineScanResult>(RPC_METHODS.THREAT_FULL_SCAN);
+  },
+
+  async threatScanStatus(scanId: string): Promise<ThreatEngineScanStatus> {
+    return rpc.raw<ThreatEngineScanStatus>(RPC_METHODS.THREAT_SCAN_STATUS, { scan_id: scanId });
+  },
+
+  async threatScanResult(scanId: string): Promise<ThreatEngineScanResultFull> {
+    return rpc.raw<ThreatEngineScanResultFull>(RPC_METHODS.THREAT_SCAN_RESULT, { scan_id: scanId });
+  },
+
+  async threatScanCancel(scanId: string): Promise<{ success: boolean; message: string }> {
+    return rpc.raw(RPC_METHODS.THREAT_SCAN_CANCEL, { scan_id: scanId });
+  },
+
+  async threatStatus(): Promise<ThreatEngineStatus> {
+    return rpc.raw<ThreatEngineStatus>(RPC_METHODS.THREAT_STATUS);
+  },
+
+  async threatConfigure(params: Record<string, unknown>): Promise<{ success: boolean; config: Record<string, unknown> }> {
+    return rpc.raw(RPC_METHODS.THREAT_CONFIGURE, params);
   },
 
   async getProcesses(): Promise<{ processes: BackendProcess[]; count: number; capturedAt: string }> {
