@@ -134,6 +134,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'full-scan', to: '/full-scan', labelKey: 'nav.fullScan', Icon: ShieldCheckIcon },
       { id: 'custom-scan', to: '/custom-scan', labelKey: 'nav.customScan', Icon: FolderOpenIcon },
       { id: 'pup-scanner', to: '/pup-scanner', labelKey: 'nav.pupScanner', Icon: ShieldExclamationIcon, proEnhanced: true },
+      { id: 'safe-folder', to: '/safe-folder', labelKey: 'nav.safeFolder', Icon: ShieldExclamationIcon, proEnhanced: true },
       { id: 'quarantine', to: '/quarantine-vault', labelKey: 'nav.quarantine', Icon: LockClosedIcon, proEnhanced: true },
     ],
   },

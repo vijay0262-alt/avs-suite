@@ -19,6 +19,7 @@ const PrivacyCleanerPage = lazy(() => import('../pages/PrivacyCleanerPage'));
 const DuplicateFinderPage = lazy(() => import('../pages/DuplicateFinderPage'));
 const DiskAnalyzerPage = lazy(() => import('../pages/DiskAnalyzerPage'));
 const CloudDriveCleanerPage = lazy(() => import('../pages/CloudDriveCleanerPage'));
+const SafeFolderPage = lazy(() => import('../pages/SafeFolderPage'));
 const UninstallerPage = lazy(() => import('../pages/UninstallerPage'));
 const UpdaterPage = lazy(() => import('../pages/UpdaterPage'));
 const PerformancePage = lazy(() => import('../pages/PerformancePage'));
@@ -212,6 +213,7 @@ export const router = createHashRouter([
       { path: 'system-information', element: wrap(SystemInformationPage) },
       { path: 'disk-analyzer', element: wrap(DiskAnalyzerPage) },
       { path: 'cloud-drive-cleaner', element: wrap(CloudDriveCleanerPage) },
+      { path: 'safe-folder', element: wrap(SafeFolderPage) },
       // Network Information hidden — backend module unavailable, redirect to dashboard
       { path: 'network-information', element: <Navigate to="/dashboard" replace /> },
       { path: 'driver-information', element: wrap(DriverInformationPage) },

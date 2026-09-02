@@ -1,0 +1,40 @@
+Add Safe Folder: ransomware protection for sensitive directories
+
+New Phase 2 competitive feature — closes the ransomware protection gap
+vs IObit Advanced SystemCare's Safe Folder.
+
+Backend (safe_folder module):
+  - User selects folders to protect (Documents, Photos, Financial, etc.)
+  - Background monitoring thread per folder using polling-based detection
+  - Detects ransomware-like behavior:
+    * Rapid mass file modification (50+ files in 10s window)
+    * Suspicious extension changes (e.g., .docx -> .encrypted)
+    * Mass file deletion (30+ files in 10s window)
+  - Adjustable sensitivity (low/medium/high) changes thresholds
+  - Optional process termination (kill suspicious processes)
+  - Alert history with timestamps and details
+  - RPCs: safe_folder.list/add/remove/status/start/stop/alerts/
+    clear_alerts/configure (add/remove/start/configure are Pro-gated)
+
+Frontend (SafeFolderPage):
+  - Protection status card with start/stop controls
+  - Add folder form with path and optional label
+  - Protected folders list with remove buttons
+  - Settings card: sensitivity selector, kill-process toggle
+  - Security alerts feed with alert type badges and timestamps
+  - Auto-refresh every 5 seconds for live alert monitoring
+  - Pro upgrade gating for all mutating operations
+
+Integration:
+  - Added to _FEATURE_MODULES and _explicit prefix mapping in rpc_server.py
+  - Added to PyInstaller spec hiddenimports
+  - Added RPC_METHODS enum entries (9 new methods)
+  - Added NavItemId and i18n key
+  - Added sidebar entry in Security section
+  - Added route /safe-folder
+
+Validation: lint clean, typecheck/build pass, 8098 frontend tests pass.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

@@ -399,6 +399,17 @@ export const RPC_METHODS = {
   CLOUD_DRIVE_STATUS: 'cloud_drive.status',
   CLOUD_DRIVE_CLEAN: 'cloud_drive.clean',
 
+  // Safe Folder (Ransomware Protection)
+  SAFE_FOLDER_LIST: 'safe_folder.list',
+  SAFE_FOLDER_ADD: 'safe_folder.add',
+  SAFE_FOLDER_REMOVE: 'safe_folder.remove',
+  SAFE_FOLDER_STATUS: 'safe_folder.status',
+  SAFE_FOLDER_START: 'safe_folder.start',
+  SAFE_FOLDER_STOP: 'safe_folder.stop',
+  SAFE_FOLDER_ALERTS: 'safe_folder.alerts',
+  SAFE_FOLDER_CLEAR_ALERTS: 'safe_folder.clear_alerts',
+  SAFE_FOLDER_CONFIGURE: 'safe_folder.configure',
+
   // Multi-Device License Management
   LICENSE_LIST_DEVICES: 'license.list_devices',
   LICENSE_DEACTIVATE_DEVICE: 'license.deactivate_device',

@@ -93,6 +93,7 @@ _FEATURE_MODULES = [
     "avs_backend.ai_integration",
     "avs_backend.auto_browser_clean",
     "avs_backend.cloud_drive_cleaner",
+    "avs_backend.safe_folder",
 ]
 
 # Track which modules have finished importing (success or failure)
@@ -119,6 +120,7 @@ def _build_method_to_module_map() -> None:
         "pup": "avs_backend.pup_scanner",
         "browser_ext": "avs_backend.browser_extensions",
         "cloud_drive": "avs_backend.cloud_drive_cleaner",
+        "safe_folder": "avs_backend.safe_folder",
         "cleaner": "avs_backend.cleaner",
         "system": "avs_backend.system_information",
         "job": "avs_backend.common.job_rpc",

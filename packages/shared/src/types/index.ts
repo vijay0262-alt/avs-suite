@@ -57,6 +57,7 @@ export type NavItemId =
   | 'system-information'
   | 'disk-analyzer'
   | 'cloud-drive-cleaner'
+  | 'safe-folder'
   | 'network-information'
   | 'driver-information'
   | 'backup-restore'
