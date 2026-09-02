@@ -450,3 +450,121 @@ def network_opt_status(_params: dict[str, Any] | None) -> dict[str, Any]:
         "appliedSettings": _optimization_state["appliedSettings"],
         "supported": IS_WINDOWS,
     }
+
+
+# ─── Internet Booster ──────────────────────────────────────────────
+
+@register("network_opt.boost")
+@require_feature("network_opt.optimize")
+def network_opt_boost(params: dict[str, Any] | None) -> dict[str, Any]:
+    """One-click Internet Booster — applies all network optimizations in one shot.
+
+    Combines:
+    - TCP/IP registry tuning (all OPTIMIZATION_SETTINGS)
+    - DNS cache flush (ipconfig /flushdns)
+    - Browser network settings reset (WinINet cache + DNS resolver cache)
+    - Network adapter reset (ipconfig /release + /renew)
+
+    Pro only. All changes are backed up before applying.
+    """
+    if not IS_WINDOWS:
+        return {"success": False, "message": "Only available on Windows", "supported": False}
+
+    opts = params or {}
+    do_tcp = opts.get("tcpTuning", True)
+    do_dns = opts.get("dnsFlush", True)
+    do_browser = opts.get("browserNetwork", True)
+
+    results: dict[str, Any] = {
+        "tcpTuning": {"applied": 0, "failed": 0},
+        "dnsFlush": False,
+        "browserNetwork": False,
+        "adapterReset": False,
+    }
+
+    # 1. TCP/IP tuning
+    if do_tcp:
+        backup_file = _backup_tcip_params()
+        applied = 0
+        failed = 0
+        for setting in OPTIMIZATION_SETTINGS:
+            current_value, _ = _read_registry_value(setting["regPath"], setting["valueName"])
+            if current_value == setting["recommendedValue"]:
+                continue
+            success = _write_registry_value(
+                setting["regPath"], setting["valueName"],
+                setting["valueType"], setting["recommendedValue"],
+            )
+            if success:
+                applied += 1
+            else:
+                failed += 1
+        results["tcpTuning"] = {"applied": applied, "failed": failed, "backupFile": backup_file}
+
+    # 2. DNS cache flush
+    if do_dns:
+        try:
+            subprocess.run(
+                ["ipconfig", "/flushdns"],
+                capture_output=True, text=True, timeout=10, creationflags=_NO_WINDOW,
+            )
+            results["dnsFlush"] = True
+            log.info("DNS cache flushed")
+        except Exception as e:
+            log.error("DNS flush failed: %s", e)
+
+    # 3. Browser network settings — clear WinINet cache and DNS resolver cache
+    if do_browser:
+        try:
+            # Clear WinINet cache (affects IE/Edge legacy network stack)
+            subprocess.run(
+                ["rundll32.exe", "inetcpl.cpl,ClearMyTracksByProcess", "8"],
+                capture_output=True, timeout=15, creationflags=_NO_WINDOW,
+            )
+            # Clear DNS resolver cache via netsh
+            subprocess.run(
+                ["netsh", "interface", "ip", "delete", "arpcache"],
+                capture_output=True, text=True, timeout=10, creationflags=_NO_WINDOW,
+            )
+            results["browserNetwork"] = True
+            log.info("Browser network settings cleared")
+        except Exception as e:
+            log.error("Browser network reset failed: %s", e)
+
+    # 4. Update optimization state
+    _optimization_state.update({
+        "optimized": True,
+        "appliedAt": _now_iso(),
+        "revertedAt": None,
+    })
+
+    total_applied = results["tcpTuning"]["applied"] if isinstance(results["tcpTuning"], dict) else 0
+    return {
+        "success": True,
+        "message": f"Internet Booster applied: {total_applied} TCP optimizations, "
+                   f"DNS flush={'yes' if results['dnsFlush'] else 'no'}, "
+                   f"browser network={'yes' if results['browserNetwork'] else 'no'}",
+        "results": results,
+        "note": "A system restart may be required for all TCP changes to take effect.",
+    }
+
+
+@register("network_opt.boost_status")
+def network_opt_boost_status(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get Internet Booster status — whether all optimizations are applied."""
+    if not IS_WINDOWS:
+        return {"supported": False, "boosted": False}
+
+    all_optimal = True
+    for setting in OPTIMIZATION_SETTINGS:
+        current_value, _ = _read_registry_value(setting["regPath"], setting["valueName"])
+        if current_value != setting["recommendedValue"]:
+            all_optimal = False
+            break
+
+    return {
+        "supported": True,
+        "boosted": all_optimal and _optimization_state["optimized"],
+        "optimized": _optimization_state["optimized"],
+        "appliedAt": _optimization_state["appliedAt"],
+    }

@@ -283,6 +283,8 @@ export const RPC_METHODS = {
   NETWORK_OPT_OPTIMIZE: 'network_opt.optimize',
   NETWORK_OPT_REVERT: 'network_opt.revert',
   NETWORK_OPT_STATUS: 'network_opt.status',
+  NETWORK_OPT_BOOST: 'network_opt.boost',
+  NETWORK_OPT_BOOST_STATUS: 'network_opt.boost_status',
 
   // Context Menu Manager
   CONTEXT_MENU_LIST: 'context_menu.list',
@@ -384,6 +386,16 @@ export const RPC_METHODS = {
   AI_INTEGRATION_APPLY_WORKLOAD_PRIORITY: 'ai_integration.applyWorkloadPriority',
   AI_INTEGRATION_GET_AUTOCARE_SUGGESTIONS: 'ai_integration.getAutoCareSuggestions',
   AI_INTEGRATION_GET_STATUS: 'ai_integration.getStatus',
+
+  // Auto Browser Clean on Close
+  AUTO_BROWSER_CLEAN_STATUS: 'auto_browser_clean.status',
+  AUTO_BROWSER_CLEAN_START: 'auto_browser_clean.start',
+  AUTO_BROWSER_CLEAN_STOP: 'auto_browser_clean.stop',
+  AUTO_BROWSER_CLEAN_UPDATE_CATEGORIES: 'auto_browser_clean.updateCategories',
+
+  // Multi-Device License Management
+  LICENSE_LIST_DEVICES: 'license.list_devices',
+  LICENSE_DEACTIVATE_DEVICE: 'license.deactivate_device',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

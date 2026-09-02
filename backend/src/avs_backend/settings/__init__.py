@@ -56,6 +56,14 @@ def settings_get(_params: dict[str, Any] | None) -> dict[str, Any]:
             # Junk monitor
             "junkMonitorEnabled": settings.junk_monitor_enabled,
             "junkMonitorThresholdGb": settings.junk_monitor_threshold_gb,
+            # Auto browser clean on close
+            "autoBrowserCleanEnabled": settings.auto_browser_clean_enabled,
+            "autoBrowserCleanCategories": settings.auto_browser_clean_categories,
+            # Internet Booster
+            "internetBoosterEnabled": settings.internet_booster_enabled,
+            "internetBoosterDnsFlush": settings.internet_booster_dns_flush,
+            "internetBoosterTcpTuning": settings.internet_booster_tcp_tuning,
+            "internetBoosterBrowserNetwork": settings.internet_booster_browser_network,
             # Nested notifications object for granular category control
             "notifications": {
                 "security": settings.notification_security,
@@ -129,6 +137,22 @@ def settings_update(params: dict[str, Any] | None) -> dict[str, Any]:
             settings.junk_monitor_enabled = params["junkMonitorEnabled"]
         if "junkMonitorThresholdGb" in params:
             settings.junk_monitor_threshold_gb = params["junkMonitorThresholdGb"]
+
+        # Auto browser clean on close
+        if "autoBrowserCleanEnabled" in params:
+            settings.auto_browser_clean_enabled = params["autoBrowserCleanEnabled"]
+        if "autoBrowserCleanCategories" in params:
+            settings.auto_browser_clean_categories = params["autoBrowserCleanCategories"]
+
+        # Internet Booster
+        if "internetBoosterEnabled" in params:
+            settings.internet_booster_enabled = params["internetBoosterEnabled"]
+        if "internetBoosterDnsFlush" in params:
+            settings.internet_booster_dns_flush = params["internetBoosterDnsFlush"]
+        if "internetBoosterTcpTuning" in params:
+            settings.internet_booster_tcp_tuning = params["internetBoosterTcpTuning"]
+        if "internetBoosterBrowserNetwork" in params:
+            settings.internet_booster_browser_network = params["internetBoosterBrowserNetwork"]
 
         # Nested notifications object (granular category control)
         if "notifications" in params:

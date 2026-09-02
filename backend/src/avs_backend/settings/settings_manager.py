@@ -110,6 +110,18 @@ class Settings:
     junk_monitor_enabled: bool = True
     junk_monitor_threshold_gb: float = 2.0  # notify when this much junk accumulates
 
+    # Auto Browser Clean on Close (competitive gap closure)
+    auto_browser_clean_enabled: bool = False
+    auto_browser_clean_categories: list = field(default_factory=lambda: [
+        "browser_cache", "browser_history", "browser_cookies",
+    ])
+
+    # Internet Booster (competitive gap closure)
+    internet_booster_enabled: bool = False
+    internet_booster_dns_flush: bool = True
+    internet_booster_tcp_tuning: bool = True
+    internet_booster_browser_network: bool = True
+
 
 # Settings file path
 SETTINGS_DIR = Path.home() / ".avs"
@@ -161,6 +173,12 @@ def load_settings() -> Settings:
             "notificationPerformance": "notification_performance",
             "notificationMaintenance": "notification_maintenance",
             "notificationFrequency": "notification_frequency",
+            "autoBrowserCleanEnabled": "auto_browser_clean_enabled",
+            "autoBrowserCleanCategories": "auto_browser_clean_categories",
+            "internetBoosterEnabled": "internet_booster_enabled",
+            "internetBoosterDnsFlush": "internet_booster_dns_flush",
+            "internetBoosterTcpTuning": "internet_booster_tcp_tuning",
+            "internetBoosterBrowserNetwork": "internet_booster_browser_network",
         }
         for old_key, new_key in key_map.items():
             if old_key in data:

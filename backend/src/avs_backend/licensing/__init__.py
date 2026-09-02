@@ -366,6 +366,76 @@ def license_close(_params: dict[str, Any] | None = None) -> dict[str, Any]:
     return {"success": True}
 
 
+@registry.register("license.list_devices")
+def license_list_devices(_params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """List all devices activated under the current license.
+
+    Returns device information including name, fingerprint, last seen,
+    and activation date. Useful for multi-device license management.
+    """
+    try:
+        client = _get_client()
+        # The SDK may expose list_devices() or we fall back to license info
+        if hasattr(client, "list_devices"):
+            devices = client.list_devices()
+            return {
+                "success": True,
+                "devices": [
+                    {
+                        "device_name": d.get("device_name", "Unknown"),
+                        "device_fingerprint": d.get("device_fingerprint", ""),
+                        "last_seen": d.get("last_seen"),
+                        "activated_at": d.get("activated_at"),
+                        "app_version": d.get("app_version", ""),
+                        "is_current": d.get("device_fingerprint") == client.fingerprint,
+                    }
+                    for d in devices
+                ],
+                "max_devices": client.remaining_devices() + len(devices) if devices else 1,
+            }
+        # Fallback: return just the current device
+        info = client.refresh()
+        return {
+            "success": True,
+            "devices": [
+                {
+                    "device_name": info.device_name or "This PC",
+                    "device_fingerprint": info.device_fingerprint,
+                    "last_seen": info.last_validated.isoformat() if info.last_validated else None,
+                    "activated_at": None,
+                    "app_version": os.environ.get("APP_VERSION", "1.0.0"),
+                    "is_current": True,
+                }
+            ],
+            "max_devices": info.max_devices,
+            "active_devices": info.active_devices,
+            "remaining_devices": info.remaining_devices,
+        }
+    except Exception as exc:
+        log.error("List devices failed: %s", exc)
+        return _error_response(exc)
+
+
+@registry.register("license.deactivate_device")
+def license_deactivate_device(params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Deactivate a specific device from the license (multi-device management).
+
+    Params:
+        device_fingerprint: str — fingerprint of the device to deactivate
+    """
+    if not params or "device_fingerprint" not in params:
+        return {"success": False, "error": "Missing device_fingerprint parameter"}
+    try:
+        client = _get_client()
+        if hasattr(client, "deactivate_device"):
+            success = client.deactivate_device(params["device_fingerprint"])
+            return {"success": success}
+        return {"success": False, "error": "Device deactivation not supported by this SDK version"}
+    except Exception as exc:
+        log.error("Deactivate device failed: %s", exc)
+        return _error_response(exc)
+
+
 # ── Backend Edition Guard ─────────────────────────────────────
 
 # Maps RPC method names to the minimum edition required to execute them.

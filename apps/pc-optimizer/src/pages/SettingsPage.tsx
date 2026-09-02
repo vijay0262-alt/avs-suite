@@ -3,7 +3,7 @@ import { useTheme } from '@avs/ui';
 import { PageHeader } from '../components/PageHeader';
 import { HelpButton } from '../components/HelpButton';
 import type { ThemeMode } from '@avs/shared/types';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useEdition } from '../config/EditionManager';
 import { getVersionString, getBuildString, getChannelString, getEditionString } from '../config/version';
 import { useUpgradeDialog } from '../components/UpgradeDialog';
@@ -14,6 +14,8 @@ import { useTraySettings } from '../hooks/useTraySettings';
 import { useScheduledCleanup } from '../features/scheduled-cleanup/useScheduledCleanup';
 import { useJunkMonitor } from '../features/scheduled-cleanup/useJunkMonitor';
 import { replayWelcome } from '../features/onboarding';
+import { rpc } from '../services/rpc';
+import { RPC_METHODS } from '@avs/shared/rpc';
 
 const THEMES: readonly { id: ThemeMode; label: string }[] = [
   { id: 'light', label: 'Light' },
@@ -36,6 +38,9 @@ export default function SettingsPage() {
   const subscription = useSubscriptionStore((s) => s.subscription);
   const { settings: schedSettings, loading: schedLoading, saving: schedSaving, saveSettings: saveSchedSettings } = useScheduledCleanup();
   const { status: junkStatus } = useJunkMonitor();
+  const [autoBrowserCleanEnabled, setAutoBrowserCleanEnabled] = useState(false);
+  const [internetBoosterEnabled, setInternetBoosterEnabled] = useState(false);
+  const [internetBoosterLoading, setInternetBoosterLoading] = useState(false);
 
   useEffect(() => {
     // Sync dev mode state from localStorage
@@ -58,6 +63,24 @@ export default function SettingsPage() {
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  // Load auto browser clean and internet booster settings from backend
+  useEffect(() => {
+    rpc.raw<{ autoBrowserCleanEnabled?: boolean; internetBoosterEnabled?: boolean }>(RPC_METHODS.SETTINGS_GET)
+      .then((s) => {
+        if (s) {
+          setAutoBrowserCleanEnabled(!!s.autoBrowserCleanEnabled);
+          setInternetBoosterEnabled(!!s.internetBoosterEnabled);
+          // Re-start watcher if it was previously enabled
+          if (s.autoBrowserCleanEnabled) {
+            rpc.raw(RPC_METHODS.AUTO_BROWSER_CLEAN_START, {
+              categories: ['browser_cache', 'browser_history', 'browser_cookies'],
+            }).catch(() => {});
+          }
+        }
+      })
+      .catch(() => {});
   }, []);
 
   return (
@@ -501,6 +524,78 @@ export default function SettingsPage() {
         {/* Telemetry disabled */}
         {/* <Card title="Telemetry" variant="glass"> ... </Card> */}
 
+        <Card title="Auto Browser Clean" variant="glass">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-small font-medium text-text-primary">Clean browser data on close</div>
+                <p className="text-caption text-text-secondary">
+                  Automatically clean cache, history, and cookies when you close your browser.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  const newVal = !autoBrowserCleanEnabled;
+                  setAutoBrowserCleanEnabled(newVal);
+                  rpc.raw(RPC_METHODS.SETTINGS_UPDATE, { autoBrowserCleanEnabled: newVal }).catch(() => {});
+                  if (newVal) {
+                    rpc.raw(RPC_METHODS.AUTO_BROWSER_CLEAN_START, {
+                      categories: ['browser_cache', 'browser_history', 'browser_cookies'],
+                    }).catch(() => {});
+                  } else {
+                    rpc.raw(RPC_METHODS.AUTO_BROWSER_CLEAN_STOP).catch(() => {});
+                  }
+                }}
+                className={`relative h-6 w-11 rounded-full transition-colors ${autoBrowserCleanEnabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'}`}
+                data-testid="auto-browser-clean-toggle"
+              >
+                <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${autoBrowserCleanEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
+            {autoBrowserCleanEnabled && (
+              <p className="text-caption text-text-muted">
+                Watching for browser exits: Chrome, Edge, Firefox, Brave, Opera, Vivaldi.
+              </p>
+            )}
+          </div>
+        </Card>
+
+        <Card title="Internet Booster" variant="glass">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-small font-medium text-text-primary">One-click Internet Booster</div>
+                <p className="text-caption text-text-secondary">
+                  Optimize TCP/IP settings, flush DNS cache, and clear browser network data for faster browsing.
+                </p>
+              </div>
+              <Button
+                variant={internetBoosterEnabled ? 'secondary' : 'primary'}
+                size="sm"
+                onClick={async () => {
+                  if (edition === 'free') { showUpgrade(); return; }
+                  setInternetBoosterLoading(true);
+                  try {
+                    await rpc.raw(RPC_METHODS.NETWORK_OPT_BOOST, {
+                      tcpTuning: true, dnsFlush: true, browserNetwork: true,
+                    });
+                    setInternetBoosterEnabled(true);
+                    rpc.raw(RPC_METHODS.SETTINGS_UPDATE, { internetBoosterEnabled: true }).catch(() => {});
+                  } catch { /* ignore */ }
+                  setInternetBoosterLoading(false);
+                }}
+                disabled={internetBoosterLoading}
+                data-testid="internet-booster-apply"
+              >
+                {internetBoosterLoading ? 'Boosting...' : internetBoosterEnabled ? 'Re-apply' : 'Boost Now'}
+              </Button>
+            </div>
+            {edition === 'free' && (
+              <p className="text-caption text-brand-primary">Professional edition required.</p>
+            )}
+          </div>
+        </Card>
+
         <Card title="AVS Shield Account" variant="glass">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -533,6 +628,35 @@ export default function SettingsPage() {
               Log Out
             </Button>
           </div>
+
+          {edition === 'professional' && (
+            <div className="border-t border-[var(--avs-border)] pt-4">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <div className="text-small font-medium text-text-primary">Device Management</div>
+                  <p className="text-caption text-text-secondary">
+                    Manage devices activated under your Professional license.
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    rpc.raw(RPC_METHODS.LICENSE_LIST_DEVICES)
+                      .then((res: unknown) => {
+                        const r = res as { devices?: Array<{ device_name: string; is_current: boolean; last_seen: string | null }> };
+                        const count = r.devices?.length ?? 0;
+                        alert(`Active devices: ${count}\n` + (r.devices?.map((d) => `  - ${d.device_name}${d.is_current ? ' (this PC)' : ''}`).join('\n') ?? ''));
+                      })
+                      .catch(() => alert('Could not retrieve device list.'));
+                  }}
+                  data-testid="settings-list-devices"
+                >
+                  View Devices
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Optimizer Entitlement disabled */}

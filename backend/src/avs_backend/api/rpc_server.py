@@ -91,6 +91,7 @@ _FEATURE_MODULES = [
     "avs_backend.duplicate_intel",
     "avs_backend.process_priority",
     "avs_backend.ai_integration",
+    "avs_backend.auto_browser_clean",
 ]
 
 # Track which modules have finished importing (success or failure)

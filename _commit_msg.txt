@@ -1,0 +1,32 @@
+Add Phase 1 competitive quick wins: auto browser clean, Internet Booster, multi-device licensing
+
+Three features from the competitive positioning review:
+
+1. Auto Browser Clean on Close
+   - New backend module auto_browser_clean with background watcher thread
+   - Monitors Chrome/Edge/Firefox/Brave/Opera/Vivaldi process exits
+   - Triggers privacy cleanup (cache/history/cookies) after browser closes
+   - RPCs: status, start, stop, updateCategories
+   - Frontend toggle in Settings with auto-restart on app launch
+
+2. Internet Booster (Network Optimizer enhancement)
+   - One-click boost combining TCP/IP tuning, DNS flush, browser network reset
+   - RPCs: network_opt.boost (Pro-gated), network_opt.boost_status
+   - Preserves existing backup/revert semantics and partial failure reporting
+   - Frontend "Boost Now" button in Settings with Pro upgrade gating
+
+3. Multi-Device License Management
+   - RPCs: license.list_devices, license.deactivate_device
+   - Uses SDK device info with fallback to current device
+   - Frontend "View Devices" button in Account card (Pro only)
+
+Settings fields added: autoBrowserCleanEnabled, autoBrowserCleanCategories,
+internetBoosterEnabled, internetBoosterDnsFlush, internetBoosterBrowserTuning
+with camelCase RPC round-trip support.
+
+Validation: lint clean, typecheck/build pass, 8098 frontend tests pass,
+1207 backend tests pass.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>
