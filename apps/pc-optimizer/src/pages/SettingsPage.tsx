@@ -9,7 +9,7 @@ import { getVersionString, getBuildString, getChannelString, getEditionString } 
 import { useUpgradeDialog } from '../components/UpgradeDialog';
 import { useAuthStore } from '../features/auth/authStore';
 import { useSubscriptionStore } from '../features/subscription/subscriptionStore';
-import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, StarIcon, CheckCircleIcon, CloudArrowDownIcon, RocketLaunchIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, StarIcon, CheckCircleIcon, CloudArrowDownIcon, RocketLaunchIcon, SparklesIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
 import { useTraySettings } from '../hooks/useTraySettings';
 import { useScheduledCleanup } from '../features/scheduled-cleanup/useScheduledCleanup';
 import { useJunkMonitor } from '../features/scheduled-cleanup/useJunkMonitor';
@@ -639,32 +639,7 @@ export default function SettingsPage() {
           </div>
 
           {edition === 'professional' && (
-            <div className="border-t border-[var(--avs-border)] pt-4">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <div className="text-small font-medium text-text-primary">Device Management</div>
-                  <p className="text-caption text-text-secondary">
-                    Manage devices activated under your Professional license.
-                  </p>
-                </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    rpc.raw(RPC_METHODS.LICENSE_LIST_DEVICES)
-                      .then((res: unknown) => {
-                        const r = res as { devices?: Array<{ device_name: string; is_current: boolean; last_seen: string | null }> };
-                        const count = r.devices?.length ?? 0;
-                        alert(`Active devices: ${count}\n` + (r.devices?.map((d) => `  - ${d.device_name}${d.is_current ? ' (this PC)' : ''}`).join('\n') ?? ''));
-                      })
-                      .catch(() => alert('Could not retrieve device list.'));
-                  }}
-                  data-testid="settings-list-devices"
-                >
-                  View Devices
-                </Button>
-              </div>
-            </div>
+            <DeviceManagement />
           )}
         </Card>
 
@@ -695,6 +670,107 @@ export default function SettingsPage() {
 
         {/* Keyboard Shortcuts disabled */}
       </div>
+    </div>
+  );
+}
+
+// ── Device Management ─────────────────────────────────────────
+
+function DeviceManagement() {
+  const [devices, setDevices] = useState<Array<{ device_name: string; device_fingerprint: string; is_current: boolean; last_seen: string | null; activated_at: string | null }>>([]);
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [deactivating, setDeactivating] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [devRes, remRes] = await Promise.all([
+        rpc.raw<{ devices?: typeof devices; max_devices?: number }>(RPC_METHODS.LICENSE_LIST_DEVICES),
+        rpc.raw<{ remaining_devices: number }>(RPC_METHODS.LICENSE_REMAINING_DEVICES),
+      ]);
+      setDevices(devRes.devices || []);
+      setRemaining(remRes.remaining_devices ?? 0);
+    } catch (e) {
+      setError(String(e));
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const handleDeactivate = async (fingerprint: string, name: string) => {
+    if (!confirm(`Deactivate "${name}"? This will free up a device slot.`)) return;
+    setDeactivating(fingerprint);
+    try {
+      await rpc.raw(RPC_METHODS.LICENSE_DEACTIVATE_DEVICE, { device_fingerprint: fingerprint });
+      refresh();
+    } catch (e) {
+      setError(String(e));
+    }
+    setDeactivating(null);
+  };
+
+  return (
+    <div className="border-t border-[var(--avs-border)] pt-4">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <div className="text-small font-medium text-text-primary">Device Management</div>
+          <p className="text-caption text-text-secondary">
+            Manage devices activated under your Professional license.
+          </p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={refresh} disabled={loading} data-testid="settings-list-devices">
+          {loading ? 'Loading...' : 'Refresh'}
+        </Button>
+      </div>
+
+      {error && (
+        <p className="text-caption text-semantic-danger mb-2">{error}</p>
+      )}
+
+      {remaining !== null && (
+        <p className="text-caption text-text-muted mb-3">
+          {remaining} device slot{remaining !== 1 ? 's' : ''} remaining
+        </p>
+      )}
+
+      {devices.length > 0 ? (
+        <div className="space-y-2">
+          {devices.map((d) => (
+            <div key={d.device_fingerprint} className="flex items-center gap-2 py-2 px-3 rounded border border-[var(--avs-border)]">
+              <DevicePhoneMobileIcon className="h-5 w-5 text-text-muted shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-small text-text-primary truncate">
+                  {d.device_name}
+                  {d.is_current && <span className="text-caption text-brand-primary ml-2">(This PC)</span>}
+                </div>
+                <div className="text-caption text-text-muted">
+                  {d.last_seen ? `Last seen: ${new Date(d.last_seen).toLocaleDateString()}` : 'Never seen'}
+                  {d.activated_at && ` · Activated: ${new Date(d.activated_at).toLocaleDateString()}`}
+                </div>
+              </div>
+              {!d.is_current && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDeactivate(d.device_fingerprint, d.device_name)}
+                  disabled={deactivating === d.device_fingerprint}
+                  data-testid={`deactivate-device-${d.device_fingerprint}`}
+                >
+                  {deactivating === d.device_fingerprint ? '...' : 'Deactivate'}
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : !loading && !error ? (
+        <p className="text-caption text-text-muted">No devices found.</p>
+      ) : null}
     </div>
   );
 }

@@ -1,0 +1,38 @@
+Add device management UI + verify ClamAV/threat engine integration
+
+Settings page:
+- Replaced basic alert-based device list with proper DeviceManagement component
+- Shows device name, last seen, activation date, current device indicator
+- Deactivate devices with confirmation
+- Shows remaining device slots
+- Uses RPC_METHODS constants (added LICENSE_REMAINING_DEVICES)
+
+ClamAV verification:
+- Verified threat engine loads correctly in packaged binary
+- threat.status returns: 5 detection sources configured
+  (hash_blocklist, yara, amsi, heuristic, defender enabled;
+   clamav disabled, virustotal disabled)
+- ClamAV gracefully reports unavailable when clamd not installed
+- clamav_setup.py module exists for automated ClamAV installation
+- All 21 threat.* RPC methods registered and working
+
+Driver manufacturer database:
+- Already implemented with 20+ manufacturers (NVIDIA, AMD, Intel,
+  Realtek, Broadcom, Qualcomm, MediaTek, ASUS, ASRock, Gigabyte,
+  MSI, Dell, HP, Lenovo, Acer, Samsung, WD, Seagate, Logitech,
+  Microsoft, Synaptics, ELAN)
+- Frontend already fetches and displays download links
+
+Multi-device licensing:
+- Backend already supports license.list_devices,
+  license.deactivate_device, license.remaining_devices
+- Frontend now has proper device management UI
+
+Validation:
+- ESLint: 0 warnings
+- TypeScript build: passed
+- Vitest: 159 test files, 8098 tests passed
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

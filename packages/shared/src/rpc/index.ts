@@ -528,6 +528,7 @@ export const RPC_METHODS = {
   // Multi-Device License Management
   LICENSE_LIST_DEVICES: 'license.list_devices',
   LICENSE_DEACTIVATE_DEVICE: 'license.deactivate_device',
+  LICENSE_REMAINING_DEVICES: 'license.remaining_devices',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];
