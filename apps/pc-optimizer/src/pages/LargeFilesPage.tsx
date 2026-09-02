@@ -1,0 +1,221 @@
+/**
+ * LargeFilesPage — find and manage the largest files on your drives.
+ *
+ * Uses disk.analyze to scan drives and display the largest files,
+ * allowing users to delete space-hogging files directly.
+ */
+import { useState, useCallback, useEffect } from 'react';
+import { Card, Button, Badge } from '@avs/ui';
+import { PageHeader } from '../components/PageHeader';
+import { HelpButton } from '../components/HelpButton';
+import { rpc } from '../services/rpc';
+import { RPC_METHODS } from '@avs/shared/rpc';
+import { useEdition } from '../config/EditionManager';
+import { useUpgradeDialog } from '../components/UpgradeDialog';
+import {
+  DocumentIcon,
+  ArrowPathIcon,
+  TrashIcon,
+  FolderIcon,
+  ArrowDownTrayIcon,
+} from '@heroicons/react/24/outline';
+
+interface LargeFile {
+  path: string;
+  name: string;
+  size: number;
+  category: string;
+}
+
+interface DriveInfo {
+  letter: string;
+  label: string;
+  totalBytes: number;
+  freeBytes: number;
+}
+
+function formatSize(bytes: number): string {
+  if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(2)} GB`;
+  if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${bytes} B`;
+}
+
+export default function LargeFilesPage() {
+  const edition = useEdition();
+  const { show: showUpgrade } = useUpgradeDialog();
+  const isPro = edition === 'professional';
+  const [drives, setDrives] = useState<DriveInfo[]>([]);
+  const [selectedDrive, setSelectedDrive] = useState<string>('');
+  const [files, setFiles] = useState<LargeFile[]>([]);
+  const [scanning, setScanning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deletedSize, setDeletedSize] = useState(0);
+
+  // Load drives on mount
+  useEffect(() => {
+    rpc.raw<{ drives: DriveInfo[] }>(RPC_METHODS.DISK_LIST_DRIVES)
+      .then((res) => {
+        const driveList = res.drives || [];
+        setDrives(driveList);
+        if (driveList.length > 0 && !selectedDrive) {
+          setSelectedDrive(driveList[0]!.letter);
+        }
+      })
+      .catch((e) => setError(String(e)));
+  }, [selectedDrive]);
+
+  const handleScan = useCallback(async () => {
+    if (!selectedDrive) return;
+    setScanning(true);
+    setError(null);
+    setFiles([]);
+    try {
+      const res = await rpc.raw<{ largestFiles: LargeFile[] }>(RPC_METHODS.DISK_ANALYZE, { path: selectedDrive });
+      setFiles(res.largestFiles || []);
+    } catch (e) {
+      setError(String(e));
+    }
+    setScanning(false);
+  }, [selectedDrive]);
+
+  const handleDelete = useCallback(async (file: LargeFile) => {
+    if (!isPro) {
+      showUpgrade('Large Files');
+      return;
+    }
+    if (!confirm(`Delete "${file.name}" (${formatSize(file.size)})?\nThis cannot be undone.`)) return;
+    setDeleting(file.path);
+    try {
+      await rpc.raw(RPC_METHODS.DISK_DELETE_FILES, { files: [file.path] });
+      setFiles((prev) => prev.filter((f) => f.path !== file.path));
+      setDeletedSize((prev) => prev + file.size);
+    } catch (e) {
+      setError(String(e));
+    }
+    setDeleting(null);
+  }, [isPro, showUpgrade]);
+
+  const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+
+  return (
+    <div data-testid="page-large-files" className="space-y-4">
+      <PageHeader
+        title="Large Files"
+        description="Find and remove the largest files taking up space on your drives."
+        actions={<HelpButton text="Select a drive and click Scan to find the 20 largest files. Pro users can delete files directly." />}
+      />
+
+      {/* Drive selector + scan */}
+      <Card variant="glass" className="p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="shrink-0 rounded-[var(--avs-radius-md)] bg-brand-primary/10 p-3">
+              <FolderIcon className="h-6 w-6 text-brand-primary" />
+            </div>
+            <div>
+              <div className="text-section-title text-text-primary">Large File Scanner</div>
+              <p className="text-caption text-text-secondary mt-1">
+                Scans for the 20 largest files on the selected drive.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <select
+              value={selectedDrive}
+              onChange={(e) => setSelectedDrive(e.target.value)}
+              className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-small text-text-primary focus:border-brand-primary focus:outline-none"
+              data-testid="large-files-drive-select"
+            >
+              {drives.map((d) => (
+                <option key={d.letter} value={d.letter}>
+                  {d.letter} {d.label && `(${d.label})`} — {formatSize(d.totalBytes - d.freeBytes)} used
+                </option>
+              ))}
+            </select>
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={handleScan}
+              disabled={scanning || !selectedDrive}
+              leftIcon={scanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <ArrowDownTrayIcon className="h-5 w-5" />}
+              data-testid="large-files-scan-btn"
+            >
+              {scanning ? 'Scanning...' : 'Scan Now'}
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {/* Error */}
+      {error && (
+        <div className="rounded-[var(--avs-radius-md)] border border-semantic-danger/30 bg-semantic-danger/5 p-4">
+          <p className="text-small text-semantic-danger">{error}</p>
+        </div>
+      )}
+
+      {/* Summary */}
+      {files.length > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          <Card variant="glass" className="p-4 text-center">
+            <div className="text-section-title font-bold text-text-primary">{files.length}</div>
+            <div className="text-caption text-text-secondary">Large Files Found</div>
+          </Card>
+          <Card variant="glass" className="p-4 text-center">
+            <div className="text-section-title font-bold text-text-primary">{formatSize(totalSize)}</div>
+            <div className="text-caption text-text-secondary">Total Size</div>
+          </Card>
+          <Card variant="glass" className="p-4 text-center">
+            <div className="text-section-title font-bold text-semantic-success">{formatSize(deletedSize)}</div>
+            <div className="text-caption text-text-secondary">Space Freed</div>
+          </Card>
+        </div>
+      )}
+
+      {/* File list */}
+      {files.length > 0 && (
+        <Card variant="glass" className="p-4" data-testid="large-files-list">
+          <div className="space-y-2">
+            {files.map((file, i) => (
+              <div key={file.path} className="flex items-center gap-3 py-2 px-3 rounded border border-[var(--avs-border)]">
+                <div className="shrink-0 w-8 text-center">
+                  <span className="text-caption font-bold text-text-muted">#{i + 1}</span>
+                </div>
+                <DocumentIcon className="h-5 w-5 text-text-muted shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-small font-medium text-text-primary truncate">{file.name}</div>
+                  <div className="text-caption text-text-muted truncate">{file.path}</div>
+                </div>
+                <Badge tone="neutral">{file.category || 'File'}</Badge>
+                <div className="text-small font-semibold text-text-primary tabular-nums shrink-0 w-24 text-right">
+                  {formatSize(file.size)}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDelete(file)}
+                  disabled={deleting === file.path || !isPro}
+                  leftIcon={<TrashIcon className="h-4 w-4" />}
+                  data-testid={`large-files-delete-${i}`}
+                >
+                  {deleting === file.path ? '...' : 'Delete'}
+                </Button>
+              </div>
+            ))}
+          </div>
+          {!isPro && (
+            <p className="text-caption text-brand-primary mt-3">Professional edition required to delete files.</p>
+          )}
+        </Card>
+      )}
+
+      {files.length === 0 && !scanning && !error && (
+        <Card variant="glass" className="p-12 text-center">
+          <DocumentIcon className="h-12 w-12 text-text-muted mx-auto mb-3" />
+          <p className="text-small text-text-secondary">Select a drive and click Scan to find large files.</p>
+        </Card>
+      )}
+    </div>
+  );
+}

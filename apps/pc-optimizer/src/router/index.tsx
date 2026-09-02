@@ -44,6 +44,8 @@ const MaintenanceHistoryPage = lazy(() => import('../features/maintenance-ui/Mai
 const ExportCenterPage = lazy(() => import('../features/export-center/ExportCenterPage'));
 const NetworkInformationPage = lazy(() => import('../features/network-info/NetworkInformationPage'));
 const FileRecoveryPage = lazy(() => import('../pages/FileRecoveryPage'));
+const ReportsTimelinePage = lazy(() => import('../pages/ReportsTimelinePage'));
+const LargeFilesPage = lazy(() => import('../pages/LargeFilesPage'));
 
 // v2.0 security sub-pages and new route wrappers
 import {
@@ -206,8 +208,8 @@ export const router = createHashRouter([
       { path: 'browser-cleaner', element: <BrowserCleanerPage /> },
       { path: 'registry-cleaner', element: wrap(RegistryCleanerPage) },
       { path: 'duplicate-finder', element: wrap(DuplicateFinderPage) },
-      // Large Files disabled — redirect to disk analyzer
-      { path: 'large-files', element: <Navigate to="/disk-analyzer" replace /> },
+      // Large Files
+      { path: 'large-files', element: wrap(LargeFilesPage) },
       { path: 'uninstaller', element: wrap(UninstallerPage) },
       { path: 'software-updater', element: wrap(UpdaterPage) },
       // Maintenance History
@@ -215,8 +217,8 @@ export const router = createHashRouter([
       // REPORTS
       { path: 'reports', element: wrap(ReportsPage) },
       { path: 'optimization-reports', element: wrap(OptimizationReportsPage) },
-      // Reports Timeline and Analytics disabled — no page implementation yet
-      { path: 'reports-timeline', element: <Navigate to="/reports" replace /> },
+      // Reports Timeline
+      { path: 'reports-timeline', element: wrap(ReportsTimelinePage) },
       { path: 'analytics', element: <Navigate to="/reports" replace /> },
       { path: 'export-center', element: wrap(ExportCenterPage) },
       // TOOLS

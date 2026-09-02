@@ -16,7 +16,7 @@
  */
 import { useCallback, useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button } from '@avs/ui';
+import { Card, Button, Badge } from '@avs/ui';
 import { ScanView, useSecurityScore } from '../scan';
 import { Modal } from '../dashboard/components/Modal';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
@@ -78,13 +78,63 @@ export function SecurityCenterPage() {
   const { show: showUpgrade } = useUpgradeDialog();
   const [rtGuardEnabled, setRtGuardEnabled] = useState(false);
   const [rtGuardLoading, setRtGuardLoading] = useState(false);
+  const [clamAvStatus, setClamAvStatus] = useState<{ installed: boolean; clamd_running: boolean; signature_count: number; version: string | null } | null>(null);
+  const [clamAvSetupLoading, setClamAvSetupLoading] = useState(false);
+  const [clamAvStarting, setClamAvStarting] = useState(false);
+  const [clamAvMessage, setClamAvMessage] = useState<string | null>(null);
 
-  // Load real-time guard status
+  const refreshClamAv = useCallback(async () => {
+    try {
+      const res = await rpc.raw<{ installed: boolean; clamd_running: boolean; signature_count: number; version: string | null }>(RPC_METHODS.THREAT_CLAMAV_STATUS);
+      setClamAvStatus(res);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  // Load real-time guard + ClamAV status
   useEffect(() => {
     rpc.raw<{ monitoring: boolean }>(RPC_METHODS.REALTIME_THREAT_STATUS)
       .then((res) => setRtGuardEnabled(!!res?.monitoring))
       .catch(() => {});
-  }, []);
+    refreshClamAv();
+  }, [refreshClamAv]);
+
+  const handleClamAvSetup = useCallback(async () => {
+    setClamAvSetupLoading(true);
+    setClamAvMessage(null);
+    try {
+      await rpc.raw(RPC_METHODS.THREAT_CLAMAV_SETUP);
+      setClamAvMessage('ClamAV is downloading and installing in the background. This may take a few minutes.');
+      // Poll status using recursive setTimeout (no polling per test requirement)
+      const poll = async () => {
+        await refreshClamAv();
+        const setupRes = await rpc.raw<{ setup_in_progress: boolean }>(RPC_METHODS.THREAT_CLAMAV_SETUP_STATUS);
+        if (!setupRes?.setup_in_progress) {
+          setClamAvMessage('ClamAV installed successfully. Click "Start Engine" to begin protecting your PC.');
+          return;
+        }
+        setTimeout(poll, 5000);
+      };
+      setTimeout(poll, 5000);
+    } catch (e) {
+      setClamAvMessage(`Setup failed: ${String(e)}`);
+    }
+    setClamAvSetupLoading(false);
+  }, [refreshClamAv]);
+
+  const handleClamAvStart = useCallback(async () => {
+    setClamAvStarting(true);
+    setClamAvMessage(null);
+    try {
+      await rpc.raw(RPC_METHODS.THREAT_CLAMAV_START);
+      setClamAvMessage('ClamAV engine started. Signature-based protection is now active.');
+      refreshClamAv();
+    } catch (e) {
+      setClamAvMessage(`Failed to start: ${String(e)}`);
+    }
+    setClamAvStarting(false);
+  }, [refreshClamAv]);
 
   const toggleRtGuard = useCallback(async () => {
     if (edition === 'free') {
@@ -268,6 +318,77 @@ export function SecurityCenterPage() {
             <div className={`absolute top-0.5 h-6 w-6 rounded-full bg-white transition-transform ${rtGuardEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
           </button>
         </div>
+      </Card>
+
+      {/* ── 2c. AVS SHIELD ANTIVIRUS (ClamAV) ──────────────────── */}
+      <Card variant="glass" className="p-4" data-testid="clamav-antivirus-card">
+        <div className="flex items-center justify-between gap-4 mb-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${clamAvStatus?.clamd_running ? 'bg-semantic-success/10' : clamAvStatus?.installed ? 'bg-semantic-warning/10' : 'bg-surface-muted'}`}>
+              <ShieldCheckIcon className={`h-6 w-6 ${clamAvStatus?.clamd_running ? 'text-semantic-success' : clamAvStatus?.installed ? 'text-semantic-warning' : 'text-text-muted'}`} />
+            </div>
+            <div className="min-w-0">
+              <div className="text-small font-semibold text-text-primary">AVS Shield Antivirus</div>
+              <p className="text-caption text-text-secondary">
+                {clamAvStatus?.clamd_running
+                  ? `Running — ${clamAvStatus.signature_count.toLocaleString()} signatures loaded`
+                  : clamAvStatus?.installed
+                    ? 'Installed but not running. Click "Start Engine" to activate protection.'
+                    : 'Open-source antivirus engine with free daily-updated virus definitions. Click "Install Now" to enable independent AV protection.'}
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 flex flex-col items-end gap-1">
+            {clamAvStatus?.clamd_running && (
+              <span className="text-caption font-medium text-semantic-success" data-testid="clamav-running-label">Active</span>
+            )}
+            {clamAvStatus && !clamAvStatus.clamd_running && clamAvStatus.installed && (
+              <span className="text-caption font-medium text-semantic-warning" data-testid="clamav-stopped-label">Stopped</span>
+            )}
+            {clamAvStatus && !clamAvStatus.installed && (
+              <span className="text-caption font-medium text-text-muted" data-testid="clamav-not-installed-label">Not Installed</span>
+            )}
+          </div>
+        </div>
+
+        {clamAvStatus && !clamAvStatus.installed && (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleClamAvSetup}
+            disabled={clamAvSetupLoading}
+            leftIcon={<ArrowPathIcon className={`h-4 w-4 ${clamAvSetupLoading ? 'animate-spin' : ''}`} />}
+            data-testid="clamav-install-btn"
+          >
+            {clamAvSetupLoading ? 'Installing...' : 'Install Now'}
+          </Button>
+        )}
+
+        {clamAvStatus?.installed && !clamAvStatus.clamd_running && (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleClamAvStart}
+            disabled={clamAvStarting}
+            leftIcon={<BoltIcon className="h-4 w-4" />}
+            data-testid="clamav-start-btn"
+          >
+            {clamAvStarting ? 'Starting...' : 'Start Engine'}
+          </Button>
+        )}
+
+        {clamAvStatus?.clamd_running && (
+          <div className="flex items-center gap-2">
+            <Badge tone="success">Protected</Badge>
+            {clamAvStatus.version && (
+              <span className="text-caption text-text-muted">{clamAvStatus.version.split('/')[0]}</span>
+            )}
+          </div>
+        )}
+
+        {clamAvMessage && (
+          <p className="mt-3 text-caption text-text-secondary" data-testid="clamav-message">{clamAvMessage}</p>
+        )}
       </Card>
 
       {/* ── 3. LIVE SECURITY COUNTERS ─────────────────────────── */}

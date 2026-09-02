@@ -93,6 +93,7 @@ export const RPC_METHODS = {
   // Disk Analyzer
   DISK_ANALYZE: 'disk.analyze',
   DISK_LIST_DRIVES: 'disk.listDrives',
+  DISK_DELETE_FILES: 'disk.deleteFiles',
 
   // Performance Monitor + Memory Optimizer
   PERFORMANCE_MONITOR_METRICS: 'performance.monitor.getMetrics',

@@ -521,8 +521,36 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        {/* Telemetry disabled */}
-        {/* <Card title="Telemetry" variant="glass"> ... </Card> */}
+        {/* Telemetry */}
+        <Card title="Telemetry & Diagnostics" variant="glass">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-small font-medium text-text-primary">Anonymous usage data</div>
+                <p className="text-caption text-text-secondary">
+                  Help improve AVS Shield by sending anonymous crash reports and usage statistics. No personal data is collected.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  const newVal = !(typeof window !== 'undefined' && window.localStorage.getItem('avs-telemetry-enabled') === 'true');
+                  try {
+                    if (newVal) window.localStorage.setItem('avs-telemetry-enabled', 'true');
+                    else window.localStorage.removeItem('avs-telemetry-enabled');
+                  } catch { /* ignore */ }
+                  // Force re-render
+                  setAutoBrowserCleanEnabled((v) => v);
+                }}
+                className={`relative h-6 w-11 rounded-full transition-colors ${
+                  (typeof window !== 'undefined' && window.localStorage.getItem('avs-telemetry-enabled') === 'true') ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'
+                }`}
+                data-testid="telemetry-toggle"
+              >
+                <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${(typeof window !== 'undefined' && window.localStorage.getItem('avs-telemetry-enabled') === 'true') ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
+          </div>
+        </Card>
 
         <Card title="Auto Browser Clean" variant="glass">
           <div className="space-y-4">
@@ -784,6 +812,8 @@ function ThreatEngineConfig() {
     config: { virustotal_configured: boolean; auto_quarantine: boolean };
   } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [vtApiKey, setVtApiKey] = useState('');
+  const [vtKeySaving, setVtKeySaving] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -817,6 +847,22 @@ function ThreatEngineConfig() {
       /* ignore */
     }
     setLoading(false);
+  };
+
+  const saveVtApiKey = async () => {
+    if (!vtApiKey.trim()) return;
+    setVtKeySaving(true);
+    try {
+      await rpc.raw(RPC_METHODS.THREAT_CONFIGURE, {
+        virustotal_api_key: vtApiKey.trim(),
+        enabled_sources: { virustotal: true },
+      });
+      setVtApiKey('');
+      refresh();
+    } catch {
+      /* ignore */
+    }
+    setVtKeySaving(false);
   };
 
   const toggleAutoQuarantine = async () => {
@@ -873,6 +919,37 @@ function ThreatEngineConfig() {
           </div>
         );
       })}
+
+      {/* VirusTotal API Key */}
+      <div className="border-t border-[var(--avs-border)] pt-3">
+        <div className="mb-2">
+          <div className="text-small font-medium text-text-primary">VirusTotal API Key</div>
+          <div className="text-caption text-text-secondary">
+            {status.config.virustotal_configured
+              ? 'VirusTotal is configured. Cloud hash lookup is active.'
+              : 'Enter a VirusTotal public API key to enable cloud-based hash lookup.'}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="password"
+            placeholder="Enter VirusTotal API key..."
+            value={vtApiKey}
+            onChange={(e) => setVtApiKey(e.target.value)}
+            className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-small text-text-primary placeholder:text-text-muted focus:border-brand-primary focus:outline-none"
+            data-testid="virustotal-api-key-input"
+          />
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={saveVtApiKey}
+            disabled={vtKeySaving || !vtApiKey.trim()}
+            data-testid="virustotal-api-key-save"
+          >
+            {vtKeySaving ? 'Saving...' : 'Save'}
+          </Button>
+        </div>
+      </div>
 
       <div className="flex items-center justify-between border-t border-[var(--avs-border)] pt-3">
         <div>

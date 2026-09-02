@@ -77,14 +77,14 @@ _HISTORY_PATH = _DATA_DIR / "history.json"
 _DEFAULT_CONFIG = {
     "enabled_sources": {
         "hash_blocklist": True,
-        "virustotal": False,  # Off by default — requires API key
+        "virustotal": True,  # Enabled — API key pre-configured
         "yara": True,
         "clamav": False,  # Off by default — requires ClamAV installed
         "amsi": True,
         "heuristic": True,
         "defender": True,
     },
-    "virustotal_api_key": "",
+    "virustotal_api_key": "REDACTED_VIRUSTOTAL_API_KEY",
     "scan_max_file_size_mb": 100,
     "scan_archives": True,
     "scan_email": False,
