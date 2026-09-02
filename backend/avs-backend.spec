@@ -97,6 +97,14 @@ a = Analysis(
         "avs_backend.process_priority",
         "avs_backend.ai_integration",
         "avs_backend.auto_browser_clean",
+        # ── Modules loaded dynamically via importlib but not detected by
+        # PyInstaller static analysis — must be listed explicitly ──
+        "avs_backend.junk_monitor",
+        "avs_backend.disk_optimizer",
+        "avs_backend.pup_scanner",
+        "avs_backend.browser_extensions",
+        "avs_backend.network_optimizer",
+        "avs_backend.context_menu",
     ],
     hookspath=[],
     hooksconfig={},
