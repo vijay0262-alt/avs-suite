@@ -80,50 +80,61 @@ class RuleEvaluationContext:
     def get_previous_snapshot(self) -> Optional[AssetSnapshot]:
         """
         Get previous snapshot for this asset.
-        
+
         Returns:
             Previous AssetSnapshot if available, None otherwise
         """
         if not self.snapshot_repository:
             return None
-        
-        # Query for previous snapshot
-        # Implementation depends on SnapshotRepository API
-        # For now, return None (will be implemented when needed)
-        return None
-    
+
+        try:
+            history = self.snapshot_repository.get_history(self.asset.asset_id, limit=2)
+            # history is newest-first; the "previous" snapshot is the
+            # second entry (the first is the current one).
+            if len(history) >= 2:
+                return history[1]
+            return None
+        except Exception:
+            return None
+
     def get_asset_history(self, limit: int = 10) -> list[AssetSnapshot]:
         """
         Get historical snapshots for this asset.
-        
+
         Args:
             limit: Maximum number of snapshots to return
-        
+
         Returns:
             List of historical snapshots (newest first)
         """
         if not self.snapshot_repository:
             return []
-        
-        # Query for historical snapshots
-        # Implementation depends on SnapshotRepository API
-        # For now, return empty list (will be implemented when needed)
-        return []
-    
+
+        try:
+            return self.snapshot_repository.get_history(self.asset.asset_id, limit=limit)
+        except Exception:
+            return []
+
     def get_related_assets(self) -> list[ScanAsset]:
         """
         Get assets related to the current asset.
-        
+
         Returns:
             List of related assets based on relationships
         """
         if not self.asset_repository:
             return []
-        
-        # Query for related assets based on relationships
-        # Implementation depends on AssetRepository API
-        # For now, return empty list (will be implemented when needed)
-        return []
+
+        try:
+            related_ids = self.asset.get_related_asset_ids()
+            assets: list[ScanAsset] = []
+            for rid in related_ids:
+                a = self.asset_repository.get(rid)
+                if a is not None:
+                    assets.append(a)
+            return assets
+        except Exception:
+            return []
     
     def find_assets_by_tag(self, tag: str) -> list[str]:
         """
@@ -160,20 +171,20 @@ class RuleEvaluationContext:
     def get_latest_snapshot(self, asset_id: str) -> Optional[AssetSnapshot]:
         """
         Get latest snapshot for a specific asset.
-        
+
         Args:
             asset_id: Asset ID
-        
+
         Returns:
             Latest snapshot if available, None otherwise
         """
         if not self.snapshot_repository:
             return None
-        
-        # Query for latest snapshot
-        # Implementation depends on SnapshotRepository API
-        # For now, return None (will be implemented when needed)
-        return None
+
+        try:
+            return self.snapshot_repository.get_latest(asset_id)
+        except Exception:
+            return None
     
     @classmethod
     def create(

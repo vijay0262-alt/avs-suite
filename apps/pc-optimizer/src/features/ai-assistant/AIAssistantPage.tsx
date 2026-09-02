@@ -585,3 +585,5 @@ function InsightItem({ insight }: { insight: AssistantInsight }) {
     </div>
   );
 }
+
+export default AIAssistantPage;

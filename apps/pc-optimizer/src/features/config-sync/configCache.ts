@@ -46,11 +46,11 @@ export function createDefaultConfiguration(): CustomerConfiguration {
       locked: [],
       upcoming: [],
     },
-    ai_settings: { status: 'not_implemented' },
-    cleaning_preferences: { status: 'not_implemented' },
-    privacy_settings: { status: 'not_implemented' },
-    browser_cleaning_preferences: { status: 'not_implemented' },
-    startup_optimization: { status: 'not_implemented' },
+    ai_settings: { status: 'available' },
+    cleaning_preferences: { status: 'available' },
+    privacy_settings: { status: 'available' },
+    browser_cleaning_preferences: { status: 'available' },
+    startup_optimization: { status: 'available' },
   };
 }
 

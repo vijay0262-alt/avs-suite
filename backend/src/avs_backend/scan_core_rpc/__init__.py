@@ -1865,6 +1865,11 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
                     session["message"] = f"Cleaning {completed}/{total} files..."
 
         request_id = str(uuid.uuid4())
+        # Store the execution request_id so cancel can propagate to the coordinator
+        with _auto_opt_lock:
+            session = _auto_opt_sessions.get(session_id)
+            if session is not None:
+                session["execution_id"] = request_id
         summary = coord.execute(
             plan_id,
             request_id=request_id,
@@ -2302,6 +2307,7 @@ def _scan_core_dashboard_auto_optimize(params: Optional[dict[str, Any]]) -> dict
             "current_category": "",
             "overall_progress": 0,
             "space_recovered": 0,
+            "execution_id": None,
         }
 
     # Start the background thread — get_coordinator() is called from
@@ -2349,13 +2355,15 @@ def _scan_core_dashboard_auto_optimize_cancel(
         if session is None:
             return {"ok": False, "error": "Optimization session not found"}
         session["cancelled"] = True
+        execution_id = session.get("execution_id")
 
     # If there's an active execution, cancel it via the coordinator
     coord = get_coordinator()
-    if coord is not None:
-        # Try to cancel any active execution for this plan
-        # The coordinator tracks active executions by request_id
-        pass  # The background thread will check cancelled flag
+    if coord is not None and execution_id:
+        try:
+            coord.cancel(execution_id)
+        except Exception as exc:
+            logger.debug("Coordinator cancel for %s returned: %s", execution_id, exc)
 
     return {"ok": True, "cancelled": True}
 

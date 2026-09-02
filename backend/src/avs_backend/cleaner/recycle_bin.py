@@ -10,6 +10,7 @@ from __future__ import annotations
 import ctypes
 import os
 import platform
+import subprocess
 import time
 from pathlib import Path
 from typing import Callable
@@ -361,30 +362,102 @@ def restore_from_recycle_bin(original_path: str) -> bool:
     Returns:
         True if successful, False otherwise
 
-    Note: Windows Recycle Bin doesn't provide direct restore by original path.
-    This is a simplified implementation that attempts to restore the most recently
-    deleted file matching the original path pattern.
+    Uses the Shell.Application COM object via PowerShell to enumerate
+    Recycle Bin items, find the one matching the original path, and
+    invoke its Restore verb.
     """
-    try:
-        # This is a simplified approach. A full implementation would:
-        # 1. Query the Recycle Bin for items matching the original path
-        # 2. Use IFileOperation with FO_MOVE to restore to original location
-        # 3. Handle cases where the original directory no longer exists
+    if not IS_WINDOWS:
+        return False
 
-        # For now, we'll use a basic approach:
+    try:
         # Check if the file already exists (it may have been restored already)
         if os.path.exists(original_path):
             return True
 
-        # Try to use IFileOperation to restore
-        # Since Windows doesn't provide a direct "restore by path" API,
-        # we'll need to implement a more sophisticated approach
-        # For the MVP, we'll return False to indicate that full undo
-        # requires more complex Recycle Bin querying
+        # Normalize the path for comparison (case-insensitive on Windows)
+        original_norm = os.path.normpath(original_path).lower()
 
-        log.warning("Full restore from Recycle Bin requires Recycle Bin query API (not yet implemented)")
+        # Use PowerShell to enumerate Recycle Bin and restore matching item.
+        # The Shell.Application COM object exposes Recycle Bin items with
+        # their original path via the ExtendedProperty "SourcePath".
+        ps_script = r"""
+$ErrorActionPreference = 'Stop'
+$shell = New-Object -ComObject Shell.Application
+$recycleBin = $shell.Namespace(0xA)  # ssfBITBUCKET = 0xA (Recycle Bin)
+if ($recycleBin -eq $null) { Write-Output 'NO_BIN'; exit 0 }
+
+$targetPath = $env:AVS_RESTORE_TARGET
+if (-not $targetPath) { Write-Output 'NO_TARGET'; exit 0 }
+$targetNorm = $targetPath -replace '/', '\' -replace '\\+', '\'
+
+$found = $false
+foreach ($item in $recycleBin.Items()) {
+    # ExtendedProperty index 2 = source path (original location before deletion)
+    $src = $item.ExtendedProperty('System.Recycle.DeletedFrom')
+    if (-not $src) {
+        # Fallback: try the older property name
+        $src = $item.ExtendedProperty('SourcePath')
+    }
+    if ($src) {
+        $srcNorm = $src -replace '/', '\' -replace '\\+', '\'
+        if ($srcNorm -ieq $targetNorm) {
+            # Invoke the Restore verb
+            $verbs = $item.Verbs()
+            if ($verbs) {
+                foreach ($v in $verbs) {
+                    if ($v.Name -match 'Restore') {
+                        $v.DoIt()
+                        $found = $true
+                        break
+                    }
+                }
+            }
+            if (-not $found) {
+                # If no Restore verb, try moving the file back directly
+                $restored = $item.Path
+                if (Test-Path $restored) {
+                    $destDir = Split-Path $targetPath -Parent
+                    if (-not (Test-Path $destDir)) {
+                        New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+                    }
+                    Move-Item -LiteralPath $restored -Destination $targetPath -Force
+                    $found = $true
+                }
+            }
+            break
+        }
+    }
+}
+if ($found) { Write-Output 'OK' } else { Write-Output 'NOT_FOUND' }
+"""
+        env = os.environ.copy()
+        env["AVS_RESTORE_TARGET"] = original_path
+
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            env=env,
+        )
+
+        output = result.stdout.strip()
+        if "OK" in output:
+            log.info("Restored from Recycle Bin: %s", original_path)
+            return True
+        elif "NOT_FOUND" in output:
+            log.info("Recycle Bin item not found for: %s", original_path)
+            return False
+        elif "NO_BIN" in output:
+            log.warning("Recycle Bin not accessible")
+            return False
+        else:
+            log.warning("Restore failed: %s", output or result.stderr.strip())
+            return False
+
+    except subprocess.TimeoutExpired:
+        log.warning("Recycle Bin restore timed out for: %s", original_path)
         return False
-
     except Exception as e:
         log.warning("Failed to restore from Recycle Bin: %s", e)
         return False

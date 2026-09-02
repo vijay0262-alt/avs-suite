@@ -332,7 +332,7 @@ describe('PauseConditions', () => {
     expect(result.shouldPause).toBe(false);
   });
 
-  it('built-in placeholder conditions should not pause', async () => {
+  it('built-in conditions should not pause without RPC backend', async () => {
     registerPauseCondition(GamingModePauseCondition);
     const result = await evaluatePauseConditions();
     expect(result.shouldPause).toBe(false);

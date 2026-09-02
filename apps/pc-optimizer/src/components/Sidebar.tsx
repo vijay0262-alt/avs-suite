@@ -42,7 +42,10 @@ import {
   ArrowsRightLeftIcon,
   ClockIcon,
   EyeIcon,
+  BeakerIcon,
+  SparklesIcon,
   CloudArrowUpIcon,
+  BugAntIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import { useIsPro } from '../features/sync/syncStore';
@@ -135,6 +138,10 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'custom-scan', to: '/custom-scan', labelKey: 'nav.customScan', Icon: FolderOpenIcon },
       { id: 'pup-scanner', to: '/pup-scanner', labelKey: 'nav.pupScanner', Icon: ShieldExclamationIcon, proEnhanced: true },
       { id: 'safe-folder', to: '/safe-folder', labelKey: 'nav.safeFolder', Icon: ShieldExclamationIcon, proEnhanced: true },
+      { id: 'threat-engine', to: '/threat-engine', labelKey: 'nav.threatEngine', Icon: BugAntIcon, proEnhanced: true },
+      { id: 'realtime-threat', to: '/realtime-threat', labelKey: 'nav.realtimeThreat', Icon: EyeIcon, proEnhanced: true },
+      { id: 'advanced-security', to: '/advanced-security', labelKey: 'nav.advancedSecurity', Icon: BeakerIcon, proEnhanced: true },
+      { id: 'ai-features', to: '/ai-features', labelKey: 'nav.aiFeatures', Icon: SparklesIcon, proEnhanced: true },
       { id: 'quarantine', to: '/quarantine-vault', labelKey: 'nav.quarantine', Icon: LockClosedIcon, proEnhanced: true },
     ],
   },

@@ -20,6 +20,10 @@ const DuplicateFinderPage = lazy(() => import('../pages/DuplicateFinderPage'));
 const DiskAnalyzerPage = lazy(() => import('../pages/DiskAnalyzerPage'));
 const CloudDriveCleanerPage = lazy(() => import('../pages/CloudDriveCleanerPage'));
 const SafeFolderPage = lazy(() => import('../pages/SafeFolderPage'));
+const ThreatEnginePage = lazy(() => import('../pages/ThreatEnginePage'));
+const RealtimeThreatPage = lazy(() => import('../pages/RealtimeThreatPage'));
+const AdvancedSecurityPage = lazy(() => import('../pages/AdvancedSecurityPage'));
+const AIFeaturesPage = lazy(() => import('../pages/AIFeaturesPage'));
 const UninstallerPage = lazy(() => import('../pages/UninstallerPage'));
 const UpdaterPage = lazy(() => import('../pages/UpdaterPage'));
 const PerformancePage = lazy(() => import('../pages/PerformancePage'));
@@ -34,6 +38,11 @@ const ActivationPage = lazy(() => import('../features/licensing/ActivationPage')
 const ReportsPage = lazy(() => import('../pages/ReportsPage'));
 const OptimizationReportsPage = lazy(() => import('../pages/OptimizationReportsPage'));
 const SmartOptimizationPage = lazy(() => import('../pages/SmartOptimizationPage'));
+const AIAssistantPage = lazy(() => import('../features/ai-assistant/AIAssistantPage'));
+const AIWorkspacePage = lazy(() => import('../features/ai-workspace/AIWorkspacePage'));
+const MaintenanceHistoryPage = lazy(() => import('../features/maintenance-ui/MaintenanceHistoryPage'));
+const ExportCenterPage = lazy(() => import('../features/export-center/ExportCenterPage'));
+const NetworkInformationPage = lazy(() => import('../features/network-info/NetworkInformationPage'));
 
 // v2.0 security sub-pages and new route wrappers
 import {
@@ -152,11 +161,11 @@ export const router = createHashRouter([
       // HOME
       { path: 'dashboard', element: wrap(DashboardPage) },
       { path: 'protection-center', element: wrap(ProtectionCenterPage) },
-      { path: 'ai-assistant', element: <Navigate to="/dashboard" replace /> },
-      { path: 'ai-daily-briefing', element: <Navigate to="/dashboard" replace /> },
+      { path: 'ai-assistant', element: wrap(AIAssistantPage) },
+      { path: 'ai-daily-briefing', element: wrap(AIAssistantPage) },
       { path: 'ai-smart-optimize', element: wrap(SmartOptimizationPage) },
       { path: 'ai-smart-security', element: wrap(SecurityCenterPage) },
-      { path: 'ai-workspace', element: <Navigate to="/dashboard" replace /> },
+      { path: 'ai-workspace', element: wrap(AIWorkspacePage) },
       // SYSTEM HEALTH
       { path: 'system-health', element: wrap(SystemHealthPage) },
       { path: 'hardware-center', element: wrap(HardwareCenterPage) },
@@ -200,22 +209,26 @@ export const router = createHashRouter([
       { path: 'large-files', element: <Navigate to="/disk-analyzer" replace /> },
       { path: 'uninstaller', element: wrap(UninstallerPage) },
       { path: 'software-updater', element: wrap(UpdaterPage) },
-      // Maintenance History disabled
-      { path: 'maintenance-history', element: <Navigate to="/dashboard" replace /> },
+      // Maintenance History
+      { path: 'maintenance-history', element: wrap(MaintenanceHistoryPage) },
       // REPORTS
       { path: 'reports', element: wrap(ReportsPage) },
       { path: 'optimization-reports', element: wrap(OptimizationReportsPage) },
-      // Reports Timeline, Analytics, Export Center disabled
+      // Reports Timeline and Analytics disabled — no page implementation yet
       { path: 'reports-timeline', element: <Navigate to="/reports" replace /> },
       { path: 'analytics', element: <Navigate to="/reports" replace /> },
-      { path: 'export-center', element: <Navigate to="/reports" replace /> },
+      { path: 'export-center', element: wrap(ExportCenterPage) },
       // TOOLS
       { path: 'system-information', element: wrap(SystemInformationPage) },
       { path: 'disk-analyzer', element: wrap(DiskAnalyzerPage) },
       { path: 'cloud-drive-cleaner', element: wrap(CloudDriveCleanerPage) },
       { path: 'safe-folder', element: wrap(SafeFolderPage) },
-      // Network Information hidden — backend module unavailable, redirect to dashboard
-      { path: 'network-information', element: <Navigate to="/dashboard" replace /> },
+      { path: 'threat-engine', element: wrap(ThreatEnginePage) },
+      { path: 'realtime-threat', element: wrap(RealtimeThreatPage) },
+      { path: 'advanced-security', element: wrap(AdvancedSecurityPage) },
+      { path: 'ai-features', element: wrap(AIFeaturesPage) },
+      // Network Information
+      { path: 'network-information', element: wrap(NetworkInformationPage) },
       { path: 'driver-information', element: wrap(DriverInformationPage) },
       { path: 'driver-updater', element: wrap(DriverUpdaterPage) },
       { path: 'backup-restore', element: wrap(BackupRestorePage) },

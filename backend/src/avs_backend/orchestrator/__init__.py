@@ -387,12 +387,16 @@ def _scan_registry(session_id: str | None = None) -> dict[str, Any]:
                 _update_session(session_id, {"progress": pct})
         except Exception as e:
             log.warning("Registry scan for %s failed: %s", cat, e)
-    # Build a result-like object
+    # Build a result-like object with a real per-category breakdown
     class _RegistryResult:
         def __init__(self, issues):
             self.issues = issues
         def breakdown(self):
-            return {}
+            out: dict[str, int] = {}
+            for issue in self.issues:
+                cat = getattr(issue, "category", "unknown")
+                out[cat] = out.get(cat, 0) + 1
+            return out
     result = _RegistryResult(all_issues)
     if session_id:
         # Emit real registry key paths for the first few issues found

@@ -170,7 +170,7 @@ def _restore_backup(backup_id: str) -> bool:
         elif source == StartupSource.TASK_SCHEDULER.value:
             _restore_task_scheduler_entry(entry_name, command, enabled)
         elif source == StartupSource.STARTUP_SERVICE.value:
-            logger.info(f"Service restore not implemented for: {entry_name}")
+            _restore_startup_service(location, entry_name, enabled)
 
         logger.info(f"Restored startup entry from backup: {entry_name}")
         return True
@@ -219,21 +219,117 @@ def _restore_registry_entry(location: str, entry_name: str, command: str, enable
 
 
 def _restore_startup_folder_entry(location: str, command: str, enabled: bool) -> None:
-    """Restore startup folder entry."""
+    """Restore startup folder entry by creating a .lnk shortcut."""
     shortcut_path = Path(location)
     if enabled:
-        # Create shortcut (simplified - would need COM for actual shortcut creation)
-        # For now, we'll just log that this needs proper implementation
-        logger.warning(f"Startup folder restore requires COM interface for shortcut creation: {location}")
+        if not IS_WINDOWS:
+            logger.warning(f"Cannot create shortcut on non-Windows: {location}")
+            return
+        # Use PowerShell to create a Windows shortcut (.lnk)
+        ps_script = (
+            "$ws = New-Object -ComObject WScript.Shell; "
+            f"$sc = $ws.CreateShortcut('{location}'); "
+            f"$sc.TargetPath = '{command}'; "
+            "$sc.Save()"
+        )
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode != 0:
+                logger.error(f"Shortcut creation failed: {result.stderr.strip()}")
+                raise RuntimeError(f"Shortcut creation failed: {result.stderr.strip()}")
+            logger.info(f"Restored startup folder shortcut: {location}")
+        except Exception as e:
+            logger.error(f"Failed to create shortcut {location}: {e}")
+            raise
     else:
         if shortcut_path.exists():
             shortcut_path.unlink()
 
 
 def _restore_task_scheduler_entry(entry_name: str, command: str, enabled: bool) -> None:
-    """Restore task scheduler entry."""
-    # This would require pywin32 for Task Scheduler API
-    logger.warning(f"Task scheduler restore requires pywin32: {entry_name}")
+    """Restore a Task Scheduler entry using schtasks."""
+    if not IS_WINDOWS:
+        logger.warning(f"Cannot restore task on non-Windows: {entry_name}")
+        return
+    try:
+        import subprocess
+        if enabled:
+            # Create a scheduled task that runs at logon
+            ps_script = (
+                f"$action = New-ScheduledTaskAction -Execute '{command}'; "
+                "$trigger = New-ScheduledTaskTrigger -AtLogOn; "
+                f"$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries; "
+                f"Register-ScheduledTask -TaskName '{entry_name}' -Action $action -Trigger $trigger -Settings $settings -Force"
+            )
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            if result.returncode != 0:
+                logger.error(f"Task scheduler restore failed: {result.stderr.strip()}")
+                raise RuntimeError(f"Task scheduler restore failed: {result.stderr.strip()}")
+            logger.info(f"Restored task scheduler entry: {entry_name}")
+        else:
+            # Disable the task if it exists
+            result = subprocess.run(
+                ["schtasks", "/Change", "/TN", entry_name, "/DISABLE"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode != 0:
+                logger.debug(f"Task disable returned non-zero (may not exist): {entry_name}")
+    except Exception as e:
+        logger.error(f"Failed to restore task scheduler entry {entry_name}: {e}")
+        raise
+
+
+def _restore_startup_service(location: str, entry_name: str, enabled: bool) -> None:
+    """Restore a Windows service startup type.
+
+    Uses ``sc config`` to set the start type back to ``auto`` (enabled)
+    or ``demand`` (disabled). Requires administrator privileges.
+    """
+    if not IS_WINDOWS:
+        logger.warning(f"Cannot restore service on non-Windows: {entry_name}")
+        return
+
+    # Extract service name from location: "Services\\{name}"
+    svc_name = location.split("\\", 1)[-1] if "\\" in location else entry_name
+
+    try:
+        import subprocess
+        start_type = "auto" if enabled else "demand"
+        result = subprocess.run(
+            ["sc", "config", svc_name, "start=", start_type],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            stderr = result.stderr.strip()
+            # Access denied — needs elevation
+            if "access" in stderr.lower() or "5" in stderr:
+                logger.warning(
+                    f"Service restore requires administrator privileges: {svc_name}"
+                )
+                raise PermissionError(
+                    f"Restoring service '{svc_name}' requires administrator privileges"
+                )
+            logger.error(f"Service config failed for {svc_name}: {stderr}")
+            raise RuntimeError(f"Service config failed: {stderr}")
+        logger.info(f"Restored service {svc_name} start type to {start_type}")
+    except Exception as e:
+        logger.error(f"Failed to restore service {svc_name}: {e}")
+        raise
 
 
 def _scan_registry_run() -> list[StartupEntry]:

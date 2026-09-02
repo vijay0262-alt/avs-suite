@@ -13,10 +13,11 @@ import { ALL_MODULE_DEFINITIONS } from './moduleDefinitions';
 import type { OptimizerModule, ModuleMetadata, ModuleLifecycleState, ModuleStatistics } from './moduleRegistry.types';
 import type { HealthContribution } from '../health/HealthContribution';
 import type { Recommendation } from '../dashboard/dashboard.types';
+import { createModuleAdapter } from './moduleAdapters';
 
-// ── Stub adapters for modules that don't have a full adapter yet ────
-// These exist so the registry knows about all modules. As each module
-// gets a full adapter, replace the stub with the real implementation.
+// ── Stub adapter for future modules that don't have an implementation yet ────
+// Existing v1 modules use real adapters from moduleAdapters.ts.
+// Future modules (version '0.0.0') use this stub until implemented.
 
 class StubModuleAdapter implements OptimizerModule {
   constructor(readonly metadata: ModuleMetadata) {}
@@ -36,14 +37,13 @@ class StubModuleAdapter implements OptimizerModule {
   }
 
   async getHealthContribution(): Promise<HealthContribution> {
-    const isFuture = this.metadata.version === '0.0.0';
     return {
       moduleId: this.metadata.moduleId,
       moduleName: this.metadata.displayName,
       currentPenalty: 0,
       maxPenalty: this.metadata.maxHealthPenalty,
       resolvedPenalty: 0,
-      detail: isFuture ? 'Module ready — no issues detected' : 'No issues detected',
+      detail: 'Module ready — no issues detected',
       canAutoFix: this.metadata.capabilities.canClean,
       actionPath: this.metadata.routePath,
     };
@@ -101,8 +101,9 @@ export function registerAllModules(): void {
       // Lazy: factory called only when module is first accessed
       moduleRegistry.registerLazy(def.moduleId, () => new StubModuleAdapter(def));
     } else {
-      // Eager: create immediately for existing modules
-      const module = new StubModuleAdapter(def);
+      // Eager: create immediately for existing modules.
+      // Use a real adapter if one exists; fall back to stub only if missing.
+      const module = createModuleAdapter(def) ?? new StubModuleAdapter(def);
       moduleRegistry.register(module);
     }
   }

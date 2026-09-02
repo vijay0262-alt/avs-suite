@@ -33,6 +33,8 @@ _last_scan: dict[str, Any] = {
     "threshold_bytes": 0,
     "threshold_exceeded": False,
 }
+_history: list[dict[str, Any]] = []
+_history_max = 288  # Keep ~24h of 5-minute snapshots
 _lock = threading.Lock()
 _monitor_thread: threading.Thread | None = None
 _monitor_stop = threading.Event()
@@ -210,6 +212,17 @@ def junk_monitor_scan_now(_params: dict[str, Any] | None = None) -> dict[str, An
 
     with _lock:
         _last_scan.update(result)
+        # Record a compact snapshot for history
+        _history.append({
+            "scanned_at": result.get("scanned_at"),
+            "total_bytes": result.get("total_bytes", 0),
+            "total_files": result.get("total_files", 0),
+            "total_mb": result.get("total_mb", 0),
+            "total_gb": result.get("total_gb", 0),
+        })
+        # Trim to max size
+        if len(_history) > _history_max:
+            del _history[: len(_history) - _history_max]
 
     _check_threshold(result, threshold_bytes)
 
@@ -218,12 +231,16 @@ def junk_monitor_scan_now(_params: dict[str, Any] | None = None) -> dict[str, An
 
 @register("junk_monitor.history")
 def junk_monitor_history(_params: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Get historical junk accumulation data (placeholder for future)."""
+    """Get historical junk accumulation data.
+
+    Returns a list of compact snapshots recorded after each scan,
+    plus the current scan state.
+    """
     with _lock:
         return {
             "current": dict(_last_scan),
-            "history": [],
-            "note": "Historical tracking will be available after multiple scans.",
+            "history": list(_history),
+            "count": len(_history),
         }
 
 
