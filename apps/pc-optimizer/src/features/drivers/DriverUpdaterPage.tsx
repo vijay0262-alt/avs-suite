@@ -4,7 +4,7 @@
  * Free: scan only (see outdated drivers + available updates)
  * Pro: scan + install updates via Windows Update
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, Button, Badge } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
 import { HelpButton } from '../../components/HelpButton';
@@ -18,12 +18,14 @@ import {
   XCircleIcon,
   ArrowDownTrayIcon,
   ShieldCheckIcon,
+  LinkIcon,
 } from '@heroicons/react/24/outline';
 import {
   driverUpdaterService,
   type ScanOutdatedResult,
   type OutdatedDriver,
   type AvailableUpdate,
+  type DownloadLink,
 } from './driverUpdater.service';
 
 export default function DriverUpdaterPage() {
@@ -34,6 +36,8 @@ export default function DriverUpdaterPage() {
   const [error, setError] = useState<string | null>(null);
   const [updatingTitles, setUpdatingTitles] = useState<Set<string>>(new Set());
   const [updateResults, setUpdateResults] = useState<Record<string, { success: boolean; message: string }>>({});
+  const [downloadLinks, setDownloadLinks] = useState<DownloadLink[]>([]);
+  const [loadingLinks, setLoadingLinks] = useState(false);
 
   const handleScan = useCallback(async () => {
     setScanning(true);
@@ -79,6 +83,26 @@ export default function DriverUpdaterPage() {
       });
     }
   }, [isPro, showUpgrade]);
+
+  const fetchDownloadLinks = useCallback(async () => {
+    setLoadingLinks(true);
+    try {
+      const result = await driverUpdaterService.getDownloadLinks();
+      if (result.supported) {
+        setDownloadLinks(result.links);
+      }
+    } catch {
+      /* ignore — links are optional enhancement */
+    } finally {
+      setLoadingLinks(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (scanResult && scanResult.outdated.length > 0) {
+      fetchDownloadLinks();
+    }
+  }, [scanResult, fetchDownloadLinks]);
 
   return (
     <div data-testid="page-driver-updater" className="space-y-4">
@@ -223,6 +247,59 @@ export default function DriverUpdaterPage() {
                 ))}
               </div>
             </Card>
+          )}
+
+          {/* Manufacturer download links */}
+          {downloadLinks.length > 0 && (
+            <Card title="Manufacturer Download Links" variant="glass" data-testid="driver-mfg-links">
+              <p className="text-caption text-text-secondary mb-3">
+                Get the latest drivers directly from your hardware manufacturer&apos;s official download page.
+              </p>
+              <div className="space-y-2">
+                {downloadLinks.map((link, i) => (
+                  <div key={i} className="flex items-center justify-between rounded-[var(--avs-radius-sm)] bg-surface-muted px-4 py-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <LinkIcon className="h-5 w-5 text-brand-primary shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-small font-medium text-text-primary truncate">{link.manufacturer}</div>
+                        <div className="text-caption text-text-muted truncate">
+                          {link.category} · {link.deviceName}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                      {link.autoDetectUrl && (
+                        <a
+                          href={link.autoDetectUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-caption text-brand-primary hover:underline"
+                        >
+                          Auto-Detect
+                        </a>
+                      )}
+                      <a
+                        href={link.downloadUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-[var(--avs-radius-sm)] bg-brand-primary px-3 py-1.5 text-caption font-medium text-white hover:bg-brand-primary-dark"
+                        data-testid={`driver-mfg-link-${i}`}
+                      >
+                        <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                        Download
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {loadingLinks && (
+            <div className="flex items-center gap-2 text-caption text-text-secondary" data-testid="driver-mfg-loading">
+              <ArrowPathIcon className="h-4 w-4 animate-spin" />
+              Fetching manufacturer links...
+            </div>
           )}
 
           {/* All good message */}

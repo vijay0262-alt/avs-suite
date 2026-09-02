@@ -18,6 +18,7 @@ from typing import Any
 
 from avs_backend.api.registry import register
 from avs_backend.licensing import require_feature
+from avs_backend.drivers.driver_database import enrich_driver_info, get_manufacturer_list
 
 log = logging.getLogger("avs.drivers")
 
@@ -90,7 +91,7 @@ Get-WmiObject Win32_PnPSignedDriver | Where-Object { $_.DeviceName -ne $null } |
                 continue
 
     return {
-        "drivers": drivers,
+        "drivers": [enrich_driver_info(d) for d in drivers],
         "total": len(drivers),
         "signed": sum(1 for d in drivers if d.get("IsSigned")),
         "unsigned": sum(1 for d in drivers if not d.get("IsSigned")),
@@ -295,3 +296,65 @@ try {{
         return {"success": False, "message": output[6:]}
     else:
         return {"success": False, "message": f"Unexpected result: {output}"}
+
+
+@register("drivers.manufacturers")
+def drivers_manufacturers(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """List all supported manufacturers in the driver database.
+
+    Returns the curated list of manufacturer download URLs so the frontend
+    can display them and users can navigate directly to the manufacturer's
+    driver download page.
+    """
+    return {
+        "manufacturers": get_manufacturer_list(),
+        "count": len(get_manufacturer_list()),
+    }
+
+
+@register("drivers.downloadLinks")
+def drivers_download_links(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get manufacturer download links for installed drivers.
+
+    Params:
+        drivers: list of driver info dicts (from drivers.list)
+                 If omitted, fetches all installed drivers automatically.
+    """
+    if not IS_WINDOWS:
+        return {"supported": False, "links": []}
+
+    if params and "drivers" in params:
+        all_drivers = params["drivers"]
+    else:
+        result = drivers_list(None)
+        all_drivers = result.get("drivers", [])
+
+    links: list[dict[str, Any]] = []
+    for d in all_drivers:
+        url = d.get("DownloadUrl")
+        if url:
+            links.append({
+                "deviceName": d.get("DeviceName", ""),
+                "manufacturer": d.get("ManufacturerName", ""),
+                "category": d.get("Category", ""),
+                "driverVersion": d.get("DriverVersion", ""),
+                "driverDate": d.get("DriverDate", ""),
+                "downloadUrl": url,
+                "autoDetectUrl": d.get("AutoDetectUrl"),
+            })
+
+    # Deduplicate by manufacturer
+    seen_mfg = set()
+    unique_links: list[dict[str, Any]] = []
+    for link in links:
+        mfg = link["manufacturer"]
+        if mfg not in seen_mfg:
+            seen_mfg.add(mfg)
+            unique_links.append(link)
+
+    return {
+        "supported": True,
+        "links": unique_links,
+        "totalDrivers": len(links),
+        "uniqueManufacturers": len(unique_links),
+    }

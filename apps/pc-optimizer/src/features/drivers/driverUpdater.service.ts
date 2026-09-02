@@ -45,6 +45,22 @@ export interface DriverUpdateResult {
   message: string;
 }
 
+export interface ManufacturerInfo {
+  name: string;
+  url: string;
+  autoDetect: string | null;
+}
+
+export interface DownloadLink {
+  deviceName: string;
+  manufacturer: string;
+  category: string;
+  driverVersion: string;
+  driverDate: string;
+  downloadUrl: string;
+  autoDetectUrl: string | null;
+}
+
 export const driverUpdaterService = {
   async scanOutdated(): Promise<ScanOutdatedResult> {
     return client().call(RPC_METHODS.DRIVERS_SCAN_OUTDATED);
@@ -61,5 +77,13 @@ export const driverUpdaterService = {
     outdated: number;
   }> {
     return client().call(RPC_METHODS.DRIVERS_SUMMARY);
+  },
+
+  async getManufacturers(): Promise<{ manufacturers: ManufacturerInfo[]; count: number }> {
+    return client().call(RPC_METHODS.DRIVERS_MANUFACTURERS);
+  },
+
+  async getDownloadLinks(): Promise<{ supported: boolean; links: DownloadLink[]; totalDrivers: number; uniqueManufacturers: number }> {
+    return client().call(RPC_METHODS.DRIVERS_DOWNLOAD_LINKS);
   },
 };

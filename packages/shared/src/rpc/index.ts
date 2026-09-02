@@ -258,6 +258,8 @@ export const RPC_METHODS = {
   DRIVERS_SUMMARY: 'drivers.summary',
   DRIVERS_SCAN_OUTDATED: 'drivers.scanOutdated',
   DRIVERS_UPDATE: 'drivers.update',
+  DRIVERS_MANUFACTURERS: 'drivers.manufacturers',
+  DRIVERS_DOWNLOAD_LINKS: 'drivers.downloadLinks',
 
   // Disk Optimizer (Defrag + TRIM)
   DISK_OPTIMIZER_LIST_DRIVES: 'disk_optimizer.listDrives',
