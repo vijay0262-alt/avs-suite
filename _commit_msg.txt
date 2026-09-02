@@ -1,0 +1,13 @@
+UX polish: ProtectionCenter PageHeader, shared FreeEditionNotice component
+
+- ProtectionCenterPage now uses shared PageHeader and HelpButton for
+  consistency with other feature pages
+- Fix result banner converted to ModuleSuccessBanner/ModuleErrorBanner
+- New shared FreeEditionNotice component standardizes the amber-tinted
+  upgrade prompt card across all feature pages
+- SmartOptimizationPage and UninstallerPage refactored to use
+  FreeEditionNotice instead of inline markup
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

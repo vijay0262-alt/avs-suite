@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, Button } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
+import { FreeEditionNotice } from '../../components/FreeEditionNotice';
 import { ModuleErrorState, ModuleEmptyState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
 import { SharedConfirmDialog } from '../../components/SharedConfirmDialog';
 import { HelpButton } from '../../components/HelpButton';
@@ -56,27 +57,22 @@ export default function UninstallerPage() {
       />
 
       {!isPro && (
-        <Card variant="glass" className="p-6 mb-6 border-amber-500/30 bg-amber-500/5" data-testid="uninstaller-free-notice">
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center">
-              <span className="text-amber-500 text-xl font-bold">PRO</span>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-white mb-1">Uninstaller is a Professional Feature</h3>
-              <p className="text-sm text-white/60 mb-4">
-                Free users can view installed programs but cannot uninstall them through AVS Shield.
-                Upgrade to Professional to uninstall programs and scan for leftover files and registry entries.
-              </p>
-              <Button
-                onClick={() => showUpgrade('Uninstaller')}
-                variant="primary"
-                data-testid="uninstaller-upgrade-cta"
-              >
-                Upgrade to Professional
-              </Button>
-            </div>
-          </div>
-        </Card>
+        <FreeEditionNotice
+          badgeLabel="PRO"
+          title="Uninstaller is a Professional Feature"
+          message="Free users can view installed programs but cannot uninstall them through AVS Shield. Upgrade to Professional to uninstall programs and scan for leftover files and registry entries."
+          action={
+            <Button
+              onClick={() => showUpgrade('Uninstaller')}
+              variant="primary"
+              data-testid="uninstaller-upgrade-cta"
+            >
+              Upgrade to Professional
+            </Button>
+          }
+          testId="uninstaller-free-notice"
+          className="mb-6"
+        />
       )}
 
       {state.bootstrap === 'error' && (

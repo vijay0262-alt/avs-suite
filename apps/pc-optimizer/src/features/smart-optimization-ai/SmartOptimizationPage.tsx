@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Card } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
+import { FreeEditionNotice } from '../../components/FreeEditionNotice';
 import { useIsPro } from '../sync/syncStore';
 import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
 import { ScanView } from '../scan';
@@ -114,25 +115,17 @@ export default function SmartOptimizationPage() {
 
       {/* ── Free Edition Notice ───────────────────────────────────── */}
       {!isPro && (
-        <Card variant="glass" className="p-6 border-amber-500/30 bg-amber-500/5" data-testid="smart-opt-free-notice">
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center">
-              <BoltIcon className="h-6 w-6 text-amber-500" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-[var(--avs-text-primary)] mb-1">
-                AI Smart Optimization is a Professional Feature
-              </h3>
-              <p className="text-sm text-[var(--avs-text-secondary)] mb-4">
-                Upgrade to Professional to unlock one-click AI-driven optimization with automatic sequencing,
-                rollback protection, scheduled optimization, and unlimited junk cleaning.
-              </p>
-              <Button onClick={() => setUpgradeModalOpen(true)} variant="primary" data-testid="smart-opt-upgrade-cta">
-                Upgrade to Professional
-              </Button>
-            </div>
-          </div>
-        </Card>
+        <FreeEditionNotice
+          icon={BoltIcon}
+          title="AI Smart Optimization is a Professional Feature"
+          message="Upgrade to Professional to unlock one-click AI-driven optimization with automatic sequencing, rollback protection, scheduled optimization, and unlimited junk cleaning."
+          action={
+            <Button onClick={() => setUpgradeModalOpen(true)} variant="primary" data-testid="smart-opt-upgrade-cta">
+              Upgrade to Professional
+            </Button>
+          }
+          testId="smart-opt-free-notice"
+        />
       )}
 
       {/* ── Summary Cards (4) — synced with real scan data ────────── */}

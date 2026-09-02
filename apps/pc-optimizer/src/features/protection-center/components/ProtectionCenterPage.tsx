@@ -39,6 +39,9 @@ import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import { dashboardService } from '../../dashboard/dashboard.service';
 import type { DashboardMetrics, HealthScore } from '../../dashboard/dashboard.types';
 import { ProStatusBanner, ProStatusPill } from '../../licensing/ProStatusBadge';
+import { PageHeader } from '../../../components/PageHeader';
+import { HelpButton } from '../../../components/HelpButton';
+import { ModuleSuccessBanner, ModuleErrorBanner } from '../../../components/ModuleStates';
 
 // ── ViewModel ──────────────────────────────────────────────────
 
@@ -470,71 +473,56 @@ export function ProtectionCenterPage() {
       <ProStatusBanner compact />
 
       {/* ── 1. HEADER ─────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3">
-            <div className="h-1 w-8 rounded-full shadow-glow" style={{ background: 'var(--avs-gradient-brand)' }} />
-            <h1 className="text-page-title text-text-primary">AI Protection Center</h1>
-          </div>
-          <p className="mt-2 max-w-2xl text-small text-text-secondary leading-relaxed">
-            See your PC&apos;s security protection at a glance.
-          </p>
-          {/* Overall status badge */}
-          <div
-            className={`mt-3 inline-flex items-center gap-2 rounded-full ${overallTone.bg} ${overallTone.border} border px-3 py-1.5 text-small font-semibold ${overallTone.text}`}
-            data-testid="protection-overall-status"
-          >
-            <overallConfig.icon className="h-4 w-4" />
-            {overallConfig.label}
-          </div>
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <ProStatusPill />
-          <Button
-            onClick={handleCheckProtection}
-            disabled={state.loading}
-            size="md"
-            leftIcon={
-              state.loading ? (
-                <ArrowPathIcon className="h-4 w-4 animate-spin" />
-              ) : (
-                <ShieldCheckIcon className="h-4 w-4" />
-              )
-            }
-            data-testid="protection-check-protection"
-          >
-            Check Protection
-          </Button>
-        </div>
+      <PageHeader
+        title="AI Protection Center"
+        description="See your PC's security protection at a glance."
+        actions={
+          <>
+            <ProStatusPill />
+            <Button
+              onClick={handleCheckProtection}
+              disabled={state.loading}
+              size="md"
+              leftIcon={
+                state.loading ? (
+                  <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ShieldCheckIcon className="h-4 w-4" />
+                )
+              }
+              data-testid="protection-check-protection"
+            >
+              Check Protection
+            </Button>
+            <HelpButton text="The Protection Center shows your PC's overall security posture based on real telemetry from Windows Defender, firewall, and other security features." />
+          </>
+        }
+        testId="page-protection-center-header"
+      />
+
+      {/* Overall status badge */}
+      <div
+        className={`inline-flex items-center gap-2 rounded-full ${overallTone.bg} ${overallTone.border} border px-3 py-1.5 text-small font-semibold ${overallTone.text}`}
+        data-testid="protection-overall-status"
+      >
+        <overallConfig.icon className="h-4 w-4" />
+        {overallConfig.label}
       </div>
 
       {/* ── Fix result banner ─────────────────────────────────── */}
-      {state.fixMessage && (
-        <div
-          className={`rounded-[var(--avs-radius-md)] p-3 flex items-center justify-between gap-3 ${
-            state.fixSuccess
-              ? 'bg-semantic-success/10 border border-semantic-success/20'
-              : 'bg-semantic-warning/10 border border-semantic-warning/20'
-          }`}
-          data-testid="protection-fix-message"
-        >
-          <div className="flex items-center gap-2">
-            {state.fixSuccess ? (
-              <CheckCircleIcon className="h-5 w-5 text-semantic-success shrink-0" />
-            ) : (
-              <ExclamationTriangleIcon className="h-5 w-5 text-semantic-warning shrink-0" />
-            )}
-            <span className={`text-small ${state.fixSuccess ? 'text-semantic-success' : 'text-semantic-warning'}`}>
-              {state.fixMessage}
-            </span>
-          </div>
-          <button
-            onClick={handleDismissFixMessage}
-            className="text-caption text-text-muted hover:text-text-primary"
-          >
-            Dismiss
-          </button>
-        </div>
+      {state.fixMessage && state.fixSuccess && (
+        <ModuleSuccessBanner
+          title={state.fixMessage}
+          onDismiss={handleDismissFixMessage}
+          testId="protection-fix-message"
+        />
+      )}
+      {state.fixMessage && !state.fixSuccess && (
+        <ModuleErrorBanner
+          message={state.fixMessage}
+          onDismiss={handleDismissFixMessage}
+          testId="protection-fix-message"
+        />
       )}
 
       {/* ── 2. MAIN PROTECTION SCORE ──────────────────────────── */}
