@@ -185,9 +185,19 @@ def _import_module(name: str) -> None:
         new_methods = sorted(methods_after - methods_before)
         print(f"[SUCCESS] Module {name} loaded. Registered methods: {new_methods}", file=sys.stderr, flush=True)
     except Exception as e:
+        error_msg = f"Module {name} failed to load: {e}\n{traceback.format_exc()}"
         print(f"[FAILED] Module {name} failed to load", file=sys.stderr, flush=True)
         print(f"[TRACEBACK] {traceback.format_exc()}", file=sys.stderr, flush=True)
         log.exception("Failed to import %s", name)
+        # Also write to a diagnostic log file so users can report errors
+        try:
+            import os as _os
+            log_dir = _os.path.join(_os.environ.get("LOCALAPPDATA", _os.path.expanduser("~")), "AVS AI Shield", "logs")
+            _os.makedirs(log_dir, exist_ok=True)
+            with open(_os.path.join(log_dir, "module_errors.log"), "a", encoding="utf-8") as f:
+                f.write(f"[{_os.path.basename(__file__)}] {error_msg}\n\n")
+        except Exception:
+            pass
         with _modules_lock:
             _modules_failed.add(name)
     finally:

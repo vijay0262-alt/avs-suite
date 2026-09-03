@@ -48,9 +48,11 @@ logs/
 Thumbs.db
 
 # Scratch / debug files (never commit these)
-_*.py
-_*.txt
-_*.js
+# Note: Don't use _*.py because it matches __init__.py
+# Use _[a-z]*.py to match scratch files like _accounting_fix.py but not __init__.py
+_[a-zA-Z]*.py
+_[a-zA-Z]*.txt
+_[a-zA-Z]*.js
 _asar*/
 _audit*
 _debug*
