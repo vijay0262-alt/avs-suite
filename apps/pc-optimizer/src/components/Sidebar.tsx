@@ -20,12 +20,10 @@ import {
   ArrowPathIcon,
   KeyIcon,
   DocumentChartBarIcon,
-  MagnifyingGlassIcon,
   GlobeAltIcon,
   LifebuoyIcon,
   ArrowUturnLeftIcon,
   ArrowUpTrayIcon,
-  FolderOpenIcon,
   BellIcon,
   ArrowPathRoundedSquareIcon,
   ChatBubbleLeftRightIcon,
@@ -36,17 +34,10 @@ import {
   PuzzlePieceIcon,
   WifiIcon,
   ClipboardDocumentListIcon,
-  LockClosedIcon,
-  PauseIcon,
-  AcademicCapIcon,
-  AdjustmentsHorizontalIcon,
   ArrowsRightLeftIcon,
   ClockIcon,
   EyeIcon,
-  BeakerIcon,
-  SparklesIcon,
   CloudArrowUpIcon,
-  BugAntIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import { useIsPro } from '../features/sync/syncStore';
@@ -79,20 +70,16 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'ai-smart-security', to: '/ai-smart-security', labelKey: 'nav.aiSmartSecurity', Icon: ShieldCheckIcon },
     ],
   },
-  // ── AI INTELLIGENCE ───────────────────────────────────────────
+  // ── AI INTELLIGENCE — Top 5 shown in sidebar; rest accessible via
+  // AI Smart Optimize and AI Workspace.
   {
     id: 'ai-intelligence',
     labelKey: 'nav.section.aiIntelligence',
     entries: [
       { id: 'auto-care', to: '/auto-care', labelKey: 'nav.autoCare', Icon: ClockIcon, proEnhanced: true },
-      { id: 'workload', to: '/workload', labelKey: 'nav.workload', Icon: CpuChipIcon, proEnhanced: true },
       { id: 'predictive', to: '/predictive', labelKey: 'nav.predictive', Icon: ChartBarIcon, proEnhanced: true },
-      { id: 'smart-notifications', to: '/smart-notifications', labelKey: 'nav.smartNotifications', Icon: BellIcon, proEnhanced: true },
-      { id: 'app-freezer', to: '/app-freezer', labelKey: 'nav.appFreezer', Icon: PauseIcon, proEnhanced: true },
-      { id: 'self-learning', to: '/self-learning', labelKey: 'nav.selfLearning', Icon: AcademicCapIcon, proEnhanced: true },
       { id: 'anomaly', to: '/anomaly', labelKey: 'nav.anomaly', Icon: EyeIcon, proEnhanced: true },
       { id: 'duplicate-intel', to: '/duplicate-intel', labelKey: 'nav.duplicateIntel', Icon: DocumentDuplicateIcon, proEnhanced: true },
-      { id: 'process-priority', to: '/process-priority', labelKey: 'nav.processPriority', Icon: AdjustmentsHorizontalIcon, proEnhanced: true },
       { id: 'ai-integration', to: '/ai-integration', labelKey: 'nav.aiIntegration', Icon: ArrowsRightLeftIcon, proEnhanced: true },
     ],
   },
@@ -131,21 +118,15 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'recovery-center', to: '/recovery-center', labelKey: 'nav.recoveryCenter', Icon: LifebuoyIcon },
     ],
   },
-  // ── SECURITY — V1.0: Moved below Optimization per user request. ──
+  // ── SECURITY — Consolidated into one unified Antivirus Security page.
+  //  All security features (scan, realtime, quarantine, safe folder,
+  //  threat engine, advanced security) are accessible from the
+  //  Antivirus Security page via tabs. Individual routes still work.
   {
     id: 'security',
     labelKey: 'nav.section.security',
     entries: [
-      { id: 'quick-scan', to: '/quick-scan', labelKey: 'nav.quickScan', Icon: MagnifyingGlassIcon },
-      { id: 'full-scan', to: '/full-scan', labelKey: 'nav.fullScan', Icon: ShieldCheckIcon },
-      { id: 'custom-scan', to: '/custom-scan', labelKey: 'nav.customScan', Icon: FolderOpenIcon },
-      { id: 'pup-scanner', to: '/pup-scanner', labelKey: 'nav.pupScanner', Icon: ShieldExclamationIcon, proEnhanced: true },
-      { id: 'safe-folder', to: '/safe-folder', labelKey: 'nav.safeFolder', Icon: ShieldExclamationIcon, proEnhanced: true },
-      { id: 'threat-engine', to: '/threat-engine', labelKey: 'nav.threatEngine', Icon: BugAntIcon, proEnhanced: true },
-      { id: 'realtime-threat', to: '/realtime-threat', labelKey: 'nav.realtimeThreat', Icon: EyeIcon, proEnhanced: true },
-      { id: 'advanced-security', to: '/advanced-security', labelKey: 'nav.advancedSecurity', Icon: BeakerIcon, proEnhanced: true },
-      { id: 'ai-features', to: '/ai-features', labelKey: 'nav.aiFeatures', Icon: SparklesIcon, proEnhanced: true },
-      { id: 'quarantine', to: '/quarantine-vault', labelKey: 'nav.quarantine', Icon: LockClosedIcon, proEnhanced: true },
+      { id: 'antivirus-security', to: '/antivirus-security', labelKey: 'nav.antivirusSecurity', Icon: ShieldCheckIcon, proEnhanced: true },
     ],
   },
   // ── REPORTS & TOOLS ───────────────────────────────────────────

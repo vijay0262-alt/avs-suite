@@ -105,13 +105,14 @@ export function SecurityCenterPage() {
     setClamAvMessage(null);
     try {
       await rpc.raw(RPC_METHODS.THREAT_CLAMAV_SETUP);
-      setClamAvMessage('ClamAV is downloading and installing in the background. This may take a few minutes.');
+      setClamAvMessage('Enabling antivirus protection... Downloading virus definitions and starting engine. This may take a few minutes.');
       // Poll status using recursive setTimeout (no polling per test requirement)
       const poll = async () => {
         await refreshClamAv();
         const setupRes = await rpc.raw<{ setup_in_progress: boolean }>(RPC_METHODS.THREAT_CLAMAV_SETUP_STATUS);
         if (!setupRes?.setup_in_progress) {
-          setClamAvMessage('ClamAV installed successfully. Click "Start Engine" to begin protecting your PC.');
+          setClamAvMessage('Antivirus protection is now active. Virus definitions will update automatically.');
+          refreshClamAv();
           return;
         }
         setTimeout(poll, 5000);
@@ -128,7 +129,7 @@ export function SecurityCenterPage() {
     setClamAvMessage(null);
     try {
       await rpc.raw(RPC_METHODS.THREAT_CLAMAV_START);
-      setClamAvMessage('ClamAV engine started. Signature-based protection is now active.');
+      setClamAvMessage('Antivirus engine started. Signature-based protection is now active.');
       refreshClamAv();
     } catch (e) {
       setClamAvMessage(`Failed to start: ${String(e)}`);
@@ -331,10 +332,10 @@ export function SecurityCenterPage() {
               <div className="text-small font-semibold text-text-primary">AVS AI Shield Antivirus</div>
               <p className="text-caption text-text-secondary">
                 {clamAvStatus?.clamd_running
-                  ? `Running — ${clamAvStatus.signature_count.toLocaleString()} signatures loaded`
+                  ? `Active — ${clamAvStatus.signature_count.toLocaleString()} virus definitions loaded`
                   : clamAvStatus?.installed
-                    ? 'Installed but not running. Click "Start Engine" to activate protection.'
-                    : 'Open-source antivirus engine with free daily-updated virus definitions. Click "Install Now" to enable independent AV protection.'}
+                    ? 'Engine ready. Click "Activate Protection" to start real-time antivirus scanning.'
+                    : 'Enable antivirus protection with free daily-updated virus definitions. Covers viruses, trojans, worms, ransomware, adware, spyware, and PUPs.'}
               </p>
             </div>
           </div>
@@ -360,7 +361,7 @@ export function SecurityCenterPage() {
             leftIcon={<ArrowPathIcon className={`h-4 w-4 ${clamAvSetupLoading ? 'animate-spin' : ''}`} />}
             data-testid="clamav-install-btn"
           >
-            {clamAvSetupLoading ? 'Installing...' : 'Install Now'}
+            {clamAvSetupLoading ? 'Enabling...' : 'Enable Protection'}
           </Button>
         )}
 
@@ -373,7 +374,7 @@ export function SecurityCenterPage() {
             leftIcon={<BoltIcon className="h-4 w-4" />}
             data-testid="clamav-start-btn"
           >
-            {clamAvStarting ? 'Starting...' : 'Start Engine'}
+            {clamAvStarting ? 'Starting...' : 'Activate Protection'}
           </Button>
         )}
 

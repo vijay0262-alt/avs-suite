@@ -1,0 +1,36 @@
+Unified Antivirus Security page + seamless ClamAV + compact sidebar
+
+1. Seamless ClamAV integration (no "install" framing):
+   - Auto-starts clamd daemon after setup completes
+   - Auto-enables daily signature updates after setup
+   - UI says "Enable Protection" instead of "Install Now"
+   - User clicks one button → engine downloads, starts, and updates
+
+2. Unified Antivirus Security page (/antivirus-security):
+   - Tab 1: Scan & Remove — Quick/Full/Custom scan buttons
+   - Tab 2: Real-Time Protection — toggle + AV engine status
+   - Tab 3: Quarantine — restore/delete quarantined threats
+   - Tab 4: Advanced Security — links to Safe Folder, Advanced
+     Security, Threat Engine config, Scan History
+   - Shows threat coverage badges: viruses, trojans, worms,
+     ransomware, adware, spyware, PUPs, rootkits
+   - Status cards: AV Engine, Real-Time Guard, Threats Found
+   - Lists all 8 active detection engines
+
+3. Sidebar consolidation:
+   - Security section: 10 entries → 1 ("Antivirus Security")
+   - AI Intelligence: 10 entries → 5 (top features kept)
+   - All existing routes still work (backward compatible)
+   - Net reduction: 14 fewer sidebar entries
+
+4. AI Smart Security now loads AntivirusSecurityPage
+
+Validation:
+- ESLint: 0 warnings
+- TypeScript build: passed
+- Vitest: 159 test files, 8098 tests passed
+- PyInstaller: backend rebuilt successfully
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

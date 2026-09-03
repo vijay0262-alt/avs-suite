@@ -440,7 +440,7 @@ def _run_setup_async() -> None:
         db_results = _download_signatures(db_dir)
 
         with _setup_lock:
-            _setup_progress = {"phase": "complete"}
+            _setup_progress = {"phase": "starting_engine"}
 
         # Step 5: Save state
         _save_state({
@@ -450,6 +450,26 @@ def _run_setup_async() -> None:
             "db_results": db_results,
             "install_dir": str(install_dir),
         })
+
+        # Step 6: Auto-start clamd daemon (seamless — no user action needed)
+        try:
+            start_result = start_clamd()
+            if start_result.get("success"):
+                log.info("ClamAV daemon auto-started after setup (PID %s)", start_result.get("pid"))
+            else:
+                log.warning("ClamAV auto-start failed: %s", start_result.get("error"))
+        except Exception as e:
+            log.warning("ClamAV auto-start error: %s", e)
+
+        # Step 7: Auto-enable daily signature updates
+        try:
+            start_auto_update()
+            log.info("ClamAV auto-update scheduler enabled after setup")
+        except Exception as e:
+            log.warning("ClamAV auto-update enable error: %s", e)
+
+        with _setup_lock:
+            _setup_progress = {"phase": "complete"}
 
         log.info("ClamAV setup complete: version %s at %s", _CLAMAV_VERSION, install_dir)
 

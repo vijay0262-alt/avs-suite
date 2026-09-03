@@ -51,6 +51,7 @@ export const en = {
     protectionCenter: 'AI Protection Center',
     aiSmartOptimize: 'AI Smart Optimize',
     aiSmartSecurity: 'AI Smart Security',
+    antivirusSecurity: 'Antivirus Security',
     systemHealth: 'System Health',
     hardwareCenter: 'Hardware Center',
     processIntelligence: 'Process Intelligence',

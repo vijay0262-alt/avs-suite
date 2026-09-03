@@ -12,6 +12,7 @@ export type NavItemId =
   | 'ai-smart-optimize'
   | 'ai-smart-security'
   | 'ai-workspace'
+  | 'antivirus-security'
   | 'system-health'
   | 'hardware-center'
   | 'process-intelligence'

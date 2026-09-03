@@ -47,6 +47,7 @@ const FileRecoveryPage = lazy(() => import('../pages/FileRecoveryPage'));
 const ReportsTimelinePage = lazy(() => import('../pages/ReportsTimelinePage'));
 const LargeFilesPage = lazy(() => import('../pages/LargeFilesPage'));
 const AnalyticsPage = lazy(() => import('../pages/AnalyticsPage'));
+const AntivirusSecurityPage = lazy(() => import('../pages/AntivirusSecurityPage'));
 
 // v2.0 security sub-pages and new route wrappers
 import {
@@ -168,7 +169,7 @@ export const router = createHashRouter([
       { path: 'ai-assistant', element: wrap(AIAssistantPage) },
       { path: 'ai-daily-briefing', element: wrap(AIAssistantPage) },
       { path: 'ai-smart-optimize', element: wrap(SmartOptimizationPage) },
-      { path: 'ai-smart-security', element: wrap(SecurityCenterPage) },
+      { path: 'ai-smart-security', element: wrap(AntivirusSecurityPage) },
       { path: 'ai-workspace', element: wrap(AIWorkspacePage) },
       // SYSTEM HEALTH
       { path: 'system-health', element: wrap(SystemHealthPage) },
@@ -223,6 +224,7 @@ export const router = createHashRouter([
       { path: 'analytics', element: wrap(AnalyticsPage) },
       { path: 'export-center', element: wrap(ExportCenterPage) },
       // TOOLS
+      { path: 'antivirus-security', element: wrap(AntivirusSecurityPage) },
       { path: 'system-information', element: wrap(SystemInformationPage) },
       { path: 'disk-analyzer', element: wrap(DiskAnalyzerPage) },
       { path: 'cloud-drive-cleaner', element: wrap(CloudDriveCleanerPage) },
