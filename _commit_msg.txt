@@ -1,0 +1,51 @@
+Bundle ClamAV binaries in installer — no user download needed
+
+Problem: Users had to click "Enable Protection" and wait for ClamAV
+binaries (~90MB) to download from GitHub. This felt like installing
+third-party software.
+
+Solution: ClamAV binaries are now bundled in the installer itself.
+Only virus definitions (~300MB, change daily) are downloaded in the
+background on first launch — automatically, with no user action.
+
+Changes:
+
+1. ClamAV binaries bundled in app resources:
+   - Download script (scripts/downloadClamAv.js) fetches ClamAV 1.4.3
+     portable ZIP at build time, strips debug symbols/PDBs (.lib files),
+     extracts only runtime files (~90MB vs 560MB raw)
+   - Runs automatically before electron-builder packaging
+   - Binaries placed in apps/pc-optimizer/resources/clamav/
+   - gitignored (not stored in git — downloaded fresh at each build)
+   - electron-builder.yml includes resources/clamav in extraResources
+
+2. Backend uses bundled binaries (no binary download):
+   - _find_bundled_clamav() searches dev and production paths
+   - _run_setup_async() copies bundled binaries to data dir
+   - Falls back to GitHub download only if bundled not found
+   - Only virus definitions (main.cvd, daily.cvd, bytecode.cvd) are
+     downloaded from database.clamav.net
+
+3. Auto-setup on backend startup (no user action):
+   - auto_setup_on_startup() runs in daemon thread on module load
+   - If not installed: starts setup (copies binaries, downloads defs)
+   - If installed: starts clamd + enables auto-update scheduler
+   - Called from threat_engine/__init__.py at import time
+
+4. UI updated — no "Enable Protection" button:
+   - AntivirusSecurityPage: shows auto-setup status (Preparing/Starting/Active)
+   - SecurityCenterPage: same auto-setup status display
+   - User just clicks scan — everything works
+   - Message: "The antivirus engine starts automatically. Virus
+     definitions download in the background and update daily."
+
+Validation:
+- ESLint: 0 warnings
+- TypeScript build: passed
+- Vitest: 159 test files, 8098 tests passed
+- PyInstaller: backend rebuilt successfully
+- Bundled ClamAV detection: verified clamd.exe found at correct path
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

@@ -76,8 +76,6 @@ export default function AntivirusSecurityPage() {
 
   // AV engine state
   const [avStatus, setAvStatus] = useState<{ installed: boolean; clamd_running: boolean; signature_count: number; version: string | null } | null>(null);
-  const [avEnabling, setAvEnabling] = useState(false);
-  const [avMessage, setAvMessage] = useState<string | null>(null);
 
   // Quarantine state
   const [threats, setThreats] = useState<ThreatItem[]>([]);
@@ -127,30 +125,6 @@ export default function AntivirusSecurityPage() {
     } catch { /* ignore */ }
     setRtGuardLoading(false);
   }, [rtGuardEnabled, isPro, showUpgrade]);
-
-  const handleEnableAv = useCallback(async () => {
-    if (!isPro) { showUpgrade('Antivirus Protection'); return; }
-    setAvEnabling(true);
-    setAvMessage(null);
-    try {
-      await rpc.raw(RPC_METHODS.THREAT_CLAMAV_SETUP);
-      setAvMessage('Enabling antivirus protection... Downloading virus definitions and starting engine. This may take a few minutes.');
-      const poll = async () => {
-        await refreshAvStatus();
-        const setupRes = await rpc.raw<{ setup_in_progress: boolean }>(RPC_METHODS.THREAT_CLAMAV_SETUP_STATUS);
-        if (!setupRes?.setup_in_progress) {
-          setAvMessage('Antivirus protection is now active. Virus definitions will update automatically.');
-          refreshAvStatus();
-          return;
-        }
-        setTimeout(poll, 5000);
-      };
-      setTimeout(poll, 5000);
-    } catch (e) {
-      setAvMessage(`Setup failed: ${String(e)}`);
-    }
-    setAvEnabling(false);
-  }, [isPro, showUpgrade, refreshAvStatus]);
 
   const handleScan = useCallback((scanType: 'quick' | 'full' | 'custom') => {
     setScanModalOpen(true);
@@ -341,7 +315,7 @@ export default function AntivirusSecurityPage() {
             )}
           </Card>
 
-          {/* AV Engine status */}
+          {/* AV Engine status — auto-setup, no button needed */}
           <Card variant="glass" className="p-5" data-testid="av-engine-card">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
@@ -354,32 +328,19 @@ export default function AntivirusSecurityPage() {
                     {avStatus?.clamd_running
                       ? `Active — ${avStatus.signature_count.toLocaleString()} virus definitions loaded`
                       : avStatus?.installed
-                        ? 'Engine ready. Click "Activate Protection" to start scanning.'
-                        : 'Enable antivirus protection with free daily-updated virus definitions.'}
+                        ? 'Engine ready. Starting automatically...'
+                        : 'Preparing antivirus engine... Downloading virus definitions in background.'}
                   </p>
                 </div>
               </div>
               {avStatus?.clamd_running ? (
                 <Badge tone="success">Active</Badge>
               ) : avStatus?.installed ? (
-                <Badge tone="warning">Ready</Badge>
+                <Badge tone="warning">Starting</Badge>
               ) : (
-                <Badge tone="neutral">Not Active</Badge>
+                <Badge tone="neutral"><ArrowPathIcon className="h-3 w-3 inline mr-1 animate-spin" />Preparing</Badge>
               )}
             </div>
-
-            {avStatus && !avStatus.clamd_running && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleEnableAv}
-                disabled={avEnabling}
-                leftIcon={avEnabling ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <BoltIcon className="h-4 w-4" />}
-                data-testid="av-enable-btn"
-              >
-                {avEnabling ? 'Enabling...' : avStatus.installed ? 'Activate Protection' : 'Enable Protection'}
-              </Button>
-            )}
 
             {avStatus?.clamd_running && avStatus.version && (
               <div className="flex items-center gap-2 mt-2">
@@ -390,8 +351,10 @@ export default function AntivirusSecurityPage() {
               </div>
             )}
 
-            {avMessage && (
-              <p className="mt-3 text-caption text-text-secondary" data-testid="av-message">{avMessage}</p>
+            {!avStatus?.clamd_running && (
+              <p className="mt-2 text-caption text-text-muted" data-testid="av-auto-setup-msg">
+                The antivirus engine starts automatically. Virus definitions download in the background and update daily.
+              </p>
             )}
           </Card>
         </div>

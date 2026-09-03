@@ -46,3 +46,6 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+# ClamAV binaries (downloaded at build time, not stored in git)
+apps/pc-optimizer/resources/clamav/
+

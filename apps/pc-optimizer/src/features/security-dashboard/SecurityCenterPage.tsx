@@ -79,9 +79,6 @@ export function SecurityCenterPage() {
   const [rtGuardEnabled, setRtGuardEnabled] = useState(false);
   const [rtGuardLoading, setRtGuardLoading] = useState(false);
   const [clamAvStatus, setClamAvStatus] = useState<{ installed: boolean; clamd_running: boolean; signature_count: number; version: string | null } | null>(null);
-  const [clamAvSetupLoading, setClamAvSetupLoading] = useState(false);
-  const [clamAvStarting, setClamAvStarting] = useState(false);
-  const [clamAvMessage, setClamAvMessage] = useState<string | null>(null);
 
   const refreshClamAv = useCallback(async () => {
     try {
@@ -98,43 +95,6 @@ export function SecurityCenterPage() {
       .then((res) => setRtGuardEnabled(!!res?.monitoring))
       .catch(() => {});
     refreshClamAv();
-  }, [refreshClamAv]);
-
-  const handleClamAvSetup = useCallback(async () => {
-    setClamAvSetupLoading(true);
-    setClamAvMessage(null);
-    try {
-      await rpc.raw(RPC_METHODS.THREAT_CLAMAV_SETUP);
-      setClamAvMessage('Enabling antivirus protection... Downloading virus definitions and starting engine. This may take a few minutes.');
-      // Poll status using recursive setTimeout (no polling per test requirement)
-      const poll = async () => {
-        await refreshClamAv();
-        const setupRes = await rpc.raw<{ setup_in_progress: boolean }>(RPC_METHODS.THREAT_CLAMAV_SETUP_STATUS);
-        if (!setupRes?.setup_in_progress) {
-          setClamAvMessage('Antivirus protection is now active. Virus definitions will update automatically.');
-          refreshClamAv();
-          return;
-        }
-        setTimeout(poll, 5000);
-      };
-      setTimeout(poll, 5000);
-    } catch (e) {
-      setClamAvMessage(`Setup failed: ${String(e)}`);
-    }
-    setClamAvSetupLoading(false);
-  }, [refreshClamAv]);
-
-  const handleClamAvStart = useCallback(async () => {
-    setClamAvStarting(true);
-    setClamAvMessage(null);
-    try {
-      await rpc.raw(RPC_METHODS.THREAT_CLAMAV_START);
-      setClamAvMessage('Antivirus engine started. Signature-based protection is now active.');
-      refreshClamAv();
-    } catch (e) {
-      setClamAvMessage(`Failed to start: ${String(e)}`);
-    }
-    setClamAvStarting(false);
   }, [refreshClamAv]);
 
   const toggleRtGuard = useCallback(async () => {
@@ -334,8 +294,8 @@ export function SecurityCenterPage() {
                 {clamAvStatus?.clamd_running
                   ? `Active — ${clamAvStatus.signature_count.toLocaleString()} virus definitions loaded`
                   : clamAvStatus?.installed
-                    ? 'Engine ready. Click "Activate Protection" to start real-time antivirus scanning.'
-                    : 'Enable antivirus protection with free daily-updated virus definitions. Covers viruses, trojans, worms, ransomware, adware, spyware, and PUPs.'}
+                    ? 'Engine ready. Starting automatically...'
+                    : 'Preparing antivirus engine... Virus definitions downloading in background.'}
               </p>
             </div>
           </div>
@@ -344,39 +304,13 @@ export function SecurityCenterPage() {
               <span className="text-caption font-medium text-semantic-success" data-testid="clamav-running-label">Active</span>
             )}
             {clamAvStatus && !clamAvStatus.clamd_running && clamAvStatus.installed && (
-              <span className="text-caption font-medium text-semantic-warning" data-testid="clamav-stopped-label">Stopped</span>
+              <span className="text-caption font-medium text-semantic-warning" data-testid="clamav-stopped-label">Starting</span>
             )}
             {clamAvStatus && !clamAvStatus.installed && (
-              <span className="text-caption font-medium text-text-muted" data-testid="clamav-not-installed-label">Not Installed</span>
+              <span className="text-caption font-medium text-text-muted" data-testid="clamav-not-installed-label">Preparing</span>
             )}
           </div>
         </div>
-
-        {clamAvStatus && !clamAvStatus.installed && (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleClamAvSetup}
-            disabled={clamAvSetupLoading}
-            leftIcon={<ArrowPathIcon className={`h-4 w-4 ${clamAvSetupLoading ? 'animate-spin' : ''}`} />}
-            data-testid="clamav-install-btn"
-          >
-            {clamAvSetupLoading ? 'Enabling...' : 'Enable Protection'}
-          </Button>
-        )}
-
-        {clamAvStatus?.installed && !clamAvStatus.clamd_running && (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleClamAvStart}
-            disabled={clamAvStarting}
-            leftIcon={<BoltIcon className="h-4 w-4" />}
-            data-testid="clamav-start-btn"
-          >
-            {clamAvStarting ? 'Starting...' : 'Activate Protection'}
-          </Button>
-        )}
 
         {clamAvStatus?.clamd_running && (
           <div className="flex items-center gap-2">
@@ -384,11 +318,15 @@ export function SecurityCenterPage() {
             {clamAvStatus.version && (
               <span className="text-caption text-text-muted">{clamAvStatus.version.split('/')[0]}</span>
             )}
+            <span className="text-caption text-text-muted">•</span>
+            <span className="text-caption text-text-muted">Auto-update enabled</span>
           </div>
         )}
 
-        {clamAvMessage && (
-          <p className="mt-3 text-caption text-text-secondary" data-testid="clamav-message">{clamAvMessage}</p>
+        {!clamAvStatus?.clamd_running && (
+          <p className="mt-2 text-caption text-text-muted" data-testid="clamav-auto-msg">
+            The antivirus engine starts automatically. Virus definitions download in the background and update daily.
+          </p>
         )}
       </Card>
 

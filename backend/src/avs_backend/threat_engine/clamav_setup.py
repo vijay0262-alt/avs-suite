@@ -43,6 +43,33 @@ _DATA_DIR = Path(
     os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
 ) / "AVS AI Shield" / "clamav"
 
+# Bundled ClamAV binaries — shipped with the app, no download needed.
+# In development: apps/pc-optimizer/resources/clamav/
+# In production (packaged): resources/clamav/
+_BUNDLED_CLAMAV_PATHS: list[Path] = []
+if IS_WINDOWS:
+    # Development path (relative to backend src)
+    _dev_path = Path(__file__).resolve().parent.parent.parent.parent.parent / "apps" / "pc-optimizer" / "resources" / "clamav"
+    _BUNDLED_CLAMAV_PATHS.append(_dev_path)
+    # Production paths (packaged app)
+    _exe = Path(sys.executable).resolve()
+    for _ancestor in [_exe.parent, _exe.parent.parent, _exe.parent.parent.parent]:
+        _candidate = _ancestor / "resources" / "clamav"
+        _BUNDLED_CLAMAV_PATHS.append(_candidate)
+    # Also check via LOCALAPPDATA Programs
+    _lad = os.environ.get("LOCALAPPDATA", "")
+    if _lad:
+        _BUNDLED_CLAMAV_PATHS.append(Path(_lad) / "Programs" / "avs-ai-shield" / "resources" / "clamav")
+
+
+def _find_bundled_clamav() -> Path | None:
+    """Find bundled ClamAV binaries. Returns the directory containing clamd.exe, or None."""
+    for path in _BUNDLED_CLAMAV_PATHS:
+        if (path / "clamd.exe").exists():
+            return path
+    return None
+
+
 # State file to track setup progress
 _STATE_PATH = _DATA_DIR / "setup_state.json"
 
@@ -377,72 +404,95 @@ def _download_signatures(db_dir: Path) -> dict[str, Any]:
 
 
 def _run_setup_async() -> None:
-    """Run the full ClamAV setup in a background thread."""
+    """Run the ClamAV setup in a background thread.
+
+    Uses bundled ClamAV binaries (shipped with the app) — no binary download needed.
+    Only virus definitions are downloaded (they change daily and are ~300MB).
+    """
     global _setup_in_progress, _setup_progress
 
     try:
-        with _setup_lock:
-            _setup_progress = {"phase": "downloading_clamav"}
-
-        # Step 1: Download ClamAV portable
         install_dir = _DATA_DIR
         install_dir.mkdir(parents=True, exist_ok=True)
 
-        zip_path = install_dir / "clamav.zip"
-        if not _download_file(_CLAMAV_ZIP_URL, zip_path, "clamav_download"):
+        # Step 1: Check for bundled ClamAV binaries first
+        bundled = _find_bundled_clamav()
+        if bundled:
             with _setup_lock:
-                _setup_progress = {"phase": "error", "error": "Failed to download ClamAV"}
-            return
+                _setup_progress = {"phase": "copying_bundled"}
 
-        with _setup_lock:
-            _setup_progress = {"phase": "extracting"}
-
-        # Step 2: Extract
-        try:
-            with zipfile.ZipFile(zip_path, "r") as zf:
-                zf.extractall(install_dir)
-            zip_path.unlink(missing_ok=True)
-        except Exception as e:
-            log.error("Failed to extract ClamAV ZIP: %s", e)
-            with _setup_lock:
-                _setup_progress = {"phase": "error", "error": f"Extraction failed: {e}"}
-            return
-
-        # Find the extracted directory (usually clamav-VERSION.win.x64)
-        extracted_dirs = [
-            d for d in install_dir.iterdir()
-            if d.is_dir() and d.name.startswith("clamav")
-        ]
-        if extracted_dirs:
-            # Move contents to install_dir root
-            src_dir = extracted_dirs[0]
-            for item in src_dir.iterdir():
+            # Copy bundled binaries to data dir (so we can write configs/db)
+            log.info("Using bundled ClamAV binaries from %s", bundled)
+            for item in bundled.iterdir():
                 dest = install_dir / item.name
                 if dest.exists():
                     if dest.is_dir():
                         shutil.rmtree(dest)
                     else:
                         dest.unlink()
-                shutil.move(str(item), str(dest))
-            src_dir.rmdir()
+                if item.is_dir():
+                    shutil.copytree(str(item), str(dest))
+                else:
+                    shutil.copy2(str(item), str(dest))
+        else:
+            # Fallback: download ClamAV portable (if bundled not found)
+            with _setup_lock:
+                _setup_progress = {"phase": "downloading_clamav"}
+
+            log.warning("Bundled ClamAV not found, downloading from GitHub...")
+            zip_path = install_dir / "clamav.zip"
+            if not _download_file(_CLAMAV_ZIP_URL, zip_path, "clamav_download"):
+                with _setup_lock:
+                    _setup_progress = {"phase": "error", "error": "Failed to download ClamAV"}
+                return
+
+            with _setup_lock:
+                _setup_progress = {"phase": "extracting"}
+
+            try:
+                with zipfile.ZipFile(zip_path, "r") as zf:
+                    zf.extractall(install_dir)
+                zip_path.unlink(missing_ok=True)
+            except Exception as e:
+                log.error("Failed to extract ClamAV ZIP: %s", e)
+                with _setup_lock:
+                    _setup_progress = {"phase": "error", "error": f"Extraction failed: {e}"}
+                return
+
+            # Find the extracted directory and flatten it
+            extracted_dirs = [
+                d for d in install_dir.iterdir()
+                if d.is_dir() and d.name.startswith("clamav")
+            ]
+            if extracted_dirs:
+                src_dir = extracted_dirs[0]
+                for item in src_dir.iterdir():
+                    dest = install_dir / item.name
+                    if dest.exists():
+                        if dest.is_dir():
+                            shutil.rmtree(dest)
+                        else:
+                            dest.unlink()
+                    shutil.move(str(item), str(dest))
+                src_dir.rmdir()
 
         with _setup_lock:
             _setup_progress = {"phase": "configuring"}
 
-        # Step 3: Generate config files
+        # Step 2: Generate config files
         _generate_config(install_dir)
 
         with _setup_lock:
             _setup_progress = {"phase": "downloading_signatures"}
 
-        # Step 4: Download signature database
+        # Step 3: Download virus definitions (only thing that needs downloading)
         db_dir = install_dir / "db"
         db_results = _download_signatures(db_dir)
 
         with _setup_lock:
             _setup_progress = {"phase": "starting_engine"}
 
-        # Step 5: Save state
+        # Step 4: Save state
         _save_state({
             "installed": True,
             "version": _CLAMAV_VERSION,
@@ -451,7 +501,7 @@ def _run_setup_async() -> None:
             "install_dir": str(install_dir),
         })
 
-        # Step 6: Auto-start clamd daemon (seamless — no user action needed)
+        # Step 5: Auto-start clamd daemon (seamless — no user action needed)
         try:
             start_result = start_clamd()
             if start_result.get("success"):
@@ -461,7 +511,7 @@ def _run_setup_async() -> None:
         except Exception as e:
             log.warning("ClamAV auto-start error: %s", e)
 
-        # Step 7: Auto-enable daily signature updates
+        # Step 6: Auto-enable daily signature updates
         try:
             start_auto_update()
             log.info("ClamAV auto-update scheduler enabled after setup")
@@ -532,6 +582,47 @@ def start_setup() -> dict[str, Any]:
         "version": _CLAMAV_VERSION,
         "install_dir": str(_DATA_DIR),
     }
+
+
+def auto_setup_on_startup() -> None:
+    """Auto-setup ClamAV on backend startup if not already installed.
+
+    This runs in a background daemon thread so it doesn't block startup.
+    Uses bundled ClamAV binaries — only virus definitions are downloaded.
+    If already installed, tries to start clamd and auto-update scheduler.
+    """
+    if not IS_WINDOWS:
+        return
+
+    def _do_auto_setup():
+        try:
+            state = _load_state()
+            if state.get("installed"):
+                # Already installed — just start clamd and auto-update
+                log.info("ClamAV already installed, auto-starting engine...")
+                try:
+                    start_result = start_clamd()
+                    if start_result.get("success"):
+                        log.info("ClamAV daemon auto-started on startup (PID %s)", start_result.get("pid"))
+                    else:
+                        log.warning("ClamAV auto-start on startup: %s", start_result.get("error"))
+                except Exception as e:
+                    log.warning("ClamAV auto-start on startup error: %s", e)
+
+                try:
+                    start_auto_update()
+                    log.info("ClamAV auto-update scheduler enabled on startup")
+                except Exception as e:
+                    log.warning("ClamAV auto-update on startup error: %s", e)
+            else:
+                # Not installed — start setup (uses bundled binaries)
+                log.info("ClamAV not installed, auto-starting setup...")
+                start_setup()
+        except Exception as e:
+            log.error("ClamAV auto-setup on startup failed: %s", e)
+
+    thread = threading.Thread(target=_do_auto_setup, daemon=True, name="clamav-auto-setup")
+    thread.start()
 
 
 def start_clamd() -> dict[str, Any]:

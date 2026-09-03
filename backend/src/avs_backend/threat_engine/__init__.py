@@ -972,3 +972,11 @@ def _get_definition_counts() -> dict[str, Any]:
 
 log.info("Threat Engine module loaded — %d detection sources configured",
          sum(1 for v in _config.get("enabled_sources", {}).values() if v))
+
+# Auto-setup ClamAV on startup (uses bundled binaries, downloads definitions
+# in background, auto-starts engine). No user action needed.
+try:
+    from avs_backend.threat_engine.clamav_setup import auto_setup_on_startup
+    auto_setup_on_startup()
+except Exception as _e:
+    log.warning("ClamAV auto-setup on startup failed: %s", _e)
