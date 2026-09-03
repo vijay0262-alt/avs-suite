@@ -77,6 +77,9 @@ export default function AntivirusSecurityPage() {
   // AV engine state
   const [avStatus, setAvStatus] = useState<{ installed: boolean; clamd_running: boolean; signature_count: number; version: string | null } | null>(null);
 
+  // Unified AV status (detects third-party AV, hides Defender when our AV is active)
+  const [unifiedAv, setUnifiedAv] = useState<{ avs_av_active: boolean; avs_signatures: number; primary_av: string | null; defender_visible: boolean; third_party_av: string | null; protected: boolean } | null>(null);
+
   // Quarantine state
   const [threats, setThreats] = useState<ThreatItem[]>([]);
   const [threatsLoading, setThreatsLoading] = useState(false);
@@ -107,6 +110,9 @@ export default function AntivirusSecurityPage() {
       .catch(() => {});
     refreshAvStatus();
     refreshThreats();
+    rpc.raw<{ avs_av_active: boolean; avs_signatures: number; primary_av: string | null; defender_visible: boolean; third_party_av: string | null; protected: boolean }>(RPC_METHODS.SYSTEM_AV_STATUS)
+      .then(setUnifiedAv)
+      .catch(() => {});
   }, [refreshAvStatus, refreshThreats]);
 
   // ── Handlers ──────────────────────────────────────────────────
@@ -170,6 +176,32 @@ export default function AntivirusSecurityPage() {
           </div>
         ))}
       </div>
+
+      {/* Protection status banner */}
+      {unifiedAv && (
+        <Card variant="glass" className={`p-4 ${unifiedAv.protected ? 'border-semantic-success/30' : 'border-semantic-warning/30'}`} data-testid="protection-banner">
+          <div className="flex items-center gap-3">
+            <ShieldCheckIcon className={`h-8 w-8 ${unifiedAv.protected ? 'text-semantic-success' : 'text-semantic-warning'}`} />
+            <div className="flex-1">
+              <div className="text-small font-semibold text-text-primary">
+                {unifiedAv.protected ? 'Your PC is protected' : 'Your PC may be at risk'}
+              </div>
+              <div className="text-caption text-text-secondary">
+                {unifiedAv.avs_av_active
+                  ? `AVS AI Shield Antivirus is active with ${unifiedAv.avs_signatures.toLocaleString()} virus definitions.`
+                  : unifiedAv.third_party_av
+                    ? `Protected by ${unifiedAv.third_party_av}. AVS AI Shield AV Engine is preparing in background.`
+                    : unifiedAv.primary_av
+                      ? `Protected by ${unifiedAv.primary_av}.`
+                      : 'No antivirus detected. AVS AI Shield AV Engine is preparing in background.'}
+              </div>
+            </div>
+            {unifiedAv.avs_av_active && (
+              <Badge tone="success">Primary AV</Badge>
+            )}
+          </div>
+        </Card>
+      )}
 
       {/* Status summary */}
       <div className="grid grid-cols-3 gap-3">
@@ -255,14 +287,14 @@ export default function AntivirusSecurityPage() {
             <div className="text-small font-semibold text-text-primary mb-3">Active Detection Engines</div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {[
+                { name: 'AVS AI Shield AV Engine', desc: 'Signature-based antivirus' },
                 { name: 'Hash Blocklist', desc: 'Known malware hashes' },
                 { name: 'YARA Rules', desc: 'Pattern-based detection' },
-                { name: 'AMSI', desc: 'Windows script scanning' },
-                { name: 'Defender', desc: 'Microsoft integration' },
+                { name: 'AMSI', desc: 'Script-based malware scanning' },
                 { name: 'Heuristic', desc: 'Behavioral analysis' },
-                { name: 'VirusTotal', desc: 'Cloud reputation' },
-                { name: 'ClamAV', desc: 'Signature-based AV' },
-                { name: 'Real-Time', desc: 'Live file monitoring' },
+                { name: 'VirusTotal', desc: 'Cloud reputation lookup' },
+                { name: 'Real-Time Guard', desc: 'Live file monitoring' },
+                ...(unifiedAv?.defender_visible !== false ? [{ name: 'Windows Defender', desc: 'Microsoft integration' }] : []),
               ].map((src) => (
                 <div key={src.name} className="rounded-[var(--avs-radius-md)] bg-surface-muted p-2.5">
                   <div className="text-caption font-medium text-text-primary">{src.name}</div>

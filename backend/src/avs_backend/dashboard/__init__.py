@@ -525,7 +525,7 @@ def _calculate_health_score() -> dict[str, Any]:
 @register("dashboard.health")
 def dashboard_health(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Calculate comprehensive health score with category breakdown.
-    
+
     Uses cached metrics only — never triggers fresh scans.
     """
     if not IS_WINDOWS:
@@ -537,6 +537,68 @@ def dashboard_health(_params: dict[str, Any] | None) -> dict[str, Any]:
         return _calculate_health_score()
     except (NameError, KeyError, TypeError):
         return {}
+
+
+@register("system.avStatus")
+def system_av_status(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get unified antivirus status.
+
+    Reports whether AVS AI Shield AV Engine is active (our built-in AV).
+    If active, reports as primary AV and hides Windows Defender status.
+    Also detects third-party AV products to avoid conflicts.
+
+    Returns:
+        {
+            "avs_av_active": bool,      # Our AV engine is running
+            "avs_signatures": int,      # Number of virus definitions loaded
+            "primary_av": str,          # "AVS AI Shield" or third-party name
+            "defender_visible": bool,   # Show Defender in UI? (false if our AV active)
+            "third_party_av": str|null, # Third-party AV name if detected
+            "protected": bool,          # System is protected by some AV
+        }
+    """
+    result: dict[str, Any] = {
+        "avs_av_active": False,
+        "avs_signatures": 0,
+        "primary_av": None,
+        "defender_visible": True,
+        "third_party_av": None,
+        "protected": False,
+    }
+
+    # Check if our AV engine is running
+    try:
+        from avs_backend.threat_engine.clamav_setup import get_status
+        av_status = get_status()
+        if av_status.get("clamd_running"):
+            result["avs_av_active"] = True
+            result["avs_signatures"] = av_status.get("signature_count", 0)
+            result["primary_av"] = "AVS AI Shield"
+            result["defender_visible"] = False
+            result["protected"] = True
+    except Exception:
+        pass
+
+    # Check for third-party AV (but don't override our AV)
+    try:
+        defender = _get_defender_status()
+        third_party = defender.get("thirdPartyAV")
+        if third_party:
+            result["third_party_av"] = third_party
+            if not result["avs_av_active"]:
+                result["primary_av"] = third_party
+                result["protected"] = True
+                # If third-party AV is active, Defender is usually off — hide it
+                result["defender_visible"] = False
+        elif not result["avs_av_active"]:
+            # No third-party AV and our AV not active — check Defender
+            if defender.get("enabled"):
+                result["primary_av"] = "Windows Defender"
+                result["protected"] = True
+    except Exception:
+        pass
+
+    return result
 
 
 @register("dashboard.optimize.preview")

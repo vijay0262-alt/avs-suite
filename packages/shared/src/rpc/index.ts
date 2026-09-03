@@ -44,6 +44,7 @@ export const RPC_METHODS = {
   SYSTEM_PING: 'system.ping',
   SYSTEM_INFO: 'system.info',
   SYSTEM_HEALTH_SCORE: 'system.healthScore',
+  SYSTEM_AV_STATUS: 'system.avStatus',
 
   // Real-time metrics
   METRICS_CPU: 'metrics.cpu',

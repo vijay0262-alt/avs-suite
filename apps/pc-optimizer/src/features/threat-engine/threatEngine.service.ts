@@ -2,7 +2,7 @@
  * Threat Engine service — wraps the backend threat.* RPC methods.
  *
  * Provides a unified antivirus / anti-malware scanning interface backed by
- * multiple detection sources (hash blocklist, YARA rules, ClamAV signatures,
+ * multiple detection sources (hash blocklist, YARA rules, AVS AI Shield AV Engine signatures,
  * VirusTotal).
  */
 import { RPC_METHODS } from '@avs/shared/rpc';
@@ -261,29 +261,29 @@ export const threatEngineService = {
     return client().call(RPC_METHODS.THREAT_HISTORY);
   },
 
-  // ── ClamAV-specific methods ──────────────────────────────────
+  // ── AVS AV Engine-specific methods ──────────────────────────────────
 
-  /** Get ClamAV installation and daemon status. */
+  /** Get AVS AI Shield AV Engine installation and daemon status. */
   async getClamAvStatus(): Promise<{ success: boolean; status: ClamAvStatus }> {
     return client().call(RPC_METHODS.THREAT_CLAMAV_STATUS);
   },
 
-  /** Update ClamAV signature database via freshclam. */
+  /** Update AVS AI Shield AV Engine signature database via freshclam. */
   async updateClamAvDb(): Promise<{ success: boolean; result: Record<string, unknown> }> {
     return client().call(RPC_METHODS.THREAT_CLAMAV_UPDATE);
   },
 
-  /** Detect ClamAV installation on this system. */
+  /** Detect AVS AI Shield AV Engine installation on this system. */
   async detectClamAv(): Promise<{ success: boolean; detection: ClamAvStatus }> {
     return client().call(RPC_METHODS.THREAT_CLAMAV_DETECT);
   },
 
-  /** Start ClamAV portable download and setup (async). */
+  /** Start AVS AI Shield AV Engine portable download and setup (async). */
   async setupClamAv(): Promise<{ success: boolean; setup_in_progress: boolean; message: string }> {
     return client().call(RPC_METHODS.THREAT_CLAMAV_SETUP);
   },
 
-  /** Get ClamAV setup progress. */
+  /** Get AVS AI Shield AV Engine Setup progress. */
   async getClamAvSetupStatus(): Promise<{ success: boolean; status: ClamAvSetupStatus }> {
     return client().call(RPC_METHODS.THREAT_CLAMAV_SETUP_STATUS);
   },
@@ -293,7 +293,7 @@ export const threatEngineService = {
     return client().call(RPC_METHODS.THREAT_CLAMAV_START);
   },
 
-  /** Remove the ClamAV portable installation. */
+  /** Remove the AVS AI Shield AV Engine portable installation. */
   async uninstallClamAv(): Promise<{ success: boolean; message: string }> {
     return client().call(RPC_METHODS.THREAT_CLAMAV_UNINSTALL);
   },

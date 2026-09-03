@@ -21,23 +21,15 @@ import {
   KeyIcon,
   DocumentChartBarIcon,
   GlobeAltIcon,
-  LifebuoyIcon,
   ArrowUturnLeftIcon,
   ArrowUpTrayIcon,
-  BellIcon,
-  ArrowPathRoundedSquareIcon,
   ChatBubbleLeftRightIcon,
   StarIcon,
   FireIcon,
   ArrowDownTrayIcon,
-  CircleStackIcon,
-  PuzzlePieceIcon,
   WifiIcon,
-  ClipboardDocumentListIcon,
-  ArrowsRightLeftIcon,
+  LockClosedIcon,
   ClockIcon,
-  EyeIcon,
-  CloudArrowUpIcon,
 } from '@heroicons/react/24/outline';
 import type { NavItemId } from '@avs/shared/types';
 import { useIsPro } from '../features/sync/syncStore';
@@ -59,74 +51,55 @@ interface NavSection {
 }
 
 const NAV_SECTIONS: readonly NavSection[] = [
-  // ── HOME ──────────────────────────────────────────────────────
+  // ── 1. DASHBOARD ──────────────────────────────────────────────
   {
     id: 'home',
     labelKey: 'nav.section.home',
     entries: [
       { id: 'dashboard', to: '/dashboard', labelKey: 'nav.dashboard', Icon: Squares2X2Icon },
-      { id: 'protection-center', to: '/protection-center', labelKey: 'nav.protectionCenter', Icon: ShieldExclamationIcon },
-      { id: 'ai-smart-optimize', to: '/ai-smart-optimize', labelKey: 'nav.aiSmartOptimize', Icon: BoltIcon, proEnhanced: true },
-      { id: 'ai-smart-security', to: '/ai-smart-security', labelKey: 'nav.aiSmartSecurity', Icon: ShieldCheckIcon },
     ],
   },
-  // ── AI INTELLIGENCE — Top 5 shown in sidebar; rest accessible via
-  // AI Smart Optimize and AI Workspace.
-  {
-    id: 'ai-intelligence',
-    labelKey: 'nav.section.aiIntelligence',
-    entries: [
-      { id: 'auto-care', to: '/auto-care', labelKey: 'nav.autoCare', Icon: ClockIcon, proEnhanced: true },
-      { id: 'predictive', to: '/predictive', labelKey: 'nav.predictive', Icon: ChartBarIcon, proEnhanced: true },
-      { id: 'anomaly', to: '/anomaly', labelKey: 'nav.anomaly', Icon: EyeIcon, proEnhanced: true },
-      { id: 'duplicate-intel', to: '/duplicate-intel', labelKey: 'nav.duplicateIntel', Icon: DocumentDuplicateIcon, proEnhanced: true },
-      { id: 'ai-integration', to: '/ai-integration', labelKey: 'nav.aiIntegration', Icon: ArrowsRightLeftIcon, proEnhanced: true },
-    ],
-  },
-  // ── SYSTEM HEALTH — V1.0: Hidden to simplify the app.
-  // System Health, Hardware Center, Process Intelligence, Predictive Health,
-  // and Performance Analytics are kept in the codebase but hidden from the
-  // sidebar. Users already have plenty of info on the Dashboard.
-  // {
-  //   id: 'system-health',
-  //   labelKey: 'nav.section.systemHealth',
-  //   entries: [
-  //     { id: 'system-health', to: '/system-health', labelKey: 'nav.systemHealth', Icon: HeartIcon },
-  //     { id: 'hardware-center', to: '/hardware-center', labelKey: 'nav.hardwareCenter', Icon: ComputerDesktopIcon },
-  //     { id: 'process-intelligence', to: '/process-intelligence', labelKey: 'nav.processIntelligence', Icon: CpuChipIcon },
-  //     { id: 'predictive-health', to: '/predictive-health', labelKey: 'nav.predictiveHealth', Icon: ArrowTrendingUpIcon },
-  //     { id: 'performance-analytics', to: '/performance-analytics', labelKey: 'nav.performanceAnalytics', Icon: ChartBarIcon, proEnhanced: true },
-  //   ],
-  // },
-  // ── OPTIMIZATION — V1.0: Moved above Security per user request. ──
-  {
-    id: 'optimization',
-    labelKey: 'nav.section.optimization',
-    entries: [
-      { id: 'junk-cleaner', to: '/junk-cleaner', labelKey: 'nav.junkCleaner', Icon: TrashIcon },
-      { id: 'startup-manager', to: '/startup-manager', labelKey: 'nav.startupManager', Icon: RocketLaunchIcon },
-      { id: 'browser-cleaner', to: '/browser-cleaner', labelKey: 'nav.browserCleaner', Icon: GlobeAltIcon, proEnhanced: true },
-      { id: 'browser-extensions', to: '/browser-extensions', labelKey: 'nav.browserExtensions', Icon: PuzzlePieceIcon, proEnhanced: true },
-      { id: 'registry-cleaner', to: '/registry-cleaner', labelKey: 'nav.registryCleaner', Icon: WrenchScrewdriverIcon },
-      { id: 'duplicate-finder', to: '/duplicate-finder', labelKey: 'nav.duplicateFinder', Icon: DocumentDuplicateIcon, proEnhanced: true },
-      { id: 'uninstaller', to: '/uninstaller', labelKey: 'nav.uninstaller', Icon: ArchiveBoxXMarkIcon, proEnhanced: true },
-      { id: 'software-updater', to: '/software-updater', labelKey: 'nav.softwareUpdater', Icon: ArrowPathIcon, proEnhanced: true },
-      { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon, proEnhanced: true },
-      { id: 'large-files', to: '/large-files', labelKey: 'nav.largeFiles', Icon: ChartBarIcon, proEnhanced: true },
-      { id: 'cloud-drive-cleaner', to: '/cloud-drive-cleaner', labelKey: 'nav.cloudDriveCleaner', Icon: CloudArrowUpIcon, proEnhanced: true },
-      { id: 'file-recovery', to: '/file-recovery', labelKey: 'nav.fileRecovery', Icon: ArrowUturnLeftIcon, proEnhanced: true },
-      { id: 'recovery-center', to: '/recovery-center', labelKey: 'nav.recoveryCenter', Icon: LifebuoyIcon },
-    ],
-  },
-  // ── SECURITY — Consolidated into one unified Antivirus Security page.
-  //  All security features (scan, realtime, quarantine, safe folder,
-  //  threat engine, advanced security) are accessible from the
-  //  Antivirus Security page via tabs. Individual routes still work.
+  // ── 2. AVS AI SHIELD ANTIVIRUS / SMART SECURITY ───────────────
+  //  Unified antivirus: scan, real-time protection, quarantine,
+  //  threat engine, advanced security, AI Smart Security.
   {
     id: 'security',
     labelKey: 'nav.section.security',
     entries: [
       { id: 'antivirus-security', to: '/antivirus-security', labelKey: 'nav.antivirusSecurity', Icon: ShieldCheckIcon, proEnhanced: true },
+      { id: 'ai-smart-security', to: '/ai-smart-security', labelKey: 'nav.aiSmartSecurity', Icon: ShieldExclamationIcon },
+    ],
+  },
+  // ── 3. AVS AI SHIELD SMART OPTIMIZE ───────────────────────────
+  //  Cleanup, optimization, and AI intelligence features.
+  {
+    id: 'optimization',
+    labelKey: 'nav.section.optimization',
+    entries: [
+      { id: 'ai-smart-optimize', to: '/ai-smart-optimize', labelKey: 'nav.aiSmartOptimize', Icon: BoltIcon, proEnhanced: true },
+      { id: 'junk-cleaner', to: '/junk-cleaner', labelKey: 'nav.junkCleaner', Icon: TrashIcon },
+      { id: 'startup-manager', to: '/startup-manager', labelKey: 'nav.startupManager', Icon: RocketLaunchIcon },
+      { id: 'registry-cleaner', to: '/registry-cleaner', labelKey: 'nav.registryCleaner', Icon: WrenchScrewdriverIcon },
+      { id: 'duplicate-finder', to: '/duplicate-finder', labelKey: 'nav.duplicateFinder', Icon: DocumentDuplicateIcon, proEnhanced: true },
+      { id: 'uninstaller', to: '/uninstaller', labelKey: 'nav.uninstaller', Icon: ArchiveBoxXMarkIcon, proEnhanced: true },
+      { id: 'software-updater', to: '/software-updater', labelKey: 'nav.softwareUpdater', Icon: ArrowPathIcon, proEnhanced: true },
+      { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon, proEnhanced: true },
+      { id: 'browser-cleaner', to: '/browser-cleaner', labelKey: 'nav.browserCleaner', Icon: GlobeAltIcon, proEnhanced: true },
+      { id: 'auto-care', to: '/auto-care', labelKey: 'nav.autoCare', Icon: ClockIcon, proEnhanced: true },
+    ],
+  },
+  // ── 4. AVS AI PROTECTION ──────────────────────────────────────
+  //  Protection center, real-time guard, safe folder, advanced tools.
+  {
+    id: 'protection',
+    labelKey: 'nav.section.protection',
+    entries: [
+      { id: 'protection-center', to: '/protection-center', labelKey: 'nav.protectionCenter', Icon: ShieldExclamationIcon },
+      { id: 'safe-folder', to: '/safe-folder', labelKey: 'nav.safeFolder', Icon: LockClosedIcon, proEnhanced: true },
+      { id: 'file-recovery', to: '/file-recovery', labelKey: 'nav.fileRecovery', Icon: ArrowUturnLeftIcon, proEnhanced: true },
+      { id: 'file-shredder', to: '/file-shredder', labelKey: 'nav.fileShredder', Icon: FireIcon, proEnhanced: true },
+      { id: 'driver-updater', to: '/driver-updater', labelKey: 'nav.driverUpdater', Icon: ArrowDownTrayIcon, proEnhanced: true },
+      { id: 'network-optimizer', to: '/network-optimizer', labelKey: 'nav.networkOptimizer', Icon: WifiIcon, proEnhanced: true },
     ],
   },
   // ── REPORTS & TOOLS ───────────────────────────────────────────
@@ -138,12 +111,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'reports-timeline', to: '/reports-timeline', labelKey: 'nav.reportsTimeline', Icon: ClockIcon, proEnhanced: true },
       { id: 'analytics', to: '/analytics', labelKey: 'nav.analytics', Icon: ChartBarIcon, proEnhanced: true },
       { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
-      { id: 'driver-updater', to: '/driver-updater', labelKey: 'nav.driverUpdater', Icon: ArrowDownTrayIcon, proEnhanced: true },
-      { id: 'disk-optimizer', to: '/disk-optimizer', labelKey: 'nav.diskOptimizer', Icon: CircleStackIcon, proEnhanced: true },
-      { id: 'network-optimizer', to: '/network-optimizer', labelKey: 'nav.networkOptimizer', Icon: WifiIcon, proEnhanced: true },
-      { id: 'context-menu', to: '/context-menu', labelKey: 'nav.contextMenu', Icon: ClipboardDocumentListIcon, proEnhanced: true },
-      { id: 'file-shredder', to: '/file-shredder', labelKey: 'nav.fileShredder', Icon: FireIcon, proEnhanced: true },
-      { id: 'restoration', to: '/restoration', labelKey: 'nav.restoration', Icon: ArrowPathRoundedSquareIcon },
+      { id: 'large-files', to: '/large-files', labelKey: 'nav.largeFiles', Icon: ChartBarIcon, proEnhanced: true },
     ],
   },
   // ── ACCOUNT ───────────────────────────────────────────────────
@@ -154,7 +122,6 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'license', to: '/license', labelKey: 'nav.license', Icon: KeyIcon },
       { id: 'upgrade', to: '/upgrade', labelKey: 'nav.upgrade', Icon: ArrowUpTrayIcon },
       { id: 'settings', to: '/settings', labelKey: 'nav.settings', Icon: Cog6ToothIcon },
-      { id: 'notifications', to: '/notifications', labelKey: 'nav.notifications', Icon: BellIcon },
       { id: 'help-support', to: '/help-support', labelKey: 'nav.helpSupport', Icon: ChatBubbleLeftRightIcon },
       { id: 'about', to: '/about', labelKey: 'nav.about', Icon: InformationCircleIcon },
     ],

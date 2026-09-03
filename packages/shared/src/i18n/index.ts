@@ -35,11 +35,12 @@ export const en = {
   },
   nav: {
     section: {
-      home: 'Home',
+      home: 'Dashboard',
       aiIntelligence: 'AI Intelligence',
       systemHealth: 'System Health',
-      security: 'Security',
-      optimization: 'Optimization',
+      security: 'Antivirus / Smart Security',
+      optimization: 'Smart Optimize',
+      protection: 'AI Protection',
       reports: 'Reports',
       tools: 'Tools',
       reportsTools: 'Reports & Tools',

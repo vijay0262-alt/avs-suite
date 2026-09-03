@@ -1,0 +1,51 @@
+4-part sidebar, remove ClamAV from UI, detect AV, hide Defender
+
+1. Sidebar restructured to 4 main parts:
+   - Dashboard
+   - Antivirus / Smart Security (Antivirus Security + AI Smart Security)
+   - Smart Optimize (AI Smart Optimize, Junk Cleaner, Startup, Registry,
+     Duplicate Finder, Uninstaller, Software Updater, Disk Analyzer,
+     Browser Cleaner, Auto-Care)
+   - AI Protection (Protection Center, Safe Folder, File Recovery,
+     File Shredder, Driver Updater, Network Optimizer)
+   - Reports & Tools (Reports, Timeline, Analytics, System Info, Large Files)
+   - Account (License, Upgrade, Settings, Help, About)
+   - Total: ~25 entries (down from ~40)
+
+2. Removed all "ClamAV" text from frontend:
+   - 25 UI references replaced with "AVS AI Shield AV Engine"
+   - Detection sources list: "ClamAV" → "AVS AI Shield AV Engine"
+   - Settings: "ClamAV" → "AVS AI Shield AV Engine"
+   - Threat Engine page: all references rebranded
+   - Only code identifiers (RPC method names) retain "clamav"
+
+3. Detect other AV and hide Defender when our AV is active:
+   - New RPC: system.avStatus — returns unified AV status
+   - Reports: avs_av_active, avs_signatures, primary_av,
+     defender_visible, third_party_av, protected
+   - AntivirusSecurityPage: protection status banner shows
+     "Your PC is protected" with primary AV info
+   - Detection sources: Windows Defender hidden when our AV is active
+   - SecurityCenterPage: Defender card hidden when our AV is active
+
+4. No AV conflict:
+   - AVS AI Shield AV Engine is on-demand (clamd scan), not real-time
+     file system filter — does not conflict with Defender or third-party AV
+   - Real-Time Guard monitors file activity via ETW but does not block
+     at kernel level — coexists with other AV products
+
+5. Section labels updated:
+   - "Home" → "Dashboard"
+   - "Security" → "Antivirus / Smart Security"
+   - "Optimization" → "Smart Optimize"
+   - New: "AI Protection"
+
+Validation:
+- ESLint: 0 warnings
+- TypeScript build: passed
+- Vitest: 159 test files, 8098 tests passed
+- PyInstaller: backend rebuilt successfully
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

@@ -79,6 +79,7 @@ export function SecurityCenterPage() {
   const [rtGuardEnabled, setRtGuardEnabled] = useState(false);
   const [rtGuardLoading, setRtGuardLoading] = useState(false);
   const [clamAvStatus, setClamAvStatus] = useState<{ installed: boolean; clamd_running: boolean; signature_count: number; version: string | null } | null>(null);
+  const [avsAvActive, setAvsAvActive] = useState(false);
 
   const refreshClamAv = useCallback(async () => {
     try {
@@ -89,12 +90,15 @@ export function SecurityCenterPage() {
     }
   }, []);
 
-  // Load real-time guard + ClamAV status
+  // Load real-time guard + AVS AI Shield AV Engine status
   useEffect(() => {
     rpc.raw<{ monitoring: boolean }>(RPC_METHODS.REALTIME_THREAT_STATUS)
       .then((res) => setRtGuardEnabled(!!res?.monitoring))
       .catch(() => {});
     refreshClamAv();
+    rpc.raw<{ avs_av_active: boolean }>(RPC_METHODS.SYSTEM_AV_STATUS)
+      .then((res) => setAvsAvActive(!!res?.avs_av_active))
+      .catch(() => {});
   }, [refreshClamAv]);
 
   const toggleRtGuard = useCallback(async () => {
@@ -281,7 +285,7 @@ export function SecurityCenterPage() {
         </div>
       </Card>
 
-      {/* ── 2c. AVS SHIELD ANTIVIRUS (ClamAV) ──────────────────── */}
+      {/* ── 2c. AVS AI SHIELD ANTIVIRUS ──────────────────── */}
       <Card variant="glass" className="p-4" data-testid="clamav-antivirus-card">
         <div className="flex items-center justify-between gap-4 mb-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -368,11 +372,12 @@ export function SecurityCenterPage() {
       </div>
 
       {/* ── 4. DEFENDER STATUS (compact) ──────────────────────── */}
+      {/* Hidden when AVS AI Shield AV Engine is active — our AV is primary. */}
       {/* When a third-party AV is active, Defender is correctly disabled
           by Windows. Show the third-party AV info instead of showing
           all Defender fields as "Off" (which would falsely suggest the
           PC is unprotected). */}
-      {thirdPartyAV && (!defender || !defender.is_available) ? (
+      {!avsAvActive && (thirdPartyAV && (!defender || !defender.is_available) ? (
         <Card variant="glass" className="p-5" data-testid="defender-status-card">
           <div className="flex items-center gap-3 mb-3">
             <ShieldCheckIcon className="h-5 w-5 text-semantic-success" />
@@ -433,7 +438,7 @@ export function SecurityCenterPage() {
             />
           </div>
         </Card>
-      ) : null}
+      ) : null)}
 
       {/* ── 5. PROTECTION CENTER NAVIGATION ───────────────────── */}
       <Card variant="glass" className="p-5" data-testid="security-protection-center-link">

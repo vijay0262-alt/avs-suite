@@ -164,7 +164,7 @@ export interface QuarantineEntry {
   detectionReason: string | null;
 }
 
-// ── Threat Engine (ClamAV/YARA/AMSI/Defender/Hash/Heuristic) ────
+// ── Threat Engine (AVS AV Engine/YARA/AMSI/Hash/Heuristic) ────
 
 export interface ThreatEngineScanResult {
   success: boolean;

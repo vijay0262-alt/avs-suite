@@ -2,7 +2,7 @@
  * ThreatEnginePage — AVS AI Shield Threat Engine.
  *
  * Unified antivirus / anti-malware scanning powered by multiple detection
- * sources: hash blocklist, YARA rules, ClamAV signatures, and VirusTotal.
+ * sources: hash blocklist, YARA rules, AVS AI Shield AV Engine signatures, and VirusTotal.
  *
  * Free: scan (quick / full / custom) + view results
  * Pro: scan + view + quarantine / remove threats + configure advanced sources
@@ -91,7 +91,7 @@ const SEVERITY_BORDER: Record<ThreatSeverity, string> = {
 const SOURCE_LABELS: Record<string, string> = {
   hash_blocklist: 'Hash Blocklist',
   yara: 'YARA Rules',
-  clamav: 'ClamAV',
+  clamav: 'AVS AI Shield AV Engine',
   virustotal: 'VirusTotal',
 };
 
@@ -153,7 +153,7 @@ export default function ThreatEnginePage() {
   const [updatingDefs, setUpdatingDefs] = useState(false);
   const [defsResult, setDefsResult] = useState<string | null>(null);
 
-  // ClamAV state
+  // AVS AI Shield AV Engine state
   const [clamAvStatus, setClamAvStatus] = useState<ClamAvStatus | null>(null);
   const [clamAvSetupStatus, setClamAvSetupStatus] = useState<ClamAvSetupStatus | null>(null);
   const [clamAvSetupLoading, setClamAvSetupLoading] = useState(false);
@@ -519,7 +519,7 @@ export default function ThreatEnginePage() {
     );
   };
 
-  const allSources = ['hash_blocklist', 'yara', 'clamav', 'virustotal'];
+  const allSources = ['hash_blocklist', 'yara', 'AVS AI Shield AV Engine', 'virustotal'];
   const advancedSources = ['virustotal'];
 
   // ── Render ─────────────────────────────────────────────────────
@@ -529,7 +529,7 @@ export default function ThreatEnginePage() {
       <div data-testid="page-threat-engine" className="space-y-4">
         <PageHeader
           title="Threat Engine"
-          description="Unified antivirus and anti-malware scanning powered by hash blocklists, YARA rules, ClamAV signatures, and VirusTotal."
+          description="Unified antivirus and anti-malware scanning powered by hash blocklists, YARA rules, AVS AI Shield AV Engine signatures, and VirusTotal."
           actions={
             <div className="flex items-center gap-2">
               <ProStatusPill />
@@ -547,7 +547,7 @@ export default function ThreatEnginePage() {
       <div data-testid="page-threat-engine" className="space-y-4">
         <PageHeader
           title="Threat Engine"
-          description="Unified antivirus and anti-malware scanning powered by hash blocklists, YARA rules, ClamAV signatures, and VirusTotal."
+          description="Unified antivirus and anti-malware scanning powered by hash blocklists, YARA rules, AVS AI Shield AV Engine signatures, and VirusTotal."
           actions={
             <div className="flex items-center gap-2">
               <ProStatusPill />
@@ -577,7 +577,7 @@ export default function ThreatEnginePage() {
     <div data-testid="page-threat-engine" className="space-y-4">
       <PageHeader
         title="Threat Engine"
-        description="Unified antivirus and anti-malware scanning powered by hash blocklists, YARA rules, ClamAV signatures, and VirusTotal."
+        description="Unified antivirus and anti-malware scanning powered by hash blocklists, YARA rules, AVS AI Shield AV Engine signatures, and VirusTotal."
         actions={
           <div className="flex items-center gap-2">
             <ProStatusPill />
@@ -688,7 +688,7 @@ export default function ThreatEnginePage() {
             <div className="flex items-center gap-6" data-testid="threat-def-counts">
               <DefStat label="Hash Blocklist" value={definitions.hash_blocklist} />
               <DefStat label="YARA Rules" value={definitions.yara_rules} />
-              <DefStat label="ClamAV Sigs" value={definitions.clamav_signatures} />
+              <DefStat label="AV Sigs" value={definitions.clamav_signatures} />
             </div>
 
             <Button
@@ -720,14 +720,14 @@ export default function ThreatEnginePage() {
         </Card>
       )}
 
-      {/* ClamAV Setup & Status */}
+      {/* AVS AI Shield AV Engine Setup & Status */}
       <Card variant="glass" className="p-5" data-testid="threat-clamav-card">
         <div className="flex items-center gap-3 mb-4">
           <div className="shrink-0 rounded-[var(--avs-radius-md)] bg-brand-primary/10 p-2.5">
             <BeakerIcon className="h-5 w-5 text-brand-primary" />
           </div>
           <div className="flex-1">
-            <div className="text-small font-semibold text-text-primary">AVS AI Shield AV Engine (ClamAV)</div>
+            <div className="text-small font-semibold text-text-primary">AVS AI Shield AV Engine</div>
             <div className="text-caption text-text-muted mt-0.5">
               Independent open-source antivirus engine with free daily-updated virus definitions. Install to enable signature-based malware protection — no third-party AV required.
             </div>

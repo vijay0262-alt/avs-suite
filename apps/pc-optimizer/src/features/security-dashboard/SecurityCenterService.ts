@@ -172,7 +172,7 @@ export class SecurityCenterService {
 
     const result = await this.securityEngine.scan(scanType, scanTargets, scanOptions);
 
-    // ── Run backend threat engine (ClamAV/YARA/AMSI/Defender/Hash/Heuristic) ──
+    // ── Run backend threat engine (AVS AV Engine/YARA/AMSI/Hash/Heuristic) ──
     // This performs real signature-based malware scanning on files.
     // It runs concurrently with the frontend behavioral providers and
     // merges detected threats into the unified result.
@@ -218,7 +218,7 @@ export class SecurityCenterService {
   }
 
   /**
-   * Run the backend threat engine scan (ClamAV, YARA, AMSI, Defender,
+   * Run the backend threat engine scan (AVS AV Engine, YARA, AMSI,
    * hash blocklist, heuristics). Returns detected threats.
    *
    * The threat engine runs asynchronously in the backend. This method
