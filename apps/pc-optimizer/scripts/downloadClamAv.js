@@ -20,20 +20,38 @@ const ZIP_PATH = path.resolve(__dirname, '..', 'resources', 'clamav.zip');
 // Files to exclude (debug symbols, static libs, docs)
 const EXCLUDE_PATTERNS = ['.pdb', '.lib', 'NEWS.md', 'README.md', 'conf_examples', 'include', 'UserManual'];
 
-function downloadFile(url, dest) {
+function downloadFile(url, dest, { label } = {}) {
   return new Promise((resolve, reject) => {
-    console.log(`Downloading ClamAV ${CLAMAV_VERSION} from ${url}...`);
-    const file = fs.createWriteStream(dest);
-    https.get(url, (response) => {
-      if (response.statusCode === 302 || response.statusCode === 301) {
-        // Follow redirect
-        downloadFile(response.headers.location, dest).then(resolve).catch(reject);
+    const displayName = label || `ClamAV ${CLAMAV_VERSION}`;
+    console.log(`Downloading ${displayName} from ${url}...`);
+
+    // Resolve redirects FIRST, then create the file stream.
+    // This avoids a file-lock bug where multiple write streams open the same file.
+    const options = {
+      headers: {
+        'User-Agent': 'AVS-AI-Shield/1.0 (https://avsshield.com)',
+      },
+    };
+
+    https.get(url, options, (response) => {
+      if (response.statusCode === 301 || response.statusCode === 302 || response.statusCode === 307 || response.statusCode === 308) {
+        // Follow redirect — don't create file stream yet
+        response.resume(); // drain the redirect response
+        const redirectUrl = response.headers.location;
+        if (!redirectUrl) {
+          reject(new Error(`Redirect with no Location header (HTTP ${response.statusCode})`));
+          return;
+        }
+        downloadFile(redirectUrl, dest, { label }).then(resolve).catch(reject);
         return;
       }
       if (response.statusCode !== 200) {
+        response.resume();
         reject(new Error(`HTTP ${response.statusCode}`));
         return;
       }
+      // Now create the file stream (only after all redirects are resolved)
+      const file = fs.createWriteStream(dest);
       const total = parseInt(response.headers['content-length'] || '0', 10);
       let downloaded = 0;
       response.on('data', (chunk) => {
@@ -44,9 +62,14 @@ function downloadFile(url, dest) {
       });
       response.pipe(file);
       file.on('finish', () => {
-        file.close();
-        console.log('');
-        resolve();
+        file.close(() => {
+          console.log('');
+          resolve();
+        });
+      });
+      file.on('error', (err) => {
+        fs.unlink(dest, () => {});
+        reject(err);
       });
     }).on('error', (err) => {
       fs.unlink(dest, () => {});
@@ -67,6 +90,9 @@ async function downloadAndExtractClamAv() {
 
   // Download
   await downloadFile(CLAMAV_URL, ZIP_PATH);
+
+  // Brief pause to ensure the file handle is fully released by the OS
+  await new Promise((r) => setTimeout(r, 500));
 
   // Extract using PowerShell (cross-platform on Windows)
   console.log('Extracting ClamAV...');
@@ -128,7 +154,18 @@ async function downloadAndExtractClamAv() {
       continue;
     }
     console.log(`  Downloading ${def.name}...`);
-    await downloadFile(def.url, defPath);
+    try {
+      await downloadFile(def.url, defPath, { label: def.name });
+    } catch (err) {
+      // CVD download failures are non-fatal — freshclam will fetch them at runtime.
+      // The ClamAV binaries are the critical part; definitions can be updated later.
+      console.log(`  WARNING: Failed to download ${def.name}: ${err.message}`);
+      console.log(`  Definitions will be fetched by freshclam on first scan.`);
+      // Clean up partial download
+      if (fs.existsSync(defPath)) {
+        fs.unlinkSync(defPath);
+      }
+    }
   }
 
   // Calculate final size
