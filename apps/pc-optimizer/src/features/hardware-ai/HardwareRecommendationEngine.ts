@@ -113,7 +113,7 @@ export class HardwareRecommendationEngine {
     }
     if (issueId.includes('low-space')) {
       return [
-        'Run AVS Shield\'s Junk Cleaner to remove temporary and unnecessary files',
+        'Run AVS AI Shield\'s Junk Cleaner to remove temporary and unnecessary files',
         'Move large files (videos, archives) to another drive or cloud storage',
         'Uninstall applications that are no longer needed',
         'Empty the Recycle Bin and Downloads folder',
@@ -146,7 +146,7 @@ export class HardwareRecommendationEngine {
     }
     if (issueId.includes('util-background') || issueId.includes('background')) {
       return [
-        'Review startup programs in AVS Shield\'s Startup Manager',
+        'Review startup programs in AVS AI Shield\'s Startup Manager',
         'Disable unnecessary background services',
         'Check for scheduled tasks that may be running',
       ];
@@ -243,7 +243,7 @@ export class HardwareRecommendationEngine {
   }
 
   private canAutomate(issueId: string): boolean {
-    // AVS Shield can automate cleaning and software recommendations
+    // AVS AI Shield can automate cleaning and software recommendations
     // but NOT hardware maintenance, replacement, or physical actions
     if (issueId.includes('low-space')) return true;
     if (issueId.includes('util-background') || issueId.includes('background')) return true;

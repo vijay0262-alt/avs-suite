@@ -5,7 +5,7 @@ from pathlib import Path
 logging.basicConfig(level=logging.WARNING, format='%(message)s')
 
 # Delete stale DB
-db_path = Path(os.environ.get("LOCALAPPDATA", "")) / "AVS Shield" / "metadata.db"
+db_path = Path(os.environ.get("LOCALAPPDATA", "")) / "AVS AI Shield" / "metadata.db"
 for p in db_path.parent.glob("metadata.db*"):
     try: p.unlink()
     except: pass

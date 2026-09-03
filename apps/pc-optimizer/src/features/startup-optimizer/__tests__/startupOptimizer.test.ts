@@ -80,7 +80,7 @@ describe('Helper Functions', () => {
 
   it('isProtectedApp detects protected patterns', () => {
     expect(isProtectedApp('Windows Defender')).toBe(true);
-    expect(isProtectedApp('AVS Shield')).toBe(true);
+    expect(isProtectedApp('AVS AI Shield')).toBe(true);
     expect(isProtectedApp('AVS AI Shield')).toBe(true);
     expect(isProtectedApp('Microsoft Defender Antivirus')).toBe(true);
     expect(isProtectedApp('Chrome')).toBe(false);
@@ -565,7 +565,7 @@ describe('Safety', () => {
     expect(isProtectedApp('Windows Defender Antivirus Service')).toBe(true);
   });
 
-  it('protected app patterns include AVS Shield', () => {
+  it('protected app patterns include AVS AI Shield', () => {
     expect(isProtectedApp('AVS AI Shield')).toBe(true);
   });
 

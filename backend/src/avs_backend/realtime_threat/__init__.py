@@ -45,7 +45,7 @@ IS_WINDOWS = platform.system() == "Windows"
 
 _DATA_DIR = os.path.join(
     os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
-    "AVS Shield",
+    "AVS AI Shield",
     "threat_engine",
 )
 os.makedirs(_DATA_DIR, exist_ok=True)

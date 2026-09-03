@@ -1449,12 +1449,12 @@ class TestSafetyPolicy:
         assert safety.level != SafetyLevel.BLOCKED
 
     def test_avs_shield_protected_location_blocked(self):
-        """AVS Shield install dir must be BLOCKED."""
+        """AVS AI Shield install dir must be BLOCKED."""
         from avs_backend.scan_core.rules.detection.safety_policy import SafetyPolicy
 
         asset = ExtTestFixtures.create_asset(
             asset_id="sp-avs",
-            canonical_path=r"C:\Program Files\AVS Shield\optimizer.exe",
+            canonical_path=r"C:\Program Files\AVS AI Shield\optimizer.exe",
         )
         safety = SafetyPolicy.assess(asset=asset)
         assert safety.level == SafetyLevel.BLOCKED

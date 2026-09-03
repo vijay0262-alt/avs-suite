@@ -328,7 +328,7 @@ export function SecurityCenterPage() {
               <ShieldCheckIcon className={`h-6 w-6 ${clamAvStatus?.clamd_running ? 'text-semantic-success' : clamAvStatus?.installed ? 'text-semantic-warning' : 'text-text-muted'}`} />
             </div>
             <div className="min-w-0">
-              <div className="text-small font-semibold text-text-primary">AVS Shield Antivirus</div>
+              <div className="text-small font-semibold text-text-primary">AVS AI Shield Antivirus</div>
               <p className="text-caption text-text-secondary">
                 {clamAvStatus?.clamd_running
                   ? `Running — ${clamAvStatus.signature_count.toLocaleString()} signatures loaded`

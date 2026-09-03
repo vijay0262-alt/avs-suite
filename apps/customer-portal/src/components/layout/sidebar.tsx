@@ -51,7 +51,7 @@ export function Sidebar() {
     >
       <div className="flex h-16 items-center gap-2 border-b border-border px-6">
         <ShieldCheck className="h-6 w-6 text-primary" />
-        <span className="text-lg font-bold text-foreground">AVS Shield</span>
+        <span className="text-lg font-bold text-foreground">AVS AI Shield</span>
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3">

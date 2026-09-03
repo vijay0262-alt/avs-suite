@@ -1,4 +1,4 @@
-"""Ransomware vaccine / canary file protection module for AVS Shield.
+"""Ransomware vaccine / canary file protection module for AVS AI Shield.
 
 Deploys realistic-looking decoy ("canary") files inside protected user
 directories and monitors them for unauthorized modification, deletion,
@@ -154,7 +154,7 @@ def _build_canary_content(marker: str) -> bytes:
     body = (
         f"{_MARKER_PREFIX}\n"
         f"Marker: {marker}\n"
-        f"This file is a monitored decoy maintained by AVS Shield.\n"
+        f"This file is a monitored decoy maintained by AVS AI Shield.\n"
         f"Do not modify, move, or delete this file.\n"
         f"--- BEGIN ENVELOPE ---\n"
         f"{json.dumps(envelope, sort_keys=True)}\n"
@@ -264,7 +264,7 @@ def _notify(title: str, message: str) -> None:
                 "$template = [Windows.UI.Notifications.ToastNotificationManager]::"
                 "GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); "
                 "$text = $template.GetElementsByTagName('text'); "
-                "$text.Item(0).AppendChild($template.CreateTextNode('AVS Shield')) | Out-Null; "
+                "$text.Item(0).AppendChild($template.CreateTextNode('AVS AI Shield')) | Out-Null; "
                 f"$text.Item(1).AppendChild($template.CreateTextNode('{message}')) | Out-Null; "
                 "$notifier = [Windows.UI.Notifications.ToastNotificationManager]::"
                 "CreateToastNotifier('AVS.Shield'); "
@@ -285,7 +285,7 @@ def _notify(title: str, message: str) -> None:
 # =====================================================================
 
 class RansomwareVaccine:
-    """Ransomware vaccine / canary file protection for AVS Shield.
+    """Ransomware vaccine / canary file protection for AVS AI Shield.
 
     Deploys decoy files in protected directories and monitors them for
     unauthorized changes. On non-Windows platforms monitoring still
@@ -557,7 +557,7 @@ class RansomwareVaccine:
 
         self._add_alert(alert)
         _notify(
-            "AVS Shield — Ransomware Alert",
+            "AVS AI Shield — Ransomware Alert",
             f"{event} detected on canary file: {path.name}",
         )
         log.warning(

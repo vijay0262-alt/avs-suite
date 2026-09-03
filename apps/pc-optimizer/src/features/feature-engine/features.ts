@@ -1,5 +1,5 @@
 /**
- * Feature definitions — the canonical list of all features in AVS Shield
+ * Feature definitions — the canonical list of all features in AVS AI Shield
  * Optimizer, controlled by the Feature Engine.
  *
  * Adding a new feature = add an entry to the Feature enum and to the

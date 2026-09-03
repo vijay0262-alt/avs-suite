@@ -52,7 +52,7 @@ export class ProcessExplanationEngine {
 
     return {
       summary: `${name} — idle for ${idleHours.toFixed(1)} hours, consuming ${mem.toFixed(0)} MB RAM and ${cpu.toFixed(1)}% CPU.`,
-      explanation: `This background updater has been idle for the last ${idleHours.toFixed(1)} hours. It has consumed ${mem.toFixed(0)} MB RAM and ${cpu.toFixed(1)}% CPU. No update activity has been detected. Terminating this process is considered low risk. Expected Recovery — RAM: ${mem.toFixed(0)} MB, CPU: ${cpu.toFixed(1)}%. Can AVS Shield optimize? Yes. Rollback available? Yes.`,
+      explanation: `This background updater has been idle for the last ${idleHours.toFixed(1)} hours. It has consumed ${mem.toFixed(0)} MB RAM and ${cpu.toFixed(1)}% CPU. No update activity has been detected. Terminating this process is considered low risk. Expected Recovery — RAM: ${mem.toFixed(0)} MB, CPU: ${cpu.toFixed(1)}%. Can AVS AI Shield optimize? Yes. Rollback available? Yes.`,
     };
   }
 

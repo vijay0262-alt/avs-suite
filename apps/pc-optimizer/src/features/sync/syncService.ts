@@ -90,7 +90,7 @@ export class SyncServiceError extends Error {
 function classifyError(err: unknown): SyncServiceError {
   if (err instanceof NetworkError) {
     return new SyncServiceError(
-      'Unable to connect to the AVS Shield server. Sync will retry later.',
+      'Unable to connect to the AVS AI Shield server. Sync will retry later.',
       'OFFLINE',
     );
   }
@@ -111,7 +111,7 @@ function classifyError(err: unknown): SyncServiceError {
     }
     if (err.statusCode >= 500) {
       return new SyncServiceError(
-        'The AVS Shield server is experiencing issues. Please try again later.',
+        'The AVS AI Shield server is experiencing issues. Please try again later.',
         'SERVER_ERROR',
       );
     }

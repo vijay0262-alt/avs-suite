@@ -71,7 +71,7 @@ export const Notifications = {
   threatDetected(threatName: string, location: string): void {
     showNotification({
       title: 'Threat Detected',
-      body: `${threatName} was detected in ${location}. AVS Shield is analyzing the threat.`,
+      body: `${threatName} was detected in ${location}. AVS AI Shield is analyzing the threat.`,
       category: 'threatDetected',
       urgency: 'critical',
     });
@@ -80,7 +80,7 @@ export const Notifications = {
   threatQuarantined(threatName: string): void {
     showNotification({
       title: 'Threat Quarantined',
-      body: `${threatName} has been safely quarantined by AVS Shield.`,
+      body: `${threatName} has been safely quarantined by AVS AI Shield.`,
       category: 'threatQuarantined',
     });
   },

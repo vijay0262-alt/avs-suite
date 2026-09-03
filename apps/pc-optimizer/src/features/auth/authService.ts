@@ -82,7 +82,7 @@ function classifyError(err: unknown): AuthResultError {
         );
       case 'DNS_FAILURE':
         return new AuthResultError(
-          'Could not resolve the AVS Shield server address. Please check your internet connection.',
+          'Could not resolve the AVS AI Shield server address. Please check your internet connection.',
           'DNS_FAILURE',
         );
       case 'SSL_FAILURE':
@@ -92,17 +92,17 @@ function classifyError(err: unknown): AuthResultError {
         );
       case 'CONNECTION_REFUSED':
         return new AuthResultError(
-          'The AVS Shield server refused the connection. Please try again later.',
+          'The AVS AI Shield server refused the connection. Please try again later.',
           'NETWORK_ERROR',
         );
       case 'NETWORK_UNREACHABLE':
         return new AuthResultError(
-          'Unable to reach the AVS Shield server. Please check your internet connection.',
+          'Unable to reach the AVS AI Shield server. Please check your internet connection.',
           'NETWORK_ERROR',
         );
       default:
         return new AuthResultError(
-          err.message || 'Unable to connect to the AVS Shield server.',
+          err.message || 'Unable to connect to the AVS AI Shield server.',
           'NETWORK_ERROR',
         );
     }
@@ -151,7 +151,7 @@ function classifyError(err: unknown): AuthResultError {
 
     if (err.statusCode >= 500) {
       return new AuthResultError(
-        detail || 'The AVS Shield server is experiencing issues. Please try again later.',
+        detail || 'The AVS AI Shield server is experiencing issues. Please try again later.',
         'SERVER_ERROR',
       );
     }

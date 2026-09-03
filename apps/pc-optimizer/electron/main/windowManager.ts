@@ -44,7 +44,7 @@ export function isMainWindowVisible(): boolean {
 }
 
 // ── Quit state ─────────────────────────────────────────────────
-// Tracks whether the user explicitly chose "Exit AVS Shield" from
+// Tracks whether the user explicitly chose "Exit AVS AI Shield" from
 // the tray menu.  When true, the window close handler lets the
 // window close instead of hiding to tray.
 

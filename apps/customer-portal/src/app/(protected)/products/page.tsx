@@ -52,7 +52,7 @@ export default function ProductsPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Products</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Browse and manage your AVS Shield products.
+          Browse and manage your AVS AI Shield products.
         </p>
       </div>
 

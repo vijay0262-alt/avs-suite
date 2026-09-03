@@ -114,7 +114,7 @@ export default function SettingsPage() {
           <div className="space-y-4">
             {/* Close behavior */}
             <div>
-              <div className="text-small font-medium text-text-primary mb-2">When closing AVS Shield</div>
+              <div className="text-small font-medium text-text-primary mb-2">When closing AVS AI Shield</div>
               <div className="space-y-2">
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
@@ -139,7 +139,7 @@ export default function SettingsPage() {
                   />
                   <div>
                     <span className="text-small text-text-primary">Exit Application</span>
-                    <p className="text-caption text-text-muted">Closing the window exits AVS Shield. Protection stops.</p>
+                    <p className="text-caption text-text-muted">Closing the window exits AVS AI Shield. Protection stops.</p>
                   </div>
                 </label>
               </div>
@@ -149,11 +149,11 @@ export default function SettingsPage() {
             <div className="border-t border-[var(--avs-border)] pt-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-small font-medium text-text-primary">Start AVS Shield with Windows</div>
+                  <div className="text-small font-medium text-text-primary">Start AVS AI Shield with Windows</div>
                   <p className="text-caption text-text-secondary">
                     {edition === 'professional'
-                      ? 'Launch AVS Shield automatically when Windows starts. Protection begins immediately.'
-                      : 'Professional feature. Enable to start AVS Shield with Windows for continuous protection.'}
+                      ? 'Launch AVS AI Shield automatically when Windows starts. Protection begins immediately.'
+                      : 'Professional feature. Enable to start AVS AI Shield with Windows for continuous protection.'}
                   </p>
                 </div>
                 <button
@@ -349,7 +349,7 @@ export default function SettingsPage() {
                         <StarIcon key={i} className="h-4 w-4 text-brand-primary" />
                       ))}
                     </div>
-                    <h3 className="text-section-title text-text-primary">AVS Shield Professional</h3>
+                    <h3 className="text-section-title text-text-primary">AVS AI Shield Professional</h3>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="inline-flex items-center gap-1 rounded-full bg-semantic-success/15 border border-semantic-success/30 px-2 py-0.5 text-caption font-medium text-semantic-success">
                         <CheckCircleIcon className="h-3 w-3" />
@@ -528,7 +528,7 @@ export default function SettingsPage() {
               <div>
                 <div className="text-small font-medium text-text-primary">Anonymous usage data</div>
                 <p className="text-caption text-text-secondary">
-                  Help improve AVS Shield by sending anonymous crash reports and usage statistics. No personal data is collected.
+                  Help improve AVS AI Shield by sending anonymous crash reports and usage statistics. No personal data is collected.
                 </p>
               </div>
               <button
@@ -633,13 +633,13 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card title="AVS Shield Account" variant="glass">
+        <Card title="AVS AI Shield Account" variant="glass">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <UserCircleIcon className="h-10 w-10 text-text-muted" aria-hidden />
               <div>
                 <div className="text-small font-medium text-text-primary">
-                  {customer?.display_name ?? session?.customerName ?? 'AVS Shield Customer'}
+                  {customer?.display_name ?? session?.customerName ?? 'AVS AI Shield Customer'}
                 </div>
                 <div className="text-caption text-text-secondary">
                   {customer?.email ?? session?.customerEmail ?? '—'}
@@ -682,7 +682,7 @@ export default function SettingsPage() {
               <div>
                 <div className="text-small font-medium text-text-primary">Check for updates</div>
                 <p className="text-caption text-text-secondary">
-                  Check if a new version of AVS Shield is available.
+                  Check if a new version of AVS AI Shield is available.
                 </p>
               </div>
               <Button
@@ -757,7 +757,7 @@ export default function SettingsPage() {
               <div>
                 <div className="text-small font-medium text-text-primary">Backend RPC ping</div>
                 <p className="text-caption text-text-secondary">
-                  Test the connection to the AVS Shield backend.
+                  Test the connection to the AVS AI Shield backend.
                 </p>
               </div>
               <Button

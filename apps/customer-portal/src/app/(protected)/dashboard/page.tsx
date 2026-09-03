@@ -100,7 +100,7 @@ export default function DashboardPage() {
               Welcome, {customer?.first_name ?? 'User'}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Manage your AVS Shield products, licenses, and devices.
+              Manage your AVS AI Shield products, licenses, and devices.
             </p>
           </div>
           <div className="hidden flex-wrap items-center gap-2 sm:flex">

@@ -1,4 +1,4 @@
-"""USB device insertion detection and auto-scan module for AVS Shield.
+"""USB device insertion detection and auto-scan module for AVS AI Shield.
 
 Monitors for USB/removable device insertion on Windows using WMI events.
 When a new removable drive is detected, the module can automatically

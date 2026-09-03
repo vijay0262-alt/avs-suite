@@ -74,7 +74,7 @@ export default function DownloadsPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Downloads</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Download the latest versions of your AVS Shield products.
+            Download the latest versions of your AVS AI Shield products.
           </p>
         </div>
         <EmptyState
@@ -92,7 +92,7 @@ export default function DownloadsPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Downloads</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Download the latest versions of your AVS Shield products.
+          Download the latest versions of your AVS AI Shield products.
         </p>
       </div>
 

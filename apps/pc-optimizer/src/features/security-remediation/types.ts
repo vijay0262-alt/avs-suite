@@ -467,7 +467,7 @@ export const DEFAULT_REMEDIATION_CONFIG: RemediationConfiguration = {
   enabled: true,
   policy: DEFAULT_REMEDIATION_POLICY,
   quarantineEnabled: true,
-  quarantinePath: '%APPDATA%\\AVS Shield\\Quarantine',
+  quarantinePath: '%APPDATA%\\AVS AI Shield\\Quarantine',
   quarantineEncryption: true,
   rollbackEnabled: true,
   rollbackMaxEntries: 200,

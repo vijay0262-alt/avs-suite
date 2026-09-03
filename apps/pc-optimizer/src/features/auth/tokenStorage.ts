@@ -1,5 +1,5 @@
 /**
- * Secure token storage for the AVS Shield customer auth session.
+ * Secure token storage for the AVS AI Shield customer auth session.
  *
  * In Electron production, uses `safeStorage` to encrypt tokens at rest.
  * In dev/browser, falls back to localStorage with a warning.

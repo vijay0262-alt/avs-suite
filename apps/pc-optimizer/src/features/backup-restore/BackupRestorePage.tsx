@@ -109,7 +109,7 @@ class BackupViewModel extends ViewModel<BackupState> {
       if (typeof window === 'undefined' || !window.avs) {
         throw new Error('AVS RPC bridge is unavailable');
       }
-      const result = await window.avs.rpc.call('backup.createRestorePoint', { description: this.state.description || 'AVS Shield Restore Point' }) as { success: boolean; error?: string };
+      const result = await window.avs.rpc.call('backup.createRestorePoint', { description: this.state.description || 'AVS AI Shield Restore Point' }) as { success: boolean; error?: string };
       if (result.success) {
         this.setState({ creating: false, successMsg: 'Restore point created successfully', description: '' });
         await this.reload();
@@ -277,7 +277,7 @@ export default function BackupRestorePage() {
             ))}
           </div>
         ) : (
-          <ModuleEmptyState icon={CheckCircleIcon} title="No AVS-managed backups" message="Backups created by AVS Shield operations (cleaner, registry, etc.) will appear here." />
+          <ModuleEmptyState icon={CheckCircleIcon} title="No AVS-managed backups" message="Backups created by AVS AI Shield operations (cleaner, registry, etc.) will appear here." />
         )}
       </Card>
     </div>

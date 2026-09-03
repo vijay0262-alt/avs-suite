@@ -27,7 +27,7 @@ import { onboardingService } from './OnboardingService';
 type Step = 'welcome' | 'permissions' | 'overview' | 'scan' | 'tour';
 
 const STEPS: readonly { id: Step; title: string }[] = [
-  { id: 'welcome', title: 'Welcome to AVS Shield' },
+  { id: 'welcome', title: 'Welcome to AVS AI Shield' },
   { id: 'permissions', title: 'System Permissions' },
   { id: 'overview', title: 'Quick System Overview' },
   { id: 'scan', title: 'Recommended First Scan' },
@@ -171,7 +171,7 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
               </div>
             </div>
             <p className="text-small text-text-secondary">
-              AVS Shield helps you keep your Windows PC fast, clean, and secure.
+              AVS AI Shield helps you keep your Windows PC fast, clean, and secure.
               With real-time health monitoring, one-click optimization, and AI-powered
               recommendations, maintaining your PC has never been easier.
             </p>
@@ -201,7 +201,7 @@ export function WelcomeDialog({ open, onClose }: WelcomeDialogProps) {
               </div>
               <div>
                 <p className="text-small text-text-secondary">
-                  AVS Shield needs access to system information to provide accurate health monitoring.
+                  AVS AI Shield needs access to system information to provide accurate health monitoring.
                 </p>
               </div>
             </div>

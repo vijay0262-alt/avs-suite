@@ -1,6 +1,6 @@
 /**
  * Unified AI Results Types — shared types for the premium AI results
- * experience used by ALL modules in AVS Shield.
+ * experience used by ALL modules in AVS AI Shield.
  *
  * Every completed scan ends with a UnifiedResultsReport containing:
  *   - Header with timestamp, duration, items analyzed, AI confidence

@@ -93,7 +93,7 @@ export function ProStatusBanner({ className = '', compact = false }: ProStatusBa
         data-testid="pro-status-banner-compact"
       >
         <StarIcon className="h-5 w-5 text-brand-primary shrink-0" />
-        <span className="text-small font-semibold text-brand-primary">AVS Shield Professional</span>
+        <span className="text-small font-semibold text-brand-primary">AVS AI Shield Professional</span>
         <div className="flex items-center gap-2 ml-auto">
           <ProFeatureIndicator icon={ShieldCheckIcon} label="Real-Time Protection" />
           <ProFeatureIndicator icon={BoltIcon} label="Auto Optimization" />
@@ -112,7 +112,7 @@ export function ProStatusBanner({ className = '', compact = false }: ProStatusBa
           <StarIcon className="h-5 w-5 text-brand-primary" />
         </div>
         <div>
-          <div className="text-small font-bold text-brand-primary">AVS Shield Professional</div>
+          <div className="text-small font-bold text-brand-primary">AVS AI Shield Professional</div>
           <div className="text-caption text-text-secondary">Your PC is protected and optimized automatically</div>
         </div>
       </div>

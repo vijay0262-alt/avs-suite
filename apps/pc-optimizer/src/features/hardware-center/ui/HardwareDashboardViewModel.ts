@@ -380,7 +380,7 @@ export class HardwareDashboardViewModel extends ViewModel<HardwareDashboardState
 
     // PDF — return a text report (actual PDF generation would require a library)
     const lines: string[] = [];
-    lines.push('AVS Shield — Hardware Snapshot Report');
+    lines.push('AVS AI Shield — Hardware Snapshot Report');
     lines.push(`Generated: ${new Date(snapshot.timestamp).toLocaleString()}`);
     lines.push(`Scan Duration: ${snapshot.scanDurationMs}ms`);
     lines.push('');

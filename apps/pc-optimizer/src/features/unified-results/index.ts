@@ -1,7 +1,7 @@
 /**
  * Unified AI Results Framework — barrel export.
  *
- * Every module in AVS Shield imports from here to get a consistent,
+ * Every module in AVS AI Shield imports from here to get a consistent,
  * premium AI results experience after every scan.
  */
 

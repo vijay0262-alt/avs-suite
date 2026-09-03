@@ -1,4 +1,4 @@
-"""Defender Scanner — Windows Defender integration for the AVS Shield threat engine.
+"""Defender Scanner — Windows Defender integration for the AVS AI Shield threat engine.
 
 This module leverages the built-in Windows Defender engine to scan files
 without requiring a third-party AV engine. It uses:
@@ -237,7 +237,7 @@ def get_threat_history() -> list[dict[str, Any]]:
 
 
 class DefenderScanner:
-    """Windows Defender-backed scanner for the AVS Shield threat engine."""
+    """Windows Defender-backed scanner for the AVS AI Shield threat engine."""
 
     name = "defender"
 

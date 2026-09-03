@@ -1,4 +1,4 @@
-"""Privacy Score module for AVS Shield.
+"""Privacy Score module for AVS AI Shield.
 
 Assesses the user's privacy posture by inspecting Windows telemetry,
 camera / microphone / location permissions, advertising ID, Cortana /
@@ -8,7 +8,7 @@ DNS settings, background apps, clipboard history and activity history.
 Each check is independent and fails gracefully.  The aggregate score is
 a weighted average of the individual check statuses, mapped to a letter
 grade (A-F).  Results are persisted to
-``%LOCALAPPDATA%\\AVS Shield\\threat_engine\\privacy_score_history.json``.
+``%LOCALAPPDATA%\\AVS AI Shield\\threat_engine\\privacy_score_history.json``.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ IS_WINDOWS = platform.system() == "Windows"
 _CREATE_NO_WINDOW = 0x08000000
 
 _HISTORY_PATH = Path(
-    os.path.expandvars(r"%LOCALAPPDATA%\AVS Shield\threat_engine\privacy_score_history.json")
+    os.path.expandvars(r"%LOCALAPPDATA%\AVS AI Shield\threat_engine\privacy_score_history.json")
 )
 
 _MAX_HISTORY = 50

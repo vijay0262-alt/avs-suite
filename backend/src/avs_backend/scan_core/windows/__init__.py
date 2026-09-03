@@ -1,5 +1,5 @@
 """
-AVS Shield Scan Core — Windows Enumerator.
+AVS AI Shield Scan Core — Windows Enumerator.
 
 Discovers Windows assets (services, drivers, tasks, programs, security,
 system info, network, restore points) without modifying, classifying,

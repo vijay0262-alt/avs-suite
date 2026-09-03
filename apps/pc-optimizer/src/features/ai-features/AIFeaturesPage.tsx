@@ -1,5 +1,5 @@
 /**
- * AIFeaturesPage — AVS Shield AI-Powered Features.
+ * AIFeaturesPage — AVS AI Shield AI-Powered Features.
  *
  * Tier 4 features:
  * - AI Threat Explanation

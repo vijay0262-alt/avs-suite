@@ -31,7 +31,7 @@ class RestorePointResult:
     error: str | None = None
 
 
-def create_restore_point(description: str = "AVS Shield — Pre-cleaning checkpoint") -> RestorePointResult:
+def create_restore_point(description: str = "AVS AI Shield — Pre-cleaning checkpoint") -> RestorePointResult:
     """Create a System Restore Point.
 
     Requires:

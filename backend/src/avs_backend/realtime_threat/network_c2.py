@@ -1,4 +1,4 @@
-"""Network C2 (Command & Control) detection module — AVS Shield.
+"""Network C2 (Command & Control) detection module — AVS AI Shield.
 
 Monitors active network connections and checks remote IP addresses against
 multiple threat intelligence feeds to detect possible C2 beaconing:
@@ -9,7 +9,7 @@ multiple threat intelligence feeds to detect possible C2 beaconing:
   - Local blocklist of known C2 IPs
 
 Feeds are cached locally under
-``%LOCALAPPDATA%\\AVS Shield\\threat_engine\\c2_feeds.json`` and refreshed at
+``%LOCALAPPDATA%\\AVS AI Shield\\threat_engine\\c2_feeds.json`` and refreshed at
 most once every 6 hours.  Monitoring runs in a background daemon thread that
 polls ``psutil.net_connections()`` every 5 seconds.
 """
@@ -38,7 +38,7 @@ IS_WINDOWS = platform.system() == "Windows"
 # =====================================================================
 
 _FEED_CACHE_PATH = Path(
-    os.path.expandvars(r"%LOCALAPPDATA%\AVS Shield\threat_engine\c2_feeds.json")
+    os.path.expandvars(r"%LOCALAPPDATA%\AVS AI Shield\threat_engine\c2_feeds.json")
 )
 
 _SPAMHAUS_DROP_URL = "https://www.spamhaus.org/drop/drop.txt"

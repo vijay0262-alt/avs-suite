@@ -1,5 +1,5 @@
 /**
- * AI Orchestrator — the single gateway between LLMs and the AVS Shield
+ * AI Orchestrator — the single gateway between LLMs and the AVS AI Shield
  * Intelligence Platform.
  *
  * Coordinates:

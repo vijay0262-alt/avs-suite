@@ -3,7 +3,7 @@
  *
  * EPIC 5 PHASE A PART 6
  *
- * Unified interaction platform allowing users to interact with AVS Shield
+ * Unified interaction platform allowing users to interact with AVS AI Shield
  * through multiple input modalities (text, voice, screenshots, log files,
  * documents, future modalities). All inputs produce the same structured
  * intent model and route through the existing Tool Framework.

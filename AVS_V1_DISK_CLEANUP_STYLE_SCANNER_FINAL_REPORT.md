@@ -1,4 +1,4 @@
-# AVS Shield V1.0 — Disk Cleanup Style Scanner Final Report
+# AVS AI Shield V1.0 — Disk Cleanup Style Scanner Final Report
 
 **Version:** V1.0
 **Date:** 2025-01-24
@@ -596,8 +596,8 @@ The cleaner is NOT broken. Files that are deleted do not reappear in subsequent 
 ### Build Status
 - Frontend build: **PASS** (`yarn build:pc-optimizer`)
 - Backend PyInstaller build: **PASS** (`backend/dist/backend-py/avs-backend.exe`)
-- Electron packaging: **PASS** (`release/win-unpacked/AVS Shield Optimizer.exe`)
-- Installer: **PASS** (`release/AVS Shield Optimizer-Setup.exe`)
+- Electron packaging: **PASS** (`release/win-unpacked/AVS AI Shield Optimizer.exe`)
+- Installer: **PASS** (`release/AVS AI Shield Optimizer-Setup.exe`)
 
 ### Transport
 The packaged backend uses line-delimited JSON-RPC over stdin/stdout pipes — NOT TCP. The Electron main process spawns the backend executable and communicates via stdin/stdout.

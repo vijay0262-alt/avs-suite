@@ -72,7 +72,7 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
       >
         <div className="text-center space-y-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent mx-auto" />
-          <p className="text-small text-text-muted">Loading AVS Shield…</p>
+          <p className="text-small text-text-muted">Loading AVS AI Shield…</p>
         </div>
       </div>
     );

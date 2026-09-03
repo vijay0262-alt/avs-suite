@@ -1,6 +1,6 @@
 /**
  * Module Scan Configurations — predefined UnifiedScanModuleConfig for each
- * module in AVS Shield.  Future modules can import these or create their own.
+ * module in AVS AI Shield.  Future modules can import these or create their own.
  *
  * Each config defines:
  *   - Phases with activity messages

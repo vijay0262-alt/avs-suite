@@ -55,7 +55,7 @@ export class EntitlementSyncError extends Error {
 function classifyError(err: unknown): EntitlementSyncError {
   if (err instanceof NetworkError) {
     return new EntitlementSyncError(
-      'Unable to connect to the AVS Shield server. Entitlement sync will retry later.',
+      'Unable to connect to the AVS AI Shield server. Entitlement sync will retry later.',
       'OFFLINE',
     );
   }
@@ -84,7 +84,7 @@ function classifyError(err: unknown): EntitlementSyncError {
 
     if (err.statusCode >= 500) {
       return new EntitlementSyncError(
-        'The AVS Shield server is experiencing issues. Entitlement sync will retry later.',
+        'The AVS AI Shield server is experiencing issues. Entitlement sync will retry later.',
         'SERVER_ERROR',
       );
     }

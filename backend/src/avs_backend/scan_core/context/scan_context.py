@@ -25,7 +25,7 @@ def _default_salt_path() -> Path:
     home = Path.home()
     if os.name == "nt":
         base = Path(os.environ.get("LOCALAPPDATA", os.environ.get("APPDATA", str(home))))
-        app_dir = base / "AVS Shield"
+        app_dir = base / "AVS AI Shield"
     else:
         base = Path(os.environ.get("XDG_DATA_HOME", str(home / ".local" / "share")))
         app_dir = base / "avs-shield"

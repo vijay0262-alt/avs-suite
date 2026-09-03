@@ -1,7 +1,7 @@
 """
 Universal Asset Model — SC-6A
 
-The common language of the AVS Shield platform.
+The common language of the AVS AI Shield platform.
 Every discovered object becomes a ScanAsset.
 
 This package defines:

@@ -67,7 +67,7 @@ absence from the filesystem.
 
 ## 2. Administrator Privilege
 
-**Finding:** The packaged AVS Shield Optimizer runs as administrator
+**Finding:** The packaged AVS AI Shield Optimizer runs as administrator
 (processes could not be killed without admin rights).
 
 **Impact:** Administrator elevation allows access to system directories

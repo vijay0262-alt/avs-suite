@@ -2,7 +2,7 @@
  * ProSplashOverlay — premium welcome experience for Professional edition users.
  *
  * Shows a brief animated splash on app launch celebrating Pro ownership:
- *   - Brand logo + "AVS Shield Professional" title
+ *   - Brand logo + "AVS AI Shield Professional" title
  *   - Active feature indicators (Real-Time Protection, AVS AI Assistant, etc.)
  *   - Personalized greeting
  *   - Auto-dismisses after 3 seconds or on click/Escape
@@ -96,7 +96,7 @@ export function ProSplashOverlay() {
         {/* Title */}
         <div className="flex items-center gap-2 mb-1">
           <StarIcon className="h-5 w-5 text-brand-primary" />
-          <h1 className="text-xl font-bold text-text-primary">AVS Shield Professional</h1>
+          <h1 className="text-xl font-bold text-text-primary">AVS AI Shield Professional</h1>
         </div>
 
         {/* Active indicators */}

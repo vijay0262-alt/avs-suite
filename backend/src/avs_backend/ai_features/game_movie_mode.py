@@ -1,4 +1,4 @@
-"""Game/Movie Mode for AVS Shield — silences non-critical notifications
+"""Game/Movie Mode for AVS AI Shield — silences non-critical notifications
 and background scans while the user is gaming or watching media.
 
 When enabled, Game/Movie Mode:

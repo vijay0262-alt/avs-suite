@@ -1,4 +1,4 @@
-"""Behavioral sandbox for AVS Shield — lightweight executable analysis.
+"""Behavioral sandbox for AVS AI Shield — lightweight executable analysis.
 
 This module provides a **lightweight behavioral analysis tool** that observes
 executable behavior in a controlled manner and scores suspicious activity.
@@ -147,7 +147,7 @@ def _is_startup_registry_key(key: str) -> bool:
 # =====================================================================
 
 class BehavioralSandbox:
-    """Lightweight behavioral analysis sandbox for AVS Shield.
+    """Lightweight behavioral analysis sandbox for AVS AI Shield.
 
     The sandbox takes a baseline snapshot of system state, launches a
     suspicious executable with monitoring, observes its behavior for a

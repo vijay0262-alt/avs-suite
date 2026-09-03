@@ -1,6 +1,6 @@
 """Threat Engine — unified malware detection and protection system.
 
-This is the core antivirus/anti-malware engine for AVS Shield. It
+This is the core antivirus/anti-malware engine for AVS AI Shield. It
 orchestrates multiple detection sources:
 
   1. Hash-based detection (local blocklist + VirusTotal cloud reputation)
@@ -63,7 +63,7 @@ _scans_lock = threading.Lock()
 
 # ─── Threat definition storage paths ────────────────────────────────
 
-_DATA_DIR = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "AVS Shield" / "threat_engine"
+_DATA_DIR = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "AVS AI Shield" / "threat_engine"
 _DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 _HASH_DB_PATH = _DATA_DIR / "hash_blocklist.json"

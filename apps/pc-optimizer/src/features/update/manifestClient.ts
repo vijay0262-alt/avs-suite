@@ -7,7 +7,7 @@
  * The manifest contains all information needed to determine whether
  * an update is available and how to download it.
  *
- * Reusable for every future AVS Shield product (antivirus, vpn, etc.)
+ * Reusable for every future AVS AI Shield product (antivirus, vpn, etc.)
  * by passing a different productCode.
  */
 import { apiClient, ApiError, NetworkError } from '../auth/apiClient';
@@ -79,7 +79,7 @@ export class ManifestError extends Error {
 function classifyError(err: unknown): ManifestError {
   if (err instanceof NetworkError) {
     return new ManifestError(
-      'Unable to connect to the AVS Shield server. Update check will retry later.',
+      'Unable to connect to the AVS AI Shield server. Update check will retry later.',
       'OFFLINE',
     );
   }
@@ -93,7 +93,7 @@ function classifyError(err: unknown): ManifestError {
     }
     if (err.statusCode >= 500) {
       return new ManifestError(
-        'The AVS Shield server is experiencing issues. Update check will retry later.',
+        'The AVS AI Shield server is experiencing issues. Update check will retry later.',
         'SERVER_ERROR',
       );
     }

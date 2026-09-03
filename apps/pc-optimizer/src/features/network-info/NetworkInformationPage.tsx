@@ -166,7 +166,7 @@ export default function NetworkInformationPage() {
             <h3 className="text-small font-semibold text-text-primary mb-2">Network information unavailable</h3>
             <p className="text-small text-text-secondary max-w-md mb-4">
               {isBackendMissing
-                ? 'The network diagnostics module could not be loaded. This feature requires the AVS Shield desktop application to be running with the backend service active.'
+                ? 'The network diagnostics module could not be loaded. This feature requires the AVS AI Shield desktop application to be running with the backend service active.'
                 : state.error}
             </p>
             <Button onClick={() => vm.bootstrap()} variant="secondary" leftIcon={<ArrowPathIcon className="h-4 w-4" />}>

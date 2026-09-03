@@ -32,10 +32,10 @@ log = logging.getLogger("avs.remediation")
 
 IS_WINDOWS = platform.system() == "Windows"
 
-# Quarantine directory — stored in AppData/Local/AVS Shield/Quarantine
+# Quarantine directory — stored in AppData/Local/AVS AI Shield/Quarantine
 # Preserved for future canonical quarantine write operations.
 if IS_WINDOWS:
-    _QUARANTINE_DIR = os.path.expandvars(r"%LOCALAPPDATA%\AVS Shield\Quarantine")
+    _QUARANTINE_DIR = os.path.expandvars(r"%LOCALAPPDATA%\AVS AI Shield\Quarantine")
 else:
     _QUARANTINE_DIR = os.path.expanduser("~/.avs-shield/quarantine")
 

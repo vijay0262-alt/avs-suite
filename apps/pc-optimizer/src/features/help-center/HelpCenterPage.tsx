@@ -45,7 +45,7 @@ const FAQS = [
   },
   {
     q: 'Is my data sent to the cloud?',
-    a: 'No. All AI analysis runs locally on your device. AVS Shield does not send your system data to external servers.',
+    a: 'No. All AI analysis runs locally on your device. AVS AI Shield does not send your system data to external servers.',
   },
   {
     q: 'What\'s the difference between FREE and PRO?',
@@ -72,7 +72,7 @@ export default function HelpCenterPage() {
     <div className="space-y-6">
       <PageHeader
         title="Help Center"
-        description="Get help, find answers, and learn how to get the most out of AVS Shield"
+        description="Get help, find answers, and learn how to get the most out of AVS AI Shield"
       />
 
       {/* Quick Actions */}
@@ -165,7 +165,7 @@ export default function HelpCenterPage() {
             <ShieldCheckIcon className="h-8 w-8 text-white" />
           </div>
           <div>
-            <p className="text-small font-bold text-[var(--avs-text-primary)]">AVS Shield</p>
+            <p className="text-small font-bold text-[var(--avs-text-primary)]">AVS AI Shield</p>
             <p className="text-caption text-[var(--avs-text-muted)]">Advanced Vision Software LLC · Sheridan, WY</p>
             <p className="text-caption text-[var(--avs-text-muted)]">AI-Powered PC Health, Performance & Security Platform</p>
           </div>

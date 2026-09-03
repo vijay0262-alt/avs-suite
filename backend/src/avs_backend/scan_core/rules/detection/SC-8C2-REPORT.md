@@ -10,7 +10,7 @@
 
 ## 1. Overview
 
-SC-8C2 implements the first production detection rule pack for the AVS Shield Rule Engine. Four rules detect junk, temporary, and safe cache files using the SC-8A contract model (evidence, confidence, safety) and SC-8B applicability/context. Rules run through the SC-8C1 evaluator.
+SC-8C2 implements the first production detection rule pack for the AVS AI Shield Rule Engine. Four rules detect junk, temporary, and safe cache files using the SC-8A contract model (evidence, confidence, safety) and SC-8B applicability/context. Rules run through the SC-8C1 evaluator.
 
 **Key design decisions:**
 - Reused location knowledge from existing cleaners (`cleaner/cleaners/`) without inheriting deletion behavior.

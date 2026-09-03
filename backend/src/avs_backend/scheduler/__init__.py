@@ -1,6 +1,6 @@
 """Scheduled Maintenance module — cron-like scheduling via Windows Task Scheduler.
 
-Creates and manages scheduled maintenance tasks that run AVS Shield
+Creates and manages scheduled maintenance tasks that run AVS AI Shield
 optimization operations automatically:
   - Junk cleaning
   - Registry cleaning
@@ -8,7 +8,7 @@ optimization operations automatically:
   - Health snapshot capture (for Predictive Health)
 
 Uses schtasks.exe for Windows Task Scheduler integration. Each scheduled
-task is stored as an AVS Shield task with a consistent naming convention.
+task is stored as an AVS AI Shield task with a consistent naming convention.
 
 RPC methods:
     scheduler.list      — list all scheduled AVS tasks
@@ -39,7 +39,7 @@ log = logging.getLogger("avs.scheduler")
 IS_WINDOWS = platform.system() == "Windows"
 _NO_WINDOW = 0x08000000 if IS_WINDOWS else 0
 
-# Prefix for all AVS Shield scheduled tasks
+# Prefix for all AVS AI Shield scheduled tasks
 _TASK_PREFIX = "AVSShield_"
 
 # Available maintenance actions
@@ -111,7 +111,7 @@ def _build_maintenance_command(action: str) -> str:
 
     if exe is None:
         # Fallback: just log (shouldn't happen in production)
-        return f'powershell -NoProfile -WindowStyle Hidden -Command "Write-Output \\"AVS Shield maintenance: {action} (no backend found)\\""'
+        return f'powershell -NoProfile -WindowStyle Hidden -Command "Write-Output \\"AVS AI Shield maintenance: {action} (no backend found)\\""'
 
     basename = os.path.basename(exe).lower()
     if basename in ("avs-backend.exe", "avs-backend"):
@@ -128,7 +128,7 @@ def _build_maintenance_command(action: str) -> str:
 
 @register("scheduler.list")
 def list_scheduled_tasks(_params: dict[str, Any] | None = None) -> dict[str, Any]:
-    """List all scheduled AVS Shield maintenance tasks."""
+    """List all scheduled AVS AI Shield maintenance tasks."""
     if not IS_WINDOWS:
         return {"tasks": [], "supported": False, "capturedAt": _now_iso()}
 

@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json(
-      { detail: 'Unable to connect to the AVS Shield server.' },
+      { detail: 'Unable to connect to the AVS AI Shield server.' },
       { status: 503 },
     );
   }

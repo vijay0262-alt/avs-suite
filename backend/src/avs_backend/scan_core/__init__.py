@@ -1,5 +1,5 @@
 """
-AVS Shield Scan Core — reusable filesystem enumeration infrastructure.
+AVS AI Shield Scan Core — reusable filesystem enumeration infrastructure.
 
 This package is intentionally isolated from all existing modules
 (cleaner, security, privacy, orchestrator, health engine).

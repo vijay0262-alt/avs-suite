@@ -60,7 +60,7 @@ export class LicenseServiceError extends Error {
 function classifyError(err: unknown): LicenseServiceError {
   if (err instanceof NetworkError) {
     return new LicenseServiceError(
-      'Unable to connect to the AVS Shield server. License activation will retry later.',
+      'Unable to connect to the AVS AI Shield server. License activation will retry later.',
       'OFFLINE',
     );
   }
@@ -97,7 +97,7 @@ function classifyError(err: unknown): LicenseServiceError {
     }
     if (err.statusCode >= 500) {
       return new LicenseServiceError(
-        'The AVS Shield server is experiencing issues. Please try again later.',
+        'The AVS AI Shield server is experiencing issues. Please try again later.',
         'SERVER_ERROR',
       );
     }

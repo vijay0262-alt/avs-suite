@@ -409,7 +409,7 @@ export class ProcessAnalyzer {
       return 'No action required unless system resources are needed for other applications.';
     }
     if (issues.some((i) => i.type === 'excessive_startup_impact')) {
-      return 'Consider delaying this process at startup to improve boot time. AVS Shield can automate this safely.';
+      return 'Consider delaying this process at startup to improve boot time. AVS AI Shield can automate this safely.';
     }
     if (issues.some((i) => i.type === 'duplicate_process')) {
       return 'Multiple instances are running. Consider closing unnecessary instances if the application allows it.';

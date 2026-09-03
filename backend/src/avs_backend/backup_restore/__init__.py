@@ -79,7 +79,7 @@ def backup_create_restore_point(params: dict[str, Any] | None) -> dict[str, Any]
     if not IS_WINDOWS:
         return {"success": False, "error": "System Restore is only available on Windows"}
 
-    description = (params.get("description") if params else None) or f"AVS Shield Restore Point"
+    description = (params.get("description") if params else None) or f"AVS AI Shield Restore Point"
 
     ps_script = f"""
     Checkpoint-Computer -Description '{description}' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction Stop

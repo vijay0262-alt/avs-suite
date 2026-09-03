@@ -33,7 +33,7 @@ import json
 from pathlib import Path
 from collections import Counter, defaultdict
 
-# Use a temporary database — override LOCALAPPDATA so AVS Shield uses a temp dir
+# Use a temporary database — override LOCALAPPDATA so AVS AI Shield uses a temp dir
 # IMPORTANT: The audit DB must NOT be under %TEMP% because %TEMP% is a scan target.
 # If the DB is under %TEMP%, the scan will enumerate the DB files as junk.
 TEST_DB_DIR = Path.home() / "avs_audit_db"

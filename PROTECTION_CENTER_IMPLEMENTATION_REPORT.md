@@ -8,7 +8,7 @@
 - **Heuristic detection**: `MaliciousFileNameRule`, `SuspiciousScriptRule`, `SuspiciousExecutableRule` reclassified to `RuleCategory.SUSPICIOUS` — produce `SUSPICIOUS` findings, never auto-remediated (no capability matrix mapping). `TrackingCookieRule` moved to `RuleCategory.PRIVACY`.
 - **Quarantine**: `QuarantineExecutor` (canonical target executor) implements `quarantine_file` action with path validation, AVS self-protection, TOCTOU re-verification, atomic move (copy+delete), SHA-256 hash verification, manifest persistence, duplicate prevention, and post-action verification.
 - **Verification**: Post-action verification checks original path no longer exists + quarantine copy exists. Hash mismatch triggers rollback. Locked files are rejected.
-- **Persistence**: Quarantine manifest at `%LOCALAPPDATA%\AVS Shield\Quarantine\manifest.json` — atomic writes, survives restart, records original path, quarantine path, threat metadata, hash, size, timestamps, and status.
+- **Persistence**: Quarantine manifest at `%LOCALAPPDATA%\AVS AI Shield\Quarantine\manifest.json` — atomic writes, survives restart, records original path, quarantine path, threat metadata, hash, size, timestamps, and status.
 
 ## Detection
 

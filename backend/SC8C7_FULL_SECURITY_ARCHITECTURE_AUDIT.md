@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 
-This audit inspected the AVS Shield `scan_core` implementation from discovery through SC-8C6 live remediation/rollback. No production code or tests were modified. The codebase has strong architectural separation between scanning and remediation, immutable models, a deterministic planning chain, and a comprehensive test suite. However, several issues must be fixed before a UI/GA release, primarily around silent persistence failures, stale context, TOCTOU gaps in backup creation, path/registry validation completeness, and privacy-safe identifiers.
+This audit inspected the AVS AI Shield `scan_core` implementation from discovery through SC-8C6 live remediation/rollback. No production code or tests were modified. The codebase has strong architectural separation between scanning and remediation, immutable models, a deterministic planning chain, and a comprehensive test suite. However, several issues must be fixed before a UI/GA release, primarily around silent persistence failures, stale context, TOCTOU gaps in backup creation, path/registry validation completeness, and privacy-safe identifiers.
 
 **Verdict: `READY_WITH_REQUIRED_FIXES`**
 
@@ -347,7 +347,7 @@ Scan and remediation are cleanly separated: the scan orchestrator produces and p
 
 **`READY_WITH_REQUIRED_FIXES`**
 
-The AVS Shield `scan_core` has a robust, safety-first architecture. It correctly separates discovery from execution, uses immutable models, and enforces approval, fresh context, and `SafetyGate` evaluation. The test suite is large (1177 tests) and the SC-8C6 integration tests demonstrate real live file deletion and rollback. However, the codebase is **not ready as-is** for production execution: critical persistence, context-freshness, path/registry validation, and privacy issues must be resolved before a UI exposes live remediation.
+The AVS AI Shield `scan_core` has a robust, safety-first architecture. It correctly separates discovery from execution, uses immutable models, and enforces approval, fresh context, and `SafetyGate` evaluation. The test suite is large (1177 tests) and the SC-8C6 integration tests demonstrate real live file deletion and rollback. However, the codebase is **not ready as-is** for production execution: critical persistence, context-freshness, path/registry validation, and privacy issues must be resolved before a UI exposes live remediation.
 
 ---
 

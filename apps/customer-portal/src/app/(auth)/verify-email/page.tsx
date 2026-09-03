@@ -128,7 +128,7 @@ function VerifyEmailContent() {
         <div className="rounded-md bg-muted p-4 text-sm text-muted-foreground">
           <p className="font-medium text-foreground mb-1">Next steps:</p>
           <ol className="list-decimal list-inside space-y-1">
-            <li>Open the verification email from AVS Shield</li>
+            <li>Open the verification email from AVS AI Shield</li>
             <li>Click the &quot;Verify Email Address&quot; button</li>
             <li>You&apos;ll be automatically signed in to your dashboard</li>
           </ol>

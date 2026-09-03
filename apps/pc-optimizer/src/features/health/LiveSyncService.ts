@@ -140,16 +140,16 @@ function updateTrayStatus(result: OptimizationCompletePayload): void {
 
     if (result.success && result.healthScoreAfter >= 90) {
       status = 'protected';
-      tooltip = `AVS Shield — Protected & Optimized (Score: ${result.healthScoreAfter})`;
+      tooltip = `AVS AI Shield — Protected & Optimized (Score: ${result.healthScoreAfter})`;
     } else if (result.success && result.healthScoreAfter >= 70) {
       status = 'optimized';
-      tooltip = `AVS Shield — Optimized (Score: ${result.healthScoreAfter})`;
+      tooltip = `AVS AI Shield — Optimized (Score: ${result.healthScoreAfter})`;
     } else if (!result.success) {
       status = 'warning';
-      tooltip = `AVS Shield — Attention Required (Score: ${result.healthScoreAfter})`;
+      tooltip = `AVS AI Shield — Attention Required (Score: ${result.healthScoreAfter})`;
     } else {
       status = 'warning';
-      tooltip = `AVS Shield — Score: ${result.healthScoreAfter}`;
+      tooltip = `AVS AI Shield — Score: ${result.healthScoreAfter}`;
     }
 
     tray.updateStatus(status, tooltip);

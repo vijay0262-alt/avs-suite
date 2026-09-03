@@ -1,7 +1,7 @@
 /**
  * Unified Scan Types — shared types for the unified scanning framework.
  *
- * Every module in AVS Shield uses these types to define its scan phases,
+ * Every module in AVS AI Shield uses these types to define its scan phases,
  * live counters, result cards, and AI summary.  This ensures a consistent
  * scanning experience across the entire application.
  */

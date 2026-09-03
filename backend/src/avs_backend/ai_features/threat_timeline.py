@@ -1,4 +1,4 @@
-"""Threat Timeline Visualization for AVS Shield.
+"""Threat Timeline Visualization for AVS AI Shield.
 
 Aggregates threat detection events into a chronological timeline so the
 dashboard and other modules can render a unified view of security
@@ -51,7 +51,7 @@ def _data_dir() -> Path:
         base = Path.home() / "AppData" / "Local"
     else:
         base = Path.home() / ".local" / "share"
-    return base / "AVS Shield" / "threat_engine"
+    return base / "AVS AI Shield" / "threat_engine"
 
 
 def _parse_timestamp(value: str | None) -> datetime | None:

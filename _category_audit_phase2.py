@@ -19,7 +19,7 @@ from collections import Counter, defaultdict
 # IMPORTANT: Do NOT override LOCALAPPDATA or APPDATA — the scanner uses these
 # to find browser caches, shader caches, etc. Overriding them would cause the
 # scanner to look in the wrong directory.
-# Instead, we use the real AVS Shield database and accept that it may conflict
+# Instead, we use the real AVS AI Shield database and accept that it may conflict
 # with a running instance. Kill any running backend first.
 import subprocess as _sp
 try:

@@ -1,5 +1,5 @@
 /**
- * Windows startup — register/unregister AVS Shield to launch
+ * Windows startup — register/unregister AVS AI Shield to launch
  * automatically when Windows starts.
  *
  * Uses the Windows Registry Run key (HKCU\Software\Microsoft\Windows\CurrentVersion\Run)

@@ -2,7 +2,7 @@
   "name": "@avs/customer-portal",
   "version": "0.1.0",
   "private": true,
-  "description": "AVS Shield Customer Portal — account management, licenses, devices, and downloads.",
+  "description": "AVS AI Shield Customer Portal — account management, licenses, devices, and downloads.",
   "author": "AVS Software",
   "license": "UNLICENSED",
   "scripts": {

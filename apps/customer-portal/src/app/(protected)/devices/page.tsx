@@ -74,7 +74,7 @@ export default function DevicesPage() {
         <EmptyState
           icon={<Monitor className="h-8 w-8" />}
           title="No devices registered"
-          description="Install an AVS Shield product to register a device."
+          description="Install an AVS AI Shield product to register a device."
         />
       ) : (
         <Card>

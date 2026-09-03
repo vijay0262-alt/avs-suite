@@ -1,4 +1,4 @@
-"""Web Shield — URL filtering and phishing protection for AVS Shield.
+"""Web Shield — URL filtering and phishing protection for AVS AI Shield.
 
 Checks URLs against malicious URL blocklists and phishing databases to
 prevent users from visiting known-bad sites. The shield combines several
@@ -17,7 +17,7 @@ Feed sources:
   - URLScan.io  (https://urlscan.io/api/v1/scan/ — optional, requires API key)
 
 The local blocklist is persisted to
-``%LOCALAPPDATA%\\AVS Shield\\threat_engine\\url_blocklist.json``.
+``%LOCALAPPDATA%\\AVS AI Shield\\threat_engine\\url_blocklist.json``.
 
 All network operations are best-effort: failures are logged and never
 raise, so the shield degrades gracefully to local-only checks when
@@ -46,7 +46,7 @@ log = logging.getLogger("avs.advanced_security.web_shield")
 IS_WINDOWS = platform.system() == "Windows"
 
 # Persistent storage for the local URL blocklist.
-_DATA_DIR = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "AVS Shield" / "threat_engine"
+_DATA_DIR = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "AVS AI Shield" / "threat_engine"
 _DATA_DIR.mkdir(parents=True, exist_ok=True)
 _BLOCKLIST_PATH = _DATA_DIR / "url_blocklist.json"
 

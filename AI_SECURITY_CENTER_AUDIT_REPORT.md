@@ -118,7 +118,7 @@ SecurityCenterPage → ScanTab
 
 ### Persistence
 
-- **Canonical path:** Quarantine manifest at `%LOCALAPPDATA%\AVS Shield\Quarantine\manifest.json`. Atomic writes, survives restart.
+- **Canonical path:** Quarantine manifest at `%LOCALAPPDATA%\AVS AI Shield\Quarantine\manifest.json`. Atomic writes, survives restart.
 - **Legacy path:** Frontend-only `SecurityRepository` stores snapshots/threats in memory. Lost on page reload.
 
 ## Detection
@@ -184,7 +184,7 @@ SecurityCenterPage → ScanTab
 ## Safety
 
 - **Windows protection:** Yes — `validate_filesystem_path()` rejects `C:\Windows`, `C:\Program Files`, `C:\ProgramData`, `%SystemRoot%`, `%ProgramFiles%`, etc. (canonical path)
-- **AVS self-protection:** Yes — `_is_avs_path()` in `QuarantineExecutor` rejects `LOCALAPPDATA\AVS Shield` and `LOCALAPPDATA\Programs\Devin` paths. (canonical path)
+- **AVS self-protection:** Yes — `_is_avs_path()` in `QuarantineExecutor` rejects `LOCALAPPDATA\AVS AI Shield` and `LOCALAPPDATA\Programs\Devin` paths. (canonical path)
 - **Locked files:** Yes — `_check_file_locked()` via `CreateFileW(GENERIC_DELETE)` probe in `RemediationCoordinator`. (canonical path)
 - **Running files:** Yes — locked file check catches running executables. (canonical path)
 - **Execution revalidation:** Yes — `RemediationCoordinator._context_provider` re-reads fresh filesystem state before execution. (canonical path)

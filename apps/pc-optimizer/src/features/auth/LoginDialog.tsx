@@ -1,5 +1,5 @@
 /**
- * LoginDialog — production-ready AVS Shield account login.
+ * LoginDialog — production-ready AVS AI Shield account login.
  *
  * Features:
  * - Email or Phone field
@@ -73,11 +73,11 @@ export function LoginDialog() {
               <ShieldCheckIcon className="h-5 w-5 text-white" aria-hidden />
             </div>
             <span className="text-section-title font-semibold tracking-tight text-text-primary">
-              AVS Shield
+              AVS AI Shield
             </span>
           </div>
           <p className="text-small text-text-muted">
-            Sign in to your AVS Shield account to continue
+            Sign in to your AVS AI Shield account to continue
           </p>
         </div>
 
@@ -205,7 +205,7 @@ export function LoginDialog() {
         {/* Footer */}
         <div className="text-center">
           <p className="text-micro text-text-muted">
-            By signing in, you agree to the AVS Shield Terms of Service and Privacy Policy.
+            By signing in, you agree to the AVS AI Shield Terms of Service and Privacy Policy.
           </p>
         </div>
       </div>

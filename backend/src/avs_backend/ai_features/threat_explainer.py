@@ -1,4 +1,4 @@
-"""AI Threat Explanation module for AVS Shield.
+"""AI Threat Explanation module for AVS AI Shield.
 
 This module generates human-readable explanations of detected threats using
 a **local rule-based explanation engine**.  It does **NOT** call any external
@@ -70,7 +70,7 @@ _THREAT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
         ),
         "recommended_actions": [
             "Quarantine or delete the detected file immediately.",
-            "Run a full system scan with AVS Shield.",
+            "Run a full system scan with AVS AI Shield.",
             "Change passwords for sensitive accounts accessed on this machine.",
             "Review recently installed software and remove anything unrecognised.",
             "Monitor network traffic for unusual outbound connections.",
@@ -123,7 +123,7 @@ _THREAT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
             "Quarantine or delete the detected file.",
             "Apply all available OS and software security patches.",
             "Disable AutoRun / AutoPlay for removable drives.",
-            "Run a full system and network scan with AVS Shield.",
+            "Run a full system and network scan with AVS AI Shield.",
         ],
     },
     "Adware": {
@@ -146,7 +146,7 @@ _THREAT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
         "recommended_actions": [
             "Uninstall the associated program via the control panel.",
             "Remove suspicious browser extensions and reset browser settings.",
-            "Run a full system scan with AVS Shield.",
+            "Run a full system scan with AVS AI Shield.",
             "Be cautious when installing free software — opt out of bundled offers.",
         ],
     },
@@ -169,7 +169,7 @@ _THREAT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
         ),
         "recommended_actions": [
             "Quarantine or delete the detected file immediately.",
-            "Run a full system scan with AVS Shield.",
+            "Run a full system scan with AVS AI Shield.",
             "Change passwords for all sensitive accounts.",
             "Enable multi-factor authentication where available.",
             "Review installed programs and remove anything unfamiliar.",
@@ -196,7 +196,7 @@ _THREAT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
         "recommended_actions": [
             "Review the installed program and uninstall if not needed.",
             "Reset browser homepage and search settings.",
-            "Run a full system scan with AVS Shield.",
+            "Run a full system scan with AVS AI Shield.",
             "Pay attention to custom install options when installing software.",
         ],
     },
@@ -220,7 +220,7 @@ _THREAT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
         ),
         "recommended_actions": [
             "Quarantine the detected file immediately.",
-            "Run an offline scan (boot from AVS Shield rescue media if available).",
+            "Run an offline scan (boot from AVS AI Shield rescue media if available).",
             "Consider reinstalling the operating system if removal is incomplete.",
             "Update all firmware and drivers to latest versions.",
             "Check for unauthorised user accounts and scheduled tasks.",
@@ -245,7 +245,7 @@ _THREAT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
         "recommended_actions": [
             "Do NOT reboot the machine until the threat is removed.",
             "Quarantine the detected file immediately.",
-            "Run an offline / boot-time scan with AVS Shield.",
+            "Run an offline / boot-time scan with AVS AI Shield.",
             "Repair the MBR using system recovery tools if the system is "
             "unbootable.",
             "Consider a full OS reinstall if the infection persists.",
@@ -271,7 +271,7 @@ _THREAT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
             "Quarantine or delete the detected file immediately.",
             "Change all passwords typed on this machine, using a different device.",
             "Enable multi-factor authentication on all sensitive accounts.",
-            "Run a full system scan with AVS Shield.",
+            "Run a full system scan with AVS AI Shield.",
             "Use a virtual keyboard for sensitive inputs until the threat is removed.",
         ],
     },
@@ -296,7 +296,7 @@ _THREAT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
             "Quarantine or delete the detected file.",
             "Check for suspicious scheduled tasks or startup entries.",
             "Monitor CPU / GPU usage for unexpected spikes.",
-            "Run a full system scan with AVS Shield.",
+            "Run a full system scan with AVS AI Shield.",
             "Review browser extensions for cryptomining scripts.",
         ],
     },
@@ -318,7 +318,7 @@ _THREAT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
         ),
         "recommended_actions": [
             "Quarantine or delete the detected file immediately.",
-            "Run a full system scan with AVS Shield to detect secondary payloads.",
+            "Run a full system scan with AVS AI Shield to detect secondary payloads.",
             "Block the associated C2 domains / IPs at the firewall if known.",
             "Review network connections for outbound traffic to unknown servers.",
             "Check for newly created files in temp and AppData directories.",
@@ -344,7 +344,7 @@ _THREAT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
         "recommended_actions": [
             "Quarantine or delete the detected file immediately.",
             "Disconnect the machine from the network.",
-            "Run a full system scan with AVS Shield.",
+            "Run a full system scan with AVS AI Shield.",
             "Change all passwords using a separate, trusted device.",
             "Review firewall logs for unauthorised inbound / outbound connections.",
             "Consider a clean OS reinstall if persistent backdoor components remain.",
@@ -355,7 +355,7 @@ _THREAT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
 # Generic fallback explanation used when no category matches.
 _GENERIC_EXPLANATION: dict[str, Any] = {
     "what_it_does": (
-        "This threat was detected by AVS Shield but does not match a known "
+        "This threat was detected by AVS AI Shield but does not match a known "
         "malware category in the local knowledge base.  It may exhibit "
         "suspicious or malicious behaviour and should be treated with caution."
     ),
@@ -370,8 +370,8 @@ _GENERIC_EXPLANATION: dict[str, Any] = {
     ),
     "recommended_actions": [
         "Quarantine the detected file immediately.",
-        "Run a full system scan with AVS Shield.",
-        "Submit the sample to the AVS Shield threat research team for analysis.",
+        "Run a full system scan with AVS AI Shield.",
+        "Submit the sample to the AVS AI Shield threat research team for analysis.",
         "Monitor the system for unusual behaviour.",
     ],
 }
@@ -394,7 +394,7 @@ _SEVERITY_TO_RISK: dict[str, str] = {
 # =====================================================================
 
 class ThreatExplainer:
-    """Local rule-based threat explanation engine for AVS Shield.
+    """Local rule-based threat explanation engine for AVS AI Shield.
 
     The explainer matches threat names and types against a built-in knowledge
     base to produce human-readable explanations.  No external LLM API is used

@@ -29,7 +29,7 @@ const TIPS: readonly Tip[] = [
     id: 'tip-registry-backup',
     route: '/registry-cleaner',
     title: 'Registry Backup',
-    body: 'AVS Shield automatically creates a registry backup before applying any fixes. You can restore from Settings if needed.',
+    body: 'AVS AI Shield automatically creates a registry backup before applying any fixes. You can restore from Settings if needed.',
   },
   {
     id: 'tip-startup-impact',

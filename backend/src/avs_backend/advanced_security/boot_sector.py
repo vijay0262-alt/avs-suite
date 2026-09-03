@@ -1,4 +1,4 @@
-"""Boot sector / MBR scanner for AVS Shield — boot-level malware detection.
+"""Boot sector / MBR scanner for AVS AI Shield — boot-level malware detection.
 
 This module reads and analyses the Master Boot Record (MBR) of the system
 drive to detect bootkits, rootkits and other boot-level malware that
@@ -10,9 +10,9 @@ This is a **read-only** scanner.  It never writes to the MBR or any boot
 sector.  The only write operations are:
 
   1. Creating a backup copy of the current MBR (to a safe location under
-     ``%LOCALAPPDATA%\\AVS Shield\\threat_engine\\mbr_backups\\``).
+     ``%LOCALAPPDATA%\\AVS AI Shield\\threat_engine\\mbr_backups\\``).
   2. Persisting scan history to
-     ``%LOCALAPPDATA%\\AVS Shield\\threat_engine\\boot_scan_history.json``.
+     ``%LOCALAPPDATA%\\AVS AI Shield\\threat_engine\\boot_scan_history.json``.
 
 Reading the MBR requires **administrator privileges** on Windows.  When the
 process is not elevated the scanner returns a clear ``permission_denied``
@@ -206,7 +206,7 @@ _KNOWN_BOOTLOADERS: list[dict[str, Any]] = [
 
 _DATA_DIR = Path(
     os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
-) / "AVS Shield" / "threat_engine"
+) / "AVS AI Shield" / "threat_engine"
 _DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 _HISTORY_PATH = _DATA_DIR / "boot_scan_history.json"
@@ -316,7 +316,7 @@ def _save_history(history: list[dict[str, Any]]) -> None:
 # =====================================================================
 
 class BootSectorScanner:
-    """Read-only MBR / boot sector scanner for AVS Shield.
+    """Read-only MBR / boot sector scanner for AVS AI Shield.
 
     The scanner reads the Master Boot Record of the system drive, validates
     its structure, checks the partition table for anomalies and scans the
@@ -387,7 +387,7 @@ class BootSectorScanner:
             result["safe"] = False
             result["error"] = (
                 "permission_denied: administrator privileges are required to read "
-                f"the MBR ({device}). Run AVS Shield as administrator and retry."
+                f"the MBR ({device}). Run AVS AI Shield as administrator and retry."
             )
             result["threats"].append({
                 "type": "access_denied",

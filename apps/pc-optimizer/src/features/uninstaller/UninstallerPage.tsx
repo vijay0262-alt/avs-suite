@@ -60,7 +60,7 @@ export default function UninstallerPage() {
         <FreeEditionNotice
           badgeLabel="PRO"
           title="Uninstaller is a Professional Feature"
-          message="Free users can view installed programs but cannot uninstall them through AVS Shield. Upgrade to Professional to uninstall programs and scan for leftover files and registry entries."
+          message="Free users can view installed programs but cannot uninstall them through AVS AI Shield. Upgrade to Professional to uninstall programs and scan for leftover files and registry entries."
           action={
             <Button
               onClick={() => showUpgrade('Uninstaller')}

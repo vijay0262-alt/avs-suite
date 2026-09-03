@@ -5,7 +5,7 @@
  * Every module queries this service instead of scattering limit logic.
  *
  * Free edition: Understand your PC — analyze, inspect, manually improve.
- * Professional edition: Let AVS Shield take care of your PC — automation, unlimited, continuous.
+ * Professional edition: Let AVS AI Shield take care of your PC — automation, unlimited, continuous.
  */
 
 import { useIsPro } from '../sync/syncStore';

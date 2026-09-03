@@ -418,14 +418,14 @@ def test_quarantine_fails_missing_file(tmp_path):
 
 def test_avs_path_protection():
     """AVS application paths are detected and protected from quarantine."""
-    assert _is_avs_path("C:\\Users\\test\\AppData\\Local\\AVS Shield\\Optimizer.exe")
-    assert _is_avs_path("C:\\Program Files\\AVS Shield\\avs-backend.exe")
+    assert _is_avs_path("C:\\Users\\test\\AppData\\Local\\AVS AI Shield\\Optimizer.exe")
+    assert _is_avs_path("C:\\Program Files\\AVS AI Shield\\avs-backend.exe")
     assert not _is_avs_path("C:\\Users\\test\\Downloads\\malware.exe")
 
 
 def test_quarantine_rejects_avs_path(tmp_path):
     """Quarantine executor rejects AVS application files."""
-    avs_file = tmp_path / "AVS Shield" / "avs-backend.exe"
+    avs_file = tmp_path / "AVS AI Shield" / "avs-backend.exe"
     avs_file.parent.mkdir(parents=True)
     avs_file.write_bytes(b"avs backend")
 
@@ -454,7 +454,7 @@ def test_quarantine_rejects_avs_path(tmp_path):
         str(tmp_path / "quarantine" / "manifest.json"),
     ), patch(
         "avs_backend.scan_core.execution.quarantine_executor._get_avs_paths",
-        return_value=[str(tmp_path / "AVS Shield")],
+        return_value=[str(tmp_path / "AVS AI Shield")],
     ):
         result = QuarantineExecutor.execute(
             action,

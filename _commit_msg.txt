@@ -1,0 +1,25 @@
+Rename "AVS Shield" to "AVS AI Shield" across the entire codebase
+
+Replaced 369 occurrences of "AVS Shield" (without "AI") with "AVS AI Shield"
+across frontend, backend, electron, customer-portal, and config files.
+
+Used negative lookbehind regex (?<!AI )AVS Shield to avoid creating
+"AVS AI AI Shield" duplicates. Verified zero remaining and zero double-AI.
+
+Files changed: 115+ across:
+- apps/pc-optimizer/src (66 files)
+- apps/pc-optimizer/electron (5 files)
+- apps/customer-portal (18 files)
+- packages/shared/src (2 files)
+- backend/src (50 files)
+- docs, config, package.json files
+
+Validation:
+- ESLint: 0 warnings
+- TypeScript build: passed
+- Vitest: 159 test files, 8098 tests passed
+- PyInstaller: backend rebuilt successfully
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

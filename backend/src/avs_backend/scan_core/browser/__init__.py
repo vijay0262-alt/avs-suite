@@ -1,5 +1,5 @@
 """
-AVS Shield Scan Core — Browser Enumerator.
+AVS AI Shield Scan Core — Browser Enumerator.
 
 Discovers browser installations, profiles, and assets without cleaning,
 reading, or classifying anything. Completely independent from Browser

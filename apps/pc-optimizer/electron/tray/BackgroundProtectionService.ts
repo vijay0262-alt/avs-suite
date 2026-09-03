@@ -120,7 +120,7 @@ export class BackgroundProtectionService {
         this.logger.warn('[bg-protection] Monitoring stopped unexpectedly — restarting');
         showNotification({
           title: 'Protection Restarted',
-          body: 'AVS Shield detected that real-time monitoring was interrupted and has restarted it.',
+          body: 'AVS AI Shield detected that real-time monitoring was interrupted and has restarted it.',
           category: 'predictionAlert',
         });
         await this.startMonitoring();

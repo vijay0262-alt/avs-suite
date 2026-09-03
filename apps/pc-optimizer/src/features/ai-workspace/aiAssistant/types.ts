@@ -3,7 +3,7 @@
  *
  * EPIC 5 PHASE A PART 1
  *
- * The AVS AI Assistant is the primary AI interface for AVS Shield.
+ * The AVS AI Assistant is the primary AI interface for AVS AI Shield.
  * It orchestrates all existing AI modules to answer questions,
  * explain system behavior, recommend actions, create optimization
  * sessions, and navigate the platform using natural language.

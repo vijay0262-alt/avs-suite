@@ -1,7 +1,7 @@
 """
 Asset Types and Categories — SC-6A
 
-Defines the taxonomy of all discoverable objects in AVS Shield.
+Defines the taxonomy of all discoverable objects in AVS AI Shield.
 """
 
 from __future__ import annotations

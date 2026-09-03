@@ -388,7 +388,7 @@ def run_maintenance(action: str) -> dict[str, Any]:
 def main() -> int:
     """CLI entry point for headless maintenance."""
     parser = argparse.ArgumentParser(
-        description="AVS Shield headless maintenance runner",
+        description="AVS AI Shield headless maintenance runner",
     )
     parser.add_argument(
         "--maintenance",

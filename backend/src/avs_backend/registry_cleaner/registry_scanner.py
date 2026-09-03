@@ -575,7 +575,7 @@ def fix_issues(issues: list[RegistryIssue]) -> dict[str, Any]:
     # Best-effort System Restore Point before registry changes.
     try:
         from avs_backend.system_restore import create_restore_point
-        rp_result = create_restore_point("AVS Shield — Pre-registry-fix checkpoint")
+        rp_result = create_restore_point("AVS AI Shield — Pre-registry-fix checkpoint")
         if rp_result.success:
             log.info("Restore point created (seq=%s) before registry fix", rp_result.sequence_number)
         else:

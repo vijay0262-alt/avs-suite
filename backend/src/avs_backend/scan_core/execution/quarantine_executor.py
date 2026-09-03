@@ -15,7 +15,7 @@ DefaultExecutor through the canonical RemediationCoordinator pipeline.
 It does NOT bypass SafetyGate, CapabilityContract, or path validation.
 
 Quarantine storage location:
-    Windows: %LOCALAPPDATA%\\AVS Shield\\Quarantine
+    Windows: %LOCALAPPDATA%\\AVS AI Shield\\Quarantine
     Other:   ~/.avs-shield/quarantine
 
 Manifest format (manifest.json):
@@ -72,7 +72,7 @@ logger = logging.getLogger(__name__)
 # ── Quarantine storage paths ──────────────────────────────────────────
 
 if os.name == "nt":
-    _QUARANTINE_DIR = os.path.expandvars(r"%LOCALAPPDATA%\AVS Shield\Quarantine")
+    _QUARANTINE_DIR = os.path.expandvars(r"%LOCALAPPDATA%\AVS AI Shield\Quarantine")
 else:
     _QUARANTINE_DIR = os.path.expanduser("~/.avs-shield/quarantine")
 
@@ -89,7 +89,7 @@ def _get_avs_paths() -> list[str]:
         local_app_data = os.environ.get("LOCALAPPDATA", "")
         app_data = os.environ.get("APPDATA", "")
         if local_app_data:
-            paths.append(os.path.join(local_app_data, "AVS Shield"))
+            paths.append(os.path.join(local_app_data, "AVS AI Shield"))
             paths.append(os.path.join(local_app_data, "Programs", "Devin"))
         if app_data:
             paths.append(os.path.join(app_data, "devin"))
@@ -107,7 +107,7 @@ def _is_avs_path(canonical_path: str) -> bool:
         norm_avs = avs_path.replace("\\", "/").lower().rstrip("/")
         if normalized == norm_avs or normalized.startswith(norm_avs + "/"):
             return True
-    # Also check if the path contains "AVS Shield" or "avs-backend"
+    # Also check if the path contains "AVS AI Shield" or "avs-backend"
     lower_path = canonical_path.lower()
     if "avs shield" in lower_path or "avs-backend" in lower_path:
         return True

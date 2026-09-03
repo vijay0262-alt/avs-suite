@@ -11,7 +11,7 @@ Data sources:
   - Temperature readings (if available)
   - Startup impact trends
 
-The module creates a SQLite database in AppData/Local/AVS Shield/
+The module creates a SQLite database in AppData/Local/AVS AI Shield/
 for persistent trend storage.
 
 RPC methods:
@@ -43,7 +43,7 @@ IS_WINDOWS = platform.system() == "Windows"
 
 # Database path
 if IS_WINDOWS:
-    _DB_DIR = os.path.expandvars(r"%LOCALAPPDATA%\AVS Shield")
+    _DB_DIR = os.path.expandvars(r"%LOCALAPPDATA%\AVS AI Shield")
 else:
     _DB_DIR = os.path.expanduser("~/.avs-shield")
 

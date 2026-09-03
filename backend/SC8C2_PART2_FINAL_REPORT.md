@@ -100,7 +100,7 @@ The `is_in_protected_location()` method (`locations.py:542-567`) checks exceptio
 | `test_windows_backup_not_blocked` | `C:\WindowsBackup\file.txt` | NOT BLOCKED | Boundary: similar prefix |
 | `test_similar_prefix_path_not_blocked` | `C:\Program FilesBackup\app.exe` | NOT BLOCKED | Boundary: similar prefix |
 | `test_patchcache_exception_preserved` | `C:\Windows\Installer\$PatchCache$\msi.dll` | NOT BLOCKED | Exception preserved |
-| `test_avs_shield_protected_location_blocked` | `C:\Program Files\AVS Shield\optimizer.exe` | BLOCKED | AVS Shield install dir |
+| `test_avs_shield_protected_location_blocked` | `C:\Program Files\AVS AI Shield\optimizer.exe` | BLOCKED | AVS AI Shield install dir |
 | `test_windows_root_itself_blocked` | `C:\Windows` | BLOCKED | Root itself (no subdir) |
 | `test_trailing_separator_handled` | `C:\Windows\System32\` | BLOCKED | Trailing separator |
 | `test_boundary_safe_normalization` | (unit test) | — | `_normalize_windows_path` correctness |

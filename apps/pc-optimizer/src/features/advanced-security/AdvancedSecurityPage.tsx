@@ -1,5 +1,5 @@
 /**
- * AdvancedSecurityPage — AVS Shield Advanced Threat Protection.
+ * AdvancedSecurityPage — AVS AI Shield Advanced Threat Protection.
  *
  * Tier 3 features:
  * - Behavioral sandbox — observe executable behavior

@@ -8,8 +8,8 @@ import { AuthProvider } from '@/providers/auth-provider';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'AVS Shield — Customer Portal',
-  description: 'Manage your AVS Shield products, licenses, and devices.',
+  title: 'AVS AI Shield — Customer Portal',
+  description: 'Manage your AVS AI Shield products, licenses, and devices.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

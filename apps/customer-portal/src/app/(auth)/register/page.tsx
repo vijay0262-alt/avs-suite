@@ -55,7 +55,7 @@ export default function RegisterPage() {
         <div>
           <CardTitle className="text-2xl">Create account</CardTitle>
           <CardDescription className="mt-1">
-            Get started with AVS Shield
+            Get started with AVS AI Shield
           </CardDescription>
         </div>
       </CardHeader>

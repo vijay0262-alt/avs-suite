@@ -127,7 +127,7 @@ export default function ActivationPage() {
     <div data-testid="page-license-activation" className="space-y-4">
       <PageHeader
         title="Account & License"
-        description="Your AVS Shield subscription, license, and connection status."
+        description="Your AVS AI Shield subscription, license, and connection status."
       />
 
       {/* Server Connection */}
@@ -335,7 +335,7 @@ export default function ActivationPage() {
                 <Badge tone="neutral">FREE Edition</Badge>
               </div>
               <p className="text-small text-text-secondary">
-                No license key required. Your account authenticates directly with AVS Shield.
+                No license key required. Your account authenticates directly with AVS AI Shield.
               </p>
               <div className="grid grid-cols-1 gap-4 text-small md:grid-cols-2 mt-2">
                 <div>

@@ -23,9 +23,9 @@ def _restore_create(params: dict[str, Any] | None) -> dict[str, Any]:
 
     Parameters:
       description (str, optional): Description for the restore point.
-          Defaults to "AVS Shield — Pre-cleaning checkpoint".
+          Defaults to "AVS AI Shield — Pre-cleaning checkpoint".
     """
-    description = "AVS Shield — Pre-cleaning checkpoint"
+    description = "AVS AI Shield — Pre-cleaning checkpoint"
     if params and isinstance(params.get("description"), str):
         description = params["description"]
 

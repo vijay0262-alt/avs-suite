@@ -62,7 +62,7 @@ export function configureApiClient(opts: {
 function classifyAxiosError(err: AxiosError): never {
   if (err.code === 'ECONNABORTED' || !err.response) {
     throw new NetworkError(
-      err.message || 'Unable to connect to the AVS Shield server.',
+      err.message || 'Unable to connect to the AVS AI Shield server.',
     );
   }
 

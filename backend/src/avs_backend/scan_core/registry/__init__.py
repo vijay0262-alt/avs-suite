@@ -1,5 +1,5 @@
 """
-AVS Shield Scan Core — Registry Enumerator.
+AVS AI Shield Scan Core — Registry Enumerator.
 
 Discovers registry assets (hives, keys, values) without classifying,
 repairing, or deleting anything. Completely independent from the

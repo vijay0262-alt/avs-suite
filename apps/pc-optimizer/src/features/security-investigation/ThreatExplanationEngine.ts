@@ -3,7 +3,7 @@
  *
  * For every investigation, explains:
  *   - What happened
- *   - Why AVS Shield detected it
+ *   - Why AVS AI Shield detected it
  *   - Which evidence supports it
  *   - How confident the AI is
  *   - Possible false-positive factors
@@ -68,10 +68,10 @@ export class ThreatExplanationEngine {
     }
 
     if (indicators.length === 0) {
-      return 'AVS Shield detected this threat through automated security analysis. No specific indicators were available for detailed explanation.';
+      return 'AVS AI Shield detected this threat through automated security analysis. No specific indicators were available for detailed explanation.';
     }
 
-    return `AVS Shield detected this threat because the following indicator(s) were identified: ${indicators.join('; ')}. The detection system requires multiple supporting indicators to minimize false positives. ${evidence.total} total piece(s) of evidence were collected from ${Object.keys(evidence.bySource).length} detection source(s).`;
+    return `AVS AI Shield detected this threat because the following indicator(s) were identified: ${indicators.join('; ')}. The detection system requires multiple supporting indicators to minimize false positives. ${evidence.total} total piece(s) of evidence were collected from ${Object.keys(evidence.bySource).length} detection source(s).`;
   }
 
   private buildEvidenceSummary(evidence: CollectedEvidence): string {
@@ -88,7 +88,7 @@ export class ThreatExplanationEngine {
     const mitigatingDesc = confidence.mitigatingFactors.length > 0
       ? ` However, confidence was reduced due to: ${confidence.mitigatingFactors.join('; ')}.`
       : '';
-    return `AVS Shield assesses confidence as ${confidence.label.toUpperCase().replace(/_/g, ' ')} (${(confidence.score * 100).toFixed(0)}%). ${factorDescs.join('; ')}.${mitigatingDesc}`;
+    return `AVS AI Shield assesses confidence as ${confidence.label.toUpperCase().replace(/_/g, ' ')} (${(confidence.score * 100).toFixed(0)}%). ${factorDescs.join('; ')}.${mitigatingDesc}`;
   }
 
   private buildFalsePositiveFactors(threats: Threat[], falsePositive: FalsePositiveAnalysis): string[] {
@@ -122,10 +122,10 @@ export class ThreatExplanationEngine {
     const whyDangerous = kbEntry?.whyDangerous ?? '';
 
     if (threats.length === 1) {
-      return `${friendlyName} was detected on your computer. ${whatIs} ${whyDangerous} AVS Shield found ${evidence.total} piece(s) of evidence supporting this detection, with ${confidence.label.replace(/_/g, ' ')} confidence (${(confidence.score * 100).toFixed(0)}%). ${falsePositiveText(confidence)}`;
+      return `${friendlyName} was detected on your computer. ${whatIs} ${whyDangerous} AVS AI Shield found ${evidence.total} piece(s) of evidence supporting this detection, with ${confidence.label.replace(/_/g, ' ')} confidence (${(confidence.score * 100).toFixed(0)}%). ${falsePositiveText(confidence)}`;
     }
 
-    return `${friendlyName} and ${threats.length - 1} related threat(s) were detected and linked together as a single security incident. ${whatIs} ${whyDangerous} AVS Shield correlated ${threats.length} separate detections based on shared evidence and timing. ${evidence.total} total piece(s) of evidence support this investigation, with ${confidence.label.replace(/_/g, ' ')} confidence (${(confidence.score * 100).toFixed(0)}%). ${falsePositiveText(confidence)}`;
+    return `${friendlyName} and ${threats.length - 1} related threat(s) were detected and linked together as a single security incident. ${whatIs} ${whyDangerous} AVS AI Shield correlated ${threats.length} separate detections based on shared evidence and timing. ${evidence.total} total piece(s) of evidence support this investigation, with ${confidence.label.replace(/_/g, ' ')} confidence (${(confidence.score * 100).toFixed(0)}%). ${falsePositiveText(confidence)}`;
   }
 
   private buildTechnicalExplanation(

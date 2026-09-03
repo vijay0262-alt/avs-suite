@@ -1,6 +1,6 @@
 /**
  * UnifiedResultsView — composes all AI results components into a single,
- * premium report experience used by every module in AVS Shield.
+ * premium report experience used by every module in AVS AI Shield.
  *
  * Layout:
  *   ┌─────────────────────────────────────────┐

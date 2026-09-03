@@ -3,7 +3,7 @@ import sys, os, time, ctypes, tempfile
 from pathlib import Path
 
 # Delete stale database
-db_path = Path(os.environ.get("LOCALAPPDATA", "")) / "AVS Shield" / "metadata.db"
+db_path = Path(os.environ.get("LOCALAPPDATA", "")) / "AVS AI Shield" / "metadata.db"
 for p in db_path.parent.glob("metadata.db*"):
     try:
         p.unlink()

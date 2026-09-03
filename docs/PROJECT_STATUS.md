@@ -16,7 +16,7 @@ Last updated: 2026-08-02
 | Edition | Free (Professional ready via licensing) |
 | Release Date | 2026-07-23 |
 | Company | Advanced Vision Software LLC |
-| Brand | AVS Shield |
+| Brand | AVS AI Shield |
 | Website | https://www.avsshield.com |
 | API | https://api.avsshield.com (currently localhost:8000 in code) |
 | Support | help@avsshield.com |

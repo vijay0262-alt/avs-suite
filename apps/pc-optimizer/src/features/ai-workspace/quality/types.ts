@@ -5,7 +5,7 @@
  *
  * Foundation Audit & Stabilization
  *
- * Provides the type system for auditing every existing module in AVS Shield,
+ * Provides the type system for auditing every existing module in AVS AI Shield,
  * scoring production readiness, tracking regressions, and generating
  * structured audit reports.
  *

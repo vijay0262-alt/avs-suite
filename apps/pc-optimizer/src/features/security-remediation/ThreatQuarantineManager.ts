@@ -17,7 +17,7 @@ export class ThreatQuarantineManager {
   private encryptionEnabled: boolean;
   private quarantinePath: string;
 
-  constructor(encryptionEnabled = true, quarantinePath = '%APPDATA%\\AVS Shield\\Quarantine') {
+  constructor(encryptionEnabled = true, quarantinePath = '%APPDATA%\\AVS AI Shield\\Quarantine') {
     this.encryptionEnabled = encryptionEnabled;
     this.quarantinePath = quarantinePath;
   }

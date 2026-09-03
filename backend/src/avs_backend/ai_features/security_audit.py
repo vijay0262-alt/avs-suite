@@ -1,4 +1,4 @@
-"""One-Click Security Audit module for AVS Shield.
+"""One-Click Security Audit module for AVS AI Shield.
 
 Performs a comprehensive security posture assessment of the local Windows
 machine by running a series of independent checks:
@@ -21,7 +21,7 @@ grade (A-F), a human-readable summary, and a list of actionable
 recommendations.
 
 Audit history is persisted to
-``%LOCALAPPDATA%\\AVS Shield\\threat_engine\\security_audit_history.json`` so
+``%LOCALAPPDATA%\\AVS AI Shield\\threat_engine\\security_audit_history.json`` so
 that trends can be reviewed over time.
 """
 
@@ -49,7 +49,7 @@ _CREATE_NO_WINDOW = 0x08000000
 # =====================================================================
 
 _HISTORY_PATH = Path(
-    os.path.expandvars(r"%LOCALAPPDATA%\AVS Shield\threat_engine\security_audit_history.json")
+    os.path.expandvars(r"%LOCALAPPDATA%\AVS AI Shield\threat_engine\security_audit_history.json")
 )
 
 _MAX_HISTORY = 50
@@ -147,7 +147,7 @@ def _now_iso() -> str:
 
 
 class SecurityAuditor:
-    """One-Click Security Audit for AVS Shield.
+    """One-Click Security Audit for AVS AI Shield.
 
     Runs a battery of independent security checks against the local machine
     and produces a scored report with a letter grade and recommendations.

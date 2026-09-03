@@ -1,4 +1,4 @@
-# AVS Shield Feature Roadmap
+# AVS AI Shield Feature Roadmap
 
 ## Phase 1: Match the Competition (Weeks 1-4)
 

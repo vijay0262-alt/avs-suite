@@ -44,7 +44,7 @@ export default function LoginPage() {
         <div>
           <CardTitle className="text-2xl">Welcome back</CardTitle>
           <CardDescription className="mt-1">
-            Sign in to your AVS Shield account
+            Sign in to your AVS AI Shield account
           </CardDescription>
         </div>
       </CardHeader>

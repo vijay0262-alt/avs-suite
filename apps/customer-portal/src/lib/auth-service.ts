@@ -39,7 +39,7 @@ export class AuthResultError extends Error {
 function classifyError(err: unknown): AuthResultError {
   if (err instanceof NetworkError) {
     return new AuthResultError(
-      'Unable to connect to AVS Shield server. Please check your internet connection.',
+      'Unable to connect to AVS AI Shield server. Please check your internet connection.',
       'NETWORK_ERROR',
     );
   }
@@ -56,7 +56,7 @@ function classifyError(err: unknown): AuthResultError {
       return new AuthResultError('Invalid email/phone or password.', 'INVALID_CREDENTIALS');
     }
     if (err.statusCode === 409) return new AuthResultError('An account with this email already exists.', 'EMAIL_EXISTS');
-    if (err.statusCode >= 500) return new AuthResultError('The AVS Shield server is experiencing issues. Please try again later.', 'SERVER_ERROR');
+    if (err.statusCode >= 500) return new AuthResultError('The AVS AI Shield server is experiencing issues. Please try again later.', 'SERVER_ERROR');
     return new AuthResultError(err.detail ?? err.message, 'UNKNOWN');
   }
   return new AuthResultError(err instanceof Error ? err.message : 'An unexpected error occurred.', 'UNKNOWN');

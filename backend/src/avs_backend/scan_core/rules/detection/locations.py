@@ -826,7 +826,7 @@ class KnownLocations:
         - Boot/EFI/Recovery partitions
         - System Volume Information
         - User personal data directories
-        - AVS Shield installation directories
+        - AVS AI Shield installation directories
         """
         protected = [
             # Windows system root itself
@@ -844,10 +844,10 @@ class KnownLocations:
             # Program Files
             r"%ProgramFiles%",
             r"%ProgramFiles(x86)%",
-            # AVS Shield installation directories
-            r"%ProgramFiles%\AVS Shield",
+            # AVS AI Shield installation directories
             r"%ProgramFiles%\AVS AI Shield",
-            r"%ProgramFiles(x86)%\AVS Shield",
+            r"%ProgramFiles%\AVS AI Shield",
+            r"%ProgramFiles(x86)%\AVS AI Shield",
             r"%ProgramFiles(x86)%\AVS AI Shield",
             r"%LOCALAPPDATA%\Programs\AVS AI Shield",
             # User personal data

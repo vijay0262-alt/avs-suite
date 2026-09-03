@@ -5,7 +5,7 @@
  * `titleBarOverlay` (see main/index.ts). This component fills the space
  * left of the native window controls with the brand mark + app name.
  *
- * In Professional edition, shows "AVS Shield Pro" with a star badge
+ * In Professional edition, shows "AVS AI Shield Pro" with a star badge
  * to reinforce ownership every time the application is open.
  */
 import { useIsPro } from '../features/sync/syncStore';
@@ -33,7 +33,7 @@ export function TitleBar() {
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-small font-semibold tracking-[var(--avs-tracking-wide)] text-white">
-            AVS Shield{isPro ? ' Pro' : ' Optimizer'}
+            AVS AI Shield{isPro ? ' Pro' : ' Optimizer'}
           </span>
           {isPro && (
             <span

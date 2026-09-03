@@ -25,7 +25,7 @@ from typing import Any
 
 log = logging.getLogger("avs.threat_engine.hash_detector")
 
-_DATA_DIR = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "AVS Shield" / "threat_engine"
+_DATA_DIR = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "AVS AI Shield" / "threat_engine"
 _DATA_DIR.mkdir(parents=True, exist_ok=True)
 _HASH_DB_PATH = _DATA_DIR / "hash_blocklist.json"
 

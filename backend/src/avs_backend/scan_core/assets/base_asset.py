@@ -1,7 +1,7 @@
 """
 Base ScanAsset — SC-6A
 
-Universal base class for all discovered objects in AVS Shield.
+Universal base class for all discovered objects in AVS AI Shield.
 
 Every FileAsset, RegistryAsset, BrowserAsset, WindowsAsset, RuntimeAsset
 must inherit from ScanAsset.

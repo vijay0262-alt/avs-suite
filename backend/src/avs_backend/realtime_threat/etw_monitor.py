@@ -1,4 +1,4 @@
-"""ETW / WMI real-time file and process monitoring for AVS Shield.
+"""ETW / WMI real-time file and process monitoring for AVS AI Shield.
 
 This module provides real-time monitoring of security-relevant file and
 process activity on Windows. The name references ETW (Event Tracing for
@@ -538,7 +538,7 @@ class _ProcessStartWatcher:
 # =====================================================================
 
 class EtwMonitor:
-    """Real-time file and process monitor for AVS Shield.
+    """Real-time file and process monitor for AVS AI Shield.
 
     Despite the name (ETW = Event Tracing for Windows), true ETW
     consumption requires kernel-level access and specialised Python

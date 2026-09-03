@@ -1,4 +1,4 @@
-"""Community Threat Intelligence module for AVS Shield.
+"""Community Threat Intelligence module for AVS AI Shield.
 
 Collects and shares ANONYMIZED threat intelligence across the community.
 
@@ -69,7 +69,7 @@ def _default_cache_path() -> Path:
             local_app_data = os.path.expanduser("~\\AppData\\Local")
         else:
             local_app_data = os.path.expanduser("~/.local/share")
-    return Path(local_app_data) / "AVS Shield" / "threat_engine" / "community_intel.json"
+    return Path(local_app_data) / "AVS AI Shield" / "threat_engine" / "community_intel.json"
 
 
 def _utc_now_iso() -> str:

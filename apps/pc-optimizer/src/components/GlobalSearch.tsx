@@ -29,7 +29,7 @@ const ACTION_ENTRIES: SearchEntry[] = [
   { id: 'action-uninstall', to: '/uninstaller', label: 'Uninstall Applications', keywords: 'uninstall remove programs applications', category: 'Action' },
   { id: 'action-performance', to: '/performance', label: 'Optimize Performance', keywords: 'performance optimize boost speed tuning gaming work battery', category: 'Action' },
   { id: 'action-reports', to: '/reports', label: 'View Reports', keywords: 'reports history maintenance optimization results', category: 'Action' },
-  { id: 'action-about', to: '/about', label: 'About AVS Shield', keywords: 'about version build channel help support', category: 'Action' },
+  { id: 'action-about', to: '/about', label: 'About AVS AI Shield', keywords: 'about version build channel help support', category: 'Action' },
 ];
 
 const RECENT_KEY = 'avs-recent-searches';

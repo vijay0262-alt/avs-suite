@@ -1,5 +1,5 @@
 /**
- * TrayManager — professional system tray icon for AVS Shield.
+ * TrayManager — professional system tray icon for AVS AI Shield.
  *
  * Features:
  *   - Dynamic tooltip reflecting protection state
@@ -189,29 +189,29 @@ export class TrayManager {
 
     if (paused) {
       const remainingMin = Math.ceil(getPauseRemainingMs() / 60_000);
-      tooltip = `AVS Shield\nPaused (${remainingMin} min remaining)`;
+      tooltip = `AVS AI Shield\nPaused (${remainingMin} min remaining)`;
     } else {
       switch (this.currentState) {
         case 'protected':
-          tooltip = 'AVS Shield\nProtected';
+          tooltip = 'AVS AI Shield\nProtected';
           break;
         case 'scanning':
-          tooltip = 'AVS Shield\nScanning...';
+          tooltip = 'AVS AI Shield\nScanning...';
           break;
         case 'threat':
-          tooltip = 'AVS Shield\nAttention Required';
+          tooltip = 'AVS AI Shield\nAttention Required';
           break;
         case 'warning':
-          tooltip = 'AVS Shield\nAttention Required';
+          tooltip = 'AVS AI Shield\nAttention Required';
           break;
         case 'paused':
-          tooltip = 'AVS Shield\nPaused';
+          tooltip = 'AVS AI Shield\nPaused';
           break;
         case 'updating':
-          tooltip = 'AVS Shield\nUpdating...';
+          tooltip = 'AVS AI Shield\nUpdating...';
           break;
         default:
-          tooltip = 'AVS Shield';
+          tooltip = 'AVS AI Shield';
       }
     }
 
@@ -313,7 +313,7 @@ export class TrayManager {
       { type: 'separator' },
       // Exit
       {
-        label: 'Exit AVS Shield',
+        label: 'Exit AVS AI Shield',
         click: () => {
           this.logger.info('[tray] Exit requested');
           this.confirmExit();
@@ -345,10 +345,10 @@ export class TrayManager {
       buttons: ['Exit', 'Cancel'],
       defaultId: 1,
       cancelId: 1,
-      title: 'Exit AVS Shield',
+      title: 'Exit AVS AI Shield',
       message: 'Protection will stop.',
       detail:
-        'Background monitoring will stop.\nScheduled scans will not run.\nReal-time protection will be disabled.\n\nAre you sure you want to exit AVS Shield?',
+        'Background monitoring will stop.\nScheduled scans will not run.\nReal-time protection will be disabled.\n\nAre you sure you want to exit AVS AI Shield?',
     });
 
     if (choice === 0) {

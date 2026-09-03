@@ -773,8 +773,8 @@ describe('DocumentationGenerator', () => {
   it('exports doc as markdown', () => {
     const doc = generator.generateFAQ();
     const markdown = generator.exportDocAsMarkdown(doc);
-    expect(markdown).toContain('# AVS Shield FAQ');
-    expect(markdown).toContain('## Is AVS Shield free?');
+    expect(markdown).toContain('# AVS AI Shield FAQ');
+    expect(markdown).toContain('## Is AVS AI Shield free?');
   });
 });
 

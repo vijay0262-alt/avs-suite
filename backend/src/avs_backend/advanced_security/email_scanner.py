@@ -17,7 +17,7 @@ folder) for a range of threats commonly distributed via email:
 Each scan produces a result dict with a ``safe`` flag, a ``threat_level``
 of ``safe`` / ``suspicious`` / ``malicious`` and a list of human-readable
 threat descriptions. Scan history is persisted to
-``%LOCALAPPDATA%\\AVS Shield\\threat_engine\\email_scan_history.json``.
+``%LOCALAPPDATA%\\AVS AI Shield\\threat_engine\\email_scan_history.json``.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ except ImportError:
 
 # ─── Storage paths ──────────────────────────────────────────────────
 
-_DATA_DIR = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "AVS Shield" / "threat_engine"
+_DATA_DIR = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "AVS AI Shield" / "threat_engine"
 _DATA_DIR.mkdir(parents=True, exist_ok=True)
 _HISTORY_PATH = _DATA_DIR / "email_scan_history.json"
 _HASH_DB_PATH = _DATA_DIR / "hash_blocklist.json"
@@ -194,7 +194,7 @@ def _save_history(history: list[dict[str, Any]]) -> None:
 
 
 class EmailScanner:
-    """Email attachment scanner for AVS Shield.
+    """Email attachment scanner for AVS AI Shield.
 
     Scans email attachment files for malicious content using a combination
     of extension checks, hash blocklist lookups, macro-document detection,

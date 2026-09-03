@@ -1,7 +1,7 @@
 /**
  * PredictionEvents — event bus for AI Predictive Health lifecycle.
  *
- * Pub/sub pattern matching other AVS Shield event buses.
+ * Pub/sub pattern matching other AVS AI Shield event buses.
  */
 import type { PredictionEvent, PredictionRisk, ForecastDomain } from './types';
 

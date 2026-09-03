@@ -1,5 +1,5 @@
 /**
- * ThreatEnginePage — AVS Shield Threat Engine.
+ * ThreatEnginePage — AVS AI Shield Threat Engine.
  *
  * Unified antivirus / anti-malware scanning powered by multiple detection
  * sources: hash blocklist, YARA rules, ClamAV signatures, and VirusTotal.
@@ -727,7 +727,7 @@ export default function ThreatEnginePage() {
             <BeakerIcon className="h-5 w-5 text-brand-primary" />
           </div>
           <div className="flex-1">
-            <div className="text-small font-semibold text-text-primary">AVS Shield AV Engine (ClamAV)</div>
+            <div className="text-small font-semibold text-text-primary">AVS AI Shield AV Engine (ClamAV)</div>
             <div className="text-caption text-text-muted mt-0.5">
               Independent open-source antivirus engine with free daily-updated virus definitions. Install to enable signature-based malware protection — no third-party AV required.
             </div>

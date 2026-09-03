@@ -27,12 +27,12 @@ export class DocumentationGenerator {
   generateArchitectureDoc(): GeneratedDoc {
     return {
       id: 'architecture',
-      title: 'AVS Shield Architecture Documentation',
+      title: 'AVS AI Shield Architecture Documentation',
       description: 'Complete architecture overview of the AVS AI Shield platform.',
       sections: [
         {
           title: 'Overview',
-          content: 'AVS Shield is a Windows PC health optimization platform built on Electron + React + Python backend. The architecture follows a modular feature-based design where each optimizer is an isolated module with its own types, engine, and UI.',
+          content: 'AVS AI Shield is a Windows PC health optimization platform built on Electron + React + Python backend. The architecture follows a modular feature-based design where each optimizer is an isolated module with its own types, engine, and UI.',
           subsections: [],
         },
         {
@@ -79,7 +79,7 @@ export class DocumentationGenerator {
   generateApiDoc(): GeneratedDoc {
     return {
       id: 'api',
-      title: 'AVS Shield API Documentation',
+      title: 'AVS AI Shield API Documentation',
       description: 'Internal API reference for all feature modules.',
       sections: [
         {
@@ -120,8 +120,8 @@ export class DocumentationGenerator {
   generateDeveloperGuide(): GeneratedDoc {
     return {
       id: 'developer-guide',
-      title: 'AVS Shield Developer Guide',
-      description: 'Guide for developers working on the AVS Shield codebase.',
+      title: 'AVS AI Shield Developer Guide',
+      description: 'Guide for developers working on the AVS AI Shield codebase.',
       sections: [
         {
           title: 'Prerequisites',
@@ -156,8 +156,8 @@ export class DocumentationGenerator {
   generateContributionGuide(): GeneratedDoc {
     return {
       id: 'contribution',
-      title: 'AVS Shield Contribution Guide',
-      description: 'Guidelines for contributing to AVS Shield.',
+      title: 'AVS AI Shield Contribution Guide',
+      description: 'Guidelines for contributing to AVS AI Shield.',
       sections: [
         {
           title: 'Getting Started',
@@ -182,8 +182,8 @@ export class DocumentationGenerator {
   generateReleaseNotes(): GeneratedDoc {
     return {
       id: 'release-notes',
-      title: 'AVS Shield v1.0.0 Release Notes',
-      description: 'Official release notes for AVS Shield Version 1.0.0.',
+      title: 'AVS AI Shield v1.0.0 Release Notes',
+      description: 'Official release notes for AVS AI Shield Version 1.0.0.',
       sections: [
         {
           title: 'New Features',
@@ -213,12 +213,12 @@ export class DocumentationGenerator {
   generateUserManual(): GeneratedDoc {
     return {
       id: 'user-manual',
-      title: 'AVS Shield User Manual',
+      title: 'AVS AI Shield User Manual',
       description: 'Complete user guide for AVS AI Shield.',
       sections: [
         {
           title: 'Getting Started',
-          content: 'Download the installer from https://www.avsshield.com. Run the installer and follow the wizard. Launch AVS Shield from the desktop shortcut or Start Menu.',
+          content: 'Download the installer from https://www.avsshield.com. Run the installer and follow the wizard. Launch AVS AI Shield from the desktop shortcut or Start Menu.',
           subsections: [],
         },
         {
@@ -254,12 +254,12 @@ export class DocumentationGenerator {
   generateFAQ(): GeneratedDoc {
     return {
       id: 'faq',
-      title: 'AVS Shield FAQ',
-      description: 'Frequently asked questions about AVS Shield.',
+      title: 'AVS AI Shield FAQ',
+      description: 'Frequently asked questions about AVS AI Shield.',
       sections: [
         {
-          title: 'Is AVS Shield free?',
-          content: 'AVS Shield offers a Free Edition with all core features. A Professional Edition with advanced features is available with a license.',
+          title: 'Is AVS AI Shield free?',
+          content: 'AVS AI Shield offers a Free Edition with all core features. A Professional Edition with advanced features is available with a license.',
           subsections: [],
         },
         {
@@ -295,8 +295,8 @@ export class DocumentationGenerator {
   generateTroubleshootingGuide(): GeneratedDoc {
     return {
       id: 'troubleshooting',
-      title: 'AVS Shield Troubleshooting Guide',
-      description: 'Solutions to common issues with AVS Shield.',
+      title: 'AVS AI Shield Troubleshooting Guide',
+      description: 'Solutions to common issues with AVS AI Shield.',
       sections: [
         {
           title: 'Application won\'t start',
@@ -305,7 +305,7 @@ export class DocumentationGenerator {
         },
         {
           title: 'Health scan is slow',
-          content: '1. Close other resource-intensive applications. 2. Exclude AVS Shield from antivirus real-time scanning. 3. Run scan on specific drives instead of all drives. 4. Check disk health — slow disks can cause slow scans.',
+          content: '1. Close other resource-intensive applications. 2. Exclude AVS AI Shield from antivirus real-time scanning. 3. Run scan on specific drives instead of all drives. 4. Check disk health — slow disks can cause slow scans.',
           subsections: [],
         },
         {

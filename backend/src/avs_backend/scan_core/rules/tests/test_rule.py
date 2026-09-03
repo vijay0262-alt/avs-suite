@@ -169,10 +169,10 @@ class TestRuleMetadata:
             description="test",
             category=RuleCategory.JUNK,
             severity=Severity.LOW,
-            author="AVS Shield Team",
+            author="AVS AI Shield Team",
         )
         
-        assert metadata.author == "AVS Shield Team"
+        assert metadata.author == "AVS AI Shield Team"
     
     def test_metadata_with_documentation_url(self):
         """Test metadata with documentation URL."""

@@ -8,7 +8,7 @@ listed, restored, or permanently deleted.
 
 Quarantine layout::
 
-    %LOCALAPPDATA%\\AVS Shield\\ThreatQuarantine\\
+    %LOCALAPPDATA%\\AVS AI Shield\\ThreatQuarantine\\
         index.json
         <uuid>.bin        # quarantined file payload
         <uuid>.meta.json  # per-file metadata snapshot
@@ -32,7 +32,7 @@ log = logging.getLogger("avs.threat_engine.quarantine_manager")
 # ---------------------------------------------------------------------------
 _QUARANTINE_DIR = Path(
     os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
-) / "AVS Shield" / "ThreatQuarantine"
+) / "AVS AI Shield" / "ThreatQuarantine"
 _QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
 
 _INDEX_FILE = _QUARANTINE_DIR / "index.json"

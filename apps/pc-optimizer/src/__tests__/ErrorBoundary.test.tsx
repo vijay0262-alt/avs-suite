@@ -87,7 +87,7 @@ describe('ErrorBoundary', () => {
 
     expect(screen.getByTestId('error-boundary')).toBeDefined();
     expect(screen.getByText('Something went wrong')).toBeDefined();
-    expect(screen.getByText('AVS Shield encountered an unexpected problem.')).toBeDefined();
+    expect(screen.getByText('AVS AI Shield encountered an unexpected problem.')).toBeDefined();
     expect(screen.getByText('The rest of the application is still running safely.')).toBeDefined();
   });
 

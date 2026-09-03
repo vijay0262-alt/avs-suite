@@ -26,7 +26,7 @@ from typing import Any
 
 log = logging.getLogger("avs.threat_engine.yara_scanner")
 
-_DATA_DIR = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "AVS Shield" / "threat_engine"
+_DATA_DIR = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "AVS AI Shield" / "threat_engine"
 _YARA_RULES_DIR = _DATA_DIR / "yara_rules"
 _YARA_RULES_DIR.mkdir(parents=True, exist_ok=True)
 

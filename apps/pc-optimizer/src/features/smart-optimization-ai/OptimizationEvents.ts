@@ -1,7 +1,7 @@
 /**
  * OptimizationEvents — event bus for AI Smart Optimization lifecycle.
  *
- * Pub/sub pattern matching other AVS Shield event buses.
+ * Pub/sub pattern matching other AVS AI Shield event buses.
  */
 import type { OptimizationEvent, OptimizationCategory } from './types';
 

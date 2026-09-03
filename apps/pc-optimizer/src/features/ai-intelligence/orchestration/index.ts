@@ -6,7 +6,7 @@
  *    evidence-based, traceable back to AI modules, with confidence."
  *
  * The Orchestration Engine is the single gateway between LLMs and the
- * AVS Shield Intelligence Platform.
+ * AVS AI Shield Intelligence Platform.
  *
  * Components:
  *   - AIOrchestrator                — main orchestrator coordinating all components

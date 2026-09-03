@@ -1,6 +1,6 @@
 /**
  * UnifiedScanView — composes all scan components into a single, consistent
- * scanning experience used by every module in AVS Shield.
+ * scanning experience used by every module in AVS AI Shield.
  *
  * Layout:
  *   ┌─────────────────────────────────────┐

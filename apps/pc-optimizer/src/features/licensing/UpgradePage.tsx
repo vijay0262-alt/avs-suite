@@ -1,5 +1,5 @@
 /**
- * UpgradePage — upgrade to AVS Shield Professional.
+ * UpgradePage — upgrade to AVS AI Shield Professional.
  *
  * Shows feature comparison between FREE and PRO tiers,
  * with pricing and upgrade CTA.
@@ -53,9 +53,9 @@ export default function UpgradePage() {
           <div className="rounded-[var(--avs-radius-xl)] bg-gradient-brand p-6">
             <SparklesIcon className="h-12 w-12 text-white" />
           </div>
-          <h2 className="mt-4 text-statistic font-bold text-[var(--avs-text-primary)]">AVS Shield Professional</h2>
+          <h2 className="mt-4 text-statistic font-bold text-[var(--avs-text-primary)]">AVS AI Shield Professional</h2>
           <p className="mt-2 text-small text-[var(--avs-text-secondary)] max-w-md">
-            &ldquo;AVS Shield doesn&apos;t just monitor your PC&mdash;it understands it.&rdquo;
+            &ldquo;AVS AI Shield doesn&apos;t just monitor your PC&mdash;it understands it.&rdquo;
           </p>
           <div className="mt-6 flex items-baseline gap-2">
             <span className="text-4xl font-bold text-[var(--avs-text-primary)]">$49.99</span>
@@ -140,7 +140,7 @@ export default function UpgradePage() {
 
       {/* CTA */}
       <Card variant="glass" className="text-center">
-        <p className="text-small text-[var(--avs-text-secondary)]">Ready to unlock the full power of AVS Shield?</p>
+        <p className="text-small text-[var(--avs-text-secondary)]">Ready to unlock the full power of AVS AI Shield?</p>
         <Button size="lg" className="mt-4" onClick={() => navigate('/license')}>
           Activate Your License
         </Button>

@@ -269,7 +269,7 @@ def test_complete_workflow():
 
 if __name__ == "__main__":
     print("=" * 70)
-    print("AVS Shield V1.0 - End-to-End Validation")
+    print("AVS AI Shield V1.0 - End-to-End Validation")
     print("Product Invariant: DETECTED = VERIFIED AUTOMATICALLY CLEANABLE")
     print("=" * 70)
 

@@ -274,7 +274,7 @@ export class AIAssistantResponseEngine {
         break;
       }
       case 'conversation': {
-        parts.push('Hello! I\'m your AVS Shield AVS AI Assistant. I can help you with questions, recommendations, explanations, planning, and navigation. How can I assist you?');
+        parts.push('Hello! I\'m your AVS AI Shield AVS AI Assistant. I can help you with questions, recommendations, explanations, planning, and navigation. How can I assist you?');
         break;
       }
       default: {

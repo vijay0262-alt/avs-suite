@@ -137,7 +137,7 @@ def _load_amsi() -> bool:
         _amsi_dll.AmsiUninitialize.argtypes = [ctypes.c_void_p]
 
         context = ctypes.c_void_p()
-        hr = _amsi_dll.AmsiInitialize("AVS Shield", ctypes.byref(context))
+        hr = _amsi_dll.AmsiInitialize("AVS AI Shield", ctypes.byref(context))
         if hr != 0 or not context.value:
             log.warning("AmsiInitialize failed: HRESULT 0x%08x", hr & 0xFFFFFFFF)
             _amsi_dll = None

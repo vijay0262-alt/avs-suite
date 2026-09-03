@@ -187,7 +187,7 @@ class CleaningManager:
         # Best-effort System Restore Point before cleaning.
         try:
             from avs_backend.system_restore import create_restore_point
-            rp_result = create_restore_point("AVS Shield — Pre-cleaning checkpoint")
+            rp_result = create_restore_point("AVS AI Shield — Pre-cleaning checkpoint")
             if rp_result.success:
                 log.info("Restore point created (seq=%s) before cleaning", rp_result.sequence_number)
             else:

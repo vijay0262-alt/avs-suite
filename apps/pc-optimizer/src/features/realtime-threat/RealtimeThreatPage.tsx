@@ -1,5 +1,5 @@
 /**
- * RealtimeThreatPage — AVS Shield Real-Time Threat Protection.
+ * RealtimeThreatPage — AVS AI Shield Real-Time Threat Protection.
  *
  * Monitors file system activity (ETW/WMI), USB device insertion,
  * and network C2 connections in real time.

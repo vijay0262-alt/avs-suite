@@ -1,5 +1,5 @@
 /**
- * AVS Shield Product Catalog — single source of truth for all products.
+ * AVS AI Shield Product Catalog — single source of truth for all products.
  *
  * Defines product codes, names, availability, platforms, plans, features,
  * downloads, system requirements, and coming-soon status.
@@ -119,7 +119,7 @@ export const PRODUCT_CATALOG: readonly ProductCatalogEntry[] = [
   },
   {
     productCode: PRODUCT_CODES.antivirus,
-    productName: 'AVS Shield Antivirus',
+    productName: 'AVS AI Shield Antivirus',
     tagline: 'Real-Time Protection',
     description: 'Real-time protection against viruses, malware, and ransomware for Windows.',
     availability: 'coming_soon',
@@ -133,7 +133,7 @@ export const PRODUCT_CATALOG: readonly ProductCatalogEntry[] = [
   },
   {
     productCode: PRODUCT_CODES.vpn,
-    productName: 'AVS Shield VPN',
+    productName: 'AVS AI Shield VPN',
     tagline: 'Secure Browsing',
     description: 'Secure, anonymous browsing with military-grade encryption.',
     availability: 'coming_soon',

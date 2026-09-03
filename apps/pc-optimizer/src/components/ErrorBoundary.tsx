@@ -96,7 +96,7 @@ function ErrorFallback({ error, errorInfo, onReset, standalone }: ErrorFallbackP
   const handleExportReport = () => {
     const timestamp = new Date().toISOString();
     const report = [
-      'AVS Shield — Error Report',
+      'AVS AI Shield — Error Report',
       '===========================',
       '',
       `Timestamp: ${timestamp}`,
@@ -156,7 +156,7 @@ function ErrorFallback({ error, errorInfo, onReset, standalone }: ErrorFallbackP
             Something went wrong
           </h2>
           <p className="mt-1 text-small text-text-secondary">
-            AVS Shield encountered an unexpected problem.
+            AVS AI Shield encountered an unexpected problem.
           </p>
           <p className="mt-1 text-caption text-text-muted">
             The rest of the application is still running safely.

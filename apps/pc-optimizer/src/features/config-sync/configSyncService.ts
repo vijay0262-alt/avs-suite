@@ -38,7 +38,7 @@ export class ConfigSyncError extends Error {
 function classifyError(err: unknown): ConfigSyncError {
   if (err instanceof NetworkError) {
     return new ConfigSyncError(
-      'Unable to connect to the AVS Shield server. Configuration sync will use cached data.',
+      'Unable to connect to the AVS AI Shield server. Configuration sync will use cached data.',
       'OFFLINE',
     );
   }
@@ -59,7 +59,7 @@ function classifyError(err: unknown): ConfigSyncError {
     }
     if (err.statusCode >= 500) {
       return new ConfigSyncError(
-        'The AVS Shield server is experiencing issues. Configuration sync will retry later.',
+        'The AVS AI Shield server is experiencing issues. Configuration sync will retry later.',
         'SERVER_ERROR',
       );
     }

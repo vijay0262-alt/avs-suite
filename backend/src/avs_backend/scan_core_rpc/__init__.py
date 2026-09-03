@@ -76,7 +76,7 @@ def _get_app_data_dir() -> Path:
             or os.environ.get("APPDATA")
             or str(Path.home())
         )
-        return base / "AVS Shield"
+        return base / "AVS AI Shield"
 
     base = Path(
         os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
@@ -2390,7 +2390,7 @@ import platform as _platform_for_quarantine
 _QUARANTINE_DIR_CANONICAL: str
 if _platform_for_quarantine.system() == "Windows":
     _QUARANTINE_DIR_CANONICAL = os.path.expandvars(
-        r"%LOCALAPPDATA%\AVS Shield\Quarantine"
+        r"%LOCALAPPDATA%\AVS AI Shield\Quarantine"
     )
 else:
     _QUARANTINE_DIR_CANONICAL = os.path.expanduser("~/.avs-shield/quarantine")

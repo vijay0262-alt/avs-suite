@@ -11,7 +11,7 @@
  * The service is the single entry point for all update operations.
  * UI components interact only with the update store, which wraps this service.
  *
- * Reusable for every future AVS Shield product.
+ * Reusable for every future AVS AI Shield product.
  */
 import { manifestClient, type ProductManifest, ManifestError } from './manifestClient';
 import { isNewer, isAtLeast } from './versionComparator';

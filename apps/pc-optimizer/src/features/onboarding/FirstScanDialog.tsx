@@ -66,7 +66,7 @@ export function FirstScanDialog({ open, onClose }: FirstScanDialogProps) {
           </div>
           <div>
             <p className="text-small text-text-secondary">
-              To get the most out of AVS Shield, we recommend running a quick system scan first.
+              To get the most out of AVS AI Shield, we recommend running a quick system scan first.
             </p>
           </div>
         </div>

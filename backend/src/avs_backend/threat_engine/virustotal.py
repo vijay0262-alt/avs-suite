@@ -25,7 +25,7 @@ from typing import Any
 
 log = logging.getLogger("avs.threat_engine.virustotal")
 
-_DATA_DIR = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "AVS Shield" / "threat_engine"
+_DATA_DIR = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "AVS AI Shield" / "threat_engine"
 _DATA_DIR.mkdir(parents=True, exist_ok=True)
 _CACHE_PATH = _DATA_DIR / "virustotal_cache.json"
 

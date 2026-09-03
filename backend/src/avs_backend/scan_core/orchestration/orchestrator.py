@@ -40,7 +40,7 @@ ProgressCallback = Callable[[ScanProgress], None]
 
 
 class ScanOrchestrator:
-    """High-level orchestration for the AVS Shield scan workflow."""
+    """High-level orchestration for the AVS AI Shield scan workflow."""
 
     def __init__(
         self,

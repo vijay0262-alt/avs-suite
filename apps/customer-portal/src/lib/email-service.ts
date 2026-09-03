@@ -1,12 +1,12 @@
 /**
- * Email service — sends transactional emails via the AVS Shield
+ * Email service — sends transactional emails via the AVS AI Shield
  * email provider (configured via AVS_EMAIL_PROVIDER env var).
  *
  * Supports:
  *   - Email verification
  *   - Password reset
  *
- * The HTML template is designed to match the AVS Shield brand:
+ * The HTML template is designed to match the AVS AI Shield brand:
  *   - Logo
  *   - Welcome message
  *   - Verify button
@@ -42,7 +42,7 @@ export async function sendVerificationEmail(params: VerificationEmailParams): Pr
     supportUrl: SUPPORT_URL,
   });
 
-  const text = `Welcome to AVS Shield!
+  const text = `Welcome to AVS AI Shield!
 
 Hi ${params.name},
 
@@ -55,11 +55,11 @@ If you didn't create an account, please ignore this email.
 
 Need help? Contact us at ${SUPPORT_EMAIL}
 
-— AVS Shield Team`;
+— AVS AI Shield Team`;
 
   await sendEmail({
     to: params.to,
-    subject: 'Verify your AVS Shield email address',
+    subject: 'Verify your AVS AI Shield email address',
     html,
     text,
   });
@@ -83,7 +83,7 @@ export async function sendPasswordResetEmail(params: PasswordResetEmailParams): 
     supportUrl: SUPPORT_URL,
   });
 
-  const text = `Reset your AVS Shield password
+  const text = `Reset your AVS AI Shield password
 
 Hi ${params.name},
 
@@ -96,11 +96,11 @@ If you didn't request a password reset, please ignore this email and your passwo
 
 Need help? Contact us at ${SUPPORT_EMAIL}
 
-— AVS Shield Team`;
+— AVS AI Shield Team`;
 
   await sendEmail({
     to: params.to,
-    subject: 'Reset your AVS Shield password',
+    subject: 'Reset your AVS AI Shield password',
     html,
     text,
   });
@@ -162,7 +162,7 @@ function renderVerificationEmail(opts: {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Verify your AVS Shield email</title>
+  <title>Verify your AVS AI Shield email</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f4f6f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
@@ -173,19 +173,19 @@ function renderVerificationEmail(opts: {
           <!-- Header / Logo -->
           <tr>
             <td style="background:linear-gradient(135deg,#1a56db 0%,#1e40af 100%);padding:32px 40px;text-align:center;">
-              <img src="https://avsshield.com/logo.png" alt="AVS Shield" width="180" style="display:inline-block;border:0;outline:none;text-decoration:none;" />
+              <img src="https://avsshield.com/logo.png" alt="AVS AI Shield" width="180" style="display:inline-block;border:0;outline:none;text-decoration:none;" />
             </td>
           </tr>
 
           <!-- Body -->
           <tr>
             <td style="padding:40px;">
-              <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:#111827;">Welcome to AVS Shield!</h1>
+              <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:#111827;">Welcome to AVS AI Shield!</h1>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#374151;">
                 Hi ${escapeHtml(opts.name)},
               </p>
               <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#374151;">
-                Thank you for creating your AVS Shield account. To get started, please verify your email address by clicking the button below.
+                Thank you for creating your AVS AI Shield account. To get started, please verify your email address by clicking the button below.
               </p>
 
               <!-- Verify Button -->
@@ -226,7 +226,7 @@ function renderVerificationEmail(opts: {
 
               <!-- Security Note -->
               <p style="margin:0;font-size:13px;line-height:1.6;color:#9ca3af;background-color:#f9fafb;padding:16px;border-radius:6px;">
-                <strong>Security note:</strong> AVS Shield will never ask for your password via email. If you didn't create an account, please ignore this email or contact support immediately.
+                <strong>Security note:</strong> AVS AI Shield will never ask for your password via email. If you didn't create an account, please ignore this email or contact support immediately.
               </p>
             </td>
           </tr>
@@ -235,7 +235,7 @@ function renderVerificationEmail(opts: {
           <tr>
             <td style="background-color:#f9fafb;padding:24px 40px;text-align:center;">
               <p style="margin:0;font-size:12px;color:#9ca3af;">
-                © ${new Date().getFullYear()} AVS Shield. All rights reserved.<br />
+                © ${new Date().getFullYear()} AVS AI Shield. All rights reserved.<br />
                 This is an automated email — please do not reply.
               </p>
             </td>
@@ -260,7 +260,7 @@ function renderPasswordResetEmail(opts: {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reset your AVS Shield password</title>
+  <title>Reset your AVS AI Shield password</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f4f6f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
@@ -270,7 +270,7 @@ function renderPasswordResetEmail(opts: {
 
           <tr>
             <td style="background:linear-gradient(135deg,#1a56db 0%,#1e40af 100%);padding:32px 40px;text-align:center;">
-              <img src="https://avsshield.com/logo.png" alt="AVS Shield" width="180" style="display:inline-block;border:0;outline:none;text-decoration:none;" />
+              <img src="https://avsshield.com/logo.png" alt="AVS AI Shield" width="180" style="display:inline-block;border:0;outline:none;text-decoration:none;" />
             </td>
           </tr>
 
@@ -281,7 +281,7 @@ function renderPasswordResetEmail(opts: {
                 Hi ${escapeHtml(opts.name)},
               </p>
               <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#374151;">
-                We received a request to reset your AVS Shield password. Click the button below to choose a new password.
+                We received a request to reset your AVS AI Shield password. Click the button below to choose a new password.
               </p>
 
               <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
@@ -313,7 +313,7 @@ function renderPasswordResetEmail(opts: {
           <tr>
             <td style="background-color:#f9fafb;padding:24px 40px;text-align:center;">
               <p style="margin:0;font-size:12px;color:#9ca3af;">
-                © ${new Date().getFullYear()} AVS Shield. All rights reserved.
+                © ${new Date().getFullYear()} AVS AI Shield. All rights reserved.
               </p>
             </td>
           </tr>

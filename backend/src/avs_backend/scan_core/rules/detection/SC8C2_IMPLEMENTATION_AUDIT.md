@@ -19,7 +19,7 @@ SC-8C2 was specified to implement production detection rules for **8 categories*
 - No 100,000-asset performance benchmark exists
 - No temporary extension detection exists (`.tmp` alone is not treated as junk, which is correct, but no rule covers temp extensions at all)
 - No age-based detection exists
-- Protected locations list is incomplete (missing system drivers, security software, AVS Shield files, critical application data)
+- Protected locations list is incomplete (missing system drivers, security software, AVS AI Shield files, critical application data)
 - False positive test coverage is partial — several required negative cases are MISSING
 - No duplicate detection mechanism exists beyond registry-level duplicate prevention
 - Path knowledge is duplicated between cleaners and `KnownLocations` — no shared source of truth
@@ -218,7 +218,7 @@ The `RuleEvaluator.evaluate_asset()` method at `evaluator.py:92-185`:
 |---|---|---|
 | System drivers (`%SystemRoot%\Drivers`) | NO | MISSING — driver files could be in temp-adjacent paths |
 | Security software directories | NO | MISSING — antivirus/security app data not protected |
-| AVS Shield installation directory | NO | MISSING — self-protection not implemented |
+| AVS AI Shield installation directory | NO | MISSING — self-protection not implemented |
 | Critical application data | NO | MISSING — no protection for app-specific data directories |
 | `%USERPROFILE%\AppData\Roaming` | NO | MISSING — roaming app data not protected (though individual cache subdirs are targeted) |
 | Windows Installer (`%SystemRoot%\Installer`) | NO | MISSING — critical MSI packages not explicitly protected |
@@ -282,7 +282,7 @@ The `RuleEvaluator.evaluate_asset()` method at `evaluator.py:92-185`:
 | Large files merely because they are large | MISSING — no test verifies size alone doesn't trigger match |
 | Old files merely because they are old | MISSING — no age detection exists to test |
 | Security software directories | MISSING — no test |
-| AVS Shield own files | MISSING — no test |
+| AVS AI Shield own files | MISSING — no test |
 
 **Classification: PARTIAL** — 6 of 12 required negative cases are covered.
 
@@ -525,7 +525,7 @@ The `KnownLocations` class in `locations.py` duplicates path templates from clea
 8. **Evaluator integration tests** — No test runs production rules through `RuleEvaluator`
 9. **100K asset performance benchmark** — Not implemented
 10. **Protected location checks in 3 of 4 rules** — Only `UserTempRule` checks `is_in_protected_location()`
-11. **Missing protected locations** — System drivers, security software, AVS Shield files, critical app data
+11. **Missing protected locations** — System drivers, security software, AVS AI Shield files, critical app data
 12. **`evaluate_scan()` implementation** — Stub returns empty batch
 13. **Production auto-registration** — `register_junk_rules()` never called outside tests
 14. **Shared path source of truth** — Path templates duplicated between cleaners and `KnownLocations`
@@ -557,7 +557,7 @@ The `KnownLocations` class in `locations.py` duplicates path templates from clea
 1. Add `is_in_protected_location()` check to `WindowsTempRule`, `ShaderCacheRule`, and `ThumbnailCacheRule`
 2. Make inaccessible files consistently `HIGH_RISK` across all rules (not `REVIEW_REQUIRED` for cache rules)
 3. Add `not snapshot.exists` check to `ShaderCacheRule` and `ThumbnailCacheRule`
-4. Add missing protected locations: `%SystemRoot%\Drivers`, security software dirs, AVS Shield install dir
+4. Add missing protected locations: `%SystemRoot%\Drivers`, security software dirs, AVS AI Shield install dir
 5. Create integration test: register junk rules → create `RuleEvaluator` → `evaluate_asset()` → verify results
 
 ### Medium priority (scope completion):
@@ -576,7 +576,7 @@ The `KnownLocations` class in `locations.py` duplicates path templates from clea
 14. Implement `evaluate_scan()` in `RuleEvaluator`
 15. Add auto-registration of production rules (call `register_junk_rules()` during scan core initialization)
 16. Create 100K asset performance benchmark for production rules
-17. Add false-positive tests for: large files, old files, locked files safety, inaccessible files safety, security software dirs, AVS Shield files
+17. Add false-positive tests for: large files, old files, locked files safety, inaccessible files safety, security software dirs, AVS AI Shield files
 18. Add applicability tests through `ApplicabilityEngine` for production rules
 
 ---

@@ -1,5 +1,5 @@
 /**
- * AVS Shield Platform Configuration — single source of truth for all
+ * AVS AI Shield Platform Configuration — single source of truth for all
  * platform-wide constants across every repository.
  *
  * Every repo (avs-suite, avs-customer-portal, avs-license-server) imports
@@ -12,10 +12,10 @@
 
 export const COMPANY = {
   legalCompanyName: 'Advanced Vision Software LLC',
-  companyName: 'AVS Shield',
-  brandName: 'AVS Shield',
-  vendor: 'AVS Shield',
-  publisherName: 'AVS Shield',
+  companyName: 'AVS AI Shield',
+  brandName: 'AVS AI Shield',
+  vendor: 'AVS AI Shield',
+  publisherName: 'AVS AI Shield',
   copyright: '© 2024-2026 Advanced Vision Software LLC. All rights reserved.',
   description: 'AI-powered PC health, protection, and optimization platform.',
   address: {

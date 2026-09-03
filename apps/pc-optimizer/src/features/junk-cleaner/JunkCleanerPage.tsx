@@ -255,7 +255,7 @@ export default function JunkCleanerPage() {
           <ShieldCheckIcon className="h-5 w-5 text-brand-primary shrink-0 mt-0.5" />
           <div className="text-caption text-text-secondary">
             <span className="font-semibold text-text-primary">Safety Guardrails:</span>{' '}
-            AVS Shield never touches <strong>C:\Windows\System32</strong>,{' '}
+            AVS AI Shield never touches <strong>C:\Windows\System32</strong>,{' '}
             <strong>Windows Search Index</strong> (Windows.edb), or{' '}
             <strong>active system registry keys</strong>. Browser cookies &amp; history
             are opt-in (unchecked by default). A{' '}

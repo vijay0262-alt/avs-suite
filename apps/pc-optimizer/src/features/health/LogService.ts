@@ -1,5 +1,5 @@
 /**
- * LogService — structured logging for AVS Shield.
+ * LogService — structured logging for AVS AI Shield.
  *
  * Every unexpected exception contains:
  *   - Timestamp
@@ -173,7 +173,7 @@ class LogServiceImpl {
   /** Export all log entries as a formatted string for diagnostics. */
   export(): string {
     const header = [
-      'AVS Shield — Structured Log Export',
+      'AVS AI Shield — Structured Log Export',
       '==================================',
       `Exported: ${new Date().toISOString()}`,
       `Entries: ${this.buffer.length}`,

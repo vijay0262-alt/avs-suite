@@ -1,4 +1,4 @@
-"""ML-based anomaly classifier for AVS Shield.
+"""ML-based anomaly classifier for AVS AI Shield.
 
 This module provides a lightweight statistical anomaly detector for process
 behaviour.  Despite the ``ml_`` prefix, it does **not** rely on a trained
@@ -19,7 +19,7 @@ scikit-learn is unavailable the classifier falls back to pure z-score
 analysis.
 
 The baseline is persisted to
-``%LOCALAPPDATA%\\AVS Shield\\threat_engine\\ml_baseline.json`` so it survives
+``%LOCALAPPDATA%\\AVS AI Shield\\threat_engine\\ml_baseline.json`` so it survives
 restarts.  Monitoring runs in a daemon thread that polls every 10 seconds.
 Detected anomalies are kept in a thread-safe ring buffer (max 500).
 """
@@ -57,7 +57,7 @@ except Exception:  # pragma: no cover
 # =====================================================================
 
 _BASELINE_PATH = Path(
-    os.path.expandvars(r"%LOCALAPPDATA%\AVS Shield\threat_engine\ml_baseline.json")
+    os.path.expandvars(r"%LOCALAPPDATA%\AVS AI Shield\threat_engine\ml_baseline.json")
 )
 
 _POLL_INTERVAL = 10  # seconds between monitoring polls

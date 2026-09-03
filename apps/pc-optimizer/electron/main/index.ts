@@ -274,7 +274,7 @@ async function createMainWindow(): Promise<void> {
 
   // ── Window close behaviour ──────────────────────────────
   // Intercept the close event.  Unless the user explicitly chose
-  // "Exit AVS Shield" from the tray (isQuitting=true), hide the
+  // "Exit AVS AI Shield" from the tray (isQuitting=true), hide the
   // window instead of destroying it.  This keeps the renderer
   // state alive and protection running in the background.
   mainWindow.on('close', (event) => {
@@ -340,7 +340,7 @@ function checkAndRelaunchAsAdmin(): Promise<boolean> {
 }
 
 // ── Single instance lock ──────────────────────────────────────
-// Prevent multiple instances of AVS Shield from running.
+// Prevent multiple instances of AVS AI Shield from running.
 // If a second instance is launched, focus the existing window.
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -430,7 +430,7 @@ app.whenReady().then(async () => {
 // ── Window lifecycle ──────────────────────────────────────────
 // Do NOT quit when all windows are closed — the app runs in the
 // background via the system tray.  Only quit when the user
-// explicitly chooses "Exit AVS Shield" from the tray menu.
+// explicitly chooses "Exit AVS AI Shield" from the tray menu.
 app.on('window-all-closed', (event: Electron.Event) => {
   // Prevent the default quit behavior
   event.preventDefault();
