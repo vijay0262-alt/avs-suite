@@ -88,6 +88,10 @@ export default function AntivirusSecurityPage() {
   // Setup status (definitions downloading, etc.)
   const [setupStatus, setSetupStatus] = useState<{ setup_in_progress: boolean; setup_progress?: { phase?: string } } | null>(null);
 
+  // Scan scheduler state
+  const [schedule, setSchedule] = useState<{ enabled: boolean; frequency: string; time: string; scan_type: string; day_of_week: number; last_run: string | null; scheduler_running: boolean } | null>(null);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+
   // ── Data loading ──────────────────────────────────────────────
 
   const refreshAvStatus = useCallback(async () => {
@@ -103,6 +107,22 @@ export default function AntivirusSecurityPage() {
       setSetupStatus(res);
     } catch { /* ignore */ }
   }, []);
+
+  const refreshSchedule = useCallback(async () => {
+    try {
+      const res = await rpc.raw<{ schedule: { enabled: boolean; frequency: string; time: string; scan_type: string; day_of_week: number; last_run: string | null; scheduler_running: boolean } }>(RPC_METHODS.THREAT_SCAN_SCHEDULE_GET);
+      setSchedule(res.schedule);
+    } catch { /* ignore */ }
+  }, []);
+
+  const updateSchedule = useCallback(async (updates: Record<string, unknown>) => {
+    setScheduleLoading(true);
+    try {
+      await rpc.raw(RPC_METHODS.THREAT_SCAN_SCHEDULE_SET, updates);
+      await refreshSchedule();
+    } catch { /* ignore */ }
+    setScheduleLoading(false);
+  }, [refreshSchedule]);
 
   const refreshThreats = useCallback(async () => {
     setThreatsLoading(true);
@@ -122,6 +142,7 @@ export default function AntivirusSecurityPage() {
     refreshAvStatus();
     refreshThreats();
     refreshSetupStatus();
+    refreshSchedule();
     rpc.raw<{ avs_av_active: boolean; avs_signatures: number; primary_av: string | null; defender_visible: boolean; third_party_av: string | null; protected: boolean }>(RPC_METHODS.SYSTEM_AV_STATUS)
       .then(setUnifiedAv)
       .catch(() => {});
@@ -131,7 +152,7 @@ export default function AntivirusSecurityPage() {
       refreshAvStatus();
     }, 5000);
     return () => clearInterval(poll);
-  }, [refreshAvStatus, refreshThreats, refreshSetupStatus]);
+  }, [refreshAvStatus, refreshThreats, refreshSetupStatus, refreshSchedule]);
 
   // ── Handlers ──────────────────────────────────────────────────
 
@@ -320,6 +341,115 @@ export default function AntivirusSecurityPage() {
                 </div>
               ))}
             </div>
+          </Card>
+
+          {/* Scheduled Scans */}
+          <Card variant="glass" className="p-5" data-testid="av-scan-scheduler">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="shrink-0 rounded-[var(--avs-radius-md)] bg-brand-primary/10 p-2.5">
+                  <ClockIcon className="h-5 w-5 text-brand-primary" />
+                </div>
+                <div>
+                  <div className="text-small font-semibold text-text-primary">Scheduled Scans</div>
+                  <div className="text-caption text-text-secondary">
+                    Automatically scan your PC on a schedule. Threats are auto-quarantined.
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => updateSchedule({ enabled: !schedule?.enabled })}
+                disabled={scheduleLoading}
+                className={`relative h-6 w-11 rounded-full transition-colors shrink-0 ${
+                  schedule?.enabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'
+                }`}
+                data-testid="scan-schedule-toggle"
+              >
+                <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${schedule?.enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
+
+            {schedule?.enabled && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+                {/* Frequency */}
+                <div>
+                  <label className="text-caption font-medium text-text-secondary block mb-1">Frequency</label>
+                  <select
+                    value={schedule.frequency}
+                    onChange={(e) => updateSchedule({ frequency: e.target.value })}
+                    disabled={scheduleLoading}
+                    className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-surface px-3 py-2 text-small text-text-primary"
+                    data-testid="scan-schedule-frequency"
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="on_logon">On Startup</option>
+                  </select>
+                </div>
+
+                {/* Time (for daily/weekly) */}
+                {schedule.frequency !== 'on_logon' && (
+                  <div>
+                    <label className="text-caption font-medium text-text-secondary block mb-1">Time</label>
+                    <input
+                      type="time"
+                      value={schedule.time}
+                      onChange={(e) => updateSchedule({ time: e.target.value })}
+                      disabled={scheduleLoading}
+                      className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-surface px-3 py-2 text-small text-text-primary"
+                      data-testid="scan-schedule-time"
+                    />
+                  </div>
+                )}
+
+                {/* Day of week (for weekly) */}
+                {schedule.frequency === 'weekly' && (
+                  <div>
+                    <label className="text-caption font-medium text-text-secondary block mb-1">Day</label>
+                    <select
+                      value={schedule.day_of_week}
+                      onChange={(e) => updateSchedule({ day_of_week: parseInt(e.target.value, 10) })}
+                      disabled={scheduleLoading}
+                      className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-surface px-3 py-2 text-small text-text-primary"
+                      data-testid="scan-schedule-day"
+                    >
+                      <option value={0}>Monday</option>
+                      <option value={1}>Tuesday</option>
+                      <option value={2}>Wednesday</option>
+                      <option value={3}>Thursday</option>
+                      <option value={4}>Friday</option>
+                      <option value={5}>Saturday</option>
+                      <option value={6}>Sunday</option>
+                    </select>
+                  </div>
+                )}
+
+                {/* Scan type */}
+                <div>
+                  <label className="text-caption font-medium text-text-secondary block mb-1">Scan Type</label>
+                  <select
+                    value={schedule.scan_type}
+                    onChange={(e) => updateSchedule({ scan_type: e.target.value })}
+                    disabled={scheduleLoading}
+                    className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-surface px-3 py-2 text-small text-text-primary"
+                    data-testid="scan-schedule-type"
+                  >
+                    <option value="quick">Quick Scan (~2 min)</option>
+                    <option value="full">Full Scan (~30 min)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {schedule?.enabled && schedule.last_run && (
+              <div className="mt-3 text-caption text-text-muted" data-testid="scan-schedule-last-run">
+                Last scheduled scan: {new Date(schedule.last_run).toLocaleDateString()}
+              </div>
+            )}
+
+            {!isPro && schedule?.enabled && (
+              <p className="text-caption text-brand-primary mt-3">Scheduled scans are a Professional feature.</p>
+            )}
           </Card>
 
           {/* Scan modal */}

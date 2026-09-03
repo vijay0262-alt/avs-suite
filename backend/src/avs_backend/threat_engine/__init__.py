@@ -970,6 +970,47 @@ def _get_definition_counts() -> dict[str, Any]:
     return counts
 
 
+# ─── Scan Scheduler RPCs ─────────────────────────────────────────────
+
+@register("threat.scanSchedule.get")
+def threat_scan_schedule_get(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get the current scan schedule configuration."""
+    try:
+        from avs_backend.threat_engine.scan_scheduler import get_schedule
+        return {"success": True, "schedule": get_schedule()}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@register("threat.scanSchedule.set")
+def threat_scan_schedule_set(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Set or update the scan schedule configuration.
+
+    Params:
+        enabled: bool
+        frequency: "daily" | "weekly" | "on_logon"
+        time: "HH:MM" (24-hour, for daily/weekly)
+        scan_type: "quick" | "full"
+        day_of_week: 0-6 (0=Monday, for weekly)
+    """
+    try:
+        from avs_backend.threat_engine.scan_scheduler import set_schedule
+        return set_schedule(params or {})
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@register("threat.scanSchedule.runNow")
+def threat_scan_schedule_run_now(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Trigger an immediate scheduled scan."""
+    try:
+        from avs_backend.threat_engine.scan_scheduler import run_scan_now
+        scan_type = (params or {}).get("scan_type", "quick")
+        return run_scan_now(scan_type)
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 log.info("Threat Engine module loaded — %d detection sources configured",
          sum(1 for v in _config.get("enabled_sources", {}).values() if v))
 
@@ -980,3 +1021,10 @@ try:
     auto_setup_on_startup()
 except Exception as _e:
     log.warning("ClamAV auto-setup on startup failed: %s", _e)
+
+# Start scan scheduler if enabled (runs scheduled scans automatically)
+try:
+    from avs_backend.threat_engine.scan_scheduler import start_scheduler
+    start_scheduler()
+except Exception as _e:
+    log.warning("Scan scheduler startup failed: %s", _e)

@@ -1,0 +1,44 @@
+Feature 1: Scan Scheduler — automatic scheduled antivirus scans
+
+Users can now schedule automatic scans (daily/weekly/on-startup).
+Threats are auto-quarantined. No competitor offers this combined
+with auto-quarantine in one click.
+
+Backend:
+- New module: threat_engine/scan_scheduler.py
+  - threading.Timer-based scheduler (no admin privileges needed)
+  - Supports: daily (at HH:MM), weekly (day + time), on_logon
+  - Configurable scan type: quick or full
+  - State persisted to scan_schedule.json
+  - Starts automatically on backend startup if enabled
+  - Tracks last_run date to avoid duplicate runs
+- 3 new RPC handlers in threat_engine/__init__.py:
+  - threat.scanSchedule.get — get current schedule
+  - threat.scanSchedule.set — set/update schedule
+  - threat.scanSchedule.runNow — trigger immediate scan
+
+Shared:
+- 3 new RPC constants in packages/shared/src/rpc/index.ts:
+  THREAT_SCAN_SCHEDULE_GET, THREAT_SCAN_SCHEDULE_SET,
+  THREAT_SCAN_SCHEDULE_RUN_NOW
+
+Frontend:
+- Scheduled Scans card on AntivirusSecurityPage Scan tab
+  - Enable/disable toggle
+  - Frequency selector: Daily / Weekly / On Startup
+  - Time picker (for daily/weekly)
+  - Day of week selector (for weekly)
+  - Scan type selector: Quick / Full
+  - Last run date display
+  - Pro feature indicator
+
+Validation:
+- ESLint: 0 warnings
+- TypeScript build: passed
+- Vitest: 159 test files, 8098 tests passed
+- Backend pytest: 1207 passed, 14 skipped, 3 warnings
+- PyInstaller: backend rebuilt successfully
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

@@ -450,6 +450,9 @@ export const RPC_METHODS = {
   THREAT_RESTORE: 'threat.restore',
   THREAT_REMOVE: 'threat.remove',
   THREAT_HISTORY: 'threat.history',
+  THREAT_SCAN_SCHEDULE_GET: 'threat.scanSchedule.get',
+  THREAT_SCAN_SCHEDULE_SET: 'threat.scanSchedule.set',
+  THREAT_SCAN_SCHEDULE_RUN_NOW: 'threat.scanSchedule.runNow',
 
   // Real-Time Threat Protection (Tier 2)
   REALTIME_THREAT_STATUS: 'realtime_threat.status',
