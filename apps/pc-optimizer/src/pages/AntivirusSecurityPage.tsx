@@ -66,6 +66,7 @@ const THREAT_COVERAGE = [
 export default function AntivirusSecurityPage() {
   const [activeTab, setActiveTab] = useState<TabId>('scan');
   const [scanModalOpen, setScanModalOpen] = useState(false);
+  const [scanMode, setScanMode] = useState<'quick' | 'full'>('full');
   const edition = useEdition();
   const { show: showUpgrade } = useUpgradeDialog();
   const isPro = edition === 'professional';
@@ -133,8 +134,8 @@ export default function AntivirusSecurityPage() {
   }, [rtGuardEnabled, isPro, showUpgrade]);
 
   const handleScan = useCallback((scanType: 'quick' | 'full' | 'custom') => {
+    setScanMode(scanType === 'quick' ? 'quick' : 'full');
     setScanModalOpen(true);
-    void scanType;
   }, []);
 
   const handleRestoreThreat = useCallback(async (threatId: string) => {
@@ -307,7 +308,7 @@ export default function AntivirusSecurityPage() {
           {/* Scan modal */}
           {scanModalOpen && (
             <Modal open={scanModalOpen} onClose={handleModalClose} title="Security Scan" size="xl">
-              <ScanView module="security" onClose={handleModalClose} />
+              <ScanView module="security" mode={scanMode} onClose={handleModalClose} />
             </Modal>
           )}
         </div>

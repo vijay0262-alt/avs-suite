@@ -990,7 +990,7 @@ function ThreatEngineConfig() {
     { key: 'amsi', label: 'AMSI', desc: 'Windows Anti-Malware Scan Interface' },
     { key: 'defender', label: 'Windows Defender', desc: 'Microsoft Defender integration' },
     { key: 'heuristic', label: 'Heuristic Analysis', desc: 'Behavioral heuristics and anomaly detection' },
-    { key: 'AVS AI Shield AV Engine', label: 'AVS AI Shield AV Engine', desc: 'AVS AI Shield signature-based antivirus scanning' },
+    { key: 'clamav', label: 'AVS AI Shield AV Engine', desc: 'AVS AI Shield signature-based antivirus scanning' },
     { key: 'virustotal', label: 'VirusTotal', desc: 'Cloud hash lookup (requires API key)' },
   ];
 

@@ -568,11 +568,11 @@ def system_av_status(_params: dict[str, Any] | None) -> dict[str, Any]:
 
     # Check if our AV engine is running
     try:
-        from avs_backend.threat_engine.clamav_setup import get_status
-        av_status = get_status()
-        if av_status.get("clamd_running"):
+        from avs_backend.threat_engine.clamav_scanner import detect_clamav_installation
+        av_info = detect_clamav_installation()
+        if av_info.get("clamd_running"):
             result["avs_av_active"] = True
-            result["avs_signatures"] = av_status.get("signature_count", 0)
+            result["avs_signatures"] = av_info.get("signature_count", 0)
             result["primary_av"] = "AVS AI Shield"
             result["defender_visible"] = False
             result["protected"] = True

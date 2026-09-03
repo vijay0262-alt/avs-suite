@@ -336,20 +336,25 @@ def detect_clamav_installation() -> dict[str, Any]:
 
     # Common ClamAV installation paths on Windows
     if sys.platform == "win32":
+        # Include the AVS AI Shield portable install path
+        _avs_path = os.path.join(os.environ.get("LOCALAPPDATA", ""), "AVS AI Shield", "clamav")
         bin_dirs = [
             r"C:\Program Files\ClamAV",
             r"C:\Program Files (x86)\ClamAV",
             os.path.join(os.environ.get("LOCALAPPDATA", ""), "ClamAV"),
+            _avs_path,
         ]
         conf_candidates = [
             r"C:\Program Files\ClamAV\clamd.conf",
             r"C:\Program Files (x86)\ClamAV\clamd.conf",
             os.path.join(os.environ.get("LOCALAPPDATA", ""), "ClamAV", "clamd.conf"),
+            os.path.join(_avs_path, "clamd.conf"),
         ]
         db_candidates = [
             r"C:\Program Files\ClamAV\db",
             r"C:\Program Files (x86)\ClamAV\db",
             os.path.join(os.environ.get("LOCALAPPDATA", ""), "ClamAV", "db"),
+            os.path.join(_avs_path, "db"),
         ]
     else:
         bin_dirs = ["/usr/bin", "/usr/local/bin", "/opt/clamav/bin"]

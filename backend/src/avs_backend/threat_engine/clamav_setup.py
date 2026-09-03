@@ -45,17 +45,28 @@ _DATA_DIR = Path(
 
 # Bundled ClamAV binaries — shipped with the app, no download needed.
 # In development: apps/pc-optimizer/resources/clamav/
-# In production (packaged): resources/clamav/
+# In production (packaged): <app>/resources/clamav/ (backend exe is at
+#   <app>/resources/backend/avs-backend.exe, so ClamAV is at ../clamav)
 _BUNDLED_CLAMAV_PATHS: list[Path] = []
 if IS_WINDOWS:
     # Development path (relative to backend src)
     _dev_path = Path(__file__).resolve().parent.parent.parent.parent.parent / "apps" / "pc-optimizer" / "resources" / "clamav"
     _BUNDLED_CLAMAV_PATHS.append(_dev_path)
     # Production paths (packaged app)
+    # Backend exe: <app>/resources/backend/avs-backend.exe
+    # ClamAV:      <app>/resources/clamav/
+    # So from exe.parent (backend/): ../clamav
+    # From exe.parent.parent (resources/): clamav/
+    # From exe.parent.parent.parent (<app>/): resources/clamav/
     _exe = Path(sys.executable).resolve()
-    for _ancestor in [_exe.parent, _exe.parent.parent, _exe.parent.parent.parent]:
-        _candidate = _ancestor / "resources" / "clamav"
-        _BUNDLED_CLAMAV_PATHS.append(_candidate)
+    _BUNDLED_CLAMAV_PATHS.append(_exe.parent / ".." / "clamav")  # backend/ -> ../clamav
+    _BUNDLED_CLAMAV_PATHS.append(_exe.parent.parent / "clamav")  # resources/ -> clamav/
+    _BUNDLED_CLAMAV_PATHS.append(_exe.parent.parent.parent / "resources" / "clamav")  # <app>/ -> resources/clamav/
+    # PyInstaller _MEIPASS (onefile builds extract to temp dir)
+    _meipass = getattr(sys, "_MEIPASS", None)
+    if _meipass:
+        _BUNDLED_CLAMAV_PATHS.append(Path(_meipass) / "clamav")
+        _BUNDLED_CLAMAV_PATHS.append(Path(_meipass) / "resources" / "clamav")
     # Also check via LOCALAPPDATA Programs
     _lad = os.environ.get("LOCALAPPDATA", "")
     if _lad:
@@ -584,15 +595,30 @@ def start_setup() -> dict[str, Any]:
     }
 
 
+_auto_setup_started = False
+_auto_setup_lock = threading.Lock()
+
+
 def auto_setup_on_startup() -> None:
     """Auto-setup ClamAV on backend startup if not already installed.
 
     This runs in a background daemon thread so it doesn't block startup.
     Uses bundled ClamAV binaries — only virus definitions are downloaded.
     If already installed, tries to start clamd and auto-update scheduler.
+
+    Guards:
+    - Skips if already started (prevents duplicate threads/clamd processes).
+    - Skips if AVS_NO_CLAMAV_AUTO_SETUP env var is set (for tests).
     """
+    global _auto_setup_started
     if not IS_WINDOWS:
         return
+    if os.environ.get("AVS_NO_CLAMAV_AUTO_SETUP"):
+        return
+    with _auto_setup_lock:
+        if _auto_setup_started:
+            return
+        _auto_setup_started = True
 
     def _do_auto_setup():
         try:
@@ -601,11 +627,16 @@ def auto_setup_on_startup() -> None:
                 # Already installed — just start clamd and auto-update
                 log.info("ClamAV already installed, auto-starting engine...")
                 try:
-                    start_result = start_clamd()
-                    if start_result.get("success"):
-                        log.info("ClamAV daemon auto-started on startup (PID %s)", start_result.get("pid"))
+                    # Check if clamd is already running before starting
+                    from avs_backend.threat_engine.clamav_scanner import check_clamav_available
+                    if not check_clamav_available():
+                        start_result = start_clamd()
+                        if start_result.get("success"):
+                            log.info("ClamAV daemon auto-started on startup (PID %s)", start_result.get("pid"))
+                        else:
+                            log.warning("ClamAV auto-start on startup: %s", start_result.get("error"))
                     else:
-                        log.warning("ClamAV auto-start on startup: %s", start_result.get("error"))
+                        log.info("ClamAV daemon already running, skipping auto-start")
                 except Exception as e:
                     log.warning("ClamAV auto-start on startup error: %s", e)
 

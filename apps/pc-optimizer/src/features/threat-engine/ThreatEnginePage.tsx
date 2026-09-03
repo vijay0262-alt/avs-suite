@@ -519,7 +519,7 @@ export default function ThreatEnginePage() {
     );
   };
 
-  const allSources = ['hash_blocklist', 'yara', 'AVS AI Shield AV Engine', 'virustotal'];
+  const allSources = ['hash_blocklist', 'yara', 'clamav', 'virustotal'];
   const advancedSources = ['virustotal'];
 
   // ── Render ─────────────────────────────────────────────────────
@@ -729,7 +729,7 @@ export default function ThreatEnginePage() {
           <div className="flex-1">
             <div className="text-small font-semibold text-text-primary">AVS AI Shield AV Engine</div>
             <div className="text-caption text-text-muted mt-0.5">
-              Independent open-source antivirus engine with free daily-updated virus definitions. Install to enable signature-based malware protection — no third-party AV required.
+              AVS AI Shield built-in antivirus engine with free daily-updated virus definitions. Starts automatically — no installation required.
             </div>
           </div>
           {clamAvStatus?.clamd_running && (
@@ -739,7 +739,7 @@ export default function ThreatEnginePage() {
             <Badge tone="warning" data-testid="clamav-stopped-badge">Stopped</Badge>
           )}
           {clamAvStatus && !clamAvStatus.installed && (
-            <Badge tone="neutral" data-testid="clamav-not-installed-badge">Not Installed</Badge>
+            <Badge tone="neutral" data-testid="clamav-not-installed-badge">Preparing</Badge>
           )}
         </div>
 
@@ -762,7 +762,7 @@ export default function ThreatEnginePage() {
               <div className="text-lg font-bold text-text-primary">
                 {clamAvStatus.installed ? 'Yes' : 'No'}
               </div>
-              <div className="text-caption text-text-muted">Installed</div>
+              <div className="text-caption text-text-muted">Ready</div>
             </div>
             <div className="text-center p-2 rounded bg-[var(--avs-surface-muted)]">
               <div className="text-lg font-bold text-text-primary">
@@ -799,7 +799,7 @@ export default function ThreatEnginePage() {
               }
               data-testid="clamav-setup-btn"
             >
-              {clamAvSetupLoading ? 'Starting...' : 'Install AV Engine'}
+              {clamAvSetupLoading ? 'Starting...' : 'Start AV Engine'}
             </Button>
           )}
           {clamAvStatus?.installed && !clamAvStatus.clamd_running && (

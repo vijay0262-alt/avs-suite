@@ -495,7 +495,7 @@ export class SecurityCenterViewModel extends ViewModel<SecurityCenterState> {
       // Mark threat engine node complete
       const engineThreats = result.threats.filter((t) =>
         t.detectionSource && typeof t.detectionSource === 'string' &&
-        ['AVS AI Shield AV Engine', 'yara', 'amsi', 'defender', 'hash_detector', 'heuristic', 'virustotal'].includes(t.detectionSource)
+        ['clamav', 'yara', 'amsi', 'defender', 'hash_blocklist', 'heuristic', 'virustotal'].includes(t.detectionSource)
       );
       updateTreeNode('threat_engine', 'complete', engineThreats.length > 0 ? result.itemsScanned : 0, engineThreats.length);
       updateTreeNode('behavior', 'complete', result.itemsScanned, result.threats.length - engineThreats.length);
@@ -624,7 +624,7 @@ export class SecurityCenterViewModel extends ViewModel<SecurityCenterState> {
     }
     baseNodes.push(
       { id: 'behavior', label: 'Behavior Analysis', status: 'pending', itemsScanned: 0, threatsFound: 0 },
-      { id: 'threat_engine', label: 'AV Engine (AVS AV Engine/YARA/AMSI)', status: 'pending', itemsScanned: 0, threatsFound: 0 },
+      { id: 'threat_engine', label: 'AV Engine (AVS AI Shield/YARA/AMSI)', status: 'pending', itemsScanned: 0, threatsFound: 0 },
     );
     if (isFull) {
       baseNodes.push(
