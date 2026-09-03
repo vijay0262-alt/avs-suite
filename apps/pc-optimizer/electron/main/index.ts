@@ -302,6 +302,9 @@ function checkAndRelaunchAsAdmin(): Promise<boolean> {
   if (process.platform !== 'win32') return Promise.resolve(false);
   if (process.env.AVS_NO_ELEVATE) return Promise.resolve(false);
 
+  // In packaged builds, the exe manifest already requests requireAdministrator,
+  // so the OS handles UAC elevation automatically. This check is a fallback
+  // for dev mode or cases where the manifest didn't apply.
   return new Promise((resolve) => {
     exec(
       'powershell -NoProfile -Command "([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)"',
@@ -319,6 +322,7 @@ function checkAndRelaunchAsAdmin(): Promise<boolean> {
         // Not admin — relaunch with elevation
         const exePath = app.getPath('exe');
         const escapedPath = exePath.replace(/'/g, "''");
+        log.info(`[startup] Not admin — relaunching with elevation: ${exePath}`);
         exec(
           `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`,
           (relaunchErr) => {

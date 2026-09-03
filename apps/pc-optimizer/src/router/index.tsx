@@ -44,7 +44,6 @@ const MaintenanceHistoryPage = lazy(() => import('../features/maintenance-ui/Mai
 const ExportCenterPage = lazy(() => import('../features/export-center/ExportCenterPage'));
 const NetworkInformationPage = lazy(() => import('../features/network-info/NetworkInformationPage'));
 const FileRecoveryPage = lazy(() => import('../pages/FileRecoveryPage'));
-const ReportsTimelinePage = lazy(() => import('../pages/ReportsTimelinePage'));
 const LargeFilesPage = lazy(() => import('../pages/LargeFilesPage'));
 const AnalyticsPage = lazy(() => import('../pages/AnalyticsPage'));
 const AntivirusSecurityPage = lazy(() => import('../pages/AntivirusSecurityPage'));
@@ -169,7 +168,7 @@ export const router = createHashRouter([
       { path: 'ai-assistant', element: wrap(AIAssistantPage) },
       { path: 'ai-daily-briefing', element: wrap(AIAssistantPage) },
       { path: 'ai-smart-optimize', element: wrap(SmartOptimizationPage) },
-      { path: 'ai-smart-security', element: wrap(AntivirusSecurityPage) },
+      { path: 'ai-smart-security', element: <Navigate to="/antivirus-security" replace /> },
       { path: 'ai-workspace', element: wrap(AIWorkspacePage) },
       // SYSTEM HEALTH
       { path: 'system-health', element: wrap(SystemHealthPage) },
@@ -219,8 +218,6 @@ export const router = createHashRouter([
       // REPORTS
       { path: 'reports', element: wrap(ReportsPage) },
       { path: 'optimization-reports', element: wrap(OptimizationReportsPage) },
-      // Reports Timeline
-      { path: 'reports-timeline', element: wrap(ReportsTimelinePage) },
       { path: 'analytics', element: wrap(AnalyticsPage) },
       { path: 'export-center', element: wrap(ExportCenterPage) },
       // TOOLS

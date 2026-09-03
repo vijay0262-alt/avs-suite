@@ -52,31 +52,23 @@ interface NavSection {
 
 const NAV_SECTIONS: readonly NavSection[] = [
   // ── 1. DASHBOARD ──────────────────────────────────────────────
+  //  Main dashboard + the 3 primary AI features consolidated here.
   {
     id: 'home',
     labelKey: 'nav.section.home',
     entries: [
       { id: 'dashboard', to: '/dashboard', labelKey: 'nav.dashboard', Icon: Squares2X2Icon },
-    ],
-  },
-  // ── 2. AVS AI SHIELD ANTIVIRUS / SMART SECURITY ───────────────
-  //  Unified antivirus: scan, real-time protection, quarantine,
-  //  threat engine, advanced security, AI Smart Security.
-  {
-    id: 'security',
-    labelKey: 'nav.section.security',
-    entries: [
       { id: 'antivirus-security', to: '/antivirus-security', labelKey: 'nav.antivirusSecurity', Icon: ShieldCheckIcon, proEnhanced: true },
-      { id: 'ai-smart-security', to: '/ai-smart-security', labelKey: 'nav.aiSmartSecurity', Icon: ShieldExclamationIcon },
+      { id: 'ai-smart-optimize', to: '/ai-smart-optimize', labelKey: 'nav.aiSmartOptimize', Icon: BoltIcon, proEnhanced: true },
+      { id: 'protection-center', to: '/protection-center', labelKey: 'nav.protectionCenter', Icon: ShieldExclamationIcon },
     ],
   },
-  // ── 3. AVS AI SHIELD SMART OPTIMIZE ───────────────────────────
+  // ── 2. SMART OPTIMIZE ─────────────────────────────────────────
   //  Cleanup, optimization, and AI intelligence features.
   {
     id: 'optimization',
     labelKey: 'nav.section.optimization',
     entries: [
-      { id: 'ai-smart-optimize', to: '/ai-smart-optimize', labelKey: 'nav.aiSmartOptimize', Icon: BoltIcon, proEnhanced: true },
       { id: 'junk-cleaner', to: '/junk-cleaner', labelKey: 'nav.junkCleaner', Icon: TrashIcon },
       { id: 'startup-manager', to: '/startup-manager', labelKey: 'nav.startupManager', Icon: RocketLaunchIcon },
       { id: 'registry-cleaner', to: '/registry-cleaner', labelKey: 'nav.registryCleaner', Icon: WrenchScrewdriverIcon },
@@ -88,13 +80,12 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'auto-care', to: '/auto-care', labelKey: 'nav.autoCare', Icon: ClockIcon, proEnhanced: true },
     ],
   },
-  // ── 4. AVS AI PROTECTION ──────────────────────────────────────
-  //  Protection center, real-time guard, safe folder, advanced tools.
+  // ── 3. AI PROTECTION ──────────────────────────────────────────
+  //  Safe folder, file recovery, shredder, driver updater, etc.
   {
     id: 'protection',
     labelKey: 'nav.section.protection',
     entries: [
-      { id: 'protection-center', to: '/protection-center', labelKey: 'nav.protectionCenter', Icon: ShieldExclamationIcon },
       { id: 'safe-folder', to: '/safe-folder', labelKey: 'nav.safeFolder', Icon: LockClosedIcon, proEnhanced: true },
       { id: 'file-recovery', to: '/file-recovery', labelKey: 'nav.fileRecovery', Icon: ArrowUturnLeftIcon, proEnhanced: true },
       { id: 'file-shredder', to: '/file-shredder', labelKey: 'nav.fileShredder', Icon: FireIcon, proEnhanced: true },
@@ -108,7 +99,6 @@ const NAV_SECTIONS: readonly NavSection[] = [
     labelKey: 'nav.section.reportsTools',
     entries: [
       { id: 'reports', to: '/reports', labelKey: 'nav.reports', Icon: DocumentChartBarIcon },
-      { id: 'reports-timeline', to: '/reports-timeline', labelKey: 'nav.reportsTimeline', Icon: ClockIcon, proEnhanced: true },
       { id: 'analytics', to: '/analytics', labelKey: 'nav.analytics', Icon: ChartBarIcon, proEnhanced: true },
       { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
       { id: 'large-files', to: '/large-files', labelKey: 'nav.largeFiles', Icon: ChartBarIcon, proEnhanced: true },

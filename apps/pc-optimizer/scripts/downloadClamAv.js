@@ -142,9 +142,9 @@ async function downloadAndExtractClamAv() {
   fs.mkdirSync(dbDir, { recursive: true });
 
   const DEFS = [
-    { name: 'main.cvd', url: 'https://database.clamav.net/main.cvd' },
-    { name: 'daily.cvd', url: 'https://database.clamav.net/daily.cvd' },
-    { name: 'bytecode.cvd', url: 'https://database.clamav.net/bytecode.cvd' },
+    { name: 'main.cvd', urls: ['https://database.clamav.net/main.cvd', 'https://www.clamav.net/downloads/main.cvd'] },
+    { name: 'daily.cvd', urls: ['https://database.clamav.net/daily.cvd', 'https://www.clamav.net/downloads/daily.cvd'] },
+    { name: 'bytecode.cvd', urls: ['https://database.clamav.net/bytecode.cvd', 'https://www.clamav.net/downloads/bytecode.cvd'] },
   ];
 
   for (const def of DEFS) {
@@ -153,18 +153,28 @@ async function downloadAndExtractClamAv() {
       console.log(`  ${def.name} already present, skipping.`);
       continue;
     }
-    console.log(`  Downloading ${def.name}...`);
-    try {
-      await downloadFile(def.url, defPath, { label: def.name });
-    } catch (err) {
-      // CVD download failures are non-fatal — freshclam will fetch them at runtime.
-      // The ClamAV binaries are the critical part; definitions can be updated later.
-      console.log(`  WARNING: Failed to download ${def.name}: ${err.message}`);
-      console.log(`  Definitions will be fetched by freshclam on first scan.`);
-      // Clean up partial download
-      if (fs.existsSync(defPath)) {
-        fs.unlinkSync(defPath);
+    let downloaded = false;
+    for (const url of def.urls) {
+      // Try up to 2 times per URL
+      for (let attempt = 1; attempt <= 2 && !downloaded; attempt++) {
+        console.log(`  Downloading ${def.name} (attempt ${attempt}) from ${url}...`);
+        try {
+          await downloadFile(url, defPath, { label: def.name });
+          downloaded = true;
+          console.log(`  ${def.name} downloaded successfully.`);
+        } catch (err) {
+          console.log(`  WARNING: Attempt ${attempt} failed for ${def.name}: ${err.message}`);
+          if (fs.existsSync(defPath)) {
+            fs.unlinkSync(defPath);
+          }
+        }
       }
+      if (downloaded) break;
+    }
+    if (!downloaded) {
+      // CVD download failures are non-fatal — freshclam will fetch them at runtime.
+      console.log(`  WARNING: All download attempts failed for ${def.name}.`);
+      console.log(`  Definitions will be fetched by freshclam on first scan.`);
     }
   }
 
