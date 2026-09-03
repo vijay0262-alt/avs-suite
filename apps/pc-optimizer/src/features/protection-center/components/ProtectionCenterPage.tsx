@@ -77,16 +77,9 @@ class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
       if (forceRefresh) {
         await dashboardService.refreshCache();
       }
-      // Race the fetch against a 10s timeout so the page never hangs
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Loading timed out — using cached data')), 10_000)
-      );
-      const [metrics, healthScore] = await Promise.race([
-        Promise.all([
-          dashboardService.getMetrics(),
-          dashboardService.getHealthScore(),
-        ]),
-        timeout,
+      const [metrics, healthScore] = await Promise.all([
+        dashboardService.getMetrics(),
+        dashboardService.getHealthScore(),
       ]);
       this.setState({
         loading: false,

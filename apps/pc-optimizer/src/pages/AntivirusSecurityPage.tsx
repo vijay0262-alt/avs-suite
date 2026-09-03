@@ -377,11 +377,13 @@ export default function AntivirusSecurityPage() {
           }
         } catch (e) {
           clearInterval(poll);
-          setOneClickProgress(prev => prev ? { ...prev, active: false, error: 'Failed to get progress' } : null);
+          const errMsg = e instanceof Error ? e.message : 'Failed to get progress';
+          setOneClickProgress(prev => prev ? { ...prev, active: false, error: errMsg } : null);
         }
       }, 1000);
     } catch (e) {
-      setOneClickProgress({ active: false, phase: 'error', scan_progress: 0, optimize_progress: 0, threats_found: 0, space_freed: 0, files_cleaned: 0, error: 'Failed to start one-click scan' });
+      const errMsg = e instanceof Error ? e.message : 'Failed to start one-click scan';
+      setOneClickProgress({ active: false, phase: 'error', scan_progress: 0, optimize_progress: 0, threats_found: 0, space_freed: 0, files_cleaned: 0, error: errMsg });
     }
   }, [refreshThreats]);
 
@@ -576,6 +578,86 @@ export default function AntivirusSecurityPage() {
         actions={<HelpButton text="Antivirus Security combines all security features. Run a scan, enable real-time protection, manage quarantined threats, and configure advanced security." />}
       />
 
+      {/* One-Click Scan & Optimize — first thing the user sees */}
+      <Card variant="glass" className="p-6 bg-gradient-to-br from-brand-primary/10 to-transparent" data-testid="av-one-click">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="shrink-0 rounded-[var(--avs-radius-lg)] bg-brand-primary/20 p-3">
+              <BoltIcon className="h-8 w-8 text-brand-primary" />
+            </div>
+            <div>
+              <div className="text-base font-bold text-text-primary">One-Click Scan & Optimize</div>
+              <div className="text-small text-text-secondary">
+                Run a quick security scan AND clean up junk files in one action.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={startOneClick}
+            disabled={oneClickProgress?.active}
+            className="px-6 py-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-brand-primary)] text-white text-small font-bold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            data-testid="one-click-btn"
+          >
+            {oneClickProgress?.active ? 'Running...' : 'Scan & Optimize'}
+          </button>
+        </div>
+
+        {/* Progress bar */}
+        {oneClickProgress?.active && (
+          <div className="mt-4 space-y-3" data-testid="one-click-progress">
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-caption text-text-secondary">
+                    {oneClickProgress.phase === 'scanning' && 'Scanning for threats...'}
+                    {oneClickProgress.phase === 'optimizing' && 'Cleaning and optimizing...'}
+                  </span>
+                  <span className="text-caption text-text-muted">
+                    {oneClickProgress.phase === 'scanning' ? `${oneClickProgress.scan_progress}%` : `${oneClickProgress.optimize_progress}%`}
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-[var(--avs-border)] overflow-hidden">
+                  <div
+                    className="h-full bg-brand-primary transition-all duration-500"
+                    style={{ width: `${oneClickProgress.phase === 'scanning' ? oneClickProgress.scan_progress : oneClickProgress.optimize_progress}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Result summary */}
+        {oneClickResult && (
+          <div className="mt-4 p-4 rounded-[var(--avs-radius-md)] bg-semantic-success/5 border border-semantic-success/20" data-testid="one-click-result">
+            <div className="flex items-center gap-2 mb-2">
+              <ShieldCheckIcon className="h-5 w-5 text-semantic-success" />
+              <span className="text-small font-semibold text-text-primary">Scan & Optimize Complete</span>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <div className="text-caption text-text-muted">Threats Found</div>
+                <div className="text-small font-bold text-text-primary">{oneClickResult.threats_found}</div>
+              </div>
+              <div>
+                <div className="text-caption text-text-muted">Files Cleaned</div>
+                <div className="text-small font-bold text-text-primary">{oneClickResult.files_cleaned}</div>
+              </div>
+              <div>
+                <div className="text-caption text-text-muted">Space Freed</div>
+                <div className="text-small font-bold text-text-primary">{formatBytes(oneClickResult.bytes_freed)}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {oneClickProgress?.error && (
+          <div className="mt-4 p-3 rounded bg-semantic-danger/5 border border-semantic-danger/20">
+            <span className="text-small text-semantic-danger">{oneClickProgress.error}</span>
+          </div>
+        )}
+      </Card>
+
       {/* Threat coverage badges */}
       <div className="flex flex-wrap gap-2" data-testid="threat-coverage">
         {THREAT_COVERAGE.map(({ label, icon: Icon }) => (
@@ -720,86 +802,6 @@ export default function AntivirusSecurityPage() {
           <div className="text-caption text-text-secondary">Threats Found</div>
         </Card>
       </div>
-
-      {/* One-Click Scan & Optimize — always visible at top */}
-      <Card variant="glass" className="p-6 bg-gradient-to-br from-brand-primary/10 to-transparent" data-testid="av-one-click">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="shrink-0 rounded-[var(--avs-radius-lg)] bg-brand-primary/20 p-3">
-              <BoltIcon className="h-8 w-8 text-brand-primary" />
-            </div>
-            <div>
-              <div className="text-base font-bold text-text-primary">One-Click Scan & Optimize</div>
-              <div className="text-small text-text-secondary">
-                Run a quick security scan AND clean up junk files in one action.
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={startOneClick}
-            disabled={oneClickProgress?.active}
-            className="px-6 py-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-brand-primary)] text-white text-small font-bold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-            data-testid="one-click-btn"
-          >
-            {oneClickProgress?.active ? 'Running...' : 'Scan & Optimize'}
-          </button>
-        </div>
-
-        {/* Progress bar */}
-        {oneClickProgress?.active && (
-          <div className="mt-4 space-y-3" data-testid="one-click-progress">
-            <div className="flex items-center gap-3">
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-caption text-text-secondary">
-                    {oneClickProgress.phase === 'scanning' && 'Scanning for threats...'}
-                    {oneClickProgress.phase === 'optimizing' && 'Cleaning and optimizing...'}
-                  </span>
-                  <span className="text-caption text-text-muted">
-                    {oneClickProgress.phase === 'scanning' ? `${oneClickProgress.scan_progress}%` : `${oneClickProgress.optimize_progress}%`}
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-[var(--avs-border)] overflow-hidden">
-                  <div
-                    className="h-full bg-brand-primary transition-all duration-500"
-                    style={{ width: `${oneClickProgress.phase === 'scanning' ? oneClickProgress.scan_progress : oneClickProgress.optimize_progress}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Result summary */}
-        {oneClickResult && (
-          <div className="mt-4 p-4 rounded-[var(--avs-radius-md)] bg-semantic-success/5 border border-semantic-success/20" data-testid="one-click-result">
-            <div className="flex items-center gap-2 mb-2">
-              <ShieldCheckIcon className="h-5 w-5 text-semantic-success" />
-              <span className="text-small font-semibold text-text-primary">Scan & Optimize Complete</span>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <div className="text-caption text-text-muted">Threats Found</div>
-                <div className="text-small font-bold text-text-primary">{oneClickResult.threats_found}</div>
-              </div>
-              <div>
-                <div className="text-caption text-text-muted">Files Cleaned</div>
-                <div className="text-small font-bold text-text-primary">{oneClickResult.files_cleaned}</div>
-              </div>
-              <div>
-                <div className="text-caption text-text-muted">Space Freed</div>
-                <div className="text-small font-bold text-text-primary">{formatBytes(oneClickResult.bytes_freed)}</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {oneClickProgress?.error && (
-          <div className="mt-4 p-3 rounded bg-semantic-danger/5 border border-semantic-danger/20">
-            <span className="text-small text-semantic-danger">{oneClickProgress.error}</span>
-          </div>
-        )}
-      </Card>
 
       {/* Tab navigation */}
       <div className="flex items-center gap-1 border-b border-[var(--avs-border)]" data-testid="av-tabs">

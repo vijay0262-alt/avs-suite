@@ -433,18 +433,23 @@ def _run_setup_async() -> None:
                 _setup_progress = {"phase": "copying_bundled"}
 
             # Copy bundled binaries to data dir (so we can write configs/db)
-            log.info("Using bundled ClamAV binaries from %s", bundled)
-            for item in bundled.iterdir():
-                dest = install_dir / item.name
-                if dest.exists():
-                    if dest.is_dir():
-                        shutil.rmtree(dest)
+            # Skip copy if clamd.exe already exists (speeds up restart)
+            dest_clamd = install_dir / "clamd.exe"
+            if dest_clamd.exists():
+                log.info("ClamAV binaries already present at %s, skipping copy", install_dir)
+            else:
+                log.info("Using bundled ClamAV binaries from %s", bundled)
+                for item in bundled.iterdir():
+                    dest = install_dir / item.name
+                    if dest.exists():
+                        if dest.is_dir():
+                            shutil.rmtree(dest)
+                        else:
+                            dest.unlink()
+                    if item.is_dir():
+                        shutil.copytree(str(item), str(dest))
                     else:
-                        dest.unlink()
-                if item.is_dir():
-                    shutil.copytree(str(item), str(dest))
-                else:
-                    shutil.copy2(str(item), str(dest))
+                        shutil.copy2(str(item), str(dest))
         else:
             # Fallback: download ClamAV portable (if bundled not found)
             with _setup_lock:
@@ -705,22 +710,74 @@ def start_clamd() -> dict[str, Any]:
     if not clamd_exe.exists():
         return {"success": False, "error": f"clamd.exe not found at {clamd_exe}"}
 
+    # Check if clamd is already running by testing the TCP port
     try:
-        proc = subprocess.Popen(
-            [str(clamd_exe), "--config-file", str(_DATA_DIR / "clamd.conf")],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            creationflags=_NO_WINDOW | 0x00000004,  # DETACHED_PROCESS
-        )
-        log.info("clamd started with PID %d", proc.pid)
-        return {
-            "success": True,
-            "message": "clamd started",
-            "pid": proc.pid,
-        }
-    except Exception as e:
-        log.error("Failed to start clamd: %s", e)
-        return {"success": False, "error": str(e)}
+        import socket as _sock
+        s = _sock.socket(_sock.AF_INET, _sock.SOCK_STREAM)
+        s.settimeout(1)
+        result = s.connect_ex(("127.0.0.1", 3310))
+        s.close()
+        if result == 0:
+            log.info("clamd already running on port 3310")
+            return {"success": True, "message": "clamd already running", "pid": None}
+    except Exception:
+        pass
+
+    # Try starting clamd with retries
+    import time as _time
+    for attempt in range(3):
+        try:
+            proc = subprocess.Popen(
+                [str(clamd_exe), "--config-file", str(_DATA_DIR / "clamd.conf")],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=_NO_WINDOW | 0x00000004,  # DETACHED_PROCESS
+            )
+            log.info("clamd started with PID %d (attempt %d)", proc.pid, attempt + 1)
+
+            # Wait a moment and check if the process is still alive
+            _time.sleep(2)
+            if proc.poll() is not None:
+                # Process exited immediately — read stderr for error
+                stderr_data = proc.stderr.read() if proc.stderr else b""
+                err_msg = stderr_data.decode("utf-8", errors="replace").strip()
+                log.warning("clamd exited immediately (attempt %d): %s", attempt + 1, err_msg)
+                if attempt < 2:
+                    _time.sleep(3)
+                    continue
+                return {"success": False, "error": f"clamd exited: {err_msg}"}
+
+            # Verify clamd is reachable on port 3310
+            _time.sleep(3)
+            try:
+                s = _sock.socket(_sock.AF_INET, _sock.SOCK_STREAM)
+                s.settimeout(5)
+                result = s.connect_ex(("127.0.0.1", 3310))
+                s.close()
+                if result == 0:
+                    log.info("clamd is reachable on port 3310")
+                    return {"success": True, "message": "clamd started", "pid": proc.pid}
+                else:
+                    log.warning("clamd started but port 3310 not reachable (attempt %d)", attempt + 1)
+                    if attempt < 2:
+                        _time.sleep(3)
+                        continue
+            except Exception as e:
+                log.warning("Port check failed: %s", e)
+
+            return {
+                "success": True,
+                "message": "clamd started (port check pending)",
+                "pid": proc.pid,
+            }
+        except Exception as e:
+            log.error("Failed to start clamd (attempt %d): %s", attempt + 1, e)
+            if attempt < 2:
+                _time.sleep(3)
+                continue
+            return {"success": False, "error": str(e)}
+
+    return {"success": False, "error": "clamd failed to start after 3 attempts"}
 
 
 def uninstall() -> dict[str, Any]:
