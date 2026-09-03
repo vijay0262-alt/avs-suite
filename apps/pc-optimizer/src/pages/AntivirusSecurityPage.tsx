@@ -85,12 +85,22 @@ export default function AntivirusSecurityPage() {
   const [threats, setThreats] = useState<ThreatItem[]>([]);
   const [threatsLoading, setThreatsLoading] = useState(false);
 
+  // Setup status (definitions downloading, etc.)
+  const [setupStatus, setSetupStatus] = useState<{ setup_in_progress: boolean; setup_progress?: { phase?: string } } | null>(null);
+
   // ── Data loading ──────────────────────────────────────────────
 
   const refreshAvStatus = useCallback(async () => {
     try {
       const res = await rpc.raw<{ installed: boolean; clamd_running: boolean; signature_count: number; version: string | null }>(RPC_METHODS.THREAT_CLAMAV_STATUS);
       setAvStatus(res);
+    } catch { /* ignore */ }
+  }, []);
+
+  const refreshSetupStatus = useCallback(async () => {
+    try {
+      const res = await rpc.raw<{ setup_in_progress: boolean; setup_progress?: { phase?: string } }>(RPC_METHODS.THREAT_CLAMAV_SETUP_STATUS);
+      setSetupStatus(res);
     } catch { /* ignore */ }
   }, []);
 
@@ -111,10 +121,17 @@ export default function AntivirusSecurityPage() {
       .catch(() => {});
     refreshAvStatus();
     refreshThreats();
+    refreshSetupStatus();
     rpc.raw<{ avs_av_active: boolean; avs_signatures: number; primary_av: string | null; defender_visible: boolean; third_party_av: string | null; protected: boolean }>(RPC_METHODS.SYSTEM_AV_STATUS)
       .then(setUnifiedAv)
       .catch(() => {});
-  }, [refreshAvStatus, refreshThreats]);
+    // Poll setup status every 5s while setup is in progress
+    const poll = setInterval(() => {
+      refreshSetupStatus();
+      refreshAvStatus();
+    }, 5000);
+    return () => clearInterval(poll);
+  }, [refreshAvStatus, refreshThreats, refreshSetupStatus]);
 
   // ── Handlers ──────────────────────────────────────────────────
 
@@ -384,7 +401,29 @@ export default function AntivirusSecurityPage() {
               </div>
             )}
 
-            {!avStatus?.clamd_running && (
+            {!avStatus?.clamd_running && setupStatus?.setup_in_progress && (
+              <div className="mt-3 p-3 rounded bg-semantic-info/5 border border-semantic-info/20" data-testid="av-setup-progress">
+                <div className="flex items-center gap-2">
+                  <ArrowPathIcon className="h-4 w-4 animate-spin text-semantic-info" />
+                  <span className="text-small font-medium text-text-primary">
+                    {setupStatus.setup_progress?.phase === 'downloading_signatures'
+                      ? 'Downloading virus definitions...'
+                      : setupStatus.setup_progress?.phase === 'copying_bundled'
+                        ? 'Setting up antivirus engine...'
+                        : setupStatus.setup_progress?.phase === 'starting_engine'
+                          ? 'Starting antivirus engine...'
+                          : setupStatus.setup_progress?.phase === 'configuring'
+                            ? 'Configuring antivirus engine...'
+                            : 'Preparing antivirus engine...'}
+                  </span>
+                </div>
+                <p className="text-caption text-text-muted mt-1">
+                  This happens once. Future scans start instantly with auto-updated definitions.
+                </p>
+              </div>
+            )}
+
+            {!avStatus?.clamd_running && !setupStatus?.setup_in_progress && (
               <p className="mt-2 text-caption text-text-muted" data-testid="av-auto-setup-msg">
                 The antivirus engine starts automatically. Virus definitions download in the background and update daily.
               </p>

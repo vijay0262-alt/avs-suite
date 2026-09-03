@@ -529,6 +529,12 @@ def _run_setup_async() -> None:
         except Exception as e:
             log.warning("ClamAV auto-update enable error: %s", e)
 
+        # Step 7: Enable clamav source in threat engine config so scans use it
+        try:
+            _enable_clamav_in_config()
+        except Exception as e:
+            log.warning("Failed to enable clamav source in config: %s", e)
+
         with _setup_lock:
             _setup_progress = {"phase": "complete"}
 
@@ -541,6 +547,29 @@ def _run_setup_async() -> None:
     finally:
         with _setup_lock:
             _setup_in_progress = False
+
+
+def _enable_clamav_in_config() -> None:
+    """Enable the clamav source in the threat engine config so scans use it."""
+    try:
+        from avs_backend.threat_engine import _CONFIG_PATH, _DEFAULT_CONFIG
+        import json as _json
+
+        cfg = _DEFAULT_CONFIG.copy()
+        if _CONFIG_PATH.exists():
+            with open(_CONFIG_PATH, "r", encoding="utf-8") as f:
+                cfg = _json.load(f)
+
+        if "enabled_sources" not in cfg:
+            cfg["enabled_sources"] = {}
+        cfg["enabled_sources"]["clamav"] = True
+
+        with open(_CONFIG_PATH, "w", encoding="utf-8") as f:
+            _json.dump(cfg, f, indent=2)
+
+        log.info("Enabled clamav source in threat engine config")
+    except Exception as e:
+        log.warning("Failed to enable clamav in config: %s", e)
 
 
 def start_setup() -> dict[str, Any]:

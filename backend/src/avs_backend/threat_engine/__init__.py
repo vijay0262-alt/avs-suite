@@ -79,7 +79,7 @@ _DEFAULT_CONFIG = {
         "hash_blocklist": True,
         "virustotal": True,  # Enabled — API key pre-configured
         "yara": True,
-        "clamav": False,  # Off by default — requires ClamAV installed
+        "clamav": True,  # Enabled — bundled with AVS AI Shield, auto-setup on startup
         "amsi": True,
         "heuristic": True,
         "defender": True,
@@ -88,7 +88,7 @@ _DEFAULT_CONFIG = {
     "scan_max_file_size_mb": 100,
     "scan_archives": True,
     "scan_email": False,
-    "auto_quarantine": False,  # Don't auto-quarantine by default
+    "auto_quarantine": True,  # Auto-quarantine detected threats (Pro behavior)
     "exclude_paths": [
         "C:\\Windows\\WinSxS",
         "C:\\ProgramData\\Microsoft",

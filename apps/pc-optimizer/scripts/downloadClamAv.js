@@ -109,9 +109,31 @@ async function downloadAndExtractClamAv() {
   fs.rmSync(tempDir, { recursive: true, force: true });
   fs.unlinkSync(ZIP_PATH);
 
+  // Download base virus definitions (main.cvd, daily.cvd, bytecode.cvd)
+  // These are bundled so first scan works immediately without internet.
+  // daily.cvd updates are fetched in background by freshclam after install.
+  const dbDir = path.join(RESOURCES_DIR, 'db');
+  fs.mkdirSync(dbDir, { recursive: true });
+
+  const DEFS = [
+    { name: 'main.cvd', url: 'https://database.clamav.net/main.cvd' },
+    { name: 'daily.cvd', url: 'https://database.clamav.net/daily.cvd' },
+    { name: 'bytecode.cvd', url: 'https://database.clamav.net/bytecode.cvd' },
+  ];
+
+  for (const def of DEFS) {
+    const defPath = path.join(dbDir, def.name);
+    if (fs.existsSync(defPath) && fs.statSync(defPath).size > 0) {
+      console.log(`  ${def.name} already present, skipping.`);
+      continue;
+    }
+    console.log(`  Downloading ${def.name}...`);
+    await downloadFile(def.url, defPath);
+  }
+
   // Calculate final size
   const totalSize = getTotalSize(RESOURCES_DIR);
-  console.log(`ClamAV binaries ready: ${(totalSize / 1048576).toFixed(1)}MB at ${RESOURCES_DIR}`);
+  console.log(`ClamAV binaries + definitions ready: ${(totalSize / 1048576).toFixed(1)}MB at ${RESOURCES_DIR}`);
 }
 
 function copyDirSync(src, dest) {
