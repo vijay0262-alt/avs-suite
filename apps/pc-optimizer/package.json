@@ -76,6 +76,13 @@
         ]
       },
       {
+        "from": "./resources/clamav",
+        "to": "clamav",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
         "from": "./build/icon.ico",
         "to": "icon.ico"
       },

@@ -330,6 +330,51 @@ def realtime_threat_usb_scan(params: dict[str, Any] | None) -> dict[str, Any]:
         return {"success": False, "error": str(e), "error_code": "USB_SCAN_FAILED"}
 
 
+@register("realtime_threat.usbAutoScanStart")
+def realtime_threat_usb_auto_scan_start(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Start USB auto-scan monitoring independently of real-time protection."""
+    _init_monitors()
+
+    if not _usb_monitor:
+        return {"success": False, "error": "USB monitor not available", "error_code": "NOT_AVAILABLE"}
+
+    try:
+        result = _usb_monitor.start()
+        return {"success": True, "result": result}
+    except Exception as e:
+        return {"success": False, "error": str(e), "error_code": "USB_START_FAILED"}
+
+
+@register("realtime_threat.usbAutoScanStop")
+def realtime_threat_usb_auto_scan_stop(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Stop USB auto-scan monitoring."""
+    if not _usb_monitor:
+        return {"success": False, "error": "USB monitor not available", "error_code": "NOT_AVAILABLE"}
+
+    try:
+        result = _usb_monitor.stop()
+        return {"success": True, "result": result}
+    except Exception as e:
+        return {"success": False, "error": str(e), "error_code": "USB_STOP_FAILED"}
+
+
+@register("realtime_threat.usbAutoScanStatus")
+def realtime_threat_usb_auto_scan_status(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get USB auto-scan monitoring status."""
+    _init_monitors()
+
+    if not _usb_monitor:
+        return {"success": True, "status": {"running": False, "auto_scan_enabled": False}, "devices": []}
+
+    try:
+        status = _usb_monitor.get_status()
+        devices = _usb_monitor.get_devices()
+        events = _usb_monitor.get_events()
+        return {"success": True, "status": status, "devices": devices, "events": events[:10]}
+    except Exception as e:
+        return {"success": False, "error": str(e), "error_code": "USB_STATUS_FAILED"}
+
+
 @register("realtime_threat.networkScan")
 def realtime_threat_network_scan(params: dict[str, Any] | None) -> dict[str, Any]:
     """Scan all current network connections for C2/threat indicators."""
@@ -400,3 +445,15 @@ def realtime_threat_feed_status(params: dict[str, Any] | None) -> dict[str, Any]
 
 
 log.info("Real-time threat protection module loaded (platform: %s)", platform.system())
+
+# Auto-start USB monitoring on startup if enabled in config.
+# This runs independently of the full real-time protection stack so
+# USB auto-scan works even for free users.
+if IS_WINDOWS and _config.get("usb_auto_scan", True):
+    try:
+        _init_monitors()
+        if _usb_monitor:
+            _usb_monitor.start()
+            log.info("USB auto-scan monitoring auto-started on startup")
+    except Exception as _e:
+        log.warning("USB auto-scan auto-start failed: %s", _e)

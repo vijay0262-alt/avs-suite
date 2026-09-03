@@ -77,14 +77,14 @@ _HISTORY_PATH = _DATA_DIR / "history.json"
 _DEFAULT_CONFIG = {
     "enabled_sources": {
         "hash_blocklist": True,
-        "virustotal": True,  # Enabled — API key pre-configured
+        "virustotal": True,  # Enabled — API key loaded from env/config at runtime
         "yara": True,
         "clamav": True,  # Enabled — bundled with AVS AI Shield, auto-setup on startup
         "amsi": True,
         "heuristic": True,
         "defender": True,
     },
-    "virustotal_api_key": "REDACTED_VIRUSTOTAL_API_KEY",
+    "virustotal_api_key": "",  # Set via AVS_VIRUSTOTAL_API_KEY env var or threat.configure RPC
     "scan_max_file_size_mb": 100,
     "scan_archives": True,
     "scan_email": False,
@@ -94,6 +94,12 @@ _DEFAULT_CONFIG = {
         "C:\\ProgramData\\Microsoft",
         "C:\\Program Files\\WindowsApps",
     ],
+    "exclude_extensions": [
+        ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv",
+        ".mp3", ".wav", ".flac", ".aac", ".ogg",
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp",
+        ".txt", ".log",
+    ],  # File types to skip during scans (media, images, text)
 }
 
 
@@ -108,10 +114,19 @@ def _load_config() -> dict[str, Any]:
             merged.update(cfg)
             if "enabled_sources" in cfg:
                 merged["enabled_sources"] = {**_DEFAULT_CONFIG["enabled_sources"], **cfg["enabled_sources"]}
+            # Inject VirusTotal API key from env if not already set in config file
+            env_vt_key = os.environ.get("AVS_VIRUSTOTAL_API_KEY", "")
+            if env_vt_key and not merged.get("virustotal_api_key"):
+                merged["virustotal_api_key"] = env_vt_key
             return merged
         except Exception as e:
             log.warning("Failed to load threat engine config: %s", e)
-    return _DEFAULT_CONFIG.copy()
+    cfg = _DEFAULT_CONFIG.copy()
+    # Inject VirusTotal API key from env on fresh config
+    env_vt_key = os.environ.get("AVS_VIRUSTOTAL_API_KEY", "")
+    if env_vt_key:
+        cfg["virustotal_api_key"] = env_vt_key
+    return cfg
 
 
 def _save_config(cfg: dict[str, Any]) -> None:
@@ -187,6 +202,11 @@ def _should_scan(file_path: str, config: dict[str, Any]) -> bool:
 
     # Skip known-safe extensions
     if ext in _SKIP_EXTENSIONS:
+        return False
+
+    # Skip user-configured excluded extensions (media, images, etc.)
+    exclude_exts = config.get("exclude_extensions", [])
+    if ext in exclude_exts:
         return False
 
     # Scan known-dangerous extensions
@@ -360,11 +380,15 @@ def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> N
                     threat = {
                         "id": str(uuid.uuid4()),
                         "file_path": file_path,
+                        "path": file_path,  # Normalized key for consumers
                         "file_name": os.path.basename(file_path),
+                        "name": result.get("threat_name", "Unknown"),  # Normalized key
                         "file_size": os.path.getsize(file_path) if os.path.exists(file_path) else 0,
                         "detection_source": detector.name,
+                        "source": detector.name,  # Normalized key
                         "threat_name": result.get("threat_name", "Unknown"),
                         "threat_type": result.get("threat_type", "unknown"),
+                        "category": result.get("threat_type", "unknown"),  # Normalized key
                         "severity": result.get("severity", "medium"),
                         "confidence": result.get("confidence", 0.5),
                         "details": result.get("details", {}),
@@ -372,6 +396,7 @@ def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> N
                         "md5": result.get("md5"),
                         "detected_at": datetime.now(timezone.utc).isoformat(),
                         "status": "detected",  # detected, quarantined, removed, ignored
+                        "quarantined": False,  # Normalized key
                     }
                     detected_threats.append(threat)
                     scan["threats_found"] = len(detected_threats)
@@ -382,6 +407,7 @@ def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> N
                             from avs_backend.threat_engine.quarantine_manager import quarantine_file
                             qresult = quarantine_file(file_path, threat)
                             threat["status"] = "quarantined"
+                            threat["quarantined"] = True
                             threat["quarantine_id"] = qresult.get("quarantine_id")
                         except Exception as qe:
                             log.error("Auto-quarantine failed for %s: %s", file_path, qe)
@@ -619,6 +645,7 @@ def threat_status(params: dict[str, Any] | None) -> dict[str, Any]:
             "scan_archives": cfg.get("scan_archives", True),
             "auto_quarantine": cfg.get("auto_quarantine", False),
             "exclude_paths": cfg.get("exclude_paths", []),
+            "exclude_extensions": cfg.get("exclude_extensions", []),
             "virustotal_configured": bool(cfg.get("virustotal_api_key")),
         },
     }
@@ -648,6 +675,9 @@ def threat_configure(params: dict[str, Any] | None) -> dict[str, Any]:
 
     if "exclude_paths" in params:
         cfg["exclude_paths"] = params["exclude_paths"]
+
+    if "exclude_extensions" in params:
+        cfg["exclude_extensions"] = params["exclude_extensions"]
 
     _save_config(cfg)
     _config = cfg
@@ -910,6 +940,91 @@ def threat_remove(params: dict[str, Any] | None) -> dict[str, Any]:
         return {"success": False, "error": str(e), "error_code": "REMOVE_FAILED"}
 
 
+@register("threat.quarantineList")
+def threat_quarantine_list(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """List all quarantined files."""
+    try:
+        from avs_backend.threat_engine.quarantine_manager import list_quarantined
+        items = list_quarantined()
+        return {"success": True, "items": items, "count": len(items)}
+    except Exception as e:
+        return {"success": False, "error": str(e), "error_code": "LIST_FAILED"}
+
+
+@register("threat.quarantineRestoreAll")
+def threat_quarantine_restore_all(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Restore all quarantined files (batch action)."""
+    try:
+        from avs_backend.threat_engine.quarantine_manager import list_quarantined, restore_file
+        items = list_quarantined()
+        results = []
+        restored = 0
+        failed = 0
+        for item in items:
+            qid = item.get("quarantine_id", "")
+            if qid:
+                try:
+                    restore_file(qid)
+                    results.append({"quarantine_id": qid, "success": True})
+                    restored += 1
+                except Exception as e:
+                    results.append({"quarantine_id": qid, "success": False, "error": str(e)})
+                    failed += 1
+        return {"success": True, "restored": restored, "failed": failed, "results": results}
+    except Exception as e:
+        return {"success": False, "error": str(e), "error_code": "RESTORE_ALL_FAILED"}
+
+
+@register("threat.quarantineDeleteAll")
+def threat_quarantine_delete_all(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Permanently delete all quarantined files (batch action)."""
+    try:
+        from avs_backend.threat_engine.quarantine_manager import list_quarantined, delete_quarantined
+        items = list_quarantined()
+        results = []
+        deleted = 0
+        failed = 0
+        for item in items:
+            qid = item.get("quarantine_id", "")
+            if qid:
+                try:
+                    delete_quarantined(qid)
+                    results.append({"quarantine_id": qid, "success": True})
+                    deleted += 1
+                except Exception as e:
+                    results.append({"quarantine_id": qid, "success": False, "error": str(e)})
+                    failed += 1
+        return {"success": True, "deleted": deleted, "failed": failed, "results": results}
+    except Exception as e:
+        return {"success": False, "error": str(e), "error_code": "DELETE_ALL_FAILED"}
+
+
+@register("threat.quarantineDeleteSelected")
+def threat_quarantine_delete_selected(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Permanently delete selected quarantined files by ID (batch action)."""
+    params = params or {}
+    ids = params.get("quarantine_ids", [])
+    if not ids:
+        return {"success": False, "error": "quarantine_ids is required", "error_code": "INVALID_PARAMS"}
+
+    try:
+        from avs_backend.threat_engine.quarantine_manager import delete_quarantined
+        results = []
+        deleted = 0
+        failed = 0
+        for qid in ids:
+            try:
+                delete_quarantined(qid)
+                results.append({"quarantine_id": qid, "success": True})
+                deleted += 1
+            except Exception as e:
+                results.append({"quarantine_id": qid, "success": False, "error": str(e)})
+                failed += 1
+        return {"success": True, "deleted": deleted, "failed": failed, "results": results}
+    except Exception as e:
+        return {"success": False, "error": str(e), "error_code": "DELETE_SELECTED_FAILED"}
+
+
 @register("threat.history")
 def threat_history(params: dict[str, Any] | None) -> dict[str, Any]:
     """Get scan and detection history."""
@@ -921,6 +1036,66 @@ def threat_history(params: dict[str, Any] | None) -> dict[str, Any]:
     except Exception as e:
         log.error("Failed to load history: %s", e)
     return {"success": True, "history": []}
+
+
+# ─── Post-Scan Summary Report RPCs ───────────────────────────────────
+
+@register("threat.scanSummary.generate")
+def threat_scan_summary_generate(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Generate a post-scan summary report from a completed scan."""
+    params = params or {}
+    scan_id = params.get("scan_id", "")
+    if not scan_id:
+        return {"success": False, "error": "scan_id is required", "error_code": "INVALID_PARAMS"}
+
+    with _scans_lock:
+        scan = _scans.get(scan_id)
+    if not scan:
+        return {"success": False, "error": "scan not found", "error_code": "NOT_FOUND"}
+
+    try:
+        from avs_backend.threat_engine.scan_summary import generate_summary
+        summary = generate_summary(scan)
+        return {"success": True, "summary": summary}
+    except Exception as e:
+        log.error("Failed to generate scan summary: %s", e)
+        return {"success": False, "error": str(e), "error_code": "SUMMARY_FAILED"}
+
+
+@register("threat.scanSummary.recent")
+def threat_scan_summary_recent(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get recent scan summary reports."""
+    params = params or {}
+    limit = int(params.get("limit", 10))
+    try:
+        from avs_backend.threat_engine.scan_summary import get_recent_summaries
+        summaries = get_recent_summaries(limit)
+        return {"success": True, "summaries": summaries, "count": len(summaries)}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@register("threat.scanSummary.trend")
+def threat_scan_summary_trend(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get scan trend data over time."""
+    try:
+        from avs_backend.threat_engine.scan_summary import get_trend
+        trend = get_trend()
+        return {"success": True, **trend}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@register("threat.statistics")
+def threat_statistics(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get comprehensive threat statistics for dashboard visualization."""
+    try:
+        from avs_backend.threat_engine.threat_stats import compute_threat_statistics
+        stats = compute_threat_statistics()
+        return {"success": True, "statistics": stats}
+    except Exception as e:
+        log.error("Failed to compute threat statistics: %s", e)
+        return {"success": False, "error": str(e)}
 
 
 # ─── Helper functions ───────────────────────────────────────────────
@@ -1011,6 +1186,38 @@ def threat_scan_schedule_run_now(params: dict[str, Any] | None) -> dict[str, Any
         return {"success": False, "error": str(e)}
 
 
+# ─── Startup Scan RPCs ───────────────────────────────────────────────
+
+@register("threat.startupScan.status")
+def threat_startup_scan_status(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get startup scan status and configuration."""
+    try:
+        from avs_backend.threat_engine.startup_scan import get_status
+        return {"success": True, "status": get_status()}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@register("threat.startupScan.configure")
+def threat_startup_scan_configure(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Configure startup scan settings."""
+    try:
+        from avs_backend.threat_engine.startup_scan import configure
+        return configure(params or {})
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@register("threat.startupScan.runNow")
+def threat_startup_scan_run_now(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Trigger an immediate startup scan."""
+    try:
+        from avs_backend.threat_engine.startup_scan import run_now
+        return run_now()
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 log.info("Threat Engine module loaded — %d detection sources configured",
          sum(1 for v in _config.get("enabled_sources", {}).values() if v))
 
@@ -1028,3 +1235,10 @@ try:
     start_scheduler()
 except Exception as _e:
     log.warning("Scan scheduler startup failed: %s", _e)
+
+# Auto-run startup scan if enabled (scans startup items + boot sector)
+try:
+    from avs_backend.threat_engine.startup_scan import auto_start_on_startup
+    auto_start_on_startup()
+except Exception as _e:
+    log.warning("Startup scan auto-start failed: %s", _e)

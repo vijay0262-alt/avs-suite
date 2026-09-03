@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import platform
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -144,11 +145,116 @@ def list_upgrades() -> dict[str, Any]:
         return {"available": True, "reason": "winget query failed", "upgrades": []}
 
     items = _parse_upgrade_table(output)
+    upgrades = [i.to_dict() for i in items]
+
+    # Add vulnerability assessment to each upgrade
+    for upgrade in upgrades:
+        vuln = _assess_vulnerability(upgrade["name"], upgrade["currentVersion"], upgrade["availableVersion"])
+        upgrade["vulnerability"] = vuln
+
+    # Count vulnerable apps
+    vulnerable_count = sum(1 for u in upgrades if u.get("vulnerability", {}).get("is_vulnerable"))
+
     return {
         "available": True,
         "reason": None,
-        "upgrades": [i.to_dict() for i in items],
-        "total": len(items),
+        "upgrades": upgrades,
+        "total": len(upgrades),
+        "vulnerable_count": vulnerable_count,
+    }
+
+
+# Known-vulnerable software patterns — apps where outdated versions
+# have known CVEs and should be treated as security risks.
+_VULNERABLE_APPS = {
+    "chrome": {"min_safe": "120.0", "reason": "Outdated Chrome has known critical vulnerabilities"},
+    "firefox": {"min_safe": "120.0", "reason": "Outdated Firefox has known security vulnerabilities"},
+    "adobe acrobat": {"min_safe": "23.0", "reason": "Outdated Adobe Acrobat has known RCE vulnerabilities"},
+    "adobe reader": {"min_safe": "23.0", "reason": "Outdated Adobe Reader has known RCE vulnerabilities"},
+    "java": {"min_safe": "17.0", "reason": "Outdated Java has known security vulnerabilities"},
+    "flash player": {"min_safe": "999.0", "reason": "Flash Player is end-of-life and should be removed"},
+    "7-zip": {"min_safe": "23.01", "reason": "Outdated 7-Zip has known vulnerabilities"},
+    "vlc": {"min_safe": "3.0.18", "reason": "Outdated VLC has known vulnerabilities"},
+    "zoom": {"min_safe": "5.16", "reason": "Outdated Zoom has known security vulnerabilities"},
+    "skype": {"min_safe": "8.100", "reason": "Outdated Skype has known vulnerabilities"},
+    "notepad++": {"min_safe": "8.6", "reason": "Outdated Notepad++ has known vulnerabilities"},
+    "winrar": {"min_safe": "6.23", "reason": "Outdated WinRAR has known RCE vulnerabilities"},
+    "ccleaner": {"min_safe": "6.15", "reason": "Outdated CCleaner has known vulnerabilities"},
+    "opera": {"min_safe": "120.0", "reason": "Outdated Opera has known vulnerabilities"},
+    "edge": {"min_safe": "120.0", "reason": "Outdated Edge has known vulnerabilities"},
+    "brave": {"min_safe": "120.0", "reason": "Outdated Brave has known vulnerabilities"},
+    "libreoffice": {"min_safe": "7.6", "reason": "Outdated LibreOffice has known vulnerabilities"},
+    "itunes": {"min_safe": "12.13", "reason": "Outdated iTunes has known vulnerabilities"},
+    "python": {"min_safe": "3.11", "reason": "Outdated Python has known security vulnerabilities"},
+    "node": {"min_safe": "20.0", "reason": "Outdated Node.js has known vulnerabilities"},
+}
+
+
+def _parse_version(version: str) -> list[int]:
+    """Parse a version string into a list of integers.
+
+    Handles formats like '1.2.3', '1.2.3-beta', '1.2.3.4', 'v1.2'.
+    Returns an empty list if no numeric segments are found.
+    """
+    if not version or not version.strip():
+        return []
+    # Extract all numeric segments from the version string
+    segments = re.findall(r'\d+', version)
+    return [int(s) for s in segments]
+
+
+def _assess_vulnerability(name: str, current_version: str, available_version: str) -> dict[str, Any]:
+    """Assess whether an outdated app is a known security vulnerability.
+
+    Returns a dict with:
+        is_vulnerable: bool
+        severity: "high" | "medium" | "low"
+        reason: str
+    """
+    name_lower = name.lower().strip()
+
+    for app_key, vuln_info in _VULNERABLE_APPS.items():
+        if app_key in name_lower:
+            # Check if current version is below the safe minimum
+            try:
+                current_parts = _parse_version(current_version)
+                safe_parts = _parse_version(vuln_info["min_safe"])
+                # If we couldn't parse the current version, don't claim vulnerable
+                if not current_parts:
+                    break
+                # Pad to same length
+                while len(current_parts) < len(safe_parts):
+                    current_parts.append(0)
+                while len(safe_parts) < len(current_parts):
+                    safe_parts.append(0)
+
+                is_outdated = current_parts < safe_parts
+
+                if is_outdated:
+                    # Determine severity
+                    if app_key in ("flash player", "java", "adobe acrobat", "adobe reader", "winrar"):
+                        severity = "high"
+                    elif app_key in ("chrome", "firefox", "edge", "brave", "opera"):
+                        severity = "high"
+                    else:
+                        severity = "medium"
+
+                    return {
+                        "is_vulnerable": True,
+                        "severity": severity,
+                        "reason": vuln_info["reason"],
+                        "recommended_version": available_version,
+                    }
+            except Exception:
+                pass
+            break
+
+    # Not in the known-vulnerable list — still outdated but not a known CVE
+    return {
+        "is_vulnerable": False,
+        "severity": "low",
+        "reason": "Update available",
+        "recommended_version": available_version,
     }
 
 

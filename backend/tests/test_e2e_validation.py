@@ -114,22 +114,21 @@ def test_scan_clean_pipeline():
                 print("  [FAIL] Files still exist:")
                 for f in remaining:
                     print(f"    {f}")
-                return False
+                assert False, f"{len(remaining)} files still exist after clean"
 
             if csnap.total_files_failed > 0:
                 print(f"  [FAIL] {csnap.total_files_failed} files failed to delete")
-                return False
+                assert False, f"{csnap.total_files_failed} files failed to delete"
 
             if csnap.total_files_removed != 20:
                 print(f"  [FAIL] Expected 20 removed, got {csnap.total_files_removed}")
-                return False
+                assert False, f"Expected 20 removed, got {csnap.total_files_removed}"
 
             print("\n  [PASS] PRODUCT INVARIANT VERIFIED")
             print(f"    Detected:  {snap.total_files}")
             print(f"    Deleted:   {csnap.total_files_removed}")
             print(f"    Failed:    {csnap.total_files_failed}")
             print(f"    Remaining: {len(remaining)}")
-            return True
 
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -178,7 +177,7 @@ def test_free_edition_limit():
             try:
                 cleaner_clean_execute({"taskId": task_id})
                 print("  [FAIL] Free edition should have been blocked")
-                return False
+                assert False, "Free edition should have been blocked"
             except RpcError as e:
                 print(f"  [PASS] Free edition correctly blocked: {e}")
 
@@ -204,10 +203,9 @@ def test_free_edition_limit():
         remaining = list(junk_root.glob("*.tmp"))
         if remaining:
             print(f"  [FAIL] {len(remaining)} files still exist after Professional clean")
-            return False
+            assert False, f"{len(remaining)} files still exist after Professional clean"
 
         print("\n  [PASS] FREE/PRO ENFORCEMENT VERIFIED")
-        return True
 
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -261,7 +259,6 @@ def test_complete_workflow():
             assert len(remaining) == 0, f"{len(remaining)} files remain"
 
             print("\n  [PASS] SCAN NOW -> SCANNING -> CLEANING -> COMPLETE verified")
-            return True
 
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)

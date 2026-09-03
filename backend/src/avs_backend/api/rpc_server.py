@@ -99,6 +99,7 @@ _FEATURE_MODULES = [
     "avs_backend.realtime_threat",
     "avs_backend.advanced_security",
     "avs_backend.ai_features",
+    "avs_backend.one_click",
 ]
 
 # Track which modules have finished importing (success or failure)

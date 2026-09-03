@@ -477,6 +477,20 @@ def email_history(params: dict[str, Any] | None) -> dict[str, Any]:
     return {"success": True, "history": _email_scanner.get_history()}
 
 
+@register("advanced_security.email.scanOutlook")
+def email_scan_outlook(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Auto-detect and scan the Outlook attachment temp folder."""
+    _init_modules()
+    if not _email_scanner:
+        return {"success": False, "error": "Email scanner not available", "error_code": "NOT_AVAILABLE"}
+    try:
+        result = _email_scanner.scan_outlook_attachments()
+        return {"success": True, "result": result}
+    except Exception as e:
+        log.error("Outlook attachment scan failed: %s", e)
+        return {"success": False, "error": str(e), "error_code": "OUTLOOK_SCAN_FAILED"}
+
+
 # ─── RPC: Boot Sector Scanner ───────────────────────────────────────
 
 @register("advanced_security.boot.scan")

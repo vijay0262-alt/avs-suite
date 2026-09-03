@@ -338,24 +338,38 @@ def detect_clamav_installation() -> dict[str, Any]:
     if sys.platform == "win32":
         # Include the AVS AI Shield portable install path
         _avs_path = os.path.join(os.environ.get("LOCALAPPDATA", ""), "AVS AI Shield", "clamav")
+        # Detect packaged ClamAV (electron-builder extraResources → resources/clamav)
+        _packaged_clamav = None
+        if getattr(sys, "frozen", False):
+            # PyInstaller exe: siblings of the exe in the bundle
+            _exe_dir = os.path.dirname(sys.executable)
+            _packaged_clamav = os.path.join(_exe_dir, "clamav")
+            if not os.path.isdir(_packaged_clamav):
+                _packaged_clamav = None
         bin_dirs = [
             r"C:\Program Files\ClamAV",
             r"C:\Program Files (x86)\ClamAV",
             os.path.join(os.environ.get("LOCALAPPDATA", ""), "ClamAV"),
             _avs_path,
         ]
+        if _packaged_clamav:
+            bin_dirs.insert(0, _packaged_clamav)
         conf_candidates = [
             r"C:\Program Files\ClamAV\clamd.conf",
             r"C:\Program Files (x86)\ClamAV\clamd.conf",
             os.path.join(os.environ.get("LOCALAPPDATA", ""), "ClamAV", "clamd.conf"),
             os.path.join(_avs_path, "clamd.conf"),
         ]
+        if _packaged_clamav:
+            conf_candidates.insert(0, os.path.join(_packaged_clamav, "clamd.conf"))
         db_candidates = [
             r"C:\Program Files\ClamAV\db",
             r"C:\Program Files (x86)\ClamAV\db",
             os.path.join(os.environ.get("LOCALAPPDATA", ""), "ClamAV", "db"),
             os.path.join(_avs_path, "db"),
         ]
+        if _packaged_clamav:
+            db_candidates.insert(0, os.path.join(_packaged_clamav, "db"))
     else:
         bin_dirs = ["/usr/bin", "/usr/local/bin", "/opt/clamav/bin"]
         conf_candidates = ["/etc/clamav/clamd.conf", "/usr/local/etc/clamd.conf"]

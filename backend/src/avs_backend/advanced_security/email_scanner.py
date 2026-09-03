@@ -190,6 +190,50 @@ def _save_history(history: list[dict[str, Any]]) -> None:
         log.error("Failed to save email scan history: %s", e)
 
 
+def _find_outlook_attachment_dir() -> Path | None:
+    """Find the Outlook secure temp folder where attachments are saved.
+
+    Outlook stores attachments in a subfolder of the user's TEMP directory.
+    The folder name is derived from the Outlook security key in the registry.
+    If the registry key is not found, we search for common patterns.
+
+    Returns the Path to the attachment folder, or None if not found.
+    """
+    if not IS_WINDOWS:
+        return None
+
+    import winreg
+
+    # Method 1: Read the Outlook registry key for the secure temp folder
+    reg_paths = [
+        (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Office\16.0\Outlook\Security", "OutlookSecureTempFolder"),
+        (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Office\15.0\Outlook\Security", "OutlookSecureTempFolder"),
+        (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Office\14.0\Outlook\Security", "OutlookSecureTempFolder"),
+        (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Office\12.0\Outlook\Security", "OutlookSecureTempFolder"),
+    ]
+
+    for hive, key_path, value_name in reg_paths:
+        try:
+            with winreg.OpenKey(hive, key_path) as key:
+                folder_path, _ = winreg.QueryValueEx(key, value_name)
+                if folder_path and os.path.isdir(folder_path):
+                    return Path(folder_path)
+        except Exception:
+            continue
+
+    # Method 2: Search for the Outlook temp folder pattern in %TEMP%
+    temp_dir = os.environ.get("TEMP", os.environ.get("LOCALAPPDATA", ""))
+    if temp_dir:
+        temp_path = Path(temp_dir)
+        if temp_path.exists():
+            # Look for folders matching the Outlook attachment pattern
+            for item in temp_path.iterdir():
+                if item.is_dir() and "olk" in item.name.lower():
+                    return item
+
+    return None
+
+
 # ─── EmailScanner ───────────────────────────────────────────────────
 
 
@@ -389,6 +433,26 @@ class EmailScanner:
     def get_history(self) -> list[dict[str, Any]]:
         """Return the persisted scan history."""
         return list(self._history)
+
+    def scan_outlook_attachments(self) -> dict[str, Any]:
+        """Auto-detect and scan the Outlook secure temp attachment folder.
+
+        Outlook saves attachments to a hidden temp folder when users open them.
+        This method finds that folder and scans all files in it.
+
+        Returns a summary dict (same shape as scan_directory).
+        """
+        outlook_dir = _find_outlook_attachment_dir()
+        if not outlook_dir:
+            return {
+                "scanned": 0,
+                "threats_found": 0,
+                "safe": True,
+                "threat_level": "safe",
+                "results": [],
+                "message": "Outlook attachment folder not found. Outlook may not be installed or no attachments have been opened.",
+            }
+        return self.scan_directory(str(outlook_dir))
 
     # ── Internal helpers ───────────────────────────────────────────
 

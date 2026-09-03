@@ -522,6 +522,37 @@ def _calculate_health_score() -> dict[str, Any]:
     }
 
 
+@register("dashboard.recommendations")
+def dashboard_recommendations(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Generate actionable optimization recommendations.
+
+    Returns structured recommendations with one-click fix routes.
+    """
+    try:
+        from avs_backend.dashboard.optimization_recommendations import generate_recommendations
+        recs = generate_recommendations()
+        return {"success": True, "recommendations": recs, "count": len(recs)}
+    except Exception as e:
+        log.warning("Failed to generate recommendations: %s", e)
+        return {"success": True, "recommendations": [], "count": 0}
+
+
+@register("dashboard.securityScore")
+def dashboard_security_score(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Compute a comprehensive security score (0-100).
+
+    Combines AV engine, detection sources, Defender, firewall, real-time
+    protection, Windows updates, recent scans, quarantine, and definitions.
+    """
+    try:
+        from avs_backend.dashboard.security_score import compute_security_score
+        result = compute_security_score()
+        return {"success": True, **result}
+    except Exception as e:
+        log.warning("Failed to compute security score: %s", e)
+        return {"success": False, "error": str(e), "overall_score": 0, "status": "unknown"}
+
+
 @register("dashboard.health")
 def dashboard_health(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Calculate comprehensive health score with category breakdown.
@@ -2137,7 +2168,6 @@ __all__ = [
     "dashboard_metrics",
     "dashboard_health",
     "dashboard_optimize_preview",
-    "dashboard_optimize_execute",
 ]
 
 # _ensure_live_metrics_thread and _live_metrics_thread variables

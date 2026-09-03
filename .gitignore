@@ -46,6 +46,20 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# Scratch / debug files (never commit these)
+_*.py
+_*.txt
+_*.js
+_asar*/
+_audit*
+_debug*
+_check*
+_category*
+_categorize*
+_bulk*
+_binary*
+
 # ClamAV binaries (downloaded at build time, not stored in git)
 apps/pc-optimizer/resources/clamav/
 
