@@ -109,9 +109,9 @@ def _is_avs_path(canonical_path: str) -> bool:
             return True
     # Also check if the path contains "AVS AI Shield" or "avs-backend"
     lower_path = canonical_path.lower()
-    if "avs shield" in lower_path or "avs-backend" in lower_path:
+    if "avs ai shield" in lower_path or "avs-backend" in lower_path:
         return True
-    if "avs shield optimizer" in lower_path:
+    if "avs shield optimizer" in lower_path or "avs ai shield optimizer" in lower_path:
         return True
     return False
 
