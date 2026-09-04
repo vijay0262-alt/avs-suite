@@ -517,7 +517,7 @@ def browser_ext_scan_threats(_params: dict[str, Any] | None) -> dict[str, Any]:
                     continue
                 fpath = os.path.join(root, fname)
                 try:
-    file_size = os.path.getsize(fpath)
+                    file_size = os.path.getsize(fpath)
                     if file_size > 500 * 1024:  # 500KB max
                         continue
                     with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
