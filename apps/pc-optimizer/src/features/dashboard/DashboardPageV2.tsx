@@ -36,15 +36,17 @@ function getGreeting(): string {
 
 function getSecurityTone(metrics: DashboardMetrics | null): 'success' | 'warning' | 'danger' {
   if (!metrics) return 'warning';
-  if (metrics.security.realTimeProtection && metrics.security.defender.enabled) return 'success';
-  if (metrics.security.defender.enabled || metrics.security.firewall.enabled) return 'warning';
+  const avsActive = !!metrics.avsAvActive;
+  if ((avsActive || metrics.security.realTimeProtection) && (avsActive || metrics.security.defender.enabled)) return 'success';
+  if (metrics.security.defender.enabled || metrics.security.firewall.enabled || avsActive) return 'warning';
   return 'danger';
 }
 
 function getSecurityLabel(metrics: DashboardMetrics | null): string {
   if (!metrics) return 'Checking...';
-  if (metrics.security.realTimeProtection && metrics.security.defender.enabled) return 'Protected';
-  if (metrics.security.defender.enabled || metrics.security.firewall.enabled) return 'At Risk';
+  const avsActive = !!metrics.avsAvActive;
+  if ((avsActive || metrics.security.realTimeProtection) && (avsActive || metrics.security.defender.enabled)) return 'Protected';
+  if (metrics.security.defender.enabled || metrics.security.firewall.enabled || avsActive) return 'At Risk';
   return 'Unprotected';
 }
 

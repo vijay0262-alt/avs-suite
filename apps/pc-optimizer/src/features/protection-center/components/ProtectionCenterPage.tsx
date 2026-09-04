@@ -244,6 +244,11 @@ function deriveProvider(metrics: DashboardMetrics | null): {
   const sec = metrics?.security;
   if (!sec) return null;
 
+  // Check AVS AI Shield first — it's our product, show it as primary
+  if (metrics?.avsAvActive) {
+    return { name: 'AVS AI Shield Antivirus', active: true };
+  }
+
   const thirdPartyAV = sec.defender.thirdPartyAV ?? sec.firewall.thirdPartyAV ?? null;
   if (thirdPartyAV) {
     return { name: thirdPartyAV, active: true };
@@ -321,16 +326,19 @@ function deriveOverallStatus(
 ): OverallStatus {
   if (!metrics) return 'unknown';
 
+  const avsActive = !!metrics.avsAvActive;
+
   const hasDisabled = items.some(
     (i) => i.status === 'disabled' || i.status === 'needs_attention',
   );
-  if (hasDisabled) return 'action_required';
+  // If AVS is active, don't flag "action_required" just because Defender is off
+  if (hasDisabled && !avsActive) return 'action_required';
 
-  const avActive = metrics.security.defender.enabled || !!metrics.security.defender.thirdPartyAV;
+  const avActive = avsActive || metrics.security.defender.enabled || !!metrics.security.defender.thirdPartyAV;
   const firewallOn = metrics.security.firewall.enabled;
-  const rtpOn = metrics.security.realTimeProtection || !!metrics.security.defender.thirdPartyAV;
+  const rtpOn = avsActive || metrics.security.realTimeProtection || !!metrics.security.defender.thirdPartyAV;
 
-  if (avActive && firewallOn && rtpOn) return 'protected';
+  if (avActive && (firewallOn || avsActive) && rtpOn) return 'protected';
 
   // Some telemetry present but not all critical checks pass
   return 'at_risk';

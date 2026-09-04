@@ -119,20 +119,9 @@ export default function AntivirusSecurityPage() {
   const [newExtension, setNewExtension] = useState('');
   const [excludeLoading, setExcludeLoading] = useState(false);
 
-  // Optimization recommendations state
-  const [recommendations, setRecommendations] = useState<Array<{ id: string; category: string; severity: string; title: string; description: string; action_label: string; action_route: string; metric: number; metric_unit: string }>>([]);
-
-  // Privacy cleaner state
-  const [privacySummary, setPrivacySummary] = useState<{ itemCount: number; totalSize: number; browsersDetected: string[] } | null>(null);
-  const [privacyScanning] = useState(false);
-
-  // Software updater state
-  const [updaterInfo, setUpdaterInfo] = useState<{ available: boolean; total: number; vulnerable_count: number; upgrades: Array<{ name: string; currentVersion: string; availableVersion: string; vulnerability: { is_vulnerable: boolean; severity: string; reason: string } }> } | null>(null);
-  const [updaterLoading, setUpdaterLoading] = useState(false);
-
-  // One-click scan & optimize state
-  const [oneClickProgress, setOneClickProgress] = useState<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_scanned: number } | null>(null);
-  const [oneClickResult, setOneClickResult] = useState<{ threats_found: number; files_cleaned: number; bytes_freed: number; success: boolean } | null>(null);
+  // One-click security scan state
+  const [oneClickProgress, setOneClickProgress] = useState<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_scanned: number } | null>(null);
+  const [oneClickResult, setOneClickResult] = useState<{ threats_found: number; threats_quarantined: number; files_scanned: number; success: boolean } | null>(null);
 
   // Post-scan summary state
   const [scanSummary, setScanSummary] = useState<{ report_id: string; scan_type: string; duration_seconds: number; files_scanned: number; threats_found: number; posture: { status: string; score: number; label: string; color: string; high_severity_count: number; critical_count: number }; threat_breakdown: { by_category: Record<string, number>; by_severity: Record<string, number>; quarantined: number; pending: number }; recommendations: Array<{ id: string; priority: string; title: string; description: string; action: string | null }>; top_threats: Array<{ name: string; category: string; severity: string; path: string; quarantined: boolean }> } | null>(null);
@@ -317,62 +306,31 @@ export default function AntivirusSecurityPage() {
     setExcludeLoading(false);
   }, [excludedExtensions]);
 
-  const refreshRecommendations = useCallback(async () => {
-    try {
-      const res = await rpc.raw<{ recommendations: Array<{ id: string; category: string; severity: string; title: string; description: string; action_label: string; action_route: string; metric: number; metric_unit: string }> }>(RPC_METHODS.DASHBOARD_RECOMMENDATIONS);
-      setRecommendations(res.recommendations || []);
-    } catch { /* ignore */ }
-  }, []);
-
-  const refreshPrivacySummary = useCallback(async () => {
-    try {
-      const res = await rpc.raw<{ itemCount: number; totalSize: number; browsersDetected: string[] }>(RPC_METHODS.PRIVACY_SCAN);
-      setPrivacySummary({ itemCount: res.itemCount, totalSize: res.totalSize, browsersDetected: res.browsersDetected });
-    } catch { /* ignore */ }
-  }, []);
-
-  const refreshUpdaterInfo = useCallback(async () => {
-    setUpdaterLoading(true);
-    try {
-      const res = await rpc.raw<{ available: boolean; total: number; vulnerable_count: number; upgrades: Array<{ name: string; currentVersion: string; availableVersion: string; vulnerability: { is_vulnerable: boolean; severity: string; reason: string } }> }>(RPC_METHODS.UPDATER_LIST);
-      setUpdaterInfo(res);
-    } catch { /* ignore */ }
-    setUpdaterLoading(false);
-  }, []);
-
-  const handleUpdateAll = useCallback(async () => {
-    setUpdaterLoading(true);
-    try {
-      await rpc.raw(RPC_METHODS.UPDATER_UPGRADE_ALL);
-      await refreshUpdaterInfo();
-    } catch { /* ignore */ }
-    setUpdaterLoading(false);
-  }, [refreshUpdaterInfo]);
-
   const startOneClick = useCallback(async () => {
     setOneClickResult(null);
-    setOneClickProgress({ active: true, phase: 'scanning', scan_progress: 0, optimize_progress: 0, threats_found: 0, space_freed: 0, files_cleaned: 0, error: null, current_file: null, files_scanned: 0 });
+    setOneClickProgress({ active: true, phase: 'scanning', scan_progress: 0, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: null, current_file: null, files_scanned: 0 });
     try {
       const startRes = await rpc.raw<{ success?: boolean; error?: string; progress?: Record<string, unknown> }>(RPC_METHODS.ONE_CLICK_START, { scan_type: 'quick' });
       if (!startRes.success && startRes.error) {
-        setOneClickProgress({ active: false, phase: 'error', scan_progress: 0, optimize_progress: 0, threats_found: 0, space_freed: 0, files_cleaned: 0, error: startRes.error, current_file: null, files_scanned: 0 });
+        setOneClickProgress({ active: false, phase: 'error', scan_progress: 0, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: startRes.error, current_file: null, files_scanned: 0 });
         return;
       }
       // Poll progress
       const poll = setInterval(async () => {
         try {
-          const prog = await rpc.raw<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_scanned: number }>(RPC_METHODS.ONE_CLICK_PROGRESS);
+          const prog = await rpc.raw<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_scanned: number }>(RPC_METHODS.ONE_CLICK_PROGRESS);
           setOneClickProgress(prog);
           if (!prog.active) {
             clearInterval(poll);
             if (prog.phase === 'complete') {
               setOneClickResult({
                 threats_found: prog.threats_found,
-                files_cleaned: prog.files_cleaned,
-                bytes_freed: prog.space_freed,
+                threats_quarantined: prog.threats_quarantined || 0,
+                files_scanned: prog.files_scanned || 0,
                 success: true,
               });
               refreshThreats();
+              refreshAvStatus();
             }
           }
         } catch (e) {
@@ -382,17 +340,10 @@ export default function AntivirusSecurityPage() {
         }
       }, 500);
     } catch (e) {
-      const errMsg = e instanceof Error ? e.message : 'Failed to start one-click scan';
-      setOneClickProgress({ active: false, phase: 'error', scan_progress: 0, optimize_progress: 0, threats_found: 0, space_freed: 0, files_cleaned: 0, error: errMsg, current_file: null, files_scanned: 0 });
+      const errMsg = e instanceof Error ? e.message : 'Failed to start security scan';
+      setOneClickProgress({ active: false, phase: 'error', scan_progress: 0, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: errMsg, current_file: null, files_scanned: 0 });
     }
-  }, [refreshThreats]);
-
-  const formatBytes = (b: number) => {
-    if (b >= 1073741824) return (b / 1073741824).toFixed(2) + ' GB';
-    if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB';
-    if (b >= 1024) return (b / 1024).toFixed(0) + ' KB';
-    return b + ' B';
-  };
+  }, [refreshThreats, refreshAvStatus]);
 
   // useEffect moved after all refresh function definitions (see below)
 
@@ -546,9 +497,6 @@ export default function AntivirusSecurityPage() {
     refreshGameMode();
     refreshStartupScan();
     refreshExclusions();
-    refreshRecommendations();
-    refreshPrivacySummary();
-    refreshUpdaterInfo();
     refreshRecentSummaries();
     refreshSecurityScore();
     refreshThreatStats();
@@ -561,7 +509,7 @@ export default function AntivirusSecurityPage() {
       refreshAvStatus();
     }, 5000);
     return () => clearInterval(poll);
-  }, [refreshAvStatus, refreshThreats, refreshSetupStatus, refreshSchedule, refreshUsbStatus, refreshGameMode, refreshStartupScan, refreshExclusions, refreshRecommendations, refreshPrivacySummary, refreshUpdaterInfo, refreshRecentSummaries, refreshSecurityScore, refreshThreatStats]);
+  }, [refreshAvStatus, refreshThreats, refreshSetupStatus, refreshSchedule, refreshUsbStatus, refreshGameMode, refreshStartupScan, refreshExclusions, refreshRecentSummaries, refreshSecurityScore, refreshThreatStats]);
 
   // ── Render ────────────────────────────────────────────────────
 
@@ -573,7 +521,7 @@ export default function AntivirusSecurityPage() {
         actions={<HelpButton text="Antivirus Security combines all security features. Run a scan, enable real-time protection, manage quarantined threats, and configure advanced security." />}
       />
 
-      {/* One-Click Scan & Optimize — first thing the user sees */}
+      {/* One-Click Security Scan — first thing the user sees */}
       <Card variant="glass" className="p-6 bg-gradient-to-br from-brand-primary/10 to-transparent" data-testid="av-one-click">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -581,9 +529,9 @@ export default function AntivirusSecurityPage() {
               <BoltIcon className="h-8 w-8 text-brand-primary" />
             </div>
             <div>
-              <div className="text-base font-bold text-text-primary">One-Click Scan & Optimize</div>
+              <div className="text-base font-bold text-text-primary">One-Click Security Scan</div>
               <div className="text-small text-text-secondary">
-                Run a quick security scan AND clean up junk files in one action.
+                Scan for viruses, malware, spyware, PUPs, and other threats. Detected threats are automatically quarantined.
               </div>
             </div>
           </div>
@@ -593,7 +541,7 @@ export default function AntivirusSecurityPage() {
             className="px-6 py-3 rounded-[var(--avs-radius-md)] bg-[var(--avs-brand-primary)] text-white text-small font-bold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             data-testid="one-click-btn"
           >
-            {oneClickProgress?.active ? 'Running...' : 'Scan & Optimize'}
+            {oneClickProgress?.active ? 'Scanning...' : 'Scan Now'}
           </button>
         </div>
 
@@ -605,18 +553,21 @@ export default function AntivirusSecurityPage() {
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-caption text-text-secondary">
                     {oneClickProgress.phase === 'scanning' && 'Scanning for threats...'}
-                    {oneClickProgress.phase === 'optimizing' && 'Cleaning and optimizing...'}
+                    {oneClickProgress.phase === 'cleaning' && 'Quarantining detected threats...'}
+                    {oneClickProgress.phase === 'complete' && 'Scan complete.'}
                   </span>
                   <span className="text-caption text-text-muted">
                     {oneClickProgress.phase === 'scanning'
                       ? `${oneClickProgress.scan_progress}% (${oneClickProgress.files_scanned || 0} files)`
-                      : `${oneClickProgress.optimize_progress}%`}
+                      : oneClickProgress.phase === 'cleaning'
+                        ? `${oneClickProgress.threats_quarantined || 0} quarantined`
+                        : '100%'}
                   </span>
                 </div>
                 <div className="h-2 rounded-full bg-[var(--avs-border)] overflow-hidden">
                   <div
                     className="h-full bg-brand-primary transition-all duration-300"
-                    style={{ width: `${oneClickProgress.phase === 'scanning' ? oneClickProgress.scan_progress : oneClickProgress.optimize_progress}%` }}
+                    style={{ width: `${oneClickProgress.phase === 'scanning' ? oneClickProgress.scan_progress : oneClickProgress.phase === 'cleaning' ? 95 : 100}%` }}
                   />
                 </div>
               </div>
@@ -635,7 +586,7 @@ export default function AntivirusSecurityPage() {
           <div className="mt-4 p-4 rounded-[var(--avs-radius-md)] bg-semantic-success/5 border border-semantic-success/20" data-testid="one-click-result">
             <div className="flex items-center gap-2 mb-2">
               <ShieldCheckIcon className="h-5 w-5 text-semantic-success" />
-              <span className="text-small font-semibold text-text-primary">Scan & Optimize Complete</span>
+              <span className="text-small font-semibold text-text-primary">Security Scan Complete</span>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
@@ -643,12 +594,12 @@ export default function AntivirusSecurityPage() {
                 <div className="text-small font-bold text-text-primary">{oneClickResult.threats_found}</div>
               </div>
               <div>
-                <div className="text-caption text-text-muted">Files Cleaned</div>
-                <div className="text-small font-bold text-text-primary">{oneClickResult.files_cleaned}</div>
+                <div className="text-caption text-text-muted">Threats Quarantined</div>
+                <div className="text-small font-bold text-text-primary">{oneClickResult.threats_quarantined || 0}</div>
               </div>
               <div>
-                <div className="text-caption text-text-muted">Space Freed</div>
-                <div className="text-small font-bold text-text-primary">{formatBytes(oneClickResult.bytes_freed)}</div>
+                <div className="text-caption text-text-muted">Files Scanned</div>
+                <div className="text-small font-bold text-text-primary">{oneClickResult.files_scanned || 0}</div>
               </div>
             </div>
           </div>
@@ -1680,42 +1631,6 @@ export default function AntivirusSecurityPage() {
 
       {activeTab === 'advanced' && (
         <div className="space-y-4" data-testid="av-tab-advanced-content">
-          {/* Optimization Recommendations */}
-          {recommendations.length > 0 && (
-            <Card variant="glass" className="p-5" data-testid="av-recommendations">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="shrink-0 rounded-[var(--avs-radius-md)] bg-brand-primary/10 p-2.5">
-                  <BoltIcon className="h-5 w-5 text-brand-primary" />
-                </div>
-                <div>
-                  <div className="text-small font-semibold text-text-primary">Optimization Recommendations</div>
-                  <div className="text-caption text-text-secondary">{recommendations.length} action{recommendations.length === 1 ? '' : 's'} to improve your PC</div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {recommendations.map((rec) => (
-                  <div key={rec.id} className="flex items-center gap-3 p-3 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-surface" data-testid={`recommendation-${rec.id}`}>
-                    <div className={`shrink-0 h-2 w-2 rounded-full ${
-                      rec.severity === 'high' ? 'bg-semantic-danger' : rec.severity === 'medium' ? 'bg-semantic-warning' : 'bg-semantic-info'
-                    }`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-small font-medium text-text-primary">{rec.title}</div>
-                      <div className="text-caption text-text-muted">{rec.description}</div>
-                    </div>
-                    <button
-                      onClick={() => { window.location.hash = rec.action_route; }}
-                      className="shrink-0 px-3 py-1.5 rounded-[var(--avs-radius-md)] bg-[var(--avs-brand-primary)] text-white text-small font-medium hover:opacity-90"
-                      data-testid={`recommendation-action-${rec.id}`}
-                    >
-                      {rec.action_label}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-
           {/* Scan Exclusions by File Type */}
           <Card variant="glass" className="p-5" data-testid="av-scan-exclusions">
             <div className="flex items-center gap-3 mb-3">
@@ -1799,123 +1714,6 @@ export default function AntivirusSecurityPage() {
             <Button variant="secondary" size="sm" onClick={() => window.location.hash = '#/safe-folder'} data-testid="av-safe-folder-btn">
               Configure Safe Folder
             </Button>
-          </Card>
-
-          {/* Privacy Cleaner */}
-          <Card variant="glass" className="p-5" data-testid="av-privacy-cleaner">
-            <div className="flex items-center gap-3 mb-3">
-              <EyeIcon className="h-6 w-6 text-brand-primary" />
-              <div className="flex-1">
-                <div className="text-small font-semibold text-text-primary">Privacy Cleaner</div>
-                <p className="text-caption text-text-secondary">Clear browser cookies, history, cache, download history, and autofill data across all browsers.</p>
-              </div>
-            </div>
-
-            {privacySummary && privacySummary.itemCount > 0 ? (
-              <div className="flex items-center gap-3 mb-3">
-                <Badge tone="warning" data-testid="privacy-items-badge">
-                  {privacySummary.itemCount} items
-                </Badge>
-                <span className="text-caption text-text-muted">
-                  {(privacySummary.totalSize / 1048576).toFixed(1)} MB
-                </span>
-                {privacySummary.browsersDetected.length > 0 && (
-                  <span className="text-caption text-text-muted">
-                    • {privacySummary.browsersDetected.join(', ')}
-                  </span>
-                )}
-              </div>
-            ) : (
-              <p className="text-caption text-text-muted mb-3">
-                No privacy items detected. Run a scan to check for traces.
-              </p>
-            )}
-
-            <div className="flex items-center gap-2">
-              <Button variant="secondary" size="sm" onClick={() => window.location.hash = '#/privacy-cleaner'} data-testid="av-privacy-cleaner-btn">
-                Open Privacy Cleaner
-              </Button>
-              <Button variant="ghost" size="sm" onClick={refreshPrivacySummary} disabled={privacyScanning} leftIcon={<ArrowPathIcon className={`h-4 w-4 ${privacyScanning ? 'animate-spin' : ''}`} />}>
-                Rescan
-              </Button>
-            </div>
-          </Card>
-
-          {/* Software Updater with Vulnerability Detection */}
-          <Card variant="glass" className="p-5" data-testid="av-software-updater">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <ShieldExclamationIcon className="h-6 w-6 text-brand-primary" />
-                <div>
-                  <div className="text-small font-semibold text-text-primary">Software Updater</div>
-                  <p className="text-caption text-text-secondary">Update outdated apps. Outdated software is a security risk.</p>
-                </div>
-              </div>
-              <Button variant="ghost" size="sm" onClick={refreshUpdaterInfo} disabled={updaterLoading} leftIcon={<ArrowPathIcon className={`h-4 w-4 ${updaterLoading ? 'animate-spin' : ''}`} />} data-testid="updater-refresh">
-                Check
-              </Button>
-            </div>
-
-            {!updaterInfo?.available && updaterInfo !== null && (
-              <p className="text-caption text-text-muted">Windows Package Manager (winget) is not available. Software updates require Windows 10 1809 or later.</p>
-            )}
-
-            {updaterInfo?.available && updaterInfo.total === 0 && (
-              <div className="flex items-center gap-2">
-                <ShieldCheckIcon className="h-5 w-5 text-semantic-success" />
-                <span className="text-small text-text-secondary">All apps are up to date.</span>
-              </div>
-            )}
-
-            {updaterInfo?.available && updaterInfo.total > 0 && (
-              <>
-                {updaterInfo.vulnerable_count > 0 && (
-                  <div className="flex items-center gap-2 mb-3 p-2 rounded bg-semantic-danger/5 border border-semantic-danger/20" data-testid="updater-vulnerable-warning">
-                    <ShieldExclamationIcon className="h-5 w-5 text-semantic-danger" />
-                    <span className="text-small text-text-primary">
-                      {updaterInfo.vulnerable_count} app{updaterInfo.vulnerable_count === 1 ? '' : 's'} with known security vulnerabilities
-                    </span>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2 mb-3">
-                  <Badge tone="info">{updaterInfo.total} update{updaterInfo.total === 1 ? '' : 's'} available</Badge>
-                  {isPro && (
-                    <Button variant="primary" size="sm" onClick={handleUpdateAll} disabled={updaterLoading} data-testid="updater-update-all">
-                      Update All
-                    </Button>
-                  )}
-                </div>
-
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {updaterInfo.upgrades.slice(0, 10).map((upgrade) => (
-                    <div key={upgrade.name} className="flex items-center gap-3 py-2 px-3 rounded border border-[var(--avs-border)]">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-small font-medium text-text-primary truncate">{upgrade.name}</div>
-                        <div className="text-caption text-text-muted">
-                          {upgrade.currentVersion} → {upgrade.availableVersion}
-                        </div>
-                      </div>
-                      {upgrade.vulnerability?.is_vulnerable ? (
-                        <Badge tone={upgrade.vulnerability.severity === 'high' ? 'danger' : 'warning'} data-testid={`updater-vuln-${upgrade.name}`}>
-                          Vulnerable
-                        </Badge>
-                      ) : (
-                        <Badge tone="neutral">Update</Badge>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {updaterInfo.total > 10 && (
-                  <p className="text-caption text-text-muted mt-2">Showing 10 of {updaterInfo.total}. Use the Software Updater page for the full list.</p>
-                )}
-
-                {!isPro && (
-                  <p className="text-caption text-brand-primary mt-2">Auto-update is a Professional feature. Free users can see available updates.</p>
-                )}
-              </>
-            )}
           </Card>
 
           {/* Advanced Security */}

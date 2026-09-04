@@ -236,6 +236,7 @@ def _run_direct_scan(scan_type: str = "quick") -> dict[str, Any]:
     Scans critical areas using ClamAV (if available) and hash checking.
     Reports progress per-file so the UI can show a moving progress bar
     and the current file being scanned.
+    Returns threat details so they can be quarantined.
     """
     scan_dirs = _get_scan_dirs()
 
@@ -249,6 +250,7 @@ def _run_direct_scan(scan_type: str = "quick") -> dict[str, Any]:
 
     files_scanned = 0
     threats_found = 0
+    detected_threats: list[dict[str, Any]] = []
 
     # Try to get ClamAV scanner
     clamav_scanner = None
@@ -312,6 +314,13 @@ def _run_direct_scan(scan_type: str = "quick") -> dict[str, Any]:
                             result = clamav_scanner.scan_file(fpath)
                             if result and result.get("detected"):
                                 threats_found += 1
+                                detected_threats.append({
+                                    "path": fpath,
+                                    "threat_name": result.get("threat_name", "Unknown"),
+                                    "threat_type": result.get("threat_type", "malware"),
+                                    "severity": result.get("severity", "high"),
+                                    "source": "clamav",
+                                })
                         except Exception:
                             pass
                     elif hash_detector:
@@ -319,6 +328,13 @@ def _run_direct_scan(scan_type: str = "quick") -> dict[str, Any]:
                             result = hash_detector.scan_file(fpath)
                             if result and result.get("detected"):
                                 threats_found += 1
+                                detected_threats.append({
+                                    "path": fpath,
+                                    "threat_name": result.get("threat_name", "Unknown"),
+                                    "threat_type": result.get("threat_type", "malware"),
+                                    "severity": result.get("severity", "high"),
+                                    "source": "hash_detector",
+                                })
                         except Exception:
                             pass
 
@@ -332,11 +348,17 @@ def _run_direct_scan(scan_type: str = "quick") -> dict[str, Any]:
     return {
         "files_scanned": files_scanned,
         "threats_found": threats_found,
+        "threats": detected_threats,
     }
 
 
 def _run_one_click(scan_type: str = "quick") -> dict[str, Any]:
-    """Run the full one-click scan & optimize sequence."""
+    """Run the one-click security scan (antivirus only, no optimization).
+
+    Scans for threats using ClamAV and other detectors, then
+    quarantines any detected threats. Does NOT clean temp files
+    or optimize the system — that's handled by Dashboard/AI Smart Optimize.
+    """
     global _progress
 
     with _lock:
@@ -346,6 +368,7 @@ def _run_one_click(scan_type: str = "quick") -> dict[str, Any]:
             "scan_progress": 0,
             "optimize_progress": 0,
             "threats_found": 0,
+            "threats_quarantined": 0,
             "space_freed": 0,
             "files_cleaned": 0,
             "started_at": _now_ms(),
@@ -360,14 +383,13 @@ def _run_one_click(scan_type: str = "quick") -> dict[str, Any]:
         "scan_type": scan_type,
         "threats_found": 0,
         "threats_quarantined": 0,
+        "threats_cleaned": 0,
         "files_scanned": 0,
-        "files_cleaned": 0,
-        "bytes_freed": 0,
         "actions": [],
         "scan_id": None,
     }
 
-    # Phase 1: Direct security scan (real-time progress)
+    # Phase 1: Security scan (antivirus only)
     try:
         scan_result = _run_direct_scan(scan_type)
         result["threats_found"] = scan_result["threats_found"]
@@ -376,32 +398,45 @@ def _run_one_click(scan_type: str = "quick") -> dict[str, Any]:
             _progress["threats_found"] = scan_result["threats_found"]
     except Exception as e:
         log.error("One-click scan phase failed: %s", e)
-        # Continue with optimization
 
-    with _lock:
-        _progress["phase"] = "optimizing"
-        _progress["scan_progress"] = 100
-
-    # Phase 2: Optimization
-    try:
-        opt_result = _run_optimization()
-        result["files_cleaned"] = opt_result["files_cleaned"]
-        result["bytes_freed"] = opt_result["bytes_freed"]
-        result["actions"].extend(opt_result["actions"])
-
+    # Phase 2: Quarantine/clean detected threats
+    threats = scan_result.get("threats", [])
+    if threats:
         with _lock:
-            _progress["optimize_progress"] = 100
-            _progress["files_cleaned"] = opt_result["files_cleaned"]
-            _progress["space_freed"] = opt_result["bytes_freed"]
-    except Exception as e:
-        log.error("One-click optimize phase failed: %s", e)
-        result["error"] = str(e)
+            _progress["phase"] = "cleaning"
+
+        try:
+            from avs_backend.threat_engine import threat_quarantine
+            for threat in threats:
+                try:
+                    q_result = threat_quarantine({
+                        "file_path": threat["path"],
+                        "threat_info": {
+                            "threat_name": threat.get("threat_name", "Unknown"),
+                            "threat_type": threat.get("threat_type", "malware"),
+                            "severity": threat.get("severity", "high"),
+                            "source": threat.get("source", "clamav"),
+                        },
+                    })
+                    if q_result.get("success"):
+                        result["threats_quarantined"] += 1
+                        result["threats_cleaned"] += 1
+                except Exception as e:
+                    log.warning("One-click: Failed to quarantine %s: %s", threat["path"], e)
+
+            with _lock:
+                _progress["threats_quarantined"] = result["threats_quarantined"]
+        except ImportError:
+            log.warning("One-click: threat_quarantine not available, threats detected but not quarantined")
+        except Exception as e:
+            log.error("One-click: Quarantine phase failed: %s", e)
 
     # Finalize
     with _lock:
         _progress["active"] = False
         _progress["phase"] = "complete"
         _progress["threats_found"] = result["threats_found"]
+        _progress["threats_quarantined"] = result["threats_quarantined"]
         _progress["completed_at"] = _now_ms()
 
     result["completed_at"] = _progress["completed_at"]

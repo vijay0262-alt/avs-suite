@@ -17,6 +17,8 @@ export const OPTIMIZE_SCAN_CONFIG: UnifiedScanModuleConfig = {
   moduleIcon: 'SparklesIcon',
   supportsPause: false,
   supportsCancel: true,
+  // V1.0: Lock to optimization-only categories — NO antivirus/security rules
+  ruleCategories: ['junk', 'cache', 'temporary', 'privacy', 'system'],
   // V1.0: Single phase — the backend sends category names via
   // current_operation and current_category. The ScanTree is replaced
   // by a live category list from the backend.
