@@ -117,6 +117,99 @@ def _secure_overwrite_and_delete(file_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Per-detector quarantine policies
+# ---------------------------------------------------------------------------
+
+# Default quarantine policies per detector.
+# Actions:
+#   "quarantine"  — move file to quarantine (default)
+#   "alert_only"  — log the threat but don't move the file
+#   "ignore"      — don't flag the threat at all
+_DEFAULT_DETECTOR_POLICIES: dict[str, dict] = {
+    "ClamAV": {"action": "quarantine", "priority": "high"},
+    "HashDetector": {"action": "quarantine", "priority": "high"},
+    "YaraScanner": {"action": "quarantine", "priority": "high"},
+    "HeuristicDetector": {"action": "quarantine", "priority": "medium"},
+    "AmsiScanner": {"action": "quarantine", "priority": "high"},
+    "DefenderScanner": {"action": "quarantine", "priority": "high"},
+    "BehavioralDetector": {"action": "alert_only", "priority": "medium"},
+    "VirusTotal": {"action": "quarantine", "priority": "high"},
+    # Low-severity sources
+    "CloudReputation": {"action": "alert_only", "priority": "low"},
+}
+
+_POLICY_PATH = _QUARANTINE_DIR / "detector_policies.json"
+
+
+def _load_policies() -> dict[str, dict]:
+    """Load per-detector policies from disk, merged with defaults."""
+    policies = dict(_DEFAULT_DETECTOR_POLICIES)
+    try:
+        if _POLICY_PATH.exists():
+            with open(_POLICY_PATH, "r", encoding="utf-8") as f:
+                custom = json.load(f)
+            policies.update(custom)
+    except Exception as e:
+        log.warning("Failed to load detector policies: %s", e)
+    return policies
+
+
+def _save_policies(policies: dict[str, dict]) -> None:
+    """Save custom detector policies to disk."""
+    try:
+        with open(_POLICY_PATH, "w", encoding="utf-8") as f:
+            json.dump(policies, f, indent=2)
+    except Exception as e:
+        log.error("Failed to save detector policies: %s", e)
+
+
+def get_detector_policy(detector_name: str) -> dict:
+    """Get the quarantine policy for a specific detector.
+
+    Returns a dict with:
+        - action: "quarantine" | "alert_only" | "ignore"
+        - priority: "high" | "medium" | "low"
+    """
+    policies = _load_policies()
+    return policies.get(detector_name, {"action": "quarantine", "priority": "medium"})
+
+
+def set_detector_policy(detector_name: str, action: str, priority: str = "medium") -> dict:
+    """Set a custom quarantine policy for a detector.
+
+    Args:
+        detector_name: Name of the detector
+        action: "quarantine", "alert_only", or "ignore"
+        priority: "high", "medium", or "low"
+    """
+    if action not in ("quarantine", "alert_only", "ignore"):
+        return {"success": False, "error": f"Invalid action: {action}"}
+    if priority not in ("high", "medium", "low"):
+        return {"success": False, "error": f"Invalid priority: {priority}"}
+
+    policies = _load_policies()
+    policies[detector_name] = {"action": action, "priority": priority}
+    _save_policies(policies)
+    log.info("Set policy for %s: action=%s, priority=%s", detector_name, action, priority)
+    return {"success": True, "detector": detector_name, "action": action, "priority": priority}
+
+
+def get_all_policies() -> dict[str, dict]:
+    """Get all detector quarantine policies."""
+    return _load_policies()
+
+
+def reset_policies() -> dict:
+    """Reset all detector policies to defaults."""
+    try:
+        _POLICY_PATH.unlink()
+    except Exception:
+        pass
+    log.info("Reset detector policies to defaults")
+    return {"success": True, "message": "Policies reset to defaults"}
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 def quarantine_file(file_path: str, threat_info: dict) -> dict:
@@ -127,9 +220,23 @@ def quarantine_file(file_path: str, threat_info: dict) -> dict:
     securely overwrites the original with zeros, then deletes it.
     Metadata is recorded in the quarantine index.
 
+    Per-detector quarantine policies are checked before quarantining.
+    If the detector's policy is "ignore", the file is not quarantined.
+    If the policy is "alert_only", the file is logged but not moved.
+
     Returns a dict with ``quarantine_id``, ``original_path``,
     ``quarantine_path`` and ``sha256``.
     """
+    # Check per-detector quarantine policy
+    detector_name = threat_info.get("detection_source", threat_info.get("source", ""))
+    policy = get_detector_policy(detector_name)
+    if policy.get("action") == "ignore":
+        log.info("Ignoring threat from %s (policy: ignore): %s", detector_name, file_path)
+        return {"quarantine_id": "", "original_path": file_path, "skipped": True, "reason": "policy_ignore"}
+    if policy.get("action") == "alert_only":
+        log.info("Alert only for threat from %s (policy: alert_only): %s", detector_name, file_path)
+        return {"quarantine_id": "", "original_path": file_path, "skipped": True, "reason": "policy_alert_only"}
+
     src = Path(file_path)
     result = {
         "quarantine_id": "",

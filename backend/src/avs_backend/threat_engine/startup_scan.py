@@ -239,7 +239,10 @@ def _run_startup_scan(scan_boot_sector: bool = True) -> dict[str, Any]:
         try:
             from avs_backend.threat_engine import threat_scan, _scans, _scans_lock
             import time as _time
-            for file_path in all_files:
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+
+            def _scan_single_file(file_path: str) -> tuple[str, list, str | None]:
+                """Scan a single file and return (path, threats, error)."""
                 try:
                     scan_result = threat_scan({"path": file_path, "scan_type": "custom"})
                     if scan_result.get("success"):
@@ -253,13 +256,25 @@ def _run_startup_scan(scan_boot_sector: bool = True) -> dict[str, Any]:
                                 status = scan.get("status", "")
                                 if status in ("complete", "cancelled", "error"):
                                     break
-                            result["files_scanned"] += 1
                             threats = scan.get("threats", [])
-                            if threats:
-                                result["threats_found"] += len(threats)
-                                result["threats"].extend(threats)
+                            return (file_path, threats, None)
+                    return (file_path, [], None)
                 except Exception as e:
-                    result["errors"].append(f"{file_path}: {e}")
+                    return (file_path, [], str(e))
+
+            # Parallel scanning with up to 4 workers
+            max_workers = min(4, len(all_files))
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = {executor.submit(_scan_single_file, fp): fp for fp in all_files}
+                for future in as_completed(futures):
+                    file_path, threats, error = future.result()
+                    result["files_scanned"] += 1
+                    if error:
+                        result["errors"].append(f"{file_path}: {error}")
+                    if threats:
+                        result["threats_found"] += len(threats)
+                        result["threats"].extend(threats)
+
         except Exception as e:
             result["errors"].append(f"Threat engine: {e}")
 

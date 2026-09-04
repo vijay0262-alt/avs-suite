@@ -1203,6 +1203,53 @@ def threat_quarantine_export(_params: dict[str, Any] | None) -> dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
+@register("threat.quarantinePolicies")
+def threat_quarantine_policies(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get all per-detector quarantine policies."""
+    try:
+        from avs_backend.threat_engine.quarantine_manager import get_all_policies
+        policies = get_all_policies()
+        return {"success": True, "policies": policies}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@register("threat.quarantinePolicySet")
+def threat_quarantine_policy_set(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Set a quarantine policy for a specific detector.
+
+    Params:
+        detector: detector name
+        action: "quarantine", "alert_only", or "ignore"
+        priority: "high", "medium", or "low" (default: medium)
+    """
+    params = params or {}
+    detector = params.get("detector", "")
+    action = params.get("action", "")
+    priority = params.get("priority", "medium")
+
+    if not detector or not action:
+        return {"success": False, "error": "detector and action are required"}
+
+    try:
+        from avs_backend.threat_engine.quarantine_manager import set_detector_policy
+        result = set_detector_policy(detector, action, priority)
+        return result
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@register("threat.quarantinePolicyReset")
+def threat_quarantine_policy_reset(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Reset all quarantine policies to defaults."""
+    try:
+        from avs_backend.threat_engine.quarantine_manager import reset_policies
+        result = reset_policies()
+        return result
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 @register("threat.history")
 def threat_history(params: dict[str, Any] | None) -> dict[str, Any]:
     """Get scan and detection history."""

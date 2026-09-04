@@ -101,4 +101,63 @@ def get_scan_config() -> dict[str, Any]:
         "exclude_paths": sorted(EXCLUDE_PATHS),
         "max_file_size": MAX_FILE_SIZE,
         "max_depth": MAX_DEPTH,
+        # Detection source defaults
+        "enabled_sources": {
+            "hash_blocklist": True,
+            "yara": True,
+            "amsi": True,
+            "heuristic": True,
+            "defender": True,
+            "behavioral": True,
+            "clamav": False,  # Disabled by default, requires bundled ClamAV
+            "virustotal": False,  # Requires API key
+        },
+        # Scan behavior
+        "scan_archives": True,
+        "scan_email": False,
+        "auto_quarantine": True,
+        # Quick scan targets (relative to drive root)
+        "quick_scan_targets": [
+            "Windows\\System32",
+            "Windows\\SysWOW64",
+            "Program Files",
+            "Program Files (x86)",
+            "ProgramData",
+            "Users\\{user}\\AppData\\Roaming",
+            "Users\\{user}\\AppData\\Local",
+            "Users\\{user}\\Downloads",
+        ],
+        # Hash cache settings
+        "hash_cache_max_entries": 100_000,
+        # Quarantine settings
+        "quarantine_expiry_days": 30,
     }
+
+
+def get_quick_scan_targets() -> list[str]:
+    """Get list of directories to scan during a quick scan.
+
+    Replaces {user} with the current username and returns absolute paths.
+    """
+    import os
+
+    targets: list[str] = []
+    config = get_scan_config()
+    user = os.environ.get("USERNAME", os.environ.get("USER", ""))
+    system_drive = os.environ.get("SystemDrive", "C:")
+
+    for target in config.get("quick_scan_targets", []):
+        # Replace {user} placeholder
+        target = target.replace("{user}", user)
+        # Make absolute path
+        if not target.startswith("\\") and not target[1:3] == ":\\":
+            target = f"{system_drive}\\{target}"
+        if os.path.exists(target):
+            targets.append(target)
+
+    return targets
+
+
+def get_detection_source_defaults() -> dict[str, bool]:
+    """Get the default enabled/disabled state for each detection source."""
+    return get_scan_config().get("enabled_sources", {})
