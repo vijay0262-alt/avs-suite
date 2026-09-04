@@ -16,6 +16,8 @@ import {
   PuzzlePieceIcon,
   RectangleStackIcon,
   ExclamationTriangleIcon,
+  ChevronRightIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import type { CleanerCategory, CleanerSummary, ScanStatus } from '../junkCleaner.types';
 
@@ -78,8 +80,9 @@ export interface CategoryRowProps {
 }
 
 /**
- * Single row in the Junk Cleaner category list. Displays icon, label,
- * status pill, live progress, file count / size, and "View details".
+ * Category card for the Junk Cleaner. Displays icon, label,
+ * status badge, file count / size, and a selectable state.
+ * Clicking the card toggles selection; the details link opens the file list.
  */
 export const CategoryRow = memo(function CategoryRow({
   id,
@@ -98,35 +101,57 @@ export const CategoryRow = memo(function CategoryRow({
   const progress = summary?.progress ?? (status === 'completed' ? 100 : 0);
   const files = summary?.totalFiles ?? 0;
   const bytes = summary?.totalBytes ?? 0;
+  const hasData = files > 0 && status === 'completed';
 
   return (
     <div
-      className="flex items-center gap-4 rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-4 py-3"
+      onClick={() => !disabled && onToggle(id)}
+      className={clsx(
+        'group relative flex cursor-pointer items-center gap-4 rounded-[var(--avs-radius-lg)] border-2 px-4 py-3 transition-all',
+        'outline-none focus-visible:shadow-focus',
+        disabled && 'cursor-not-allowed opacity-60',
+        selected
+          ? 'border-[var(--avs-brand-primary)] bg-[color-mix(in_srgb,var(--avs-brand-primary)_5%,transparent)]'
+          : 'border-[var(--avs-border)] bg-[var(--avs-surface)] hover:border-[color-mix(in_srgb,var(--avs-brand-primary)_40%,var(--avs-border))]',
+      )}
       data-testid={`junk-category-row-${id}`}
     >
-      <input
-        type="checkbox"
-        checked={selected}
-        onChange={() => onToggle(id)}
-        disabled={disabled}
-        className="h-4 w-4 accent-brand-primary"
-        aria-label={`Include ${name} in scan`}
-        data-testid={`junk-category-check-${id}`}
-      />
+      {/* Selection indicator */}
+      <div
+        className={clsx(
+          'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+          selected
+            ? 'border-[var(--avs-brand-primary)] bg-[var(--avs-brand-primary)]'
+            : 'border-[var(--avs-border)] bg-transparent',
+        )}
+      >
+        {selected && <CheckCircleIcon className="h-3.5 w-3.5 text-white" />}
+      </div>
 
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--avs-radius-md)] bg-[var(--avs-info-bg)] text-brand-primary">
+      {/* Icon */}
+      <div
+        className={clsx(
+          'flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--avs-radius-md)] transition-colors',
+          selected
+            ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_15%,transparent)] text-[var(--avs-brand-primary)]'
+            : 'bg-[var(--avs-info-bg)] text-[var(--avs-brand-primary)]',
+        )}
+      >
         <Icon className="h-5 w-5" aria-hidden />
       </div>
 
+      {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-small font-semibold text-text-primary">{name}</span>
           <Badge tone="neutral" className="uppercase tracking-wide">
             {CATEGORY_LABEL[category]}
           </Badge>
-          <Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge>
           {OPT_IN_CLEANERS.has(id) && (
-            <span className="flex items-center gap-1 text-caption text-semantic-warning" title="Opt-in: unchecked by default. Deleting cookies will log you out of websites.">
+            <span
+              className="flex items-center gap-1 text-caption text-semantic-warning"
+              title="Opt-in: unchecked by default. Deleting cookies will log you out of websites."
+            >
               <ExclamationTriangleIcon className="h-3.5 w-3.5" />
               Opt-in
             </span>
@@ -145,6 +170,7 @@ export const CategoryRow = memo(function CategoryRow({
         )}
       </div>
 
+      {/* Stats */}
       <div className="hidden shrink-0 flex-col items-end text-right sm:flex">
         <span
           className={clsx(
@@ -160,20 +186,31 @@ export const CategoryRow = memo(function CategoryRow({
         </span>
       </div>
 
+      {/* Status badge */}
+      {status !== 'pending' && (
+        <Badge tone={STATUS_TONE[status]} className="shrink-0" data-testid={`junk-category-status-${id}`}>
+          {STATUS_LABEL[status]}
+        </Badge>
+      )}
+
+      {/* Details link */}
       <button
         type="button"
-        onClick={() => onViewDetails(id)}
-        disabled={!detailsAvailable || files === 0}
+        onClick={(e) => {
+          e.stopPropagation();
+          onViewDetails(id);
+        }}
+        disabled={!detailsAvailable || !hasData}
         className={clsx(
-          'shrink-0 rounded-[var(--avs-radius-md)] px-3 py-1.5 text-caption font-medium transition-colors',
-          'outline-none focus-visible:shadow-focus',
-          detailsAvailable && files > 0
-            ? 'bg-[var(--avs-surface-muted)] text-text-primary hover:bg-border'
-            : 'cursor-not-allowed bg-[var(--avs-surface-muted)] text-text-muted opacity-60',
+          'flex shrink-0 items-center gap-1 rounded-[var(--avs-radius-md)] px-2 py-1.5 text-caption font-medium transition-colors',
+          detailsAvailable && hasData
+            ? 'text-[var(--avs-brand-primary)] hover:bg-[color-mix(in_srgb,var(--avs-brand-primary)_8%,transparent)]'
+            : 'cursor-not-allowed text-text-muted opacity-50',
         )}
         data-testid={`junk-category-details-${id}`}
       >
-        View details
+        Details
+        <ChevronRightIcon className="h-3.5 w-3.5" />
       </button>
     </div>
   );

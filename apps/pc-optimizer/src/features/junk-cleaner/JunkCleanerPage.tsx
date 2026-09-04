@@ -9,8 +9,6 @@ import {
   ExclamationTriangleIcon,
   SparklesIcon,
   CalendarDaysIcon,
-  ClockIcon,
-  LightBulbIcon,
   ArrowPathRoundedSquareIcon,
   ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
@@ -30,7 +28,7 @@ import { CleaningLog } from './components/CleaningLog';
 import { canUse, currentEdition } from '../licensing/FeatureGate';
 import { useFeatureGuard } from '../licensing/useFeatureGuard';
 import { useIsPro } from '../sync/syncStore';
-import { ProOnlySection, ProFeatureIndicator } from '../licensing/ProStatusBadge';
+import { ProOnlySection } from '../licensing/ProStatusBadge';
 import { schedulerBackendService } from '../maintenance-engine/schedulerBackendService';
 
 const FREE_CLEAN_LIMIT_BYTES = 500 * 1024 * 1024; // 500 MB
@@ -248,21 +246,13 @@ export default function JunkCleanerPage() {
 
       {/* Safety guardrail banner */}
       <div
-        className="mb-4 rounded-[var(--avs-radius-md)] border border-[color-mix(in_srgb,var(--avs-brand-primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--avs-brand-primary)_5%,transparent)] px-4 py-3"
+        className="mb-4 flex items-center gap-2 rounded-[var(--avs-radius-md)] border border-[color-mix(in_srgb,var(--avs-brand-primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--avs-brand-primary)_5%,transparent)] px-4 py-2"
         data-testid="junk-safety-banner"
       >
-        <div className="flex items-start gap-2">
-          <ShieldCheckIcon className="h-5 w-5 text-brand-primary shrink-0 mt-0.5" />
-          <div className="text-caption text-text-secondary">
-            <span className="font-semibold text-text-primary">Safety Guardrails:</span>{' '}
-            AVS AI Shield never touches <strong>C:\Windows\System32</strong>,{' '}
-            <strong>Windows Search Index</strong> (Windows.edb), or{' '}
-            <strong>active system registry keys</strong>. Browser cookies &amp; history
-            are opt-in (unchecked by default). A{' '}
-            <strong>System Restore Point</strong> is automatically created before
-            every cleaning operation.
-          </div>
-        </div>
+        <ShieldCheckIcon className="h-4 w-4 text-brand-primary shrink-0" />
+        <span className="text-caption text-text-secondary">
+          System Restore Point is created before every clean. Browser cookies &amp; history are opt-in.
+        </span>
       </div>
 
       {state.bootstrap === 'loading' && (
@@ -282,7 +272,7 @@ export default function JunkCleanerPage() {
                 Could not reach the backend service.
               </div>
               <div className="mt-1 text-caption text-text-muted">
-                {state.bootstrapError ?? 'Unknown error.'}
+                Please ensure AVS AI Shield is running and try again.
               </div>
             </div>
           </div>
@@ -297,7 +287,7 @@ export default function JunkCleanerPage() {
             data-testid="junk-error-banner"
           >
             <ExclamationTriangleIcon className="h-5 w-5 shrink-0" />
-            <span>{state.lastScanError ?? state.lastCleaningError}</span>
+            <span>Scan or cleaning encountered an issue. Please try again.</span>
           </div>
         </Card>
       )}
@@ -306,18 +296,11 @@ export default function JunkCleanerPage() {
         <>
           {/* Free edition limit notice */}
           {!isPro && hasResults && totalJunkBytes > FREE_CLEAN_LIMIT_BYTES && (
-            <div className="rounded-[var(--avs-radius-md)] bg-semantic-warning/10 border border-semantic-warning/20 px-4 py-3" data-testid="junk-free-limit-notice">
-              <div className="flex items-center gap-2">
-                <ExclamationTriangleIcon className="h-5 w-5 text-semantic-warning shrink-0" />
-                <div>
-                  <span className="text-small font-medium text-text-primary">
-                    Free edition cleans up to 500 MB per run
-                  </span>
-                  <p className="text-caption text-text-secondary mt-0.5">
-                    {(totalJunkBytes / (1024 * 1024)).toFixed(0)} MB detected. Only the largest categories under 500 MB will be cleaned. Upgrade to Professional for unlimited cleaning.
-                  </p>
-                </div>
-              </div>
+            <div className="mb-4 flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-semantic-warning/10 border border-semantic-warning/20 px-4 py-2" data-testid="junk-free-limit-notice">
+              <ExclamationTriangleIcon className="h-4 w-4 text-semantic-warning shrink-0" />
+              <span className="text-caption text-text-secondary">
+                Free edition cleans up to 500 MB. {(totalJunkBytes / (1024 * 1024)).toFixed(0)} MB detected — upgrade for unlimited cleaning.
+              </span>
             </div>
           )}
 
@@ -342,17 +325,14 @@ export default function JunkCleanerPage() {
           <Card
             title="Categories"
             actions={
-              <label className="flex cursor-pointer select-none items-center gap-2 text-caption text-text-secondary">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 accent-brand-primary"
-                  checked={allSelected}
-                  onChange={(e) => vm.setAllSelected(e.target.checked)}
-                  disabled={running}
-                  data-testid="junk-select-all"
-                />
-                Select all
-              </label>
+              <button
+                onClick={() => vm.setAllSelected(!allSelected)}
+                disabled={running}
+                className="text-caption font-medium text-[var(--avs-brand-primary)] hover:underline disabled:opacity-50"
+                data-testid="junk-select-all"
+              >
+                {allSelected ? 'Deselect all' : 'Select all'}
+              </button>
             }
           >
             {state.catalog.length === 0 ? (
@@ -360,7 +340,7 @@ export default function JunkCleanerPage() {
                 No cleaners registered.
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
                 {state.catalog.map((c) => (
                   <CategoryRow
                     key={c.id}
@@ -409,36 +389,31 @@ export default function JunkCleanerPage() {
           {/* Pro-only: Smart Cleanup Recommendations */}
           <ProOnlySection>
             {smartRecommendations.length > 0 && (
-              <Card title="Smart Cleanup Recommendations" variant="glass">
+              <Card title="Smart Recommendations" variant="glass">
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <LightBulbIcon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
-                    <span className="text-small font-medium text-[var(--avs-text-primary)]">
-                      AI-powered recommendations based on scan results
-                    </span>
-                  </div>
                   {smartRecommendations.map((rec, idx) => {
                     const cleaner = state.catalog.find((c) => c.id === rec.id);
                     return (
                       <div
                         key={rec.id}
-                        className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3"
+                        className="flex items-center justify-between rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2.5"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--avs-brand-primary)]/10 text-caption font-bold text-[var(--avs-brand-primary)]">
+                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)] text-caption font-bold text-[var(--avs-brand-primary)]">
                             {idx + 1}
                           </span>
                           <div>
-                            <span className="text-small font-medium text-[var(--avs-text-primary)]">
+                            <span className="text-small font-medium text-text-primary">
                               {cleaner?.name ?? rec.id}
                             </span>
-                            <p className="text-caption text-[var(--avs-text-muted)]">
+                            <p className="text-caption text-text-muted">
                               {(rec.totalBytes / (1024 * 1024)).toFixed(0)} MB · {rec.totalFiles} files
                             </p>
                           </div>
                         </div>
                         <Button
                           variant="secondary"
+                          size="sm"
                           onClick={() => {
                             vm.setAllSelected(false);
                             vm.toggleSelection(rec.id);
@@ -458,31 +433,34 @@ export default function JunkCleanerPage() {
             <Card title="Automation" variant="glass">
               <div className="space-y-3">
                 {/* Scheduled Cleaning */}
-                <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
+                <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2.5">
                   <div className="flex items-center gap-2">
                     <CalendarDaysIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
                     <div>
-                      <span className="text-caption font-medium text-[var(--avs-text-primary)]">Scheduled Cleaning</span>
-                      <p className="text-caption text-[var(--avs-text-muted)]">Automatically clean junk files on a schedule</p>
+                      <span className="text-small font-medium text-text-primary">Scheduled Cleaning</span>
+                      <p className="text-caption text-text-muted">Automatically clean on a schedule</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <select
-                      value={scheduleFreq}
-                      onChange={(e) => void handleScheduleFreqChange(e.target.value)}
-                      disabled={!scheduleEnabled || scheduleLoading}
-                      className="rounded-[var(--avs-radius-md)] border border-[var(--avs-glass-border)] bg-[var(--avs-surface-muted)] px-2 py-1 text-caption text-[var(--avs-text-primary)]"
-                      data-testid="junk-schedule-freq"
-                    >
-                      <option value="daily">Daily</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
-                    </select>
+                    {scheduleEnabled && (
+                      <select
+                        value={scheduleFreq}
+                        onChange={(e) => void handleScheduleFreqChange(e.target.value)}
+                        disabled={scheduleLoading}
+                        className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-2 py-1 text-caption text-text-primary"
+                        data-testid="junk-schedule-freq"
+                      >
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                      </select>
+                    )}
                     <button
                       onClick={() => void handleScheduleToggle(!scheduleEnabled)}
                       disabled={scheduleLoading}
-                      className={`relative h-6 w-11 rounded-full transition-colors ${scheduleEnabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-glass-border)]'}`}
+                      className={`relative h-6 w-11 rounded-full transition-colors ${scheduleEnabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'}`}
                       data-testid="junk-schedule-toggle"
+                      aria-label="Toggle scheduled cleaning"
                     >
                       <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${scheduleEnabled ? 'left-5' : 'left-0.5'}`} />
                     </button>
@@ -490,28 +468,22 @@ export default function JunkCleanerPage() {
                 </div>
 
                 {/* Background Cleanup */}
-                <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
+                <div className="flex items-center justify-between rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2.5">
                   <div className="flex items-center gap-2">
                     <ArrowPathRoundedSquareIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
                     <div>
-                      <span className="text-caption font-medium text-[var(--avs-text-primary)]">Background Cleanup</span>
-                      <p className="text-caption text-[var(--avs-text-muted)]">Continuously clean junk files in the background</p>
+                      <span className="text-small font-medium text-text-primary">Background Cleanup</span>
+                      <p className="text-caption text-text-muted">Continuously clean in the background</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setBgCleanupEnabled((v) => !v)}
-                    className={`relative h-6 w-11 rounded-full transition-colors ${bgCleanupEnabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-glass-border)]'}`}
+                    className={`relative h-6 w-11 rounded-full transition-colors ${bgCleanupEnabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'}`}
                     data-testid="junk-bg-cleanup-toggle"
+                    aria-label="Toggle background cleanup"
                   >
                     <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${bgCleanupEnabled ? 'left-5' : 'left-0.5'}`} />
                   </button>
-                </div>
-
-                <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--avs-border)]">
-                  <ProFeatureIndicator icon={ClockIcon} label="Unlimited Cleaning" />
-                  <ProFeatureIndicator icon={CalendarDaysIcon} label="Scheduled" />
-                  <ProFeatureIndicator icon={ArrowPathRoundedSquareIcon} label="Background" />
-                  <ProFeatureIndicator icon={LightBulbIcon} label="Smart Recommendations" />
                 </div>
               </div>
             </Card>

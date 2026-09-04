@@ -2,7 +2,7 @@
  * RegistryCleanerPage — scan, review, and safely fix invalid registry entries.
  */
 import { useEffect, useMemo } from 'react';
-import { Card, Button } from '@avs/ui';
+import { Card, Button, Badge } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleSuccessBanner, ModuleErrorBanner, ModuleEmptyState } from '../../components/ModuleStates';
@@ -15,14 +15,21 @@ import { CATEGORY_LABELS } from './registry.types';
 import { useIsPro } from '../sync/syncStore';
 import { useFeatureGuard } from '../licensing/useFeatureGuard';
 import { useEditionLimits } from '../licensing/editionLimits';
-import { ProStatusPill, ProFeatureIndicator } from '../licensing/ProStatusBadge';
+import { ProStatusPill } from '../licensing/ProStatusBadge';
 import {
   WrenchScrewdriverIcon,
   ShieldCheckIcon,
   ClockIcon,
   ArrowPathIcon,
   LockClosedIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
+
+const SEVERITY_TONE: Record<string, 'neutral' | 'warning' | 'danger'> = {
+  low: 'neutral',
+  medium: 'warning',
+  high: 'danger',
+};
 
 export default function RegistryCleanerPage() {
   const vm = useMemo(() => new RegistryCleanerViewModel(registryService), []);
@@ -51,27 +58,20 @@ export default function RegistryCleanerPage() {
         actions={<HelpButton text="The registry scanner checks for invalid file references, broken shortcuts, missing shared DLLs, and obsolete COM objects. Every fix is backed up and can be restored." />}
       />
 
-      {/* Safety guardrail banner */}
+      {/* Safety banner — compact */}
       <div
-        className="mb-4 rounded-[var(--avs-radius-md)] border border-[color-mix(in_srgb,var(--avs-brand-primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--avs-brand-primary)_5%,transparent)] px-4 py-3"
+        className="mb-4 flex items-center gap-2 rounded-[var(--avs-radius-md)] border border-[color-mix(in_srgb,var(--avs-brand-primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--avs-brand-primary)_5%,transparent)] px-4 py-2"
         data-testid="registry-safety-banner"
       >
-        <div className="flex items-start gap-2">
-          <ShieldCheckIcon className="h-5 w-5 text-brand-primary shrink-0 mt-0.5" />
-          <div className="text-caption text-text-secondary">
-            <span className="font-semibold text-text-primary">Safety Guardrails:</span>{' '}
-            Registry cleaning is{' '}
-            <strong>manual review only</strong> — no automatic deletion. Every fix is
-            backed up and can be restored. A{' '}
-            <strong>System Restore Point</strong> is automatically created before
-            any registry changes.
-          </div>
-        </div>
+        <ShieldCheckIcon className="h-4 w-4 text-[var(--avs-brand-primary)] shrink-0" />
+        <span className="text-caption text-text-secondary">
+          Manual review only — no automatic deletion. System Restore Point is created before any changes.
+        </span>
       </div>
 
       {state.bootstrap === 'error' && (
         <ModuleErrorState
-          message={state.bootstrapError ?? 'Unknown error'}
+          message="Could not reach the backend service. Please try again."
           onRetry={() => vm.bootstrap()}
           testId="registry-bootstrap-error"
         />
@@ -79,13 +79,11 @@ export default function RegistryCleanerPage() {
 
       {state.bootstrap === 'ready' && (
         <>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-section-title text-text-primary">Registry Scan</h2>
               <p className="text-small text-text-secondary">
-                {state.issues.length > 0
-                  ? `${state.issues.length} issues found`
-                  : 'Scan your registry to find invalid entries.'}
+                {state.issues.length > 0 ? `${state.issues.length} issues found` : 'Scan your registry to find invalid entries.'}
               </p>
             </div>
             <div className="flex gap-2">
@@ -104,7 +102,7 @@ export default function RegistryCleanerPage() {
 
           {state.scanError && (
             <ModuleErrorBanner
-              message={state.scanError}
+              message="Scan encountered an issue. Please try again."
               onRetry={() => vm.scan()}
               testId="registry-scan-error"
             />
@@ -125,9 +123,8 @@ export default function RegistryCleanerPage() {
             />
           )}
 
-          {/* Unified scanning progress */}
           {state.scanning && (
-            <div className="mb-6">
+            <div className="mb-4">
               <UnifiedScanProgressCard
                 config={REGISTRY_SCAN_CONFIG}
                 isRunning={state.scanning}
@@ -140,9 +137,9 @@ export default function RegistryCleanerPage() {
             </div>
           )}
 
-          {/* Unified AI Results (shown after scan with issues) */}
+          {/* Unified AI Results */}
           {!state.scanning && state.issues.length > 0 && !state.cleanResult && (
-            <div className="mb-6">
+            <div className="mb-4">
               <UnifiedCleanerResults
                 data={{
                   moduleId: 'registry',
@@ -170,47 +167,43 @@ export default function RegistryCleanerPage() {
             </div>
           )}
 
-          {/* Free edition limit banner */}
+          {/* Free edition limit banner — compact */}
           {!isPro && issueCount > 0 && (
             <div
-              className={`mb-4 rounded-[var(--avs-radius-md)] border px-4 py-3 ${
+              className={`mb-4 flex items-center gap-2 rounded-[var(--avs-radius-md)] border px-4 py-2 ${
                 limitReached
                   ? 'border-semantic-warning/30 bg-semantic-warning/10'
                   : 'border-[var(--avs-border)] bg-[var(--avs-surface-muted)]'
               }`}
               data-testid="registry-free-limit-banner"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ClockIcon className="h-4 w-4 text-text-secondary shrink-0" />
-                  <span className="text-caption text-text-secondary">
-                    Free edition: <strong className="text-text-primary">{selectedCount} of {fixLimit}</strong> issues selected for repair
-                    {remainingFixes !== null && remainingFixes > 0 && ` (${remainingFixes} remaining)`}
-                    {hasMoreIssues && ` (${issueCount - (fixLimit ?? 0)} more found)`}
-                  </span>
-                </div>
-                {limitReached && hasMoreIssues && (
-                  <button
-                    onClick={() => guard('registry.fix', 'Registry Cleaner', () => {}, {
-                      limitDescription: `Free edition repairs up to ${fixLimit} issues per scan. ${issueCount} issues found.`,
-                      proBenefit: 'Unlimited repairs + automatic backup + scheduled repair.',
-                    })}
-                    className="text-caption font-medium text-brand-primary hover:underline"
-                    data-testid="registry-upgrade-link"
-                  >
-                    Upgrade to Pro →
-                  </button>
-                )}
-              </div>
+              <ClockIcon className="h-4 w-4 text-text-secondary shrink-0" />
+              <span className="text-caption text-text-secondary flex-1">
+                Free edition: <strong className="text-text-primary">{selectedCount} of {fixLimit}</strong> issues selected
+                {remainingFixes !== null && remainingFixes > 0 && ` (${remainingFixes} remaining)`}
+              </span>
+              {limitReached && hasMoreIssues && (
+                <button
+                  onClick={() => guard('registry.fix', 'Registry Cleaner', () => {}, {
+                    limitDescription: `Free edition repairs up to ${fixLimit} issues per scan. ${issueCount} issues found.`,
+                    proBenefit: 'Unlimited repairs + automatic backup + scheduled repair.',
+                  })}
+                  className="text-caption font-medium text-[var(--avs-brand-primary)] hover:underline"
+                  data-testid="registry-upgrade-link"
+                >
+                  Upgrade →
+                </button>
+              )}
             </div>
           )}
 
-          {/* Category summary */}
+          {/* Category summary — compact */}
           {Object.keys(state.breakdown).length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 my-6">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
               {Object.entries(state.breakdown).map(([cat, count]) => (
-                <Card key={cat} title={CATEGORY_LABELS[cat] ?? cat}>
-                  <p className="text-statistic-sm text-text-primary">{count}</p>
+                <Card key={cat} variant="glass" padded={false} className="p-3">
+                  <p className="text-statistic text-text-primary">{count}</p>
+                  <p className="text-caption text-text-secondary truncate">{CATEGORY_LABELS[cat] ?? cat}</p>
                 </Card>
               ))}
             </div>
@@ -226,15 +219,15 @@ export default function RegistryCleanerPage() {
             />
           )}
 
-          {/* Issue list */}
+          {/* Issue list — clickable rows */}
           {state.issues.length > 0 && (
             <>
               <div className="flex items-center gap-2 mb-3">
-                <Button variant="secondary" size="sm" onClick={() => vm.selectAll()}>
-                  Select All{!isPro && fixLimit !== null ? ` (max ${fixLimit})` : ''}
+                <Button variant="ghost" size="sm" onClick={() => vm.selectAll()}>
+                  Select all{!isPro && fixLimit !== null ? ` (max ${fixLimit})` : ''}
                 </Button>
-                <Button variant="secondary" size="sm" onClick={() => vm.selectNone()}>
-                  Select None
+                <Button variant="ghost" size="sm" onClick={() => vm.selectNone()}>
+                  Clear
                 </Button>
                 {!isPro && (
                   <span className="ml-auto text-caption text-text-muted">
@@ -243,41 +236,38 @@ export default function RegistryCleanerPage() {
                 )}
               </div>
               <Card>
-                <div className="divide-y divide-[var(--avs-border)]">
-                  {state.issues.map((issue) => (
-                    <label
-                      key={issue.id}
-                      className="flex items-start gap-3 py-3 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        className="mt-1"
-                        checked={state.selected.has(issue.id)}
-                        onChange={() => vm.toggleIssue(issue.id)}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-small font-medium text-text-primary truncate">
-                            {issue.description}
-                          </span>
-                          <span
-                            className={
-                              issue.severity === 'medium'
-                                ? 'text-caption text-semantic-warning'
-                                : 'text-caption text-text-muted'
-                            }
-                          >
-                            {issue.severity}
-                          </span>
+                <div className="space-y-1">
+                  {state.issues.map((issue) => {
+                    const selected = state.selected.has(issue.id);
+                    return (
+                      <div
+                        key={issue.id}
+                        onClick={() => vm.toggleIssue(issue.id)}
+                        className={`flex items-start gap-3 p-2.5 rounded-[var(--avs-radius-md)] cursor-pointer transition-colors ${
+                          selected ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_5%,transparent)]' : 'hover:bg-[var(--avs-surface-muted)]/50'
+                        }`}
+                      >
+                        <div
+                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors mt-0.5 ${
+                            selected
+                              ? 'border-[var(--avs-brand-primary)] bg-[var(--avs-brand-primary)]'
+                              : 'border-[var(--avs-border)] bg-transparent'
+                          }`}
+                        >
+                          {selected && <CheckCircleIcon className="h-3.5 w-3.5 text-white" />}
                         </div>
-                        <p className="text-caption text-text-muted truncate">
-                          {issue.hive}\{issue.subkey}
-                          {issue.valueName ? ` : ${issue.valueName}` : ''}
-                        </p>
-                        <p className="text-caption text-text-secondary truncate">{issue.valueData}</p>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-small font-medium text-text-primary truncate">{issue.description}</span>
+                            <Badge tone={SEVERITY_TONE[issue.severity] ?? 'neutral'}>{issue.severity}</Badge>
+                          </div>
+                          <p className="text-caption text-text-muted truncate">
+                            {issue.hive}\{issue.subkey}{issue.valueName ? ` : ${issue.valueName}` : ''}
+                          </p>
+                        </div>
                       </div>
-                    </label>
-                  ))}
+                    );
+                  })}
                 </div>
               </Card>
             </>
@@ -285,27 +275,17 @@ export default function RegistryCleanerPage() {
 
           {/* Backups */}
           {state.backups.length > 0 && (
-            <div className="mt-8">
-              <div className="flex items-center gap-2 mb-3">
-                <h2 className="text-section-title text-text-primary">Backups</h2>
-                {isPro && (
-                  <ProFeatureIndicator icon={ShieldCheckIcon} label="Automatic Backup" />
-                )}
-              </div>
+            <div className="mt-6">
+              <h2 className="text-section-title text-text-primary mb-3">Backups</h2>
               <Card>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {state.backups.map((b) => (
-                    <div
-                      key={b.backupId}
-                      className="flex items-center justify-between py-2 border-b border-[var(--avs-border)] last:border-0"
-                    >
+                    <div key={b.backupId} className="flex items-center justify-between p-2 rounded-[var(--avs-radius-md)] hover:bg-[var(--avs-surface-muted)]/50">
                       <div>
-                        <p className="text-small text-text-primary">{b.backupId}</p>
-                        <p className="text-caption text-text-muted">
-                          {b.count} entries · {b.createdAt ?? 'unknown time'}
-                        </p>
+                        <p className="text-small font-medium text-text-primary">{b.backupId}</p>
+                        <p className="text-caption text-text-muted">{b.count} entries · {b.createdAt ?? 'unknown time'}</p>
                       </div>
-                      <Button variant="secondary" size="sm" onClick={() => vm.restore(b.backupId)}>
+                      <Button variant="ghost" size="sm" onClick={() => vm.restore(b.backupId)}>
                         Restore
                       </Button>
                     </div>
@@ -315,86 +295,60 @@ export default function RegistryCleanerPage() {
             </div>
           )}
 
-          {/* Pro Features — Scheduled Repair */}
-          <div className="mt-8">
-            <Card title="Professional Features" variant="glass">
-              <div className="space-y-4">
-                {/* Scheduled Repair */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
-                      <ClockIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-small font-semibold text-text-primary">Scheduled Repair</span>
-                        {!isPro && <ProStatusPill />}
-                      </div>
-                      <p className="mt-0.5 text-caption text-text-secondary">
-                        Automatically scan and repair registry issues on a schedule — weekly, monthly, or custom.
-                      </p>
-                    </div>
+          {/* Pro Features — compact */}
+          <Card title="Professional Features" variant="glass" className="mt-6">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)]' : 'bg-[var(--avs-surface-muted)]'}`}>
+                    <ClockIcon className={`h-4 w-4 ${isPro ? 'text-[var(--avs-brand-primary)]' : 'text-text-muted'}`} />
                   </div>
-                  {isPro ? (
-                    <Button variant="secondary" size="sm" leftIcon={<ArrowPathIcon className="h-4 w-4" />}>
-                      Configure Schedule
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      leftIcon={<LockClosedIcon className="h-4 w-4" />}
-                      onClick={() => guard('registry.fix', 'Registry Cleaner', () => {}, {
-                        limitDescription: 'Scheduled repair is a Professional feature.',
-                        proBenefit: 'Automatically scan and repair registry issues on a schedule.',
-                      })}
-                      data-testid="registry-schedule-upgrade"
-                    >
-                      Upgrade to Unlock
-                    </Button>
-                  )}
-                </div>
-
-                {/* Automatic Backup */}
-                <div className="flex items-start justify-between border-t border-[var(--avs-border)] pt-4">
-                  <div className="flex items-start gap-3">
-                    <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
-                      <ShieldCheckIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-small font-semibold text-text-primary">Automatic Backup</span>
-                        {isPro && <ProFeatureIndicator icon={ShieldCheckIcon} label="Active" />}
-                      </div>
-                      <p className="mt-0.5 text-caption text-text-secondary">
-                        Every repair is automatically backed up before changes are applied. Restore anytime.
-                      </p>
-                    </div>
+                  <div>
+                    <span className="text-small font-medium text-text-primary">Scheduled Repair</span>
+                    <p className="text-caption text-text-muted">Auto-scan and repair on schedule</p>
                   </div>
                 </div>
+                {isPro ? (
+                  <Button variant="secondary" size="sm" leftIcon={<ArrowPathIcon className="h-4 w-4" />}>Configure</Button>
+                ) : (
+                  <Button variant="ghost" size="sm" leftIcon={<LockClosedIcon className="h-4 w-4" />}
+                    onClick={() => guard('registry.fix', 'Registry Cleaner', () => {}, {
+                      limitDescription: 'Scheduled repair is a Professional feature.',
+                      proBenefit: 'Automatically scan and repair registry issues on a schedule.',
+                    })}
+                    data-testid="registry-schedule-upgrade"
+                  >Upgrade</Button>
+                )}
+              </div>
 
-                {/* Unlimited Repairs */}
-                <div className="flex items-start justify-between border-t border-[var(--avs-border)] pt-4">
-                  <div className="flex items-start gap-3">
-                    <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-brand-primary/10' : 'bg-[var(--avs-surface-muted)]'}`}>
-                      <WrenchScrewdriverIcon className={`h-5 w-5 ${isPro ? 'text-brand-primary' : 'text-text-muted'}`} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-small font-semibold text-text-primary">Unlimited Repairs</span>
-                        {isPro && <ProFeatureIndicator icon={WrenchScrewdriverIcon} label="Unlimited" />}
-                      </div>
-                      <p className="mt-0.5 text-caption text-text-secondary">
-                        {isPro
-                          ? 'Repair all detected registry issues with no limits.'
-                          : `Free edition: repair up to ${fixLimit} issues per scan. Upgrade for unlimited.`}
-                      </p>
-                    </div>
+              <div className="flex items-center justify-between border-t border-[var(--avs-border)] pt-3">
+                <div className="flex items-center gap-3">
+                  <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)]' : 'bg-[var(--avs-surface-muted)]'}`}>
+                    <ShieldCheckIcon className={`h-4 w-4 ${isPro ? 'text-[var(--avs-brand-primary)]' : 'text-text-muted'}`} />
+                  </div>
+                  <div>
+                    <span className="text-small font-medium text-text-primary">Automatic Backup</span>
+                    <p className="text-caption text-text-muted">Every repair is backed up</p>
                   </div>
                 </div>
               </div>
-            </Card>
-          </div>
+
+              <div className="flex items-center justify-between border-t border-[var(--avs-border)] pt-3">
+                <div className="flex items-center gap-3">
+                  <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)]' : 'bg-[var(--avs-surface-muted)]'}`}>
+                    <WrenchScrewdriverIcon className={`h-4 w-4 ${isPro ? 'text-[var(--avs-brand-primary)]' : 'text-text-muted'}`} />
+                  </div>
+                  <div>
+                    <span className="text-small font-medium text-text-primary">Unlimited Repairs</span>
+                    <p className="text-caption text-text-muted">
+                      {isPro ? 'No limits on repairs' : `Free: up to ${fixLimit} per scan`}
+                    </p>
+                  </div>
+                </div>
+                {!isPro && <ProStatusPill />}
+              </div>
+            </div>
+          </Card>
 
           {dialogElement}
         </>

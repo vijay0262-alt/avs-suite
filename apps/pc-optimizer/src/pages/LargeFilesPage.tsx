@@ -63,7 +63,7 @@ export default function LargeFilesPage() {
           setSelectedDrive(driveList[0]!.letter);
         }
       })
-      .catch((e) => setError(String(e)));
+      .catch(() => setError('Could not load drives. Please try again.'));
   }, [selectedDrive]);
 
   const handleScan = useCallback(async () => {
@@ -74,8 +74,8 @@ export default function LargeFilesPage() {
     try {
       const res = await rpc.raw<{ largestFiles: LargeFile[] }>(RPC_METHODS.DISK_ANALYZE, { path: selectedDrive });
       setFiles(res.largestFiles || []);
-    } catch (e) {
-      setError(String(e));
+    } catch {
+      setError('Scan encountered an issue. Please try again.');
     }
     setScanning(false);
   }, [selectedDrive]);
@@ -91,8 +91,8 @@ export default function LargeFilesPage() {
       await rpc.raw(RPC_METHODS.DISK_DELETE_FILES, { files: [file.path] });
       setFiles((prev) => prev.filter((f) => f.path !== file.path));
       setDeletedSize((prev) => prev + file.size);
-    } catch (e) {
-      setError(String(e));
+    } catch {
+      setError('Could not delete the file. Please try again.');
     }
     setDeleting(null);
   }, [isPro, showUpgrade]);
@@ -108,24 +108,21 @@ export default function LargeFilesPage() {
       />
 
       {/* Drive selector + scan */}
-      <Card variant="glass" className="p-6">
+      <Card variant="glass" className="p-4">
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="shrink-0 rounded-[var(--avs-radius-md)] bg-brand-primary/10 p-3">
-              <FolderIcon className="h-6 w-6 text-brand-primary" />
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 rounded-[var(--avs-radius-md)] bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)] p-2.5">
+              <FolderIcon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
             </div>
-            <div>
-              <div className="text-section-title text-text-primary">Large File Scanner</div>
-              <p className="text-caption text-text-secondary mt-1">
-                Scans for the 20 largest files on the selected drive.
-              </p>
-            </div>
+            <p className="text-caption text-text-secondary">
+              Scans for the 20 largest files on the selected drive.
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <select
               value={selectedDrive}
               onChange={(e) => setSelectedDrive(e.target.value)}
-              className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-small text-text-primary focus:border-brand-primary focus:outline-none"
+              className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-small text-text-primary focus:border-[var(--avs-brand-primary)] focus:outline-none"
               data-testid="large-files-drive-select"
             >
               {drives.map((d) => (
@@ -136,13 +133,12 @@ export default function LargeFilesPage() {
             </select>
             <Button
               variant="primary"
-              size="lg"
               onClick={handleScan}
               disabled={scanning || !selectedDrive}
-              leftIcon={scanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <ArrowDownTrayIcon className="h-5 w-5" />}
+              leftIcon={scanning ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <ArrowDownTrayIcon className="h-4 w-4" />}
               data-testid="large-files-scan-btn"
             >
-              {scanning ? 'Scanning...' : 'Scan Now'}
+              {scanning ? 'Scanning…' : 'Scan Now'}
             </Button>
           </div>
         </div>
@@ -150,7 +146,7 @@ export default function LargeFilesPage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-[var(--avs-radius-md)] border border-semantic-danger/30 bg-semantic-danger/5 p-4">
+        <div className="flex items-center gap-2 rounded-[var(--avs-radius-md)] border border-semantic-danger/30 bg-semantic-danger/5 px-4 py-2">
           <p className="text-small text-semantic-danger">{error}</p>
         </div>
       )}
@@ -175,22 +171,20 @@ export default function LargeFilesPage() {
 
       {/* File list */}
       {files.length > 0 && (
-        <Card variant="glass" className="p-4" data-testid="large-files-list">
-          <div className="space-y-2">
+        <Card variant="glass" data-testid="large-files-list">
+          <div className="space-y-1.5">
             {files.map((file, i) => (
-              <div key={file.path} className="flex items-center gap-3 py-2 px-3 rounded border border-[var(--avs-border)]">
-                <div className="shrink-0 w-8 text-center">
-                  <span className="text-caption font-bold text-text-muted">#{i + 1}</span>
-                </div>
+              <div key={file.path} className="flex items-center gap-3 py-2 px-3 rounded-[var(--avs-radius-md)] hover:bg-[var(--avs-surface-muted)]/50 transition-colors">
+                <span className="shrink-0 text-caption font-bold text-text-muted w-6">#{i + 1}</span>
                 <DocumentIcon className="h-5 w-5 text-text-muted shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-small font-medium text-text-primary truncate">{file.name}</div>
                   <div className="text-caption text-text-muted truncate">{file.path}</div>
                 </div>
                 <Badge tone="neutral">{file.category || 'File'}</Badge>
-                <div className="text-small font-semibold text-text-primary tabular-nums shrink-0 w-24 text-right">
+                <span className="text-small font-semibold text-text-primary tabular-nums shrink-0 w-24 text-right">
                   {formatSize(file.size)}
-                </div>
+                </span>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -199,13 +193,13 @@ export default function LargeFilesPage() {
                   leftIcon={<TrashIcon className="h-4 w-4" />}
                   data-testid={`large-files-delete-${i}`}
                 >
-                  {deleting === file.path ? '...' : 'Delete'}
+                  {deleting === file.path ? '…' : 'Delete'}
                 </Button>
               </div>
             ))}
           </div>
           {!isPro && (
-            <p className="text-caption text-brand-primary mt-3">Professional edition required to delete files.</p>
+            <p className="text-caption text-[var(--avs-brand-primary)] mt-3">Professional edition required to delete files.</p>
           )}
         </Card>
       )}

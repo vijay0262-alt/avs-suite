@@ -9,7 +9,7 @@ import { FreeEditionNotice } from '../../components/FreeEditionNotice';
 import { ModuleErrorState, ModuleEmptyState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
 import { SharedConfirmDialog } from '../../components/SharedConfirmDialog';
 import { HelpButton } from '../../components/HelpButton';
-import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
+import { ProStatusBanner } from '../licensing/ProStatusBadge';
 import { useIsPro } from '../sync/syncStore';
 import { useUpgradeDialog } from '../../components/UpgradeDialog';
 import { UninstallerViewModel, type SortKey } from './UninstallerViewModel';
@@ -50,7 +50,6 @@ export default function UninstallerPage() {
         description="Review installed programs and remove the ones you no longer need."
         actions={
           <div className="flex items-center gap-2">
-            <ProStatusPill />
             <HelpButton text="Browse installed programs and launch their uninstallers. Search by name or publisher, sort by size or install date. The program's own uninstaller will guide you through removal." />
           </div>
         }
@@ -77,7 +76,7 @@ export default function UninstallerPage() {
 
       {state.bootstrap === 'error' && (
         <ModuleErrorState
-          message={state.bootstrapError ?? 'Unknown error'}
+          message="Could not reach the backend service. Please try again."
           onRetry={() => vm.load()}
           testId="uninstaller-error"
         />
@@ -85,14 +84,14 @@ export default function UninstallerPage() {
 
       {state.bootstrap === 'ready' && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <Card title="Installed Programs">
-              <p className="text-3xl font-bold text-text-primary">{state.total}</p>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <Card variant="glass" padded={false} className="p-3">
+              <p className="text-statistic text-text-primary">{state.total}</p>
+              <p className="text-caption text-text-secondary">Installed programs</p>
             </Card>
-            <Card title="Total Size">
-              <p className="text-3xl font-bold text-text-primary">
-                {formatBytes(state.totalSizeBytes)}
-              </p>
+            <Card variant="glass" padded={false} className="p-3">
+              <p className="text-statistic text-text-primary">{formatBytes(state.totalSizeBytes)}</p>
+              <p className="text-caption text-text-secondary">Total size</p>
             </Card>
           </div>
 
@@ -126,7 +125,7 @@ export default function UninstallerPage() {
           )}
           {state.actionError && (
             <ModuleErrorBanner
-              message={state.actionError}
+              message="Uninstall encountered an issue. Please try again."
               testId="uninstaller-action-error"
             />
           )}

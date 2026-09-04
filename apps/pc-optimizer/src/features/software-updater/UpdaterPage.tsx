@@ -34,7 +34,7 @@ export default function UpdaterPage() {
 
       {state.bootstrap === 'error' && (
         <ModuleErrorState
-          message={state.bootstrapError ?? 'Unknown error'}
+          message="Could not reach the backend service. Please try again."
           onRetry={() => vm.bootstrap()}
           testId="updater-error"
         />
@@ -42,12 +42,12 @@ export default function UpdaterPage() {
 
       {state.bootstrap === 'ready' && (
         <>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
             <div>
               <h2 className="text-section-title font-semibold text-text-primary">Updates</h2>
               {state.loading ? (
                 <div className="flex items-center gap-2 mt-1">
-                  <ArrowPathIcon className="h-4 w-4 text-brand-primary animate-spin" aria-hidden />
+                  <ArrowPathIcon className="h-4 w-4 text-[var(--avs-brand-primary)] animate-spin" aria-hidden />
                   <p className="text-small text-text-secondary">Checking for updates…</p>
                 </div>
               ) : state.available ? (
@@ -55,7 +55,7 @@ export default function UpdaterPage() {
                   {state.upgrades.length} update{state.upgrades.length !== 1 ? 's' : ''} available
                 </p>
               ) : (
-                <p className="text-small text-semantic-danger">{state.reason}</p>
+                <p className="text-small text-text-muted">Update checking is not available. Please ensure winget is installed.</p>
               )}
             </div>
             <div className="flex gap-2">
@@ -85,7 +85,7 @@ export default function UpdaterPage() {
           )}
           {state.actionError && (
             <ModuleErrorBanner
-              message={state.actionError}
+              message="Update encountered an issue. Please try again."
               testId="updater-action-error"
             />
           )}
