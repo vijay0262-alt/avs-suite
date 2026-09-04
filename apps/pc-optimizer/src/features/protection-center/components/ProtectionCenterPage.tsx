@@ -152,7 +152,8 @@ function deriveProtectionItems(metrics: DashboardMetrics | null): ProtectionItem
   // 1. Antivirus
   const defenderOn = sec?.defender.enabled ?? false;
   const thirdPartyAV = sec?.defender.thirdPartyAV ?? null;
-  const avActive = defenderOn || !!thirdPartyAV;
+  const avsActive = !!metrics?.avsAvActive;
+  const avActive = avsActive || defenderOn || !!thirdPartyAV;
   items.push({
     id: 'antivirus',
     name: 'Antivirus',
@@ -166,7 +167,7 @@ function deriveProtectionItems(metrics: DashboardMetrics | null): ProtectionItem
   items.push({
     id: 'realtime-protection',
     name: 'Real-Time Protection',
-    status: rtp || hasThirdParty ? 'enabled' : sec ? 'disabled' : 'unknown',
+    status: rtp || hasThirdParty || avsActive ? 'enabled' : sec ? 'disabled' : 'unknown',
     icon: EyeIcon,
   });
 
@@ -267,9 +268,10 @@ function deriveRecommendations(metrics: DashboardMetrics | null): Recommendation
 
   const recs: Recommendation[] = [];
 
-  // Real-Time Protection disabled (and no third-party AV covering it)
+  // Real-Time Protection disabled (and no third-party AV or AVS covering it)
   const hasThirdParty = !!(sec.defender.thirdPartyAV ?? sec.firewall.thirdPartyAV);
-  if (!sec.realTimeProtection && !hasThirdParty && sec.defender.enabled === false) {
+  const avsActive = !!metrics?.avsAvActive;
+  if (!sec.realTimeProtection && !hasThirdParty && !avsActive && sec.defender.enabled === false) {
     recs.push({
       id: 'enable-rtp',
       title: 'Real-Time Protection is off',

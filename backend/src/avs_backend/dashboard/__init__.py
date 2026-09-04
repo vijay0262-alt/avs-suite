@@ -149,8 +149,12 @@ def _collect_metrics() -> dict[str, Any]:
             fut.cancel()
     # Don't wait for slow threads — release the pool immediately
     pool.shutdown(wait=False)
+    # Expose AVS AV engine status at top level for frontend
+    sec = results.get("security", {})
+    results["avsAvActive"] = bool(sec.get("avs_av_active", False)) if isinstance(sec, dict) else False
     results["capturedAt"] = _now_iso()
     return results
+
 
 
 # =====================================================================
@@ -861,14 +865,15 @@ def _get_security_metrics() -> dict[str, Any]:
     try:
         if os.name != "nt":
             return {}
-        
+
         # Run security probes in parallel (each may shell out to PowerShell)
-        pool = ThreadPoolExecutor(max_workers=4)
+        pool = ThreadPoolExecutor(max_workers=5)
         security_futures = {
             "defender": pool.submit(_get_defender_status),
             "firewall": pool.submit(_get_firewall_status),
             "updates": pool.submit(_get_windows_update_status),
             "smart_screen": pool.submit(_get_smartscreen_status),
+            "avs_av_active": pool.submit(_get_avs_av_active),
         }
         security_results = {}
         for name, fut in security_futures.items():
@@ -879,12 +884,14 @@ def _get_security_metrics() -> dict[str, Any]:
                 security_results[name] = {}
         pool.shutdown(wait=False)
 
+        avs_active = bool(security_results.get("avs_av_active", False))
         return {
             "defender": security_results["defender"],
             "firewall": security_results["firewall"],
             "updates": security_results["updates"],
-            "realTimeProtection": security_results["defender"].get("realTimeProtection", False),
+            "realTimeProtection": security_results["defender"].get("realTimeProtection", False) or avs_active,
             "smartScreen": security_results["smart_screen"],
+            "avs_av_active": avs_active,
         }
     except Exception as e:
         log.warning("Failed to get security metrics: %s", e)
@@ -1504,6 +1511,16 @@ def _query_wsc_products() -> dict[str, list[dict[str, Any]]]:
 
 
 _last_good_defender: dict[str, Any] | None = None
+
+
+@_ttl_cache(30.0)
+def _get_avs_av_active() -> bool:
+    """Check if AVS AI Shield's ClamAV engine is running."""
+    try:
+        from avs_backend.threat_engine.clamav_scanner import check_clamav_available
+        return check_clamav_available()
+    except Exception:
+        return False
 
 
 @_ttl_cache(60.0)

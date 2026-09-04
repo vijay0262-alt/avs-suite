@@ -69,7 +69,7 @@ const THREAT_COVERAGE = [
 export default function AntivirusSecurityPage() {
   const [activeTab, setActiveTab] = useState<TabId>('scan');
   const [scanModalOpen, setScanModalOpen] = useState(false);
-  const [scanMode, setScanMode] = useState<'quick' | 'full'>('full');
+  const [scanMode] = useState<'quick' | 'full'>('full');
   const edition = useEdition();
   const { show: showUpgrade } = useUpgradeDialog();
   const isPro = edition === 'professional';
@@ -415,11 +415,6 @@ export default function AntivirusSecurityPage() {
     setRtGuardLoading(false);
   }, [rtGuardEnabled, isPro, showUpgrade]);
 
-  const handleScan = useCallback((scanType: 'quick' | 'full' | 'custom') => {
-    setScanMode(scanType === 'quick' ? 'quick' : 'full');
-    setScanModalOpen(true);
-  }, []);
-
   const handleRestoreThreat = useCallback(async (threatId: string) => {
     try {
       await rpc.raw(RPC_METHODS.THREAT_RESTORE, { quarantine_id: threatId });
@@ -687,7 +682,7 @@ export default function AntivirusSecurityPage() {
               </div>
               <div className="text-caption text-text-secondary">
                 {unifiedAv.avs_av_active
-                  ? `AVS AI Shield Antivirus is active with ${unifiedAv.avs_signatures.toLocaleString()} virus definitions.`
+                  ? 'AVS AI Shield Antivirus is active.'
                   : unifiedAv.third_party_av
                     ? `Protected by ${unifiedAv.third_party_av}. AVS AI Shield AV Engine is preparing in background.`
                     : unifiedAv.primary_av
@@ -833,40 +828,6 @@ export default function AntivirusSecurityPage() {
       {/* Tab content */}
       {activeTab === 'scan' && (
         <div className="space-y-4" data-testid="av-tab-scan-content">
-          {/* Scan buttons */}
-          <Card variant="glass" className="p-6">
-            <div className="text-small font-semibold text-text-primary mb-4">Run a Scan</div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <button
-                onClick={() => handleScan('quick')}
-                className="flex flex-col items-center gap-2 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] p-6 hover:border-brand-primary hover:bg-brand-primary/5 transition-colors"
-                data-testid="av-quick-scan-btn"
-              >
-                <BoltIcon className="h-8 w-8 text-brand-primary" />
-                <div className="text-small font-semibold text-text-primary">Quick Scan</div>
-                <div className="text-caption text-text-secondary">Scans critical areas and memory (~2 min)</div>
-              </button>
-              <button
-                onClick={() => handleScan('full')}
-                className="flex flex-col items-center gap-2 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] p-6 hover:border-brand-primary hover:bg-brand-primary/5 transition-colors"
-                data-testid="av-full-scan-btn"
-              >
-                <ShieldCheckIcon className="h-8 w-8 text-brand-primary" />
-                <div className="text-small font-semibold text-text-primary">Full Scan</div>
-                <div className="text-caption text-text-secondary">Scans entire system for all threats (~30 min)</div>
-              </button>
-              <button
-                onClick={() => handleScan('custom')}
-                className="flex flex-col items-center gap-2 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] p-6 hover:border-brand-primary hover:bg-brand-primary/5 transition-colors"
-                data-testid="av-custom-scan-btn"
-              >
-                <ChartBarIcon className="h-8 w-8 text-brand-primary" />
-                <div className="text-small font-semibold text-text-primary">Custom Scan</div>
-                <div className="text-caption text-text-secondary">Choose specific folders to scan</div>
-              </button>
-            </div>
-          </Card>
-
           {/* Scheduled Scans */}
           <Card variant="glass" className="p-5" data-testid="av-scan-scheduler">
             <div className="flex items-center justify-between mb-4">
@@ -1436,7 +1397,7 @@ export default function AntivirusSecurityPage() {
                   <ArrowPathIcon className="h-4 w-4 animate-spin text-semantic-info" />
                   <span className="text-small font-medium text-text-primary">
                     {setupStatus.setup_progress?.phase === 'downloading_signatures'
-                      ? 'Downloading virus definitions...'
+                      ? 'Preparing antivirus engine...'
                       : setupStatus.setup_progress?.phase === 'copying_bundled'
                         ? 'Setting up antivirus engine...'
                         : setupStatus.setup_progress?.phase === 'starting_engine'

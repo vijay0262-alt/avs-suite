@@ -202,20 +202,32 @@ def _get_scan_dirs() -> list[str]:
     return dirs
 
 
-def _count_files(dirs: list[str], max_count: int = 5000) -> int:
-    """Quick count of files in directories (capped for speed)."""
+def _count_files(dirs: list[str]) -> int:
+    """Count all scannable files in directories."""
     count = 0
+    _SKIP_EXT = {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".mp3", ".wav",
+                 ".flac", ".aac", ".ogg", ".jpg", ".jpeg", ".png", ".gif", ".bmp",
+                 ".tiff", ".webp", ".log", ".tmp"}
+    _MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
+
     for d in dirs:
-        if count >= max_count:
-            break
         try:
             for root, _dirs, files in os.walk(d):
-                count += len(files)
-                if count >= max_count:
-                    break
+                for fname in files:
+                    ext = os.path.splitext(fname)[1].lower()
+                    if ext in _SKIP_EXT:
+                        continue
+                    fpath = os.path.join(root, fname)
+                    try:
+                        fsize = os.path.getsize(fpath)
+                        if fsize > _MAX_FILE_SIZE:
+                            continue
+                    except OSError:
+                        continue
+                    count += 1
         except Exception:
             pass
-    return min(count, max_count)
+    return count
 
 
 def _run_direct_scan(scan_type: str = "quick") -> dict[str, Any]:
@@ -226,11 +238,17 @@ def _run_direct_scan(scan_type: str = "quick") -> dict[str, Any]:
     and the current file being scanned.
     """
     scan_dirs = _get_scan_dirs()
-    num_dirs = len(scan_dirs)
+
+    # First pass: count all scannable files for accurate progress
+    with _lock:
+        _progress["current_file"] = "Counting files..."
+    total_files = _count_files(scan_dirs)
+    if total_files == 0:
+        total_files = 1
+    log.info("One-click: Found %d files to scan", total_files)
 
     files_scanned = 0
     threats_found = 0
-    max_files = 500  # Cap for quick scan (~30s)
 
     # Try to get ClamAV scanner
     clamav_scanner = None
@@ -250,37 +268,25 @@ def _run_direct_scan(scan_type: str = "quick") -> dict[str, Any]:
     except Exception as e:
         log.warning("One-click: Hash detector not available: %s", e)
 
-    scanned_paths = set()
-    dir_index = 0
-
-    # Skip archive files and large files for quick scan speed
-    _SKIP_EXT = {".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".iso", ".msi",
-                 ".cab", ".arj", ".lzh", ".uue", ".xxe", ".zoo"}
-    _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB max for quick scan
+    # Skip media files and logs (not security-relevant)
+    _SKIP_EXT = {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".mp3", ".wav",
+                 ".flac", ".aac", ".ogg", ".jpg", ".jpeg", ".png", ".gif", ".bmp",
+                 ".tiff", ".webp", ".log", ".tmp"}
+    _MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 
     for scan_dir in scan_dirs:
-        dir_index += 1
-        # Base progress on directory index (each dir = ~15% of total)
-        dir_base = int((dir_index - 1) / num_dirs * 100)
-
         try:
             for root, dirs, files in os.walk(scan_dir):
-                # Skip deep directories
+                # Skip very deep directories
                 depth = root.replace(scan_dir, "").count(os.sep)
-                if depth > 4:
+                if depth > 8:
                     dirs.clear()
                     continue
 
                 for fname in files:
-                    if files_scanned >= max_files:
-                        break
-
                     fpath = os.path.join(root, fname)
-                    if fpath in scanned_paths:
-                        continue
-                    scanned_paths.add(fpath)
 
-                    # Skip archives and large files for quick scan
+                    # Skip media files and logs
                     ext = os.path.splitext(fname)[1].lower()
                     if ext in _SKIP_EXT:
                         continue
@@ -294,9 +300,9 @@ def _run_direct_scan(scan_type: str = "quick") -> dict[str, Any]:
 
                     files_scanned += 1
 
-                    # Update progress: based on files scanned vs max
+                    # Update progress
                     with _lock:
-                        _progress["scan_progress"] = min(99, int(files_scanned / max_files * 100))
+                        _progress["scan_progress"] = min(99, int(files_scanned / total_files * 100))
                         _progress["current_file"] = fpath
                         _progress["files_scanned"] = files_scanned
 
@@ -307,7 +313,7 @@ def _run_direct_scan(scan_type: str = "quick") -> dict[str, Any]:
                             if result and result.get("detected"):
                                 threats_found += 1
                         except Exception:
-                            pass  # Skip files that timeout or error
+                            pass
                     elif hash_detector:
                         try:
                             result = hash_detector.scan_file(fpath)
@@ -316,14 +322,8 @@ def _run_direct_scan(scan_type: str = "quick") -> dict[str, Any]:
                         except Exception:
                             pass
 
-                if files_scanned >= max_files:
-                    break
         except Exception as e:
             log.warning("One-click: Error scanning %s: %s", scan_dir, e)
-
-        # Update progress after each directory
-        with _lock:
-            _progress["scan_progress"] = min(99, int(dir_index / num_dirs * 100))
 
     with _lock:
         _progress["scan_progress"] = 100

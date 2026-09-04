@@ -157,6 +157,7 @@ export interface DashboardMetrics extends LiveMetrics {
   windows: WindowsInfo;
   security: SecurityMetrics;
   performance: PerformanceMetrics;
+  avsAvActive?: boolean;
 }
 
 export type HealthCategory = 'storage' | 'startup' | 'privacy' | 'performance' | 'security' | 'windows';
