@@ -26,8 +26,34 @@ log = logging.getLogger("avs.threat_engine.defender_scanner")
 
 IS_WINDOWS = platform.system() == "Windows"
 
-# Default location of the Windows Defender command-line tool.
-_MPCMDRUN_PATH = r"C:\Program Files\Windows Defender\MpCmdRun.exe"
+# Possible locations of the Windows Defender command-line tool.
+# MpCmdRun.exe can be in different paths depending on Windows version and
+# whether Defender is built-in or installed as a separate package.
+_MPCMDRUN_CANDIDATES = [
+    r"C:\Program Files\Windows Defender\MpCmdRun.exe",
+    r"C:\Program Files (x86)\Windows Defender\MpCmdRun.exe",
+    r"C:\Windows\System32\MpCmdRun.exe",
+    r"C:\Windows\SysWOW64\MpCmdRun.exe",
+    r"C:\ProgramData\Microsoft\Windows Defender\Platform\MpCmdRun.exe",
+]
+
+
+def _find_mpcmdrun() -> str | None:
+    """Find the MpCmdRun.exe executable path.
+
+    Checks multiple known locations and returns the first one that exists.
+    Falls back to PATH lookup if none of the candidate paths exist.
+    """
+    for path in _MPCMDRUN_CANDIDATES:
+        if os.path.isfile(path):
+            return path
+    # Last resort: check if MpCmdRun.exe is on PATH
+    import shutil
+    return shutil.which("MpCmdRun.exe")
+
+
+# Resolved at module load time (cached).
+_MPCMDRUN_PATH = _find_mpcmdrun()
 
 # Creation flag to avoid popping up a console window on Windows.
 _CREATE_NO_WINDOW = 0x08000000
@@ -122,8 +148,8 @@ def is_defender_available() -> bool:
     """Return ``True`` if Windows Defender is installed and running."""
     if not IS_WINDOWS:
         return False
-    if not os.path.exists(_MPCMDRUN_PATH):
-        log.debug("MpCmdRun.exe not found at %s", _MPCMDRUN_PATH)
+    if not _MPCMDRUN_PATH or not os.path.exists(_MPCMDRUN_PATH):
+        log.debug("MpCmdRun.exe not found (checked %d candidate paths)", len(_MPCMDRUN_CANDIDATES))
         return False
     status = get_defender_status()
     if not status:
@@ -243,15 +269,15 @@ class DefenderScanner:
 
     def __init__(self, config: dict[str, Any]):
         self.config = config
-        self.mpcmdrun_path: str = config.get("mpcmdrun_path", _MPCMDRUN_PATH)
+        self.mpcmdrun_path: str = config.get("mpcmdrun_path") or _MPCMDRUN_PATH or ""
         self.scan_timeout: int = int(config.get("scan_timeout", 120))
 
         if not IS_WINDOWS:
             log.info("DefenderScanner initialized on non-Windows platform — disabled")
             return
 
-        if not os.path.exists(self.mpcmdrun_path):
-            log.warning("MpCmdRun.exe not found at %s — Defender scanner disabled", self.mpcmdrun_path)
+        if not self.mpcmdrun_path or not os.path.exists(self.mpcmdrun_path):
+            log.warning("MpCmdRun.exe not found — Defender scanner disabled (checked %d paths)", len(_MPCMDRUN_CANDIDATES))
             return
 
         if not is_defender_available():

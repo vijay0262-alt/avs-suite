@@ -92,7 +92,9 @@ _DEFAULT_CONFIG = {
     "auto_quarantine": True,  # Auto-quarantine detected threats (Pro behavior)
     "exclude_paths": [
         "C:\\Windows\\WinSxS",
-        "C:\\ProgramData\\Microsoft",
+        "C:\\ProgramData\\Microsoft\\Windows Defender",
+        "C:\\ProgramData\\Microsoft\\Windows\\WinSxS",
+        "C:\\ProgramData\\Microsoft\\Windows\\Installer",
         "C:\\Program Files\\WindowsApps",
     ],
     "exclude_extensions": [
@@ -155,8 +157,8 @@ _SCAN_EXTENSIONS = {
     ".pdf", ".html", ".htm", ".swf", ".flv",
 }
 
-# Extensions to always skip
-_SKIP_EXTENSIONS = {".txt", ".log", ".csv", ".json", ".xml", ".css", ".md", ".rst"}
+# Extensions to always skip — import from centralized config for consistency
+from avs_backend.threat_engine.scan_config import SKIP_EXTENSIONS as _SKIP_EXTENSIONS
 
 
 def _compute_sha256(file_path: str, max_size_mb: int = 100) -> str | None:

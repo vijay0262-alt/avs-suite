@@ -531,10 +531,17 @@ def dashboard_recommendations(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Generate actionable optimization recommendations.
 
     Returns structured recommendations with one-click fix routes.
+    Free edition is limited to 3 recommendations per call.
     """
     try:
         from avs_backend.dashboard.optimization_recommendations import generate_recommendations
+        from avs_backend.licensing import get_edition_limit, _get_current_edition
         recs = generate_recommendations()
+        # Enforce Free edition limit: max 3 recommendations
+        edition = _get_current_edition()
+        max_recs = get_edition_limit("dashboard.recommendations")
+        if edition == "free" and max_recs is not None and max_recs > 0:
+            recs = recs[:max_recs]
         return {"success": True, "recommendations": recs, "count": len(recs)}
     except Exception as e:
         log.warning("Failed to generate recommendations: %s", e)

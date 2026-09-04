@@ -586,6 +586,15 @@ _EDITION_LIMITS: dict[str, int | None] = {
     "startup.entries_per_run": 3,
     "duplicate.files_per_run": 20,
     "large_files.per_session": 10,
+    # Additional limits matching frontend editionLimits.ts
+    "ai_assistant.questions_per_day": 20,
+    "daily_briefing.per_day": 1,
+    "browser_cleaner.browsers_per_run": 1,
+    "dashboard.recommendations": 3,
+    "dashboard.security_events": 5,
+    "process_intelligence.top_n": 10,
+    "reports.history_days": 30,
+    "reports.export_formats": 1,
 }
 
 

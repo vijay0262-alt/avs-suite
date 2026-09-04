@@ -16,7 +16,7 @@ from typing import Any
 import psutil
 
 from avs_backend.api.registry import register
-from avs_backend.licensing import require_feature
+from avs_backend.licensing import require_feature, get_edition_limit, _get_current_edition
 
 logger = logging.getLogger(__name__)
 
@@ -358,22 +358,28 @@ def disk_analyze(params: dict[str, Any] | None) -> dict[str, Any]:
 @require_feature("disk.deleteFiles")
 def disk_delete_files(params: dict[str, Any] | None) -> dict[str, Any]:
     """Delete a list of files selected by the user.
-    
+
     Expected params:
         files: list of file path strings to delete
     """
     if not params or 'files' not in params:
         raise ValueError("Missing 'files' parameter")
-    
+
     files_to_delete = params['files']
     if not isinstance(files_to_delete, list):
         raise ValueError("'files' must be a list of file paths")
-    
+
+    # Enforce Free edition limit: max 10 files per session
+    edition = _get_current_edition()
+    max_files = get_edition_limit("large_files.per_session")
+    if edition == "free" and max_files > 0 and len(files_to_delete) > max_files:
+        files_to_delete = files_to_delete[:max_files]
+
     deleted = 0
     failed = 0
     bytes_freed = 0
     errors: list[dict[str, str]] = []
-    
+
     for file_path in files_to_delete:
         try:
             if not os.path.exists(file_path):

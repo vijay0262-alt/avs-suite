@@ -213,12 +213,14 @@ function checkFeatureInRegistry(featureKey: string, edition: string): boolean {
 }
 
 function isFreeFeature(featureKey: string): boolean {
+  // This fallback is used only when the shared feature flags package
+  // cannot be loaded. It must match packages/shared/src/featureFlags/index.ts.
+  // PRIVACY_SCAN, UNINSTALLER_VIEW, UNINSTALLER_STANDARD, and
+  // SOFTWARE_UPDATE_SCAN are Pro-only per the shared registry.
   const freeFeatures = new Set([
     'DASHBOARD', 'SYSTEM_INFO', 'DISK_ANALYZER',
     'JUNK_CLEANER_BASIC', 'REGISTRY_SCAN', 'STARTUP_VIEW',
-    'PRIVACY_SCAN', 'DUPLICATE_SCAN', 'DUPLICATE_DELETE',
-    'UNINSTALLER_VIEW',
-    'UNINSTALLER_STANDARD', 'SOFTWARE_UPDATE_SCAN',
+    'DUPLICATE_SCAN', 'DUPLICATE_DELETE',
     'SECURITY_SCAN',
   ]);
   return freeFeatures.has(featureKey);

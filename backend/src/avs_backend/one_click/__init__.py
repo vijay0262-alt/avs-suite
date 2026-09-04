@@ -82,8 +82,17 @@ _EXCLUDE_PATHS = {
     r"C:\Windows\Installer",
 }
 
-_MAX_FILE_SIZE = 100 * 1024 * 1024  # 100 MB
-_MAX_DEPTH = 12
+# Import centralized scan config for consistency with threat_engine
+# (kept local copies above for backward compatibility within this module)
+from avs_backend.threat_engine.scan_config import (
+    should_scan_file as _cfg_should_scan_file,
+    is_excluded_path as _cfg_is_excluded_path,
+    MAX_FILE_SIZE as _CFG_MAX_FILE_SIZE,
+    MAX_DEPTH as _CFG_MAX_DEPTH,
+)
+
+_MAX_FILE_SIZE = _CFG_MAX_FILE_SIZE
+_MAX_DEPTH = _CFG_MAX_DEPTH
 
 
 def _get_scan_roots() -> list[str]:

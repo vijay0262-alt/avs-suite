@@ -6,7 +6,7 @@ import logging
 from typing import Any
 
 from avs_backend.api.registry import register
-from avs_backend.licensing import require_feature
+from avs_backend.licensing import require_feature, get_edition_limit, _get_current_edition
 from avs_backend.history.history_manager import (
     ModuleType,
     OptimizationType,
@@ -27,7 +27,10 @@ logger = logging.getLogger(__name__)
 
 @register("history.list")
 def history_list(params: dict[str, Any] | None) -> dict[str, Any]:
-    """Get history entries with optional filtering."""
+    """Get history entries with optional filtering.
+
+    Free edition is limited to 30 days of history.
+    """
     try:
         limit = params.get("limit", 100) if params else 100
         offset = params.get("offset", 0) if params else 0
@@ -42,6 +45,16 @@ def history_list(params: dict[str, Any] | None) -> dict[str, Any]:
 
         date_from = params.get("dateFrom") if params else None
         date_to = params.get("dateTo") if params else None
+
+        # Enforce Free edition limit: 30 days of history
+        edition = _get_current_edition()
+        max_days = get_edition_limit("reports.history_days")
+        if edition == "free" and max_days is not None and max_days > 0:
+            from datetime import datetime, timedelta
+            cutoff = datetime.now() - timedelta(days=max_days)
+            cutoff_str = cutoff.strftime("%Y-%m-%d")
+            if not date_from or date_from < cutoff_str:
+                date_from = cutoff_str
 
         entries = get_history(
             limit=limit,

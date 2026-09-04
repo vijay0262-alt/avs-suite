@@ -7,7 +7,7 @@ from threading import Event
 from typing import Any
 
 from avs_backend.api.registry import register
-from avs_backend.licensing import require_feature
+from avs_backend.licensing import require_feature, get_edition_limit, _get_current_edition
 from avs_backend.privacy.privacy_cleaner import (
     PrivacyCategory,
     ScanResult,
@@ -71,6 +71,24 @@ def privacy_clean(params: dict[str, Any] | None) -> dict[str, Any]:
         # Get items to clean from params
         items_to_clean = []
         if params and "items" in params:
+            # Enforce Free edition limit: only 1 browser's items per run
+            edition = _get_current_edition()
+            max_browsers = get_edition_limit("browser_cleaner.browsers_per_run")
+            if edition == "free" and max_browsers is not None and max_browsers > 0:
+                # Count unique browsers in the items
+                seen_browsers: set[str] = set()
+                filtered_items = []
+                for item in params["items"]:
+                    browser = item.get("browser", "unknown")
+                    if browser not in seen_browsers:
+                        if len(seen_browsers) >= max_browsers:
+                            continue
+                        seen_browsers.add(browser)
+                    filtered_items.append(item)
+                params_items = filtered_items
+            else:
+                params_items = params["items"]
+
             items_to_clean = [
                 PrivacyItem(
                     category=PrivacyCategory(item["category"]),
@@ -81,7 +99,7 @@ def privacy_clean(params: dict[str, Any] | None) -> dict[str, Any]:
                     risk_level=RiskLevel(item.get("riskLevel", "low")),
                     can_restore=item.get("canRestore", False),
                 )
-                for item in params["items"]
+                for item in params_items
             ]
 
         result = clean_privacy_items(items_to_clean, cancel, None)
