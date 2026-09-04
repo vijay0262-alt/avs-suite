@@ -303,7 +303,7 @@ describe('Centralized Configuration (Part 13)', () => {
     expect(CATEGORY_CONFIG.privacy.label).toBe('Privacy');
     expect(CATEGORY_CONFIG.security.label).toBe('Security');
     expect(CATEGORY_CONFIG.system.label).toBe('System');
-    expect(CATEGORY_CONFIG.future.label).toBe('Coming Soon');
+    expect(CATEGORY_CONFIG.future.label).toBe('Advanced');
   });
 
   it('CATEGORY_CONFIG has correct sort order', () => {
