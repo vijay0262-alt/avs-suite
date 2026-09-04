@@ -62,21 +62,17 @@ export default function ActivationPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         const detail = err.detail ?? err.message;
-        setActivateError(detail);
         // If the error indicates the license is already linked/active,
         // treat it as a soft success — the sync will reflect the actual state.
         if (detail.toLowerCase().includes('already') || detail.toLowerCase().includes('pro')) {
           setActivateError(null);
           setActivateSuccess('Your license is already active. Syncing your account status…');
           activationWorked = true;
+        } else {
+          setActivateError('Could not activate the license. Please check the key and try again.');
         }
       } else {
-        const msg = err instanceof Error ? err.message : 'Failed to activate license. Please try again.';
-        setActivateError(
-          msg.includes('Maximum call stack') || msg.includes('stack size')
-            ? 'Unable to connect to the activation server. Please check your connection and try again.'
-            : msg
-        );
+        setActivateError('Unable to connect to the activation server. Please check your connection and try again.');
       }
     }
     // Always re-sync after activation attempt — even on error, the backend
@@ -184,7 +180,7 @@ export default function ActivationPage() {
           <p className="text-small text-text-muted">Loading subscription…</p>
         ) : error && !syncData ? (
           <div className="space-y-2">
-            <p className="text-small text-semantic-danger">{error}</p>
+            <p className="text-small text-semantic-danger">Could not load subscription data. Please try again.</p>
             <Button variant="secondary" size="sm" onClick={() => void sync()} data-testid="subscription-retry">
               Retry
             </Button>
@@ -215,12 +211,7 @@ export default function ActivationPage() {
                 <div className="text-text-muted mb-1">Features</div>
                 <div className="flex flex-wrap gap-1">
                   {features.map((f) => (
-                    <span
-                      key={f}
-                      className="inline-flex items-center rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] px-2 py-0.5 text-caption text-text-secondary"
-                    >
-                      {f}
-                    </span>
+                    <Badge key={f} tone="neutral">{f}</Badge>
                   ))}
                 </div>
               </div>

@@ -11,6 +11,7 @@ import {
 import { useState, useEffect, useCallback } from 'react';
 import { useEditionManager } from '../config/EditionManager';
 import { UpdateManager } from '../features/licensing/UpdateManager';
+import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
 const { APP_METADATA } = constants;
 
@@ -63,17 +64,13 @@ export default function AboutPage() {
           message: `You're running the latest version (${versionInfo.version}).`,
         });
       }
-    } catch (err) {
+    } catch {
       setUpdateStatus({
         status: 'error',
-        message: err instanceof Error ? err.message : 'Failed to check for updates.',
+        message: 'Could not check for updates. Please try again.',
       });
     }
   }, [versionInfo.version]);
-
-  const openExternal = (url: string) => {
-    window.open(url, '_blank');
-  };
 
   return (
     <div data-testid="page-about" className="space-y-4">
@@ -134,25 +131,27 @@ export default function AboutPage() {
           <div>
             <dt className="text-text-muted">Website</dt>
             <dd>
-              <button
-                className="text-brand-primary hover:underline"
-                onClick={() => openExternal(APP_METADATA.websiteUrl)}
+              <a
+                className="text-[var(--avs-brand-primary)] hover:underline"
+                href={APP_METADATA.websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 data-testid="about-website-link"
               >
                 {APP_METADATA.websiteUrl}
-              </button>
+              </a>
             </dd>
           </div>
           <div>
             <dt className="text-text-muted">Support</dt>
             <dd>
-              <button
-                className="text-brand-primary hover:underline"
-                onClick={() => openExternal(`mailto:${APP_METADATA.supportEmail}`)}
+              <a
+                className="text-[var(--avs-brand-primary)] hover:underline"
+                href={`mailto:${APP_METADATA.supportEmail}`}
                 data-testid="about-support-link"
               >
                 {APP_METADATA.supportEmail}
-              </button>
+              </a>
             </dd>
           </div>
           <div className="md:col-span-2">
@@ -232,46 +231,46 @@ export default function AboutPage() {
 
       <Card title="Legal & Privacy">
         <div className="grid grid-cols-1 gap-2 text-small md:grid-cols-2">
-          <button
+          <a
             className="flex items-center justify-between rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] px-3 py-2 text-text-primary hover:bg-[var(--avs-surface-muted)]"
-            onClick={() => openExternal(`${APP_METADATA.websiteUrl}/privacy`)}
+            href={`${APP_METADATA.websiteUrl}/privacy`}
+            target="_blank"
+            rel="noopener noreferrer"
             data-testid="about-privacy-policy"
           >
             <span>Privacy Policy</span>
-            <svg className="h-4 w-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-0L10 14" />
-            </svg>
-          </button>
-          <button
+            <ArrowTopRightOnSquareIcon className="h-4 w-4 text-text-muted" />
+          </a>
+          <a
             className="flex items-center justify-between rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] px-3 py-2 text-text-primary hover:bg-[var(--avs-surface-muted)]"
-            onClick={() => openExternal(`${APP_METADATA.websiteUrl}/terms`)}
+            href={`${APP_METADATA.websiteUrl}/terms`}
+            target="_blank"
+            rel="noopener noreferrer"
             data-testid="about-terms"
           >
             <span>Terms of Service</span>
-            <svg className="h-4 w-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-0L10 14" />
-            </svg>
-          </button>
-          <button
+            <ArrowTopRightOnSquareIcon className="h-4 w-4 text-text-muted" />
+          </a>
+          <a
             className="flex items-center justify-between rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] px-3 py-2 text-text-primary hover:bg-[var(--avs-surface-muted)]"
-            onClick={() => openExternal(`${APP_METADATA.websiteUrl}/eula`)}
+            href={`${APP_METADATA.websiteUrl}/eula`}
+            target="_blank"
+            rel="noopener noreferrer"
             data-testid="about-eula"
           >
             <span>License Agreement (EULA)</span>
-            <svg className="h-4 w-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-0L10 14" />
-            </svg>
-          </button>
-          <button
+            <ArrowTopRightOnSquareIcon className="h-4 w-4 text-text-muted" />
+          </a>
+          <a
             className="flex items-center justify-between rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] px-3 py-2 text-text-primary hover:bg-[var(--avs-surface-muted)]"
-            onClick={() => openExternal(`${APP_METADATA.websiteUrl}/open-source`)}
+            href={`${APP_METADATA.websiteUrl}/open-source`}
+            target="_blank"
+            rel="noopener noreferrer"
             data-testid="about-open-source"
           >
             <span>Open Source Licenses</span>
-            <svg className="h-4 w-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-0L10 14" />
-            </svg>
-          </button>
+            <ArrowTopRightOnSquareIcon className="h-4 w-4 text-text-muted" />
+          </a>
         </div>
       </Card>
     </div>

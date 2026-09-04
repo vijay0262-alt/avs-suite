@@ -96,8 +96,8 @@ export const ReportsView = React.memo(function ReportsView() {
           break;
       }
       setReport(r);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to generate report');
+    } catch {
+      setError('Could not generate the report. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -216,20 +216,19 @@ function ReportContent({ report }: { report: ExecutionReport }) {
   return (
     <div className="space-y-6" data-testid="report-content">
       {/* Overall Health + Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card title="Overall Health" data-testid="report-health">
-          <div className="flex flex-col items-center py-4">
-            <Badge tone={health.tone} className="text-base px-4 py-1" data-testid="report-health-badge">
-              {health.label}
-            </Badge>
-            <p className="mt-3 text-small text-[var(--avs-text-secondary)] text-center">
-              {report.summary.totalExecutions} executions in this period
-            </p>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <Card variant="glass" padded={false} className="p-4" data-testid="report-health">
+          <p className="text-caption text-text-muted mb-2">Overall Health</p>
+          <Badge tone={health.tone} className="text-base px-4 py-1" data-testid="report-health-badge">
+            {health.label}
+          </Badge>
+          <p className="mt-3 text-small text-text-secondary">
+            {report.summary.totalExecutions} executions in this period
+          </p>
         </Card>
 
-        <Card title="Summary" className="lg:col-span-2" data-testid="report-summary">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="lg:col-span-2" data-testid="report-summary">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <SummaryStat icon={<CheckCircleIcon className="h-4 w-4" />} label="Successful" value={report.summary.successful} />
             <SummaryStat icon={<ExclamationCircleIcon className="h-4 w-4" />} label="Failed" value={report.summary.failed} />
             <SummaryStat icon={<ClockIcon className="h-4 w-4" />} label="Avg Duration" value={formatDuration(report.summary.averageDurationMs)} />
@@ -239,22 +238,24 @@ function ReportContent({ report }: { report: ExecutionReport }) {
             <SummaryStat icon={<ChartBarIcon className="h-4 w-4" />} label="Files Removed" value={report.summary.totalFilesRemoved} />
             <SummaryStat icon={<ArrowPathIcon className="h-4 w-4" />} label="Space Recovered" value={formatBytes(report.summary.totalSpaceRecovered)} />
           </div>
-        </Card>
+        </div>
       </div>
 
       {/* Performance Metrics */}
-      <Card title="Performance Metrics" data-testid="report-performance">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div data-testid="report-performance">
+        <h3 className="text-small font-semibold text-text-primary mb-3">Performance Metrics</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <SummaryStat label="Avg Duration" value={formatDuration(report.performanceMetrics.averageDurationMs)} />
           <SummaryStat label="Longest Run" value={formatDuration(report.performanceMetrics.longestRunMs)} />
           <SummaryStat label="Shortest Run" value={formatDuration(report.performanceMetrics.shortestRunMs)} />
           <SummaryStat label="Avg Space/Run" value={formatBytes(report.performanceMetrics.averageSpacePerExecution)} />
         </div>
-      </Card>
+      </div>
 
       {/* Recovered Space */}
-      <Card title="Recovered Space" data-testid="report-recovered-space">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div data-testid="report-recovered-space">
+        <h3 className="text-small font-semibold text-text-primary mb-3">Recovered Space</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <SummaryStat label="Total Space" value={formatBytes(report.recoveredSpace.totalBytes)} />
           <SummaryStat label="Total Files" value={report.recoveredSpace.totalFiles} />
           <SummaryStat label="Total Folders" value={report.recoveredSpace.totalFolders} />
@@ -264,7 +265,7 @@ function ReportContent({ report }: { report: ExecutionReport }) {
           <SummaryStat label="Browser Data" value={report.recoveredSpace.totalBrowserData} />
           <SummaryStat label="Registry" value={report.recoveredSpace.totalRegistryEntries} />
         </div>
-      </Card>
+      </div>
 
       {/* Task Statistics */}
       <Card title="Task Statistics" data-testid="report-task-stats">
@@ -329,13 +330,13 @@ function ReportContent({ report }: { report: ExecutionReport }) {
 
 function SummaryStat({ icon, label, value }: { icon?: React.ReactNode; label: string; value: React.ReactNode }) {
   return (
-    <div>
+    <Card variant="glass" padded={false} className="p-3">
       <div className="flex items-center gap-1.5 text-caption font-medium uppercase tracking-wide text-[var(--avs-text-muted)]">
         {icon}
         {label}
       </div>
-      <div className="mt-1 text-section-title font-semibold text-[var(--avs-text-primary)] tabular-nums">{value}</div>
-    </div>
+      <div className="mt-1 text-statistic font-semibold text-[var(--avs-text-primary)] tabular-nums">{value}</div>
+    </Card>
   );
 }
 

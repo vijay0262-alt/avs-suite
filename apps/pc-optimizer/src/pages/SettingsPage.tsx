@@ -42,6 +42,7 @@ export default function SettingsPage() {
   const [internetBoosterEnabled, setInternetBoosterEnabled] = useState(false);
   const [internetBoosterLoading, setInternetBoosterLoading] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [pingStatus, setPingStatus] = useState<string | null>(null);
 
   useEffect(() => {
     // Sync dev mode state from localStorage
@@ -772,21 +773,29 @@ export default function SettingsPage() {
                   Test the connection to the AVS AI Shield backend.
                 </p>
               </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={async () => {
-                  try {
-                    const res = await rpc.raw<{ pong: boolean }>(RPC_METHODS.SYSTEM_PING);
-                    alert(res?.pong ? 'Backend is responding' : 'Backend responded but no pong');
-                  } catch {
-                    alert('Backend ping failed. Please check if AVS AI Shield is running.');
-                  }
-                }}
-                data-testid="settings-rpc-ping-btn"
-              >
-                Ping Backend
-              </Button>
+              <div className="flex items-center gap-2">
+                {pingStatus && (
+                  <span className={`text-caption ${pingStatus.includes('responding') ? 'text-semantic-success' : 'text-semantic-danger'}`}>
+                    {pingStatus}
+                  </span>
+                )}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={async () => {
+                    setPingStatus('Pinging…');
+                    try {
+                      const res = await rpc.raw<{ pong: boolean }>(RPC_METHODS.SYSTEM_PING);
+                      setPingStatus(res?.pong ? 'Backend is responding' : 'Backend responded but no pong');
+                    } catch {
+                      setPingStatus('Backend ping failed.');
+                    }
+                  }}
+                  data-testid="settings-rpc-ping-btn"
+                >
+                  Ping Backend
+                </Button>
+              </div>
             </div>
           </div>
         </Card>
@@ -836,8 +845,8 @@ function DeviceManagement() {
       ]);
       setDevices(devRes.devices || []);
       setRemaining(remRes.remaining_devices ?? 0);
-    } catch (e) {
-      setError(String(e));
+    } catch {
+      setError('Could not load device information. Please try again.');
     }
     setLoading(false);
   }, []);
@@ -852,8 +861,8 @@ function DeviceManagement() {
     try {
       await rpc.raw(RPC_METHODS.LICENSE_DEACTIVATE_DEVICE, { device_fingerprint: fingerprint });
       refresh();
-    } catch (e) {
-      setError(String(e));
+    } catch {
+      setError('Could not deactivate the device. Please try again.');
     }
     setDeactivating(null);
   };

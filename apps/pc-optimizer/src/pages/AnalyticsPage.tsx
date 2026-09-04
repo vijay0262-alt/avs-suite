@@ -91,8 +91,8 @@ export default function AnalyticsPage() {
         timestamp: p.timestamp,
         value: p.cpu,
       })));
-    } catch (e) {
-      setError(String(e));
+    } catch {
+      setError('Could not load analytics data. Please try again.');
     }
     setLoading(false);
   }, []);
@@ -161,79 +161,73 @@ export default function AnalyticsPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card variant="glass" className="p-4" data-testid="analytics-card-scans">
-          <div className="flex items-center gap-2 mb-2">
-            <ChartBarIcon className="h-5 w-5 text-brand-primary" />
+        <Card variant="glass" padded={false} className="p-3" data-testid="analytics-card-scans">
+          <div className="flex items-center gap-2 mb-1">
+            <ChartBarIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
             <span className="text-caption text-text-secondary">Total Scans</span>
           </div>
-          <div className="text-section-title font-bold text-text-primary">{summary?.totalScans ?? '—'}</div>
+          <div className="text-statistic font-semibold text-text-primary">{summary?.totalScans ?? '—'}</div>
         </Card>
-        <Card variant="glass" className="p-4" data-testid="analytics-card-cleanups">
-          <div className="flex items-center gap-2 mb-2">
-            <TrashIcon className="h-5 w-5 text-semantic-warning" />
+        <Card variant="glass" padded={false} className="p-3" data-testid="analytics-card-cleanups">
+          <div className="flex items-center gap-2 mb-1">
+            <TrashIcon className="h-4 w-4 text-semantic-warning" />
             <span className="text-caption text-text-secondary">Cleanups Run</span>
           </div>
-          <div className="text-section-title font-bold text-text-primary">{summary?.totalCleanups ?? '—'}</div>
+          <div className="text-statistic font-semibold text-text-primary">{summary?.totalCleanups ?? '—'}</div>
         </Card>
-        <Card variant="glass" className="p-4" data-testid="analytics-card-files">
-          <div className="flex items-center gap-2 mb-2">
-            <BoltIcon className="h-5 w-5 text-semantic-success" />
+        <Card variant="glass" padded={false} className="p-3" data-testid="analytics-card-files">
+          <div className="flex items-center gap-2 mb-1">
+            <BoltIcon className="h-4 w-4 text-semantic-success" />
             <span className="text-caption text-text-secondary">Files Deleted</span>
           </div>
-          <div className="text-section-title font-bold text-text-primary">{summary?.totalFilesDeleted.toLocaleString() ?? '—'}</div>
+          <div className="text-statistic font-semibold text-text-primary">{summary?.totalFilesDeleted.toLocaleString() ?? '—'}</div>
         </Card>
-        <Card variant="glass" className="p-4" data-testid="analytics-card-space">
-          <div className="flex items-center gap-2 mb-2">
-            <CpuChipIcon className="h-5 w-5 text-brand-secondary" />
+        <Card variant="glass" padded={false} className="p-3" data-testid="analytics-card-space">
+          <div className="flex items-center gap-2 mb-1">
+            <CpuChipIcon className="h-4 w-4 text-[var(--avs-brand-secondary)]" />
             <span className="text-caption text-text-secondary">Space Freed</span>
           </div>
-          <div className="text-section-title font-bold text-text-primary">
+          <div className="text-statistic font-semibold text-text-primary">
             {summary ? formatBytes(summary.totalSpaceFreed) : '—'}
           </div>
         </Card>
       </div>
 
       {/* Security summary */}
-      <Card variant="glass" className="p-4" data-testid="analytics-security-card">
-        <div className="flex items-center gap-3 mb-4">
-          <ShieldCheckIcon className="h-6 w-6 text-semantic-danger" />
-          <div>
-            <div className="text-small font-semibold text-text-primary">Security Summary</div>
-            <div className="text-caption text-text-secondary">Threat detection and quarantine statistics</div>
-          </div>
+      <Card variant="glass" padded={false} className="p-4" data-testid="analytics-security-card">
+        <div className="flex items-center gap-2 mb-3">
+          <ShieldCheckIcon className="h-5 w-5 text-semantic-danger" />
+          <span className="text-small font-semibold text-text-primary">Security Summary</span>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <div className="text-center p-3 rounded-[var(--avs-radius-md)] bg-surface-muted">
-            <div className="text-section-title font-bold text-text-primary">{summary?.totalThreatsDetected ?? '—'}</div>
-            <div className="text-caption text-text-secondary">Threats Detected</div>
-          </div>
-          <div className="text-center p-3 rounded-[var(--avs-radius-md)] bg-surface-muted">
-            <div className="text-section-title font-bold text-semantic-danger">{summary?.totalThreatsQuarantined ?? '—'}</div>
+          <Card variant="glass" padded={false} className="p-3 text-center">
+            <div className="text-statistic font-semibold text-text-primary">{summary?.totalThreatsDetected ?? '—'}</div>
+            <div className="text-caption text-text-secondary">Detected</div>
+          </Card>
+          <Card variant="glass" padded={false} className="p-3 text-center">
+            <div className="text-statistic font-semibold text-semantic-danger">{summary?.totalThreatsQuarantined ?? '—'}</div>
             <div className="text-caption text-text-secondary">Quarantined</div>
-          </div>
-          <div className="text-center p-3 rounded-[var(--avs-radius-md)] bg-surface-muted">
-            <div className="text-section-title font-bold text-semantic-success">
+          </Card>
+          <Card variant="glass" padded={false} className="p-3 text-center">
+            <div className="text-statistic font-semibold text-semantic-success">
               {summary ? summary.totalThreatsDetected - summary.totalThreatsQuarantined : '—'}
             </div>
             <div className="text-caption text-text-secondary">Resolved</div>
-          </div>
+          </Card>
         </div>
       </Card>
 
       {/* CPU trend chart */}
-      <Card variant="glass" className="p-4" data-testid="analytics-cpu-trend">
+      <Card variant="glass" padded={false} className="p-4" data-testid="analytics-cpu-trend">
         <div className="flex items-center justify-between mb-3">
-          <div>
-            <div className="text-small font-semibold text-text-primary">CPU Usage Trend</div>
-            <div className="text-caption text-text-secondary">Recent CPU utilization over time</div>
-          </div>
-          <Badge tone="brand">Live Data</Badge>
+          <span className="text-small font-semibold text-text-primary">CPU Usage Trend</span>
+          <Badge tone="brand">Live</Badge>
         </div>
         <Sparkline data={healthTrend} color="rgb(59, 130, 246)" />
       </Card>
 
       {/* Optimization impact */}
-      <Card variant="glass" className="p-4" data-testid="analytics-impact">
+      <Card variant="glass" padded={false} className="p-4" data-testid="analytics-impact">
         <div className="text-small font-semibold text-text-primary mb-3">Optimization Impact</div>
         {summary && summary.totalCleanups > 0 ? (
           <div className="space-y-2">

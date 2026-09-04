@@ -53,12 +53,12 @@ export default function UpgradePage() {
           <div className="rounded-[var(--avs-radius-xl)] bg-gradient-brand p-6">
             <SparklesIcon className="h-12 w-12 text-white" />
           </div>
-          <h2 className="mt-4 text-statistic font-bold text-[var(--avs-text-primary)]">AVS AI Shield Professional</h2>
+          <h2 className="mt-4 text-section-title font-bold text-[var(--avs-text-primary)]">AVS AI Shield Professional</h2>
           <p className="mt-2 text-small text-[var(--avs-text-secondary)] max-w-md">
             &ldquo;AVS AI Shield doesn&apos;t just monitor your PC&mdash;it understands it.&rdquo;
           </p>
           <div className="mt-6 flex items-baseline gap-2">
-            <span className="text-4xl font-bold text-[var(--avs-text-primary)]">$49.99</span>
+            <span className="text-statistic font-bold text-[var(--avs-text-primary)]">$49.99</span>
             <span className="text-small text-[var(--avs-text-muted)]">/year</span>
           </div>
           <p className="mt-1 text-caption text-[var(--avs-text-muted)]">30-day money-back guarantee</p>
@@ -121,20 +121,20 @@ export default function UpgradePage() {
 
       {/* Why Upgrade */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card variant="glass">
-          <BoltIcon className="h-8 w-8 text-[var(--avs-brand-primary)]" />
-          <p className="mt-3 text-small font-semibold text-[var(--avs-text-primary)]">AI Smart Optimization</p>
-          <p className="mt-1 text-caption text-[var(--avs-text-secondary)]">Evidence-based recommendations, not aggressive tweaking. The AI finds the safest, highest-impact optimizations.</p>
+        <Card variant="glass" padded={false} className="p-4">
+          <BoltIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
+          <p className="mt-2 text-small font-semibold text-[var(--avs-text-primary)]">AI Smart Optimization</p>
+          <p className="mt-1 text-caption text-[var(--avs-text-secondary)]">Evidence-based recommendations for the safest, highest-impact optimizations.</p>
         </Card>
-        <Card variant="glass">
-          <ShieldCheckIcon className="h-8 w-8 text-[var(--avs-brand-primary)]" />
-          <p className="mt-3 text-small font-semibold text-[var(--avs-text-primary)]">Advanced Security</p>
-          <p className="mt-1 text-caption text-[var(--avs-text-secondary)]">Full scan modes, threat investigation, AI remediation, quarantine, and rollback — all with evidence and confidence scores.</p>
+        <Card variant="glass" padded={false} className="p-4">
+          <ShieldCheckIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
+          <p className="mt-2 text-small font-semibold text-[var(--avs-text-primary)]">Advanced Security</p>
+          <p className="mt-1 text-caption text-[var(--avs-text-secondary)]">Full scan modes, threat investigation, AI remediation, and quarantine.</p>
         </Card>
-        <Card variant="glass">
-          <ChartBarIcon className="h-8 w-8 text-[var(--avs-brand-primary)]" />
-          <p className="mt-3 text-small font-semibold text-[var(--avs-text-primary)]">Predictive Health</p>
-          <p className="mt-1 text-caption text-[var(--avs-text-secondary)]">Detect degrading trends before they become problems. The AI forecasts issues using sensor evidence.</p>
+        <Card variant="glass" padded={false} className="p-4">
+          <ChartBarIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
+          <p className="mt-2 text-small font-semibold text-[var(--avs-text-primary)]">Predictive Health</p>
+          <p className="mt-1 text-caption text-[var(--avs-text-secondary)]">Detect degrading trends before they become problems.</p>
         </Card>
       </div>
 

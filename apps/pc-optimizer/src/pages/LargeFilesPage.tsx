@@ -154,16 +154,16 @@ export default function LargeFilesPage() {
       {/* Summary */}
       {files.length > 0 && (
         <div className="grid grid-cols-3 gap-3">
-          <Card variant="glass" className="p-4 text-center">
-            <div className="text-section-title font-bold text-text-primary">{files.length}</div>
+          <Card variant="glass" padded={false} className="p-3 text-center">
+            <div className="text-statistic font-semibold text-text-primary">{files.length}</div>
             <div className="text-caption text-text-secondary">Large Files Found</div>
           </Card>
-          <Card variant="glass" className="p-4 text-center">
-            <div className="text-section-title font-bold text-text-primary">{formatSize(totalSize)}</div>
+          <Card variant="glass" padded={false} className="p-3 text-center">
+            <div className="text-statistic font-semibold text-text-primary">{formatSize(totalSize)}</div>
             <div className="text-caption text-text-secondary">Total Size</div>
           </Card>
-          <Card variant="glass" className="p-4 text-center">
-            <div className="text-section-title font-bold text-semantic-success">{formatSize(deletedSize)}</div>
+          <Card variant="glass" padded={false} className="p-3 text-center">
+            <div className="text-statistic font-semibold text-semantic-success">{formatSize(deletedSize)}</div>
             <div className="text-caption text-text-secondary">Space Freed</div>
           </Card>
         </div>

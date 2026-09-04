@@ -133,7 +133,7 @@ export function SystemInfoTabs({ info, vm }: SystemInfoTabsProps) {
                     <span className="text-text-primary">{disk.fstype}</span>
                   </div>
                   <div className="w-full h-2 bg-[var(--avs-surface-muted)] rounded overflow-hidden">
-                    <div className="h-full bg-brand-primary" style={{ width: `${disk.percent}%` }} />
+                    <div className="h-full bg-[var(--avs-brand-primary)]" style={{ width: `${disk.percent}%` }} />
                   </div>
                   <div className="flex justify-between text-small">
                     <span className="text-text-secondary">{vm.formatBytes(disk.used)} used</span>
@@ -184,9 +184,9 @@ export function SystemInfoTabs({ info, vm }: SystemInfoTabsProps) {
               role="tab"
               aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-3 py-1.5 text-small rounded-[var(--avs-radius-md)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
+              className={`px-3 py-1.5 text-small rounded-[var(--avs-radius-md)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--avs-brand-primary)] ${
                 activeTab === tab.id
-                  ? 'bg-brand-primary text-white'
+                  ? 'bg-[var(--avs-brand-primary)] text-white'
                   : 'bg-[var(--avs-surface-muted)] text-text-secondary hover:bg-[var(--avs-surface-muted)]'
               }`}
             >
@@ -212,9 +212,9 @@ export function SystemInfoTabs({ info, vm }: SystemInfoTabsProps) {
 
 function SpecCard({ title, value, sub }: { title: string; value: string; sub: string }) {
   return (
-    <Card>
+    <Card variant="glass" padded={false} className="p-3">
       <div className="text-caption uppercase tracking-wide text-text-muted mb-1">{title}</div>
-      <div className="text-section-title font-semibold text-text-primary truncate" title={value}>
+      <div className="text-statistic font-semibold text-text-primary truncate" title={value}>
         {value}
       </div>
       <div className="text-caption text-text-secondary truncate">{sub}</div>
