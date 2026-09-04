@@ -35,15 +35,13 @@ win:
   target:
     - target: nsis
       arch: [x64]
-    - target: portable
-      arch: [x64]
   artifactName: ${productName}-Setup-${version}.${ext}
   publisherName: Advanced Vision Software LLC
   sign: null
   requestedExecutionLevel: requireAdministrator
 nsis:
   oneClick: false
-  perMachine: false
+  perMachine: true
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
