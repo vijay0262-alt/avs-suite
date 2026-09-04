@@ -58,9 +58,9 @@ def security_status(_params: dict[str, Any] | None) -> dict[str, Any]:
 
     # Get real-time protection status
     try:
-        from avs_backend.threat_engine.download_scanner import get_download_scanner_status
-        ds_status = get_download_scanner_status()
-        result["real_time_protection"] = ds_status.get("monitoring", False)
+        from avs_backend.threat_engine.download_scanner import download_scanner_status
+        ds_status = download_scanner_status(None)
+        result["real_time_protection"] = ds_status.get("monitoring", ds_status.get("active", False))
     except Exception:
         pass
 
@@ -79,7 +79,7 @@ def security_status(_params: dict[str, Any] | None) -> dict[str, Any]:
 
     # Get last scan result
     try:
-        from avs_backend.threat_engine import _save_scan_history, _HISTORY_PATH
+        from avs_backend.threat_engine import _HISTORY_PATH
         import json
         if _HISTORY_PATH.exists():
             with open(_HISTORY_PATH, "r", encoding="utf-8") as f:
@@ -113,36 +113,38 @@ def security_realtime_status(_params: dict[str, Any] | None) -> dict[str, Any]:
 
     # Download scanner
     try:
-        from avs_backend.threat_engine.download_scanner import get_download_scanner_status
-        ds = get_download_scanner_status()
+        from avs_backend.threat_engine.download_scanner import download_scanner_status
+        ds = download_scanner_status(None)
         monitors["download_scanner"] = ds
-        if ds.get("monitoring"):
+        if ds.get("monitoring", ds.get("active", False)):
             active += 1
     except Exception:
         monitors["download_scanner"] = {"available": False}
 
     # Network monitor
     try:
-        from avs_backend.threat_engine.network_monitor import scan_network_connections
-        monitors["network_monitor"] = {"available": True}
-        active += 1
+        from avs_backend.threat_engine.network_monitor import network_monitor_status
+        nm = network_monitor_status(None)
+        monitors["network_monitor"] = nm
+        if nm.get("success", False):
+            active += 1
     except Exception:
         monitors["network_monitor"] = {"available": False}
 
     # Memory scanner
     try:
-        from avs_backend.threat_engine.memory_scanner import get_memory_scanner_status
-        ms = get_memory_scanner_status()
+        from avs_backend.threat_engine.memory_scanner import memory_scanner_status
+        ms = memory_scanner_status(None)
         monitors["memory_scanner"] = ms
-        if ms.get("scanning"):
+        if ms.get("scanning", ms.get("active", False)):
             active += 1
     except Exception:
         monitors["memory_scanner"] = {"available": False}
 
     # Email scanner
     try:
-        from avs_backend.threat_engine.email_scanner import get_email_scanner_status
-        es = get_email_scanner_status()
+        from avs_backend.threat_engine.email_scanner import email_scanner_status
+        es = email_scanner_status(None)
         monitors["email_scanner"] = es
     except Exception:
         monitors["email_scanner"] = {"available": False}
@@ -200,16 +202,18 @@ def security_consolidated_score(_params: dict[str, Any] | None) -> dict[str, Any
     try:
         from avs_backend.scan_core.security.defender_integration import get_defender_threat_info
         info = get_defender_threat_info()
+        info_dict = info.to_dict() if hasattr(info, "to_dict") else info
+        protection = info_dict.get("protection_state") or {}
         # Simple Defender-based score
-        if info:
+        if info_dict.get("is_available"):
             d_score = 50  # Start at neutral
-            if info.get("antivirus_enabled"):
+            if protection.get("antivirus_enabled"):
                 d_score += 20
-            if info.get("real_time_protection"):
+            if protection.get("real_time_protection_enabled"):
                 d_score += 15
-            if info.get("antivirus_signature_age_days", 999) < 7:
+            if not protection.get("signatures_out_of_date", True):
                 d_score += 10
-            if info.get("active_threats", 0) == 0:
+            if info_dict.get("active_threat_count", 0) == 0:
                 d_score += 5
             defender_score = min(d_score, 100)
             result["defender_score"] = defender_score

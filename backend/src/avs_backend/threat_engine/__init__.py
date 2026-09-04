@@ -49,9 +49,19 @@ from pathlib import Path
 from typing import Any
 
 from avs_backend.api.registry import register
-from avs_backend.licensing import require_feature
 
 log = logging.getLogger("avs.threat_engine")
+
+# Import submodules with @register decorators so their RPCs are available
+# at startup. Without these imports, the decorators never execute and the
+# RPC methods would be unavailable to the frontend.
+import avs_backend.threat_engine.download_scanner  # noqa: F401, E402
+import avs_backend.threat_engine.memory_scanner  # noqa: F401, E402
+import avs_backend.threat_engine.email_scanner  # noqa: F401, E402
+import avs_backend.threat_engine.cloud_reputation  # noqa: F401, E402
+import avs_backend.threat_engine.network_monitor  # noqa: F401, E402
+import avs_backend.threat_engine.email_notify  # noqa: F401, E402
+import avs_backend.threat_engine.security_status  # noqa: F401, E402
 
 IS_WINDOWS = platform.system() == "Windows"
 _NO_WINDOW = 0x08000000 if IS_WINDOWS else 0
@@ -465,11 +475,28 @@ def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> N
                         try:
                             from avs_backend.threat_engine.quarantine_manager import quarantine_file
                             qresult = quarantine_file(file_path, threat)
-                            threat["status"] = "quarantined"
-                            threat["quarantined"] = True
-                            threat["quarantine_id"] = qresult.get("quarantine_id")
+                            # Only mark as quarantined if the operation actually succeeded
+                            if qresult.get("quarantine_id"):
+                                threat["status"] = "quarantined"
+                                threat["quarantined"] = True
+                                threat["quarantine_id"] = qresult["quarantine_id"]
+                            elif qresult.get("skipped"):
+                                # Policy says skip (ignore or alert_only)
+                                threat["status"] = "detected"
+                                threat["quarantined"] = False
+                                threat["quarantine_skip_reason"] = qresult.get("reason", "policy")
+                            else:
+                                # Quarantine failed — keep status as detected
+                                threat["status"] = "detected"
+                                threat["quarantined"] = False
+                                threat["quarantine_error"] = qresult.get("error", "unknown")
+                                errors.append(f"Quarantine failed for {file_path}: {threat['quarantine_error']}")
                         except Exception as qe:
                             log.error("Auto-quarantine failed for %s: %s", file_path, qe)
+                            threat["status"] = "detected"
+                            threat["quarantined"] = False
+                            threat["quarantine_error"] = str(qe)
+                            errors.append(f"Quarantine failed for {file_path}: {qe}")
 
             except Exception as e:
                 log.debug("Detector %s error on %s: %s", detector.name, file_path, e)
@@ -493,6 +520,23 @@ def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> N
     scan["progress"] = 100
     scan["files_skipped"] = files_skipped
     scan["cache_stats"] = hash_cache.get_stats()
+
+    # Memory/process scan phase for full scans
+    if scan.get("scan_type") in ("full", "custom") and enabled.get("memory_scan", True):
+        try:
+            from avs_backend.threat_engine.memory_scanner import MemoryScanner
+            ms = MemoryScanner(config)
+            mem_result = ms.scan_all_processes()
+            if mem_result.get("threats"):
+                detected_threats.extend(mem_result["threats"])
+                scan["threats"] = detected_threats
+            scan["memory_scan"] = {
+                "processes_scanned": mem_result.get("processes_scanned", 0),
+                "threats_found": len(mem_result.get("threats", [])),
+            }
+        except Exception as e:
+            log.warning("Memory scan phase failed: %s", e)
+            errors.append(f"Memory scan: {e}")
 
     # Save to history
     _save_scan_history(scan_id, scan)
@@ -1004,7 +1048,15 @@ def threat_quarantine(params: dict[str, Any] | None) -> dict[str, Any]:
     try:
         from avs_backend.threat_engine.quarantine_manager import quarantine_file
         result = quarantine_file(file_path, threat_info)
-        return {"success": True, "result": result}
+        # Only return success if the file was actually quarantined
+        if result.get("quarantine_id"):
+            return {"success": True, "result": result}
+        elif result.get("skipped"):
+            return {"success": False, "error": f"Quarantine skipped: {result.get('reason', 'policy')}",
+                    "error_code": "QUARANTINE_SKIPPED", "result": result}
+        else:
+            return {"success": False, "error": result.get("error", "Quarantine failed"),
+                    "error_code": "QUARANTINE_FAILED", "result": result}
     except Exception as e:
         log.error("Quarantine failed: %s", e)
         return {"success": False, "error": str(e), "error_code": "QUARANTINE_FAILED"}
@@ -1021,7 +1073,11 @@ def threat_restore(params: dict[str, Any] | None) -> dict[str, Any]:
     try:
         from avs_backend.threat_engine.quarantine_manager import restore_file
         result = restore_file(quarantine_id)
-        return {"success": True, "result": result}
+        if result.get("restored"):
+            return {"success": True, "result": result}
+        else:
+            return {"success": False, "error": result.get("error", "Restore failed"),
+                    "error_code": "RESTORE_FAILED", "result": result}
     except Exception as e:
         log.error("Restore failed: %s", e)
         return {"success": False, "error": str(e), "error_code": "RESTORE_FAILED"}
@@ -1036,13 +1092,11 @@ def threat_remove(params: dict[str, Any] | None) -> dict[str, Any]:
         return {"success": False, "error": "file_path is required", "error_code": "INVALID_PARAMS"}
 
     try:
-        # Securely delete the file
+        # Securely delete the file using the quarantine manager's secure wipe
         if os.path.exists(file_path):
-            # Overwrite with zeros before deletion
-            size = os.path.getsize(file_path)
-            with open(file_path, "wb") as f:
-                f.write(b"\x00" * min(size, 1024 * 1024))  # Overwrite up to 1MB
-            os.remove(file_path)
+            from avs_backend.threat_engine.quarantine_manager import _secure_overwrite_and_delete
+            from pathlib import Path
+            _secure_overwrite_and_delete(Path(file_path))
             return {"success": True, "message": "Threat removed", "file_path": file_path}
         else:
             return {"success": False, "error": "File not found", "error_code": "NOT_FOUND"}
@@ -1075,9 +1129,13 @@ def threat_quarantine_restore_all(_params: dict[str, Any] | None) -> dict[str, A
             qid = item.get("quarantine_id", "")
             if qid:
                 try:
-                    restore_file(qid)
-                    results.append({"quarantine_id": qid, "success": True})
-                    restored += 1
+                    r = restore_file(qid)
+                    if r.get("restored"):
+                        results.append({"quarantine_id": qid, "success": True})
+                        restored += 1
+                    else:
+                        results.append({"quarantine_id": qid, "success": False, "error": r.get("error", "unknown")})
+                        failed += 1
                 except Exception as e:
                     results.append({"quarantine_id": qid, "success": False, "error": str(e)})
                     failed += 1
@@ -1310,6 +1368,7 @@ def threat_report_false_positive(params: dict[str, Any] | None) -> dict[str, Any
             cache = HashCache()
             if file_path:
                 cache.invalidate(file_path)
+                cache.save()  # Persist the invalidation
         except Exception:
             pass
 

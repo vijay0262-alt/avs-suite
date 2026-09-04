@@ -87,16 +87,33 @@ def _compute_sha256(file_path: Path) -> str:
 
 
 def _secure_overwrite_and_delete(file_path: Path) -> None:
-    """Overwrite *file_path* with zeros then delete it."""
+    """Overwrite *file_path* with zeros then delete it.
+
+    Makes the file writable before attempting overwrite, to handle
+    read-only files on Windows.
+    """
+    import stat as _stat
+
     try:
         size = file_path.stat().st_size
     except OSError as exc:
         log.warning("Cannot stat %s for secure wipe: %s", file_path, exc)
         try:
+            # Make writable then delete
+            try:
+                file_path.chmod(_stat.S_IWRITE)
+            except OSError:
+                pass
             file_path.unlink()
         except OSError:
             pass
         return
+
+    # Ensure the file is writable (handles read-only files)
+    try:
+        file_path.chmod(_stat.S_IWRITE)
+    except OSError:
+        pass  # May not be needed if already writable
 
     try:
         with file_path.open("r+b") as fh:
@@ -111,6 +128,11 @@ def _secure_overwrite_and_delete(file_path: Path) -> None:
         log.warning("Secure overwrite failed for %s: %s", file_path, exc)
     finally:
         try:
+            # Ensure writable before unlink (read-only files can't be deleted on Windows)
+            try:
+                file_path.chmod(_stat.S_IWRITE)
+            except OSError:
+                pass
             file_path.unlink()
         except OSError as exc:
             log.error("Failed to delete original file %s: %s", file_path, exc)
@@ -247,6 +269,7 @@ def quarantine_file(file_path: str, threat_info: dict) -> dict:
 
     if not src.exists() or not src.is_file():
         log.error("Quarantine failed — file not found: %s", src)
+        result["error"] = "Source file not found or not a file"
         return result
 
     quarantine_id = str(uuid.uuid4())
@@ -322,12 +345,21 @@ def quarantine_file(file_path: str, threat_info: dict) -> dict:
     # 6. Securely wipe the original file.
     _secure_overwrite_and_delete(src)
 
+    # Check if the original file still exists (deletion may have failed)
+    if src.exists():
+        log.warning("Quarantined copy saved, but original file could not be deleted: %s", src)
+        result["warning"] = "Original file could not be deleted — manual removal may be required"
+        result["original_deleted"] = False
+    else:
+        result["original_deleted"] = True
+
     log.info(
-        "Quarantined file %s (id=%s, threat=%r, sha256=%s)",
+        "Quarantined file %s (id=%s, threat=%r, sha256=%s, original_deleted=%s)",
         src,
         quarantine_id,
         threat_name,
         sha256,
+        result.get("original_deleted", False),
     )
     return result
 

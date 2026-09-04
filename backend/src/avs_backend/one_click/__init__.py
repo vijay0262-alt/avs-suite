@@ -53,37 +53,7 @@ def _now_ms() -> int:
 # ─── Scan target enumeration (whole computer) ───────────────────────
 
 # Extensions that are security-relevant and should be scanned
-_SCAN_EXTENSIONS = {
-    ".exe", ".dll", ".sys", ".scr", ".ocx", ".com", ".pif", ".bat",
-    ".cmd", ".ps1", ".vbs", ".js", ".jse", ".wsf", ".wsh", ".hta",
-    ".msi", ".msp", ".mst", ".cpl", ".inf", ".lnk", ".jar", ".class",
-    ".py", ".pyw", ".rb", ".pl", ".sh", ".apk", ".appx", ".msix",
-    ".zip", ".rar", ".7z", ".cab", ".tar", ".gz", ".iso", ".img",
-    ".doc", ".xls", ".ppt", ".docm", ".xlsm", ".pptm",
-    ".pdf", ".html", ".htm", ".swf", ".flv",
-}
-
-# Extensions to always skip (not security-relevant)
-_SKIP_EXTENSIONS = {
-    ".txt", ".log", ".csv", ".json", ".xml", ".css", ".md", ".rst",
-    ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv",
-    ".mp3", ".wav", ".flac", ".aac", ".ogg",
-    ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp",
-    ".tmp", ".temp",
-}
-
-# Paths to exclude from scan (system-protected or huge)
-_EXCLUDE_PATHS = {
-    r"C:\Windows\WinSxS",
-    r"C:\ProgramData\Microsoft\Windows Defender",
-    r"C:\$Recycle.Bin",
-    r"C:\System Volume Information",
-    r"C:\Windows\assembly",
-    r"C:\Windows\Installer",
-}
-
 # Import centralized scan config for consistency with threat_engine
-# (kept local copies above for backward compatibility within this module)
 from avs_backend.threat_engine.scan_config import (
     should_scan_file as _cfg_should_scan_file,
     is_excluded_path as _cfg_is_excluded_path,
@@ -109,25 +79,24 @@ def _get_scan_roots() -> list[str]:
 
 
 def _is_excluded(path: str) -> bool:
-    """Check if a path should be excluded from scanning."""
-    path_lower = path.lower()
-    for excl in _EXCLUDE_PATHS:
-        if path_lower.startswith(excl.lower()):
-            return True
-    return False
+    """Check if a path should be excluded from scanning.
+
+    Delegates to the centralized scan_config.is_excluded_path to ensure
+    consistency with the threat engine.
+    """
+    return _cfg_is_excluded_path(path)
 
 
 def _should_scan_file(file_path: str) -> bool:
-    """Determine if a file should be scanned based on extension and location."""
-    ext = os.path.splitext(file_path)[1].lower()
+    """Determine if a file should be scanned based on extension and location.
 
-    # Skip known-safe extensions
-    if ext in _SKIP_EXTENSIONS:
-        return False
-
-    # Scan known-dangerous extensions
-    if ext in _SCAN_EXTENSIONS:
-        return not _is_excluded(file_path)
+    Uses the centralized scan_config.should_scan_file for the core check,
+    then adds extra coverage for suspicious directories (Downloads, Temp,
+    AppData, Desktop) that the centralized version doesn't include.
+    """
+    # First, use the centralized check
+    if _cfg_should_scan_file(file_path):
+        return True
 
     # For files without extension or unknown extensions, scan if they're
     # in suspicious locations (Downloads, Temp, AppData, Desktop)
