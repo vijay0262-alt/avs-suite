@@ -226,21 +226,26 @@ def compute_security_score() -> dict[str, Any]:
     # ─── 4. Real-time Protection (15 points) ───
     rt = _get_realtime_status()
     rt_score = 0
+    # ClamAV daemon running counts as basic real-time protection (8 points)
+    if avs.get("clamd_running"):
+        rt_score += 8
+    # Advanced monitoring (ETW, process, USB) adds more
     if rt["file_monitor"]:
-        rt_score += 6
-    if rt["process_monitor"]:
-        rt_score += 5
-    if rt["usb_monitor"]:
         rt_score += 4
+    if rt["process_monitor"]:
+        rt_score += 2
+    if rt["usb_monitor"]:
+        rt_score += 1
+    rt_score = min(rt_score, 15)
     factors.append({
         "id": "realtime_protection",
         "name": "Real-time Protection",
         "score": rt_score,
         "max": 15,
         "status": "ok" if rt_score >= 11 else "warning" if rt_score >= 6 else "critical",
-        "detail": f"File: {rt['file_monitor']}, Process: {rt['process_monitor']}, USB: {rt['usb_monitor']}",
+        "detail": f"AV Engine: {avs.get('clamd_running', False)}, File: {rt['file_monitor']}, Process: {rt['process_monitor']}, USB: {rt['usb_monitor']}",
     })
-    if rt_score < 11:
+    if rt_score < 6:
         recommendations.append({
             "id": "enable_realtime",
             "priority": "high",

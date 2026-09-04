@@ -181,6 +181,160 @@ def _run_optimization() -> dict[str, Any]:
     return result
 
 
+def _get_scan_dirs() -> list[str]:
+    """Get directories to scan for the quick scan phase."""
+    dirs = []
+    if _IS_WINDOWS:
+        user_profile = os.environ.get("USERPROFILE", os.path.expanduser("~"))
+        candidates = [
+            os.path.join(user_profile, "Downloads"),
+            os.path.join(user_profile, "Desktop"),
+            os.environ.get("TEMP", ""),
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Temp"),
+            os.path.join(os.environ.get("APPDATA", ""), "Microsoft", "Windows", "Start Menu", "Programs", "Startup"),
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows", "Start Menu", "Programs", "Startup"),
+        ]
+        for c in candidates:
+            if c and os.path.isdir(c):
+                dirs.append(c)
+    else:
+        dirs.append("/tmp")
+    return dirs
+
+
+def _count_files(dirs: list[str], max_count: int = 5000) -> int:
+    """Quick count of files in directories (capped for speed)."""
+    count = 0
+    for d in dirs:
+        if count >= max_count:
+            break
+        try:
+            for root, _dirs, files in os.walk(d):
+                count += len(files)
+                if count >= max_count:
+                    break
+        except Exception:
+            pass
+    return min(count, max_count)
+
+
+def _run_direct_scan(scan_type: str = "quick") -> dict[str, Any]:
+    """Run a direct file scan with real-time progress.
+
+    Scans critical areas using ClamAV (if available) and hash checking.
+    Reports progress per-file so the UI can show a moving progress bar
+    and the current file being scanned.
+    """
+    scan_dirs = _get_scan_dirs()
+    num_dirs = len(scan_dirs)
+
+    files_scanned = 0
+    threats_found = 0
+    max_files = 500  # Cap for quick scan (~30s)
+
+    # Try to get ClamAV scanner
+    clamav_scanner = None
+    try:
+        from avs_backend.threat_engine.clamav_scanner import check_clamav_available, ClamAvScanner
+        if check_clamav_available():
+            clamav_scanner = ClamAvScanner({})
+            log.info("One-click: Using ClamAV for scanning")
+    except Exception as e:
+        log.warning("One-click: ClamAV not available: %s", e)
+
+    # Try to get hash detector
+    hash_detector = None
+    try:
+        from avs_backend.threat_engine.hash_detector import HashDetector
+        hash_detector = HashDetector({})
+    except Exception as e:
+        log.warning("One-click: Hash detector not available: %s", e)
+
+    scanned_paths = set()
+    dir_index = 0
+
+    # Skip archive files and large files for quick scan speed
+    _SKIP_EXT = {".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".iso", ".msi",
+                 ".cab", ".arj", ".lzh", ".uue", ".xxe", ".zoo"}
+    _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB max for quick scan
+
+    for scan_dir in scan_dirs:
+        dir_index += 1
+        # Base progress on directory index (each dir = ~15% of total)
+        dir_base = int((dir_index - 1) / num_dirs * 100)
+
+        try:
+            for root, dirs, files in os.walk(scan_dir):
+                # Skip deep directories
+                depth = root.replace(scan_dir, "").count(os.sep)
+                if depth > 4:
+                    dirs.clear()
+                    continue
+
+                for fname in files:
+                    if files_scanned >= max_files:
+                        break
+
+                    fpath = os.path.join(root, fname)
+                    if fpath in scanned_paths:
+                        continue
+                    scanned_paths.add(fpath)
+
+                    # Skip archives and large files for quick scan
+                    ext = os.path.splitext(fname)[1].lower()
+                    if ext in _SKIP_EXT:
+                        continue
+
+                    try:
+                        fsize = os.path.getsize(fpath)
+                        if fsize > _MAX_FILE_SIZE:
+                            continue
+                    except OSError:
+                        continue
+
+                    files_scanned += 1
+
+                    # Update progress: based on files scanned vs max
+                    with _lock:
+                        _progress["scan_progress"] = min(99, int(files_scanned / max_files * 100))
+                        _progress["current_file"] = fpath
+                        _progress["files_scanned"] = files_scanned
+
+                    # Scan with ClamAV
+                    if clamav_scanner:
+                        try:
+                            result = clamav_scanner.scan_file(fpath)
+                            if result and result.get("detected"):
+                                threats_found += 1
+                        except Exception:
+                            pass  # Skip files that timeout or error
+                    elif hash_detector:
+                        try:
+                            result = hash_detector.scan_file(fpath)
+                            if result and result.get("detected"):
+                                threats_found += 1
+                        except Exception:
+                            pass
+
+                if files_scanned >= max_files:
+                    break
+        except Exception as e:
+            log.warning("One-click: Error scanning %s: %s", scan_dir, e)
+
+        # Update progress after each directory
+        with _lock:
+            _progress["scan_progress"] = min(99, int(dir_index / num_dirs * 100))
+
+    with _lock:
+        _progress["scan_progress"] = 100
+        _progress["current_file"] = None
+
+    return {
+        "files_scanned": files_scanned,
+        "threats_found": threats_found,
+    }
+
+
 def _run_one_click(scan_type: str = "quick") -> dict[str, Any]:
     """Run the full one-click scan & optimize sequence."""
     global _progress
@@ -197,6 +351,8 @@ def _run_one_click(scan_type: str = "quick") -> dict[str, Any]:
             "started_at": _now_ms(),
             "completed_at": None,
             "error": None,
+            "current_file": None,
+            "files_scanned": 0,
         }
 
     result = {
@@ -211,43 +367,16 @@ def _run_one_click(scan_type: str = "quick") -> dict[str, Any]:
         "scan_id": None,
     }
 
-    # Phase 1: Security scan
+    # Phase 1: Direct security scan (real-time progress)
     try:
-        from avs_backend.threat_engine import threat_scan
-        scan_result = threat_scan({"scan_type": scan_type})
-        if scan_result.get("success"):
-            result["scan_id"] = scan_result.get("scan_id")
-
-            # Wait for scan to complete (poll status)
-            scan_id = scan_result.get("scan_id")
-            if scan_id:
-                from avs_backend.threat_engine import _scans, _scans_lock
-                for _ in range(120):  # Max 120 seconds
-                    time.sleep(1)
-                    with _scans_lock:
-                        scan = _scans.get(scan_id, {})
-                    status = scan.get("status", "")
-                    threats = scan.get("threats", [])
-                    files_scanned = scan.get("files_scanned", 0)
-
-                    _progress["scan_progress"] = min(100, files_scanned // 10)
-
-                    if status == "complete":
-                        result["threats_found"] = len(threats)
-                        result["files_scanned"] = files_scanned
-                        result["threats_quarantined"] = sum(
-                            1 for t in threats if t.get("quarantined", False)
-                        )
-                        break
-                    elif status == "error":
-                        result["error"] = scan.get("error", "Scan failed")
-                        break
-    except ImportError as e:
-        log.warning("Threat engine not available, skipping scan phase: %s", e)
-        # Continue with optimization only — scan phase is optional
+        scan_result = _run_direct_scan(scan_type)
+        result["threats_found"] = scan_result["threats_found"]
+        result["files_scanned"] = scan_result["files_scanned"]
+        with _lock:
+            _progress["threats_found"] = scan_result["threats_found"]
     except Exception as e:
         log.error("One-click scan phase failed: %s", e)
-        # Don't set error — continue with optimization
+        # Continue with optimization
 
     with _lock:
         _progress["phase"] = "optimizing"

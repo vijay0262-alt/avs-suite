@@ -277,32 +277,65 @@ def get_clamav_version() -> str | None:
 
 
 def get_clamav_signature_count() -> int:
-    """Get the number of signatures loaded by clamd.
+    """Get the total number of signatures loaded by clamd.
 
-    Parses the VERSION response which has the format:
-        ClamAV 1.0.1/27118/Tue Jan 14 09:30:00 2025
+    The VERSION response format is:
+        ClamAV 1.4.3/28112/Thu Sep  3 11:52:22 2026
 
-    The number after the first '/' is the combined signature count
-    from main.cvd and daily.cvd.
+    The number after the first '/' is the daily.cvd count only.
+    To get the total, we also count signatures in main.cvd and bytecode.cvd
+    by reading the CVD file headers (each CVD file starts with a 512-byte
+    header containing metadata including the signature count).
 
     Returns:
-        The signature count, or 0 if clamd is unavailable or parsing fails.
+        The total signature count, or 0 if unavailable.
     """
+    daily_count = 0
     version = get_clamav_version()
-    if not version:
-        return 0
+    if version:
+        try:
+            parts = version.split("/")
+            if len(parts) >= 2:
+                sig_str = parts[1].strip().split("/")[0].split()[0]
+                daily_count = int(sig_str)
+        except (ValueError, IndexError):
+            pass
+
+    # Also count main.cvd and bytecode.cvd signatures from file headers
+    total = daily_count
     try:
-        # Format: "ClamAV <version>/<sig_count>/<date>"
-        parts = version.split("/")
-        if len(parts) >= 2:
-            # The sig count is the first number after the version
-            sig_part = parts[1].strip()
-            # Some versions have format like "27118" or "27118/Tue..."
-            sig_str = sig_part.split("/")[0].split()[0]
-            return int(sig_str)
-    except (ValueError, IndexError):
+        db_dir = _get_clamav_db_dir()
+        if db_dir:
+            for cvd_name in ["main.cvd", "bytecode.cvd"]:
+                cvd_path = os.path.join(db_dir, cvd_name)
+                if os.path.isfile(cvd_path):
+                    try:
+                        with open(cvd_path, "rb") as f:
+                            header = f.read(512)
+                            # CVD header format: "ClamAV-VDB:<build_time>:<version>:<sigs>:<func>:<md5>:<digital_sig>:<builder>:<stime>"
+                            header_str = header.decode("ascii", errors="replace")
+                            parts = header_str.split(":")
+                            if len(parts) >= 4:
+                                total += int(parts[3])
+                    except Exception:
+                        pass
+    except Exception:
         pass
-    return 0
+
+    return total
+
+
+def _get_clamav_db_dir() -> str | None:
+    """Get the ClamAV database directory."""
+    # Check AVS AI Shield data directory first
+    if sys.platform == "win32":
+        avs_db = os.path.join(
+            os.environ.get("LOCALAPPDATA", ""),
+            "AVS AI Shield", "clamav", "db"
+        )
+        if os.path.isdir(avs_db):
+            return avs_db
+    return None
 
 
 def detect_clamav_installation() -> dict[str, Any]:
