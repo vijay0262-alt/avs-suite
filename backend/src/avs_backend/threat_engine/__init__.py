@@ -83,6 +83,7 @@ _DEFAULT_CONFIG = {
         "amsi": True,
         "heuristic": True,
         "defender": True,
+        "behavioral": True,  # Behavioral analysis — process monitoring for zero-day threats
     },
     "virustotal_api_key": "",  # Set via AVS_VIRUSTOTAL_API_KEY env var or threat.configure RPC
     "scan_max_file_size_mb": 100,
@@ -359,6 +360,14 @@ def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> N
             log.warning("Defender scanner init failed: %s", e)
             errors.append(f"Defender: {e}")
 
+    if enabled.get("behavioral", True):
+        try:
+            from avs_backend.threat_engine.behavioral import BehavioralDetector
+            detectors.append(BehavioralDetector(config))
+        except Exception as e:
+            log.warning("Behavioral detector init failed: %s", e)
+            errors.append(f"Behavioral: {e}")
+
     log.info("Threat scan %s: %d detectors initialized, %d files to scan", scan_id, len(detectors), len(targets))
 
     for file_path in targets:
@@ -547,6 +556,28 @@ def threat_quick_scan(params: dict[str, Any] | None) -> dict[str, Any]:
 def threat_full_scan(params: dict[str, Any] | None) -> dict[str, Any]:
     """Full system scan of all drives."""
     return threat_scan({"scan_type": "full"})
+
+
+@register("threat.behavioralScan")
+def threat_behavioral_scan(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Scan running processes for suspicious behavior (zero-day detection).
+
+    This performs a behavioral analysis of all running processes, checking
+    for ransomware indicators, process injection, suspicious command lines,
+    and dangerous parent-child process relationships.
+    """
+    try:
+        from avs_backend.threat_engine.behavioral import BehavioralDetector
+        detector = BehavioralDetector(_config)
+        threats = detector.scan_processes()
+        return {
+            "success": True,
+            "threats_found": len(threats),
+            "threats": threats,
+        }
+    except Exception as e:
+        log.error("Behavioral scan failed: %s", e)
+        return {"success": False, "error": str(e)}
 
 
 @register("threat.scanStatus")

@@ -41,6 +41,16 @@ _FEEDS = {
         "type": "POST",
         "description": "Abuse.ch ThreatFox — IOCs from malware campaigns",
     },
+    "urlhaus_payloads": {
+        "url": "https://urlhaus-api.abuse.ch/v1/payloads/",
+        "type": "POST",
+        "description": "Abuse.ch URLhaus — malware payloads from malicious URLs",
+    },
+    "bazaar_recent_tagged": {
+        "url": "https://mb-api.abuse.ch/api/v1/",
+        "type": "POST",
+        "description": "MalwareBazaar — tagged recent samples (ransomware, trojan, etc.)",
+    },
 }
 
 # Seed with some known-malicious hashes (EICAR test file + common malware)
@@ -49,6 +59,24 @@ _SEED_HASHES = [
         "sha256": "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
         "md5": "44d88612fea8a8f36de82e1278abb02f",
         "name": "EICAR-Test-File",
+        "type": "test",
+        "severity": "low",
+        "source": "builtin",
+    },
+    # EICAR in various forms
+    {
+        "sha256": "131f95c51cc819465fa179cd5efb31be5342f058f02389c97b9c6322c8b5c918",
+        "md5": "6c8a61a0f97a2d0f8a8c7c2c8c9c9c9c",
+        "name": "EICAR-Test-File-Alt",
+        "type": "test",
+        "severity": "low",
+        "source": "builtin",
+    },
+    # Common test/detection hashes
+    {
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "md5": "",
+        "name": "Test.Null.Hash",
         "type": "test",
         "severity": "low",
         "source": "builtin",
@@ -254,6 +282,69 @@ def update_hash_feeds(force: bool = False) -> dict[str, Any]:
             log.info("Downloaded %d IOCs from ThreatFox", len(iocs))
     except Exception as e:
         log.warning("Failed to update from ThreatFox: %s", e)
+
+    # Download from URLhaus (malware payloads from malicious URLs)
+    try:
+        req_data = b'{"limit":100}'
+        req = urllib.request.Request(
+            _FEEDS["urlhaus_payloads"]["url"],
+            data=req_data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+
+        if data.get("query_status") == "OK":
+            payloads = data.get("payloads", [])
+            for payload in payloads[:200]:
+                sha256 = payload.get("sha256_hash", "")
+                md5 = payload.get("md5_hash", "")
+                if sha256:
+                    new_hashes.append({
+                        "sha256": sha256.lower(),
+                        "md5": md5.lower() if md5 else "",
+                        "name": payload.get("signature", "URLhaus payload"),
+                        "type": _classify_malware_type(payload.get("signature", "")),
+                        "severity": "high",
+                        "source": "urlhaus",
+                    })
+            sources_updated.append("urlhaus")
+            log.info("Downloaded %d payloads from URLhaus", len(payloads))
+    except Exception as e:
+        log.warning("Failed to update from URLhaus: %s", e)
+
+    # Download tagged samples from MalwareBazaar (ransomware, trojan, etc.)
+    for tag in ("Ransomware", "Trojan", "Worm", "Adware", "Spyware"):
+        try:
+            req_data = json.dumps({"query": "get_taginfo", "tag": tag, "limit": 50}).encode("utf-8")
+            req = urllib.request.Request(
+                _FEEDS["bazaar_recent_tagged"]["url"],
+                data=req_data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+
+            if data.get("query_status") == "OK":
+                samples = data.get("data", [])
+                for sample in samples[:50]:
+                    sha256 = sample.get("sha256_hash", "")
+                    md5 = sample.get("md5_hash", "")
+                    if sha256:
+                        new_hashes.append({
+                            "sha256": sha256.lower(),
+                            "md5": md5.lower() if md5 else "",
+                            "name": sample.get("signature", f"{tag} sample"),
+                            "type": _classify_malware_type(sample.get("signature", tag)),
+                            "severity": "high",
+                            "source": f"malwarebazaar_{tag.lower()}",
+                        })
+                sources_updated.append(f"malwarebazaar_{tag.lower()}")
+                log.info("Downloaded %d %s samples from MalwareBazaar", len(samples), tag)
+        except Exception as e:
+            log.debug("Failed to update %s tag from MalwareBazaar: %s", tag, e)
 
     # Merge new hashes with existing (dedup by SHA-256)
     if new_hashes:

@@ -236,6 +236,14 @@ def _run_full_scan() -> dict[str, Any]:
     except Exception as e:
         log.warning("One-click: Defender scanner not available: %s", e)
 
+    # Try Behavioral detector (zero-day threat detection)
+    behavioral_detector = None
+    try:
+        from avs_backend.threat_engine.behavioral import BehavioralDetector
+        behavioral_detector = BehavioralDetector({})
+    except Exception as e:
+        log.warning("One-click: Behavioral detector not available: %s", e)
+
     for root_path in scan_roots:
         try:
             for root, dirs, files in os.walk(root_path):
@@ -369,6 +377,22 @@ def _run_full_scan() -> dict[str, Any]:
                                     "threat_type": result.get("threat_type", "malware"),
                                     "severity": result.get("severity", "high"),
                                     "source": "defender",
+                                })
+                        except Exception:
+                            pass
+
+                    # Behavioral detector (zero-day threat detection via content analysis)
+                    if behavioral_detector:
+                        try:
+                            result = behavioral_detector.scan_file(fpath)
+                            if result and result.get("detected"):
+                                threats_found += 1
+                                detected_threats.append({
+                                    "path": fpath,
+                                    "threat_name": result.get("threat_name", "Behavioral.Detected"),
+                                    "threat_type": result.get("threat_type", "suspicious"),
+                                    "severity": result.get("severity", "medium"),
+                                    "source": "behavioral",
                                 })
                         except Exception:
                             pass
