@@ -40,7 +40,7 @@ win:
   artifactName: ${productName}-Setup-${version}.${ext}
   publisherName: Advanced Vision Software LLC
   sign: null
-  requestedExecutionLevel: asInvoker
+  requestedExecutionLevel: requireAdministrator
 nsis:
   oneClick: false
   perMachine: true

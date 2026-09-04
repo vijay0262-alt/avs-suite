@@ -298,151 +298,52 @@ async function createMainWindow(): Promise<void> {
   setMainWindow(mainWindow);
 }
 
-// ── Elevation via Scheduled Task ──────────────────────────────
-// The app manifest uses asInvoker (no UAC on every launch). Instead,
-// a Windows Scheduled Task with HIGHEST privileges runs the app elevated.
-// The NSIS installer creates this task during installation (no UAC prompt).
-// On first launch without an installer (portable), the app creates the task
-// with a one-time UAC prompt. After that, every launch is silently elevated.
-
-const ELEVATION_TASK_NAME = 'AVS_AI_Shield_Elevated';
-
-function checkIsAdmin(): Promise<boolean> {
+function checkAndRelaunchAsAdmin(): Promise<boolean> {
   if (process.platform !== 'win32') return Promise.resolve(false);
+  if (process.env.AVS_NO_ELEVATE) return Promise.resolve(false);
+
+  // In packaged builds, the exe manifest already requests requireAdministrator,
+  // so the OS handles UAC elevation automatically at launch. Skip the runtime
+  // relaunch to avoid a SECOND UAC prompt on top of the manifest elevation.
+  if (app.isPackaged) return Promise.resolve(false);
+
+  // In dev mode (or if the manifest didn't apply), check and relaunch.
   return new Promise((resolve) => {
     exec(
       'powershell -NoProfile -Command "([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)"',
       { encoding: 'utf8', timeout: 5000 },
       (err, stdout) => {
-        if (err) { resolve(false); return; }
-        resolve(stdout.trim().toLowerCase() === 'true');
-      }
-    );
-  });
-}
-
-function scheduledTaskExists(): Promise<boolean> {
-  return new Promise((resolve) => {
-    exec(
-      `schtasks /query /tn "${ELEVATION_TASK_NAME}"`,
-      { encoding: 'utf8', timeout: 5000, windowsHide: true },
-      (err) => resolve(!err)
-    );
-  });
-}
-
-function createScheduledTask(exePath: string): Promise<boolean> {
-  // Write a temporary batch file to handle the complex quoting for schtasks /tr.
-  // The /tr argument needs embedded quotes around the exe path (which may contain spaces).
-  const batDir = path.join(app.getPath('userData'), 'temp');
-  try { fs.mkdirSync(batDir, { recursive: true }); } catch { /* ignore */ }
-  const batPath = path.join(batDir, 'create_elevation_task.bat');
-  const batContent = `@echo off\r\nschtasks /create /tn "${ELEVATION_TASK_NAME}" /tr "\\"${exePath}\\"" /sc ONLOGON /rl HIGHEST /f\r\n`;
-  try {
-    fs.writeFileSync(batPath, batContent);
-  } catch {
-    return Promise.resolve(false);
-  }
-
-  return new Promise((resolve) => {
-    // Run the batch file with elevation via PowerShell Start-Process -Verb RunAs.
-    // This triggers a one-time UAC prompt. After the task is created, subsequent
-    // launches use `schtasks /run` which does NOT trigger UAC.
-    const escapedBatPath = batPath.replace(/'/g, "''");
-    exec(
-      `powershell -NoProfile -Command "Start-Process -FilePath '${escapedBatPath}' -Verb RunAs -Wait"`,
-      { encoding: 'utf8', timeout: 30000, windowsHide: true },
-      (err) => {
-        try { fs.unlinkSync(batPath); } catch { /* ignore */ }
-        resolve(!err);
-      }
-    );
-  });
-}
-
-function runScheduledTask(): Promise<boolean> {
-  return new Promise((resolve) => {
-    exec(
-      `schtasks /run /tn "${ELEVATION_TASK_NAME}"`,
-      { encoding: 'utf8', timeout: 5000, windowsHide: true },
-      (err) => resolve(!err)
-    );
-  });
-}
-
-/**
- * Ensure the app is running with administrator privileges.
- *
- * Strategy:
- *   1. If already admin -> continue (no action needed).
- *   2. If a scheduled task exists -> relaunch via `schtasks /run` (no UAC prompt) and exit.
- *   3. If no scheduled task exists -> create it with a one-time UAC prompt, then relaunch via it.
- *   4. If all else fails -> continue without admin (ElevationBanner shows as fallback).
- *
- * In dev mode, falls back to the old approach (PowerShell Start-Process -Verb RunAs)
- * since the scheduled task points to the packaged exe, not the dev electron path.
- */
-async function ensureElevated(): Promise<boolean> {
-  if (process.platform !== 'win32') return false;
-  if (process.env.AVS_NO_ELEVATE) return false;
-
-  // Already admin — no need to relaunch
-  const isAdmin = await checkIsAdmin();
-  if (isAdmin) {
-    log.info('[startup] Already running as administrator');
-    return false;
-  }
-
-  // In dev mode, use direct UAC relaunch (the scheduled task approach
-  // only works for the packaged exe path).
-  if (!app.isPackaged) {
-    log.info('[startup] Dev mode — relaunching with UAC elevation');
-    return new Promise((resolve) => {
-      const exePath = app.getPath('exe');
-      const escapedPath = exePath.replace(/'/g, "''");
-      exec(
-        `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`,
-        (relaunchErr) => {
-          if (relaunchErr) {
-            log.warn('Admin relaunch declined or failed — continuing without admin', relaunchErr);
-            resolve(false);
-          } else {
-            log.info('Admin relaunch triggered — releasing lock and exiting');
-            app.releaseSingleInstanceLock();
-            resolve(true);
-          }
+        if (err) {
+          resolve(false);
+          return;
         }
-      );
-    });
-  }
-
-  // Packaged mode: use scheduled task for silent elevation
-  log.info('[startup] Not running as administrator — checking for elevation task');
-
-  const taskExists = await scheduledTaskExists();
-
-  if (!taskExists) {
-    log.info('[startup] Elevation task not found — creating (one-time UAC prompt)');
-    const exePath = app.getPath('exe');
-    const created = await createScheduledTask(exePath);
-    if (!created) {
-      log.warn('[startup] Failed to create elevation task — continuing without admin');
-      return false;
-    }
-    log.info('[startup] Elevation task created successfully');
-  }
-
-  // Relaunch via scheduled task (no UAC prompt)
-  log.info('[startup] Relaunching via scheduled task for elevated execution');
-  const ran = await runScheduledTask();
-  if (ran) {
-    log.info('[startup] Elevation task triggered — releasing lock and exiting');
-    app.releaseSingleInstanceLock();
-    return true; // Caller should quit
-  }
-
-  log.warn('[startup] Failed to trigger elevation task — continuing without admin');
-  return false;
+        const output = stdout.trim();
+        if (output.toLowerCase() === 'true') {
+          resolve(false); // Already admin
+          return;
+        }
+        // Not admin — relaunch with elevation
+        const exePath = app.getPath('exe');
+        const escapedPath = exePath.replace(/'/g, "''");
+        log.info(`[startup] Not admin — relaunching with elevation: ${exePath}`);
+        exec(
+          `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`,
+          (relaunchErr) => {
+            if (relaunchErr) {
+              // User declined UAC or error — continue without admin
+              log.warn('Admin relaunch declined or failed — continuing without admin', relaunchErr);
+              resolve(false);
+            } else {
+              log.info('Admin relaunch triggered — releasing lock and exiting current instance');
+              // Release the single instance lock so the elevated instance can acquire it
+              app.releaseSingleInstanceLock();
+              resolve(true);
+            }
+          }
+        );
+      }
+    );
+  });
 }
 
 // ── Single instance lock ──────────────────────────────────────
@@ -473,10 +374,9 @@ app.whenReady().then(async () => {
     log.warn('[startup] Notifications not supported on this platform');
   }
 
-  // Ensure the app is running with administrator privileges.
-  // Uses a scheduled task for silent elevation (no UAC prompt after first install).
-  // If elevation fails, the app continues without admin (ElevationBanner shows as fallback).
-  const needsRelaunch = await ensureElevated();
+  // Request admin elevation via UAC prompt on startup.
+  // If the user declines, the app continues without admin (some files may be skipped during cleaning).
+  const needsRelaunch = await checkAndRelaunchAsAdmin();
   if (needsRelaunch) {
     app.quit();
     return;
