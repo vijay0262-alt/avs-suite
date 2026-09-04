@@ -154,6 +154,63 @@ def _get_startup_files() -> list[str]:
     return list(files)
 
 
+def _get_scheduled_task_executables() -> list[str]:
+    """Get executable paths from Windows Scheduled Tasks.
+
+    Malware often creates scheduled tasks for persistence. This function
+    enumerates all scheduled tasks and extracts the executable paths
+    from their actions.
+    """
+    if not IS_WINDOWS:
+        return []
+
+    files: set[str] = set()
+
+    # Use PowerShell to enumerate scheduled tasks and their actions
+    ps_script = r"""
+$ErrorActionPreference='SilentlyContinue'
+$tasks = Get-ScheduledTask | Where-Object { $_.State -ne 'Disabled' }
+foreach ($task in $tasks) {
+    $info = $task | Get-ScheduledTaskInfo
+    foreach ($action in $task.Actions) {
+        $exe = $action.Execute
+        $args = $action.Arguments
+        if ($exe) {
+            # Resolve environment variables
+            $exe = [Environment]::ExpandEnvironmentVariables($exe)
+            Write-Output "$exe|$($task.TaskName)|$($task.TaskPath)"
+        }
+        # Also check arguments for embedded executables
+        if ($args -match '(\w:\\[^\s"]+\.(?:exe|bat|cmd|ps1|vbs|js|hta))') {
+            $matched = $Matches[1]
+            $matched = [Environment]::ExpandEnvironmentVariables($matched)
+            Write-Output "$matched|$($task.TaskName)|$($task.TaskPath)"
+        }
+    }
+}
+"""
+
+    try:
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
+            capture_output=True, text=True, timeout=30,
+            creationflags=_CREATE_NO_WINDOW,
+        )
+        if proc.returncode == 0:
+            for line in proc.stdout.strip().splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                parts = line.split("|", 2)
+                exe_path = parts[0]
+                if exe_path and os.path.isfile(exe_path):
+                    files.add(exe_path)
+    except Exception as e:
+        log.debug("Scheduled task enumeration failed: %s", e)
+
+    return list(files)
+
+
 def _run_startup_scan(scan_boot_sector: bool = True) -> dict[str, Any]:
     """Run a quick scan on all startup files + optionally boot sector."""
     global _last_scan_result
@@ -170,13 +227,19 @@ def _run_startup_scan(scan_boot_sector: bool = True) -> dict[str, Any]:
 
     # Scan startup files with the threat engine
     startup_files = _get_startup_files()
-    result["files_total"] = len(startup_files)
+    # Also scan executables from scheduled tasks
+    scheduled_task_files = _get_scheduled_task_executables()
+    # Merge and deduplicate
+    all_files = list(set(startup_files + scheduled_task_files))
+    result["files_total"] = len(all_files)
+    result["startup_files"] = len(startup_files)
+    result["scheduled_task_files"] = len(scheduled_task_files)
 
-    if startup_files:
+    if all_files:
         try:
             from avs_backend.threat_engine import threat_scan, _scans, _scans_lock
             import time as _time
-            for file_path in startup_files:
+            for file_path in all_files:
                 try:
                     scan_result = threat_scan({"path": file_path, "scan_type": "custom"})
                     if scan_result.get("success"):

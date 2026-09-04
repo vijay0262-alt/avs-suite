@@ -298,7 +298,12 @@ def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> N
     scan = _scans[scan_id]
     detected_threats: list[dict[str, Any]] = []
     files_scanned = 0
+    files_skipped = 0
     errors = []
+
+    # Initialize hash cache for incremental scanning
+    from avs_backend.threat_engine.hash_cache import HashCache
+    hash_cache = HashCache()
 
     # Import detection sources lazily
     enabled = config.get("enabled_sources", {})
@@ -372,22 +377,65 @@ def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> N
 
     log.info("Threat scan %s: %d detectors initialized, %d files to scan", scan_id, len(detectors), len(targets))
 
+    import time as _time
+    scan_start = _time.monotonic()
+    eta_update_interval = 10  # Update ETA every 10 files
+    last_eta_update = 0
+
     for file_path in targets:
         # Check for cancellation
         if scan.get("cancel", False):
             scan["status"] = "cancelled"
             scan["completed_at"] = datetime.now(timezone.utc).isoformat()
+            hash_cache.save()
             return
+
+        # Incremental scanning: skip unchanged files that were clean
+        if hash_cache.should_skip(file_path):
+            files_skipped += 1
+            files_scanned += 1
+            scan["files_scanned"] = files_scanned
+            scan["files_skipped"] = files_skipped
+            scan["progress"] = int((files_scanned / max(len(targets), 1)) * 100)
+            continue
 
         files_scanned += 1
         scan["files_scanned"] = files_scanned
         scan["progress"] = int((files_scanned / max(len(targets), 1)) * 100)
+
+        # False positive check: skip files in the trusted whitelist
+        try:
+            from avs_backend.threat_engine.cloud_reputation import _is_whitelisted, _is_trusted_path
+            file_sha256 = _compute_sha256(file_path)
+            if file_sha256 and _is_whitelisted(file_sha256):
+                hash_cache.record_result(file_path, "clean", file_sha256)
+                continue
+            # Also skip files in trusted publisher paths (Microsoft, Google, Mozilla)
+            if _is_trusted_path(file_path):
+                hash_cache.record_result(file_path, "clean", file_sha256 or "")
+                continue
+        except Exception:
+            pass  # Whitelist check is optional, don't block scanning
+
+        # Update ETA periodically
+        if files_scanned - last_eta_update >= eta_update_interval:
+            last_eta_update = files_scanned
+            elapsed = _time.monotonic() - scan_start
+            if elapsed > 0 and files_scanned > 0:
+                rate = files_scanned / elapsed  # files per second
+                remaining = len(targets) - files_scanned
+                eta_seconds = int(remaining / rate) if rate > 0 else None
+                scan["eta_seconds"] = eta_seconds
+                scan["scan_rate"] = round(rate, 1)
+
+        file_was_clean = True
 
         # Run each detector on this file
         for detector in detectors:
             try:
                 result = detector.scan_file(file_path)
                 if result and result.get("detected"):
+                    file_was_clean = False
                     threat = {
                         "id": str(uuid.uuid4()),
                         "file_path": file_path,
@@ -426,18 +474,45 @@ def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> N
             except Exception as e:
                 log.debug("Detector %s error on %s: %s", detector.name, file_path, e)
 
+        # Record scan result in hash cache for incremental scanning
+        sha256 = ""
+        try:
+            sha256 = _compute_sha256(file_path) or ""
+        except Exception:
+            pass
+        hash_cache.record_result(file_path, "clean" if file_was_clean else "threat", sha256)
+
+    # Save hash cache
+    hash_cache.save()
+
     # Update scan record
     scan["status"] = "complete"
     scan["completed_at"] = datetime.now(timezone.utc).isoformat()
     scan["threats"] = detected_threats
     scan["errors"] = errors
     scan["progress"] = 100
+    scan["files_skipped"] = files_skipped
+    scan["cache_stats"] = hash_cache.get_stats()
 
     # Save to history
     _save_scan_history(scan_id, scan)
 
-    log.info("Threat scan %s complete: %d files scanned, %d threats found",
-             scan_id, files_scanned, len(detected_threats))
+    log.info("Threat scan %s complete: %d files scanned, %d skipped, %d threats found",
+             scan_id, files_scanned, files_skipped, len(detected_threats))
+
+    # Send email notification if threats were found and notifications are enabled
+    if detected_threats:
+        try:
+            from avs_backend.threat_engine.email_notify import notify_threats
+            scan_summary = {
+                "scan_type": scan.get("scan_type", "custom"),
+                "files_scanned": files_scanned,
+                "files_skipped": files_skipped,
+                "scan_id": scan_id,
+            }
+            notify_threats(detected_threats, scan_summary)
+        except Exception as e:
+            log.debug("Email notification failed: %s", e)
 
 
 def _save_scan_history(scan_id: str, scan: dict[str, Any]) -> None:
@@ -520,9 +595,12 @@ def threat_scan(params: dict[str, Any] | None) -> dict[str, Any]:
         "completed_at": None,
         "files_total": len(all_targets),
         "files_scanned": 0,
+        "files_skipped": 0,
         "threats_found": 0,
         "threats": [],
         "progress": 0,
+        "eta_seconds": None,
+        "scan_rate": 0,
         "cancel": False,
         "errors": [],
     }
@@ -1058,6 +1136,73 @@ def threat_quarantine_delete_selected(params: dict[str, Any] | None) -> dict[str
         return {"success": False, "error": str(e), "error_code": "DELETE_SELECTED_FAILED"}
 
 
+@register("threat.quarantineStats")
+def threat_quarantine_stats(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get quarantine statistics."""
+    try:
+        from avs_backend.threat_engine.quarantine_manager import get_quarantine_stats
+        stats = get_quarantine_stats()
+        return {"success": True, **stats}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@register("threat.quarantineSearch")
+def threat_quarantine_search(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Search quarantined files with filters.
+
+    Params (all optional):
+        threat_type: filter by threat type
+        severity: filter by severity
+        source: filter by detection source
+        file_name_contains: filter by file name substring
+        date_from: ISO date string
+        date_to: ISO date string
+    """
+    params = params or {}
+    try:
+        from avs_backend.threat_engine.quarantine_manager import search_quarantine
+        items = search_quarantine(
+            threat_type=params.get("threat_type"),
+            severity=params.get("severity"),
+            source=params.get("source"),
+            file_name_contains=params.get("file_name_contains"),
+            date_from=params.get("date_from"),
+            date_to=params.get("date_to"),
+        )
+        return {"success": True, "items": items, "count": len(items)}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@register("threat.quarantineCleanup")
+def threat_quarantine_cleanup(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Delete quarantined files older than the specified number of days.
+
+    Params:
+        expiry_days: number of days after which files are auto-deleted (default: 30)
+    """
+    params = params or {}
+    expiry_days = int(params.get("expiry_days", 30))
+    try:
+        from avs_backend.threat_engine.quarantine_manager import cleanup_expired_quarantine
+        result = cleanup_expired_quarantine(expiry_days)
+        return {"success": True, **result}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@register("threat.quarantineExport")
+def threat_quarantine_export(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Export the full quarantine list as a structured report."""
+    try:
+        from avs_backend.threat_engine.quarantine_manager import export_quarantine_list
+        report = export_quarantine_list()
+        return {"success": True, **report}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 @register("threat.history")
 def threat_history(params: dict[str, Any] | None) -> dict[str, Any]:
     """Get scan and detection history."""
@@ -1069,6 +1214,63 @@ def threat_history(params: dict[str, Any] | None) -> dict[str, Any]:
     except Exception as e:
         log.error("Failed to load history: %s", e)
     return {"success": True, "history": []}
+
+
+@register("threat.reportFalsePositive")
+def threat_report_false_positive(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Report a detected threat as a false positive.
+
+    Adds the file's SHA-256 hash to the trusted whitelist so it won't
+    be flagged in future scans. Also removes the file from the hash
+    cache so it gets re-evaluated on the next scan.
+
+    Params:
+        file_path: path to the file (optional if sha256 is provided)
+        sha256: SHA-256 hash of the file
+        threat_id: ID of the threat to mark as false positive
+    """
+    params = params or {}
+    sha256 = params.get("sha256", "")
+    file_path = params.get("file_path", "")
+
+    if not sha256 and file_path:
+        sha256 = _compute_sha256(file_path) or ""
+
+    if not sha256:
+        return {"success": False, "error": "sha256 or file_path is required"}
+
+    try:
+        from avs_backend.threat_engine.cloud_reputation import _save_to_cache, _is_whitelisted
+        from avs_backend.threat_engine.cloud_reputation import _load_whitelist, _save_whitelist, _now_iso
+
+        # Add to whitelist
+        wl = _load_whitelist()
+        if sha256.lower() not in {h.lower() for h in wl.get("hashes", [])}:
+            wl["hashes"].append(sha256.lower())
+            wl["updated_at"] = _now_iso()
+            _save_whitelist(wl)
+
+        # Update reputation cache to mark as trusted
+        _save_to_cache(sha256.lower(), {
+            "score": 100,
+            "source": "false_positive_report",
+            "verdict": "trusted",
+        })
+
+        # Invalidate hash cache so file is re-evaluated
+        try:
+            from avs_backend.threat_engine.hash_cache import HashCache
+            cache = HashCache()
+            if file_path:
+                cache.invalidate(file_path)
+        except Exception:
+            pass
+
+        log.info("False positive reported: %s whitelisted", sha256[:16])
+        return {"success": True, "message": "File added to trusted whitelist"}
+    except Exception as e:
+        log.error("Failed to report false positive: %s", e)
+        return {"success": False, "error": str(e)}
 
 
 # ─── Post-Scan Summary Report RPCs ───────────────────────────────────

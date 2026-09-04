@@ -337,3 +337,129 @@ def clear_quarantine() -> dict:
 
     log.info("Cleared quarantine (%d deleted, %d failed)", cleared, failed)
     return {"cleared": True, "deleted_count": cleared, "failed_count": failed}
+
+
+# ---------------------------------------------------------------------------
+# Extended quarantine management
+# ---------------------------------------------------------------------------
+
+# Default quarantine expiry: 30 days
+_DEFAULT_EXPIRY_DAYS = 30
+
+
+def get_quarantine_stats() -> dict:
+    """Get statistics about the quarantine."""
+    index = _load_index()
+    total_size = 0
+    by_threat_type: dict[str, int] = {}
+    by_severity: dict[str, int] = {}
+    by_source: dict[str, int] = {}
+    oldest = None
+    newest = None
+
+    for record in index.values():
+        total_size += record.get("file_size", 0)
+        t_type = record.get("threat_type", "unknown")
+        by_threat_type[t_type] = by_threat_type.get(t_type, 0) + 1
+        severity = record.get("severity", "medium")
+        by_severity[severity] = by_severity.get(severity, 0) + 1
+        source = record.get("detection_source", "unknown")
+        by_source[source] = by_source.get(source, 0) + 1
+
+        quarantined_at = record.get("quarantined_at", "")
+        if quarantined_at:
+            if oldest is None or quarantined_at < oldest:
+                oldest = quarantined_at
+            if newest is None or quarantined_at > newest:
+                newest = quarantined_at
+
+    return {
+        "total_files": len(index),
+        "total_size": total_size,
+        "total_size_mb": round(total_size / (1024 * 1024), 2),
+        "by_threat_type": by_threat_type,
+        "by_severity": by_severity,
+        "by_source": by_source,
+        "oldest_quarantine": oldest,
+        "newest_quarantine": newest,
+        "quarantine_dir": str(_QUARANTINE_DIR),
+    }
+
+
+def search_quarantine(
+    threat_type: str | None = None,
+    severity: str | None = None,
+    source: str | None = None,
+    file_name_contains: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> list[dict]:
+    """Search quarantined files with filters."""
+    items = list_quarantined()
+    results = []
+
+    for item in items:
+        if threat_type and item.get("threat_type", "").lower() != threat_type.lower():
+            continue
+        if severity and item.get("severity", "").lower() != severity.lower():
+            continue
+        if source and item.get("detection_source", "").lower() != source.lower():
+            continue
+        if file_name_contains and file_name_contains.lower() not in item.get("file_name", "").lower():
+            continue
+        if date_from and item.get("quarantined_at", "") < date_from:
+            continue
+        if date_to and item.get("quarantined_at", "") > date_to:
+            continue
+        results.append(item)
+
+    return results
+
+
+def cleanup_expired_quarantine(expiry_days: int = _DEFAULT_EXPIRY_DAYS) -> dict:
+    """Delete quarantined files older than the specified number of days.
+
+    This helps prevent the quarantine from growing indefinitely with
+    old threats that the user is unlikely to restore.
+    """
+    from datetime import datetime, timedelta
+
+    index = _load_index()
+    cutoff = datetime.now(timezone.utc) - timedelta(days=expiry_days)
+    cutoff_str = cutoff.isoformat()
+
+    expired_ids = []
+    for qid, record in list(index.items()):
+        quarantined_at = record.get("quarantined_at", "")
+        if quarantined_at and quarantined_at < cutoff_str:
+            try:
+                delete_quarantined(qid)
+                expired_ids.append(qid)
+            except Exception as e:
+                log.warning("Failed to delete expired quarantine %s: %s", qid, e)
+
+    if expired_ids:
+        log.info("Cleaned up %d expired quarantine entries (older than %d days)",
+                 len(expired_ids), expiry_days)
+
+    return {
+        "expired_count": len(expired_ids),
+        "expired_ids": expired_ids,
+        "expiry_days": expiry_days,
+    }
+
+
+def export_quarantine_list() -> dict:
+    """Export the quarantine list as a structured report.
+
+    Useful for compliance, audit, or sharing with security teams.
+    """
+    items = list_quarantined()
+    stats = get_quarantine_stats()
+
+    return {
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "stats": stats,
+        "items": items,
+        "total_items": len(items),
+    }

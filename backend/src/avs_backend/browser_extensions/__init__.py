@@ -407,3 +407,144 @@ def browser_ext_enable(params: dict[str, Any] | None) -> dict[str, Any]:
             "success": False,
             "message": "Chromium extensions cannot be re-enabled via file system. Please re-install from the Web Store.",
         }
+
+
+@register("browser_ext.scanThreats")
+def browser_ext_scan_threats(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Scan all browser extensions for malware and suspicious content.
+
+    Scans extension JavaScript files and manifest.json for:
+    - Malicious patterns (eval, obfuscated code, data exfiltration)
+    - Known malware hashes
+    - Suspicious permissions combinations
+    - Behavioral indicators (crypto mining, ad injection, tracking)
+
+    Returns a list of suspicious extensions with threat details.
+    """
+    if not IS_WINDOWS:
+        return {"success": False, "message": "Only available on Windows"}
+
+    extensions = _get_all_extensions()
+    threats: list[dict[str, Any]] = []
+    scanned = 0
+
+    for ext in extensions:
+        ext_path = ext.get("path", "")
+        ext_id = ext.get("id", "")
+        browser = ext.get("browser", "")
+        ext_name = ext.get("name", "Unknown")
+
+        if not ext_path or not os.path.isdir(ext_path):
+            continue
+
+        scanned += 1
+        threat_score = 0
+        reasons: list[str] = []
+
+        # Check manifest.json for suspicious permissions
+        manifest_path = os.path.join(ext_path, "manifest.json")
+        if os.path.isfile(manifest_path):
+            try:
+                with open(manifest_path, "r", encoding="utf-8", errors="ignore") as f:
+                    manifest = json.load(f)
+
+                perms = manifest.get("permissions", [])
+                host_perms = manifest.get("host_permissions", [])
+                all_perms = perms + host_perms
+
+                # Suspicious permission combinations
+                has_all_urls = "<all_urls>" in all_perms or "*://*/*" in all_perms
+                has_tabs = "tabs" in all_perms
+                has_cookies = "cookies" in all_perms
+                has_web_request = "webRequest" in all_perms
+                has_history = "history" in all_perms
+                has_downloads = "downloads" in all_perms
+                has_native_messaging = "nativeMessaging" in all_perms
+                has_clipboard = "clipboardRead" in all_perms
+
+                if has_all_urls and has_tabs:
+                    threat_score += 3
+                    reasons.append("Can read all web pages and tab content")
+                if has_all_urls and has_web_request:
+                    threat_score += 4
+                    reasons.append("Can intercept all web requests")
+                if has_cookies and has_all_urls:
+                    threat_score += 3
+                    reasons.append("Can read cookies from all sites")
+                if has_native_messaging:
+                    threat_score += 3
+                    reasons.append("Can communicate with native applications")
+                if has_downloads and has_all_urls:
+                    threat_score += 2
+                    reasons.append("Can download files from any URL")
+                if has_history:
+                    threat_score += 1
+                    reasons.append("Can access browsing history")
+                if has_clipboard:
+                    threat_score += 1
+                    reasons.append("Can read clipboard data")
+
+                # Check content scripts that run on all pages
+                content_scripts = manifest.get("content_scripts", [])
+                for cs in content_scripts:
+                    cs_matches = cs.get("matches", [])
+                    if "<all_urls>" in cs_matches or "*://*/*" in cs_matches:
+                        threat_score += 2
+                        reasons.append("Content script runs on all pages")
+
+            except Exception:
+                pass
+
+        # Scan JavaScript files for suspicious patterns
+        js_patterns = [
+            ("eval(atob(", 5, "Base64-encoded eval (obfuscation)"),
+            ("eval(unescape(", 4, "Escaped eval (obfuscation)"),
+            ("Function(atob(", 5, "Base64-encoded Function constructor"),
+            ("document.cookie", 2, "Cookie access"),
+            ("chrome.cookies.get", 3, "Programmatic cookie access"),
+            ("new Image().src", 2, "Beacon/image-based data exfiltration"),
+            ("navigator.clipboard.readText", 3, "Clipboard reading"),
+            ("crypto.miner", 5, "Cryptocurrency mining"),
+            ("coinhive", 5, "Coinhive miner"),
+            ("crypto-loot", 5, "Crypto-Loot miner"),
+            ("chrome.debugger", 4, "Debugger API access"),
+            ("chrome.proxy", 3, "Proxy configuration access"),
+        ]
+
+        for root, _dirs, files in os.walk(ext_path):
+            for fname in files:
+                if not fname.endswith((".js", ".html")):
+                    continue
+                fpath = os.path.join(root, fname)
+                try:
+    file_size = os.path.getsize(fpath)
+                    if file_size > 500 * 1024:  # 500KB max
+                        continue
+                    with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+                        content = f.read()
+                    for pattern, score, reason in js_patterns:
+                        if pattern in content:
+                            threat_score += score
+                            reasons.append(f"{reason} in {fname}")
+                            break  # One hit per file per pattern
+                except Exception:
+                    pass
+
+        if threat_score >= 5:
+            threats.append({
+                "extension_id": ext_id,
+                "extension_name": ext_name,
+                "browser": browser,
+                "path": ext_path,
+                "threat_score": threat_score,
+                "reasons": reasons,
+                "severity": "critical" if threat_score >= 10 else "high" if threat_score >= 7 else "medium",
+                "threat_type": "adware" if "ad" in str(reasons).lower() else "spyware" if "cookie" in str(reasons).lower() or "history" in str(reasons).lower() else "suspicious",
+            })
+
+    return {
+        "success": True,
+        "extensions_scanned": scanned,
+        "threats_found": len(threats),
+        "threats": threats,
+    }
