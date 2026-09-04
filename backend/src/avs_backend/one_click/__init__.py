@@ -212,6 +212,30 @@ def _run_full_scan() -> dict[str, Any]:
     except Exception as e:
         log.warning("One-click: YARA scanner not available: %s", e)
 
+    # Try Heuristic detector
+    heuristic_detector = None
+    try:
+        from avs_backend.threat_engine.heuristic import HeuristicDetector
+        heuristic_detector = HeuristicDetector({})
+    except Exception as e:
+        log.warning("One-click: Heuristic detector not available: %s", e)
+
+    # Try AMSI scanner (Windows scripts)
+    amsi_scanner = None
+    try:
+        from avs_backend.threat_engine.amsi_scanner import AmsiScanner
+        amsi_scanner = AmsiScanner({})
+    except Exception as e:
+        log.warning("One-click: AMSI scanner not available: %s", e)
+
+    # Try Defender scanner
+    defender_scanner = None
+    try:
+        from avs_backend.threat_engine.defender_scanner import DefenderScanner
+        defender_scanner = DefenderScanner({})
+    except Exception as e:
+        log.warning("One-click: Defender scanner not available: %s", e)
+
     for root_path in scan_roots:
         try:
             for root, dirs, files in os.walk(root_path):
@@ -294,6 +318,57 @@ def _run_full_scan() -> dict[str, Any]:
                                     "threat_type": result.get("threat_type", "suspicious"),
                                     "severity": result.get("severity", "medium"),
                                     "source": "yara",
+                                })
+                                continue
+                        except Exception:
+                            pass
+
+                    # Heuristic detector (PE analysis, double extensions, etc.)
+                    if heuristic_detector:
+                        try:
+                            result = heuristic_detector.scan_file(fpath)
+                            if result and result.get("detected"):
+                                threats_found += 1
+                                detected_threats.append({
+                                    "path": fpath,
+                                    "threat_name": result.get("threat_name", "Suspicious"),
+                                    "threat_type": result.get("threat_type", "suspicious"),
+                                    "severity": result.get("severity", "medium"),
+                                    "source": "heuristic",
+                                })
+                                continue
+                        except Exception:
+                            pass
+
+                    # AMSI scanner (scripts: .ps1, .js, .vbs, etc.)
+                    if amsi_scanner:
+                        try:
+                            result = amsi_scanner.scan_file(fpath)
+                            if result and result.get("detected"):
+                                threats_found += 1
+                                detected_threats.append({
+                                    "path": fpath,
+                                    "threat_name": result.get("threat_name", "AMSI.Detected"),
+                                    "threat_type": result.get("threat_type", "script"),
+                                    "severity": result.get("severity", "high"),
+                                    "source": "amsi",
+                                })
+                                continue
+                        except Exception:
+                            pass
+
+                    # Defender scanner (Windows Defender integration)
+                    if defender_scanner:
+                        try:
+                            result = defender_scanner.scan_file(fpath)
+                            if result and result.get("detected"):
+                                threats_found += 1
+                                detected_threats.append({
+                                    "path": fpath,
+                                    "threat_name": result.get("threat_name", "Defender.Detected"),
+                                    "threat_type": result.get("threat_type", "malware"),
+                                    "severity": result.get("severity", "high"),
+                                    "source": "defender",
                                 })
                         except Exception:
                             pass

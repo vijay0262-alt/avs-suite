@@ -303,8 +303,11 @@ function checkAndRelaunchAsAdmin(): Promise<boolean> {
   if (process.env.AVS_NO_ELEVATE) return Promise.resolve(false);
 
   // In packaged builds, the exe manifest already requests requireAdministrator,
-  // so the OS handles UAC elevation automatically. This check is a fallback
-  // for dev mode or cases where the manifest didn't apply.
+  // so the OS handles UAC elevation automatically at launch. Skip the runtime
+  // relaunch to avoid a SECOND UAC prompt on top of the manifest elevation.
+  if (app.isPackaged) return Promise.resolve(false);
+
+  // In dev mode (or if the manifest didn't apply), check and relaunch.
   return new Promise((resolve) => {
     exec(
       'powershell -NoProfile -Command "([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)"',

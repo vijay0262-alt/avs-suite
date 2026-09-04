@@ -451,7 +451,9 @@ _FEATURE_EDITION_RANK: dict[str, int] = {
 # RPC methods that require a minimum edition.
 # Format: { "rpc.method.name": "minimum_edition" }
 _LOCKED_RPC_METHODS: dict[str, str] = {
+    "privacy.scan": "professional",
     "privacy.clean": "professional",
+    "updater.list": "professional",
     "updater.upgrade": "professional",
     "updater.upgradeAll": "professional",
     "performance.optimize": "professional",
@@ -460,9 +462,12 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     "scan_core.remediation.execute": "professional",
     "scan_core.remediation.rollback": "professional",
     "scan_core.dashboard.auto_optimize": "professional",
-    # Uninstaller — standard and deep uninstall
+    # Uninstaller — list, standard and deep uninstall (all Pro)
+    "uninstaller.list": "professional",
     "uninstaller.uninstall": "professional",
     "uninstaller.scanLeftovers": "professional",
+    # Cloud drive cleaner — clean requires Pro
+    "cloud_drive.clean": "professional",
     # Real-time protection — start/stop requires Pro
     "realtime.start": "professional",
     "realtime.stop": "professional",

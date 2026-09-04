@@ -40,9 +40,10 @@ win:
   artifactName: ${productName}-Setup-${version}.${ext}
   publisherName: Advanced Vision Software LLC
   sign: null
+  requestedExecutionLevel: requireAdministrator
 nsis:
   oneClick: false
-  perMachine: false
+  perMachine: true
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
