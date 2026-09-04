@@ -607,7 +607,7 @@ export default function AntivirusSecurityPage() {
 
         {oneClickProgress?.error && (
           <div className="mt-4 p-3 rounded bg-semantic-danger/5 border border-semantic-danger/20">
-            <span className="text-small text-semantic-danger">{oneClickProgress.error}</span>
+            <span className="text-small text-semantic-danger">Scan encountered an issue. Please try again.</span>
           </div>
         )}
       </Card>
@@ -987,7 +987,7 @@ export default function AntivirusSecurityPage() {
             {emailScanResult && (
               <div className="mt-3" data-testid="email-scan-result">
                 {emailScanResult.message ? (
-                  <p className="text-caption text-text-muted">{emailScanResult.message}</p>
+                  <p className="text-caption text-text-muted">Email scan completed. See results below.</p>
                 ) : (
                   <>
                     <div className="flex items-center gap-3 mb-3">

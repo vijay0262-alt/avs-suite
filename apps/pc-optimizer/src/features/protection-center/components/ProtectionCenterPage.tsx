@@ -466,7 +466,7 @@ export function ProtectionCenterPage() {
       <EmptyState
         icon={<ShieldCheckIcon className="h-10 w-10" />}
         title="Unable to load Protection Center"
-        description={state.error}
+        description="Please check your connection and try again."
         action={{ label: 'Retry', onClick: () => vm.refresh() }}
         data-testid="protection-center-error"
       />
@@ -522,14 +522,14 @@ export function ProtectionCenterPage() {
       {/* ── Fix result banner ─────────────────────────────────── */}
       {state.fixMessage && state.fixSuccess && (
         <ModuleSuccessBanner
-          title={state.fixMessage}
+          title="Protection issue resolved successfully."
           onDismiss={handleDismissFixMessage}
           testId="protection-fix-message"
         />
       )}
       {state.fixMessage && !state.fixSuccess && (
         <ModuleErrorBanner
-          message={state.fixMessage}
+          message="Unable to fix the protection issue. Please try again."
           onDismiss={handleDismissFixMessage}
           testId="protection-fix-message"
         />

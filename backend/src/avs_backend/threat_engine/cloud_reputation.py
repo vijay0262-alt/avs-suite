@@ -151,11 +151,19 @@ _TRUSTED_PUBLISHERS = {
 
 
 def _is_trusted_path(file_path: str) -> bool:
-    """Check if a file is in a trusted publisher directory."""
-    lower = file_path.lower()
+    """Check if a file is in a trusted publisher directory.
+
+    Normalizes path separators and resolves relative segments to
+    prevent bypass via non-canonical paths.
+    """
+    import os
+    # Normalize the path: resolve . and .., convert / to \ on Windows
+    normalized = os.path.normpath(file_path).lower()
     for publisher, paths in _TRUSTED_PUBLISHERS.items():
         for trusted_path in paths:
-            if lower.startswith(trusted_path.lower()):
+            # Also normalize the trusted path for comparison
+            trusted_normalized = os.path.normpath(trusted_path).lower()
+            if normalized.startswith(trusted_normalized):
                 return True
     return False
 

@@ -20,7 +20,7 @@ import { performanceService, type MemoryOptimizeResult } from '../performance/pe
 import type { DashboardMetrics, LiveMetrics } from './dashboard.types';
 import { DashboardScanStatusCard } from '../scan/components/DashboardScanStatusCard';
 import { useDashboardScan } from '../scan/useDashboardScan';
-import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
+import { ProStatusBanner } from '../licensing/ProStatusBadge';
 import { useIsPro } from '../sync/syncStore';
 import { ScanView } from '../scan';
 import { Modal } from './components/Modal';
@@ -185,7 +185,7 @@ export default function DashboardPage() {
       {/* Error banners for data load failures */}
       {state.metricsError && (
         <ModuleErrorBanner
-          message={`Failed to load system metrics: ${state.metricsError}`}
+          message="Failed to load system metrics. Please retry."
           onRetry={() => vm.loadMetrics()}
           onDismiss={() => vm.clearMetricsError()}
           testId="dashboard-metrics-error"
@@ -193,7 +193,7 @@ export default function DashboardPage() {
       )}
       {state.liveMetricsError && (
         <ModuleErrorBanner
-          message={`Failed to load live metrics: ${state.liveMetricsError}`}
+          message="Failed to load live metrics. Please retry."
           onRetry={() => vm.loadLiveMetrics()}
           onDismiss={() => vm.clearLiveMetricsError()}
           testId="dashboard-live-metrics-error"
@@ -211,7 +211,6 @@ export default function DashboardPage() {
             {healthScore >= 80 ? 'Your PC is healthy.' : healthScore >= 60 ? 'Your PC needs minor attention.' : 'Your PC needs optimization.'}
           </p>
         </div>
-        <ProStatusPill />
       </div>
 
       {/* ── PRIMARY: SYSTEM HEALTH + SCAN ─────────────────────────── */}

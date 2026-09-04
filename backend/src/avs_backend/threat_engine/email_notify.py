@@ -68,13 +68,13 @@ def _save_json(path: Path, data: dict[str, Any]) -> None:
 
 
 def _load_config() -> dict[str, Any]:
-    return _load_json(_CONFIG_PATH, {
+    config = _load_json(_CONFIG_PATH, {
         "enabled": False,
         "smtp_server": "",
         "smtp_port": 587,
         "use_tls": True,
         "username": "",
-        "password": "",  # Stored locally, never committed to source control
+        "password_encrypted": "",  # DPAPI-encrypted, base64-encoded
         "from_email": "",
         "to_emails": [],
         "notify_on_critical": True,
@@ -82,10 +82,83 @@ def _load_config() -> dict[str, Any]:
         "notify_on_quarantine": True,
         "min_severity": "high",
     })
+    # Decrypt password for in-memory use
+    config["password"] = _decrypt_password(config.pop("password_encrypted", ""))
+    return config
 
 
 def _save_config(config: dict[str, Any]) -> None:
-    _save_json(_CONFIG_PATH, config)
+    # Encrypt password before saving to disk
+    save_config = dict(config)
+    save_config["password_encrypted"] = _encrypt_password(save_config.pop("password", ""))
+    _save_json(_CONFIG_PATH, save_config)
+
+
+def _encrypt_password(plaintext: str) -> str:
+    """Encrypt password using Windows DPAPI if available, else base64."""
+    if not plaintext:
+        return ""
+    try:
+        import base64
+        # Try Windows DPAPI via ctypes
+        import ctypes
+        from ctypes import wintypes
+
+        class DATA_BLOB(ctypes.Structure):
+            _fields_ = [("cbData", wintypes.DWORD),
+                        ("pbData", ctypes.POINTER(ctypes.c_char))]
+
+        src = DATA_BLOB()
+        src.cbData = len(plaintext.encode("utf-8"))
+        src.pbData = ctypes.cast(
+            ctypes.create_string_buffer(plaintext.encode("utf-8")),
+            ctypes.POINTER(ctypes.c_char))
+        dst = DATA_BLOB()
+        # CRYPTPROTECT_UI_FORBIDDEN = 0x01
+        if ctypes.windll.crypt32.CryptProtectData(
+                ctypes.byref(src), None, None, None, None, 0x01, ctypes.byref(dst)):
+            encrypted = ctypes.string_at(dst.pbData, dst.cbData)
+            ctypes.windll.kernel32.LocalFree(dst.pbData)
+            return base64.b64encode(encrypted).decode("ascii")
+    except Exception:
+        pass
+    # Fallback: base64 encoding (obfuscation, not real encryption)
+    import base64
+    return "b64:" + base64.b64encode(plaintext.encode("utf-8")).decode("ascii")
+
+
+def _decrypt_password(encrypted: str) -> str:
+    """Decrypt password using Windows DPAPI if available, else base64."""
+    if not encrypted:
+        return ""
+    try:
+        import base64
+        # Check if it's base64 fallback
+        if encrypted.startswith("b64:"):
+            return base64.b64decode(encrypted[4:]).decode("utf-8")
+        # Try Windows DPAPI
+        import ctypes
+        from ctypes import wintypes
+
+        class DATA_BLOB(ctypes.Structure):
+            _fields_ = [("cbData", wintypes.DWORD),
+                        ("pbData", ctypes.POINTER(ctypes.c_char))]
+
+        src = DATA_BLOB()
+        raw = base64.b64decode(encrypted)
+        src.cbData = len(raw)
+        src.pbData = ctypes.cast(
+            ctypes.create_string_buffer(raw),
+            ctypes.POINTER(ctypes.c_char))
+        dst = DATA_BLOB()
+        if ctypes.windll.crypt32.CryptUnprotectData(
+                ctypes.byref(src), None, None, None, None, 0x01, ctypes.byref(dst)):
+            decrypted = ctypes.string_at(dst.pbData, dst.cbData)
+            ctypes.windll.kernel32.LocalFree(dst.pbData)
+            return decrypted.decode("utf-8")
+    except Exception:
+        pass
+    return ""
 
 
 def _load_history() -> dict[str, Any]:

@@ -539,7 +539,7 @@ export default function RealtimeThreatPage() {
                     </span>
                   </Badge>
                   <span className="text-text-secondary truncate flex-1">
-                    {event.path || event.process_name || event.drive_letter || JSON.stringify(event.details || {})}
+                    {event.path || event.process_name || event.drive_letter || String(event.details?.type ?? '') || 'Unknown event'}
                   </span>
                   {event.severity && (
                     <Badge tone={SEVERITY_TONE[event.severity]} className="shrink-0">

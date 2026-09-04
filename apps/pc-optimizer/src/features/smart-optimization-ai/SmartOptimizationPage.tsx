@@ -12,7 +12,7 @@ import { Button, Card } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
 import { FreeEditionNotice } from '../../components/FreeEditionNotice';
 import { useIsPro } from '../sync/syncStore';
-import { ProStatusBanner, ProStatusPill } from '../licensing/ProStatusBadge';
+import { ProStatusBanner } from '../licensing/ProStatusBadge';
 import { ScanView } from '../scan';
 import { useDashboardScan } from '../scan/useDashboardScan';
 import { Modal } from '../dashboard/components/Modal';
@@ -80,7 +80,6 @@ export default function SmartOptimizationPage() {
         description="Safe, intelligent optimization recommendations tailored to your PC."
         actions={
           <div className="flex items-center gap-2">
-            <ProStatusPill />
             <Button
               onClick={handleOptimizeClick}
               size="lg"

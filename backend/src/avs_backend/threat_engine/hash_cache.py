@@ -65,10 +65,31 @@ def _load_cache() -> dict[str, Any]:
 
 
 def _save_cache(cache: dict[str, Any]) -> None:
-    """Save the hash cache to disk."""
+    """Save the hash cache to disk atomically.
+
+    Writes to a temporary file first, then renames to the target path
+    to prevent corruption from concurrent writes or crashes.
+    """
+    import os
+    import tempfile
     try:
-        with open(_CACHE_PATH, "w", encoding="utf-8") as f:
-            json.dump(cache, f)
+        # Write to a temp file in the same directory, then atomically rename
+        tmp_fd, tmp_path = tempfile.mkstemp(
+            dir=str(_CACHE_PATH.parent), suffix=".tmp", prefix="hash_cache_")
+        try:
+            with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
+                json.dump(cache, f)
+            # On Windows, need to remove target before rename
+            if _CACHE_PATH.exists():
+                _CACHE_PATH.unlink()
+            os.rename(tmp_path, str(_CACHE_PATH))
+        except Exception:
+            # Clean up temp file on error
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
     except Exception as e:
         log.error("Failed to save hash cache: %s", e)
 
@@ -81,6 +102,7 @@ class HashCache:
         self._hits = 0
         self._misses = 0
         self._dirty = False
+        self._lock = __import__("threading").Lock()
 
     def _get_file_metadata(self, file_path: str) -> tuple[int, float] | None:
         """Get file size and modification time."""
@@ -153,36 +175,39 @@ class HashCache:
 
     def invalidate(self, file_path: str) -> None:
         """Remove a file from the cache."""
-        if file_path in self._cache.get("entries", {}):
-            del self._cache["entries"][file_path]
-            self._dirty = True
+        with self._lock:
+            if file_path in self._cache.get("entries", {}):
+                del self._cache["entries"][file_path]
+                self._dirty = True
 
     def clear(self) -> None:
         """Clear the entire cache."""
-        self._cache = {"entries": {}, "updated_at": _now_iso()}
-        self._dirty = True
-        self._hits = 0
-        self._misses = 0
+        with self._lock:
+            self._cache = {"entries": {}, "updated_at": _now_iso()}
+            self._dirty = True
+            self._hits = 0
+            self._misses = 0
 
     def save(self) -> None:
         """Save the cache to disk if there are changes."""
-        if not self._dirty:
-            return
+        with self._lock:
+            if not self._dirty:
+                return
 
-        # Trim cache if it's too large (remove oldest entries)
-        entries = self._cache.get("entries", {})
-        if len(entries) > _MAX_ENTRIES:
-            sorted_entries = sorted(
-                entries.items(),
-                key=lambda x: x[1].get("scanned_at", ""),
-            )
-            # Keep the most recent entries
-            entries = dict(sorted_entries[-_MAX_ENTRIES:])
-            self._cache["entries"] = entries
+            # Trim cache if it's too large (remove oldest entries)
+            entries = self._cache.get("entries", {})
+            if len(entries) > _MAX_ENTRIES:
+                sorted_entries = sorted(
+                    entries.items(),
+                    key=lambda x: x[1].get("scanned_at", ""),
+                )
+                # Keep the most recent entries
+                entries = dict(sorted_entries[-_MAX_ENTRIES:])
+                self._cache["entries"] = entries
 
-        self._cache["updated_at"] = _now_iso()
-        _save_cache(self._cache)
-        self._dirty = False
+            self._cache["updated_at"] = _now_iso()
+            _save_cache(self._cache)
+            self._dirty = False
 
     def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""

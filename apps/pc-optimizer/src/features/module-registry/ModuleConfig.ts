@@ -27,7 +27,7 @@ export const CATEGORY_CONFIG: Record<ModuleCategory, CategoryConfig> = {
   privacy:      { label: 'Privacy',       order: 3, icon: 'ShieldCheckIcon' },
   security:     { label: 'Security',      order: 4, icon: 'ShieldExclamationIcon' },
   system:       { label: 'System',        order: 5, icon: 'ComputerDesktopIcon' },
-  future:       { label: 'Coming Soon',   order: 6, icon: 'SparklesIcon' },
+  future:       { label: 'Advanced',     order: 6, icon: 'SparklesIcon' },
 };
 
 // ── Default Health Weights ──────────────────────────────────────────

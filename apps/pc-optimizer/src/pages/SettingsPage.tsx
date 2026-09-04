@@ -41,6 +41,7 @@ export default function SettingsPage() {
   const [autoBrowserCleanEnabled, setAutoBrowserCleanEnabled] = useState(false);
   const [internetBoosterEnabled, setInternetBoosterEnabled] = useState(false);
   const [internetBoosterLoading, setInternetBoosterLoading] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     // Sync dev mode state from localStorage
@@ -726,7 +727,18 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        {/* Developer */}
+        {/* Advanced Settings toggle */}
+        <div className="pt-2">
+          <button
+            onClick={() => setShowAdvanced((v) => !v)}
+            className="text-caption text-text-secondary hover:text-text-primary transition-colors"
+          >
+            {showAdvanced ? 'Hide advanced settings' : 'Show advanced settings'}
+          </button>
+        </div>
+
+        {/* Developer — hidden behind advanced toggle to keep UI clean */}
+        {showAdvanced && (
         <Card title="Developer" variant="glass">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -767,8 +779,8 @@ export default function SettingsPage() {
                   try {
                     const res = await rpc.raw<{ pong: boolean }>(RPC_METHODS.SYSTEM_PING);
                     alert(res?.pong ? 'Backend is responding' : 'Backend responded but no pong');
-                  } catch (e) {
-                    alert(`Backend ping failed: ${String(e)}`);
+                  } catch {
+                    alert('Backend ping failed. Please check if AVS AI Shield is running.');
                   }
                 }}
                 data-testid="settings-rpc-ping-btn"
@@ -778,6 +790,7 @@ export default function SettingsPage() {
             </div>
           </div>
         </Card>
+        )}
 
         <Card title="Help & Onboarding" variant="glass">
           <div className="flex items-center justify-between">
