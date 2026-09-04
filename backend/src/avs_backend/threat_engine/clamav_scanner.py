@@ -636,11 +636,13 @@ def _classify_threat(virus_name: str) -> tuple[str, str]:
         return "trojan", "high"
     if any(k in name_lower for k in ("worm", "virus")):
         return "worm", "high"
-    if any(k in name_lower for k in ("adware", "pup", "pua")):
+    if any(k in name_lower for k in ("pup", "pua")):
+        return "pup", "medium"
+    if any(k in name_lower for k in ("adware",)):
         return "adware", "medium"
     if any(k in name_lower for k in ("spyware", "keylog")):
         return "spyware", "high"
-    if any(k in name_lower for k in ("rootkit")):
+    if any(k in name_lower for k in ("rootkit", "bootkit")):
         return "rootkit", "high"
     if any(k in name_lower for k in ("exploit", "cve")):
         return "exploit", "high"
