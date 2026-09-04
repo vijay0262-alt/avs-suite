@@ -124,6 +124,14 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
     logger.warn(`[py] ${chunk.toString('utf8').trimEnd()}`);
   });
 
+  // Without an 'error' listener, a spawn failure (e.g. ENOENT because the
+  // backend executable is missing) throws an uncaught exception in Node.
+  // Log it instead so the health-check below can time out gracefully and
+  // report a proper startup failure.
+  child.on('error', (err) => {
+    logger.error('Python backend failed to spawn', { message: err.message });
+  });
+
   child.on('exit', (code, signal) => {
     logger.error(`Python backend exited (code=${code}, signal=${signal})`);
     for (const cb of pending.values()) {
@@ -136,6 +144,9 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
   });
 
   function attachChild(c: ChildProcessWithoutNullStreams) {
+    c.on('error', (err) => {
+      logger.error('Python backend failed to respawn', { message: err.message });
+    });
     c.stdout.on('data', (chunk: Buffer) => {
       buffer += chunk.toString('utf8');
       if (buffer.length > MAX_BUFFER_SIZE) {
@@ -307,6 +318,10 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
     logger.info('Python backend ready.');
   } catch (e) {
     logger.error('Python backend failed initial ping', e);
+    // Propagate the failure so the startup state machine can show a
+    // proper error dialog / degraded mode instead of silently handing
+    // out a client whose calls will always time out.
+    throw e instanceof Error ? e : new Error(String(e));
   }
 
   return client;
