@@ -264,7 +264,7 @@ describe('Window lifecycle audit', () => {
   it('uses async admin check (no execSync)', () => {
     const content = readFile(mainPath);
     expect(content).not.toContain('execSync');
-    expect(content).toContain('await checkAndRelaunchAsAdmin');
+    expect(content).toContain('await ensureElevated');
   });
 
   it('cleans up on will-quit', () => {
