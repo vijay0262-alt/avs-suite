@@ -126,14 +126,30 @@ function registerAppHandlers(rpc: RpcClient, logger: Logger): void {
   registerHandler('avs:app:relaunchAsAdmin', () => {
     logger.info('Relaunching app with admin privileges');
     const exePath = app.getPath('exe');
+    const taskName = 'AVS_AI_Shield_Elevated';
     try {
+      // Try the scheduled task first (no UAC prompt if the task already exists).
+      // This is the normal path after installation.
       exec(
-        `powershell -NoProfile -Command "Start-Process -FilePath '${exePath.replace(/'/g, "''")}' -Verb RunAs"`,
-        (err: Error | null) => {
-          if (err) {
-            logger.error('Failed to relaunch as admin', err);
+        `schtasks /run /tn "${taskName}"`,
+        { encoding: 'utf8', timeout: 5000, windowsHide: true },
+        (taskErr: Error | null) => {
+          if (taskErr) {
+            // Task doesn't exist or failed — fall back to UAC prompt
+            logger.warn('Scheduled task relaunch failed, falling back to UAC', taskErr);
+            exec(
+              `powershell -NoProfile -Command "Start-Process -FilePath '${exePath.replace(/'/g, "''")}' -Verb RunAs"`,
+              (uacErr: Error | null) => {
+                if (uacErr) {
+                  logger.error('Failed to relaunch as admin via UAC', uacErr);
+                } else {
+                  logger.info('Admin relaunch triggered via UAC, exiting current instance');
+                  app.quit();
+                }
+              },
+            );
           } else {
-            logger.info('Admin relaunch triggered, exiting current instance');
+            logger.info('Admin relaunch triggered via scheduled task, exiting current instance');
             app.quit();
           }
         },
