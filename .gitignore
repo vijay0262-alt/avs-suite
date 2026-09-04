@@ -16,6 +16,7 @@ coverage/
 apps/pc-optimizer/dist/
 apps/pc-optimizer/dist-electron/
 apps/pc-optimizer/release/
+apps/pc-optimizer/release-v*/
 apps/pc-optimizer/out/
 
 # Python
@@ -64,4 +65,8 @@ _binary*
 
 # ClamAV binaries (downloaded at build time, not stored in git)
 apps/pc-optimizer/resources/clamav/
+
+# Test artifacts
+test_tmp/
+test-user-data/
 

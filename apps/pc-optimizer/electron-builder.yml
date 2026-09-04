@@ -47,6 +47,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
+  runAfterFinish: false
   include: build/installer.nsh
   installerIcon: icon.ico
   uninstallerIcon: icon.ico
