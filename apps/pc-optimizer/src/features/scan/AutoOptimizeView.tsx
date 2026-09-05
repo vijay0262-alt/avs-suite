@@ -108,40 +108,43 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planId]);
 
-  // When optimization completes, emit a CleaningCompleted event so the
-  // Dashboard recalculates the health score from fresh metrics.
+  // When optimization completes or is cancelled, emit a CleaningCompleted
+  // event so the Dashboard recalculates the health score from fresh metrics.
   // Also update unifiedScanState with the cleanup result so that
   // useDashboardScan (used by Dashboard and Smart Optimize) reflects
   // the actual recovered space, items cleaned, and completion time.
   useEffect(() => {
-    if (autoOpt.phase === 'complete' && autoOpt.result) {
+    if ((autoOpt.phase === 'complete' || autoOpt.phase === 'cancelled') && (autoOpt.result || autoOpt.spaceRecovered > 0)) {
+      const cleaned = autoOpt.result?.files_cleaned ?? autoOpt.result?.cleaned ?? autoOpt.executionProgress ?? 0;
+      const space = autoOpt.result?.space_recovered ?? autoOpt.spaceRecovered ?? 0;
+
       optimizationEventBus.emit({
         type: OptimizationEventType.CleaningCompleted,
         moduleId: 'junk',
-        action: 'clean',
-        bytesRecovered: autoOpt.result.space_recovered,
-        itemsProcessed: autoOpt.result.files_cleaned ?? autoOpt.result.cleaned ?? 0,
+        action: autoOpt.phase === 'cancelled' ? 'cancel' : 'clean',
+        bytesRecovered: space,
+        itemsProcessed: cleaned,
         timestamp: Date.now(),
       });
       // V1.0: Update unifiedScanState with cleanup result so all
       // dashboard cards and Smart Optimize cards sync with actual data.
       unifiedScanState.updateLatest({
-        remediationStatus: 'completed',
+        remediationStatus: autoOpt.phase === 'cancelled' ? 'cancelled' : 'completed',
         cleanupResult: {
-          detected: autoOpt.result.files_found ?? autoOpt.result.detected ?? 0,
-          cleaned: autoOpt.result.files_cleaned ?? autoOpt.result.cleaned ?? 0,
-          foldersCleaned: autoOpt.result.folders_cleaned ?? 0,
-          remaining: autoOpt.result.remaining ?? 0,
-          failed: autoOpt.result.failed ?? 0,
-          reviewRequired: autoOpt.result.requires_review ?? 0,
-          spaceRecovered: autoOpt.result.space_recovered ?? 0,
-          healthBefore: autoOpt.result.health_before,
-          healthAfter: autoOpt.result.health_after,
-          verificationStatus: autoOpt.result.verification_status,
+          detected: autoOpt.result?.files_found ?? autoOpt.result?.detected ?? 0,
+          cleaned,
+          foldersCleaned: autoOpt.result?.folders_cleaned ?? 0,
+          remaining: autoOpt.result?.remaining ?? 0,
+          failed: autoOpt.result?.failed ?? 0,
+          reviewRequired: autoOpt.result?.requires_review ?? 0,
+          spaceRecovered: space,
+          healthBefore: autoOpt.result?.health_before,
+          healthAfter: autoOpt.result?.health_after,
+          verificationStatus: autoOpt.verificationStatus ?? autoOpt.result?.verification_status,
         },
       });
     }
-  }, [autoOpt.phase, autoOpt.result]);
+  }, [autoOpt.phase, autoOpt.result, autoOpt.spaceRecovered, autoOpt.executionProgress, autoOpt.verificationStatus]);
 
   const isRunning = autoOpt.isRunning;
   const isComplete = autoOpt.phase === 'complete';
@@ -227,6 +230,10 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
 
   // ── Cancelled state ──────────────────────────────────────────────
   if (isCancelled) {
+    const cancelledCleaned = autoOpt.executionProgress || result?.files_cleaned || result?.cleaned || 0;
+    const cancelledSpace = autoOpt.spaceRecovered || result?.space_recovered || 0;
+    const hasPartialResults = cancelledCleaned > 0 || cancelledSpace > 0;
+
     return (
       <Card variant="glass" className="p-8" data-testid="auto-optimize-cancelled">
         <div className="text-center space-y-4">
@@ -235,8 +242,28 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
           </div>
           <h3 className="text-lg font-semibold text-text-primary">Optimization Cancelled</h3>
           <p className="text-small text-text-secondary">
-            The optimization was cancelled. No incomplete actions were left running.
+            {hasPartialResults
+              ? 'The optimization was cancelled. Some files were already cleaned before cancellation.'
+              : 'The optimization was cancelled. No incomplete actions were left running.'}
           </p>
+
+          {hasPartialResults && (
+            <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto pt-2">
+              <div className="rounded-[var(--avs-radius-md)] bg-surface-secondary/50 p-4 text-center">
+                <div className="text-2xl font-bold text-semantic-success tabular-nums">
+                  {formatNumber(cancelledCleaned)}
+                </div>
+                <div className="text-caption text-text-muted">{cleanedLabel}</div>
+              </div>
+              <div className="rounded-[var(--avs-radius-md)] bg-surface-secondary/50 p-4 text-center">
+                <div className="text-2xl font-bold text-brand-primary tabular-nums">
+                  {formatBytes(cancelledSpace)}
+                </div>
+                <div className="text-caption text-text-muted">Space Recovered</div>
+              </div>
+            </div>
+          )}
+
           <Button variant="secondary" onClick={onClose} data-testid="auto-optimize-close">
             Close
           </Button>

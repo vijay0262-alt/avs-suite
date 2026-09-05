@@ -1608,7 +1608,23 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         # Phase 1: Prepare
         _update("preparing", "Preparing optimization plan...")
         if _is_cancelled():
-            _update("cancelled", "Optimization cancelled", completed=True)
+            _update(
+                "cancelled",
+                "Optimization cancelled",
+                completed=True,
+                result={
+                    "files_found": 0,
+                    "files_cleaned": 0,
+                    "space_recovered": 0,
+                    "detected": 0,
+                    "cleaned": 0,
+                    "remaining": 0,
+                    "failed": 0,
+                    "health_before": 100,
+                    "health_after": 100,
+                },
+                verification_status="cancelled",
+            )
             return
         preview = coord.prepare(plan_id)
 
@@ -1735,7 +1751,23 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         # begins. The user-visible "detected" count must only include files that
         # can actually be deleted RIGHT NOW.
         if _is_cancelled():
-            _update("cancelled", "Optimization cancelled", completed=True)
+            _update(
+                "cancelled",
+                "Optimization cancelled",
+                completed=True,
+                result={
+                    "files_found": safe_count,
+                    "files_cleaned": 0,
+                    "space_recovered": 0,
+                    "detected": safe_count,
+                    "cleaned": 0,
+                    "remaining": safe_count,
+                    "failed": 0,
+                    "health_before": health_before,
+                    "health_after": health_before,
+                },
+                verification_status="cancelled",
+            )
             return
         _update("revalidating", "Verifying cleanup targets...")
         revalidation = coord.revalidate_planned_actions(plan_id)
@@ -1808,7 +1840,23 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
         # during execution. The approval_token from prepare() authorizes
         # execution. The SafetyGate still evaluates each action independently.
         if _is_cancelled():
-            _update("cancelled", "Optimization cancelled", completed=True)
+            _update(
+                "cancelled",
+                "Optimization cancelled",
+                completed=True,
+                result={
+                    "files_found": safe_count,
+                    "files_cleaned": 0,
+                    "space_recovered": 0,
+                    "detected": safe_count,
+                    "cleaned": 0,
+                    "remaining": safe_count,
+                    "failed": 0,
+                    "health_before": health_before,
+                    "health_after": health_before,
+                },
+                verification_status="cancelled",
+            )
             return
         _update(
             "executing",
@@ -1877,6 +1925,65 @@ def _run_auto_optimize(session_id: str, plan_id: str) -> None:
             mode="live",
             on_progress=_on_execution_progress,
         )
+
+        # Check if cancelled during execution — if so, build partial results
+        # from the execution summary but skip verification, recycle bin, and
+        # set the cancelled phase instead of proceeding to complete.
+        if _is_cancelled():
+            # Build partial results from whatever execution completed before cancel
+            partial_cleaned = 0
+            partial_space = 0
+            for result in summary.results:
+                if result.status.value == "completed":
+                    after_state = getattr(result, "after_state", None)
+                    before_state = getattr(result, "before_state", None)
+                    if (
+                        after_state
+                        and isinstance(after_state, dict)
+                        and after_state.get("exists") is False
+                    ):
+                        partial_cleaned += 1
+                        if before_state and isinstance(before_state, dict):
+                            size = before_state.get("size", 0)
+                            if isinstance(size, (int, float)) and size > 0:
+                                partial_space += int(size)
+
+            # Get live space recovered from session (tracked during execution)
+            with _auto_opt_lock:
+                session = _auto_opt_sessions.get(session_id)
+                live_space = session.get("space_recovered", 0) if session else 0
+                live_progress = session.get("execution_progress", 0) if session else 0
+
+            partial_result = {
+                "files_found": safe_count,
+                "files_cleaned": partial_cleaned,
+                "space_recovered": max(partial_space, live_space),
+                "detected": safe_count,
+                "cleaned": partial_cleaned,
+                "remaining": max(0, safe_count - partial_cleaned),
+                "failed": summary.failed,
+                "health_before": health_before,
+                "health_after": _cleanup_health_score(
+                    max(0, cleanable_bytes_before - max(partial_space, live_space))
+                ),
+                "_diagnostics": {
+                    "execution_id": summary.execution_id,
+                    "total": summary.total,
+                    "cancelled": summary.cancelled,
+                    "failed": summary.failed,
+                    "completed_before_cancel": partial_cleaned,
+                    "execution_progress_at_cancel": live_progress,
+                },
+            }
+            _update(
+                "cancelled",
+                "Optimization cancelled",
+                completed=True,
+                overall_progress=100,
+                result=partial_result,
+                verification_status="cancelled",
+            )
+            return
 
         # Load the plan to build action_id → rule_id mapping and count
         # folders.  The plan may have been revalidated (some actions
