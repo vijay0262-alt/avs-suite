@@ -1644,6 +1644,38 @@ export default function AntivirusSecurityPage() {
         <div className="space-y-4" data-testid="av-tab-statistics-content">
           {threatStats ? (
             <>
+              {/* Export buttons */}
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<DocumentTextIcon className="h-4 w-4" />}
+                  onClick={async () => {
+                    try {
+                      const res = await rpc.raw<{ success: boolean; path: string }>(RPC_METHODS.THREAT_SCAN_EXPORT, { format: 'csv' });
+                      if (res.success) alert(`Scan results exported to:\n${res.path}`);
+                    } catch { /* ignore */ }
+                  }}
+                  data-testid="export-csv-btn"
+                >
+                  Export CSV
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<DocumentTextIcon className="h-4 w-4" />}
+                  onClick={async () => {
+                    try {
+                      const res = await rpc.raw<{ success: boolean; path: string }>(RPC_METHODS.THREAT_SCAN_EXPORT, { format: 'json' });
+                      if (res.success) alert(`Scan results exported to:\n${res.path}`);
+                    } catch { /* ignore */ }
+                  }}
+                  data-testid="export-json-btn"
+                >
+                  Export JSON
+                </Button>
+              </div>
+
               {/* Overview stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <Card variant="glass" className="p-4 text-center" data-testid="stat-total-scans">

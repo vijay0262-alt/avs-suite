@@ -72,6 +72,18 @@ EXCLUDE_PATHS: frozenset[str] = frozenset({
 MAX_FILE_SIZE: int = 100 * 1024 * 1024  # 100 MB
 MAX_DEPTH: int = 12
 
+# ─── Archive / zip-bomb protection ───────────────────────────────────
+# Limits to prevent zip-bomb attacks where a small archive contains
+# petabytes of data. These are checked before extracting archives.
+ARCHIVE_EXTENSIONS: frozenset[str] = frozenset({
+    ".zip", ".rar", ".7z", ".cab", ".tar", ".gz", ".tgz", ".bz2",
+    ".tar.gz", ".tar.bz2", ".iso", ".img",
+})
+MAX_ARCHIVE_RECURSION_DEPTH: int = 3       # Max nested archives (archive-in-archive)
+MAX_ARCHIVE_EXTRACTION_RATIO: int = 100    # Max extracted size / compressed size ratio
+MAX_ARCHIVE_EXTRACTED_SIZE: int = 500 * 1024 * 1024  # 500 MB max extracted size
+MAX_ARCHIVE_ENTRIES: int = 10_000          # Max files in a single archive
+
 
 def should_scan_file(file_path: str) -> bool:
     """Check if a file should be scanned based on extension.
@@ -121,6 +133,11 @@ def get_scan_config() -> dict[str, Any]:
         "scan_archives": True,
         "scan_email": True,
         "auto_quarantine": True,
+        # Archive / zip-bomb protection
+        "max_archive_recursion_depth": MAX_ARCHIVE_RECURSION_DEPTH,
+        "max_archive_extraction_ratio": MAX_ARCHIVE_EXTRACTION_RATIO,
+        "max_archive_extracted_size": MAX_ARCHIVE_EXTRACTED_SIZE,
+        "max_archive_entries": MAX_ARCHIVE_ENTRIES,
         # Quick scan targets (relative to drive root)
         "quick_scan_targets": [
             "Windows\\System32",

@@ -123,6 +123,15 @@ _FEATURE_WEIGHTS = {
 
 _BIAS = -2.0  # Base bias — most files are benign
 
+# Known malicious import table hashes (SHA-256[:16] of sorted import names).
+# These are fingerprints of known malware families. The set starts empty
+# and can be populated from threat intelligence feeds or manual analysis.
+# When a PE file's import hash matches, it gets a high malicious score.
+_MALICIOUS_IMPORT_HASHES: set[str] = set()
+
+# Add weight for import hash matching
+_FEATURE_WEIGHTS["known_malicious_import_hash"] = 3.0  # Strong signal — known malware family
+
 
 def _sigmoid(x: float) -> float:
     """Sigmoid squashing function — maps score to 0..1 probability."""
@@ -314,6 +323,25 @@ class MlDetector:
         features["has_network_imports"] = has_network
         features["has_registry_imports"] = has_registry
 
+        # Import table hash — fingerprint for malware family identification
+        try:
+            all_imports: list[str] = []
+            for entry in pe.DIRECTORY_ENTRY_IMPORT:
+                for imp in entry.imports:
+                    if imp.name:
+                        all_imports.append(imp.name.decode("ascii", errors="replace"))
+            if all_imports:
+                all_imports.sort()
+                imp_hash = hashlib.sha256("|".join(all_imports).encode()).hexdigest()[:16]
+                features["import_hash"] = imp_hash
+                # Check against known malicious import hashes
+                if imp_hash in _MALICIOUS_IMPORT_HASHES:
+                    features["known_malicious_import_hash"] = True
+            else:
+                features["import_hash"] = ""
+        except Exception:
+            features["import_hash"] = ""
+
         # DLL characteristics (security features)
         dll_char = getattr(pe, "OPTIONAL_HEADER", None)
         if dll_char:
@@ -384,6 +412,8 @@ class MlDetector:
 
     def _classify_type(self, features: dict[str, float | int | bool | str]) -> str:
         """Classify the malware type based on features."""
+        if features.get("known_malicious_import_hash"):
+            return "KnownFamily"
         if features.get("injection_imports"):
             return "Injector"
         if features.get("suspicious_sections") or features.get("raw_virtual_mismatch"):

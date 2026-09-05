@@ -515,6 +515,7 @@ export const RPC_METHODS = {
   THREAT_STARTUP_SCAN_STATUS: 'threat.startupScan.status',
   THREAT_STARTUP_SCAN_CONFIGURE: 'threat.startupScan.configure',
   THREAT_STARTUP_SCAN_RUN_NOW: 'threat.startupScan.runNow',
+  THREAT_SCAN_EXPORT: 'threat.scanExport',
 
   // Real-Time Threat Protection (Tier 2)
   REALTIME_THREAT_STATUS: 'realtime_threat.status',

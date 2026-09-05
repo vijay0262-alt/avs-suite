@@ -223,6 +223,15 @@ def _run_full_scan() -> dict[str, Any]:
     except Exception as e:
         log.warning("One-click: ML detector not available: %s", e)
 
+    # Hash cache for incremental scanning (skip unchanged clean files)
+    hash_cache = None
+    try:
+        from avs_backend.threat_engine.hash_cache import HashCache
+        hash_cache = HashCache()
+        log.info("One-click: Hash cache loaded (%d entries)", len(hash_cache._cache.get("entries", {})))
+    except Exception as e:
+        log.warning("One-click: Hash cache not available: %s", e)
+
     # ─── Collect all files to scan first ───────────────────────────
     all_files: list[str] = []
     for root_path in scan_roots:
@@ -259,6 +268,10 @@ def _run_full_scan() -> dict[str, Any]:
     # ─── Scan a single file with smart detector routing ────────────
     def _scan_single_file(fpath: str) -> dict[str, Any] | None:
         """Scan one file with appropriate detectors based on file type."""
+        # Incremental scan: skip unchanged files that were previously clean
+        if hash_cache and hash_cache.should_skip(fpath):
+            return None
+
         ext = os.path.splitext(fpath)[1].lower()
         is_pe = ext in _PE_EXTENSIONS
         is_script = ext in _SCRIPT_EXTENSIONS
@@ -268,6 +281,8 @@ def _run_full_scan() -> dict[str, Any]:
             try:
                 result = clamav_scanner.scan_file(fpath)
                 if result and result.get("detected"):
+                    if hash_cache:
+                        hash_cache.record_result(fpath, "threat")
                     return {
                         "path": fpath,
                         "threat_name": result.get("threat_name", "Unknown"),
@@ -283,6 +298,8 @@ def _run_full_scan() -> dict[str, Any]:
             try:
                 result = hash_detector.scan_file(fpath)
                 if result and result.get("detected"):
+                    if hash_cache:
+                        hash_cache.record_result(fpath, "threat")
                     return {
                         "path": fpath,
                         "threat_name": result.get("threat_name", "Unknown"),
@@ -298,6 +315,8 @@ def _run_full_scan() -> dict[str, Any]:
             try:
                 result = yara_scanner.scan_file(fpath)
                 if result and result.get("detected"):
+                    if hash_cache:
+                        hash_cache.record_result(fpath, "threat")
                     return {
                         "path": fpath,
                         "threat_name": result.get("threat_name", "Unknown"),
@@ -313,6 +332,8 @@ def _run_full_scan() -> dict[str, Any]:
             try:
                 result = heuristic_detector.scan_file(fpath)
                 if result and result.get("detected"):
+                    if hash_cache:
+                        hash_cache.record_result(fpath, "threat")
                     return {
                         "path": fpath,
                         "threat_name": result.get("threat_name", "Suspicious"),
@@ -328,6 +349,8 @@ def _run_full_scan() -> dict[str, Any]:
             try:
                 result = amsi_scanner.scan_file(fpath)
                 if result and result.get("detected"):
+                    if hash_cache:
+                        hash_cache.record_result(fpath, "threat")
                     return {
                         "path": fpath,
                         "threat_name": result.get("threat_name", "AMSI.Detected"),
@@ -343,6 +366,8 @@ def _run_full_scan() -> dict[str, Any]:
             try:
                 result = behavioral_detector.scan_file(fpath)
                 if result and result.get("detected"):
+                    if hash_cache:
+                        hash_cache.record_result(fpath, "threat")
                     return {
                         "path": fpath,
                         "threat_name": result.get("threat_name", "Behavioral.Detected"),
@@ -358,6 +383,8 @@ def _run_full_scan() -> dict[str, Any]:
             try:
                 result = ml_detector.scan_file(fpath)
                 if result and result.get("detected"):
+                    if hash_cache:
+                        hash_cache.record_result(fpath, "threat")
                     return {
                         "path": fpath,
                         "threat_name": result.get("threat_name", "ML.Detected"),
@@ -367,6 +394,10 @@ def _run_full_scan() -> dict[str, Any]:
                     }
             except Exception:
                 pass
+
+        # File is clean — record in hash cache for incremental scanning
+        if hash_cache:
+            hash_cache.record_result(fpath, "clean")
 
         return None
 
@@ -415,6 +446,16 @@ def _run_full_scan() -> dict[str, Any]:
     with _lock:
         _progress["scan_progress"] = 100
         _progress["current_file"] = None
+
+    # Save hash cache for incremental scanning next time
+    if hash_cache:
+        try:
+            hash_cache.save()
+            stats = hash_cache.get_stats()
+            log.info("One-click: Hash cache saved — %d entries, %d hits, %d misses",
+                     stats["total_entries"], stats["hits"], stats["misses"])
+        except Exception as e:
+            log.warning("One-click: Failed to save hash cache: %s", e)
 
     return {
         "files_scanned": files_scanned,
@@ -657,6 +698,31 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
         log.info("One-click: Browser extension scan found %d threats in %d extensions", ext_threats, len(extensions))
     except Exception as e:
         log.warning("One-click: Browser extension scanning phase failed: %s", e)
+
+    # Phase 1.8: Network connection scanning (C2 callbacks, suspicious connections)
+    try:
+        from avs_backend.threat_engine.network_monitor import scan_network_connections
+        with _lock:
+            _progress["current_file"] = "Scanning network connections..."
+
+        net_result = scan_network_connections()
+        net_threats = net_result.get("suspicious_count", 0)
+        if net_threats:
+            for conn in net_result.get("suspicious_connections", []):
+                _extra_threats.append({
+                    "path": conn.get("process_exe", "") or f"pid:{conn.get('pid', 0)}",
+                    "threat_name": f"Network.Suspicious.{conn.get('process', 'unknown')}",
+                    "threat_type": "c2_callback" if conn.get("threat_score", 0) >= 7 else "suspicious_connection",
+                    "severity": conn.get("severity", "medium"),
+                    "source": "network_monitor",
+                })
+            result["threats_found"] += net_threats
+            with _lock:
+                _progress["threats_found"] = result["threats_found"]
+        log.info("One-click: Network scan found %d suspicious connections out of %d total",
+                 net_threats, net_result.get("total_connections", 0))
+    except Exception as e:
+        log.warning("One-click: Network scanning phase failed: %s", e)
 
     # Phase 2: Quarantine/clean detected threats
     all_threats = list(scan_result.get("threats", []))

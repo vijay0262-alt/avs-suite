@@ -1568,6 +1568,123 @@ def threat_startup_scan_run_now(_params: dict[str, Any] | None) -> dict[str, Any
         return {"success": False, "error": str(e)}
 
 
+@register("threat.scanExport")
+def threat_scan_export(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Export scan results as CSV or JSON.
+
+    Params:
+        format: "csv" or "json" (default: "csv")
+        scan_id: optional scan ID to export (defaults to most recent)
+    """
+    import csv
+    import io
+    import tempfile
+
+    params = params or {}
+    fmt = params.get("format", "csv").lower()
+    scan_id = params.get("scan_id", "")
+
+    # Load scan history
+    try:
+        if _HISTORY_PATH.exists():
+            with open(_HISTORY_PATH, "r", encoding="utf-8") as f:
+                history = json.load(f)
+        else:
+            history = []
+    except Exception:
+        history = []
+
+    if not history:
+        return {"success": False, "error": "No scan history available to export"}
+
+    # Find the scan to export
+    scan = None
+    if scan_id:
+        for h in history:
+            if h.get("scan_id") == scan_id:
+                scan = h
+                break
+    if not scan:
+        scan = history[-1]  # Most recent
+
+    # Load threats for this scan
+    threats: list[dict[str, Any]] = []
+    try:
+        from avs_backend.threat_engine.quarantine_manager import export_quarantine_list
+        q_export = export_quarantine_list()
+        threats = q_export.get("items", [])
+    except Exception:
+        pass
+
+    # Also get threats from the scan result itself
+    scan_threats = scan.get("threats", [])
+    if scan_threats:
+        threats = scan_threats + threats
+
+    # Build export data
+    export_rows = []
+    for t in threats:
+        export_rows.append({
+            "scan_id": scan.get("scan_id", ""),
+            "scan_type": scan.get("scan_type", ""),
+            "scan_date": scan.get("completed_at", scan.get("started_at", "")),
+            "threat_name": t.get("threat_name", t.get("name", "")),
+            "threat_type": t.get("threat_type", t.get("category", "")),
+            "severity": t.get("severity", ""),
+            "file_path": t.get("path", t.get("original_path", "")),
+            "source": t.get("source", t.get("detection_source", "")),
+            "quarantined": t.get("quarantined", False),
+        })
+
+    # Add summary row
+    summary = {
+        "scan_id": scan.get("scan_id", ""),
+        "scan_type": scan.get("scan_type", ""),
+        "scan_date": scan.get("completed_at", scan.get("started_at", "")),
+        "files_scanned": scan.get("files_scanned", 0),
+        "threats_found": scan.get("threats_found", 0),
+        "threats_quarantined": scan.get("threats_quarantined", 0),
+        "status": scan.get("status", ""),
+    }
+
+    if fmt == "json":
+        export_data = json.dumps({
+            "summary": summary,
+            "threats": export_rows,
+        }, indent=2)
+        # Save to temp file
+        export_path = os.path.join(tempfile.gettempdir(), f"avs_scan_export_{scan.get('scan_id', 'recent')}.json")
+        with open(export_path, "w", encoding="utf-8") as f:
+            f.write(export_data)
+        return {
+            "success": True,
+            "format": "json",
+            "path": export_path,
+            "summary": summary,
+            "threats_count": len(export_rows),
+        }
+    else:
+        # CSV format
+        output = io.StringIO()
+        writer = csv.DictWriter(output, fieldnames=[
+            "scan_id", "scan_type", "scan_date",
+            "threat_name", "threat_type", "severity",
+            "file_path", "source", "quarantined",
+        ])
+        writer.writeheader()
+        writer.writerows(export_rows)
+        export_path = os.path.join(tempfile.gettempdir(), f"avs_scan_export_{scan.get('scan_id', 'recent')}.csv")
+        with open(export_path, "w", encoding="utf-8", newline="") as f:
+            f.write(output.getvalue())
+        return {
+            "success": True,
+            "format": "csv",
+            "path": export_path,
+            "summary": summary,
+            "threats_count": len(export_rows),
+        }
+
+
 log.info("Threat Engine module loaded — %d detection sources configured",
          sum(1 for v in _config.get("enabled_sources", {}).values() if v))
 
