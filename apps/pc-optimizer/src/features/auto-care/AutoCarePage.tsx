@@ -10,7 +10,7 @@
  * Pro: configure, enable/disable, run now, clear log
  */
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Button, Badge } from '@avs/ui';
+import { Card, Button, Badge, GaugeCard, StatTile } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
 import { HelpButton } from '../../components/HelpButton';
 import { useUpgradeDialog } from '../../components/UpgradeDialog';
@@ -25,6 +25,7 @@ import {
   CpuChipIcon,
   ClockIcon,
   BoltIcon,
+  CircleStackIcon,
 } from '@heroicons/react/24/outline';
 import {
   autoCareService,
@@ -199,34 +200,83 @@ export default function AutoCarePage() {
         actions={<HelpButton text="Auto-Care runs in the background when your PC is idle. Configure which tasks to run and the idle threshold." />}
       />
 
-      {/* Info banner */}
-      <div className="rounded-[var(--avs-radius-lg)] border border-brand-primary/20 bg-brand-primary/5 p-4 flex items-start gap-3">
-        <SparklesIcon className="h-5 w-5 text-brand-primary shrink-0 mt-0.5" />
-        <div>
-          <div className="text-small font-medium text-text-primary">AI-Powered Idle Maintenance</div>
-          <p className="text-caption text-text-secondary mt-1">
-            Auto-Care monitors your system idle time using Windows GetLastInputInfo. When idle for the configured
-            threshold and CPU usage is low, it automatically runs cleanup tasks.
-          </p>
+      {/* Hero status section — System Mechanic style */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="autocare-hero-section">
+        {/* Gauge */}
+        <GaugeCard
+          title={isRunning ? 'Active' : isEnabled ? 'Standby' : 'Disabled'}
+          value={isRunning ? 100 : isEnabled ? 50 : 0}
+          unit=""
+          tone={isRunning ? 'success' : isEnabled ? 'warning' : 'danger'}
+          icon={<SparklesIcon className="h-6 w-6" />}
+          description={
+            isRunning
+              ? `Idle: ${formatDuration(status?.currentIdleSeconds ?? 0)}`
+              : isEnabled
+                ? 'Waiting for idle threshold'
+                : 'Auto-Care is off'
+          }
+          data-testid="autocare-hero-gauge"
+        />
+
+        {/* Key stats */}
+        <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <StatTile
+            label="Status"
+            value={isRunning ? 'Running' : isEnabled ? 'Standby' : 'Off'}
+            hint={isRunning ? 'Active now' : isEnabled ? 'Enabled' : 'Disabled'}
+            icon={<SparklesIcon className="h-5 w-5" />}
+            variant="glass"
+            accentColor={isRunning ? 'var(--avs-success)' : isEnabled ? 'var(--avs-warning)' : 'var(--avs-danger)'}
+          />
+          <StatTile
+            label="Idle Time"
+            value={formatDuration(status?.currentIdleSeconds ?? 0)}
+            hint={`Threshold: ${formatDuration(config?.idleThresholdSeconds ?? 0)}`}
+            icon={<ClockIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Last Run"
+            value={status?.lastRunAt ? formatDate(status.lastRunAt).split(' ')[0] : '—'}
+            hint={status?.lastRunAt ? formatDate(status.lastRunAt).split(' ').slice(1).join(' ') : 'Never'}
+            icon={<ArrowPathIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Log Entries"
+            value={logEntries.length.toString()}
+            hint="Activity records"
+            icon={<CircleStackIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Tasks"
+            value={config ? Object.values(config.tasks).filter(Boolean).length.toString() : '0'}
+            hint="Enabled tasks"
+            icon={<BoltIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Edition"
+            value={isPro ? 'Pro' : 'Free'}
+            hint={isPro ? 'Full control' : 'View only'}
+            icon={<CpuChipIcon className="h-5 w-5" />}
+            variant="glass"
+            accentColor={isPro ? 'var(--avs-success)' : 'var(--avs-warning)'}
+          />
         </div>
       </div>
 
-      {/* Status + Enable toggle */}
-      <Card variant="glass" className="p-6">
+      {/* Action buttons */}
+      <Card variant="glass" className="p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-3 ${
-              isRunning ? 'bg-semantic-success/10' : 'bg-surface-muted'
-            }`}>
-              <SparklesIcon className={`h-6 w-6 ${isRunning ? 'text-semantic-success' : 'text-text-muted'}`} />
-            </div>
+          <div className="flex items-center gap-3">
+            <SparklesIcon className={`h-5 w-5 ${isRunning ? 'text-semantic-success' : 'text-text-muted'}`} />
             <div>
-              <div className="text-section-title text-text-primary">Auto-Care Status</div>
-              <p className="text-caption text-text-secondary mt-1">
-                {isRunning
-                  ? `Active · Current idle: ${formatDuration(status?.currentIdleSeconds ?? 0)}`
-                  : 'Inactive'}
-                {status?.lastRunAt && ` · Last run: ${formatDate(status.lastRunAt)}`}
+              <div className="text-small font-medium text-text-primary">Auto-Care Controls</div>
+              <p className="text-caption text-text-secondary">
+                {isRunning ? 'Currently active' : isEnabled ? 'Enabled, waiting for idle' : 'Disabled'}
               </p>
             </div>
           </div>
