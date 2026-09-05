@@ -874,13 +874,15 @@ def _get_security_metrics() -> dict[str, Any]:
             return {}
 
         # Run security probes in parallel (each may shell out to PowerShell)
-        pool = ThreadPoolExecutor(max_workers=5)
+        pool = ThreadPoolExecutor(max_workers=7)
         security_futures = {
             "defender": pool.submit(_get_defender_status),
             "firewall": pool.submit(_get_firewall_status),
             "updates": pool.submit(_get_windows_update_status),
             "smart_screen": pool.submit(_get_smartscreen_status),
             "avs_av_active": pool.submit(_get_avs_av_active),
+            "ransomware_protection": pool.submit(_get_ransomware_protection_status),
+            "memory_integrity": pool.submit(_get_memory_integrity_status),
         }
         security_results = {}
         for name, fut in security_futures.items():
@@ -899,6 +901,8 @@ def _get_security_metrics() -> dict[str, Any]:
             "realTimeProtection": security_results["defender"].get("realTimeProtection", False) or avs_active,
             "smartScreen": security_results["smart_screen"],
             "avs_av_active": avs_active,
+            "ransomwareProtection": security_results["ransomware_protection"],
+            "memoryIntegrity": security_results["memory_integrity"],
         }
     except Exception as e:
         log.warning("Failed to get security metrics: %s", e)
@@ -1040,7 +1044,13 @@ def _calculate_security_score(security_metrics: dict[str, Any]) -> float:
     updates = security_metrics.get("updates", {})
     if updates.get("pendingUpdates", 0) > 0:
         score -= 15
-    
+
+    if not security_metrics.get("ransomwareProtection", False):
+        score -= 5
+
+    if not security_metrics.get("memoryIntegrity", False):
+        score -= 5
+
     return max(0, score)
 
 
@@ -1452,6 +1462,54 @@ def _get_tpm_status() -> bool:
         return False
     out = _run_powershell("try { (Get-Tpm).TpmPresent } catch { 'False' }")
     return bool(out) and out.strip().lower() == "true"
+
+
+@_ttl_cache(1800.0)
+def _get_ransomware_protection_status() -> bool:
+    """Check Controlled Folder Access (Ransomware Protection) status.
+
+    Uses the Defender COM API via PowerShell. Requires no admin to *read*.
+    Cached for 30 minutes.
+    """
+    if os.name != "nt":
+        return False
+    out = _run_powershell(
+        "try { (Get-MpPreference).EnableControlledFolderAccess } catch { 'unknown' }"
+    )
+    if not out:
+        return False
+    val = out.strip().lower()
+    # EnableControlledFolderAccess returns 1 (enabled), 0 (disabled), or throws
+    return val == "1"
+
+
+@_ttl_cache(1800.0)
+def _get_memory_integrity_status() -> bool:
+    """Check Memory Integrity (HVCI / Core Isolation) status.
+
+    Queries the device guard / virtualization based security status via
+    WMI/PowerShell. Cached for 30 minutes.
+    """
+    if os.name != "nt":
+        return False
+    # Check if HVCI (Hypervisor-Protected Code Integrity) is running
+    out = _run_powershell(
+        "try { "
+        "(Get-CimInstance -ClassName Win32_DeviceGuard -Namespace "
+        "'root\\Microsoft\\Windows\\DeviceGuard').SecurityServicesRunning "
+        "-join ',' "
+        "} catch { 'unknown' }"
+    )
+    if not out:
+        return False
+    val = out.strip()
+    # SecurityServicesRunning is an array; value 2 means HVCI is running
+    # (1 = Credential Guard, 2 = HVCI, 3 = both)
+    try:
+        parts = [int(p.strip()) for p in val.split(",") if p.strip().isdigit()]
+        return 2 in parts
+    except (ValueError, TypeError):
+        return False
 
 
 def _decode_wsc_product_state(state: int) -> tuple[str, str]:

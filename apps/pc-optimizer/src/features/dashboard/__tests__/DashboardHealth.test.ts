@@ -32,6 +32,8 @@ function makeMetrics(overrides: Partial<DashboardMetrics> = {}): DashboardMetric
       updates: { pendingUpdates: 0, lastUpdateDate: null },
       realTimeProtection: true,
       smartScreen: true,
+      ransomwareProtection: true,
+      memoryIntegrity: true,
     },
     performance: { startupApps: 3, backgroundProcesses: 50, temporaryFilesSize: 100_000_000, recycleBinSize: 50_000_000, browserCacheSize: 20_000_000, potentialRecoverable: 170_000_000 },
     network: { uploadSpeed: 0, downloadSpeed: 0, totalBytesSent: 0, totalBytesReceived: 0 },
@@ -230,6 +232,8 @@ describe('Health Score Philosophy — score zones', () => {
         updates: { pendingUpdates: 10, lastUpdateDate: null },
         realTimeProtection: false,
         smartScreen: false,
+        ransomwareProtection: false,
+        memoryIntegrity: false,
       },
       performance: { startupApps: 10, backgroundProcesses: 200, temporaryFilesSize: 20_000_000_000, recycleBinSize: 10_000_000_000, browserCacheSize: 5_000_000_000, potentialRecoverable: 35_000_000_000 },
     });
@@ -999,6 +1003,8 @@ describe('Part 6 — Health categories and messaging', () => {
         updates: { pendingUpdates: 5, lastUpdateDate: null },
         realTimeProtection: false,
         smartScreen: false,
+        ransomwareProtection: false,
+        memoryIntegrity: false,
       },
       performance: { startupApps: 10, backgroundProcesses: 150, temporaryFilesSize: 15_000_000_000, recycleBinSize: 5_000_000_000, browserCacheSize: 3_000_000_000, potentialRecoverable: 23_000_000_000 },
     }), 8);
@@ -1021,6 +1027,8 @@ describe('Part 6 — Health categories and messaging', () => {
         updates: { pendingUpdates: 10, lastUpdateDate: null },
         realTimeProtection: false,
         smartScreen: false,
+        ransomwareProtection: false,
+        memoryIntegrity: false,
       },
       performance: { startupApps: 10, backgroundProcesses: 200, temporaryFilesSize: 20_000_000_000, recycleBinSize: 10_000_000_000, browserCacheSize: 5_000_000_000, potentialRecoverable: 35_000_000_000 },
     }), 10);

@@ -39,6 +39,8 @@ function makeMetrics(overrides: Partial<DashboardMetrics> = {}): DashboardMetric
       updates: { pendingUpdates: 0, lastUpdateDate: null },
       realTimeProtection: true,
       smartScreen: true,
+      ransomwareProtection: true,
+      memoryIntegrity: true,
     },
     performance: { startupApps: 0, backgroundProcesses: 50, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 },
     ...overrides,
@@ -494,6 +496,8 @@ describe('Part 14 — Penalty Weighting', () => {
         updates: { pendingUpdates: 5, lastUpdateDate: null },
         realTimeProtection: false,
         smartScreen: false,
+        ransomwareProtection: false,
+        memoryIntegrity: false,
       },
     }), 0);
     expect(insecure.categoryScores.security).toBeLessThan(secure.categoryScores.security);
@@ -564,6 +568,8 @@ describe('Part 14 — Score Recovery After Optimization', () => {
         updates: { pendingUpdates: 0, lastUpdateDate: null },
         realTimeProtection: false,
         smartScreen: true,
+        ransomwareProtection: true,
+        memoryIntegrity: true,
       },
     }), 0);
     expect(afterOpt.overallScore).toBeLessThan(100);

@@ -39,7 +39,7 @@ function makeMetrics(overrides: Partial<DashboardMetrics> = {}): DashboardMetric
     storage: [{ mount: 'C:', name: 'SSD', total: 500 * 1024 ** 3, used: 300 * 1024 ** 3, free: 200 * 1024 ** 3, usage: 60, isSSD: true, fileSystem: 'NTFS' }],
     network: { uploadSpeed: 10, downloadSpeed: 50, totalBytesSent: 1000, totalBytesReceived: 5000 },
     windows: { version: '10', build: '19041', uptime: 3600, isAdministrator: true, powerMode: 'balanced', battery: { percent: 80, powerPlugged: true }, secureBoot: true, tpmStatus: true },
-    security: { defender: { enabled: true, realTimeProtection: true }, firewall: { enabled: true }, updates: { pendingUpdates: 0, lastUpdateDate: null }, realTimeProtection: true, smartScreen: true },
+    security: { defender: { enabled: true, realTimeProtection: true }, firewall: { enabled: true }, updates: { pendingUpdates: 0, lastUpdateDate: null }, realTimeProtection: true, smartScreen: true, ransomwareProtection: true, memoryIntegrity: true },
     performance: { startupApps: 5, backgroundProcesses: 20, temporaryFilesSize: 100 * 1024 * 1024, recycleBinSize: 50 * 1024 * 1024, browserCacheSize: 30 * 1024 * 1024, potentialRecoverable: 200 * 1024 * 1024 },
     ...overrides,
   } as DashboardMetrics;

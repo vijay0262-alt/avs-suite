@@ -176,6 +176,8 @@ function createMockMetrics(overrides: Partial<DashboardMetrics> = {}): Dashboard
       updates: { pendingUpdates: 0, lastUpdateDate: new Date().toISOString() },
       realTimeProtection: true,
       smartScreen: true,
+      ransomwareProtection: true,
+      memoryIntegrity: true,
     },
     performance: {
       startupApps: 5,

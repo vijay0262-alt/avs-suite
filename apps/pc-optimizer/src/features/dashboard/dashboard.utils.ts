@@ -486,7 +486,7 @@ export function calculateHealthScore(
   const memory = metrics?.memory ?? { total: 0, used: 0, available: 0, usage: 0, cached: 0, swapTotal: 0, swapUsed: 0, swapUsage: 0 };
   const storage = metrics?.storage ?? [];
   const windows = metrics?.windows ?? { version: '', build: '', uptime: 0, isAdministrator: false, powerMode: 'unknown', battery: null, secureBoot: false, tpmStatus: false };
-  const security = metrics?.security ?? { defender: { enabled: false, realTimeProtection: false }, firewall: { enabled: false }, updates: { pendingUpdates: 0, lastUpdateDate: null }, realTimeProtection: false, smartScreen: false };
+  const security = metrics?.security ?? { defender: { enabled: false, realTimeProtection: false }, firewall: { enabled: false }, updates: { pendingUpdates: 0, lastUpdateDate: null }, realTimeProtection: false, smartScreen: false, ransomwareProtection: false, memoryIntegrity: false };
   const performance = metrics?.performance ?? { startupApps: 0, backgroundProcesses: 0, temporaryFilesSize: 0, recycleBinSize: 0, browserCacheSize: 0, potentialRecoverable: 0 };
   const capturedAt = metrics?.capturedAt ?? new Date().toISOString();
 

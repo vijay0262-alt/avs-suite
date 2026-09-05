@@ -213,6 +213,8 @@ function createMockMetrics(overrides: Partial<DashboardMetrics> = {}): Dashboard
       updates: { pendingUpdates: 0, lastUpdateDate: new Date().toISOString() },
       realTimeProtection: true,
       smartScreen: true,
+      ransomwareProtection: true,
+      memoryIntegrity: true,
     },
     performance: {
       startupApps: 5,
@@ -486,7 +488,7 @@ describe('Category Analyzers', () => {
     it('detects pending updates', () => {
       const analyzer = new SystemUpdatesAnalyzer();
       const result = analyzer.analyze(createInput({
-        metrics: createMockMetrics({ security: { defender: { enabled: true, realTimeProtection: true }, firewall: { enabled: true }, updates: { pendingUpdates: 5, lastUpdateDate: new Date().toISOString() }, realTimeProtection: true, smartScreen: true } }),
+        metrics: createMockMetrics({ security: { defender: { enabled: true, realTimeProtection: true }, firewall: { enabled: true }, updates: { pendingUpdates: 5, lastUpdateDate: new Date().toISOString() }, realTimeProtection: true, smartScreen: true, ransomwareProtection: true, memoryIntegrity: true } }),
       }));
       expect(result.issues.some((i) => i.title.includes('pending'))).toBe(true);
     });
@@ -495,7 +497,7 @@ describe('Category Analyzers', () => {
       const analyzer = new SystemUpdatesAnalyzer();
       const oldDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
       const result = analyzer.analyze(createInput({
-        metrics: createMockMetrics({ security: { defender: { enabled: true, realTimeProtection: true }, firewall: { enabled: true }, updates: { pendingUpdates: 0, lastUpdateDate: oldDate }, realTimeProtection: true, smartScreen: true } }),
+        metrics: createMockMetrics({ security: { defender: { enabled: true, realTimeProtection: true }, firewall: { enabled: true }, updates: { pendingUpdates: 0, lastUpdateDate: oldDate }, realTimeProtection: true, smartScreen: true, ransomwareProtection: true, memoryIntegrity: true } }),
       }));
       expect(result.issues.some((i) => i.title.includes('overdue'))).toBe(true);
     });
@@ -520,7 +522,7 @@ describe('Category Analyzers', () => {
     it('detects disabled antivirus', () => {
       const analyzer = new SecurityAnalyzer();
       const result = analyzer.analyze(createInput({
-        metrics: createMockMetrics({ security: { defender: { enabled: false, realTimeProtection: true }, firewall: { enabled: true }, updates: { pendingUpdates: 0, lastUpdateDate: null }, realTimeProtection: true, smartScreen: true } }),
+        metrics: createMockMetrics({ security: { defender: { enabled: false, realTimeProtection: true }, firewall: { enabled: true }, updates: { pendingUpdates: 0, lastUpdateDate: null }, realTimeProtection: true, smartScreen: true, ransomwareProtection: true, memoryIntegrity: true } }),
       }));
       expect(result.severity).toBe('critical');
     });
@@ -528,7 +530,7 @@ describe('Category Analyzers', () => {
     it('detects disabled firewall', () => {
       const analyzer = new SecurityAnalyzer();
       const result = analyzer.analyze(createInput({
-        metrics: createMockMetrics({ security: { defender: { enabled: true, realTimeProtection: true }, firewall: { enabled: false }, updates: { pendingUpdates: 0, lastUpdateDate: null }, realTimeProtection: true, smartScreen: true } }),
+        metrics: createMockMetrics({ security: { defender: { enabled: true, realTimeProtection: true }, firewall: { enabled: false }, updates: { pendingUpdates: 0, lastUpdateDate: null }, realTimeProtection: true, smartScreen: true, ransomwareProtection: true, memoryIntegrity: true } }),
       }));
       expect(result.issues.some((i) => i.title.includes('Firewall'))).toBe(true);
     });

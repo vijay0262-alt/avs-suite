@@ -67,6 +67,8 @@ export interface SecurityMetrics {
   };
   realTimeProtection: boolean;
   smartScreen: boolean;
+  ransomwareProtection: boolean;
+  memoryIntegrity: boolean;
 }
 
 export interface PerformanceMetrics {

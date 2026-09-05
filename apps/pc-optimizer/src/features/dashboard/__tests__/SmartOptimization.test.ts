@@ -59,6 +59,8 @@ function makeMetrics(overrides: Partial<DashboardMetrics> = {}): DashboardMetric
       updates: { pendingUpdates: 0, lastUpdateDate: null },
       realTimeProtection: true,
       smartScreen: true,
+      ransomwareProtection: true,
+      memoryIntegrity: true,
     },
     performance: { startupApps: 3, backgroundProcesses: 50, temporaryFilesSize: 100_000_000, recycleBinSize: 50_000_000, browserCacheSize: 20_000_000, potentialRecoverable: 170_000_000 },
     network: { uploadSpeed: 0, downloadSpeed: 0, totalBytesSent: 0, totalBytesReceived: 0 },

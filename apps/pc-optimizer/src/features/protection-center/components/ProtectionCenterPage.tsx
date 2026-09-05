@@ -190,11 +190,11 @@ function deriveProtectionItems(metrics: DashboardMetrics | null): ProtectionItem
   });
 
   // 5. Ransomware Protection (Controlled Folder Access)
-  // Backend does not currently provide this telemetry.
+  const ransomwareProtection = sec?.ransomwareProtection ?? null;
   items.push({
     id: 'ransomware-protection',
     name: 'Ransomware Protection',
-    status: 'unknown',
+    status: ransomwareProtection === true ? 'enabled' : ransomwareProtection === false ? 'disabled' : 'unknown',
     icon: LockClosedIcon,
   });
 
@@ -207,12 +207,12 @@ function deriveProtectionItems(metrics: DashboardMetrics | null): ProtectionItem
     icon: KeyIcon,
   });
 
-  // 7. Memory Integrity (Core Isolation)
-  // Backend does not currently provide this telemetry.
+  // 7. Memory Integrity (Core Isolation / HVCI)
+  const memoryIntegrity = sec?.memoryIntegrity ?? null;
   items.push({
     id: 'memory-integrity',
     name: 'Memory Integrity',
-    status: 'unknown',
+    status: memoryIntegrity === true ? 'enabled' : memoryIntegrity === false ? 'disabled' : 'unknown',
     icon: CpuChipIcon,
   });
 
@@ -312,6 +312,24 @@ function deriveRecommendations(metrics: DashboardMetrics | null): Recommendation
       id: 'pending-updates',
       title: `${pending} pending security update${pending === 1 ? '' : 's'}`,
       description: 'Install pending Windows security updates to stay protected against known vulnerabilities.',
+    });
+  }
+
+  // Ransomware Protection (Controlled Folder Access) disabled
+  if (sec.ransomwareProtection === false) {
+    recs.push({
+      id: 'enable-ransomware-protection',
+      title: 'Ransomware Protection is off',
+      description: 'Enable Controlled Folder Access in Windows Security to protect your files from unauthorized changes by ransomware.',
+    });
+  }
+
+  // Memory Integrity (HVCI) disabled
+  if (sec.memoryIntegrity === false) {
+    recs.push({
+      id: 'enable-memory-integrity',
+      title: 'Memory Integrity is off',
+      description: 'Enable Memory Integrity (Core Isolation) in Windows Security to protect against malicious code injection.',
     });
   }
 

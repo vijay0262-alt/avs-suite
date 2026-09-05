@@ -140,6 +140,19 @@ def enable_defender(_params: dict[str, Any] | None = None) -> dict[str, Any]:
     if os.name != "nt":
         return {"enabled": False, "error": "Not supported on this platform"}
 
+    try:
+        import ctypes
+        is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+    except Exception:
+        is_admin = False
+
+    if not is_admin:
+        return {
+            "enabled": False,
+            "message": "Administrator privileges required. Please run AVS AI Shield as Administrator to enable Windows Defender.",
+            "timestamp": _now_iso(),
+        }
+
     ps_script = r"""
     try {
         # Re-enable Defender anti-spyware
@@ -177,6 +190,19 @@ def enable_firewall(_params: dict[str, Any] | None = None) -> dict[str, Any]:
     """
     if os.name != "nt":
         return {"enabled": False, "error": "Not supported on this platform"}
+
+    try:
+        import ctypes
+        is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+    except Exception:
+        is_admin = False
+
+    if not is_admin:
+        return {
+            "enabled": False,
+            "message": "Administrator privileges required. Please run AVS AI Shield as Administrator to enable the Firewall.",
+            "timestamp": _now_iso(),
+        }
 
     ps_script = r"""
     try {
