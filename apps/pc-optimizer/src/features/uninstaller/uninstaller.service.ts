@@ -2,6 +2,7 @@
  * Uninstaller service — RPC wrapper.
  */
 import type { ProgramList, Program, UninstallResult, LeftoverResult } from './uninstaller.types';
+import { RPC_METHODS } from '@avs/shared/rpc';
 
 function client() {
   if (typeof window === 'undefined' || !window.avs) {
@@ -18,15 +19,15 @@ export interface IUninstallerService {
 
 class UninstallerService implements IUninstallerService {
   async list(includeSystem = false): Promise<ProgramList> {
-    return await client().call('uninstaller.list', { includeSystem });
+    return await client().call(RPC_METHODS.UNINSTALLER_LIST, { includeSystem });
   }
 
   async uninstall(program: Program, quiet = false): Promise<UninstallResult> {
-    return await client().call('uninstaller.uninstall', { program, quiet });
+    return await client().call(RPC_METHODS.UNINSTALLER_UNINSTALL, { program, quiet });
   }
 
   async scanLeftovers(program: Program): Promise<LeftoverResult> {
-    return await client().call('uninstaller.scanLeftovers', { program });
+    return await client().call(RPC_METHODS.UNINSTALLER_SCAN_LEFTOVERS, { program });
   }
 }
 

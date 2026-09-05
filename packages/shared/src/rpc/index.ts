@@ -112,6 +112,11 @@ export const RPC_METHODS = {
   DUPLICATE_LIST_DRIVES: 'duplicate.listDrives',
   DUPLICATE_ESTIMATE: 'duplicate.estimate',
 
+  // Uninstaller
+  UNINSTALLER_LIST: 'uninstaller.list',
+  UNINSTALLER_UNINSTALL: 'uninstaller.uninstall',
+  UNINSTALLER_SCAN_LEFTOVERS: 'uninstaller.scanLeftovers',
+
   // Disk Analyzer
   DISK_ANALYZE: 'disk.analyze',
   DISK_LIST_DRIVES: 'disk.listDrives',

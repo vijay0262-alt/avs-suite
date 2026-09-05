@@ -2,7 +2,7 @@
  * UninstallerPage — list installed programs and launch their uninstallers.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { Card, Button } from '@avs/ui';
+import { Card, Button, GaugeCard, StatTile } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { FreeEditionNotice } from '../../components/FreeEditionNotice';
@@ -15,6 +15,14 @@ import { useUpgradeDialog } from '../../components/UpgradeDialog';
 import { UninstallerViewModel, type SortKey } from './UninstallerViewModel';
 import { uninstallerService } from './uninstaller.service';
 import type { Program } from './uninstaller.types';
+import {
+  CircleStackIcon,
+  ArrowDownTrayIcon,
+  ArrowPathIcon,
+  TrashIcon,
+  SparklesIcon,
+  CommandLineIcon,
+} from '@heroicons/react/24/outline';
 
 function formatBytes(bytes: number): string {
   if (!bytes || bytes <= 0) return '—';
@@ -84,15 +92,65 @@ export default function UninstallerPage() {
 
       {state.bootstrap === 'ready' && (
         <>
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <Card variant="glass" padded={false} className="p-3">
-              <p className="text-statistic text-text-primary">{state.total}</p>
-              <p className="text-caption text-text-secondary">Installed programs</p>
-            </Card>
-            <Card variant="glass" padded={false} className="p-3">
-              <p className="text-statistic text-text-primary">{formatBytes(state.totalSizeBytes)}</p>
-              <p className="text-caption text-text-secondary">Total size</p>
-            </Card>
+          {/* Hero status section — System Mechanic style */}
+          <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="uninstaller-hero-section">
+            {/* Gauge */}
+            <GaugeCard
+              title="Installed Programs"
+              value={Math.min(100, state.total)}
+              unit=""
+              tone="brand"
+              icon={<CircleStackIcon className="h-6 w-6" />}
+              description={`${state.total} programs · ${formatBytes(state.totalSizeBytes)} total`}
+              data-testid="uninstaller-hero-gauge"
+            />
+
+            {/* Key stats */}
+            <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <StatTile
+                label="Programs"
+                value={state.total.toString()}
+                hint="Installed on system"
+                icon={<CircleStackIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+              <StatTile
+                label="Total Size"
+                value={formatBytes(state.totalSizeBytes)}
+                hint="Disk space used"
+                icon={<ArrowDownTrayIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+              <StatTile
+                label="Visible"
+                value={programs.length.toString()}
+                hint={state.search ? 'Filtered results' : 'All programs'}
+                icon={<CommandLineIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+              <StatTile
+                label="Edition"
+                value={isPro ? 'Pro' : 'Free'}
+                hint={isPro ? 'Full access' : 'View only'}
+                icon={<SparklesIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+              <StatTile
+                label="Action"
+                value={isPro ? 'Uninstall' : 'Locked'}
+                hint={isPro ? 'Click to remove' : 'Upgrade to unlock'}
+                icon={<TrashIcon className="h-5 w-5" />}
+                variant="glass"
+                accentColor={isPro ? 'var(--avs-success)' : 'var(--avs-warning)'}
+              />
+              <StatTile
+                label="Refresh"
+                value="Ready"
+                hint="Click to rescan"
+                icon={<ArrowPathIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+            </div>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
@@ -112,7 +170,7 @@ export default function UninstallerPage() {
               <option value="size">Sort: Size</option>
               <option value="date">Sort: Install date</option>
             </select>
-            <Button variant="secondary" onClick={() => vm.load()}>
+            <Button variant="secondary" onClick={() => vm.load()} leftIcon={<ArrowPathIcon className="h-4 w-4" />}>
               Refresh
             </Button>
           </div>
