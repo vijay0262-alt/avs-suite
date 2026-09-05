@@ -287,12 +287,18 @@ class DefenderScanner:
         log.info("DefenderScanner initialized: MpCmdRun=%s", self.mpcmdrun_path)
 
     def scan_file(self, file_path: str) -> dict[str, Any] | None:
-        """Scan a single file using Windows Defender (MpCmdRun custom scan)."""
-        if not IS_WINDOWS:
-            return None
+        """Check a file against Windows Defender's threat history.
 
-        if not os.path.exists(self.mpcmdrun_path) or not os.path.isfile(self.mpcmdrun_path):
-            log.debug("MpCmdRun.exe unavailable, skipping Defender scan")
+        Uses Defender's recorded threat detections (Get-MpThreatDetection)
+        instead of running MpCmdRun.exe per-file, which spawns a new process
+        per file and takes 10-120 seconds each — making scans appear stuck
+        after a handful of files.
+
+        Defender's real-time protection already scans files on access, so
+        per-file MpCmdRun calls are redundant. MpCmdRun is still available
+        via scan_directory() for explicit batch scans.
+        """
+        if not IS_WINDOWS:
             return None
 
         if not os.path.exists(file_path) or not os.path.isfile(file_path):
@@ -300,35 +306,7 @@ class DefenderScanner:
 
         sha256 = _compute_sha256(file_path)
 
-        # ScanType 3 = custom scan targeting a specific file.
-        args = [self.mpcmdrun_path, "-Scan", "-ScanType", "3", "-File", file_path]
-        output = _run_command(args, timeout=self.scan_timeout)
-        if output is None:
-            log.debug("Defender scan produced no output for %s", file_path)
-            return None
-
-        # MpCmdRun prints a summary when threats are found, e.g.:
-        #   "Threat   : Trojan:Win32/Eicar ..."
-        #   "Start time: ..."
-        #   "CmdLine: ..."
-        # On a clean scan it typically reports no threat lines.
-        threat_name = self._extract_threat_name(output)
-        if threat_name:
-            return {
-                "detected": True,
-                "threat_name": threat_name,
-                "threat_type": _classify_threat_type(threat_name),
-                "severity": _severity_from_threat(threat_name),
-                "confidence": 0.9,
-                "sha256": sha256,
-                "details": {
-                    "source": "defender",
-                    "raw_output": output.strip(),
-                },
-            }
-
-        # Fall back to checking Defender threat history for this file path,
-        # in case MpCmdRun did not surface a name but Defender recorded it.
+        # Check Defender threat history for this file path.
         history_match = self._match_threat_history(file_path)
         if history_match:
             threat_name = history_match.get("threat_name", "Unknown")

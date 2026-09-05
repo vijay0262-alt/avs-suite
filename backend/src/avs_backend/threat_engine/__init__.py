@@ -43,7 +43,7 @@ import subprocess
 import threading
 import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor, Future
+from concurrent.futures import ThreadPoolExecutor, Future, TimeoutError as FutureTimeoutError
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -449,10 +449,18 @@ def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> N
 
         file_was_clean = True
 
-        # Run each detector on this file
+        # Run each detector on this file with a per-detector timeout
         for detector in detectors:
             try:
-                result = detector.scan_file(file_path)
+                result = None
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    future: Future = executor.submit(detector.scan_file, file_path)
+                    try:
+                        result = future.result(timeout=15)
+                    except FutureTimeoutError:
+                        log.warning("Detector %s timed out on %s, skipping", detector.name, file_path)
+                        future.cancel()
+                        continue
                 if result and result.get("detected"):
                     file_was_clean = False
                     threat = {
