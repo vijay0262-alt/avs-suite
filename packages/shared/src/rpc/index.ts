@@ -110,6 +110,7 @@ export const RPC_METHODS = {
   DUPLICATE_SCAN: 'duplicate.scan',
   DUPLICATE_DELETE: 'duplicate.delete',
   DUPLICATE_LIST_DRIVES: 'duplicate.listDrives',
+  DUPLICATE_ESTIMATE: 'duplicate.estimate',
 
   // Disk Analyzer
   DISK_ANALYZE: 'disk.analyze',

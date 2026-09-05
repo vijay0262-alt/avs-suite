@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useMemo } from 'react';
-import { Card, Button, Badge } from '@avs/ui';
+import { Card, Button, Badge, GaugeCard, StatTile } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleLoadingState, ModuleEmptyState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
@@ -24,6 +24,8 @@ import {
   ClockIcon,
   CheckCircleIcon,
   DocumentDuplicateIcon,
+  CircleStackIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
 
 const SCOPE_OPTIONS: { id: DuplicateScope; label: string }[] = [
@@ -244,28 +246,66 @@ export default function DuplicateFinderPage() {
                 />
               </div>
 
-              {/* Summary stats — compact */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                <Card variant="glass" padded={false} className="p-3">
-                  <p className="text-statistic text-text-primary">{state.scanResult.totalFiles}</p>
-                  <p className="text-caption text-text-secondary">Files scanned</p>
-                </Card>
-                <Card variant="glass" padded={false} className="p-3">
-                  <p className="text-statistic text-semantic-danger">{state.scanResult.totalDuplicates}</p>
-                  <p className="text-caption text-text-secondary">Duplicates</p>
-                </Card>
-                <Card variant="glass" padded={false} className="p-3">
-                  <p className="text-statistic text-semantic-success">
-                    {vm.formatBytes(state.scanResult.recoverableSpace)}
-                  </p>
-                  <p className="text-caption text-text-secondary">Recoverable</p>
-                </Card>
-                <Card variant="glass" padded={false} className="p-3">
-                  <p className="text-statistic text-text-primary">
-                    {(state.scanResult.scanDurationMs / 1000).toFixed(1)}s
-                  </p>
-                  <p className="text-caption text-text-secondary">Duration</p>
-                </Card>
+              {/* Hero status section — System Mechanic style */}
+              <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="duplicate-hero-section">
+                {/* Gauge */}
+                <GaugeCard
+                  title={state.scanResult.totalDuplicates > 0 ? 'Duplicates Found' : 'No Duplicates'}
+                  value={Math.min(100, state.scanResult.totalDuplicates)}
+                  unit=""
+                  tone={state.scanResult.totalDuplicates > 50 ? 'danger' : state.scanResult.totalDuplicates > 0 ? 'warning' : 'success'}
+                  icon={<DocumentDuplicateIcon className="h-6 w-6" />}
+                  description={state.scanResult.totalDuplicates > 0 ? `${vm.formatBytes(state.scanResult.recoverableSpace)} recoverable` : 'No duplicate files detected'}
+                  data-testid="duplicate-hero-gauge"
+                />
+
+                {/* Key stats */}
+                <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <StatTile
+                    label="Files Scanned"
+                    value={state.scanResult.totalFiles.toLocaleString()}
+                    hint="Total analyzed"
+                    icon={<CircleStackIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                  <StatTile
+                    label="Duplicates"
+                    value={state.scanResult.totalDuplicates.toString()}
+                    hint={`${state.scanResult.groups.length} groups`}
+                    icon={<DocumentDuplicateIcon className="h-5 w-5" />}
+                    variant="glass"
+                    accentColor={state.scanResult.totalDuplicates > 0 ? 'var(--avs-warning)' : 'var(--avs-success)'}
+                  />
+                  <StatTile
+                    label="Recoverable"
+                    value={vm.formatBytes(state.scanResult.recoverableSpace)}
+                    hint="Space to reclaim"
+                    icon={<ArrowDownTrayIcon className="h-5 w-5" />}
+                    variant="glass"
+                    accentColor="var(--avs-success)"
+                  />
+                  <StatTile
+                    label="Selected"
+                    value={vm.getSelectedCount().toString()}
+                    hint={vm.getSelectedCount() > 0 ? `${vm.formatBytes(vm.getSelectedSize())} to free` : 'Select files below'}
+                    icon={<CheckCircleIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                  <StatTile
+                    label="Duration"
+                    value={`${(state.scanResult.scanDurationMs / 1000).toFixed(1)}s`}
+                    hint="Scan time"
+                    icon={<ClockIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                  <StatTile
+                    label="Edition"
+                    value={isPro ? 'Pro' : 'Free'}
+                    hint={!isPro ? `${deleteLimit} files per session` : 'Unlimited'}
+                    icon={<SparklesIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                </div>
               </div>
 
               {/* Free edition limit banner — compact */}
