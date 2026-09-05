@@ -221,6 +221,7 @@ export const RPC_METHODS = {
   SECURITY_ENABLE_SMARTSCREEN: 'security.enableSmartScreen',
   SECURITY_ENABLE_DEFENDER: 'security.enableDefender',
   SECURITY_ENABLE_FIREWALL: 'security.enableFirewall',
+  SECURITY_ENABLE_RANSOMWARE_PROTECTION: 'security.enableRansomwareProtection',
 
   // Hardware Monitoring
   HARDWARE_SENSORS: 'hardware.sensors',

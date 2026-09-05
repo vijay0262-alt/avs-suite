@@ -95,7 +95,7 @@ class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
     }
   }
 
-  async fixIssue(action: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen'): Promise<void> {
+  async fixIssue(action: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen' | 'enableRansomwareProtection'): Promise<void> {
     this.setState({ fixMessage: null, fixSuccess: false });
     try {
       const rpcCall =
@@ -103,7 +103,9 @@ class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
           ? dashboardService.enableSmartScreen()
           : action === 'enableDefender'
             ? dashboardService.enableDefender()
-            : dashboardService.enableFirewall();
+            : action === 'enableFirewall'
+              ? dashboardService.enableFirewall()
+              : dashboardService.enableRansomwareProtection();
       const result = await rpcCall as { enabled?: boolean; message?: string };
       const message = result?.message ?? (result?.enabled ? 'Fix applied successfully' : 'Fix failed');
       this.setState({
@@ -139,7 +141,7 @@ interface Recommendation {
   id: string;
   title: string;
   description: string;
-  fixAction?: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen';
+  fixAction?: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen' | 'enableRansomwareProtection';
 }
 
 // ── Derivation helpers ─────────────────────────────────────────
@@ -321,6 +323,7 @@ function deriveRecommendations(metrics: DashboardMetrics | null): Recommendation
       id: 'enable-ransomware-protection',
       title: 'Ransomware Protection is off',
       description: 'Enable Controlled Folder Access in Windows Security to protect your files from unauthorized changes by ransomware.',
+      fixAction: 'enableRansomwareProtection',
     });
   }
 
@@ -460,7 +463,7 @@ export function ProtectionCenterPage() {
   }, [vm]);
 
   const handleFix = useCallback(
-    (action: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen') => {
+    (action: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen' | 'enableRansomwareProtection') => {
       void vm.fixIssue(action);
     },
     [vm],

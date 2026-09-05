@@ -10,9 +10,10 @@ The read-only quarantine listing is now served by the canonical RPC
 ``scan_core_rpc/__init__.py`` (SC-8C14 Phase 3).
 
 RPC methods:
-    security.enableSmartScreen    — enable Windows SmartScreen
-    security.enableDefender       — enable Windows Defender
-    security.enableFirewall       — enable Windows Firewall
+    security.enableSmartScreen              — enable Windows SmartScreen
+    security.enableDefender                 — enable Windows Defender
+    security.enableFirewall                 — enable Windows Firewall
+    security.enableRansomwareProtection     — enable Controlled Folder Access
 """
 
 from __future__ import annotations
@@ -216,5 +217,44 @@ def enable_firewall(_params: dict[str, Any] | None = None) -> dict[str, Any]:
     return {
         "enabled": success,
         "message": "Firewall enabled" if success else f"Failed: {output}",
+        "timestamp": _now_iso(),
+    }
+
+
+@register("security.enableRansomwareProtection")
+def enable_ransomware_protection(_params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Enable Controlled Folder Access (Ransomware Protection).
+
+    Uses Set-MpPreference to enable Controlled Folder Access.
+    Requires admin privileges.
+    """
+    if os.name != "nt":
+        return {"enabled": False, "error": "Not supported on this platform"}
+
+    try:
+        import ctypes
+        is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+    except Exception:
+        is_admin = False
+
+    if not is_admin:
+        return {
+            "enabled": False,
+            "message": "Administrator privileges required. Please run AVS AI Shield as Administrator to enable Ransomware Protection.",
+            "timestamp": _now_iso(),
+        }
+
+    ps_script = r"""
+    try {
+        Set-MpPreference -EnableControlledFolderAccess Enabled -ErrorAction Stop
+        Write-Output 'OK'
+    } catch {
+        Write-Output $_.Exception.Message
+    }
+"""
+    success, output = _run_powershell(ps_script)
+    return {
+        "enabled": success,
+        "message": "Ransomware Protection enabled" if success else f"Failed: {output}",
         "timestamp": _now_iso(),
     }

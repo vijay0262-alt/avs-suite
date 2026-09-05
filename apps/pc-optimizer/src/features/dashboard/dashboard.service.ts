@@ -34,6 +34,7 @@ export interface DashboardService {
   enableSmartScreen(): Promise<{ enabled: boolean; message: string }>;
   enableDefender(): Promise<{ enabled: boolean; message: string }>;
   enableFirewall(): Promise<{ enabled: boolean; message: string }>;
+  enableRansomwareProtection(): Promise<{ enabled: boolean; message: string }>;
 }
 
 export const dashboardService: DashboardService = {
@@ -46,4 +47,5 @@ export const dashboardService: DashboardService = {
   enableSmartScreen: () => client().call(RPC_METHODS.SECURITY_ENABLE_SMARTSCREEN),
   enableDefender: () => client().call(RPC_METHODS.SECURITY_ENABLE_DEFENDER),
   enableFirewall: () => client().call(RPC_METHODS.SECURITY_ENABLE_FIREWALL),
+  enableRansomwareProtection: () => client().call(RPC_METHODS.SECURITY_ENABLE_RANSOMWARE_PROTECTION),
 };
