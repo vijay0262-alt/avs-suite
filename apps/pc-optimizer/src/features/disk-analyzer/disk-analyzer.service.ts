@@ -3,6 +3,7 @@
  */
 
 import type { DiskAnalysisResult, DriveInfo, DeleteFilesResult } from './disk-analyzer.types';
+import { RPC_METHODS } from '@avs/shared/rpc';
 
 function client() {
   if (typeof window === 'undefined' || !window.avs) {
@@ -19,7 +20,7 @@ export interface IDiskAnalyzerService {
 
 class DiskAnalyzerService implements IDiskAnalyzerService {
   async listDrives(): Promise<DriveInfo[]> {
-    return await client().call('disk.listDrives');
+    return await client().call(RPC_METHODS.DISK_LIST_DRIVES);
   }
 
   async analyze(directory?: string, maxDepth?: number): Promise<DiskAnalysisResult> {
@@ -27,11 +28,11 @@ class DiskAnalyzerService implements IDiskAnalyzerService {
       directory,
       maxDepth,
     };
-    return await client().call('disk.analyze', params);
+    return await client().call(RPC_METHODS.DISK_ANALYZE, params);
   }
 
   async deleteFiles(files: string[]): Promise<DeleteFilesResult> {
-    return await client().call('disk.deleteFiles', { files });
+    return await client().call(RPC_METHODS.DISK_DELETE_FILES, { files });
   }
 }
 

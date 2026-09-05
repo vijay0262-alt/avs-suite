@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Badge } from '@avs/ui';
+import { Card, Button, Badge, GaugeCard, StatTile } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleLoadingState, ModuleErrorBanner } from '../../components/ModuleStates';
@@ -34,6 +34,9 @@ import {
   WrenchScrewdriverIcon as SystemIcon,
   ClipboardDocumentListIcon,
   PhotoIcon,
+  ClockIcon,
+  FolderIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
 const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -229,26 +232,65 @@ export default function DiskAnalyzerPage() {
                 </Card>
               )}
 
-              {/* Compact stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                <Card variant="glass" padded={false} className="p-3">
-                  <p className="text-statistic text-text-primary">{vm.formatBytes(state.analysisResult.totalSize)}</p>
-                  <p className="text-caption text-text-secondary">Total size</p>
-                </Card>
-                <Card variant="glass" padded={false} className="p-3">
-                  <p className="text-statistic text-text-primary">{state.analysisResult.fileCount}</p>
-                  <p className="text-caption text-text-secondary">Files</p>
-                </Card>
-                <Card variant="glass" padded={false} className="p-3">
-                  <p className="text-statistic text-text-primary">{state.analysisResult.directoryCount}</p>
-                  <p className="text-caption text-text-secondary">Directories</p>
-                </Card>
-                <Card variant="glass" padded={false} className="p-3">
-                  <p className="text-statistic text-text-primary">
-                    {(state.analysisResult.scanDurationMs / 1000).toFixed(1)}s
-                  </p>
-                  <p className="text-caption text-text-secondary">Duration</p>
-                </Card>
+              {/* Hero status section — System Mechanic style */}
+              <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="disk-analyzer-hero-section">
+                {/* Gauge */}
+                <GaugeCard
+                  title="Disk Usage"
+                  value={Math.min(100, Math.round((state.analysisResult.totalSize / (1024 * 1024 * 1024)) % 100))}
+                  unit=""
+                  tone="brand"
+                  icon={<ChartBarIcon className="h-6 w-6" />}
+                  description={`${vm.formatBytes(state.analysisResult.totalSize)} analyzed`}
+                  data-testid="disk-analyzer-hero-gauge"
+                />
+
+                {/* Key stats */}
+                <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <StatTile
+                    label="Total Size"
+                    value={vm.formatBytes(state.analysisResult.totalSize)}
+                    hint="Analyzed content"
+                    icon={<CircleStackIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                  <StatTile
+                    label="Files"
+                    value={state.analysisResult.fileCount.toLocaleString()}
+                    hint="Found on disk"
+                    icon={<DocumentTextIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                  <StatTile
+                    label="Directories"
+                    value={state.analysisResult.directoryCount.toString()}
+                    hint="Folders scanned"
+                    icon={<FolderIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                  <StatTile
+                    label="Selected"
+                    value={selectedCount.toString()}
+                    hint={selectedCount > 0 ? `${vm.formatBytes(selectedSize)} to delete` : 'Select files below'}
+                    icon={<CheckCircleIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                  <StatTile
+                    label="Duration"
+                    value={`${(state.analysisResult.scanDurationMs / 1000).toFixed(1)}s`}
+                    hint="Scan time"
+                    icon={<ClockIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                  <StatTile
+                    label="Edition"
+                    value={isPro ? 'Pro' : 'Free'}
+                    hint={isPro ? 'Can delete' : 'View only'}
+                    icon={<TrashIcon className="h-5 w-5" />}
+                    variant="glass"
+                    accentColor={isPro ? 'var(--avs-success)' : 'var(--avs-warning)'}
+                  />
+                </div>
               </div>
 
               {/* Categorized files */}
