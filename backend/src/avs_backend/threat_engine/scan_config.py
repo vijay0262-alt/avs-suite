@@ -38,6 +38,8 @@ SCAN_EXTENSIONS: frozenset[str] = frozenset({
     ".doc", ".xls", ".ppt", ".docm", ".xlsm", ".pptm",
     # Other potentially dangerous formats
     ".pdf", ".html", ".htm", ".swf", ".flv",
+    # Email files (scanned for malicious attachments)
+    ".eml", ".msg",
 })
 
 # ─── Extensions to always skip ───────────────────────────────────────
@@ -113,10 +115,11 @@ def get_scan_config() -> dict[str, Any]:
             "behavioral": True,
             "clamav": False,  # Disabled by default, requires bundled ClamAV
             "virustotal": False,  # Requires API key
+            "ml_detector": True,  # ML/AI-based detection
         },
         # Scan behavior
         "scan_archives": True,
-        "scan_email": False,
+        "scan_email": True,
         "auto_quarantine": True,
         # Quick scan targets (relative to drive root)
         "quick_scan_targets": [

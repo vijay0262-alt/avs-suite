@@ -94,11 +94,12 @@ _DEFAULT_CONFIG = {
         "heuristic": True,
         "defender": True,
         "behavioral": True,  # Behavioral analysis — process monitoring for zero-day threats
+        "ml_detector": True,  # ML/AI-based detection — PE file classification without signatures
     },
     "virustotal_api_key": "",  # Set via AVS_VIRUSTOTAL_API_KEY env var or threat.configure RPC
     "scan_max_file_size_mb": 100,
     "scan_archives": True,
-    "scan_email": False,
+    "scan_email": True,  # Scan email attachments (Outlook/Thunderbird/Windows Mail)
     "auto_quarantine": True,  # Auto-quarantine detected threats (Pro behavior)
     "exclude_paths": [
         "C:\\Windows\\WinSxS",
@@ -384,6 +385,14 @@ def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> N
         except Exception as e:
             log.warning("Behavioral detector init failed: %s", e)
             errors.append(f"Behavioral: {e}")
+
+    if enabled.get("ml_detector", True):
+        try:
+            from avs_backend.threat_engine.ml_detector import MlDetector
+            detectors.append(MlDetector(config))
+        except Exception as e:
+            log.warning("ML detector init failed: %s", e)
+            errors.append(f"ML detector: {e}")
 
     log.info("Threat scan %s: %d detectors initialized, %d files to scan", scan_id, len(detectors), len(targets))
 

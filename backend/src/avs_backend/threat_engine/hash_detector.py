@@ -51,6 +51,16 @@ _FEEDS = {
         "type": "POST",
         "description": "MalwareBazaar — tagged recent samples (ransomware, trojan, etc.)",
     },
+    "alienvault_otx": {
+        "url": "https://otx.alienvault.com/api/v1/indicators/file/malware/analysis",
+        "type": "GET",
+        "description": "AlienVault OTX — community threat intelligence pulses",
+    },
+    "malshare": {
+        "url": "https://malshare.com/api.php",
+        "type": "GET",
+        "description": "MalShare — community malware repository hashes",
+    },
 }
 
 # Seed with some known-malicious hashes (EICAR test file + common malware)
@@ -314,8 +324,62 @@ def update_hash_feeds(force: bool = False) -> dict[str, Any]:
     except Exception as e:
         log.warning("Failed to update from URLhaus: %s", e)
 
+    # Download from AlienVault OTX (community threat pulses)
+    try:
+        req = urllib.request.Request(
+            _FEEDS["alienvault_otx"]["url"],
+            headers={"X-OTX-API-KEY": "anonymous", "Accept": "application/json"},
+            method="GET",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+
+        results = data.get("results", [])
+        for entry in results[:300]:
+            sha256 = entry.get("hash", "") or entry.get("sha256", "")
+            if sha256 and len(sha256) == 64:
+                new_hashes.append({
+                    "sha256": sha256.lower(),
+                    "md5": "",
+                    "name": entry.get("name", "AlienVault OTX IOC"),
+                    "type": _classify_malware_type(entry.get("name", "")),
+                    "severity": "high",
+                    "source": "alienvault_otx",
+                })
+        sources_updated.append("alienvault_otx")
+        log.info("Downloaded %d IOCs from AlienVault OTX", len(results))
+    except Exception as e:
+        log.debug("Failed to update from AlienVault OTX: %s", e)
+
+    # Download from MalShare (community malware repository)
+    try:
+        req = urllib.request.Request(
+            _FEEDS["malshare"]["url"] + "?api_key=anonymous&action=list&limit=100",
+            method="GET",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+
+        if isinstance(data, list):
+            for entry in data[:200]:
+                sha256 = entry.get("sha256", "") or entry.get("hash", "")
+                md5 = entry.get("md5", "")
+                if sha256 and len(sha256) == 64:
+                    new_hashes.append({
+                        "sha256": sha256.lower(),
+                        "md5": md5.lower() if md5 else "",
+                        "name": entry.get("name", "MalShare sample"),
+                        "type": _classify_malware_type(entry.get("name", "")),
+                        "severity": "high",
+                        "source": "malshare",
+                    })
+        sources_updated.append("malshare")
+        log.info("Downloaded %d hashes from MalShare", len(data) if isinstance(data, list) else 0)
+    except Exception as e:
+        log.debug("Failed to update from MalShare: %s", e)
+
     # Download tagged samples from MalwareBazaar (ransomware, trojan, etc.)
-    for tag in ("Ransomware", "Trojan", "Worm", "Adware", "Spyware"):
+    for tag in ("Ransomware", "Trojan", "Worm", "Adware", "Spyware", "Backdoor", "Botnet", "Cryptominer", "Rootkit", "Loader", "Stealer"):
         try:
             req_data = json.dumps({"query": "get_taginfo", "tag": tag, "limit": 50}).encode("utf-8")
             req = urllib.request.Request(

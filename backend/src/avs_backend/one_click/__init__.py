@@ -222,6 +222,14 @@ def _run_full_scan() -> dict[str, Any]:
     except Exception as e:
         log.warning("One-click: Behavioral detector not available: %s", e)
 
+    # Try ML detector (AI-based PE classification)
+    ml_detector = None
+    try:
+        from avs_backend.threat_engine.ml_detector import MlDetector
+        ml_detector = MlDetector({})
+    except Exception as e:
+        log.warning("One-click: ML detector not available: %s", e)
+
     for root_path in scan_roots:
         try:
             for root, dirs, files in os.walk(root_path):
@@ -383,6 +391,22 @@ def _run_full_scan() -> dict[str, Any]:
                         except Exception:
                             pass
 
+                    # ML detector (AI-based PE classification)
+                    if ml_detector:
+                        try:
+                            result = ml_detector.scan_file(fpath)
+                            if result and result.get("detected"):
+                                threats_found += 1
+                                detected_threats.append({
+                                    "path": fpath,
+                                    "threat_name": result.get("threat_name", "ML.Detected"),
+                                    "threat_type": result.get("threat_type", "suspicious"),
+                                    "severity": result.get("severity", "medium"),
+                                    "source": "ml_detector",
+                                })
+                        except Exception:
+                            pass
+
         except Exception as e:
             log.warning("One-click: Error scanning %s: %s", root_path, e)
 
@@ -451,15 +475,98 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
     except Exception as e:
         log.error("One-click scan phase failed: %s", e)
 
+    # Collect threats from additional scan phases (email, memory)
+    _extra_threats: list[dict[str, Any]] = []
+
+    # Phase 1.5: Email attachment scanning
+    try:
+        from avs_backend.threat_engine.email_scanner import EmailScanner
+        email_scanner = EmailScanner()
+        with _lock:
+            _progress["current_file"] = "Scanning email attachments..."
+
+        # Scan common email file locations
+        email_dirs = []
+        if IS_WINDOWS:
+            local_app_data = os.environ.get("LOCALAPPDATA", "")
+            app_data = os.environ.get("APPDATA", "")
+            user_profile = os.environ.get("USERPROFILE", "")
+            email_dirs = [
+                os.path.join(user_profile, "Documents"),
+                os.path.join(local_app_data, "Microsoft", "Outlook"),
+                os.path.join(app_data, "Thunderbird", "Profiles"),
+                os.path.join(local_app_data, "Microsoft", "Windows", "Mail"),
+            ]
+
+        email_threats = 0
+        for email_dir in email_dirs:
+            if not os.path.isdir(email_dir):
+                continue
+            for root, _dirs, files in os.walk(email_dir):
+                for fname in files:
+                    ext = os.path.splitext(fname)[1].lower()
+                    if ext in (".eml", ".msg"):
+                        fpath = os.path.join(root, fname)
+                        try:
+                            email_result = email_scanner.scan_email_file(fpath)
+                            if email_result.get("threats"):
+                                for threat in email_result["threats"]:
+                                    _extra_threats.append({
+                                        "path": threat.get("file_path", fpath),
+                                        "threat_name": threat.get("threat_name", "Email.Malware"),
+                                        "threat_type": threat.get("threat_type", "malware"),
+                                        "severity": threat.get("severity", "high"),
+                                        "source": "email_scanner",
+                                    })
+                                    email_threats += 1
+                        except Exception:
+                            pass
+
+        if email_threats:
+            result["threats_found"] += email_threats
+            with _lock:
+                _progress["threats_found"] = result["threats_found"]
+        log.info("One-click: Email scan found %d threats", email_threats)
+    except Exception as e:
+        log.warning("One-click: Email scanning phase failed: %s", e)
+
+    # Phase 1.6: Memory/process scanning
+    try:
+        from avs_backend.threat_engine.memory_scanner import MemoryScanner
+        mem_scanner = MemoryScanner()
+        with _lock:
+            _progress["current_file"] = "Scanning running processes memory..."
+
+        mem_result = mem_scanner.scan_all_processes()
+        mem_threats = mem_result.get("threats_found", 0)
+        if mem_threats:
+            for threat in mem_result.get("threats", []):
+                _extra_threats.append({
+                    "path": threat.get("process", "unknown"),
+                    "threat_name": threat.get("threat_name", "Memory.Injection"),
+                    "threat_type": threat.get("threat_type", "malware"),
+                    "severity": threat.get("severity", "high"),
+                    "source": "memory_scanner",
+                })
+            result["threats_found"] += mem_threats
+            with _lock:
+                _progress["threats_found"] = result["threats_found"]
+        log.info("One-click: Memory scan found %d threats in %d processes",
+                 mem_threats, mem_result.get("processes_scanned", 0))
+    except Exception as e:
+        log.warning("One-click: Memory scanning phase failed: %s", e)
+
     # Phase 2: Quarantine/clean detected threats
-    threats = scan_result.get("threats", [])
-    if threats:
+    all_threats = list(scan_result.get("threats", []))
+    # Add email and memory threats collected above
+    all_threats.extend(_extra_threats)
+    if all_threats:
         with _lock:
             _progress["phase"] = "cleaning"
 
         try:
             from avs_backend.threat_engine import threat_quarantine
-            for threat in threats:
+            for threat in all_threats:
                 try:
                     q_result = threat_quarantine({
                         "file_path": threat["path"],
