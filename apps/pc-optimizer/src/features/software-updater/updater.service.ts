@@ -2,6 +2,7 @@
  * Software Updater service — RPC wrapper.
  */
 import type { UpdaterListResult, UpgradeResult } from './updater.types';
+import { RPC_METHODS } from '@avs/shared/rpc';
 
 function client() {
   if (typeof window === 'undefined' || !window.avs) {
@@ -19,19 +20,19 @@ export interface IUpdaterService {
 
 class UpdaterService implements IUpdaterService {
   async available(): Promise<{ available: boolean }> {
-    return await client().call('updater.available');
+    return await client().call(RPC_METHODS.UPDATER_AVAILABLE);
   }
 
   async list(): Promise<UpdaterListResult> {
-    return await client().call('updater.list');
+    return await client().call(RPC_METHODS.UPDATER_LIST);
   }
 
   async upgrade(packageId: string): Promise<UpgradeResult> {
-    return await client().call('updater.upgrade', { packageId });
+    return await client().call(RPC_METHODS.UPDATER_UPGRADE, { packageId });
   }
 
   async upgradeAll(): Promise<UpgradeResult> {
-    return await client().call('updater.upgradeAll');
+    return await client().call(RPC_METHODS.UPDATER_UPGRADE_ALL);
   }
 }
 

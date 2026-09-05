@@ -2,7 +2,7 @@
  * UpdaterPage — list and apply software updates via winget.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { Card, Button } from '@avs/ui';
+import { Card, Button, GaugeCard, StatTile } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleEmptyState, ModuleSuccessBanner, ModuleErrorBanner, ModuleLoadingState } from '../../components/ModuleStates';
@@ -11,7 +11,13 @@ import { HelpButton } from '../../components/HelpButton';
 import { UpdaterViewModel } from './UpdaterViewModel';
 import { updaterService } from './updater.service';
 import { useFeatureGuard } from '../licensing/useFeatureGuard';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowPathIcon,
+  ArrowUpCircleIcon,
+  CheckCircleIcon,
+  CommandLineIcon,
+  ExclamationTriangleIcon,
+} from '@heroicons/react/24/outline';
 
 export default function UpdaterPage() {
   const vm = useMemo(() => new UpdaterViewModel(updaterService), []);
@@ -42,6 +48,69 @@ export default function UpdaterPage() {
 
       {state.bootstrap === 'ready' && (
         <>
+          {/* Hero status section — System Mechanic style */}
+          <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="updater-hero-section">
+            {/* Gauge */}
+            <GaugeCard
+              title={state.loading ? 'Checking…' : state.upgrades.length > 0 ? 'Updates Available' : 'All Up to Date'}
+              value={Math.min(100, state.upgrades.length)}
+              unit=""
+              tone={state.upgrades.length > 5 ? 'danger' : state.upgrades.length > 0 ? 'warning' : 'success'}
+              icon={<ArrowUpCircleIcon className="h-6 w-6" />}
+              description={state.loading ? 'Scanning installed applications' : state.upgrades.length > 0 ? `${state.upgrades.length} updates ready to install` : 'No updates available'}
+              data-testid="updater-hero-gauge"
+            />
+
+            {/* Key stats */}
+            <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <StatTile
+                label="Updates"
+                value={state.upgrades.length.toString()}
+                hint={state.upgrades.length > 0 ? 'Available' : 'None pending'}
+                icon={<ArrowUpCircleIcon className="h-5 w-5" />}
+                variant="glass"
+                accentColor={state.upgrades.length > 0 ? 'var(--avs-warning)' : 'var(--avs-success)'}
+              />
+              <StatTile
+                label="Status"
+                value={state.available ? 'Active' : 'Unavailable'}
+                hint={state.available ? 'winget ready' : 'winget not found'}
+                icon={<CommandLineIcon className="h-5 w-5" />}
+                variant="glass"
+                accentColor={state.available ? 'var(--avs-success)' : 'var(--avs-warning)'}
+              />
+              <StatTile
+                label="Up to Date"
+                value={state.available && state.upgrades.length === 0 ? 'Yes' : '—'}
+                hint={state.available ? 'All apps current' : 'N/A'}
+                icon={<CheckCircleIcon className="h-5 w-5" />}
+                variant="glass"
+                accentColor="var(--avs-success)"
+              />
+              <StatTile
+                label="Updating"
+                value={state.busyIds.size.toString()}
+                hint={state.busyIds.size > 0 ? 'In progress' : 'Idle'}
+                icon={<ArrowPathIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+              <StatTile
+                label="Action"
+                value={state.upgrades.length > 0 ? 'Update All' : 'Check'}
+                hint={state.upgrades.length > 0 ? 'Click above' : 'Click above'}
+                icon={<ExclamationTriangleIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+              <StatTile
+                label="Source"
+                value="winget"
+                hint="Windows Package Manager"
+                icon={<CommandLineIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+            </div>
+          </div>
+
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
             <div>
               <h2 className="text-section-title font-semibold text-text-primary">Updates</h2>
