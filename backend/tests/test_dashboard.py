@@ -73,6 +73,8 @@ def test_calculate_security_score():
         "defender": {"enabled": True, "realTimeProtection": True},
         "firewall": {"enabled": True},
         "updates": {"pendingUpdates": 0},
+        "ransomwareProtection": True,
+        "memoryIntegrity": True,
     }
     assert _calculate_security_score(security) == 100
     
