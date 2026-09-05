@@ -18,6 +18,7 @@ import os
 import string
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from avs_backend.api.registry import register
@@ -144,17 +145,16 @@ def _run_full_scan() -> dict[str, Any]:
     """Run a full system scan with real-time progress.
 
     Scans the entire computer (all drives) using ClamAV and other
-    detection sources. Reports progress per-file so the UI can show
-    a moving progress bar and the current file being scanned.
-    Returns threat details so they can be quarantined.
+    detection sources. Uses parallel scanning with ThreadPoolExecutor
+    for speed — targets 10-15 minute completion on typical systems.
+
+    Defender is NOT used per-file (spawns MpCmdRun.exe subprocess = 2s/file).
+    Instead, ClamAV is the primary scanner, with hash/YARA/heuristic/ML
+    as secondary detectors applied in parallel.
     """
     scan_roots = _get_scan_roots()
     log.info("One-click: Scan roots: %s", scan_roots)
 
-    # Skip the slow pre-count phase — walking all drives to count files
-    # can take minutes on a large system. Instead, start scanning
-    # immediately and estimate progress based on files scanned.
-    # We use a rough estimate that gets refined as we go.
     total_files = 50000  # rough estimate, refined as we scan
     with _lock:
         _progress["current_file"] = f"Scanning {scan_roots[0] if scan_roots else 'C:\\'}..."
@@ -163,7 +163,8 @@ def _run_full_scan() -> dict[str, Any]:
     threats_found = 0
     detected_threats: list[dict[str, Any]] = []
 
-    # Try to get ClamAV scanner
+    # ─── Initialize detectors ──────────────────────────────────────
+
     clamav_scanner = None
     try:
         from avs_backend.threat_engine.clamav_scanner import check_clamav_available, ClamAvScanner
@@ -175,7 +176,6 @@ def _run_full_scan() -> dict[str, Any]:
     except Exception as e:
         log.warning("One-click: ClamAV init failed: %s", e)
 
-    # Try to get hash detector as fallback
     hash_detector = None
     try:
         from avs_backend.threat_engine.hash_detector import HashDetector
@@ -183,7 +183,6 @@ def _run_full_scan() -> dict[str, Any]:
     except Exception as e:
         log.warning("One-click: Hash detector not available: %s", e)
 
-    # Try YARA scanner
     yara_scanner = None
     try:
         from avs_backend.threat_engine.yara_scanner import YaraScanner
@@ -191,7 +190,6 @@ def _run_full_scan() -> dict[str, Any]:
     except Exception as e:
         log.warning("One-click: YARA scanner not available: %s", e)
 
-    # Try Heuristic detector
     heuristic_detector = None
     try:
         from avs_backend.threat_engine.heuristic import HeuristicDetector
@@ -199,7 +197,6 @@ def _run_full_scan() -> dict[str, Any]:
     except Exception as e:
         log.warning("One-click: Heuristic detector not available: %s", e)
 
-    # Try AMSI scanner (Windows scripts)
     amsi_scanner = None
     try:
         from avs_backend.threat_engine.amsi_scanner import AmsiScanner
@@ -207,15 +204,11 @@ def _run_full_scan() -> dict[str, Any]:
     except Exception as e:
         log.warning("One-click: AMSI scanner not available: %s", e)
 
-    # Try Defender scanner
-    defender_scanner = None
-    try:
-        from avs_backend.threat_engine.defender_scanner import DefenderScanner
-        defender_scanner = DefenderScanner({})
-    except Exception as e:
-        log.warning("One-click: Defender scanner not available: %s", e)
+    # Defender scanner removed from per-file loop — MpCmdRun.exe spawns
+    # a subprocess per file taking 1-3 seconds each, making scans take
+    # 14+ hours. Defender is still available via the threat engine RPC
+    # for on-demand single-file scans.
 
-    # Try Behavioral detector (zero-day threat detection)
     behavioral_detector = None
     try:
         from avs_backend.threat_engine.behavioral import BehavioralDetector
@@ -223,7 +216,6 @@ def _run_full_scan() -> dict[str, Any]:
     except Exception as e:
         log.warning("One-click: Behavioral detector not available: %s", e)
 
-    # Try ML detector (AI-based PE classification)
     ml_detector = None
     try:
         from avs_backend.threat_engine.ml_detector import MlDetector
@@ -231,185 +223,182 @@ def _run_full_scan() -> dict[str, Any]:
     except Exception as e:
         log.warning("One-click: ML detector not available: %s", e)
 
+    # ─── Collect all files to scan first ───────────────────────────
+    all_files: list[str] = []
     for root_path in scan_roots:
         try:
             for root, dirs, files in os.walk(root_path):
-                # Skip excluded paths
                 if _is_excluded(root):
                     dirs.clear()
                     continue
-
-                # Skip very deep directories
                 depth = root.replace(root_path, "").count(os.sep)
                 if depth > _MAX_DEPTH:
                     dirs.clear()
                     continue
-
                 for fname in files:
                     fpath = os.path.join(root, fname)
-
-                    # Skip non-security-relevant files
                     if not _should_scan_file(fpath):
                         continue
-
                     try:
                         fsize = os.path.getsize(fpath)
                         if fsize > _MAX_FILE_SIZE:
                             continue
                     except OSError:
                         continue
+                    all_files.append(fpath)
+        except Exception:
+            pass
 
-                    files_scanned += 1
+    total_files = max(len(all_files), 1)
+    log.info("One-click: %d files to scan", total_files)
 
-                    # Adaptive total estimate: if we've scanned more than
-                    # 80% of the estimated total, increase the estimate
-                    # so the progress bar doesn't jump to 99% prematurely.
-                    if files_scanned >= total_files * 0.8:
-                        total_files = int(total_files * 1.5)
+    # ─── PE extensions for ML/heuristic routing ────────────────────
+    _PE_EXTENSIONS = {".exe", ".dll", ".scr", ".sys", ".ocx", ".com", ".pif"}
+    _SCRIPT_EXTENSIONS = {".ps1", ".js", ".jse", ".vbs", ".wsf", ".wsh", ".hta", ".bat", ".cmd"}
 
-                    # Update progress — use adaptive estimate
-                    # Start with rough estimate, cap at 99% until done
-                    with _lock:
-                        pct = min(99, int(files_scanned / total_files * 100))
-                        _progress["scan_progress"] = pct
-                        _progress["current_file"] = fpath
-                        _progress["files_scanned"] = files_scanned
+    # ─── Scan a single file with smart detector routing ────────────
+    def _scan_single_file(fpath: str) -> dict[str, Any] | None:
+        """Scan one file with appropriate detectors based on file type."""
+        ext = os.path.splitext(fpath)[1].lower()
+        is_pe = ext in _PE_EXTENSIONS
+        is_script = ext in _SCRIPT_EXTENSIONS
 
-                    # Scan with ClamAV (primary)
-                    if clamav_scanner:
-                        try:
-                            result = clamav_scanner.scan_file(fpath)
-                            if result and result.get("detected"):
-                                threats_found += 1
-                                detected_threats.append({
-                                    "path": fpath,
-                                    "threat_name": result.get("threat_name", "Unknown"),
-                                    "threat_type": result.get("threat_type", "malware"),
-                                    "severity": result.get("severity", "high"),
-                                    "source": "clamav",
-                                })
-                                continue  # Don't double-scan with other detectors
-                        except Exception:
-                            pass
+        # 1. ClamAV (primary — fast, in-process via clamd socket)
+        if clamav_scanner:
+            try:
+                result = clamav_scanner.scan_file(fpath)
+                if result and result.get("detected"):
+                    return {
+                        "path": fpath,
+                        "threat_name": result.get("threat_name", "Unknown"),
+                        "threat_type": result.get("threat_type", "malware"),
+                        "severity": result.get("severity", "high"),
+                        "source": "clamav",
+                    }
+            except Exception:
+                pass
 
-                    # Fallback: hash detector
-                    if hash_detector:
-                        try:
-                            result = hash_detector.scan_file(fpath)
-                            if result and result.get("detected"):
-                                threats_found += 1
-                                detected_threats.append({
-                                    "path": fpath,
-                                    "threat_name": result.get("threat_name", "Unknown"),
-                                    "threat_type": result.get("threat_type", "malware"),
-                                    "severity": result.get("severity", "high"),
-                                    "source": "hash_detector",
-                                })
-                                continue
-                        except Exception:
-                            pass
+        # 2. Hash detector (fast — SHA256 lookup in local blocklist)
+        if hash_detector:
+            try:
+                result = hash_detector.scan_file(fpath)
+                if result and result.get("detected"):
+                    return {
+                        "path": fpath,
+                        "threat_name": result.get("threat_name", "Unknown"),
+                        "threat_type": result.get("threat_type", "malware"),
+                        "severity": result.get("severity", "high"),
+                        "source": "hash_detector",
+                    }
+            except Exception:
+                pass
 
-                    # Fallback: YARA
-                    if yara_scanner:
-                        try:
-                            result = yara_scanner.scan_file(fpath)
-                            if result and result.get("detected"):
-                                threats_found += 1
-                                detected_threats.append({
-                                    "path": fpath,
-                                    "threat_name": result.get("threat_name", "Unknown"),
-                                    "threat_type": result.get("threat_type", "suspicious"),
-                                    "severity": result.get("severity", "medium"),
-                                    "source": "yara",
-                                })
-                                continue
-                        except Exception:
-                            pass
+        # 3. YARA (medium — rule matching)
+        if yara_scanner:
+            try:
+                result = yara_scanner.scan_file(fpath)
+                if result and result.get("detected"):
+                    return {
+                        "path": fpath,
+                        "threat_name": result.get("threat_name", "Unknown"),
+                        "threat_type": result.get("threat_type", "suspicious"),
+                        "severity": result.get("severity", "medium"),
+                        "source": "yara",
+                    }
+            except Exception:
+                pass
 
-                    # Heuristic detector (PE analysis, double extensions, etc.)
-                    if heuristic_detector:
-                        try:
-                            result = heuristic_detector.scan_file(fpath)
-                            if result and result.get("detected"):
-                                threats_found += 1
-                                detected_threats.append({
-                                    "path": fpath,
-                                    "threat_name": result.get("threat_name", "Suspicious"),
-                                    "threat_type": result.get("threat_type", "suspicious"),
-                                    "severity": result.get("severity", "medium"),
-                                    "source": "heuristic",
-                                })
-                                continue
-                        except Exception:
-                            pass
+        # 4. Heuristic — only for PE files (medium speed)
+        if is_pe and heuristic_detector:
+            try:
+                result = heuristic_detector.scan_file(fpath)
+                if result and result.get("detected"):
+                    return {
+                        "path": fpath,
+                        "threat_name": result.get("threat_name", "Suspicious"),
+                        "threat_type": result.get("threat_type", "suspicious"),
+                        "severity": result.get("severity", "medium"),
+                        "source": "heuristic",
+                    }
+            except Exception:
+                pass
 
-                    # AMSI scanner (scripts: .ps1, .js, .vbs, etc.)
-                    if amsi_scanner:
-                        try:
-                            result = amsi_scanner.scan_file(fpath)
-                            if result and result.get("detected"):
-                                threats_found += 1
-                                detected_threats.append({
-                                    "path": fpath,
-                                    "threat_name": result.get("threat_name", "AMSI.Detected"),
-                                    "threat_type": result.get("threat_type", "script"),
-                                    "severity": result.get("severity", "high"),
-                                    "source": "amsi",
-                                })
-                                continue
-                        except Exception:
-                            pass
+        # 5. AMSI — only for script files
+        if is_script and amsi_scanner:
+            try:
+                result = amsi_scanner.scan_file(fpath)
+                if result and result.get("detected"):
+                    return {
+                        "path": fpath,
+                        "threat_name": result.get("threat_name", "AMSI.Detected"),
+                        "threat_type": result.get("threat_type", "script"),
+                        "severity": result.get("severity", "high"),
+                        "source": "amsi",
+                    }
+            except Exception:
+                pass
 
-                    # Defender scanner (Windows Defender integration)
-                    if defender_scanner:
-                        try:
-                            result = defender_scanner.scan_file(fpath)
-                            if result and result.get("detected"):
-                                threats_found += 1
-                                detected_threats.append({
-                                    "path": fpath,
-                                    "threat_name": result.get("threat_name", "Defender.Detected"),
-                                    "threat_type": result.get("threat_type", "malware"),
-                                    "severity": result.get("severity", "high"),
-                                    "source": "defender",
-                                })
-                        except Exception:
-                            pass
+        # 6. Behavioral — only for PE files
+        if is_pe and behavioral_detector:
+            try:
+                result = behavioral_detector.scan_file(fpath)
+                if result and result.get("detected"):
+                    return {
+                        "path": fpath,
+                        "threat_name": result.get("threat_name", "Behavioral.Detected"),
+                        "threat_type": result.get("threat_type", "suspicious"),
+                        "severity": result.get("severity", "medium"),
+                        "source": "behavioral",
+                    }
+            except Exception:
+                pass
 
-                    # Behavioral detector (zero-day threat detection via content analysis)
-                    if behavioral_detector:
-                        try:
-                            result = behavioral_detector.scan_file(fpath)
-                            if result and result.get("detected"):
-                                threats_found += 1
-                                detected_threats.append({
-                                    "path": fpath,
-                                    "threat_name": result.get("threat_name", "Behavioral.Detected"),
-                                    "threat_type": result.get("threat_type", "suspicious"),
-                                    "severity": result.get("severity", "medium"),
-                                    "source": "behavioral",
-                                })
-                        except Exception:
-                            pass
+        # 7. ML detector — only for PE files
+        if is_pe and ml_detector:
+            try:
+                result = ml_detector.scan_file(fpath)
+                if result and result.get("detected"):
+                    return {
+                        "path": fpath,
+                        "threat_name": result.get("threat_name", "ML.Detected"),
+                        "threat_type": result.get("threat_type", "suspicious"),
+                        "severity": result.get("severity", "medium"),
+                        "source": "ml_detector",
+                    }
+            except Exception:
+                pass
 
-                    # ML detector (AI-based PE classification)
-                    if ml_detector:
-                        try:
-                            result = ml_detector.scan_file(fpath)
-                            if result and result.get("detected"):
-                                threats_found += 1
-                                detected_threats.append({
-                                    "path": fpath,
-                                    "threat_name": result.get("threat_name", "ML.Detected"),
-                                    "threat_type": result.get("threat_type", "suspicious"),
-                                    "severity": result.get("severity", "medium"),
-                                    "source": "ml_detector",
-                                })
-                        except Exception:
-                            pass
+        return None
 
-        except Exception as e:
-            log.warning("One-click: Error scanning %s: %s", root_path, e)
+    # ─── Parallel scanning with ThreadPoolExecutor ─────────────────
+    max_workers = min(8, os.cpu_count() or 4)
+    progress_update_interval = 10  # Update progress every 10 files
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {}
+        for fpath in all_files:
+            future = executor.submit(_scan_single_file, fpath)
+            futures[future] = fpath
+
+        for future in as_completed(futures):
+            fpath = futures[future]
+            files_scanned += 1
+
+            # Batch progress updates (reduce lock contention)
+            if files_scanned % progress_update_interval == 0 or files_scanned == total_files:
+                with _lock:
+                    pct = min(99, int(files_scanned / total_files * 100))
+                    _progress["scan_progress"] = pct
+                    _progress["current_file"] = fpath
+                    _progress["files_scanned"] = files_scanned
+
+            try:
+                result = future.result()
+                if result:
+                    threats_found += 1
+                    detected_threats.append(result)
+            except Exception:
+                pass
 
     with _lock:
         _progress["scan_progress"] = 100
