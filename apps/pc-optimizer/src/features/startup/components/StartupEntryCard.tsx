@@ -4,7 +4,8 @@
 
 import React from 'react';
 import { Button } from '@avs/ui';
-import { ShieldCheckIcon, ClockIcon } from '@heroicons/react/24/outline';
+import clsx from 'clsx';
+import { ShieldCheckIcon, ShieldExclamationIcon, ClockIcon, BoltIcon } from '@heroicons/react/24/outline';
 import type { StartupEntry } from '../startup.types';
 
 interface StartupEntryCardProps {
@@ -17,10 +18,10 @@ interface StartupEntryCardProps {
 export const StartupEntryCard = React.memo(function StartupEntryCard({ entry, onDisable, onEnable, loading }: StartupEntryCardProps) {
   const getImpactColor = (impact: string) => {
     switch (impact) {
-      case 'high': return 'text-semantic-danger';
-      case 'medium': return 'text-semantic-warning';
-      case 'low': return 'text-semantic-success';
-      default: return 'text-text-muted';
+      case 'high': return { text: 'text-semantic-danger', bg: 'bg-semantic-danger', label: 'High' };
+      case 'medium': return { text: 'text-semantic-warning', bg: 'bg-semantic-warning', label: 'Medium' };
+      case 'low': return { text: 'text-semantic-success', bg: 'bg-semantic-success', label: 'Low' };
+      default: return { text: 'text-text-muted', bg: 'bg-text-muted', label: 'Unknown' };
     }
   };
 
@@ -34,39 +35,75 @@ export const StartupEntryCard = React.memo(function StartupEntryCard({ entry, on
   };
 
   const formatBootImpact = (ms?: number) => {
-    if (ms === undefined || ms === null) return 'Unknown';
+    if (ms === undefined || ms === null) return '—';
     if (ms < 1000) return `${ms} ms`;
     return `${(ms / 1000).toFixed(1)} s`;
   };
 
+  const impact = getImpactColor(entry.impact);
+  const isSigned = entry.signatureStatus === 'Signed';
+
   return (
-    <div className="border border-[var(--avs-border)] rounded-lg p-4 hover:bg-[var(--avs-surface-muted)] transition-colors">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-small font-semibold text-text-primary truncate">{entry.name}</h3>
-            <span className={`text-caption font-medium ${getImpactColor(entry.impact)}`}>
-              {entry.impact.toUpperCase()}
+    <div
+      className={clsx(
+        'group relative overflow-hidden rounded-[var(--avs-radius-lg)] border transition-all',
+        entry.enabled
+          ? 'border-[var(--avs-border)] bg-[var(--avs-surface)] hover:border-[color-mix(in_srgb,var(--avs-brand-primary)_30%,var(--avs-border))]'
+          : 'border-[var(--avs-border)] bg-[var(--avs-surface-muted)] opacity-75',
+      )}
+      data-testid={`startup-entry-${entry.name.replace(/\s+/g, '-').toLowerCase()}`}
+    >
+      <div className="flex items-center gap-3 px-4 py-3">
+        {/* Impact indicator bar */}
+        <div className={clsx('absolute left-0 top-0 h-full w-1', impact.bg, entry.enabled ? 'opacity-80' : 'opacity-30')} />
+
+        {/* Icon */}
+        <div
+          className={clsx(
+            'flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--avs-radius-md)]',
+            entry.enabled
+              ? 'bg-[var(--avs-surface-muted)] text-text-secondary group-hover:text-[var(--avs-brand-primary)]'
+              : 'bg-[var(--avs-surface-muted)] text-text-muted',
+          )}
+        >
+          <BoltIcon className="h-5 w-5" />
+        </div>
+
+        {/* Content */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="truncate text-small font-semibold text-text-primary">{entry.name}</h3>
+            <span className={clsx('text-caption font-medium', impact.text)}>
+              {impact.label}
             </span>
+            {!isSigned && (
+              <ShieldExclamationIcon className="h-3.5 w-3.5 text-semantic-warning shrink-0" title="Unsigned or unknown signature" />
+            )}
           </div>
-          <p className="text-small text-text-secondary mb-2">{entry.publisher || 'Unknown publisher'}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-caption text-text-muted mb-2">
-            <span>{getSourceLabel(entry.source)} • {entry.location}</span>
+          <p className="mt-0.5 truncate text-caption text-text-muted">
+            {entry.publisher || 'Unknown publisher'} • {getSourceLabel(entry.source)}
+          </p>
+          <div className="mt-1 flex items-center gap-3 text-caption text-text-muted">
             <span className="flex items-center gap-1">
-              <ShieldCheckIcon className="h-3.5 w-3.5" />
-              {entry.signatureStatus ?? 'Signature unknown'}
+              <ClockIcon className="h-3 w-3" />
+              {formatBootImpact(entry.bootImpactMs)}
             </span>
-            <span>Boot impact: {formatBootImpact(entry.bootImpactMs)}</span>
+            {isSigned && (
+              <span className="flex items-center gap-1 text-semantic-success">
+                <ShieldCheckIcon className="h-3 w-3" />
+                Signed
+              </span>
+            )}
             {entry.lastLaunch && (
-              <span className="flex items-center gap-1">
-                <ClockIcon className="h-3.5 w-3.5" />
-                Last launch: {entry.lastLaunch}
+              <span className="hidden sm:flex items-center gap-1">
+                Last: {entry.lastLaunch}
               </span>
             )}
           </div>
-          <p className="text-caption text-text-muted truncate font-mono">{entry.command}</p>
         </div>
-        <div className="flex flex-col gap-2">
+
+        {/* Action */}
+        <div className="flex shrink-0 flex-col items-center gap-1">
           {entry.enabled ? (
             <Button
               variant="secondary"
@@ -88,8 +125,8 @@ export const StartupEntryCard = React.memo(function StartupEntryCard({ entry, on
               Enable
             </Button>
           )}
-          <span className={`text-caption text-center ${entry.enabled ? 'text-semantic-success' : 'text-text-muted'}`}>
-            {entry.enabled ? 'Enabled' : 'Disabled'}
+          <span className={clsx('text-caption', entry.enabled ? 'text-semantic-success' : 'text-text-muted')}>
+            {entry.enabled ? '● Enabled' : '○ Disabled'}
           </span>
         </div>
       </div>

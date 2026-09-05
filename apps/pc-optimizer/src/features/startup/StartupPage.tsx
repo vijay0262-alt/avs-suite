@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Card, Button } from '@avs/ui';
+import { Card, Button, GaugeCard, StatTile } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleLoadingState, ModuleEmptyState } from '../../components/ModuleStates';
@@ -24,6 +24,8 @@ import {
   LockClosedIcon,
   ShieldCheckIcon,
   XMarkIcon,
+  BoltIcon,
+  ComputerDesktopIcon,
 } from '@heroicons/react/24/outline';
 
 type SortBy = 'name' | 'impact' | 'publisher' | 'status';
@@ -33,7 +35,7 @@ export default function StartupPage() {
   const state = useViewModel(vm);
   const [query, setQuery] = useState('');
   const [impactFilter, setImpactFilter] = useState<'all' | 'high' | 'medium' | 'low' | 'unknown'>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'enabled' | 'disabled'>('enabled');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'enabled' | 'disabled'>('all');
   const [sortBy, setSortBy] = useState<SortBy>('name');
   const isPro = useIsPro();
   const { guard, dialogElement } = useFeatureGuard();
@@ -215,19 +217,67 @@ export default function StartupPage() {
 
       {state.bootstrap === 'ready' && (
         <>
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <Card variant="glass" padded={false} className="p-3">
-              <p className="text-statistic text-text-primary">{state.entries.length}</p>
-              <p className="text-caption text-text-secondary">Total entries</p>
-            </Card>
-            <Card variant="glass" padded={false} className="p-3">
-              <p className="text-statistic text-semantic-success">{enabledCount}</p>
-              <p className="text-caption text-text-secondary">Enabled</p>
-            </Card>
-            <Card variant="glass" padded={false} className="p-3">
-              <p className="text-statistic text-semantic-danger">{highImpactCount}</p>
-              <p className="text-caption text-text-secondary">High impact</p>
-            </Card>
+          {/* Hero status section — System Mechanic style */}
+          <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="startup-hero-section">
+            {/* Gauge */}
+            <GaugeCard
+              title={highImpactCount > 0 ? 'Boot Impact' : 'Startup Healthy'}
+              value={Math.min(100, Math.round((highImpactCount / Math.max(1, state.entries.length)) * 100))}
+              unit=""
+              tone={highImpactCount > 0 ? 'danger' : 'success'}
+              icon={<BoltIcon className="h-6 w-6" />}
+              description={highImpactCount > 0 ? `${highImpactCount} high-impact entries slowing boot` : `${enabledCount} entries enabled, all low impact`}
+              data-testid="startup-hero-gauge"
+            />
+
+            {/* Key stats */}
+            <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <StatTile
+                label="Total Entries"
+                value={state.entries.length.toString()}
+                hint="Detected on system"
+                icon={<ComputerDesktopIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+              <StatTile
+                label="Enabled"
+                value={enabledCount.toString()}
+                hint={`${state.entries.length - enabledCount} disabled`}
+                icon={<BoltIcon className="h-5 w-5" />}
+                variant="glass"
+                accentColor="var(--avs-success)"
+              />
+              <StatTile
+                label="High Impact"
+                value={highImpactCount.toString()}
+                hint={highImpactCount > 0 ? 'Consider disabling' : 'None detected'}
+                icon={<ChartBarIcon className="h-5 w-5" />}
+                variant="glass"
+                accentColor={highImpactCount > 0 ? 'var(--avs-danger)' : 'var(--avs-success)'}
+              />
+              <StatTile
+                label="Changes Made"
+                value={state.backups.length.toString()}
+                hint={state.backups.length > 0 ? 'Can be restored' : 'No changes yet'}
+                icon={<ArrowPathIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+              <StatTile
+                label="Safety"
+                value="Protected"
+                hint="Backup + Restore"
+                icon={<ShieldCheckIcon className="h-5 w-5" />}
+                variant="glass"
+                accentColor="var(--avs-success)"
+              />
+              <StatTile
+                label="Edition"
+                value={isPro ? 'Pro' : 'Free'}
+                hint={!isPro ? `${remainingDisables ?? '∞'} disables left` : 'Unlimited'}
+                icon={<SparklesIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+            </div>
           </div>
 
           {/* Free edition limit banner — compact */}
@@ -276,7 +326,7 @@ export default function StartupPage() {
                 onChange={(e) => setStatusFilter(e.target.value as 'all' | 'enabled' | 'disabled')}
                 className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] px-3 py-1.5 text-small text-text-primary focus:outline-none focus-visible:shadow-focus"
               >
-                <option value="all">Include Disabled</option>
+                <option value="all">All Entries</option>
                 <option value="enabled">Enabled Only</option>
                 <option value="disabled">Disabled Only</option>
               </select>
@@ -303,7 +353,7 @@ export default function StartupPage() {
                 <option value="publisher">Sort by publisher</option>
                 <option value="status">Sort by status</option>
               </select>
-              <Button variant="secondary" size="sm" onClick={handleRefresh} disabled={state.loading}>
+              <Button variant="secondary" size="sm" onClick={handleRefresh} disabled={state.loading} leftIcon={<ArrowPathIcon className="h-4 w-4" />}>
                 {state.loading ? 'Refreshing...' : 'Refresh'}
               </Button>
             </div>

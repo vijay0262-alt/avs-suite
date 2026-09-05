@@ -3,6 +3,7 @@
  */
 
 import type { StartupEntry, StartupDisableResponse, StartupEnableResponse, StartupBackup } from './startup.types';
+import { RPC_METHODS } from '@avs/shared/rpc';
 
 function client() {
   if (typeof window === 'undefined' || !window.avs) {
@@ -21,23 +22,23 @@ export interface IStartupService {
 
 class StartupService implements IStartupService {
   async listEntries(): Promise<StartupEntry[]> {
-    return await client().call('startup.list');
+    return await client().call(RPC_METHODS.STARTUP_LIST);
   }
 
   async disableEntry(entry: StartupEntry): Promise<StartupDisableResponse> {
-    return await client().call('startup.disable', { entry });
+    return await client().call(RPC_METHODS.STARTUP_DISABLE, { entry });
   }
 
   async enableEntry(entry: StartupEntry): Promise<StartupEnableResponse> {
-    return await client().call('startup.enable', { entry });
+    return await client().call(RPC_METHODS.STARTUP_ENABLE, { entry });
   }
 
   async getBackups(): Promise<StartupBackup[]> {
-    return await client().call('startup.backups');
+    return await client().call(RPC_METHODS.STARTUP_BACKUPS);
   }
 
   async restoreBackup(backupId: string): Promise<{ success: boolean }> {
-    return await client().call('startup.restore', { backupId });
+    return await client().call(RPC_METHODS.STARTUP_RESTORE, { backupId });
   }
 }
 

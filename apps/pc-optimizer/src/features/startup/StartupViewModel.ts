@@ -109,6 +109,14 @@ export class StartupViewModel extends ViewModel<StartupState> {
       const result = await this.service.enableEntry(entry);
       if (result.success) {
         await this.loadEntries();
+        await this.loadBackups();
+        optimizationEventBus.emit({
+          type: OptimizationEventType.StartupOptimized,
+          moduleId: 'startup',
+          action: 'enable',
+          itemsProcessed: 1,
+          timestamp: Date.now(),
+        });
       }
       return result;
     } catch (err) {
@@ -124,6 +132,13 @@ export class StartupViewModel extends ViewModel<StartupState> {
       if (result.success) {
         await this.loadEntries();
         await this.loadBackups();
+        optimizationEventBus.emit({
+          type: OptimizationEventType.StartupOptimized,
+          moduleId: 'startup',
+          action: 'restore',
+          itemsProcessed: 1,
+          timestamp: Date.now(),
+        });
       }
       return result;
     } catch (err) {
