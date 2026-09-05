@@ -438,13 +438,15 @@ export default function DashboardPage() {
               <div className="text-small font-semibold text-text-primary">
                 {boosting
                   ? 'Optimizing memory...'
-                  : boostResult && boostResult.status === 'error'
+                  : boostResult && (boostResult.status === 'error' || boostResult.status === 'failed')
                     ? 'Optimization failed'
-                    : boostResult && boostResult.memoryFreed > 0
-                      ? `Freed ${formatBytes(boostResult.memoryFreed)}`
-                      : boostResult && boostResult.status === 'completed'
-                        ? 'Memory optimized'
-                        : 'Free up RAM instantly'}
+                    : boostResult && boostResult.status === 'cancelled'
+                      ? 'Optimization cancelled'
+                      : boostResult && boostResult.memoryFreed > 0
+                        ? `Freed ${formatBytes(boostResult.memoryFreed)}`
+                        : boostResult && boostResult.status === 'completed'
+                          ? 'Memory optimized'
+                          : 'Free up RAM instantly'}
               </div>
               {boostResult && boostResult.processesOptimized > 0 && !boosting && (
                 <div className="text-caption text-text-muted mt-0.5">
