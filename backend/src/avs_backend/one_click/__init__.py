@@ -377,12 +377,24 @@ def _run_full_scan() -> dict[str, Any]:
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {}
         for fpath in all_files:
+            # Check for cancel before submitting
+            with _lock:
+                if _progress.get("cancel_requested"):
+                    break
             future = executor.submit(_scan_single_file, fpath)
             futures[future] = fpath
 
         for future in as_completed(futures):
             fpath = futures[future]
             files_scanned += 1
+
+            # Check for cancel
+            with _lock:
+                if _progress.get("cancel_requested"):
+                    # Cancel all pending futures
+                    for f in futures:
+                        f.cancel()
+                    break
 
             # Batch progress updates (reduce lock contention)
             if files_scanned % progress_update_interval == 0 or files_scanned == total_files:
@@ -734,3 +746,21 @@ def one_click_progress(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Get the current progress of a one-click operation."""
     with _lock:
         return dict(_progress)
+
+
+@register("one_click.cancel")
+def one_click_cancel(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Cancel a running one-click scan.
+
+    Sets the cancel flag so the scan loop exits at the next file boundary.
+    The scan thread will stop gracefully and mark the progress as cancelled.
+    """
+    global _running
+    with _lock:
+        _progress["cancel_requested"] = True
+        _running = False
+        _progress["active"] = False
+        _progress["phase"] = "cancelled"
+        _progress["current_file"] = None
+    log.info("One-click: Cancel requested by user")
+    return {"success": True, "message": "Scan cancelled"}

@@ -31,6 +31,7 @@ import {
   ClockIcon,
   ChartBarIcon,
   DocumentTextIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 type TabId = 'scan' | 'realtime' | 'quarantine' | 'statistics' | 'advanced';
@@ -120,6 +121,8 @@ export default function AntivirusSecurityPage() {
   // One-click security scan state
   const [oneClickProgress, setOneClickProgress] = useState<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_scanned: number } | null>(null);
   const [oneClickResult, setOneClickResult] = useState<{ threats_found: number; threats_quarantined: number; files_scanned: number; success: boolean } | null>(null);
+  const [oneClickModalOpen, setOneClickModalOpen] = useState(false);
+  const [oneClickCancelling, setOneClickCancelling] = useState(false);
   const oneClickPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Post-scan summary state
@@ -307,6 +310,8 @@ export default function AntivirusSecurityPage() {
 
   const startOneClick = useCallback(async () => {
     setOneClickResult(null);
+    setOneClickCancelling(false);
+    setOneClickModalOpen(true);
     setOneClickProgress({ active: true, phase: 'scanning', scan_progress: 1, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: null, current_file: 'Initializing scan...', files_scanned: 0 });
     try {
       const startRes = await rpc.raw<{ success?: boolean; error?: string; progress?: Record<string, unknown> }>(RPC_METHODS.ONE_CLICK_START, { scan_type: 'quick' });
@@ -322,6 +327,7 @@ export default function AntivirusSecurityPage() {
           if (!prog.active) {
             clearInterval(poll);
             oneClickPollRef.current = null;
+            setOneClickCancelling(false);
             if (prog.phase === 'complete') {
               setOneClickResult({
                 threats_found: prog.threats_found,
@@ -336,6 +342,7 @@ export default function AntivirusSecurityPage() {
         } catch (e) {
           clearInterval(poll);
           oneClickPollRef.current = null;
+          setOneClickCancelling(false);
           const errMsg = e instanceof Error ? e.message : 'Failed to get progress';
           setOneClickProgress(prev => prev ? { ...prev, active: false, error: errMsg } : null);
         }
@@ -346,6 +353,19 @@ export default function AntivirusSecurityPage() {
       setOneClickProgress({ active: false, phase: 'error', scan_progress: 0, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: errMsg, current_file: null, files_scanned: 0 });
     }
   }, [refreshThreats, refreshAvStatus]);
+
+  const cancelOneClick = useCallback(async () => {
+    setOneClickCancelling(true);
+    try {
+      await rpc.raw(RPC_METHODS.ONE_CLICK_CANCEL);
+    } catch { /* ignore */ }
+  }, []);
+
+  const closeOneClickModal = useCallback(() => {
+    if (oneClickProgress?.active && !oneClickCancelling) return;
+    setOneClickModalOpen(false);
+    setOneClickCancelling(false);
+  }, [oneClickProgress?.active, oneClickCancelling]);
 
   // useEffect moved after all refresh function definitions (see below)
 
@@ -571,48 +591,12 @@ export default function AntivirusSecurityPage() {
           </button>
         </div>
 
-        {/* Progress bar */}
-        {oneClickProgress?.active && (
-          <div className="mt-4 space-y-2" data-testid="one-click-progress">
-            <div className="flex items-center gap-3">
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-caption text-text-secondary">
-                    {oneClickProgress.phase === 'scanning' && 'Scanning for threats...'}
-                    {oneClickProgress.phase === 'cleaning' && 'Quarantining detected threats...'}
-                    {oneClickProgress.phase === 'complete' && 'Scan complete.'}
-                  </span>
-                  <span className="text-caption text-text-muted">
-                    {oneClickProgress.phase === 'scanning'
-                      ? `${oneClickProgress.scan_progress}% (${oneClickProgress.files_scanned || 0} files)`
-                      : oneClickProgress.phase === 'cleaning'
-                        ? `${oneClickProgress.threats_quarantined || 0} quarantined`
-                        : '100%'}
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-[var(--avs-border)] overflow-hidden">
-                  <div
-                    className="h-full bg-brand-primary transition-all duration-300"
-                    style={{ width: `${oneClickProgress.phase === 'scanning' ? oneClickProgress.scan_progress : oneClickProgress.phase === 'cleaning' ? 95 : 100}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-            {/* Current file being scanned */}
-            {oneClickProgress.phase === 'scanning' && oneClickProgress.current_file && (
-              <div className="text-caption text-text-muted truncate" data-testid="one-click-current-file" title={oneClickProgress.current_file}>
-                {oneClickProgress.current_file}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Result summary */}
-        {oneClickResult && (
+        {/* Last scan result summary (shown when not scanning) */}
+        {oneClickResult && !oneClickProgress?.active && (
           <div className="mt-4 p-4 rounded-[var(--avs-radius-md)] bg-semantic-success/5 border border-semantic-success/20" data-testid="one-click-result">
             <div className="flex items-center gap-2 mb-2">
               <ShieldCheckIcon className="h-5 w-5 text-semantic-success" />
-              <span className="text-small font-semibold text-text-primary">Security Scan Complete</span>
+              <span className="text-small font-semibold text-text-primary">Last Scan Complete</span>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
@@ -630,13 +614,146 @@ export default function AntivirusSecurityPage() {
             </div>
           </div>
         )}
-
-        {oneClickProgress?.error && (
-          <div className="mt-4 p-3 rounded bg-semantic-danger/5 border border-semantic-danger/20">
-            <span className="text-small text-semantic-danger">Scan encountered an issue. Please try again.</span>
-          </div>
-        )}
       </Card>
+
+      {/* One-Click Scan Modal */}
+      {oneClickModalOpen && (
+        <Modal
+          open={oneClickModalOpen}
+          onClose={closeOneClickModal}
+          title="Security Scan"
+          size="lg"
+          testId="one-click-scan-modal"
+          hideCloseButton={oneClickProgress?.active && !oneClickCancelling}
+          actions={
+            <>
+              {oneClickProgress?.active ? (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={cancelOneClick}
+                  disabled={oneClickCancelling}
+                  leftIcon={<XMarkIcon className="h-4 w-4" />}
+                  data-testid="one-click-cancel-btn"
+                >
+                  {oneClickCancelling ? 'Cancelling...' : 'Cancel Scan'}
+                </Button>
+              ) : (
+                <>
+                  {oneClickResult && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => { setOneClickModalOpen(false); setActiveTab('quarantine'); }}
+                      data-testid="one-click-review-threats"
+                    >
+                      {oneClickResult.threats_found > 0 ? 'Review Threats' : 'Done'}
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={closeOneClickModal}>Close</Button>
+                </>
+              )}
+            </>
+          }
+        >
+          <div className="space-y-4">
+            {/* Phase indicator */}
+            <div className="flex items-center gap-3">
+              {oneClickProgress?.phase === 'scanning' && <ArrowPathIcon className="h-5 w-5 animate-spin text-brand-primary" />}
+              {oneClickProgress?.phase === 'cleaning' && <ShieldExclamationIcon className="h-5 w-5 text-semantic-warning" />}
+              {oneClickProgress?.phase === 'complete' && <ShieldCheckIcon className="h-5 w-5 text-semantic-success" />}
+              {oneClickProgress?.phase === 'cancelled' && <XMarkIcon className="h-5 w-5 text-semantic-danger" />}
+              {oneClickProgress?.phase === 'error' && <ShieldExclamationIcon className="h-5 w-5 text-semantic-danger" />}
+              <span className="text-small font-semibold text-text-primary">
+                {oneClickProgress?.phase === 'scanning' && 'Scanning for threats...'}
+                {oneClickProgress?.phase === 'cleaning' && 'Quarantining detected threats...'}
+                {oneClickProgress?.phase === 'complete' && 'Scan complete.'}
+                {oneClickProgress?.phase === 'cancelled' && 'Scan cancelled.'}
+                {oneClickProgress?.phase === 'error' && 'Scan failed.'}
+              </span>
+            </div>
+
+            {/* Progress bar */}
+            {oneClickProgress && (
+              <div className="space-y-2" data-testid="one-click-progress">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-caption text-text-secondary">
+                    {oneClickProgress.phase === 'scanning'
+                      ? `${oneClickProgress.scan_progress}% (${oneClickProgress.files_scanned || 0} files scanned)`
+                      : oneClickProgress.phase === 'cleaning'
+                        ? `${oneClickProgress.threats_quarantined || 0} threats quarantined`
+                        : oneClickProgress.phase === 'complete'
+                          ? '100% Complete'
+                          : oneClickProgress.phase === 'cancelled'
+                            ? 'Cancelled'
+                            : 'Error'}
+                  </span>
+                  {oneClickProgress.threats_found > 0 && (
+                    <span className="text-caption text-semantic-danger font-medium">
+                      {oneClickProgress.threats_found} threat{oneClickProgress.threats_found !== 1 ? 's' : ''} found
+                    </span>
+                  )}
+                </div>
+                <div className="h-2 rounded-full bg-[var(--avs-border)] overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      oneClickProgress.phase === 'cancelled' ? 'bg-semantic-danger' :
+                      oneClickProgress.phase === 'error' ? 'bg-semantic-danger' :
+                      oneClickProgress.phase === 'complete' ? 'bg-semantic-success' :
+                      'bg-brand-primary'
+                    }`}
+                    style={{ width: `${oneClickProgress.phase === 'scanning' ? oneClickProgress.scan_progress : oneClickProgress.phase === 'cleaning' ? 95 : oneClickProgress.phase === 'complete' ? 100 : oneClickProgress.phase === 'cancelled' ? oneClickProgress.scan_progress : 0}%` }}
+                  />
+                </div>
+                {/* Current file being scanned */}
+                {oneClickProgress.phase === 'scanning' && oneClickProgress.current_file && (
+                  <div className="text-caption text-text-muted truncate" data-testid="one-click-current-file" title={oneClickProgress.current_file}>
+                    {oneClickProgress.current_file}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Result summary inside modal */}
+            {oneClickResult && !oneClickProgress?.active && (
+              <div className="p-4 rounded-[var(--avs-radius-md)] bg-semantic-success/5 border border-semantic-success/20" data-testid="one-click-modal-result">
+                <div className="flex items-center gap-2 mb-3">
+                  <ShieldCheckIcon className="h-5 w-5 text-semantic-success" />
+                  <span className="text-small font-semibold text-text-primary">Scan Complete</span>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <div className="text-caption text-text-muted">Threats Found</div>
+                    <div className="text-small font-bold text-text-primary">{oneClickResult.threats_found}</div>
+                  </div>
+                  <div>
+                    <div className="text-caption text-text-muted">Threats Quarantined</div>
+                    <div className="text-small font-bold text-text-primary">{oneClickResult.threats_quarantined || 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-caption text-text-muted">Files Scanned</div>
+                    <div className="text-small font-bold text-text-primary">{oneClickResult.files_scanned || 0}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Error display */}
+            {oneClickProgress?.error && (
+              <div className="p-3 rounded bg-semantic-danger/5 border border-semantic-danger/20">
+                <span className="text-small text-semantic-danger">Scan encountered an issue. Please try again.</span>
+              </div>
+            )}
+
+            {/* Cancelled message */}
+            {oneClickProgress?.phase === 'cancelled' && (
+              <div className="p-3 rounded bg-semantic-danger/5 border border-semantic-danger/20">
+                <span className="text-small text-semantic-danger">Scan was cancelled. Partial results may be available.</span>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {/* Threat coverage badges */}
       <div className="flex flex-wrap gap-2" data-testid="threat-coverage">

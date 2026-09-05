@@ -63,6 +63,7 @@ export const RPC_METHODS = {
   UPDATER_UPGRADE_ALL: 'updater.upgradeAll',
   ONE_CLICK_START: 'one_click.start',
   ONE_CLICK_PROGRESS: 'one_click.progress',
+  ONE_CLICK_CANCEL: 'one_click.cancel',
   THREAT_SCAN_SUMMARY_GENERATE: 'threat.scanSummary.generate',
   THREAT_SCAN_SUMMARY_RECENT: 'threat.scanSummary.recent',
   THREAT_SCAN_SUMMARY_TREND: 'threat.scanSummary.trend',
