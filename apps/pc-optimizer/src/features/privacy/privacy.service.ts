@@ -3,6 +3,7 @@
  */
 
 import type { PrivacyItem, PrivacyScanResult, PrivacyCleanResult } from './privacy.types';
+import { RPC_METHODS } from '@avs/shared/rpc';
 
 function client() {
   if (typeof window === 'undefined' || !window.avs) {
@@ -23,11 +24,11 @@ class PrivacyService implements IPrivacyService {
 
   async scan(categories?: string[]): Promise<PrivacyScanResult> {
     const params = categories ? { categories } : undefined;
-    return await client().call('privacy.scan', params);
+    return await client().call(RPC_METHODS.PRIVACY_SCAN, params);
   }
 
   async clean(items: PrivacyItem[]): Promise<PrivacyCleanResult> {
-    return await client().call('privacy.clean', { items });
+    return await client().call(RPC_METHODS.PRIVACY_CLEAN, { items });
   }
 
   async detectBrowsers(): Promise<{ browsers: string[] }> {
@@ -35,7 +36,7 @@ class PrivacyService implements IPrivacyService {
     if (this.browserCache && now - this.browserCache.timestamp < this.BROWSER_CACHE_TTL_MS) {
       return { browsers: this.browserCache.browsers };
     }
-    const result = (await client().call('privacy.detectBrowsers')) as { browsers: string[] };
+    const result = (await client().call(RPC_METHODS.PRIVACY_DETECT_BROWSERS)) as { browsers: string[] };
     this.browserCache = { browsers: result.browsers, timestamp: now };
     return result;
   }

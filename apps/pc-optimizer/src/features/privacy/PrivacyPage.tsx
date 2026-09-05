@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useMemo } from 'react';
-import { Card, Button, Badge } from '@avs/ui';
+import { Card, Button, Badge, GaugeCard, StatTile } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleLoadingState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
@@ -14,7 +14,15 @@ import { useIsPro } from '../sync/syncStore';
 import { PrivacyViewModel } from './PrivacyViewModel';
 import { privacyService } from './privacy.service';
 import { useFeatureGuard } from '../licensing/useFeatureGuard';
-import { CheckCircleIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import {
+  CheckCircleIcon,
+  EyeSlashIcon,
+  CircleStackIcon,
+  ArrowDownTrayIcon,
+  ExclamationTriangleIcon,
+  GlobeAltIcon,
+  SparklesIcon,
+} from '@heroicons/react/24/outline';
 
 const CATEGORY_LABELS: Record<string, string> = {
   windows_temp: 'Windows Temporary Files',
@@ -71,12 +79,6 @@ const BROWSER_CATEGORIES = [
   'opera_history', 'opera_downloads', 'opera_cache', 'opera_session', 'opera_temp', 'opera_site_storage',
   'vivaldi_history', 'vivaldi_downloads', 'vivaldi_cache', 'vivaldi_session', 'vivaldi_temp', 'vivaldi_site_storage',
 ];
-
-const RISK_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
-  high: 'danger',
-  medium: 'warning',
-  low: 'success',
-};
 
 export default function PrivacyPage() {
   const vm = useMemo(() => new PrivacyViewModel(privacyService), []);
@@ -283,26 +285,65 @@ export default function PrivacyPage() {
 
           {state.scanResult && (
             <Card title="Scan Results" className="mb-4">
-              {/* Compact stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                <Card variant="glass" padded={false} className="p-3">
-                  <p className="text-statistic text-text-primary">{state.scanResult.itemCount}</p>
-                  <p className="text-caption text-text-secondary">Items found</p>
-                </Card>
-                <Card variant="glass" padded={false} className="p-3">
-                  <p className="text-statistic text-text-primary">{vm.formatBytes(state.scanResult.totalSize)}</p>
-                  <p className="text-caption text-text-secondary">Recoverable</p>
-                </Card>
-                <Card variant="glass" padded={false} className="p-3">
-                  <Badge tone={RISK_TONE[state.scanResult.riskLevel] ?? 'neutral'} className="text-small">
-                    {state.scanResult.riskLevel.toUpperCase()}
-                  </Badge>
-                  <p className="text-caption text-text-secondary mt-1">Risk level</p>
-                </Card>
-                <Card variant="glass" padded={false} className="p-3">
-                  <p className="text-statistic text-text-primary">{state.scanResult.categoriesFound.length}</p>
-                  <p className="text-caption text-text-secondary">Categories</p>
-                </Card>
+              {/* Hero status section — System Mechanic style */}
+              <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="privacy-hero-section">
+                {/* Gauge */}
+                <GaugeCard
+                  title={state.scanResult.itemCount > 0 ? 'Privacy Traces' : 'Clean'}
+                  value={Math.min(100, state.scanResult.itemCount)}
+                  unit=""
+                  tone={state.scanResult.riskLevel === 'high' ? 'danger' : state.scanResult.riskLevel === 'medium' ? 'warning' : 'success'}
+                  icon={<EyeSlashIcon className="h-6 w-6" />}
+                  description={state.scanResult.itemCount > 0 ? `${vm.formatBytes(state.scanResult.totalSize)} recoverable` : 'No privacy traces found'}
+                  data-testid="privacy-hero-gauge"
+                />
+
+                {/* Key stats */}
+                <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <StatTile
+                    label="Items Found"
+                    value={state.scanResult.itemCount.toString()}
+                    hint="Privacy traces"
+                    icon={<CircleStackIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                  <StatTile
+                    label="Recoverable"
+                    value={vm.formatBytes(state.scanResult.totalSize)}
+                    hint="Space to free"
+                    icon={<ArrowDownTrayIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                  <StatTile
+                    label="Risk Level"
+                    value={state.scanResult.riskLevel.toUpperCase()}
+                    hint="Privacy exposure"
+                    icon={<ExclamationTriangleIcon className="h-5 w-5" />}
+                    variant="glass"
+                    accentColor={state.scanResult.riskLevel === 'high' ? 'var(--avs-danger)' : state.scanResult.riskLevel === 'medium' ? 'var(--avs-warning)' : 'var(--avs-success)'}
+                  />
+                  <StatTile
+                    label="Categories"
+                    value={state.scanResult.categoriesFound.length.toString()}
+                    hint="Trace types"
+                    icon={<GlobeAltIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                  <StatTile
+                    label="Browsers"
+                    value={state.browsersDetected.length.toString()}
+                    hint="Detected"
+                    icon={<GlobeAltIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                  <StatTile
+                    label="Edition"
+                    value={isPro ? 'Pro' : 'Free'}
+                    hint={isPro ? 'Full clean' : 'Basic clean'}
+                    icon={<SparklesIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                </div>
               </div>
 
               {/* Category breakdown */}
