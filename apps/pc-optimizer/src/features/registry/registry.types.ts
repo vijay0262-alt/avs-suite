@@ -10,7 +10,7 @@ export interface RegistryIssue {
   subkey: string;
   valueName: string;
   valueData: string;
-  severity: 'low' | 'medium';
+  severity: 'low' | 'medium' | 'high';
 }
 
 export interface RegistryScanResult {

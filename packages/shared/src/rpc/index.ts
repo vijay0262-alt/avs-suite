@@ -94,6 +94,13 @@ export const RPC_METHODS = {
   STARTUP_RESTORE: 'startup.restore',
   STARTUP_REFRESH_CACHE: 'startup.refreshCache',
 
+  // Registry Cleaner
+  REGISTRY_CATEGORIES: 'registry.categories',
+  REGISTRY_SCAN: 'registry.scan',
+  REGISTRY_CLEAN: 'registry.clean',
+  REGISTRY_BACKUPS: 'registry.backups',
+  REGISTRY_RESTORE: 'registry.restore',
+
   // Privacy Cleaner
   PRIVACY_SCAN: 'privacy.scan',
   PRIVACY_CLEAN: 'privacy.clean',

@@ -1,8 +1,8 @@
 /**
  * RegistryCleanerPage — scan, review, and safely fix invalid registry entries.
  */
-import { useEffect, useMemo } from 'react';
-import { Card, Button, Badge } from '@avs/ui';
+import { useEffect, useMemo, useState } from 'react';
+import { Card, Button, Badge, GaugeCard, StatTile } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleSuccessBanner, ModuleErrorBanner, ModuleEmptyState } from '../../components/ModuleStates';
@@ -23,6 +23,8 @@ import {
   ArrowPathIcon,
   LockClosedIcon,
   CheckCircleIcon,
+  ServerStackIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
 const SEVERITY_TONE: Record<string, 'neutral' | 'warning' | 'danger'> = {
@@ -38,6 +40,7 @@ export default function RegistryCleanerPage() {
   const { guard, dialogElement } = useFeatureGuard();
   const limits = useEditionLimits();
   const fixLimit = limits.getLimit('registryCleanerIssuesPerRun');
+  const [scanStartTime, setScanStartTime] = useState<number | null>(null);
 
   useEffect(() => {
     void vm.bootstrap();
@@ -58,17 +61,6 @@ export default function RegistryCleanerPage() {
         actions={<HelpButton text="The registry scanner checks for invalid file references, broken shortcuts, missing shared DLLs, and obsolete COM objects. Every fix is backed up and can be restored." />}
       />
 
-      {/* Safety banner — compact */}
-      <div
-        className="mb-4 flex items-center gap-2 rounded-[var(--avs-radius-md)] border border-[color-mix(in_srgb,var(--avs-brand-primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--avs-brand-primary)_5%,transparent)] px-4 py-2"
-        data-testid="registry-safety-banner"
-      >
-        <ShieldCheckIcon className="h-4 w-4 text-[var(--avs-brand-primary)] shrink-0" />
-        <span className="text-caption text-text-secondary">
-          Manual review only — no automatic deletion. System Restore Point is created before any changes.
-        </span>
-      </div>
-
       {state.bootstrap === 'error' && (
         <ModuleErrorState
           message="Could not reach the backend service. Please try again."
@@ -79,21 +71,85 @@ export default function RegistryCleanerPage() {
 
       {state.bootstrap === 'ready' && (
         <>
-          <div className="flex items-center justify-between mb-4">
+          {/* Hero status section — System Mechanic style */}
+          <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="registry-hero-section">
+            {/* Gauge */}
+            <GaugeCard
+              title={state.scanning ? 'Scanning…' : issueCount > 0 ? 'Issues Found' : 'Registry Clean'}
+              value={state.scanning ? 100 : Math.min(100, issueCount)}
+              unit=""
+              tone={issueCount > 10 ? 'danger' : issueCount > 0 ? 'warning' : 'success'}
+              icon={<ServerStackIcon className="h-6 w-6" />}
+              description={state.scanning ? 'Analyzing registry hives' : issueCount > 0 ? `${issueCount} invalid entries detected` : 'No issues found'}
+              data-testid="registry-hero-gauge"
+            />
+
+            {/* Key stats */}
+            <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <StatTile
+                label="Issues Found"
+                value={issueCount.toString()}
+                hint={issueCount > 0 ? 'Ready to fix' : 'Registry is clean'}
+                icon={<ExclamationTriangleIcon className="h-5 w-5" />}
+                variant="glass"
+                accentColor={issueCount > 0 ? 'var(--avs-warning)' : 'var(--avs-success)'}
+              />
+              <StatTile
+                label="Selected"
+                value={selectedCount.toString()}
+                hint={selectedCount > 0 ? 'Ready to fix' : 'Select issues below'}
+                icon={<CheckCircleIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+              <StatTile
+                label="Categories"
+                value={Object.keys(state.breakdown).length.toString()}
+                hint={Object.keys(state.breakdown).length > 0 ? 'Affected areas' : '—'}
+                icon={<WrenchScrewdriverIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+              <StatTile
+                label="Backups"
+                value={state.backups.length.toString()}
+                hint={state.backups.length > 0 ? 'Can be restored' : 'No backups yet'}
+                icon={<ArrowPathIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+              <StatTile
+                label="Safety"
+                value="Protected"
+                hint="Restore Point + Backup"
+                icon={<ShieldCheckIcon className="h-5 w-5" />}
+                variant="glass"
+                accentColor="var(--avs-success)"
+              />
+              <StatTile
+                label="Edition"
+                value={isPro ? 'Pro' : 'Free'}
+                hint={!isPro ? `${fixLimit} fixes per scan` : 'Unlimited'}
+                icon={<ClockIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+            </div>
+          </div>
+
+          {/* Scan controls */}
+          <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-section-title text-text-primary">Registry Scan</h2>
               <p className="text-small text-text-secondary">
-                {state.issues.length > 0 ? `${state.issues.length} issues found` : 'Scan your registry to find invalid entries.'}
+                {issueCount > 0 ? `${issueCount} issues found` : 'Scan your registry to find invalid entries.'}
               </p>
             </div>
             <div className="flex gap-2">
-              <Button onClick={() => vm.scan()} disabled={state.scanning}>
+              <Button onClick={() => { setScanStartTime(Date.now()); vm.scan(); }} disabled={state.scanning} leftIcon={<WrenchScrewdriverIcon className="h-4 w-4" />}>
                 {state.scanning ? 'Scanning…' : 'Scan Registry'}
               </Button>
               <Button
                 variant="primary"
                 onClick={() => vm.clean()}
                 disabled={state.cleaning || selectedCount === 0}
+                leftIcon={<CheckCircleIcon className="h-4 w-4" />}
               >
                 {state.cleaning ? 'Fixing…' : `Fix Selected (${selectedCount})`}
               </Button>
@@ -146,7 +202,7 @@ export default function RegistryCleanerPage() {
                   moduleName: 'Registry Cleaner',
                   moduleIcon: 'ServerStackIcon',
                   timestamp: Date.now(),
-                  durationMs: 5000,
+                  durationMs: scanStartTime ? Date.now() - scanStartTime : 5000,
                   itemsAnalyzed: state.issues.length,
                   issuesFound: state.issues.length,
                   categoryBreakdown: state.breakdown,

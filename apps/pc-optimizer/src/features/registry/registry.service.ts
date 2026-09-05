@@ -8,6 +8,7 @@ import type {
   RegistryBackup,
   RegistryCategory,
 } from './registry.types';
+import { RPC_METHODS } from '@avs/shared/rpc';
 
 function client() {
   if (typeof window === 'undefined' || !window.avs) {
@@ -26,24 +27,24 @@ export interface IRegistryService {
 
 class RegistryService implements IRegistryService {
   async listCategories(): Promise<{ categories: RegistryCategory[] }> {
-    return await client().call('registry.categories');
+    return await client().call(RPC_METHODS.REGISTRY_CATEGORIES);
   }
 
   async scan(categories?: string[]): Promise<RegistryScanResult> {
     const params = categories ? { categories } : undefined;
-    return await client().call('registry.scan', params);
+    return await client().call(RPC_METHODS.REGISTRY_SCAN, params);
   }
 
   async clean(issues: RegistryIssue[]): Promise<RegistryCleanResult> {
-    return await client().call('registry.clean', { issues });
+    return await client().call(RPC_METHODS.REGISTRY_CLEAN, { issues });
   }
 
   async listBackups(): Promise<{ backups: RegistryBackup[] }> {
-    return await client().call('registry.backups');
+    return await client().call(RPC_METHODS.REGISTRY_BACKUPS);
   }
 
   async restore(backupId: string): Promise<{ success: boolean; restored: number; errors: string[] }> {
-    return await client().call('registry.restore', { backupId });
+    return await client().call(RPC_METHODS.REGISTRY_RESTORE, { backupId });
   }
 }
 

@@ -201,6 +201,15 @@ export class RegistryCleanerViewModel extends ViewModel<RegistryState> {
   async restore(backupId: string): Promise<void> {
     try {
       await this.service.restore(backupId);
+      const backups = await this.service.listBackups();
+      this.setState({ backups: backups.backups, issues: [], selected: new Set<string>(), cleanResult: null });
+      optimizationEventBus.emit({
+        type: OptimizationEventType.RegistryOptimized,
+        moduleId: 'registry',
+        action: 'restore',
+        itemsProcessed: 1,
+        timestamp: Date.now(),
+      });
     } catch (err) {
       this.setState({ cleanError: err instanceof Error ? err.message : String(err) });
     }
