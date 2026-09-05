@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Button, Card } from '@avs/ui';
+import { Button, Card, GaugeCard, StatTile } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
+import { formatBytes } from '@avs/shared/utils';
 import {
   BoltIcon,
   StopIcon,
@@ -11,6 +12,9 @@ import {
   CalendarDaysIcon,
   ArrowPathRoundedSquareIcon,
   ShieldCheckIcon,
+  TrashIcon,
+  DocumentTextIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 import { PageHeader } from '../../components/PageHeader';
 import { HelpButton } from '../../components/HelpButton';
@@ -25,11 +29,11 @@ import { ConfirmDialog } from './components/ConfirmDialog';
 import { CleaningProgress } from './components/CleaningProgress';
 import { CleaningSummary } from './components/CleaningSummary';
 import { CleaningLog } from './components/CleaningLog';
-import { canUse, currentEdition } from '../licensing/FeatureGate';
 import { useFeatureGuard } from '../licensing/useFeatureGuard';
 import { useIsPro } from '../sync/syncStore';
 import { ProOnlySection } from '../licensing/ProStatusBadge';
 import { schedulerBackendService } from '../maintenance-engine/schedulerBackendService';
+import { backgroundCleanupService } from '../health';
 
 const FREE_CLEAN_LIMIT_BYTES = 500 * 1024 * 1024; // 500 MB
 
@@ -80,12 +84,12 @@ export default function JunkCleanerPage() {
   }, [historyOpen, state.historyQuery, state.historyCategory, state.historyResultFilter, vm]);
 
   const running = state.snapshot.status === 'running';
-  const { guard, dialogElement } = useFeatureGuard();
+  const { dialogElement } = useFeatureGuard();
   const isPro = useIsPro();
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleFreq, setScheduleFreq] = useState('weekly');
   const [scheduleLoading, setScheduleLoading] = useState(false);
-  const [bgCleanupEnabled, setBgCleanupEnabled] = useState(false);
+  const [bgCleanupEnabled, setBgCleanupEnabled] = useState(true);
   const hasResults =
     state.snapshot.present && !running && Boolean(state.snapshot.cleaners?.length);
   const scanEverStarted = scanIssuedOnce || state.snapshot.present;
@@ -99,8 +103,8 @@ export default function JunkCleanerPage() {
         const junkTask = result.tasks.find((t) => t.action === 'junk_clean');
         if (junkTask) {
           setScheduleEnabled(true);
-          const freq = junkTask.nextRun ? 'weekly' : 'weekly';
-          setScheduleFreq(freq);
+          const taskFreq = junkTask.status?.includes('daily') ? 'daily' : junkTask.status?.includes('monthly') ? 'monthly' : 'weekly';
+          setScheduleFreq(taskFreq);
         }
       } catch { /* ignore - backend may not be available */ }
     })();
@@ -163,9 +167,6 @@ export default function JunkCleanerPage() {
 
   // Enable "Clean" once a scan finished with at least one file found.
   const totalJunkBytes = state.snapshot.totalBytes ?? 0;
-  const isFreeEdition = currentEdition() === 'free';
-  const hasUnlimitedClean = canUse('junk.clean_unlimited');
-  const exceedsFreeLimit = isFreeEdition && !hasUnlimitedClean && totalJunkBytes > FREE_CLEAN_LIMIT_BYTES;
   const canClean =
     hasResults &&
     (state.snapshot.totalFiles ?? 0) > 0 &&
@@ -213,15 +214,6 @@ export default function JunkCleanerPage() {
                     Clean…
                   </Button>
                 )}
-                {exceedsFreeLimit && (
-                  <button
-                    className="text-caption text-semantic-warning flex items-center gap-1 hover:underline"
-                    onClick={() => guard('junk.clean_unlimited', 'Junk Cleaner', () => {})}
-                  >
-                    <ExclamationTriangleIcon className="h-4 w-4" />
-                    Free edition cleans up to 500 MB. {(totalJunkBytes / (1024 * 1024)).toFixed(0)} MB detected — click to upgrade.
-                  </button>
-                )}
                 <Button
                   variant="ghost"
                   onClick={() => setHistoryOpen((v) => !v)}
@@ -243,17 +235,6 @@ export default function JunkCleanerPage() {
           </div>
         }
       />
-
-      {/* Safety guardrail banner */}
-      <div
-        className="mb-4 flex items-center gap-2 rounded-[var(--avs-radius-md)] border border-[color-mix(in_srgb,var(--avs-brand-primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--avs-brand-primary)_5%,transparent)] px-4 py-2"
-        data-testid="junk-safety-banner"
-      >
-        <ShieldCheckIcon className="h-4 w-4 text-brand-primary shrink-0" />
-        <span className="text-caption text-text-secondary">
-          System Restore Point is created before every clean. Browser cookies &amp; history are opt-in.
-        </span>
-      </div>
 
       {state.bootstrap === 'loading' && (
         <Card>
@@ -294,6 +275,67 @@ export default function JunkCleanerPage() {
 
       {state.bootstrap === 'ready' && (
         <>
+          {/* Hero status section — System Mechanic style */}
+          <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="junk-hero-section">
+            {/* Gauge */}
+            <GaugeCard
+              title={running ? 'Scanning…' : hasResults ? 'Junk Found' : 'Ready to Scan'}
+              value={hasResults ? Math.min(100, Math.round((totalJunkBytes / (1024 * 1024 * 1024)) * 100)) : running ? (state.snapshot.progress ?? 0) : 0}
+              unit={hasResults ? '' : running ? '%' : ''}
+              tone={totalJunkBytes > 1024 * 1024 * 1024 ? 'danger' : totalJunkBytes > 200 * 1024 * 1024 ? 'warning' : 'brand'}
+              icon={<TrashIcon className="h-6 w-6" />}
+              description={hasResults ? `${formatBytes(totalJunkBytes)} across ${(state.snapshot.totalFiles ?? 0).toLocaleString()} files` : running ? 'Analyzing your system' : 'Select categories and click Scan'}
+              data-testid="junk-hero-gauge"
+            />
+
+            {/* Key stats */}
+            <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <StatTile
+                label="Junk Files"
+                value={(state.snapshot.totalFiles ?? 0).toLocaleString()}
+                hint={hasResults ? 'Ready to clean' : running ? 'Scanning…' : 'Not scanned'}
+                icon={<DocumentTextIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+              <StatTile
+                label="Space to Recover"
+                value={formatBytes(totalJunkBytes)}
+                hint={totalJunkBytes > 0 ? 'Across all categories' : '—'}
+                icon={<TrashIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+              <StatTile
+                label="Categories"
+                value={state.catalog.length.toString()}
+                hint={`${anySelected ? state.selected.size : 0} selected`}
+                icon={<BoltIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+              <StatTile
+                label="Last Clean"
+                value={state.historyEntries.length > 0 ? `${state.historyEntries[0]!.files_removed.toLocaleString()} files` : 'Never'}
+                hint={state.historyEntries.length > 0 ? formatBytes(state.historyEntries[0]!.bytes_recovered) : 'No history yet'}
+                icon={<ClockIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+              <StatTile
+                label="Safety"
+                value="Protected"
+                hint="Restore Point + Undo"
+                icon={<ShieldCheckIcon className="h-5 w-5" />}
+                variant="glass"
+                accentColor="var(--avs-success)"
+              />
+              <StatTile
+                label="Status"
+                value={running ? 'Scanning' : hasResults ? 'Ready' : 'Idle'}
+                hint={running ? `${state.snapshot.progress ?? 0}%` : hasResults ? 'Click Clean to proceed' : 'Click Scan to start'}
+                icon={<SparklesIcon className="h-5 w-5" />}
+                variant="glass"
+              />
+            </div>
+          </div>
+
           {/* Free edition limit notice */}
           {!isPro && hasResults && totalJunkBytes > FREE_CLEAN_LIMIT_BYTES && (
             <div className="mb-4 flex items-center gap-2 rounded-[var(--avs-radius-md)] bg-semantic-warning/10 border border-semantic-warning/20 px-4 py-2" data-testid="junk-free-limit-notice">
@@ -477,7 +519,12 @@ export default function JunkCleanerPage() {
                     </div>
                   </div>
                   <button
-                    onClick={() => setBgCleanupEnabled((v) => !v)}
+                    onClick={() => {
+                      const next = !bgCleanupEnabled;
+                      setBgCleanupEnabled(next);
+                      if (next) backgroundCleanupService.start();
+                      else backgroundCleanupService.stop();
+                    }}
                     className={`relative h-6 w-11 rounded-full transition-colors ${bgCleanupEnabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'}`}
                     data-testid="junk-bg-cleanup-toggle"
                     aria-label="Toggle background cleanup"

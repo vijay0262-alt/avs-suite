@@ -103,8 +103,8 @@ export function ConfirmDialog({ open, preview, onBack, onConfirm }: ConfirmDialo
             </div>
           </div>
           <div>
-            <div className="text-caption uppercase text-text-muted">Undo available</div>
-            <div className="mt-1 text-small font-medium text-text-primary">No</div>
+            <div className="text-caption uppercase text-text-muted">Restore Point</div>
+            <div className="mt-1 text-small font-medium text-text-primary">Created automatically</div>
           </div>
         </div>
       </div>
