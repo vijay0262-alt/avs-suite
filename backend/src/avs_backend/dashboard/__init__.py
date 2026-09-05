@@ -610,14 +610,16 @@ def system_av_status(_params: dict[str, Any] | None) -> dict[str, Any]:
 
     # Check if our AV engine is running
     try:
-        from avs_backend.threat_engine.clamav_scanner import detect_clamav_installation
+        from avs_backend.threat_engine.clamav_scanner import detect_clamav_installation, check_clamav_available
         av_info = detect_clamav_installation()
-        if av_info.get("clamd_running"):
+        if av_info.get("installed"):
             result["avs_av_active"] = True
             result["avs_signatures"] = av_info.get("signature_count", 0)
             result["primary_av"] = "AVS AI Shield"
             result["defender_visible"] = False
             result["protected"] = True
+            # If clamd is actually running, we have full real-time protection
+            result["clamd_running"] = av_info.get("clamd_running", False)
     except Exception:
         pass
 
@@ -1580,10 +1582,22 @@ _last_good_defender: dict[str, Any] | None = None
 
 @_ttl_cache(30.0)
 def _get_avs_av_active() -> bool:
-    """Check if AVS AI Shield's ClamAV engine is running."""
+    """Check if AVS AI Shield's ClamAV engine is active.
+
+    Returns True if ClamAV is installed (even if clamd is still starting),
+    because AVS AI Shield is the user's antivirus product. The daemon
+    may take a few seconds to start on boot, but the product is still
+    considered "active" as long as it's installed.
+    """
     try:
-        from avs_backend.threat_engine.clamav_scanner import check_clamav_available
-        return check_clamav_available()
+        from avs_backend.threat_engine.clamav_scanner import check_clamav_available, detect_clamav_installation
+        # If clamd is already running, definitely active
+        if check_clamav_available():
+            return True
+        # If ClamAV is installed but clamd not yet running, still consider
+        # AVS active — the daemon auto-starts on backend launch
+        info = detect_clamav_installation()
+        return bool(info.get("installed", False))
     except Exception:
         return False
 

@@ -51,9 +51,10 @@ export default function SmartOptimizationPage() {
   };
 
   // ── Derived metrics from actual scan/cleanup data ──────────────
-  const healthScore = snapshot.cleanupResult?.healthAfter ?? 0;
+  const hasCleanup = !!snapshot.cleanupResult;
+  const healthScore = hasCleanup ? (snapshot.cleanupResult?.healthAfter ?? 0) : null;
   const healthBefore = snapshot.cleanupResult?.healthBefore ?? 0;
-  const scoreDelta = healthScore - healthBefore;
+  const scoreDelta = healthScore != null ? healthScore - healthBefore : 0;
   const spaceRecovered = snapshot.cleanupResult?.spaceRecovered ?? 0;
   const filesCleaned = snapshot.cleanupResult?.cleaned ?? 0;
   const filesDetected = snapshot.cleanupResult?.detected ?? 0;
@@ -133,11 +134,13 @@ export default function SmartOptimizationPage() {
         <Card variant="glass" className="p-5" data-testid="smart-opt-score">
           <div className="flex items-center gap-3">
             <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${
+              healthScore == null ? 'bg-[var(--avs-surface-muted)]' :
               healthScore >= 80 ? 'bg-[var(--avs-success)]/10' :
               healthScore >= 60 ? 'bg-[var(--avs-warning)]/10' :
               'bg-[var(--avs-danger)]/10'
             }`}>
               <ArrowTrendingUpIcon className={`h-5 w-5 ${
+                healthScore == null ? 'text-[var(--avs-text-muted)]' :
                 healthScore >= 80 ? 'text-[var(--avs-success)]' :
                 healthScore >= 60 ? 'text-[var(--avs-warning)]' :
                 'text-[var(--avs-danger)]'
@@ -146,10 +149,10 @@ export default function SmartOptimizationPage() {
             <div className="flex-1 min-w-0">
               <div className="text-caption text-[var(--avs-text-muted)]">Optimization Score</div>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-[var(--avs-text-primary)] tabular-nums">{healthScore}</span>
-                <span className="text-caption text-[var(--avs-text-muted)]">/100</span>
+                <span className="text-2xl font-bold text-[var(--avs-text-primary)] tabular-nums">{healthScore ?? '—'}</span>
+                {healthScore != null && <span className="text-caption text-[var(--avs-text-muted)]">/100</span>}
               </div>
-              <div className="text-caption text-[var(--avs-success)]">
+              <div className={`text-caption ${scoreDelta > 0 ? 'text-[var(--avs-success)]' : 'text-[var(--avs-text-muted)]'}`}>
                 {scoreDelta > 0 ? `+${scoreDelta} improved` : 'Run optimization to improve'}
               </div>
             </div>

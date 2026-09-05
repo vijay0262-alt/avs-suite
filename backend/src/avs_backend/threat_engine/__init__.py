@@ -1583,3 +1583,19 @@ try:
     auto_start_on_startup()
 except Exception as _e:
     log.warning("Startup scan auto-start failed: %s", _e)
+
+# Auto-start download scanner (monitors Downloads/Desktop for new files)
+try:
+    from avs_backend.threat_engine.download_scanner import _get_scanner
+    _get_scanner().start()
+    log.info("Download scanner auto-started on startup")
+except Exception as _e:
+    log.warning("Download scanner auto-start failed: %s", _e)
+
+# Auto-start real-time threat monitors (ETW file monitor + network C2)
+try:
+    from avs_backend.realtime_threat import realtime_threat_start
+    realtime_threat_start(None)
+    log.info("Real-time threat monitors auto-started on startup")
+except Exception as _e:
+    log.warning("Real-time threat monitors auto-start failed: %s", _e)

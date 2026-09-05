@@ -151,14 +151,14 @@ function deriveProtectionItems(metrics: DashboardMetrics | null): ProtectionItem
   const win = metrics?.windows;
   const items: ProtectionItem[] = [];
 
-  // 1. Antivirus
+  // 1. Antivirus — AVS AI Shield is always shown first when installed
+  const avsActive = !!metrics?.avsAvActive;
   const defenderOn = sec?.defender.enabled ?? false;
   const thirdPartyAV = sec?.defender.thirdPartyAV ?? null;
-  const avsActive = !!metrics?.avsAvActive;
   const avActive = avsActive || defenderOn || !!thirdPartyAV;
   items.push({
     id: 'antivirus',
-    name: 'Antivirus',
+    name: avsActive ? 'AVS AI Shield Antivirus' : 'Antivirus',
     status: avActive ? 'protected' : sec ? 'disabled' : 'unknown',
     icon: ShieldCheckIcon,
   });
@@ -525,7 +525,7 @@ export function ProtectionCenterPage() {
             >
               Check Protection
             </Button>
-            <HelpButton text="The Protection Center shows your PC's overall security posture based on real telemetry from Windows Defender, firewall, and other security features." />
+            <HelpButton text="The Protection Center shows your PC's overall security posture based on real telemetry from AVS AI Shield Antivirus, Windows Defender, firewall, and other security features." />
           </>
         }
         testId="page-protection-center-header"

@@ -120,11 +120,13 @@ def _get_realtime_status() -> dict[str, Any]:
     """Get real-time protection status."""
     try:
         from avs_backend.realtime_threat import realtime_threat_status
-        status = realtime_threat_status(None)
+        result = realtime_threat_status(None)
+        # Backend returns {success, status: {...}} — unwrap
+        st = result.get("status", result) if isinstance(result, dict) else {}
         return {
-            "file_monitor": status.get("etw_file_monitor", {}).get("enabled", False) if isinstance(status.get("etw_file_monitor"), dict) else False,
-            "process_monitor": status.get("etw_process_monitor", {}).get("enabled", False) if isinstance(status.get("etw_process_monitor"), dict) else False,
-            "usb_monitor": status.get("usb_monitor", {}).get("enabled", False) if isinstance(status.get("usb_monitor"), dict) else False,
+            "file_monitor": st.get("etw_file_monitor", {}).get("running", False) if isinstance(st.get("etw_file_monitor"), dict) else False,
+            "process_monitor": st.get("etw_process_monitor", {}).get("running", False) if isinstance(st.get("etw_process_monitor"), dict) else False,
+            "usb_monitor": st.get("usb_monitor", {}).get("running", False) if isinstance(st.get("usb_monitor"), dict) else False,
         }
     except Exception:
         return {"file_monitor": False, "process_monitor": False, "usb_monitor": False}
@@ -332,12 +334,30 @@ def compute_security_score() -> dict[str, Any]:
     # ─── 8. Definition Freshness (5 points) ───
     def_score = 0
     sig_count = avs.get("signature_count", 0)
+    # If clamd is running, use the live signature count
     if sig_count > 100000:
         def_score = 5
     elif sig_count > 10000:
         def_score = 3
     elif sig_count > 0:
         def_score = 1
+    else:
+        # ClamAV not running — check if database files exist on disk
+        try:
+            db_dir = Path(
+                os.environ.get("LOCALAPPDATA", "")
+            ) / "AVS AI Shield" / "clamav" / "db"
+            if db_dir.is_dir():
+                db_files = list(db_dir.glob("*.cvd")) + list(db_dir.glob("*.cld"))
+                total_db_size = sum(f.stat().st_size for f in db_files if f.exists())
+                if total_db_size > 50_000_000:  # >50MB means full definitions
+                    def_score = 5
+                elif total_db_size > 1_000_000:  # >1MB means partial
+                    def_score = 3
+                elif db_files:
+                    def_score = 1
+        except Exception:
+            pass
     factors.append({
         "id": "definition_freshness",
         "name": "Definition Freshness",

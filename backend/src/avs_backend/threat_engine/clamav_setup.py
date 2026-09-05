@@ -156,6 +156,7 @@ def _run_freshclam() -> dict[str, Any]:
             capture_output=True,
             text=True,
             timeout=300,
+            cwd=str(_DATA_DIR),
             creationflags=_NO_WINDOW,
         )
         success = result.returncode == 0
@@ -820,6 +821,7 @@ def start_clamd() -> dict[str, Any]:
                 [str(clamd_exe), f"--config-file={conf_path}"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                cwd=str(_DATA_DIR),
                 creationflags=_NO_WINDOW | 0x00000004,  # DETACHED_PROCESS
             )
             log.info("clamd started with PID %d (attempt %d)", proc.pid, attempt + 1)

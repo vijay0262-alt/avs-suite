@@ -10,14 +10,13 @@
  * Covers: viruses, trojans, worms, ransomware, adware, spyware, PUPs,
  * rootkits, bootkits, and all other malware categories.
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Card, Button, Badge } from '@avs/ui';
 import { PageHeader } from '../components/PageHeader';
 import { HelpButton } from '../components/HelpButton';
 import { rpc } from '../services/rpc';
 import { RPC_METHODS } from '@avs/shared/rpc';
 import { useEdition } from '../config/EditionManager';
-import { useUpgradeDialog } from '../components/UpgradeDialog';
 import { ScanView } from '../features/scan';
 import { Modal } from '../features/dashboard/components/Modal';
 import {
@@ -69,9 +68,8 @@ const THREAT_COVERAGE = [
 export default function AntivirusSecurityPage() {
   const [activeTab, setActiveTab] = useState<TabId>('scan');
   const [scanModalOpen, setScanModalOpen] = useState(false);
-  const [scanMode] = useState<'quick' | 'full'>('full');
+  const [scanMode, setScanMode] = useState<'quick' | 'full'>('quick');
   const edition = useEdition();
-  const { show: showUpgrade } = useUpgradeDialog();
   const isPro = edition === 'professional';
 
   // Real-time protection state
@@ -122,6 +120,7 @@ export default function AntivirusSecurityPage() {
   // One-click security scan state
   const [oneClickProgress, setOneClickProgress] = useState<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_scanned: number } | null>(null);
   const [oneClickResult, setOneClickResult] = useState<{ threats_found: number; threats_quarantined: number; files_scanned: number; success: boolean } | null>(null);
+  const oneClickPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Post-scan summary state
   const [scanSummary, setScanSummary] = useState<{ report_id: string; scan_type: string; duration_seconds: number; files_scanned: number; threats_found: number; posture: { status: string; score: number; label: string; color: string; high_severity_count: number; critical_count: number }; threat_breakdown: { by_category: Record<string, number>; by_severity: Record<string, number>; quarantined: number; pending: number }; recommendations: Array<{ id: string; priority: string; title: string; description: string; action: string | null }>; top_threats: Array<{ name: string; category: string; severity: string; path: string; quarantined: boolean }> } | null>(null);
@@ -308,20 +307,21 @@ export default function AntivirusSecurityPage() {
 
   const startOneClick = useCallback(async () => {
     setOneClickResult(null);
-    setOneClickProgress({ active: true, phase: 'scanning', scan_progress: 0, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: null, current_file: null, files_scanned: 0 });
+    setOneClickProgress({ active: true, phase: 'scanning', scan_progress: 1, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: null, current_file: 'Initializing scan...', files_scanned: 0 });
     try {
       const startRes = await rpc.raw<{ success?: boolean; error?: string; progress?: Record<string, unknown> }>(RPC_METHODS.ONE_CLICK_START, { scan_type: 'quick' });
       if (!startRes.success && startRes.error) {
         setOneClickProgress({ active: false, phase: 'error', scan_progress: 0, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: startRes.error, current_file: null, files_scanned: 0 });
         return;
       }
-      // Poll progress
+      // Poll progress — tracked via ref for cleanup on unmount
       const poll = setInterval(async () => {
         try {
           const prog = await rpc.raw<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_scanned: number }>(RPC_METHODS.ONE_CLICK_PROGRESS);
           setOneClickProgress(prog);
           if (!prog.active) {
             clearInterval(poll);
+            oneClickPollRef.current = null;
             if (prog.phase === 'complete') {
               setOneClickResult({
                 threats_found: prog.threats_found,
@@ -335,10 +335,12 @@ export default function AntivirusSecurityPage() {
           }
         } catch (e) {
           clearInterval(poll);
+          oneClickPollRef.current = null;
           const errMsg = e instanceof Error ? e.message : 'Failed to get progress';
           setOneClickProgress(prev => prev ? { ...prev, active: false, error: errMsg } : null);
         }
       }, 500);
+      oneClickPollRef.current = poll;
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : 'Failed to start security scan';
       setOneClickProgress({ active: false, phase: 'error', scan_progress: 0, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: errMsg, current_file: null, files_scanned: 0 });
@@ -349,10 +351,7 @@ export default function AntivirusSecurityPage() {
 
   // ── Handlers ──────────────────────────────────────────────────
 
-  // ── Handlers ──────────────────────────────────────────────────
-
   const toggleRtGuard = useCallback(async () => {
-    if (!isPro) { showUpgrade('Real-Time Protection'); return; }
     setRtGuardLoading(true);
     try {
       if (rtGuardEnabled) {
@@ -364,7 +363,7 @@ export default function AntivirusSecurityPage() {
       }
     } catch { /* ignore */ }
     setRtGuardLoading(false);
-  }, [rtGuardEnabled, isPro, showUpgrade]);
+  }, [rtGuardEnabled]);
 
   const handleRestoreThreat = useCallback(async (threatId: string) => {
     try {
@@ -480,13 +479,18 @@ export default function AntivirusSecurityPage() {
 
   // ── Initial data loading ──────────────────────────────────────
   useEffect(() => {
-    rpc.raw<Record<string, unknown>>(RPC_METHODS.REALTIME_THREAT_STATUS)
+    rpc.raw<{ success: boolean; status: Record<string, { running: boolean } | null> }>(RPC_METHODS.REALTIME_THREAT_STATUS)
       .then((res) => {
-        // Backend returns { success, status: { etw_file_monitor: { enabled } } }
-        const st = (res?.status ?? res) as Record<string, unknown>;
-        const etw = st?.etw_file_monitor as { enabled?: boolean } | null | undefined;
-        const enabled = etw?.enabled ?? (st?.monitoring as boolean | undefined) ?? false;
-        setRtGuardEnabled(!!enabled);
+        const st = res?.status ?? (res as Record<string, unknown>);
+        if (st && typeof st === 'object') {
+          const etw = (st as Record<string, { running?: boolean } | null>)?.etw_file_monitor;
+          const usb = (st as Record<string, { running?: boolean } | null>)?.usb_monitor;
+          const net = (st as Record<string, { running?: boolean } | null>)?.network_c2;
+          const anyRunning = etw?.running === true || usb?.running === true || net?.running === true;
+          setRtGuardEnabled(anyRunning);
+        } else {
+          setRtGuardEnabled(false);
+        }
       })
       .catch(() => {});
     refreshAvStatus();
@@ -503,13 +507,37 @@ export default function AntivirusSecurityPage() {
     rpc.raw<{ avs_av_active: boolean; avs_signatures: number; primary_av: string | null; defender_visible: boolean; third_party_av: string | null; protected: boolean }>(RPC_METHODS.SYSTEM_AV_STATUS)
       .then(setUnifiedAv)
       .catch(() => {});
-    // Poll setup status every 5s while setup is in progress
-    const poll = setInterval(() => {
-      refreshSetupStatus();
-      refreshAvStatus();
+    // Poll setup status every 5s only while setup is in progress.
+    // Use a ref-like approach: check the fresh response each time.
+    let poll: ReturnType<typeof setInterval> | null = null;
+    let setupDone = false;
+    poll = setInterval(async () => {
+      try {
+        const res = await rpc.raw<{ success?: boolean; status?: { setup_in_progress: boolean }; setup_in_progress?: boolean }>(RPC_METHODS.THREAT_CLAMAV_SETUP_STATUS);
+        const flat = res.status ? res.status : res;
+        const inProgress = flat.setup_in_progress ?? false;
+        setSetupStatus({ setup_in_progress: inProgress, setup_progress: (flat as Record<string, unknown>).setup_progress as { phase?: string } | undefined });
+        if (!inProgress) {
+          setupDone = true;
+          refreshAvStatus();
+          if (poll) { clearInterval(poll); poll = null; }
+        } else {
+          refreshAvStatus();
+        }
+      } catch { /* ignore */ }
     }, 5000);
-    return () => clearInterval(poll);
+    return () => { if (poll) clearInterval(poll); };
   }, [refreshAvStatus, refreshThreats, refreshSetupStatus, refreshSchedule, refreshUsbStatus, refreshGameMode, refreshStartupScan, refreshExclusions, refreshRecentSummaries, refreshSecurityScore, refreshThreatStats]);
+
+  // Clean up one-click poll on unmount
+  useEffect(() => {
+    return () => {
+      if (oneClickPollRef.current) {
+        clearInterval(oneClickPollRef.current);
+        oneClickPollRef.current = null;
+      }
+    };
+  }, []);
 
   // ── Render ────────────────────────────────────────────────────
 
@@ -744,9 +772,9 @@ export default function AntivirusSecurityPage() {
           <div className="text-caption text-text-secondary">AV Engine</div>
         </Card>
         <Card variant="glass" className="p-4 text-center" data-testid="rt-status-card">
-          <EyeIcon className={`h-6 w-6 mx-auto mb-1 ${(rtGuardEnabled || avStatus?.clamd_running) ? 'text-semantic-success' : 'text-text-muted'}`} />
+          <EyeIcon className={`h-6 w-6 mx-auto mb-1 ${rtGuardEnabled ? 'text-semantic-success' : 'text-text-muted'}`} />
           <div className="text-section-title font-bold text-text-primary">
-            {(rtGuardEnabled || avStatus?.clamd_running) ? 'Active' : 'Off'}
+            {rtGuardEnabled ? 'Active' : 'Off'}
           </div>
           <div className="text-caption text-text-secondary">Real-Time Guard</div>
         </Card>
@@ -1120,7 +1148,54 @@ export default function AntivirusSecurityPage() {
             )}
           </Card>
 
-          {/* Scan modal */}
+          {/* Scan mode selector + Scan modal */}
+          <Card variant="glass" className="p-5" data-testid="av-scan-mode-selector">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="shrink-0 rounded-[var(--avs-radius-md)] bg-brand-primary/10 p-2.5">
+                  <BugAntIcon className="h-5 w-5 text-brand-primary" />
+                </div>
+                <div>
+                  <div className="text-small font-semibold text-text-primary">Manual Scan</div>
+                  <div className="text-caption text-text-secondary">
+                    Choose a scan type and run it now. Threats are auto-quarantined.
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] overflow-hidden" data-testid="scan-mode-toggle">
+                  <button
+                    onClick={() => setScanMode('quick')}
+                    className={`px-3 py-1.5 text-small font-medium transition-colors ${
+                      scanMode === 'quick' ? 'bg-brand-primary text-white' : 'bg-surface text-text-secondary hover:text-text-primary'
+                    }`}
+                    data-testid="scan-mode-quick"
+                  >
+                    Quick
+                  </button>
+                  <button
+                    onClick={() => setScanMode('full')}
+                    className={`px-3 py-1.5 text-small font-medium transition-colors ${
+                      scanMode === 'full' ? 'bg-brand-primary text-white' : 'bg-surface text-text-secondary hover:text-text-primary'
+                    }`}
+                    data-testid="scan-mode-full"
+                  >
+                    Full
+                  </button>
+                </div>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  leftIcon={<BoltIcon className="h-4 w-4" />}
+                  onClick={() => setScanModalOpen(true)}
+                  data-testid="manual-scan-btn"
+                >
+                  Start Scan
+                </Button>
+              </div>
+            </div>
+          </Card>
+
           {scanModalOpen && (
             <Modal open={scanModalOpen} onClose={handleModalClose} title="Security Scan" size="xl">
               <ScanView module="security" mode={scanMode} onClose={handleModalClose} />
@@ -1280,13 +1355,13 @@ export default function AntivirusSecurityPage() {
           <Card variant="glass" className="p-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`rounded-[var(--avs-radius-md)] p-2.5 ${(rtGuardEnabled || avStatus?.clamd_running) ? 'bg-semantic-success/10' : 'bg-surface-muted'}`}>
-                  <EyeIcon className={`h-6 w-6 ${(rtGuardEnabled || avStatus?.clamd_running) ? 'text-semantic-success' : 'text-text-muted'}`} />
+                <div className={`rounded-[var(--avs-radius-md)] p-2.5 ${rtGuardEnabled ? 'bg-semantic-success/10' : 'bg-surface-muted'}`}>
+                  <EyeIcon className={`h-6 w-6 ${rtGuardEnabled ? 'text-semantic-success' : 'text-text-muted'}`} />
                 </div>
                 <div>
                   <div className="text-small font-semibold text-text-primary">Real-Time Protection</div>
                   <p className="text-caption text-text-secondary">
-                    {(rtGuardEnabled || avStatus?.clamd_running)
+                    {rtGuardEnabled
                       ? 'Active — AVS AI Shield is protecting your PC in real-time.'
                       : 'Enable to monitor file activity and block threats in real-time.'}
                   </p>
@@ -1294,18 +1369,15 @@ export default function AntivirusSecurityPage() {
               </div>
               <button
                 onClick={toggleRtGuard}
-                disabled={rtGuardLoading || avStatus?.clamd_running}
+                disabled={rtGuardLoading}
                 className={`relative h-6 w-11 rounded-full transition-colors shrink-0 ${
-                  (rtGuardEnabled || avStatus?.clamd_running) ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'
+                  rtGuardEnabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'
                 }`}
                 data-testid="rt-protection-toggle"
               >
-                <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${(rtGuardEnabled || avStatus?.clamd_running) ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${rtGuardEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
               </button>
             </div>
-            {!isPro && !avStatus?.clamd_running && (
-              <p className="text-caption text-brand-primary mt-3">Professional edition required for advanced real-time monitoring.</p>
-            )}
           </Card>
 
           {/* AV Engine status — auto-setup, no button needed */}
@@ -1321,7 +1393,7 @@ export default function AntivirusSecurityPage() {
                     {avStatus?.clamd_running
                       ? 'Active — Your PC is protected'
                       : avStatus?.installed
-                        ? 'Engine ready. Starting automatically...'
+                        ? 'Starting automatically...'
                         : 'Preparing antivirus engine...'}
                   </p>
                 </div>
@@ -1366,7 +1438,7 @@ export default function AntivirusSecurityPage() {
 
             {!avStatus?.clamd_running && !setupStatus?.setup_in_progress && (
               <p className="mt-2 text-caption text-text-muted" data-testid="av-auto-setup-msg">
-                The antivirus engine starts automatically. Virus definitions download in the background and update daily.
+                The antivirus engine starts automatically with AVS AI Shield. Virus definitions download in the background and update daily.
               </p>
             )}
           </Card>

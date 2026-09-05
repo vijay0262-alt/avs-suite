@@ -62,6 +62,8 @@ EXCLUDE_PATHS: frozenset[str] = frozenset({
     r"C:\System Volume Information",
     r"C:\Windows\assembly",
     r"C:\Windows\Installer",
+    # Don't scan our own installation
+    os.path.join(os.environ.get("LOCALAPPDATA", ""), "AVS AI Shield"),
 })
 
 # ─── Scan limits ─────────────────────────────────────────────────────

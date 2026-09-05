@@ -150,13 +150,13 @@ def _run_full_scan() -> dict[str, Any]:
     scan_roots = _get_scan_roots()
     log.info("One-click: Scan roots: %s", scan_roots)
 
-    # First pass: count all scannable files for accurate progress
+    # Skip the slow pre-count phase — walking all drives to count files
+    # can take minutes on a large system. Instead, start scanning
+    # immediately and estimate progress based on files scanned.
+    # We use a rough estimate that gets refined as we go.
+    total_files = 50000  # rough estimate, refined as we scan
     with _lock:
-        _progress["current_file"] = "Counting files..."
-    total_files = _count_scannable_files(scan_roots)
-    if total_files == 0:
-        total_files = 1
-    log.info("One-click: Found %d files to scan", total_files)
+        _progress["current_file"] = f"Scanning {scan_roots[0] if scan_roots else 'C:\\'}..."
 
     files_scanned = 0
     threats_found = 0
@@ -252,9 +252,17 @@ def _run_full_scan() -> dict[str, Any]:
 
                     files_scanned += 1
 
-                    # Update progress
+                    # Adaptive total estimate: if we've scanned more than
+                    # 80% of the estimated total, increase the estimate
+                    # so the progress bar doesn't jump to 99% prematurely.
+                    if files_scanned >= total_files * 0.8:
+                        total_files = int(total_files * 1.5)
+
+                    # Update progress — use adaptive estimate
+                    # Start with rough estimate, cap at 99% until done
                     with _lock:
-                        _progress["scan_progress"] = min(99, int(files_scanned / total_files * 100))
+                        pct = min(99, int(files_scanned / total_files * 100))
+                        _progress["scan_progress"] = pct
                         _progress["current_file"] = fpath
                         _progress["files_scanned"] = files_scanned
 
@@ -408,7 +416,7 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
         _progress = {
             "active": True,
             "phase": "scanning",
-            "scan_progress": 0,
+            "scan_progress": 1,
             "optimize_progress": 0,
             "threats_found": 0,
             "threats_quarantined": 0,
@@ -417,7 +425,7 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
             "started_at": _now_ms(),
             "completed_at": None,
             "error": None,
-            "current_file": None,
+            "current_file": "Initializing scan...",
             "files_scanned": 0,
         }
 
