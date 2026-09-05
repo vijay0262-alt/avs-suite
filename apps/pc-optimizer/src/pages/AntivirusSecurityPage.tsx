@@ -510,7 +510,6 @@ export default function AntivirusSecurityPage() {
     // Poll setup status every 5s only while setup is in progress.
     // Use a ref-like approach: check the fresh response each time.
     let poll: ReturnType<typeof setInterval> | null = null;
-    let setupDone = false;
     poll = setInterval(async () => {
       try {
         const res = await rpc.raw<{ success?: boolean; status?: { setup_in_progress: boolean }; setup_in_progress?: boolean }>(RPC_METHODS.THREAT_CLAMAV_SETUP_STATUS);
@@ -518,7 +517,6 @@ export default function AntivirusSecurityPage() {
         const inProgress = flat.setup_in_progress ?? false;
         setSetupStatus({ setup_in_progress: inProgress, setup_progress: (flat as Record<string, unknown>).setup_progress as { phase?: string } | undefined });
         if (!inProgress) {
-          setupDone = true;
           refreshAvStatus();
           if (poll) { clearInterval(poll); poll = null; }
         } else {
