@@ -12,6 +12,7 @@ Dashboard / AI Smart Optimize flows.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import string
@@ -487,7 +488,7 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
 
         # Scan common email file locations
         email_dirs = []
-        if IS_WINDOWS:
+        if _IS_WINDOWS:
             local_app_data = os.environ.get("LOCALAPPDATA", "")
             app_data = os.environ.get("APPDATA", "")
             user_profile = os.environ.get("USERPROFILE", "")
@@ -555,6 +556,106 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
                  mem_threats, mem_result.get("processes_scanned", 0))
     except Exception as e:
         log.warning("One-click: Memory scanning phase failed: %s", e)
+
+    # Phase 1.7: Browser extension scanning
+    try:
+        from avs_backend.browser_extensions import _get_all_extensions
+        with _lock:
+            _progress["current_file"] = "Scanning browser extensions..."
+
+        extensions = _get_all_extensions()
+        ext_threats = 0
+        for ext in extensions:
+            ext_path = ext.get("path", "")
+            ext_id = ext.get("extensionId", "")
+            browser = ext.get("browser", "")
+            ext_name = ext.get("name", "Unknown")
+
+            if not ext_path or not os.path.isdir(ext_path):
+                continue
+
+            # Scan extension JS files and manifest for malicious patterns
+            threat_score = 0
+            reasons: list[str] = []
+
+            # Check manifest for suspicious permissions
+            manifest_path = os.path.join(ext_path, "manifest.json")
+            if os.path.isfile(manifest_path):
+                try:
+                    with open(manifest_path, "r", encoding="utf-8", errors="ignore") as f:
+                        manifest = json.load(f)
+                    perms = manifest.get("permissions", [])
+                    host_perms = manifest.get("host_permissions", [])
+                    all_perms = perms + host_perms
+
+                    has_all_urls = "<all_urls>" in all_perms or "*://*/*" in all_perms
+                    has_tabs = "tabs" in all_perms
+                    has_cookies = "cookies" in all_perms
+                    has_web_request = "webRequest" in all_perms
+                    has_native_messaging = "nativeMessaging" in all_perms
+
+                    if has_all_urls and has_web_request:
+                        threat_score += 4
+                        reasons.append("Can intercept all web requests")
+                    if has_all_urls and has_tabs:
+                        threat_score += 3
+                        reasons.append("Can read all web pages and tab content")
+                    if has_cookies and has_all_urls:
+                        threat_score += 3
+                        reasons.append("Can read cookies from all sites")
+                    if has_native_messaging:
+                        threat_score += 3
+                        reasons.append("Can communicate with native applications")
+                except Exception:
+                    pass
+
+            # Scan JavaScript files for suspicious patterns
+            js_patterns = [
+                ("eval(atob(", 5, "Base64-encoded eval (obfuscation)"),
+                ("eval(unescape(", 4, "Escaped eval (obfuscation)"),
+                ("Function(atob(", 5, "Base64-encoded Function constructor"),
+                ("crypto.miner", 5, "Cryptocurrency mining"),
+                ("coinhive", 5, "Coinhive miner"),
+                ("crypto-loot", 5, "Crypto-Loot miner"),
+                ("chrome.debugger", 4, "Debugger API access"),
+            ]
+
+            for root, _dirs, files in os.walk(ext_path):
+                for fname in files:
+                    if not fname.endswith((".js", ".html")):
+                        continue
+                    fpath = os.path.join(root, fname)
+                    try:
+                        if os.path.getsize(fpath) > 500 * 1024:
+                            continue
+                        with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+                            content = f.read()
+                        for pattern, score, reason in js_patterns:
+                            if pattern in content:
+                                threat_score += score
+                                reasons.append(f"{reason} in {fname}")
+                                break
+                    except Exception:
+                        pass
+
+            if threat_score >= 5:
+                severity = "critical" if threat_score >= 10 else "high" if threat_score >= 7 else "medium"
+                _extra_threats.append({
+                    "path": ext_path,
+                    "threat_name": f"BrowserExt.Suspicious.{ext_name}",
+                    "threat_type": "adware" if "ad" in str(reasons).lower() else "spyware",
+                    "severity": severity,
+                    "source": "browser_ext_scanner",
+                })
+                ext_threats += 1
+
+        if ext_threats:
+            result["threats_found"] += ext_threats
+            with _lock:
+                _progress["threats_found"] = result["threats_found"]
+        log.info("One-click: Browser extension scan found %d threats in %d extensions", ext_threats, len(extensions))
+    except Exception as e:
+        log.warning("One-click: Browser extension scanning phase failed: %s", e)
 
     # Phase 2: Quarantine/clean detected threats
     all_threats = list(scan_result.get("threats", []))
