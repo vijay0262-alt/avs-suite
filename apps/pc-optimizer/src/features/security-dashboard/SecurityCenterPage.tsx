@@ -92,8 +92,19 @@ export function SecurityCenterPage() {
 
   // Load real-time guard + AVS AI Shield AV Engine status
   useEffect(() => {
-    rpc.raw<{ monitoring: boolean }>(RPC_METHODS.REALTIME_THREAT_STATUS)
-      .then((res) => setRtGuardEnabled(!!res?.monitoring))
+    rpc.raw<{ success: boolean; status: Record<string, { running: boolean } | null> }>(RPC_METHODS.REALTIME_THREAT_STATUS)
+      .then((res) => {
+        const status = res?.status;
+        if (status) {
+          const anyMonitoring =
+            (status.etw_file_monitor?.running === true) ||
+            (status.usb_monitor?.running === true) ||
+            (status.network_c2?.running === true);
+          setRtGuardEnabled(anyMonitoring);
+        } else {
+          setRtGuardEnabled(false);
+        }
+      })
       .catch(() => {});
     refreshClamAv();
     rpc.raw<{ avs_av_active: boolean }>(RPC_METHODS.SYSTEM_AV_STATUS)
