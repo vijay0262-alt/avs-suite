@@ -30,6 +30,8 @@ vi.mock('@avs/ui', () => ({
     React.createElement('span', { ...rest, 'data-tone': tone }, children),
   StatTile: ({ label, value, hint, icon, ...rest }: { label: string; value: React.ReactNode; hint?: React.ReactNode; icon?: React.ReactNode; [k: string]: unknown }) =>
     React.createElement('div', rest, icon, React.createElement('div', null, label, React.createElement('div', null, value), hint)),
+  GaugeCard: ({ title, value, unit, tone, icon, description, ...rest }: { title?: string; value?: number; unit?: string; tone?: string; icon?: React.ReactNode; description?: string; [k: string]: unknown }) =>
+    React.createElement('div', { ...rest, 'data-gauge-title': title, 'data-gauge-value': value, 'data-gauge-tone': tone }, icon, title, `${value}${unit}`, description),
   Skeleton: ({ className, ...rest }: { className?: string; [k: string]: unknown }) =>
     React.createElement('div', { ...rest, className: `animate-pulse ${className ?? ''}` }),
   ProgressBar: ({ value, label, ...rest }: { value: number; label?: string; [k: string]: unknown }) =>
@@ -632,8 +634,8 @@ describe('ReportsView', () => {
     await act(async () => {});
     // 30days is default — should auto-generate
     expect(container.querySelector('[data-testid="report-content"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="report-health"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="report-summary"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="reports-hero-section"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="reports-hero-gauge"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="report-performance"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="report-recovered-space"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="report-task-stats"]')).toBeTruthy();
