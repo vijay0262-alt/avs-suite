@@ -8,7 +8,7 @@
  *   - Documentation links
  *   - Keyboard shortcuts
  */
-import { Card } from '@avs/ui';
+import { Card, GaugeCard, StatTile } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
 import {
   QuestionMarkCircleIcon,
@@ -74,6 +74,66 @@ export default function HelpCenterPage() {
         title="Help Center"
         description="Get help, find answers, and learn how to get the most out of AVS AI Shield"
       />
+
+      {/* Hero status section — System Mechanic style */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="help-hero-section">
+        {/* Gauge */}
+        <GaugeCard
+          title="Help Center"
+          value={100}
+          unit="%"
+          tone="brand"
+          icon={<LifebuoyIcon className="h-6 w-6" />}
+          description="Ready to assist you"
+          data-testid="help-hero-gauge"
+        />
+
+        {/* Key stats */}
+        <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <StatTile
+            label="Quick Actions"
+            value={QUICK_LINKS.length.toString()}
+            hint="Common tasks"
+            icon={<BoltIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="FAQs"
+            value={FAQS.length.toString()}
+            hint="Answered questions"
+            icon={<QuestionMarkCircleIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Shortcuts"
+            value={SHORTCUTS.length.toString()}
+            hint="Keyboard hotkeys"
+            icon={<ChatBubbleLeftRightIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Email"
+            value="help@avsshield.com"
+            hint="Support email"
+            icon={<EnvelopeIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Website"
+            value="avsshield.com"
+            hint="Online resources"
+            icon={<GlobeAltIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Docs"
+            value="Available"
+            hint="Online documentation"
+            icon={<LifebuoyIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+        </div>
+      </div>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

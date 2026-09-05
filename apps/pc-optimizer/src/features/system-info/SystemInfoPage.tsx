@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useMemo } from 'react';
-import { Card, Button } from '@avs/ui';
+import { Card, Button, GaugeCard, StatTile } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleErrorBanner, ModuleLoadingState } from '../../components/ModuleStates';
@@ -11,6 +11,18 @@ import { HelpButton } from '../../components/HelpButton';
 import { SystemInfoViewModel } from './SystemInfoViewModel';
 import { systemInfoService } from './system-info.service';
 import { SystemInfoTabs } from './components/SystemInfoTabs';
+import {
+  CpuChipIcon,
+  CircleStackIcon,
+  ComputerDesktopIcon,
+} from '@heroicons/react/24/outline';
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
+  if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(0)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${bytes} B`;
+}
 
 export default function SystemInfoPage() {
   const vm = useMemo(() => new SystemInfoViewModel(systemInfoService), []);
@@ -80,7 +92,70 @@ export default function SystemInfoPage() {
           )}
 
           {state.systemInfo && (
-            <SystemInfoTabs info={state.systemInfo} vm={vm} />
+            <>
+              {/* Hero status section — System Mechanic style */}
+              <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="system-info-hero-section">
+                {/* Gauge */}
+                <GaugeCard
+                  title="CPU Usage"
+                  value={Math.round(state.systemInfo.cpuUsage)}
+                  unit="%"
+                  tone={state.systemInfo.cpuUsage >= 80 ? 'danger' : state.systemInfo.cpuUsage >= 60 ? 'warning' : 'success'}
+                  icon={<CpuChipIcon className="h-6 w-6" />}
+                  description={state.systemInfo.cpu.name}
+                  data-testid="system-info-hero-gauge"
+                />
+
+                {/* Key stats */}
+                <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <StatTile
+                    label="Memory"
+                    value={`${Math.round(state.systemInfo.memory.percent)}%`}
+                    hint={`${formatBytes(state.systemInfo.memory.used)} / ${formatBytes(state.systemInfo.memory.total)}`}
+                    icon={<CircleStackIcon className="h-5 w-5" />}
+                    variant="glass"
+                    accentColor={state.systemInfo.memory.percent >= 80 ? 'var(--avs-danger)' : state.systemInfo.memory.percent >= 60 ? 'var(--avs-warning)' : undefined}
+                  />
+                  <StatTile
+                    label="CPU Cores"
+                    value={`${state.systemInfo.cpu.cores}`}
+                    hint={`${state.systemInfo.cpu.logicalCores} logical`}
+                    icon={<CpuChipIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                  <StatTile
+                    label="OS"
+                    value={state.systemInfo.os.system}
+                    hint={state.systemInfo.os.release}
+                    icon={<ComputerDesktopIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                  <StatTile
+                    label="Processes"
+                    value={state.systemInfo.processes.total.toLocaleString()}
+                    hint={`${state.systemInfo.processes.running} running`}
+                    icon={<CpuChipIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                  <StatTile
+                    label="Hostname"
+                    value={state.systemInfo.os.hostname}
+                    hint={state.systemInfo.os.machine}
+                    icon={<ComputerDesktopIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                  <StatTile
+                    label="Disks"
+                    value={state.systemInfo.disk.length.toString()}
+                    hint="Mounted drives"
+                    icon={<CircleStackIcon className="h-5 w-5" />}
+                    variant="glass"
+                  />
+                </div>
+              </div>
+
+              <SystemInfoTabs info={state.systemInfo} vm={vm} />
+            </>
           )}
         </>
       )}

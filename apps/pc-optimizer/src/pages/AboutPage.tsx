@@ -1,4 +1,4 @@
-import { Card, Button, Badge } from '@avs/ui';
+import { Card, Button, Badge, GaugeCard, StatTile } from '@avs/ui';
 import { PageHeader } from '../components/PageHeader';
 import { constants } from '@avs/shared';
 import {
@@ -11,7 +11,14 @@ import {
 import { useState, useEffect, useCallback } from 'react';
 import { useEditionManager } from '../config/EditionManager';
 import { UpdateManager } from '../features/licensing/UpdateManager';
-import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowTopRightOnSquareIcon,
+  ShieldCheckIcon,
+  CpuChipIcon,
+  CircleStackIcon,
+  ComputerDesktopIcon,
+  CheckCircleIcon,
+} from '@heroicons/react/24/outline';
 
 const { APP_METADATA } = constants;
 
@@ -75,6 +82,68 @@ export default function AboutPage() {
   return (
     <div data-testid="page-about" className="space-y-4">
       <PageHeader title="About" description={APP_METADATA.description} />
+
+      {/* Hero status section — System Mechanic style */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="about-hero-section">
+        {/* Gauge */}
+        <GaugeCard
+          title={isActivated ? 'Professional' : 'Free Edition'}
+          value={isActivated ? 100 : 30}
+          unit=""
+          tone={isActivated ? 'success' : 'brand'}
+          icon={<ShieldCheckIcon className="h-6 w-6" />}
+          description={APP_METADATA.name}
+          data-testid="about-hero-gauge"
+        />
+
+        {/* Key stats */}
+        <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <StatTile
+            label="Version"
+            value={getVersionString()}
+            hint={`Build ${getBuildString()}`}
+            icon={<CircleStackIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Channel"
+            value={getChannelString()}
+            hint={getArchitectureString()}
+            icon={<ComputerDesktopIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="License"
+            value={licenseStatus}
+            hint={isActivated ? 'Activated' : 'Free'}
+            icon={<CheckCircleIcon className="h-5 w-5" />}
+            variant="glass"
+            accentColor={isActivated ? 'var(--avs-success)' : undefined}
+          />
+          <StatTile
+            label="Connection"
+            value={!isOffline ? 'Connected' : 'Offline'}
+            hint="Server status"
+            icon={<CpuChipIcon className="h-5 w-5" />}
+            variant="glass"
+            accentColor={!isOffline ? 'var(--avs-success)' : 'var(--avs-danger)'}
+          />
+          <StatTile
+            label="SDK"
+            value={sdkInfo?.sdk_version ?? '—'}
+            hint="SDK version"
+            icon={<CircleStackIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Release Date"
+            value={versionInfo.releaseDate}
+            hint="Build date"
+            icon={<ComputerDesktopIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+        </div>
+      </div>
 
       <Card>
         <div className="flex items-start gap-6">

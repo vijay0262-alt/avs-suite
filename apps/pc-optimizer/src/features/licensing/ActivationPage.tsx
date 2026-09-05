@@ -15,12 +15,20 @@
  *   - Shows registered devices
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, Button, Badge } from '@avs/ui';
+import { Card, Button, Badge, GaugeCard, StatTile } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
 import { useSyncStore, planToEdition } from '../sync/syncStore';
 import { useAuthStore } from '../auth/authStore';
 import { getVersionString, getBuildString } from '../../config/version';
 import { apiClient, ApiError } from '../auth/apiClient';
+import {
+  ShieldCheckIcon,
+  UserCircleIcon,
+  KeyIcon,
+  ComputerDesktopIcon,
+  CircleStackIcon,
+  ArrowPathIcon,
+} from '@heroicons/react/24/outline';
 
 export default function ActivationPage() {
   const syncData = useSyncStore((s) => s.data);
@@ -125,6 +133,68 @@ export default function ActivationPage() {
         title="Account & License"
         description="Your AVS AI Shield subscription, license, and connection status."
       />
+
+      {/* Hero status section — System Mechanic style */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="license-hero-section">
+        {/* Gauge */}
+        <GaugeCard
+          title={isProfessional ? 'Professional' : 'Free Edition'}
+          value={isProfessional ? 100 : 30}
+          unit=""
+          tone={isProfessional ? 'success' : 'brand'}
+          icon={<ShieldCheckIcon className="h-6 w-6" />}
+          description={isProfessional ? 'All features unlocked' : 'Limited features'}
+          data-testid="license-hero-gauge"
+        />
+
+        {/* Key stats */}
+        <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <StatTile
+            label="Account"
+            value={customerName}
+            hint={customerEmail}
+            icon={<UserCircleIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Plan"
+            value={plan}
+            hint={syncData?.subscription.status ?? '—'}
+            icon={<KeyIcon className="h-5 w-5" />}
+            variant="glass"
+            accentColor={isProfessional ? 'var(--avs-success)' : undefined}
+          />
+          <StatTile
+            label="Connection"
+            value={isConnected ? 'Connected' : isOffline ? 'Offline' : 'Disconnected'}
+            hint={phase === 'syncing' ? 'Syncing…' : 'Server status'}
+            icon={<ComputerDesktopIcon className="h-5 w-5" />}
+            variant="glass"
+            accentColor={isConnected ? 'var(--avs-success)' : 'var(--avs-danger)'}
+          />
+          <StatTile
+            label="Devices"
+            value={devices.length.toString()}
+            hint="Registered devices"
+            icon={<ComputerDesktopIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Features"
+            value={features.length.toString()}
+            hint="Enabled features"
+            icon={<CircleStackIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="App Version"
+            value={getVersionString()}
+            hint={`Build ${getBuildString()}`}
+            icon={<ArrowPathIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+        </div>
+      </div>
 
       {/* Server Connection */}
       <Card title="Server Connection">

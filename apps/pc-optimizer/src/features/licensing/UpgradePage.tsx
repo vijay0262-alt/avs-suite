@@ -4,7 +4,7 @@
  * Shows feature comparison between FREE and PRO tiers,
  * with pricing and upgrade CTA.
  */
-import { Card, Button, Badge } from '@avs/ui';
+import { Card, Button, Badge, GaugeCard, StatTile } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
 import {
   CheckIcon,
@@ -119,23 +119,64 @@ export default function UpgradePage() {
         </div>
       </Card>
 
-      {/* Why Upgrade */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card variant="glass" padded={false} className="p-4">
-          <BoltIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
-          <p className="mt-2 text-small font-semibold text-[var(--avs-text-primary)]">AI Smart Optimization</p>
-          <p className="mt-1 text-caption text-[var(--avs-text-secondary)]">Evidence-based recommendations for the safest, highest-impact optimizations.</p>
-        </Card>
-        <Card variant="glass" padded={false} className="p-4">
-          <ShieldCheckIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
-          <p className="mt-2 text-small font-semibold text-[var(--avs-text-primary)]">Advanced Security</p>
-          <p className="mt-1 text-caption text-[var(--avs-text-secondary)]">Full scan modes, threat investigation, AI remediation, and quarantine.</p>
-        </Card>
-        <Card variant="glass" padded={false} className="p-4">
-          <ChartBarIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
-          <p className="mt-2 text-small font-semibold text-[var(--avs-text-primary)]">Predictive Health</p>
-          <p className="mt-1 text-caption text-[var(--avs-text-secondary)]">Detect degrading trends before they become problems.</p>
-        </Card>
+      {/* Hero stats — System Mechanic style */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="upgrade-hero-section">
+        {/* Gauge */}
+        <GaugeCard
+          title="Unlock All"
+          value={100}
+          unit="%"
+          tone="success"
+          icon={<SparklesIcon className="h-6 w-6" />}
+          description="$49.99/year · 30-day guarantee"
+          data-testid="upgrade-hero-gauge"
+        />
+
+        {/* Key stats */}
+        <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <StatTile
+            label="AI Smart Optimize"
+            value="Unlimited"
+            hint="Evidence-based"
+            icon={<BoltIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Predictive Health"
+            value="Unlimited"
+            hint="Trend forecasting"
+            icon={<ChartBarIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Hardware Intel"
+            value="Full"
+            hint="AI analysis"
+            icon={<CpuChipIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Security"
+            value="Advanced"
+            hint="All scan modes"
+            icon={<ShieldCheckIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Export Center"
+            value="Included"
+            hint="JSON, CSV, HTML"
+            icon={<DocumentArrowDownIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Support"
+            value="Priority"
+            hint="Dedicated help"
+            icon={<SparklesIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+        </div>
       </div>
 
       {/* CTA */}

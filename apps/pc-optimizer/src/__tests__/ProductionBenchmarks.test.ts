@@ -273,9 +273,9 @@ describe('React rendering optimizations (from Phase 3 Part 1A)', () => {
     )).toBe(true);
   });
 
-  it('LiveStatus uses React.memo', () => {
+  it('UnifiedScanProgressCard uses React.memo', () => {
     expect(fileContains(
-      path.join(featuresDir, 'dashboard/components/LiveStatus.tsx'),
+      path.join(featuresDir, 'unified-scan/components/UnifiedScanProgressCard.tsx'),
       'memo(',
     )).toBe(true);
   });

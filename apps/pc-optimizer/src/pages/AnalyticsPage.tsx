@@ -9,7 +9,7 @@
  * - Optimization impact summary
  */
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Button, Badge } from '@avs/ui';
+import { Card, Button, Badge, GaugeCard, StatTile } from '@avs/ui';
 import { PageHeader } from '../components/PageHeader';
 import { HelpButton } from '../components/HelpButton';
 import { rpc } from '../services/rpc';
@@ -17,10 +17,11 @@ import { RPC_METHODS } from '@avs/shared/rpc';
 import {
   ChartBarIcon,
   ArrowPathIcon,
-  CpuChipIcon,
   TrashIcon,
   ShieldCheckIcon,
-  BoltIcon,
+  CircleStackIcon,
+  ExclamationTriangleIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 
 interface AnalyticsSummary {
@@ -159,38 +160,65 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card variant="glass" padded={false} className="p-3" data-testid="analytics-card-scans">
-          <div className="flex items-center gap-2 mb-1">
-            <ChartBarIcon className="h-4 w-4 text-[var(--avs-brand-primary)]" />
-            <span className="text-caption text-text-secondary">Total Scans</span>
-          </div>
-          <div className="text-statistic font-semibold text-text-primary">{summary?.totalScans ?? '—'}</div>
-        </Card>
-        <Card variant="glass" padded={false} className="p-3" data-testid="analytics-card-cleanups">
-          <div className="flex items-center gap-2 mb-1">
-            <TrashIcon className="h-4 w-4 text-semantic-warning" />
-            <span className="text-caption text-text-secondary">Cleanups Run</span>
-          </div>
-          <div className="text-statistic font-semibold text-text-primary">{summary?.totalCleanups ?? '—'}</div>
-        </Card>
-        <Card variant="glass" padded={false} className="p-3" data-testid="analytics-card-files">
-          <div className="flex items-center gap-2 mb-1">
-            <BoltIcon className="h-4 w-4 text-semantic-success" />
-            <span className="text-caption text-text-secondary">Files Deleted</span>
-          </div>
-          <div className="text-statistic font-semibold text-text-primary">{summary?.totalFilesDeleted.toLocaleString() ?? '—'}</div>
-        </Card>
-        <Card variant="glass" padded={false} className="p-3" data-testid="analytics-card-space">
-          <div className="flex items-center gap-2 mb-1">
-            <CpuChipIcon className="h-4 w-4 text-[var(--avs-brand-secondary)]" />
-            <span className="text-caption text-text-secondary">Space Freed</span>
-          </div>
-          <div className="text-statistic font-semibold text-text-primary">
-            {summary ? formatBytes(summary.totalSpaceFreed) : '—'}
-          </div>
-        </Card>
+      {/* Hero status section — System Mechanic style */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="analytics-hero-section">
+        {/* Gauge */}
+        <GaugeCard
+          title="Optimization Activity"
+          value={Math.min(100, summary?.totalScans ?? 0)}
+          unit=""
+          tone="brand"
+          icon={<ChartBarIcon className="h-6 w-6" />}
+          description={summary ? `${summary.totalScans} total scans` : 'Loading…'}
+          data-testid="analytics-hero-gauge"
+        />
+
+        {/* Key stats */}
+        <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <StatTile
+            label="Total Scans"
+            value={summary?.totalScans?.toString() ?? '—'}
+            hint="All-time scans"
+            icon={<ChartBarIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Cleanups Run"
+            value={summary?.totalCleanups?.toString() ?? '—'}
+            hint="Cleanup operations"
+            icon={<TrashIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Files Deleted"
+            value={summary?.totalFilesDeleted?.toLocaleString() ?? '—'}
+            hint="Total removed"
+            icon={<DocumentTextIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Space Freed"
+            value={summary ? formatBytes(summary.totalSpaceFreed) : '—'}
+            hint="Total recovered"
+            icon={<CircleStackIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Threats Detected"
+            value={summary?.totalThreatsDetected?.toString() ?? '—'}
+            hint="Security events"
+            icon={<ShieldCheckIcon className="h-5 w-5" />}
+            variant="glass"
+            accentColor={(summary?.totalThreatsDetected ?? 0) > 0 ? 'var(--avs-danger)' : undefined}
+          />
+          <StatTile
+            label="Quarantined"
+            value={summary?.totalThreatsQuarantined?.toString() ?? '—'}
+            hint="Threats isolated"
+            icon={<ExclamationTriangleIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+        </div>
       </div>
 
       {/* Security summary */}

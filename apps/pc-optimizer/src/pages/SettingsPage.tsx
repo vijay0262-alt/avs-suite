@@ -1,4 +1,4 @@
-import { Card, Button, Badge } from '@avs/ui';
+import { Card, Button, Badge, GaugeCard, StatTile } from '@avs/ui';
 import { useTheme } from '@avs/ui';
 import { PageHeader } from '../components/PageHeader';
 import { HelpButton } from '../components/HelpButton';
@@ -9,7 +9,7 @@ import { getVersionString, getBuildString, getChannelString, getEditionString } 
 import { useUpgradeDialog } from '../components/UpgradeDialog';
 import { useAuthStore } from '../features/auth/authStore';
 import { useSubscriptionStore } from '../features/subscription/subscriptionStore';
-import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, StarIcon, CheckCircleIcon, CloudArrowDownIcon, RocketLaunchIcon, SparklesIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
+import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, StarIcon, CheckCircleIcon, CloudArrowDownIcon, RocketLaunchIcon, SparklesIcon, DevicePhoneMobileIcon, CpuChipIcon, Cog6ToothIcon, CircleStackIcon } from '@heroicons/react/24/outline';
 import { useTraySettings } from '../hooks/useTraySettings';
 import { useScheduledCleanup } from '../features/scheduled-cleanup/useScheduledCleanup';
 import { useJunkMonitor } from '../features/scheduled-cleanup/useJunkMonitor';
@@ -92,6 +92,67 @@ export default function SettingsPage() {
         description="Customize appearance, updates, and app preferences."
         actions={<HelpButton text="Change the app's appearance, manage updates, review your subscription, and access account information. Changes are saved automatically." />}
       />
+
+      {/* Hero status section — System Mechanic style */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="settings-hero-section">
+        {/* Gauge */}
+        <GaugeCard
+          title={edition === 'professional' ? 'Professional' : 'Free Edition'}
+          value={edition === 'professional' ? 100 : 30}
+          unit=""
+          tone={edition === 'professional' ? 'success' : 'brand'}
+          icon={<Cog6ToothIcon className="h-6 w-6" />}
+          description={edition === 'professional' ? 'All features active' : 'Limited features'}
+          data-testid="settings-hero-gauge"
+        />
+
+        {/* Key stats */}
+        <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <StatTile
+            label="Version"
+            value={getVersionString()}
+            hint={`Build ${getBuildString()}`}
+            icon={<CircleStackIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Channel"
+            value={getChannelString()}
+            hint={getEditionString()}
+            icon={<CloudArrowDownIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Theme"
+            value={mode}
+            hint="Appearance"
+            icon={<SparklesIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Startup"
+            value={startupEnabled ? 'Enabled' : 'Disabled'}
+            hint="Start with Windows"
+            icon={<RocketLaunchIcon className="h-5 w-5" />}
+            variant="glass"
+            accentColor={startupEnabled ? 'var(--avs-success)' : undefined}
+          />
+          <StatTile
+            label="Tray"
+            value={traySettings.closeBehavior === 'minimize-to-tray' ? 'Minimize' : 'Exit'}
+            hint="Close behavior"
+            icon={<CpuChipIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Account"
+            value={customer?.display_name ?? session?.customerName ?? '—'}
+            hint={customer?.email ?? session?.customerEmail ?? '—'}
+            icon={<UserCircleIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+        </div>
+      </div>
 
       <div className="space-y-4">
         <Card title="Appearance" variant="glass">

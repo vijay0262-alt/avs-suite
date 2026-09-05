@@ -8,16 +8,16 @@
  *   Summary, Performance Metrics, Recovered Space, Task Statistics, Overall Health
  */
 import React, { useState, useCallback } from 'react';
-import { Card, Button, Badge } from '@avs/ui';
+import { Card, Button, GaugeCard, StatTile } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
 import {
-  CalendarDaysIcon,
   ChartBarIcon,
-  ArrowPathIcon,
   ExclamationCircleIcon,
   CheckCircleIcon,
   ClockIcon,
   TrophyIcon,
+  CircleStackIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import { maintenanceHistoryService } from '../../maintenance-history';
 import type { ExecutionReport, ReportHealthStatus } from '../../maintenance-history';
@@ -215,29 +215,64 @@ function ReportContent({ report }: { report: ExecutionReport }) {
 
   return (
     <div className="space-y-6" data-testid="report-content">
-      {/* Overall Health + Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <Card variant="glass" padded={false} className="p-4" data-testid="report-health">
-          <p className="text-caption text-text-muted mb-2">Overall Health</p>
-          <Badge tone={health.tone} className="text-base px-4 py-1" data-testid="report-health-badge">
-            {health.label}
-          </Badge>
-          <p className="mt-3 text-small text-text-secondary">
-            {report.summary.totalExecutions} executions in this period
-          </p>
-        </Card>
+      {/* Hero status section — System Mechanic style */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="reports-hero-section">
+        {/* Gauge */}
+        <GaugeCard
+          title="Maintenance Health"
+          value={Math.round(report.summary.successRate)}
+          unit="%"
+          tone={health.tone === 'success' ? 'success' : health.tone === 'brand' ? 'brand' : health.tone === 'warning' ? 'warning' : health.tone === 'danger' ? 'danger' : 'brand'}
+          icon={<ChartBarIcon className="h-6 w-6" />}
+          description={`${report.summary.totalExecutions} executions · ${health.label}`}
+          data-testid="reports-hero-gauge"
+        />
 
-        <div className="lg:col-span-2" data-testid="report-summary">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <SummaryStat icon={<CheckCircleIcon className="h-4 w-4" />} label="Successful" value={report.summary.successful} />
-            <SummaryStat icon={<ExclamationCircleIcon className="h-4 w-4" />} label="Failed" value={report.summary.failed} />
-            <SummaryStat icon={<ClockIcon className="h-4 w-4" />} label="Avg Duration" value={formatDuration(report.summary.averageDurationMs)} />
-            <SummaryStat icon={<TrophyIcon className="h-4 w-4" />} label="Success Rate" value={`${report.summary.successRate.toFixed(0)}%`} />
-            <SummaryStat icon={<CalendarDaysIcon className="h-4 w-4" />} label="Total Runs" value={report.summary.totalExecutions} />
-            <SummaryStat icon={<ArrowPathIcon className="h-4 w-4" />} label="Partial" value={report.summary.partial} />
-            <SummaryStat icon={<ChartBarIcon className="h-4 w-4" />} label="Files Removed" value={report.summary.totalFilesRemoved} />
-            <SummaryStat icon={<ArrowPathIcon className="h-4 w-4" />} label="Space Recovered" value={formatBytes(report.summary.totalSpaceRecovered)} />
-          </div>
+        {/* Key stats */}
+        <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <StatTile
+            label="Successful"
+            value={report.summary.successful.toString()}
+            hint="Completed runs"
+            icon={<CheckCircleIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Failed"
+            value={report.summary.failed.toString()}
+            hint="Unsuccessful runs"
+            icon={<ExclamationCircleIcon className="h-5 w-5" />}
+            variant="glass"
+            accentColor={report.summary.failed > 0 ? 'var(--avs-danger)' : undefined}
+          />
+          <StatTile
+            label="Success Rate"
+            value={`${report.summary.successRate.toFixed(0)}%`}
+            hint="Overall rate"
+            icon={<TrophyIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Avg Duration"
+            value={formatDuration(report.summary.averageDurationMs)}
+            hint="Per execution"
+            icon={<ClockIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Files Removed"
+            value={report.summary.totalFilesRemoved.toLocaleString()}
+            hint="Total cleaned"
+            icon={<DocumentTextIcon className="h-5 w-5" />}
+            variant="glass"
+          />
+          <StatTile
+            label="Space Recovered"
+            value={formatBytes(report.summary.totalSpaceRecovered)}
+            hint="Total freed"
+            icon={<CircleStackIcon className="h-5 w-5" />}
+            variant="glass"
+          />
         </div>
       </div>
 

@@ -6,6 +6,7 @@
  * while being suitable for inline page use (not a modal).
  */
 import { ServerStackIcon } from '@heroicons/react/24/outline';
+import { memo } from 'react';
 import { ScanProgress } from './ScanProgress';
 import { ScanAnimation } from './ScanAnimation';
 import { ScanCounters } from './ScanCounters';
@@ -27,7 +28,7 @@ export interface UnifiedScanProgressCardProps {
   onCancel?: () => void;
 }
 
-export function UnifiedScanProgressCard({
+export const UnifiedScanProgressCard = memo(function UnifiedScanProgressCard({
   config,
   isRunning,
   progress = 0,
@@ -112,4 +113,4 @@ export function UnifiedScanProgressCard({
       </div>
     </div>
   );
-}
+});

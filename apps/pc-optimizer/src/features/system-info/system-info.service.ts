@@ -3,6 +3,7 @@
  */
 
 import type { ComprehensiveSystemInfo, StaticSystemInfo, DynamicSystemInfo } from './system-info.types';
+import { RPC_METHODS } from '@avs/shared/rpc';
 
 function client() {
   if (typeof window === 'undefined' || !window.avs) {
@@ -19,15 +20,15 @@ export interface ISystemInfoService {
 
 class SystemInfoService implements ISystemInfoService {
   async getComprehensiveInfo(): Promise<ComprehensiveSystemInfo> {
-    return await client().call('system.comprehensive');
+    return await client().call(RPC_METHODS.SYSTEM_COMPREHENSIVE);
   }
 
   async getStaticInfo(): Promise<StaticSystemInfo> {
-    return await client().call('system.static');
+    return await client().call(RPC_METHODS.SYSTEM_STATIC);
   }
 
   async getDynamicInfo(): Promise<DynamicSystemInfo> {
-    return await client().call('system.dynamic');
+    return await client().call(RPC_METHODS.SYSTEM_DYNAMIC);
   }
 }
 

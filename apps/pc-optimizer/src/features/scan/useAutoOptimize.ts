@@ -83,7 +83,6 @@ export function useAutoOptimize(): UseAutoOptimizeReturn {
 
   const sessionIdRef = useRef<string | null>(null);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const cancelTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stopPoll = useCallback(() => {
     if (pollIntervalRef.current) {
@@ -98,10 +97,6 @@ export function useAutoOptimize(): UseAutoOptimizeReturn {
       void remediationService.autoOptimizeCancel(sid);
     }
     sessionIdRef.current = null;
-    if (cancelTimeoutRef.current) {
-      clearTimeout(cancelTimeoutRef.current);
-      cancelTimeoutRef.current = null;
-    }
     stopPoll();
     setIsRunning(false);
     setPhase('idle');
@@ -170,10 +165,6 @@ export function useAutoOptimize(): UseAutoOptimizeReturn {
     }
 
     if (status.completed) {
-      if (cancelTimeoutRef.current) {
-        clearTimeout(cancelTimeoutRef.current);
-        cancelTimeoutRef.current = null;
-      }
       setIsRunning(false);
       stopPoll();
       if (status.phase === 'error') {
@@ -233,24 +224,17 @@ export function useAutoOptimize(): UseAutoOptimizeReturn {
     const sid = sessionIdRef.current;
     if (sid) {
       void remediationService.autoOptimizeCancel(sid);
-      // Safety timeout: if backend doesn't set completed=true within 10s,
-      // force the cancelled state locally to avoid being stuck.
-      cancelTimeoutRef.current = setTimeout(() => {
-        stopPoll();
-        setIsRunning(false);
-        setPhase('cancelled');
-        setMessage('Optimization cancelled');
-        sessionIdRef.current = null;
-      }, 10000);
     }
+    sessionIdRef.current = null;
+    stopPoll();
+    setIsRunning(false);
+    setPhase('cancelled');
+    setMessage('Optimization cancelled');
   }, [stopPoll]);
 
   useEffect(() => {
     return () => {
       stopPoll();
-      if (cancelTimeoutRef.current) {
-        clearTimeout(cancelTimeoutRef.current);
-      }
     };
   }, [stopPoll]);
 

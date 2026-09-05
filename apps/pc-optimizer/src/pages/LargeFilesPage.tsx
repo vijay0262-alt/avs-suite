@@ -5,7 +5,7 @@
  * allowing users to delete space-hogging files directly.
  */
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Button, Badge } from '@avs/ui';
+import { Card, Button, Badge, GaugeCard, StatTile } from '@avs/ui';
 import { PageHeader } from '../components/PageHeader';
 import { HelpButton } from '../components/HelpButton';
 import { rpc } from '../services/rpc';
@@ -18,6 +18,9 @@ import {
   TrashIcon,
   FolderIcon,
   ArrowDownTrayIcon,
+  CircleStackIcon,
+  CheckCircleIcon,
+  CpuChipIcon,
 } from '@heroicons/react/24/outline';
 
 interface LargeFile {
@@ -151,21 +154,67 @@ export default function LargeFilesPage() {
         </div>
       )}
 
-      {/* Summary */}
+      {/* Hero status section — System Mechanic style */}
       {files.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
-          <Card variant="glass" padded={false} className="p-3 text-center">
-            <div className="text-statistic font-semibold text-text-primary">{files.length}</div>
-            <div className="text-caption text-text-secondary">Large Files Found</div>
-          </Card>
-          <Card variant="glass" padded={false} className="p-3 text-center">
-            <div className="text-statistic font-semibold text-text-primary">{formatSize(totalSize)}</div>
-            <div className="text-caption text-text-secondary">Total Size</div>
-          </Card>
-          <Card variant="glass" padded={false} className="p-3 text-center">
-            <div className="text-statistic font-semibold text-semantic-success">{formatSize(deletedSize)}</div>
-            <div className="text-caption text-text-secondary">Space Freed</div>
-          </Card>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="large-files-hero-section">
+          {/* Gauge */}
+          <GaugeCard
+            title="Large Files"
+            value={Math.min(100, files.length * 5)}
+            unit=""
+            tone="brand"
+            icon={<DocumentIcon className="h-6 w-6" />}
+            description={`${files.length} files · ${formatSize(totalSize)}`}
+            data-testid="large-files-hero-gauge"
+          />
+
+          {/* Key stats */}
+          <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <StatTile
+              label="Files Found"
+              value={files.length.toString()}
+              hint="Large files"
+              icon={<DocumentIcon className="h-5 w-5" />}
+              variant="glass"
+            />
+            <StatTile
+              label="Total Size"
+              value={formatSize(totalSize)}
+              hint="Combined size"
+              icon={<CircleStackIcon className="h-5 w-5" />}
+              variant="glass"
+            />
+            <StatTile
+              label="Space Freed"
+              value={formatSize(deletedSize)}
+              hint="Already deleted"
+              icon={<CheckCircleIcon className="h-5 w-5" />}
+              variant="glass"
+              accentColor={deletedSize > 0 ? 'var(--avs-success)' : undefined}
+            />
+            <StatTile
+              label="Drive"
+              value={selectedDrive || '—'}
+              hint="Selected drive"
+              icon={<FolderIcon className="h-5 w-5" />}
+              variant="glass"
+            />
+            <StatTile
+              label="Largest"
+              value={files.length > 0 ? formatSize(files[0]!.size) : '—'}
+              hint={files.length > 0 ? files[0]!.name : 'No files'}
+              icon={<ArrowDownTrayIcon className="h-5 w-5" />}
+              variant="glass"
+            />
+            <StatTile
+              label="Edition"
+              value={isPro ? 'Pro' : 'Free'}
+              hint={isPro ? 'Can delete' : 'View only'}
+              icon={<CpuChipIcon className="h-5 w-5" />}
+              variant="glass"
+              accentColor={isPro ? 'var(--avs-success)' : 'var(--avs-warning)'}
+            />
+          </div>
         </div>
       )}
 
