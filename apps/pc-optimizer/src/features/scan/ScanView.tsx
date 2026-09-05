@@ -89,16 +89,8 @@ export function ScanView({ module, mode = 'full', onClose, className, buttonLabe
   }, [shouldAutoOptimize]);
 
   const actions: UnifiedScanAction[] = useMemo(
-    () => [
-      {
-        id: 'close-scan',
-        label: 'Close',
-        icon: 'XMarkIcon',
-        variant: 'secondary',
-        action: onClose,
-      },
-    ],
-    [onClose],
+    () => [],
+    [],
   );
 
   const resultsClose = useMemo(

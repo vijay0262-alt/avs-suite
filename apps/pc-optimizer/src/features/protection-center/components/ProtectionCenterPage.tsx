@@ -53,6 +53,7 @@ interface ProtectionPostureState {
   lastRefresh: number | null;
   fixMessage: string | null;
   fixSuccess: boolean;
+  fixInProgress: string | null;
 }
 
 class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
@@ -65,6 +66,7 @@ class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
       lastRefresh: null,
       fixMessage: null,
       fixSuccess: false,
+      fixInProgress: null,
     });
   }
 
@@ -96,7 +98,7 @@ class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
   }
 
   async fixIssue(action: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen' | 'enableRansomwareProtection'): Promise<void> {
-    this.setState({ fixMessage: null, fixSuccess: false });
+    this.setState({ fixMessage: null, fixSuccess: false, fixInProgress: action });
     try {
       const rpcCall =
         action === 'enableSmartScreen'
@@ -106,23 +108,33 @@ class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
             : action === 'enableFirewall'
               ? dashboardService.enableFirewall()
               : dashboardService.enableRansomwareProtection();
-      const result = await rpcCall as { enabled?: boolean; message?: string };
-      const message = result?.message ?? (result?.enabled ? 'Fix applied successfully' : 'Fix failed');
+      const result = await rpcCall as { enabled?: boolean; message?: string; error?: string };
+      const message = result?.message ?? result?.error ?? (result?.enabled ? 'Fix applied successfully' : 'Fix failed');
       this.setState({
         fixMessage: message,
         fixSuccess: result?.enabled === true,
+        fixInProgress: null,
       });
       await this.refresh(true);  // Force refresh after a fix to show updated state
     } catch (err) {
       this.setState({
         fixMessage: err instanceof Error ? err.message : 'Fix failed',
         fixSuccess: false,
+        fixInProgress: null,
       });
     }
   }
 
   clearFixMessage(): void {
     this.setState({ fixMessage: null, fixSuccess: false });
+  }
+
+  isFixInProgress(action: string): boolean {
+    return this.state.fixInProgress === action;
+  }
+
+  isAnyFixInProgress(): boolean {
+    return this.state.fixInProgress !== null;
   }
 }
 
@@ -724,9 +736,15 @@ export function ProtectionCenterPage() {
                       size="sm"
                       variant="secondary"
                       onClick={() => handleFix(rec.fixAction!)}
+                      disabled={vm.isAnyFixInProgress()}
+                      leftIcon={
+                        vm.isFixInProgress(rec.fixAction) ? (
+                          <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
+                        ) : undefined
+                      }
                       data-testid={`protection-fix-${rec.id}`}
                     >
-                      Fix
+                      {vm.isFixInProgress(rec.fixAction) ? 'Fixing...' : 'Fix'}
                     </Button>
                   )}
                 </div>
