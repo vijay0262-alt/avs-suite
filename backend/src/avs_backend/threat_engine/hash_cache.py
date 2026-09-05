@@ -118,7 +118,8 @@ class HashCache:
         Returns True if the file size and mtime match the cached
         values (i.e., the file hasn't been modified).
         """
-        entry = self._cache.get("entries", {}).get(file_path)
+        with self._lock:
+            entry = self._cache.get("entries", {}).get(file_path)
         if not entry:
             return False
 
@@ -139,15 +140,16 @@ class HashCache:
         - The last scan result was "clean"
         """
         if not self.is_unchanged(file_path):
-            self._misses += 1
+            with self._lock:
+                self._misses += 1
             return False
 
-        entry = self._cache["entries"][file_path]
-        if entry.get("result") == "clean":
-            self._hits += 1
-            return True
-
-        self._misses += 1
+        with self._lock:
+            entry = self._cache["entries"].get(file_path, {})
+            if entry.get("result") == "clean":
+                self._hits += 1
+                return True
+            self._misses += 1
         return False
 
     def record_result(self, file_path: str, result: str, sha256: str = "") -> None:
@@ -163,15 +165,16 @@ class HashCache:
             return
 
         size, mtime = meta
-        self._cache["entries"][file_path] = {
-            "path": file_path,
-            "sha256": sha256,
-            "size": size,
-            "mtime": mtime,
-            "scanned_at": _now_iso(),
-            "result": result,
-        }
-        self._dirty = True
+        with self._lock:
+            self._cache["entries"][file_path] = {
+                "path": file_path,
+                "sha256": sha256,
+                "size": size,
+                "mtime": mtime,
+                "scanned_at": _now_iso(),
+                "result": result,
+            }
+            self._dirty = True
 
     def invalidate(self, file_path: str) -> None:
         """Remove a file from the cache."""
@@ -211,16 +214,18 @@ class HashCache:
 
     def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
-        return {
-            "total_entries": len(self._cache.get("entries", {})),
-            "hits": self._hits,
-            "misses": self._misses,
-            "hit_rate": self._hits / max(self._hits + self._misses, 1),
-            "cache_path": str(_CACHE_PATH),
-        }
+        with self._lock:
+            return {
+                "total_entries": len(self._cache.get("entries", {})),
+                "hits": self._hits,
+                "misses": self._misses,
+                "hit_rate": self._hits / max(self._hits + self._misses, 1),
+                "cache_path": str(_CACHE_PATH),
+            }
 
     def get_cached_hash(self, file_path: str) -> str | None:
         """Get the cached SHA-256 hash for a file if unchanged."""
         if not self.is_unchanged(file_path):
             return None
-        return self._cache["entries"].get(file_path, {}).get("sha256", "") or None
+        with self._lock:
+            return self._cache["entries"].get(file_path, {}).get("sha256", "") or None

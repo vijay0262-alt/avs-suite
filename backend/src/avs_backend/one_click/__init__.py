@@ -141,7 +141,7 @@ def _count_scannable_files(roots: list[str]) -> int:
     return count
 
 
-def _run_full_scan() -> dict[str, Any]:
+def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
     """Run a full system scan with real-time progress.
 
     Scans the entire computer (all drives) using ClamAV and other
@@ -151,9 +151,22 @@ def _run_full_scan() -> dict[str, Any]:
     Defender is NOT used per-file (spawns MpCmdRun.exe subprocess = 2s/file).
     Instead, ClamAV is the primary scanner, with hash/YARA/heuristic/ML
     as secondary detectors applied in parallel.
+
+    Args:
+        scan_type: "full" scans all drives, "quick" scans critical
+                   system areas only (System32, Program Files, AppData, etc.)
     """
-    scan_roots = _get_scan_roots()
-    log.info("One-click: Scan roots: %s", scan_roots)
+    if scan_type == "quick":
+        try:
+            from avs_backend.threat_engine.scan_config import get_quick_scan_targets
+            scan_roots = get_quick_scan_targets()
+            if not scan_roots:
+                scan_roots = _get_scan_roots()
+        except Exception:
+            scan_roots = _get_scan_roots()
+    else:
+        scan_roots = _get_scan_roots()
+    log.info("One-click: Scan type=%s, roots=%s", scan_type, scan_roots)
 
     total_files = 50000  # rough estimate, refined as we scan
     with _lock:
@@ -494,6 +507,7 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
             "error": None,
             "current_file": "Initializing scan...",
             "files_scanned": 0,
+            "cancel_requested": False,
         }
 
     result = {
@@ -507,10 +521,15 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
         "scan_id": None,
     }
 
+    # Helper: check if cancel was requested
+    def _cancel_requested() -> bool:
+        with _lock:
+            return bool(_progress.get("cancel_requested"))
+
     # Phase 1: Full system security scan (antivirus only)
     scan_result = {"files_scanned": 0, "threats_found": 0, "threats": []}
     try:
-        scan_result = _run_full_scan()
+        scan_result = _run_full_scan(scan_type)
         result["threats_found"] = scan_result["threats_found"]
         result["files_scanned"] = scan_result["files_scanned"]
         with _lock:
@@ -522,213 +541,217 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
     _extra_threats: list[dict[str, Any]] = []
 
     # Phase 1.5: Email attachment scanning
-    try:
-        from avs_backend.threat_engine.email_scanner import EmailScanner
-        email_scanner = EmailScanner()
-        with _lock:
-            _progress["current_file"] = "Scanning email attachments..."
-
-        # Scan common email file locations
-        email_dirs = []
-        if _IS_WINDOWS:
-            local_app_data = os.environ.get("LOCALAPPDATA", "")
-            app_data = os.environ.get("APPDATA", "")
-            user_profile = os.environ.get("USERPROFILE", "")
-            email_dirs = [
-                os.path.join(user_profile, "Documents"),
-                os.path.join(local_app_data, "Microsoft", "Outlook"),
-                os.path.join(app_data, "Thunderbird", "Profiles"),
-                os.path.join(local_app_data, "Microsoft", "Windows", "Mail"),
-            ]
-
-        email_threats = 0
-        for email_dir in email_dirs:
-            if not os.path.isdir(email_dir):
-                continue
-            for root, _dirs, files in os.walk(email_dir):
-                for fname in files:
-                    ext = os.path.splitext(fname)[1].lower()
-                    if ext in (".eml", ".msg"):
-                        fpath = os.path.join(root, fname)
-                        try:
-                            email_result = email_scanner.scan_email_file(fpath)
-                            if email_result.get("threats"):
-                                for threat in email_result["threats"]:
-                                    _extra_threats.append({
-                                        "path": threat.get("file_path", fpath),
-                                        "threat_name": threat.get("threat_name", "Email.Malware"),
-                                        "threat_type": threat.get("threat_type", "malware"),
-                                        "severity": threat.get("severity", "high"),
-                                        "source": "email_scanner",
-                                    })
-                                    email_threats += 1
-                        except Exception:
-                            pass
-
-        if email_threats:
-            result["threats_found"] += email_threats
+    if not _cancel_requested():
+        try:
+            from avs_backend.threat_engine.email_scanner import EmailScanner
+            email_scanner = EmailScanner()
             with _lock:
-                _progress["threats_found"] = result["threats_found"]
-        log.info("One-click: Email scan found %d threats", email_threats)
-    except Exception as e:
-        log.warning("One-click: Email scanning phase failed: %s", e)
+                _progress["current_file"] = "Scanning email attachments..."
+
+            # Scan common email file locations
+            email_dirs = []
+            if _IS_WINDOWS:
+                local_app_data = os.environ.get("LOCALAPPDATA", "")
+                app_data = os.environ.get("APPDATA", "")
+                user_profile = os.environ.get("USERPROFILE", "")
+                email_dirs = [
+                    os.path.join(user_profile, "Documents"),
+                    os.path.join(local_app_data, "Microsoft", "Outlook"),
+                    os.path.join(app_data, "Thunderbird", "Profiles"),
+                    os.path.join(local_app_data, "Microsoft", "Windows", "Mail"),
+                ]
+
+            email_threats = 0
+            for email_dir in email_dirs:
+                if not os.path.isdir(email_dir):
+                    continue
+                for root, _dirs, files in os.walk(email_dir):
+                    for fname in files:
+                        ext = os.path.splitext(fname)[1].lower()
+                        if ext in (".eml", ".msg"):
+                            fpath = os.path.join(root, fname)
+                            try:
+                                email_result = email_scanner.scan_email_file(fpath)
+                                if email_result.get("threats"):
+                                    for threat in email_result["threats"]:
+                                        _extra_threats.append({
+                                            "path": threat.get("file_path", fpath),
+                                            "threat_name": threat.get("threat_name", "Email.Malware"),
+                                            "threat_type": threat.get("threat_type", "malware"),
+                                            "severity": threat.get("severity", "high"),
+                                            "source": "email_scanner",
+                                        })
+                                        email_threats += 1
+                            except Exception:
+                                pass
+
+            if email_threats:
+                result["threats_found"] += email_threats
+                with _lock:
+                    _progress["threats_found"] = result["threats_found"]
+            log.info("One-click: Email scan found %d threats", email_threats)
+        except Exception as e:
+            log.warning("One-click: Email scanning phase failed: %s", e)
 
     # Phase 1.6: Memory/process scanning
-    try:
-        from avs_backend.threat_engine.memory_scanner import MemoryScanner
-        mem_scanner = MemoryScanner()
-        with _lock:
-            _progress["current_file"] = "Scanning running processes memory..."
-
-        mem_result = mem_scanner.scan_all_processes()
-        mem_threats = mem_result.get("threats_found", 0)
-        if mem_threats:
-            for threat in mem_result.get("threats", []):
-                _extra_threats.append({
-                    "path": threat.get("process", "unknown"),
-                    "threat_name": threat.get("threat_name", "Memory.Injection"),
-                    "threat_type": threat.get("threat_type", "malware"),
-                    "severity": threat.get("severity", "high"),
-                    "source": "memory_scanner",
-                })
-            result["threats_found"] += mem_threats
+    if not _cancel_requested():
+        try:
+            from avs_backend.threat_engine.memory_scanner import MemoryScanner
+            mem_scanner = MemoryScanner()
             with _lock:
-                _progress["threats_found"] = result["threats_found"]
-        log.info("One-click: Memory scan found %d threats in %d processes",
-                 mem_threats, mem_result.get("processes_scanned", 0))
-    except Exception as e:
-        log.warning("One-click: Memory scanning phase failed: %s", e)
+                _progress["current_file"] = "Scanning running processes memory..."
+
+            mem_result = mem_scanner.scan_all_processes()
+            mem_threats = mem_result.get("threats_found", 0)
+            if mem_threats:
+                for threat in mem_result.get("threats", []):
+                    _extra_threats.append({
+                        "path": threat.get("process", "unknown"),
+                        "threat_name": threat.get("threat_name", "Memory.Injection"),
+                        "threat_type": threat.get("threat_type", "malware"),
+                        "severity": threat.get("severity", "high"),
+                        "source": "memory_scanner",
+                    })
+                result["threats_found"] += mem_threats
+                with _lock:
+                    _progress["threats_found"] = result["threats_found"]
+            log.info("One-click: Memory scan found %d threats in %d processes",
+                     mem_threats, mem_result.get("processes_scanned", 0))
+        except Exception as e:
+            log.warning("One-click: Memory scanning phase failed: %s", e)
 
     # Phase 1.7: Browser extension scanning
-    try:
-        from avs_backend.browser_extensions import _get_all_extensions
-        with _lock:
-            _progress["current_file"] = "Scanning browser extensions..."
+    if not _cancel_requested():
+        try:
+            from avs_backend.browser_extensions import _get_all_extensions
+            with _lock:
+                _progress["current_file"] = "Scanning browser extensions..."
 
-        extensions = _get_all_extensions()
-        ext_threats = 0
-        for ext in extensions:
-            ext_path = ext.get("path", "")
-            ext_id = ext.get("extensionId", "")
-            browser = ext.get("browser", "")
-            ext_name = ext.get("name", "Unknown")
+            extensions = _get_all_extensions()
+            ext_threats = 0
+            for ext in extensions:
+                ext_path = ext.get("path", "")
+                ext_id = ext.get("extensionId", "")
+                browser = ext.get("browser", "")
+                ext_name = ext.get("name", "Unknown")
 
-            if not ext_path or not os.path.isdir(ext_path):
-                continue
+                if not ext_path or not os.path.isdir(ext_path):
+                    continue
 
-            # Scan extension JS files and manifest for malicious patterns
-            threat_score = 0
-            reasons: list[str] = []
+                # Scan extension JS files and manifest for malicious patterns
+                threat_score = 0
+                reasons: list[str] = []
 
-            # Check manifest for suspicious permissions
-            manifest_path = os.path.join(ext_path, "manifest.json")
-            if os.path.isfile(manifest_path):
-                try:
-                    with open(manifest_path, "r", encoding="utf-8", errors="ignore") as f:
-                        manifest = json.load(f)
-                    perms = manifest.get("permissions", [])
-                    host_perms = manifest.get("host_permissions", [])
-                    all_perms = perms + host_perms
-
-                    has_all_urls = "<all_urls>" in all_perms or "*://*/*" in all_perms
-                    has_tabs = "tabs" in all_perms
-                    has_cookies = "cookies" in all_perms
-                    has_web_request = "webRequest" in all_perms
-                    has_native_messaging = "nativeMessaging" in all_perms
-
-                    if has_all_urls and has_web_request:
-                        threat_score += 4
-                        reasons.append("Can intercept all web requests")
-                    if has_all_urls and has_tabs:
-                        threat_score += 3
-                        reasons.append("Can read all web pages and tab content")
-                    if has_cookies and has_all_urls:
-                        threat_score += 3
-                        reasons.append("Can read cookies from all sites")
-                    if has_native_messaging:
-                        threat_score += 3
-                        reasons.append("Can communicate with native applications")
-                except Exception:
-                    pass
-
-            # Scan JavaScript files for suspicious patterns
-            js_patterns = [
-                ("eval(atob(", 5, "Base64-encoded eval (obfuscation)"),
-                ("eval(unescape(", 4, "Escaped eval (obfuscation)"),
-                ("Function(atob(", 5, "Base64-encoded Function constructor"),
-                ("crypto.miner", 5, "Cryptocurrency mining"),
-                ("coinhive", 5, "Coinhive miner"),
-                ("crypto-loot", 5, "Crypto-Loot miner"),
-                ("chrome.debugger", 4, "Debugger API access"),
-            ]
-
-            for root, _dirs, files in os.walk(ext_path):
-                for fname in files:
-                    if not fname.endswith((".js", ".html")):
-                        continue
-                    fpath = os.path.join(root, fname)
+                # Check manifest for suspicious permissions
+                manifest_path = os.path.join(ext_path, "manifest.json")
+                if os.path.isfile(manifest_path):
                     try:
-                        if os.path.getsize(fpath) > 500 * 1024:
-                            continue
-                        with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
-                            content = f.read()
-                        for pattern, score, reason in js_patterns:
-                            if pattern in content:
-                                threat_score += score
-                                reasons.append(f"{reason} in {fname}")
-                                break
+                        with open(manifest_path, "r", encoding="utf-8", errors="ignore") as f:
+                            manifest = json.load(f)
+                        perms = manifest.get("permissions", [])
+                        host_perms = manifest.get("host_permissions", [])
+                        all_perms = perms + host_perms
+
+                        has_all_urls = "<all_urls>" in all_perms or "*://*/*" in all_perms
+                        has_tabs = "tabs" in all_perms
+                        has_cookies = "cookies" in all_perms
+                        has_web_request = "webRequest" in all_perms
+                        has_native_messaging = "nativeMessaging" in all_perms
+
+                        if has_all_urls and has_web_request:
+                            threat_score += 4
+                            reasons.append("Can intercept all web requests")
+                        if has_all_urls and has_tabs:
+                            threat_score += 3
+                            reasons.append("Can read all web pages and tab content")
+                        if has_cookies and has_all_urls:
+                            threat_score += 3
+                            reasons.append("Can read cookies from all sites")
+                        if has_native_messaging:
+                            threat_score += 3
+                            reasons.append("Can communicate with native applications")
                     except Exception:
                         pass
 
-            if threat_score >= 5:
-                severity = "critical" if threat_score >= 10 else "high" if threat_score >= 7 else "medium"
-                _extra_threats.append({
-                    "path": ext_path,
-                    "threat_name": f"BrowserExt.Suspicious.{ext_name}",
-                    "threat_type": "adware" if "ad" in str(reasons).lower() else "spyware",
-                    "severity": severity,
-                    "source": "browser_ext_scanner",
-                })
-                ext_threats += 1
+                # Scan JavaScript files for suspicious patterns
+                js_patterns = [
+                    ("eval(atob(", 5, "Base64-encoded eval (obfuscation)"),
+                    ("eval(unescape(", 4, "Escaped eval (obfuscation)"),
+                    ("Function(atob(", 5, "Base64-encoded Function constructor"),
+                    ("crypto.miner", 5, "Cryptocurrency mining"),
+                    ("coinhive", 5, "Coinhive miner"),
+                    ("crypto-loot", 5, "Crypto-Loot miner"),
+                    ("chrome.debugger", 4, "Debugger API access"),
+                ]
 
-        if ext_threats:
-            result["threats_found"] += ext_threats
-            with _lock:
-                _progress["threats_found"] = result["threats_found"]
-        log.info("One-click: Browser extension scan found %d threats in %d extensions", ext_threats, len(extensions))
-    except Exception as e:
-        log.warning("One-click: Browser extension scanning phase failed: %s", e)
+                for root, _dirs, files in os.walk(ext_path):
+                    for fname in files:
+                        if not fname.endswith((".js", ".html")):
+                            continue
+                        fpath = os.path.join(root, fname)
+                        try:
+                            if os.path.getsize(fpath) > 500 * 1024:
+                                continue
+                            with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+                                content = f.read()
+                            for pattern, score, reason in js_patterns:
+                                if pattern in content:
+                                    threat_score += score
+                                    reasons.append(f"{reason} in {fname}")
+                                    break
+                        except Exception:
+                            pass
+
+                if threat_score >= 5:
+                    severity = "critical" if threat_score >= 10 else "high" if threat_score >= 7 else "medium"
+                    _extra_threats.append({
+                        "path": ext_path,
+                        "threat_name": f"BrowserExt.Suspicious.{ext_name}",
+                        "threat_type": "adware" if "ad" in str(reasons).lower() else "spyware",
+                        "severity": severity,
+                        "source": "browser_ext_scanner",
+                    })
+                    ext_threats += 1
+
+            if ext_threats:
+                result["threats_found"] += ext_threats
+                with _lock:
+                    _progress["threats_found"] = result["threats_found"]
+            log.info("One-click: Browser extension scan found %d threats in %d extensions", ext_threats, len(extensions))
+        except Exception as e:
+            log.warning("One-click: Browser extension scanning phase failed: %s", e)
 
     # Phase 1.8: Network connection scanning (C2 callbacks, suspicious connections)
-    try:
-        from avs_backend.threat_engine.network_monitor import scan_network_connections
-        with _lock:
-            _progress["current_file"] = "Scanning network connections..."
-
-        net_result = scan_network_connections()
-        net_threats = net_result.get("suspicious_count", 0)
-        if net_threats:
-            for conn in net_result.get("suspicious_connections", []):
-                _extra_threats.append({
-                    "path": conn.get("process_exe", "") or f"pid:{conn.get('pid', 0)}",
-                    "threat_name": f"Network.Suspicious.{conn.get('process', 'unknown')}",
-                    "threat_type": "c2_callback" if conn.get("threat_score", 0) >= 7 else "suspicious_connection",
-                    "severity": conn.get("severity", "medium"),
-                    "source": "network_monitor",
-                })
-            result["threats_found"] += net_threats
+    if not _cancel_requested():
+        try:
+            from avs_backend.threat_engine.network_monitor import scan_network_connections
             with _lock:
-                _progress["threats_found"] = result["threats_found"]
-        log.info("One-click: Network scan found %d suspicious connections out of %d total",
-                 net_threats, net_result.get("total_connections", 0))
-    except Exception as e:
-        log.warning("One-click: Network scanning phase failed: %s", e)
+                _progress["current_file"] = "Scanning network connections..."
 
-    # Phase 2: Quarantine/clean detected threats
+            net_result = scan_network_connections()
+            net_threats = net_result.get("suspicious_count", 0)
+            if net_threats:
+                for conn in net_result.get("suspicious_connections", []):
+                    _extra_threats.append({
+                        "path": conn.get("process_exe", "") or f"pid:{conn.get('pid', 0)}",
+                        "threat_name": f"Network.Suspicious.{conn.get('process', 'unknown')}",
+                        "threat_type": "c2_callback" if conn.get("threat_score", 0) >= 7 else "suspicious_connection",
+                        "severity": conn.get("severity", "medium"),
+                        "source": "network_monitor",
+                    })
+                result["threats_found"] += net_threats
+                with _lock:
+                    _progress["threats_found"] = result["threats_found"]
+            log.info("One-click: Network scan found %d suspicious connections out of %d total",
+                     net_threats, net_result.get("total_connections", 0))
+        except Exception as e:
+            log.warning("One-click: Network scanning phase failed: %s", e)
+
+    # Phase 2: Quarantine/clean detected threats (skip if cancelled)
     all_threats = list(scan_result.get("threats", []))
     # Add email and memory threats collected above
     all_threats.extend(_extra_threats)
-    if all_threats:
+    if all_threats and not _cancel_requested():
         with _lock:
             _progress["phase"] = "cleaning"
 
@@ -758,15 +781,23 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
         except Exception as e:
             log.error("One-click: Quarantine phase failed: %s", e)
 
-    # Finalize
+    # Finalize — don't override 'cancelled' or 'error' phase
     with _lock:
-        _progress["active"] = False
-        _progress["phase"] = "complete"
-        _progress["threats_found"] = result["threats_found"]
-        _progress["threats_quarantined"] = result["threats_quarantined"]
-        _progress["completed_at"] = _now_ms()
+        if _progress.get("phase") not in ("cancelled", "error"):
+            _progress["active"] = False
+            _progress["phase"] = "complete"
+            _progress["threats_found"] = result["threats_found"]
+            _progress["threats_quarantined"] = result["threats_quarantined"]
+            _progress["completed_at"] = _now_ms()
+        else:
+            # Keep cancelled/error phase but update counts and mark inactive
+            _progress["active"] = False
+            _progress["threats_found"] = result["threats_found"]
+            _progress["threats_quarantined"] = result["threats_quarantined"]
+            if not _progress.get("completed_at"):
+                _progress["completed_at"] = _now_ms()
 
-    result["completed_at"] = _progress["completed_at"]
+    result["completed_at"] = _progress.get("completed_at")
     result["success"] = True
     return result
 
@@ -820,12 +851,11 @@ def one_click_cancel(_params: dict[str, Any] | None) -> dict[str, Any]:
 
     Sets the cancel flag so the scan loop exits at the next file boundary.
     The scan thread will stop gracefully and mark the progress as cancelled.
+    Does NOT set _running=False here — the scan thread's finally block
+    handles that, preventing race conditions with new scan starts.
     """
-    global _running
     with _lock:
         _progress["cancel_requested"] = True
-        _running = False
-        _progress["active"] = False
         _progress["phase"] = "cancelled"
         _progress["current_file"] = None
     log.info("One-click: Cancel requested by user")

@@ -314,7 +314,7 @@ export default function AntivirusSecurityPage() {
     setOneClickModalOpen(true);
     setOneClickProgress({ active: true, phase: 'scanning', scan_progress: 1, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: null, current_file: 'Initializing scan...', files_scanned: 0 });
     try {
-      const startRes = await rpc.raw<{ success?: boolean; error?: string; progress?: Record<string, unknown> }>(RPC_METHODS.ONE_CLICK_START, { scan_type: 'quick' });
+      const startRes = await rpc.raw<{ success?: boolean; error?: string; progress?: Record<string, unknown> }>(RPC_METHODS.ONE_CLICK_START, { scan_type: 'full' });
       if (!startRes.success && startRes.error) {
         setOneClickProgress({ active: false, phase: 'error', scan_progress: 0, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: startRes.error, current_file: null, files_scanned: 0 });
         return;
@@ -328,7 +328,7 @@ export default function AntivirusSecurityPage() {
             clearInterval(poll);
             oneClickPollRef.current = null;
             setOneClickCancelling(false);
-            if (prog.phase === 'complete') {
+            if (prog.phase === 'complete' || prog.phase === 'cancelled') {
               setOneClickResult({
                 threats_found: prog.threats_found,
                 threats_quarantined: prog.threats_quarantined || 0,
@@ -593,10 +593,14 @@ export default function AntivirusSecurityPage() {
 
         {/* Last scan result summary (shown when not scanning) */}
         {oneClickResult && !oneClickProgress?.active && (
-          <div className="mt-4 p-4 rounded-[var(--avs-radius-md)] bg-semantic-success/5 border border-semantic-success/20" data-testid="one-click-result">
+          <div className={`mt-4 p-4 rounded-[var(--avs-radius-md)] border ${oneClickProgress?.phase === 'cancelled' ? 'bg-semantic-warning/5 border-semantic-warning/20' : 'bg-semantic-success/5 border-semantic-success/20'}`} data-testid="one-click-result">
             <div className="flex items-center gap-2 mb-2">
-              <ShieldCheckIcon className="h-5 w-5 text-semantic-success" />
-              <span className="text-small font-semibold text-text-primary">Last Scan Complete</span>
+              {oneClickProgress?.phase === 'cancelled'
+                ? <XMarkIcon className="h-5 w-5 text-semantic-warning" />
+                : <ShieldCheckIcon className="h-5 w-5 text-semantic-success" />}
+              <span className="text-small font-semibold text-text-primary">
+                {oneClickProgress?.phase === 'cancelled' ? 'Last Scan Cancelled' : 'Last Scan Complete'}
+              </span>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
@@ -716,10 +720,14 @@ export default function AntivirusSecurityPage() {
 
             {/* Result summary inside modal */}
             {oneClickResult && !oneClickProgress?.active && (
-              <div className="p-4 rounded-[var(--avs-radius-md)] bg-semantic-success/5 border border-semantic-success/20" data-testid="one-click-modal-result">
+              <div className={`p-4 rounded-[var(--avs-radius-md)] border ${oneClickProgress?.phase === 'cancelled' ? 'bg-semantic-warning/5 border-semantic-warning/20' : 'bg-semantic-success/5 border-semantic-success/20'}`} data-testid="one-click-modal-result">
                 <div className="flex items-center gap-2 mb-3">
-                  <ShieldCheckIcon className="h-5 w-5 text-semantic-success" />
-                  <span className="text-small font-semibold text-text-primary">Scan Complete</span>
+                  {oneClickProgress?.phase === 'cancelled'
+                    ? <XMarkIcon className="h-5 w-5 text-semantic-warning" />
+                    : <ShieldCheckIcon className="h-5 w-5 text-semantic-success" />}
+                  <span className="text-small font-semibold text-text-primary">
+                    {oneClickProgress?.phase === 'cancelled' ? 'Scan Cancelled' : 'Scan Complete'}
+                  </span>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
