@@ -43,6 +43,25 @@ _DATA_DIR = Path(
     os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
 ) / "AVS AI Shield" / "clamav"
 
+
+def _get_short_path(path: str) -> str:
+    """Convert a path to its Windows 8.3 short path form to avoid spaces.
+
+    ClamAV's clamd.exe and freshclam.exe truncate paths at the first space
+    when passed via --config-file. Using the 8.3 short path avoids this.
+    """
+    if not IS_WINDOWS:
+        return path
+    try:
+        import ctypes
+        buf = ctypes.create_unicode_buffer(260)
+        n = ctypes.windll.kernel32.GetShortPathNameW(path, buf, 260)
+        if n > 0:
+            return buf.value
+    except Exception:
+        pass
+    return path
+
 # Bundled ClamAV binaries — shipped with the app, no download needed.
 # In development: apps/pc-optimizer/resources/clamav/
 # In production (packaged): <app>/resources/clamav/ (backend exe is at
@@ -131,8 +150,9 @@ def _run_freshclam() -> dict[str, Any]:
         return {"success": False, "error": "freshclam.exe not found"}
 
     try:
+        conf_path = _get_short_path(str(_DATA_DIR / "freshclam.conf"))
         result = subprocess.run(
-            [str(freshclam_exe), "--config-file", str(_DATA_DIR / "freshclam.conf"), "--no-dns"],
+            [str(freshclam_exe), f"--config-file={conf_path}", "--no-dns"],
             capture_output=True,
             text=True,
             timeout=300,
@@ -772,12 +792,32 @@ def start_clamd() -> dict[str, Any]:
     except Exception:
         pass
 
-    # Try starting clamd with retries
+    # Kill any stale clamd processes that might be holding the port
     import time as _time
+    try:
+        subprocess.run(
+            ["taskkill", "/F", "/IM", "clamd.exe"],
+            capture_output=True, timeout=5,
+            creationflags=_NO_WINDOW,
+        )
+        _time.sleep(1)
+    except Exception:
+        pass
+
+    # Remove stale pidfile
+    pidfile = _DATA_DIR / "clamd.pid"
+    if pidfile.exists():
+        try:
+            pidfile.unlink()
+        except Exception:
+            pass
+
+    # Try starting clamd with retries
     for attempt in range(3):
         try:
+            conf_path = _get_short_path(str(_DATA_DIR / "clamd.conf"))
             proc = subprocess.Popen(
-                [str(clamd_exe), "--config-file", str(_DATA_DIR / "clamd.conf")],
+                [str(clamd_exe), f"--config-file={conf_path}"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 creationflags=_NO_WINDOW | 0x00000004,  # DETACHED_PROCESS
@@ -797,22 +837,35 @@ def start_clamd() -> dict[str, Any]:
                 return {"success": False, "error": f"clamd exited: {err_msg}"}
 
             # Verify clamd is reachable on port 3310
-            _time.sleep(3)
-            try:
-                s = _sock.socket(_sock.AF_INET, _sock.SOCK_STREAM)
-                s.settimeout(5)
-                result = s.connect_ex(("127.0.0.1", 3310))
-                s.close()
-                if result == 0:
-                    log.info("clamd is reachable on port 3310")
-                    return {"success": True, "message": "clamd started", "pid": proc.pid}
-                else:
-                    log.warning("clamd started but port 3310 not reachable (attempt %d)", attempt + 1)
-                    if attempt < 2:
-                        _time.sleep(3)
-                        continue
-            except Exception as e:
-                log.warning("Port check failed: %s", e)
+            # clamd takes ~30s to load virus definitions — poll for up to 45s
+            port_ready = False
+            for _wait in range(15):
+                _time.sleep(3)
+                try:
+                    s = _sock.socket(_sock.AF_INET, _sock.SOCK_STREAM)
+                    s.settimeout(5)
+                    result = s.connect_ex(("127.0.0.1", 3310))
+                    s.close()
+                    if result == 0:
+                        port_ready = True
+                        break
+                except Exception:
+                    pass
+                # Check if process died during loading
+                if proc.poll() is not None:
+                    stderr_data = proc.stderr.read() if proc.stderr else b""
+                    err_msg = stderr_data.decode("utf-8", errors="replace").strip()
+                    log.warning("clamd exited during startup (attempt %d): %s", attempt + 1, err_msg)
+                    break
+
+            if port_ready:
+                log.info("clamd is reachable on port 3310")
+                return {"success": True, "message": "clamd started", "pid": proc.pid}
+            else:
+                log.warning("clamd started but port 3310 not reachable after 45s (attempt %d)", attempt + 1)
+                if attempt < 2:
+                    _time.sleep(3)
+                    continue
 
             return {
                 "success": True,

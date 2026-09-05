@@ -31,7 +31,9 @@ log = logging.getLogger("avs.threat_engine.clamav_scanner")
 
 # Default clamd connection endpoints
 if sys.platform == "win32":
-    _DEFAULT_UNIX_SOCKET = r"C:\Program Files\ClamAV\clamd.sock"
+    _DEFAULT_UNIX_SOCKET = os.path.join(
+        os.environ.get("LOCALAPPDATA", ""), "AVS AI Shield", "clamav", "clamd.sock"
+    )
 else:
     _DEFAULT_UNIX_SOCKET = "/var/run/clamd.sock"
 _DEFAULT_TCP_HOST = "localhost"
