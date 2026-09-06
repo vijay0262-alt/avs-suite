@@ -325,9 +325,29 @@ function isRunningAsAdmin(): Promise<boolean> {
 function scheduledTaskExists(): Promise<boolean> {
   return new Promise((resolve) => {
     exec(
-      `schtasks /query /tn "${ELEVATED_TASK_NAME}" 2>nul`,
-      { encoding: 'utf8', timeout: 5000, windowsHide: true },
-      (err) => { resolve(!err); },
+      `schtasks /query /tn "${ELEVATED_TASK_NAME}" /xml 2>nul`,
+      { encoding: 'utf8', timeout: 5000, windowsHide: true, maxBuffer: 1024 * 1024 },
+      (err, stdout) => {
+        if (err) { resolve(false); return; }
+        // Verify the task's exe path matches the current exe path.
+        // If the app was reinstalled to a different directory, the old
+        // task would point to a non-existent exe and relaunching via it
+        // would silently fail — leaving the user with no running app.
+        const currentExe = app.getPath('exe').toLowerCase();
+        const taskXml = (stdout || '').toLowerCase();
+        if (!taskXml.includes(currentExe.toLowerCase())) {
+          log.warn(`[startup] Scheduled task exe path is stale — deleting old task`);
+          log.warn(`[startup]   current exe: ${currentExe}`);
+          // Delete the stale task so we fall through to UAC prompt
+          exec(
+            `schtasks /delete /tn "${ELEVATED_TASK_NAME}" /f 2>nul`,
+            { encoding: 'utf8', timeout: 5000, windowsHide: true },
+            () => { resolve(false); },
+          );
+          return;
+        }
+        resolve(true);
+      },
     );
   });
 }
