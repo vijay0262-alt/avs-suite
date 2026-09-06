@@ -810,11 +810,11 @@ export default function AntivirusSecurityPage() {
                 <circle
                   cx="48" cy="48" r="42" fill="none" strokeWidth="6" strokeLinecap="round"
                   stroke={
-                    securityScore.status === 'excellent' ? 'var(--avs-semantic-success)' :
-                    securityScore.status === 'good' ? 'var(--avs-semantic-success)' :
-                    securityScore.status === 'fair' ? 'var(--avs-semantic-warning)' :
-                    securityScore.status === 'poor' ? 'var(--avs-semantic-danger)' :
-                    'var(--avs-semantic-danger)'
+                    securityScore.status === 'excellent' ? 'var(--avs-success)' :
+                    securityScore.status === 'good' ? 'var(--avs-success)' :
+                    securityScore.status === 'fair' ? 'var(--avs-warning)' :
+                    securityScore.status === 'poor' ? 'var(--avs-danger)' :
+                    'var(--avs-danger)'
                   }
                   strokeDasharray={`${(securityScore.overall_score / 100) * 264} 264`}
                 />
@@ -902,9 +902,9 @@ export default function AntivirusSecurityPage() {
           <div className="text-caption text-text-secondary">Real-Time Guard</div>
         </Card>
         <Card variant="glass" className="p-4 text-center" data-testid="threat-count-card">
-          <ShieldExclamationIcon className={`h-6 w-6 mx-auto mb-1 ${threats.length > 0 ? 'text-semantic-danger' : 'text-semantic-success'}`} />
+          <ShieldExclamationIcon className={`h-6 w-6 mx-auto mb-1 ${threats.length > 0 ? 'text-semantic-warning' : 'text-semantic-success'}`} />
           <div className="text-section-title font-bold text-text-primary">{threats.length}</div>
-          <div className="text-caption text-text-secondary">Threats Found</div>
+          <div className="text-caption text-text-secondary">Quarantined</div>
         </Card>
       </div>
 

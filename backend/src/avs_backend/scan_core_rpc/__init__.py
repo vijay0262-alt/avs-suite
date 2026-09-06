@@ -958,7 +958,37 @@ def _run_scan(
         _run_direct_cleanup(scan_id, source=source)
         return
 
-    orchestrator = get_scan_orchestrator(wait_for_ready=True, timeout_s=90.0)
+    # Poll for orchestrator readiness with progress updates so the UI
+    # doesn't sit at 0% while the engine initializes (can take 30-60s
+    # on first run due to database schema creation).
+    deadline = time.monotonic() + 30.0
+    orchestrator = None
+    while time.monotonic() < deadline:
+        with _scan_session_lock:
+            session = _scan_sessions.get(scan_id)
+            if session is None or session.get("cancelled"):
+                return
+        orchestrator = get_scan_orchestrator(wait_for_ready=False)
+        if orchestrator is not None:
+            break
+        # Emit "preparing" progress so the frontend shows activity
+        with _scan_session_lock:
+            session = _scan_sessions.get(scan_id)
+            if session is not None:
+                session["progress"] = {
+                    "phase": "preparing",
+                    "current_operation": "Initializing scan engine...",
+                    "assets_discovered": 0,
+                    "assets_evaluated": 0,
+                    "findings": 0,
+                    "actions_available": 0,
+                    "elapsed_time_ms": 0,
+                    "is_cancelled": False,
+                    "completion_percent": 1.0,
+                    "current_folder": "",
+                }
+        time.sleep(0.5)
+
     if orchestrator is None:
         with _scan_session_lock:
             session = _scan_sessions.get(scan_id)
