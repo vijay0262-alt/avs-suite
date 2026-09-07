@@ -153,6 +153,102 @@ def security_realtime_status(_params: dict[str, Any] | None) -> dict[str, Any]:
     return result
 
 
+@register("security.getProtectionStatus")
+def security_get_protection_status(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get unified protection status for the background protection service.
+
+    Returns:
+        - monitoring: bool — whether at least one real-time monitor is active
+        - threatsActive: int — number of currently active (unresolved) threats
+        - lastEvent: str | None — description of the most recent protection event
+    """
+    try:
+        rt = security_realtime_status(None)
+        active_count = rt.get("active_count", 0)
+        monitoring = active_count > 0
+    except Exception:
+        monitoring = False
+        active_count = 0
+
+    threats_active = 0
+    last_event = None
+
+    # Check quarantine for active threats
+    try:
+        from avs_backend.quarantine import quarantine_list
+        items = quarantine_list(None)
+        if isinstance(items, dict):
+            threats_active = len(items.get("items", items.get("quarantined", [])))
+    except Exception:
+        pass
+
+    # Check download scanner for recent events
+    try:
+        from avs_backend.threat_engine.download_scanner import download_scanner_events
+        events_resp = download_scanner_events({"limit": 1})
+        if isinstance(events_resp, dict):
+            events = events_resp.get("events", [])
+            if events:
+                last_event = events[0].get("action", None)
+    except Exception:
+        pass
+
+    return {
+        "monitoring": monitoring,
+        "threatsActive": threats_active,
+        "lastEvent": last_event,
+    }
+
+
+@register("security.startRealtimeMonitoring")
+def security_start_realtime_monitoring(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Start all real-time protection monitors.
+
+    Starts download scanner, network monitor, and memory scanner.
+    Returns dict with success and started count.
+    """
+    started = 0
+    errors = []
+
+    try:
+        from avs_backend.threat_engine.download_scanner import download_scanner_start
+        result = download_scanner_start(None)
+        if result.get("success"):
+            started += 1
+    except Exception as e:
+        errors.append(f"download_scanner: {e}")
+
+    return {
+        "success": started > 0,
+        "started": started,
+        "errors": errors if errors else None,
+    }
+
+
+@register("security.stopRealtimeMonitoring")
+def security_stop_realtime_monitoring(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Stop all real-time protection monitors.
+
+    Stops download scanner, network monitor, and memory scanner.
+    Returns dict with success and stopped count.
+    """
+    stopped = 0
+    errors = []
+
+    try:
+        from avs_backend.threat_engine.download_scanner import download_scanner_stop
+        download_scanner_stop(None)
+        stopped += 1
+    except Exception as e:
+        errors.append(f"download_scanner: {e}")
+
+    return {
+        "success": True,
+        "stopped": stopped,
+        "errors": errors if errors else None,
+    }
+
+
 @register("security.consolidatedScore")
 def security_consolidated_score(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Get a consolidated security score used by both Protection Center
