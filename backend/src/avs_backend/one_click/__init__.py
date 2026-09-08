@@ -300,7 +300,9 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
                                     return {"files_scanned": 0, "threats_found": 0, "threats": []}
                                 _progress["current_file"] = f"Enumerating files… {len(all_files):,} found so far"
                                 _progress["files_scanned"] = 0
-                                _progress["scan_progress"] = 1
+                                # Show incremental progress during enumeration (1-5%)
+                                # based on files found, so the bar isn't stuck at 1%
+                                _progress["scan_progress"] = min(5, 1 + len(all_files) // 10000)
         except Exception:
             pass
 
@@ -476,7 +478,9 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
 
     # ─── Parallel scanning with ThreadPoolExecutor ─────────────────
     max_workers = min(16, (os.cpu_count() or 4) * 2)
-    progress_update_interval = 25  # Update progress every 25 files
+    # Update progress frequently for smooth 1-100% progression.
+    # Use smaller interval for small file counts so the bar moves smoothly.
+    progress_update_interval = max(1, min(10, total_files // 100))
 
     # Don't use 'with' — we need to shutdown(wait=False) on cancel
     # so the executor doesn't block waiting for in-flight futures.
@@ -506,7 +510,7 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
             # Batch progress updates (reduce lock contention)
             if files_scanned % progress_update_interval == 0 or files_scanned == total_files:
                 with _lock:
-                    pct = min(99, int(files_scanned / total_files * 100))
+                    pct = int(files_scanned / total_files * 100)
                     _progress["scan_progress"] = pct
                     _progress["current_file"] = fpath
                     _progress["files_scanned"] = files_scanned

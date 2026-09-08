@@ -686,13 +686,9 @@ export default function AntivirusSecurityPage() {
                   <div className="rounded-lg bg-surface-muted px-3 py-2">
                     <div className="text-caption text-text-muted">Progress</div>
                     <div className="text-small font-bold text-text-primary">
-                      {oneClickProgress.phase === 'enumerating'
-                        ? '—'
-                        : oneClickProgress.phase === 'complete'
-                          ? '100%'
-                          : oneClickProgress.phase === 'cancelled'
-                            ? `${oneClickProgress.scan_progress || 0}%`
-                            : `${oneClickProgress.scan_progress || 0}%`}
+                      {oneClickProgress.phase === 'complete'
+                        ? '100%'
+                        : `${oneClickProgress.scan_progress || 0}%`}
                     </div>
                   </div>
                   <div className="rounded-lg bg-surface-muted px-3 py-2">
@@ -735,7 +731,7 @@ export default function AntivirusSecurityPage() {
                       oneClickProgress.phase === 'complete' ? 'bg-semantic-success' :
                       'bg-brand-primary'
                     }`}
-                    style={{ width: `${oneClickProgress.phase === 'enumerating' ? '15%' : oneClickProgress.phase === 'scanning' ? oneClickProgress.scan_progress : oneClickProgress.phase === 'cleaning' ? 95 : oneClickProgress.phase === 'complete' ? 100 : oneClickProgress.phase === 'cancelled' ? (oneClickProgress.scan_progress || 0) : 0}%` }}
+                    style={{ width: `${oneClickProgress.phase === 'complete' ? 100 : oneClickProgress.phase === 'cleaning' ? 95 : (oneClickProgress.scan_progress || 0)}%` }}
                   />
                 </div>
 
@@ -743,7 +739,7 @@ export default function AntivirusSecurityPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-caption text-text-secondary">
                     {oneClickProgress.phase === 'enumerating'
-                      ? `${oneClickProgress.current_file || 'Building file list...'}`
+                      ? `${oneClickProgress.scan_progress || 1}% — ${oneClickProgress.current_file || 'Building file list...'}`
                       : oneClickProgress.phase === 'scanning'
                         ? `${oneClickProgress.scan_progress}% complete`
                         : oneClickProgress.phase === 'cleaning'
