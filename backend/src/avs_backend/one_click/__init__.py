@@ -297,7 +297,7 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
                             _enum_last_update = now
                             with _lock:
                                 if _progress.get("cancel_requested"):
-                                    break
+                                    return {"files_scanned": 0, "threats_found": 0, "threats": []}
                                 _progress["current_file"] = f"Enumerating files… {len(all_files):,} found so far"
                                 _progress["files_scanned"] = 0
                                 _progress["scan_progress"] = 1
@@ -309,6 +309,7 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
             return {"files_scanned": 0, "threats_found": 0, "threats": []}
         _progress["phase"] = "scanning"
         _progress["current_file"] = f"Scanning {len(all_files):,} files..."
+        _progress["total_files"] = len(all_files)
 
     total_files = max(len(all_files), 1)
     log.info("One-click: %d files to scan", total_files)
@@ -477,8 +478,11 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
     max_workers = min(16, (os.cpu_count() or 4) * 2)
     progress_update_interval = 25  # Update progress every 25 files
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {}
+    # Don't use 'with' — we need to shutdown(wait=False) on cancel
+    # so the executor doesn't block waiting for in-flight futures.
+    executor = ThreadPoolExecutor(max_workers=max_workers)
+    futures = {}
+    try:
         for fpath in all_files:
             # Check for cancel before submitting
             with _lock:
@@ -494,7 +498,7 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
             # Check for cancel
             with _lock:
                 if _progress.get("cancel_requested"):
-                    # Cancel all pending futures
+                    # Cancel all pending futures and stop immediately
                     for f in futures:
                         f.cancel()
                     break
@@ -514,9 +518,13 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
                     detected_threats.append(result)
             except Exception:
                 pass
+    finally:
+        # shutdown(wait=False) so we don't block on in-flight futures
+        executor.shutdown(wait=False, cancel_futures=True)
 
     with _lock:
-        _progress["scan_progress"] = 100
+        if not _progress.get("cancel_requested"):
+            _progress["scan_progress"] = 100
         _progress["current_file"] = None
 
     # Save hash cache for incremental scanning next time
@@ -566,6 +574,7 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
             "error": None,
             "current_file": "Initializing scan...",
             "files_scanned": 0,
+            "total_files": 0,
             "cancel_requested": False,
         }
 

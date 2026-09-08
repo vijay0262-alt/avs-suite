@@ -117,6 +117,11 @@ class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
         fixSuccess: result?.enabled === true,
         fixInProgress: null,
       });
+      // Give the system time to apply the change before re-checking status.
+      // Without this delay, the status check can run before the OS has
+      // propagated the change (e.g., Set-MpPreference takes a moment to
+      // be reflected by Get-MpPreference).
+      await new Promise(resolve => setTimeout(resolve, 1500));
       await this.refresh(true);  // Force refresh after a fix to show updated state
     } catch (err) {
       this.setState({

@@ -119,7 +119,7 @@ export default function AntivirusSecurityPage() {
   const [excludeLoading, setExcludeLoading] = useState(false);
 
   // One-click security scan state
-  const [oneClickProgress, setOneClickProgress] = useState<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_scanned: number } | null>(null);
+  const [oneClickProgress, setOneClickProgress] = useState<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_scanned: number; total_files: number; started_at: number | null; completed_at: number | null } | null>(null);
   const [oneClickResult, setOneClickResult] = useState<{ threats_found: number; threats_quarantined: number; files_scanned: number; success: boolean } | null>(null);
   const [oneClickModalOpen, setOneClickModalOpen] = useState(false);
   const [oneClickCancelling, setOneClickCancelling] = useState(false);
@@ -312,17 +312,17 @@ export default function AntivirusSecurityPage() {
     setOneClickResult(null);
     setOneClickCancelling(false);
     setOneClickModalOpen(true);
-    setOneClickProgress({ active: true, phase: 'enumerating', scan_progress: 1, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: null, current_file: 'Initializing scan...', files_scanned: 0 });
+    setOneClickProgress({ active: true, phase: 'enumerating', scan_progress: 1, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: null, current_file: 'Initializing scan...', files_scanned: 0, total_files: 0, started_at: null, completed_at: null });
     try {
       const startRes = await rpc.raw<{ success?: boolean; error?: string; progress?: Record<string, unknown> }>(RPC_METHODS.ONE_CLICK_START, { scan_type: 'full' });
       if (!startRes.success && startRes.error) {
-        setOneClickProgress({ active: false, phase: 'error', scan_progress: 0, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: startRes.error, current_file: null, files_scanned: 0 });
+        setOneClickProgress({ active: false, phase: 'error', scan_progress: 0, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: startRes.error, current_file: null, files_scanned: 0, total_files: 0, started_at: null, completed_at: null });
         return;
       }
       // Poll progress — tracked via ref for cleanup on unmount
       const poll = setInterval(async () => {
         try {
-          const prog = await rpc.raw<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_scanned: number }>(RPC_METHODS.ONE_CLICK_PROGRESS);
+          const prog = await rpc.raw<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_scanned: number; total_files: number; started_at: number | null; completed_at: number | null }>(RPC_METHODS.ONE_CLICK_PROGRESS);
           setOneClickProgress(prog);
           if (!prog.active) {
             clearInterval(poll);
@@ -350,7 +350,7 @@ export default function AntivirusSecurityPage() {
       oneClickPollRef.current = poll;
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : 'Failed to start security scan';
-      setOneClickProgress({ active: false, phase: 'error', scan_progress: 0, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: errMsg, current_file: null, files_scanned: 0 });
+      setOneClickProgress({ active: false, phase: 'error', scan_progress: 0, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: errMsg, current_file: null, files_scanned: 0, total_files: 0, started_at: null, completed_at: null });
     }
   }, [refreshThreats, refreshAvStatus]);
 
@@ -680,27 +680,53 @@ export default function AntivirusSecurityPage() {
 
             {/* Progress bar */}
             {oneClickProgress && (
-              <div className="space-y-2" data-testid="one-click-progress">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-caption text-text-secondary">
-                    {oneClickProgress.phase === 'enumerating'
-                      ? `${oneClickProgress.current_file || 'Building file list...'}`
-                      : oneClickProgress.phase === 'scanning'
-                        ? `${oneClickProgress.scan_progress}% (${oneClickProgress.files_scanned || 0} files scanned)`
-                        : oneClickProgress.phase === 'cleaning'
-                          ? `${oneClickProgress.threats_quarantined || 0} threats quarantined`
-                          : oneClickProgress.phase === 'complete'
-                            ? '100% Complete'
-                            : oneClickProgress.phase === 'cancelled'
-                              ? 'Cancelled'
-                              : 'Error'}
-                  </span>
-                  {oneClickProgress.threats_found > 0 && (
-                    <span className="text-caption text-semantic-danger font-medium">
-                      {oneClickProgress.threats_found} threat{oneClickProgress.threats_found !== 1 ? 's' : ''} found
-                    </span>
-                  )}
+              <div className="space-y-3" data-testid="one-click-progress">
+                {/* Stats row */}
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="rounded-lg bg-surface-muted px-3 py-2">
+                    <div className="text-caption text-text-muted">Progress</div>
+                    <div className="text-small font-bold text-text-primary">
+                      {oneClickProgress.phase === 'enumerating'
+                        ? '—'
+                        : oneClickProgress.phase === 'complete'
+                          ? '100%'
+                          : oneClickProgress.phase === 'cancelled'
+                            ? `${oneClickProgress.scan_progress || 0}%`
+                            : `${oneClickProgress.scan_progress || 0}%`}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-surface-muted px-3 py-2">
+                    <div className="text-caption text-text-muted">Files Scanned</div>
+                    <div className="text-small font-bold text-text-primary">
+                      {(oneClickProgress.files_scanned || 0).toLocaleString()}
+                      {oneClickProgress.total_files > 0 && oneClickProgress.phase === 'scanning' && (
+                        <span className="text-caption text-text-muted font-normal"> / {(oneClickProgress.total_files).toLocaleString()}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-surface-muted px-3 py-2">
+                    <div className="text-caption text-text-muted">Threats</div>
+                    <div className={`text-small font-bold ${(oneClickProgress.threats_found || 0) > 0 ? 'text-semantic-danger' : 'text-text-primary'}`}>
+                      {oneClickProgress.threats_found || 0}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-surface-muted px-3 py-2">
+                    <div className="text-caption text-text-muted">Elapsed</div>
+                    <div className="text-small font-bold text-text-primary">
+                      {oneClickProgress.started_at
+                        ? (() => {
+                            const end = oneClickProgress.completed_at || Date.now();
+                            const secs = Math.floor((end - oneClickProgress.started_at) / 1000);
+                            const m = Math.floor(secs / 60);
+                            const s = secs % 60;
+                            return `${m}:${s.toString().padStart(2, '0')}`;
+                          })()
+                        : '—'}
+                    </div>
+                  </div>
                 </div>
+
+                {/* Progress bar */}
                 <div className="h-2 rounded-full bg-[var(--avs-border)] overflow-hidden">
                   <div
                     className={`h-full transition-all duration-300 ${
@@ -709,9 +735,32 @@ export default function AntivirusSecurityPage() {
                       oneClickProgress.phase === 'complete' ? 'bg-semantic-success' :
                       'bg-brand-primary'
                     }`}
-                    style={{ width: `${oneClickProgress.phase === 'enumerating' ? '15%' : oneClickProgress.phase === 'scanning' ? oneClickProgress.scan_progress : oneClickProgress.phase === 'cleaning' ? 95 : oneClickProgress.phase === 'complete' ? 100 : oneClickProgress.phase === 'cancelled' ? oneClickProgress.scan_progress : 0}%` }}
+                    style={{ width: `${oneClickProgress.phase === 'enumerating' ? '15%' : oneClickProgress.phase === 'scanning' ? oneClickProgress.scan_progress : oneClickProgress.phase === 'cleaning' ? 95 : oneClickProgress.phase === 'complete' ? 100 : oneClickProgress.phase === 'cancelled' ? (oneClickProgress.scan_progress || 0) : 0}%` }}
                   />
                 </div>
+
+                {/* Status text */}
+                <div className="flex items-center justify-between">
+                  <span className="text-caption text-text-secondary">
+                    {oneClickProgress.phase === 'enumerating'
+                      ? `${oneClickProgress.current_file || 'Building file list...'}`
+                      : oneClickProgress.phase === 'scanning'
+                        ? `${oneClickProgress.scan_progress}% complete`
+                        : oneClickProgress.phase === 'cleaning'
+                          ? `${oneClickProgress.threats_quarantined || 0} threats quarantined`
+                          : oneClickProgress.phase === 'complete'
+                            ? '100% Complete'
+                            : oneClickProgress.phase === 'cancelled'
+                              ? `Cancelled at ${oneClickProgress.scan_progress || 0}%`
+                              : 'Error'}
+                  </span>
+                  {oneClickProgress.threats_found > 0 && (
+                    <span className="text-caption text-semantic-danger font-medium">
+                      {oneClickProgress.threats_found} threat{oneClickProgress.threats_found !== 1 ? 's' : ''} found
+                    </span>
+                  )}
+                </div>
+
                 {/* Current file being scanned */}
                 {oneClickProgress.phase === 'scanning' && oneClickProgress.current_file && (
                   <div className="text-caption text-text-muted truncate" data-testid="one-click-current-file" title={oneClickProgress.current_file}>
