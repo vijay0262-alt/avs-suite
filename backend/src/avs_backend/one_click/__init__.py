@@ -59,6 +59,7 @@ def _now_ms() -> int:
 from avs_backend.threat_engine.scan_config import (
     should_scan_file as _cfg_should_scan_file,
     is_excluded_path as _cfg_is_excluded_path,
+    EXCLUDE_DIR_NAMES as _CFG_EXCLUDE_DIR_NAMES,
     MAX_FILE_SIZE as _CFG_MAX_FILE_SIZE,
     MAX_DEPTH as _CFG_MAX_DEPTH,
 )
@@ -255,6 +256,9 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
     # the Cancel button works even before scanning actually starts.
     all_files: list[str] = []
     _enum_last_update = time.monotonic()
+    with _lock:
+        _progress["phase"] = "enumerating"
+        _progress["current_file"] = "Enumerating files..."
     for root_path in scan_roots:
         with _lock:
             if _progress.get("cancel_requested"):
@@ -269,6 +273,8 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
                 if depth > _MAX_DEPTH:
                     dirs.clear()
                     continue
+                # Prune excluded directory names so os.walk doesn't descend into them
+                dirs[:] = [d for d in dirs if d.lower() not in _CFG_EXCLUDE_DIR_NAMES]
                 for fname in files:
                     fpath = os.path.join(root, fname)
                     if not _should_scan_file(fpath):
@@ -288,16 +294,17 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
                     with _lock:
                         if _progress.get("cancel_requested"):
                             break
-                        _progress["current_file"] = f"Enumerating files… {len(all_files):,} found so far ({root})"
-            else:
-                continue
-            break  # cancelled mid-walk
+                        _progress["current_file"] = f"Enumerating files… {len(all_files):,} found so far"
+                        _progress["files_scanned"] = 0
+                        _progress["scan_progress"] = 1
         except Exception:
             pass
 
     with _lock:
         if _progress.get("cancel_requested"):
             return {"files_scanned": 0, "threats_found": 0, "threats": []}
+        _progress["phase"] = "scanning"
+        _progress["current_file"] = f"Scanning {len(all_files):,} files..."
 
     total_files = max(len(all_files), 1)
     log.info("One-click: %d files to scan", total_files)
@@ -523,7 +530,7 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
     with _lock:
         _progress = {
             "active": True,
-            "phase": "scanning",
+            "phase": "enumerating",
             "scan_progress": 1,
             "optimize_progress": 0,
             "threats_found": 0,

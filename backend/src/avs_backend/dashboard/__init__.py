@@ -439,6 +439,21 @@ def dashboard_refresh_cache(_params: dict[str, Any] | None) -> dict[str, bool]:
         _calculate_health_score.cache_clear()  # type: ignore[attr-defined]
     except (NameError, AttributeError):
         pass
+    # Clear individual security status caches so that after a fix RPC
+    # (enableRansomwareProtection, enableMemoryIntegrity, etc.) the next
+    # metrics call returns fresh values instead of stale cached ones.
+    for fn in (
+        _get_ransomware_protection_status,
+        _get_memory_integrity_status,
+        _get_defender_status,
+        _get_firewall_status,
+        _get_smartscreen_status,
+        _get_avs_av_active,
+    ):
+        try:
+            fn.cache_clear()  # type: ignore[attr-defined]
+        except (NameError, AttributeError):
+            pass
     return {"refreshed": True}
 
 

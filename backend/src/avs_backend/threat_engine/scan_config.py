@@ -66,6 +66,16 @@ EXCLUDE_PATHS: frozenset[str] = frozenset({
     r"C:\Windows\Installer",
     # Don't scan our own installation
     os.path.join(os.environ.get("LOCALAPPDATA", ""), "AVS AI Shield"),
+    os.path.join(os.environ.get("LOCALAPPDATA", ""), "AVS Shield", "backups"),
+    os.path.join(os.environ.get("LOCALAPPDATA", ""), "AVS Shield", "quarantine"),
+})
+
+# ─── Directory names to exclude from scan ────────────────────────────
+# These are pruned during os.walk so we never descend into them.
+EXCLUDE_DIR_NAMES: frozenset[str] = frozenset({
+    "node_modules", ".git", "__pycache__", ".cache",
+    "site-packages", "dist", "build", "release",
+    ".vscode", ".idea", ".venv", "venv",
 })
 
 # ─── Scan limits ─────────────────────────────────────────────────────

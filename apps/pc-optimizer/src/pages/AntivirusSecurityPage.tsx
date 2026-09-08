@@ -312,7 +312,7 @@ export default function AntivirusSecurityPage() {
     setOneClickResult(null);
     setOneClickCancelling(false);
     setOneClickModalOpen(true);
-    setOneClickProgress({ active: true, phase: 'scanning', scan_progress: 1, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: null, current_file: 'Initializing scan...', files_scanned: 0 });
+    setOneClickProgress({ active: true, phase: 'enumerating', scan_progress: 1, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: null, current_file: 'Initializing scan...', files_scanned: 0 });
     try {
       const startRes = await rpc.raw<{ success?: boolean; error?: string; progress?: Record<string, unknown> }>(RPC_METHODS.ONE_CLICK_START, { scan_type: 'full' });
       if (!startRes.success && startRes.error) {
@@ -663,12 +663,13 @@ export default function AntivirusSecurityPage() {
           <div className="space-y-4">
             {/* Phase indicator */}
             <div className="flex items-center gap-3">
-              {oneClickProgress?.phase === 'scanning' && <ArrowPathIcon className="h-5 w-5 animate-spin text-brand-primary" />}
+              {(oneClickProgress?.phase === 'enumerating' || oneClickProgress?.phase === 'scanning') && <ArrowPathIcon className="h-5 w-5 animate-spin text-brand-primary" />}
               {oneClickProgress?.phase === 'cleaning' && <ShieldExclamationIcon className="h-5 w-5 text-semantic-warning" />}
               {oneClickProgress?.phase === 'complete' && <ShieldCheckIcon className="h-5 w-5 text-semantic-success" />}
               {oneClickProgress?.phase === 'cancelled' && <XMarkIcon className="h-5 w-5 text-semantic-danger" />}
               {oneClickProgress?.phase === 'error' && <ShieldExclamationIcon className="h-5 w-5 text-semantic-danger" />}
               <span className="text-small font-semibold text-text-primary">
+                {oneClickProgress?.phase === 'enumerating' && 'Enumerating files…'}
                 {oneClickProgress?.phase === 'scanning' && 'Scanning for threats...'}
                 {oneClickProgress?.phase === 'cleaning' && 'Quarantining detected threats...'}
                 {oneClickProgress?.phase === 'complete' && 'Scan complete.'}
@@ -682,15 +683,17 @@ export default function AntivirusSecurityPage() {
               <div className="space-y-2" data-testid="one-click-progress">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-caption text-text-secondary">
-                    {oneClickProgress.phase === 'scanning'
-                      ? `${oneClickProgress.scan_progress}% (${oneClickProgress.files_scanned || 0} files scanned)`
-                      : oneClickProgress.phase === 'cleaning'
-                        ? `${oneClickProgress.threats_quarantined || 0} threats quarantined`
-                        : oneClickProgress.phase === 'complete'
-                          ? '100% Complete'
-                          : oneClickProgress.phase === 'cancelled'
-                            ? 'Cancelled'
-                            : 'Error'}
+                    {oneClickProgress.phase === 'enumerating'
+                      ? `${oneClickProgress.current_file || 'Building file list...'}`
+                      : oneClickProgress.phase === 'scanning'
+                        ? `${oneClickProgress.scan_progress}% (${oneClickProgress.files_scanned || 0} files scanned)`
+                        : oneClickProgress.phase === 'cleaning'
+                          ? `${oneClickProgress.threats_quarantined || 0} threats quarantined`
+                          : oneClickProgress.phase === 'complete'
+                            ? '100% Complete'
+                            : oneClickProgress.phase === 'cancelled'
+                              ? 'Cancelled'
+                              : 'Error'}
                   </span>
                   {oneClickProgress.threats_found > 0 && (
                     <span className="text-caption text-semantic-danger font-medium">
@@ -706,7 +709,7 @@ export default function AntivirusSecurityPage() {
                       oneClickProgress.phase === 'complete' ? 'bg-semantic-success' :
                       'bg-brand-primary'
                     }`}
-                    style={{ width: `${oneClickProgress.phase === 'scanning' ? oneClickProgress.scan_progress : oneClickProgress.phase === 'cleaning' ? 95 : oneClickProgress.phase === 'complete' ? 100 : oneClickProgress.phase === 'cancelled' ? oneClickProgress.scan_progress : 0}%` }}
+                    style={{ width: `${oneClickProgress.phase === 'enumerating' ? '15%' : oneClickProgress.phase === 'scanning' ? oneClickProgress.scan_progress : oneClickProgress.phase === 'cleaning' ? 95 : oneClickProgress.phase === 'complete' ? 100 : oneClickProgress.phase === 'cancelled' ? oneClickProgress.scan_progress : 0}%` }}
                   />
                 </div>
                 {/* Current file being scanned */}
