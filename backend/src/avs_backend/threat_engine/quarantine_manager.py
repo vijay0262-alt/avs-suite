@@ -272,16 +272,34 @@ def quarantine_file(file_path: str, threat_info: dict) -> dict:
         result["error"] = "Source file not found or not a file"
         return result
 
-    quarantine_id = str(uuid.uuid4())
-    dest = _QUARANTINE_DIR / f"{quarantine_id}.bin"
-    meta_path = _QUARANTINE_DIR / f"{quarantine_id}.meta.json"
-
     # 1. Compute SHA-256 of the original file.
     try:
         sha256 = _compute_sha256(src)
     except OSError:
         return result
     result["sha256"] = sha256
+
+    # De-duplicate: if this exact file (by resolved path + content hash)
+    # is already quarantined, don't create another copy/record. This
+    # previously happened when the original file couldn't be deleted
+    # (e.g. in use by a running process) — every subsequent scan would
+    # re-detect it and add a brand new duplicate quarantine entry.
+    resolved_src = str(src.resolve())
+    existing_index = _load_index()
+    for existing_id, existing_record in existing_index.items():
+        if (
+            existing_record.get("original_path", "").lower() == resolved_src.lower()
+            and existing_record.get("sha256") == sha256
+        ):
+            log.info("File already quarantined (id=%s): %s", existing_id, resolved_src)
+            existing_result = dict(existing_record)
+            existing_result["quarantine_id"] = existing_id
+            existing_result["already_quarantined"] = True
+            return existing_result
+
+    quarantine_id = str(uuid.uuid4())
+    dest = _QUARANTINE_DIR / f"{quarantine_id}.bin"
+    meta_path = _QUARANTINE_DIR / f"{quarantine_id}.meta.json"
 
     # 2. Copy the file into quarantine (atomic-ish: copy then verify).
     try:

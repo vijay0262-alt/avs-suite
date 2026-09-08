@@ -149,6 +149,28 @@ _TRUSTED_PUBLISHERS = {
     ],
 }
 
+# Exact-path allowlist for well-known core Windows executables that live
+# directly under %SystemRoot% (NOT System32/SysWOW64, which are already
+# trusted by prefix above). These binaries commonly trip generic PE
+# heuristics and ML classifiers because they legitimately use low-level
+# Win32 APIs (hooking, process/registry access) that also appear in
+# malware feature sets — e.g. explorer.exe uses SetWindowsHookExW and
+# GetAsyncKeyState for taskbar/shell features. Without this allowlist,
+# every scan re-flags and re-quarantines these files, producing duplicate
+# false-positive quarantine entries.
+_TRUSTED_SYSTEM_FILES = {
+    "c:\\windows\\explorer.exe",
+    "c:\\windows\\notepad.exe",
+    "c:\\windows\\regedit.exe",
+    "c:\\windows\\write.exe",
+    "c:\\windows\\hh.exe",
+    "c:\\windows\\winhlp32.exe",
+    "c:\\windows\\helppane.exe",
+    "c:\\windows\\splwow64.exe",
+    "c:\\windows\\twunk_16.exe",
+    "c:\\windows\\twunk_32.exe",
+}
+
 
 def _is_trusted_path(file_path: str) -> bool:
     """Check if a file is in a trusted publisher directory.
@@ -159,6 +181,8 @@ def _is_trusted_path(file_path: str) -> bool:
     import os
     # Normalize the path: resolve . and .., convert / to \ on Windows
     normalized = os.path.normpath(file_path).lower()
+    if normalized in _TRUSTED_SYSTEM_FILES:
+        return True
     for publisher, paths in _TRUSTED_PUBLISHERS.items():
         for trusted_path in paths:
             # Also normalize the trusted path for comparison

@@ -70,6 +70,7 @@ _NO_WINDOW = 0x08000000 if IS_WINDOWS else 0
 
 _scans: dict[str, dict[str, Any]] = {}
 _scans_lock = threading.Lock()
+_history_lock = threading.Lock()
 
 # ─── Threat definition storage paths ────────────────────────────────
 
@@ -542,7 +543,7 @@ def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> N
     if scan.get("scan_type") in ("full", "custom") and enabled.get("memory_scan", True):
         try:
             from avs_backend.threat_engine.memory_scanner import MemoryScanner
-            ms = MemoryScanner(config)
+            ms = MemoryScanner()
             mem_result = ms.scan_all_processes()
             if mem_result.get("threats"):
                 detected_threats.extend(mem_result["threats"])
@@ -577,32 +578,46 @@ def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> N
 
 
 def _save_scan_history(scan_id: str, scan: dict[str, Any]) -> None:
-    """Save scan result to history file."""
-    try:
-        history = []
-        if _HISTORY_PATH.exists():
-            with open(_HISTORY_PATH, "r", encoding="utf-8") as f:
-                history = json.load(f)
+    """Save scan result to history file.
 
-        history_entry = {
-            "scan_id": scan_id,
-            "scan_type": scan.get("scan_type", "custom"),
-            "started_at": scan.get("started_at"),
-            "completed_at": scan.get("completed_at"),
-            "files_scanned": scan.get("files_scanned", 0),
-            "threats_found": scan.get("threats_found", 0),
-            "threats": scan.get("threats", []),
-        }
-        history.append(history_entry)
+    Uses a module-level lock plus an atomic temp-file + replace write so
+    concurrent scan completions never interleave writes and corrupt the
+    JSON file (previously caused "Extra data" JSONDecodeError crashes).
+    """
+    with _history_lock:
+        try:
+            history = []
+            if _HISTORY_PATH.exists():
+                try:
+                    with open(_HISTORY_PATH, "r", encoding="utf-8") as f:
+                        history = json.load(f)
+                    if not isinstance(history, list):
+                        history = []
+                except (ValueError, OSError) as exc:
+                    log.warning("Scan history file was corrupt, resetting: %s", exc)
+                    history = []
 
-        # Keep last 100 scans
-        if len(history) > 100:
-            history = history[-100:]
+            history_entry = {
+                "scan_id": scan_id,
+                "scan_type": scan.get("scan_type", "custom"),
+                "started_at": scan.get("started_at"),
+                "completed_at": scan.get("completed_at"),
+                "files_scanned": scan.get("files_scanned", 0),
+                "threats_found": scan.get("threats_found", 0),
+                "threats": scan.get("threats", []),
+            }
+            history.append(history_entry)
 
-        with open(_HISTORY_PATH, "w", encoding="utf-8") as f:
-            json.dump(history, f, indent=2)
-    except Exception as e:
-        log.error("Failed to save scan history: %s", e)
+            # Keep last 100 scans
+            if len(history) > 100:
+                history = history[-100:]
+
+            tmp_path = _HISTORY_PATH.with_suffix(".json.tmp")
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(history, f, indent=2)
+            os.replace(tmp_path, _HISTORY_PATH)
+        except Exception as e:
+            log.error("Failed to save scan history: %s", e)
 
 
 # ─── RPC Handlers ───────────────────────────────────────────────────
@@ -1183,6 +1198,37 @@ def threat_quarantine_delete_all(_params: dict[str, Any] | None) -> dict[str, An
         return {"success": True, "deleted": deleted, "failed": failed, "results": results}
     except Exception as e:
         return {"success": False, "error": str(e), "error_code": "DELETE_ALL_FAILED"}
+
+
+@register("threat.quarantineCleanupFalsePositives")
+def threat_quarantine_cleanup_false_positives(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Purge quarantine entries that are confirmed false positives.
+
+    An entry is considered a false positive if its original_path now
+    resolves to a trusted system path (see cloud_reputation._is_trusted_path
+    and _TRUSTED_SYSTEM_FILES). This only removes the quarantine copy and
+    index record — it never touches the real file at original_path, which
+    was never actually deleted in these cases (the OS-critical file was
+    locked/in-use when quarantine was attempted).
+    """
+    try:
+        from avs_backend.threat_engine.cloud_reputation import _is_trusted_path
+        from avs_backend.threat_engine.quarantine_manager import list_quarantined, delete_quarantined
+
+        items = list_quarantined()
+        removed = 0
+        results = []
+        for item in items:
+            original_path = item.get("original_path", "")
+            if original_path and _is_trusted_path(original_path):
+                qid = item.get("quarantine_id", "")
+                if qid:
+                    delete_quarantined(qid)
+                    removed += 1
+                    results.append({"quarantine_id": qid, "original_path": original_path})
+        return {"success": True, "removed": removed, "results": results}
+    except Exception as e:
+        return {"success": False, "error": str(e), "error_code": "CLEANUP_FAILED"}
 
 
 @register("threat.quarantineDeleteSelected")
