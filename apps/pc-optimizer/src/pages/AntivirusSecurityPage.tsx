@@ -312,7 +312,7 @@ export default function AntivirusSecurityPage() {
     setOneClickResult(null);
     setOneClickCancelling(false);
     setOneClickModalOpen(true);
-    setOneClickProgress({ active: true, phase: 'enumerating', scan_progress: 1, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: null, current_file: 'Initializing scan...', files_scanned: 0, total_files: 0, started_at: null, completed_at: null });
+    setOneClickProgress({ active: true, phase: 'scanning', scan_progress: 1, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: null, current_file: 'Initializing scan...', files_scanned: 0, total_files: 0, started_at: Date.now(), completed_at: null });
     try {
       const startRes = await rpc.raw<{ success?: boolean; error?: string; progress?: Record<string, unknown> }>(RPC_METHODS.ONE_CLICK_START, { scan_type: 'full' });
       if (!startRes.success && startRes.error) {

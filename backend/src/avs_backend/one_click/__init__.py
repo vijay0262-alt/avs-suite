@@ -200,46 +200,6 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
     except Exception as e:
         log.warning("One-click: Hash detector not available: %s", e)
 
-    yara_scanner = None
-    try:
-        from avs_backend.threat_engine.yara_scanner import YaraScanner
-        yara_scanner = YaraScanner({})
-    except Exception as e:
-        log.warning("One-click: YARA scanner not available: %s", e)
-
-    heuristic_detector = None
-    try:
-        from avs_backend.threat_engine.heuristic import HeuristicDetector
-        heuristic_detector = HeuristicDetector({})
-    except Exception as e:
-        log.warning("One-click: Heuristic detector not available: %s", e)
-
-    amsi_scanner = None
-    try:
-        from avs_backend.threat_engine.amsi_scanner import AmsiScanner
-        amsi_scanner = AmsiScanner({})
-    except Exception as e:
-        log.warning("One-click: AMSI scanner not available: %s", e)
-
-    # Defender scanner removed from per-file loop — MpCmdRun.exe spawns
-    # a subprocess per file taking 1-3 seconds each, making scans take
-    # 14+ hours. Defender is still available via the threat engine RPC
-    # for on-demand single-file scans.
-
-    behavioral_detector = None
-    try:
-        from avs_backend.threat_engine.behavioral import BehavioralDetector
-        behavioral_detector = BehavioralDetector({})
-    except Exception as e:
-        log.warning("One-click: Behavioral detector not available: %s", e)
-
-    ml_detector = None
-    try:
-        from avs_backend.threat_engine.ml_detector import MlDetector
-        ml_detector = MlDetector({})
-    except Exception as e:
-        log.warning("One-click: ML detector not available: %s", e)
-
     # Hash cache for incremental scanning (skip unchanged clean files)
     hash_cache = None
     try:
@@ -249,111 +209,55 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
     except Exception as e:
         log.warning("One-click: Hash cache not available: %s", e)
 
-    # ─── Collect all files to scan first ───────────────────────────
-    # NOTE: This enumeration (os.walk over every drive) can take several
-    # minutes on a real Windows system. Without periodic progress updates
-    # here, _progress stayed frozen at its initial value (scan_progress=1,
-    # files_scanned=0) for the entire enumeration phase, making the scan
-    # appear permanently stuck to the user. Update _progress periodically
-    # below so the UI shows real activity, and check for cancellation so
-    # the Cancel button works even before scanning actually starts.
-    all_files: list[str] = []
-    _enum_last_update = time.monotonic()
-    with _lock:
-        _progress["phase"] = "enumerating"
-        _progress["current_file"] = "Enumerating files..."
-    for root_path in scan_roots:
-        with _lock:
-            if _progress.get("cancel_requested"):
-                break
-            _progress["current_file"] = f"Enumerating files in {root_path}..."
-        try:
-            for root, dirs, files in os.walk(root_path):
-                if _is_excluded(root):
-                    dirs.clear()
-                    continue
-                depth = root.replace(root_path, "").count(os.sep)
-                if depth > _MAX_DEPTH:
-                    dirs.clear()
-                    continue
-                # Prune excluded directory names so os.walk doesn't descend into them
-                dirs[:] = [d for d in dirs if d.lower() not in _CFG_EXCLUDE_DIR_NAMES]
-                for fname in files:
-                    fpath = os.path.join(root, fname)
-                    if not _should_scan_file(fpath):
-                        continue
-                    try:
-                        fsize = os.path.getsize(fpath)
-                        if fsize > _MAX_FILE_SIZE:
-                            continue
-                    except OSError:
-                        continue
-                    all_files.append(fpath)
+    # ─── Streaming scan: enumerate + scan in one pass ───────────────
+    # Instead of collecting all files first (which takes minutes on a
+    # real system), we submit files to the executor as they're found
+    # during os.walk. This eliminates the separate enumeration phase
+    # and starts scanning immediately.
 
-                    # Periodic progress + cancellation check (every ~500 files or 0.5s)
-                    if len(all_files) % 500 == 0:
-                        now = time.monotonic()
-                        if now - _enum_last_update >= 0.5:
-                            _enum_last_update = now
-                            with _lock:
-                                if _progress.get("cancel_requested"):
-                                    return {"files_scanned": 0, "threats_found": 0, "threats": []}
-                                _progress["current_file"] = f"Enumerating files… {len(all_files):,} found so far"
-                                _progress["files_scanned"] = 0
-                                # Show incremental progress during enumeration (1-5%)
-                                # based on files found, so the bar isn't stuck at 1%
-                                _progress["scan_progress"] = min(5, 1 + len(all_files) // 10000)
-        except Exception:
-            pass
-
-    with _lock:
-        if _progress.get("cancel_requested"):
-            return {"files_scanned": 0, "threats_found": 0, "threats": []}
-        _progress["phase"] = "scanning"
-        _progress["current_file"] = f"Scanning {len(all_files):,} files..."
-        _progress["total_files"] = len(all_files)
-
-    total_files = max(len(all_files), 1)
-    log.info("One-click: %d files to scan", total_files)
-
-    # ─── PE extensions for ML/heuristic routing ────────────────────
     _PE_EXTENSIONS = {".exe", ".dll", ".scr", ".sys", ".ocx", ".com", ".pif"}
-    _SCRIPT_EXTENSIONS = {".ps1", ".js", ".jse", ".vbs", ".wsf", ".wsh", ".hta", ".bat", ".cmd"}
 
-    # ─── Scan a single file with smart detector routing ────────────
     def _scan_single_file(fpath: str) -> dict[str, Any] | None:
-        """Scan one file with all applicable detectors.
+        """Scan one file — ClamAV primary, hash detector secondary.
 
-        Computes SHA256 once and reuses it across detectors to avoid
-        redundant file reads. Uses thread-local ClamAV connections.
+        Only uses ClamAV + hash blocklist for maximum speed.
+        YARA/heuristic/behavioral/ML are skipped in one-click scan.
         """
         # Incremental scan: skip unchanged files that were previously clean
         if hash_cache and hash_cache.should_skip(fpath):
             return None
 
-        ext = os.path.splitext(fpath)[1].lower()
-        is_pe = ext in _PE_EXTENSIONS
-        is_script = ext in _SCRIPT_EXTENSIONS
-
-        # Compute SHA256 once — used by hash detector (instant lookup)
-        # and recorded in hash cache. This is the only file read for
-        # hash detection; ClamAV still reads the file for INSTREAM.
-        sha256 = ""
-        try:
-            h = hashlib.sha256()
-            with open(fpath, "rb") as f:
-                while True:
-                    chunk = f.read(65536)
-                    if not chunk:
-                        break
-                    h.update(chunk)
-            sha256 = h.hexdigest()
-        except Exception:
-            pass
-
-        # 1. Hash detector (instant — dict lookup, no file read)
-        if hash_detector and sha256:
+        # 1. ClamAV (primary — reads file via INSTREAM, does its own hashing)
+        if clamav_scanner:
             try:
+                result = clamav_scanner.scan_file(fpath)
+                if result and result.get("detected"):
+                    if hash_cache:
+                        hash_cache.record_result(fpath, "threat", "")
+                    return {
+                        "path": fpath,
+                        "threat_name": result.get("threat_name", "Unknown"),
+                        "threat_type": result.get("threat_type", "malware"),
+                        "severity": result.get("severity", "high"),
+                        "source": "clamav",
+                    }
+            except Exception:
+                pass
+
+        # 2. Hash detector (secondary — only for PE files, needs full read)
+        ext = os.path.splitext(fpath)[1].lower()
+        if hash_detector and ext in _PE_EXTENSIONS:
+            try:
+                sha256 = ""
+                h = hashlib.sha256()
+                with open(fpath, "rb") as f:
+                    while True:
+                        chunk = f.read(65536)
+                        if not chunk:
+                            break
+                        h.update(chunk)
+                sha256 = h.hexdigest()
+
                 result = hash_detector.check_sha256(sha256)
                 if result and result.get("detected"):
                     if hash_cache:
@@ -368,152 +272,136 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
             except Exception:
                 pass
 
-        # 2. ClamAV (primary — fast, thread-local clamd connection)
-        if clamav_scanner:
-            try:
-                result = clamav_scanner.scan_file_fast(fpath, sha256)
-                if result and result.get("detected"):
-                    if hash_cache:
-                        hash_cache.record_result(fpath, "threat", sha256)
-                    return {
-                        "path": fpath,
-                        "threat_name": result.get("threat_name", "Unknown"),
-                        "threat_type": result.get("threat_type", "malware"),
-                        "severity": result.get("severity", "high"),
-                        "source": "clamav",
-                    }
-            except Exception:
-                pass
-
-        # 3. YARA (medium — rule matching)
-        if yara_scanner:
-            try:
-                result = yara_scanner.scan_file(fpath)
-                if result and result.get("detected"):
-                    if hash_cache:
-                        hash_cache.record_result(fpath, "threat", sha256)
-                    return {
-                        "path": fpath,
-                        "threat_name": result.get("threat_name", "Unknown"),
-                        "threat_type": result.get("threat_type", "suspicious"),
-                        "severity": result.get("severity", "medium"),
-                        "source": "yara",
-                    }
-            except Exception:
-                pass
-
-        # 4. Heuristic — only for PE files (medium speed)
-        if is_pe and heuristic_detector:
-            try:
-                result = heuristic_detector.scan_file(fpath)
-                if result and result.get("detected"):
-                    if hash_cache:
-                        hash_cache.record_result(fpath, "threat", sha256)
-                    return {
-                        "path": fpath,
-                        "threat_name": result.get("threat_name", "Suspicious"),
-                        "threat_type": result.get("threat_type", "suspicious"),
-                        "severity": result.get("severity", "medium"),
-                        "source": "heuristic",
-                    }
-            except Exception:
-                pass
-
-        # 5. AMSI — only for script files
-        if is_script and amsi_scanner:
-            try:
-                result = amsi_scanner.scan_file(fpath)
-                if result and result.get("detected"):
-                    if hash_cache:
-                        hash_cache.record_result(fpath, "threat", sha256)
-                    return {
-                        "path": fpath,
-                        "threat_name": result.get("threat_name", "AMSI.Detected"),
-                        "threat_type": result.get("threat_type", "script"),
-                        "severity": result.get("severity", "high"),
-                        "source": "amsi",
-                    }
-            except Exception:
-                pass
-
-        # 6. Behavioral — only for PE files
-        if is_pe and behavioral_detector:
-            try:
-                result = behavioral_detector.scan_file(fpath)
-                if result and result.get("detected"):
-                    if hash_cache:
-                        hash_cache.record_result(fpath, "threat", sha256)
-                    return {
-                        "path": fpath,
-                        "threat_name": result.get("threat_name", "Behavioral.Detected"),
-                        "threat_type": result.get("threat_type", "suspicious"),
-                        "severity": result.get("severity", "medium"),
-                        "source": "behavioral",
-                    }
-            except Exception:
-                pass
-
-        # 7. ML detector — only for PE files
-        if is_pe and ml_detector:
-            try:
-                result = ml_detector.scan_file(fpath)
-                if result and result.get("detected"):
-                    if hash_cache:
-                        hash_cache.record_result(fpath, "threat", sha256)
-                    return {
-                        "path": fpath,
-                        "threat_name": result.get("threat_name", "ML.Detected"),
-                        "threat_type": result.get("threat_type", "suspicious"),
-                        "severity": result.get("severity", "medium"),
-                        "source": "ml_detector",
-                    }
-            except Exception:
-                pass
-
         # File is clean — record in hash cache for incremental scanning
         if hash_cache:
-            hash_cache.record_result(fpath, "clean", sha256)
+            hash_cache.record_result(fpath, "clean", "")
 
         return None
 
-    # ─── Parallel scanning with ThreadPoolExecutor ─────────────────
-    max_workers = min(16, (os.cpu_count() or 4) * 2)
-    # Update progress frequently for smooth 1-100% progression.
-    # Use smaller interval for small file counts so the bar moves smoothly.
-    progress_update_interval = max(1, min(10, total_files // 100))
-
-    # Don't use 'with' — we need to shutdown(wait=False) on cancel
-    # so the executor doesn't block waiting for in-flight futures.
+    # ─── Streaming parallel scan ────────────────────────────────────
+    max_workers = min(32, (os.cpu_count() or 4) * 4)
     executor = ThreadPoolExecutor(max_workers=max_workers)
-    futures = {}
+    futures: dict = {}
+    files_enumerated = 0
+    files_submitted = 0
+    _enum_last_update = time.monotonic()
+
+    with _lock:
+        _progress["phase"] = "scanning"
+        _progress["current_file"] = "Starting scan..."
+        _progress["total_files"] = 0
+
     try:
-        for fpath in all_files:
-            # Check for cancel before submitting
+        for root_path in scan_roots:
             with _lock:
                 if _progress.get("cancel_requested"):
                     break
-            future = executor.submit(_scan_single_file, fpath)
-            futures[future] = fpath
+                _progress["current_file"] = f"Scanning {root_path}..."
+
+            try:
+                for root, dirs, files in os.walk(root_path):
+                    if _is_excluded(root):
+                        dirs.clear()
+                        continue
+                    depth = root.replace(root_path, "").count(os.sep)
+                    if depth > _MAX_DEPTH:
+                        dirs.clear()
+                        continue
+                    dirs[:] = [d for d in dirs if d.lower() not in _CFG_EXCLUDE_DIR_NAMES]
+
+                    for fname in files:
+                        fpath = os.path.join(root, fname)
+                        if not _should_scan_file(fpath):
+                            continue
+                        try:
+                            fsize = os.path.getsize(fpath)
+                            if fsize > _MAX_FILE_SIZE:
+                                continue
+                        except OSError:
+                            continue
+
+                        files_enumerated += 1
+
+                        # Check for cancel
+                        if files_enumerated % 100 == 0:
+                            with _lock:
+                                if _progress.get("cancel_requested"):
+                                    break
+
+                        # Submit to executor immediately — scan as you go
+                        future = executor.submit(_scan_single_file, fpath)
+                        futures[future] = fpath
+                        files_submitted += 1
+
+                        # Throttle: if too many futures in flight, drain completed ones
+                        # to avoid memory issues with 600K+ files
+                        if len(futures) >= max_workers * 4:
+                            done = [f for f in futures if f.done()]
+                            for f in done:
+                                files_scanned += 1
+                                del futures[f]
+                                try:
+                                    result = f.result()
+                                    if result:
+                                        threats_found += 1
+                                        detected_threats.append(result)
+                                except Exception:
+                                    pass
+                            # If nothing completed, wait for at least one
+                            if len(futures) >= max_workers * 6:
+                                for f in as_completed(list(futures.keys())[:1]):
+                                    files_scanned += 1
+                                    del futures[f]
+                                    try:
+                                        result = f.result()
+                                        if result:
+                                            threats_found += 1
+                                            detected_threats.append(result)
+                                    except Exception:
+                                        pass
+
+                        # Update progress periodically
+                        now = time.monotonic()
+                        if now - _enum_last_update >= 0.3:
+                            _enum_last_update = now
+                            with _lock:
+                                if _progress.get("cancel_requested"):
+                                    break
+                                _progress["total_files"] = files_enumerated
+                                _progress["files_scanned"] = files_scanned
+                                _progress["current_file"] = fpath
+                                # Rough progress: files scanned vs enumerated so far
+                                if files_enumerated > 0:
+                                    _progress["scan_progress"] = min(95, int(files_scanned / max(files_enumerated, 1) * 95))
+                    else:
+                        continue
+                    break  # cancel was requested in inner loop
+            except Exception:
+                pass
+
+        # All files submitted — now drain remaining futures
+        with _lock:
+            _progress["total_files"] = files_enumerated
+            total_files = max(files_enumerated, 1)
 
         for future in as_completed(futures):
-            fpath = futures[future]
-            files_scanned += 1
-
-            # Check for cancel
             with _lock:
                 if _progress.get("cancel_requested"):
-                    # Cancel all pending futures and stop immediately
                     for f in futures:
                         f.cancel()
                     break
 
-            # Batch progress updates (reduce lock contention)
-            if files_scanned % progress_update_interval == 0 or files_scanned == total_files:
+            files_scanned += 1
+
+            # Update progress every file for smooth bar
+            now = time.monotonic()
+            if now - _enum_last_update >= 0.3 or files_scanned == total_files:
+                _enum_last_update = now
                 with _lock:
-                    pct = int(files_scanned / total_files * 100)
+                    pct = min(100, int(files_scanned / total_files * 100))
                     _progress["scan_progress"] = pct
-                    _progress["current_file"] = fpath
                     _progress["files_scanned"] = files_scanned
+                    _progress["current_file"] = futures[future]
 
             try:
                 result = future.result()
@@ -523,13 +411,14 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
             except Exception:
                 pass
     finally:
-        # shutdown(wait=False) so we don't block on in-flight futures
         executor.shutdown(wait=False, cancel_futures=True)
 
     with _lock:
         if not _progress.get("cancel_requested"):
             _progress["scan_progress"] = 100
         _progress["current_file"] = None
+        _progress["files_scanned"] = files_scanned
+        _progress["total_files"] = files_enumerated
 
     # Save hash cache for incremental scanning next time
     if hash_cache:
@@ -566,7 +455,7 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
     with _lock:
         _progress = {
             "active": True,
-            "phase": "enumerating",
+            "phase": "scanning",
             "scan_progress": 1,
             "optimize_progress": 0,
             "threats_found": 0,
