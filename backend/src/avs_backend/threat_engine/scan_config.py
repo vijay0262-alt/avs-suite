@@ -64,10 +64,21 @@ EXCLUDE_PATHS: frozenset[str] = frozenset({
     r"C:\System Volume Information",
     r"C:\Windows\assembly",
     r"C:\Windows\Installer",
+    r"C:\Windows\SoftwareDistribution",
+    r"C:\Windows\Temp",
+    r"C:\Windows\servicing",
+    r"C:\Windows\Prefetch",
+    r"C:\Windows\LiveKernelReports",
+    r"C:\ProgramData\Package Cache",
+    r"C:\$WinREAgent",
+    r"C:\Recovery",
     # Don't scan our own installation
     os.path.join(os.environ.get("LOCALAPPDATA", ""), "AVS AI Shield"),
     os.path.join(os.environ.get("LOCALAPPDATA", ""), "AVS Shield", "backups"),
     os.path.join(os.environ.get("LOCALAPPDATA", ""), "AVS Shield", "quarantine"),
+    # User temp — can contain thousands of files, low security value
+    os.path.join(os.environ.get("LOCALAPPDATA", ""), "Temp"),
+    os.path.join(os.environ.get("SYSTEMROOT", r"C:\Windows"), "Temp"),
 })
 
 # ─── Directory names to exclude from scan ────────────────────────────
@@ -76,6 +87,10 @@ EXCLUDE_DIR_NAMES: frozenset[str] = frozenset({
     "node_modules", ".git", "__pycache__", ".cache",
     "site-packages", "dist", "build", "release",
     ".vscode", ".idea", ".venv", "venv",
+    # Windows system dirs that are huge and low-value to scan
+    "Package Cache", "WinREAgent", "Prefetch",
+    "SoftwareDistribution", "servicing",
+    "LiveKernelReports",
 })
 
 # ─── Scan limits ─────────────────────────────────────────────────────

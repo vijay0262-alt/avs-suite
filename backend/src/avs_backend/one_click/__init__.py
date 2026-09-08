@@ -126,6 +126,8 @@ def _count_scannable_files(roots: list[str]) -> int:
                 if depth > _MAX_DEPTH:
                     dirs.clear()
                     continue
+                # Prune excluded directory names
+                dirs[:] = [d for d in dirs if d.lower() not in _CFG_EXCLUDE_DIR_NAMES]
                 for fname in files:
                     fpath = os.path.join(root, fname)
                     if not _should_scan_file(fpath):
@@ -287,16 +289,17 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
                         continue
                     all_files.append(fpath)
 
-                # Periodic progress + cancellation check (every ~0.5s)
-                now = time.monotonic()
-                if now - _enum_last_update >= 0.5:
-                    _enum_last_update = now
-                    with _lock:
-                        if _progress.get("cancel_requested"):
-                            break
-                        _progress["current_file"] = f"Enumerating files… {len(all_files):,} found so far"
-                        _progress["files_scanned"] = 0
-                        _progress["scan_progress"] = 1
+                    # Periodic progress + cancellation check (every ~500 files or 0.5s)
+                    if len(all_files) % 500 == 0:
+                        now = time.monotonic()
+                        if now - _enum_last_update >= 0.5:
+                            _enum_last_update = now
+                            with _lock:
+                                if _progress.get("cancel_requested"):
+                                    break
+                                _progress["current_file"] = f"Enumerating files… {len(all_files):,} found so far"
+                                _progress["files_scanned"] = 0
+                                _progress["scan_progress"] = 1
         except Exception:
             pass
 
@@ -450,8 +453,8 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
         return None
 
     # ─── Parallel scanning with ThreadPoolExecutor ─────────────────
-    max_workers = min(8, os.cpu_count() or 4)
-    progress_update_interval = 10  # Update progress every 10 files
+    max_workers = min(16, (os.cpu_count() or 4) * 2)
+    progress_update_interval = 25  # Update progress every 25 files
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {}
