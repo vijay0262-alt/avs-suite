@@ -955,16 +955,24 @@ export default function ThreatEnginePage() {
               <ArrowPathIcon className="h-5 w-5 text-brand-primary animate-spin" />
               <div>
                 <div className="text-small font-semibold text-text-primary">
-                  Scanning… {progressPct}%
+                  {scanStatus.status === 'enumerating'
+                    ? 'Enumerating files…'
+                    : `Scanning… ${progressPct}%`}
                 </div>
                 <div className="text-caption text-text-muted">
-                  {scanStatus.files_scanned.toLocaleString()} /{' '}
-                  {scanStatus.files_total.toLocaleString()} files
-                  {scanStatus.threats_found > 0 && (
-                    <span className="text-semantic-danger">
-                      {' · '}
-                      {scanStatus.threats_found} threat{scanStatus.threats_found > 1 ? 's' : ''} found
-                    </span>
+                  {scanStatus.status === 'enumerating' ? (
+                    'Building the list of files to scan…'
+                  ) : (
+                    <>
+                      {scanStatus.files_scanned.toLocaleString()} /{' '}
+                      {scanStatus.files_total.toLocaleString()} files
+                      {scanStatus.threats_found > 0 && (
+                        <span className="text-semantic-danger">
+                          {' · '}
+                          {scanStatus.threats_found} threat{scanStatus.threats_found > 1 ? 's' : ''} found
+                        </span>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

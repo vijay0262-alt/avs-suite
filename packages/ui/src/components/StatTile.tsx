@@ -53,19 +53,19 @@ export function StatTile({ label, value, hint, icon, trend, trendValue, variant 
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <div className="text-xs font-medium uppercase tracking-wide text-[var(--avs-text-muted)]">
+        <div className="text-caption font-medium uppercase tracking-wide text-[var(--avs-text-muted)]">
           {label}
         </div>
         <div className="mt-1 flex items-baseline gap-2">
-          <span className="text-2xl font-semibold text-[var(--avs-text-primary)] tabular-nums">{value}</span>
+          <span className="text-statistic-sm font-semibold text-[var(--avs-text-primary)] tabular-nums">{value}</span>
           {trend && trendValue && (
-            <span className={clsx('text-xs font-medium', trendColors[trend])}>
+            <span className={clsx('text-caption font-medium', trendColors[trend])}>
               {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} {trendValue}
             </span>
           )}
         </div>
         {hint && (
-          <div className="mt-0.5 text-xs text-[var(--avs-text-secondary)]">{hint}</div>
+          <div className="mt-0.5 text-caption text-[var(--avs-text-secondary)]">{hint}</div>
         )}
       </div>
     </div>

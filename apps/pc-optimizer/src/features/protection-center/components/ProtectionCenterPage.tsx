@@ -97,7 +97,7 @@ class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
     }
   }
 
-  async fixIssue(action: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen' | 'enableRansomwareProtection'): Promise<void> {
+  async fixIssue(action: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen' | 'enableRansomwareProtection' | 'enableMemoryIntegrity'): Promise<void> {
     this.setState({ fixMessage: null, fixSuccess: false, fixInProgress: action });
     try {
       const rpcCall =
@@ -107,7 +107,9 @@ class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
             ? dashboardService.enableDefender()
             : action === 'enableFirewall'
               ? dashboardService.enableFirewall()
-              : dashboardService.enableRansomwareProtection();
+              : action === 'enableRansomwareProtection'
+                ? dashboardService.enableRansomwareProtection()
+                : dashboardService.enableMemoryIntegrity();
       const result = await rpcCall as { enabled?: boolean; message?: string; error?: string };
       const message = result?.message ?? result?.error ?? (result?.enabled ? 'Fix applied successfully' : 'Fix failed');
       this.setState({
@@ -153,7 +155,7 @@ interface Recommendation {
   id: string;
   title: string;
   description: string;
-  fixAction?: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen' | 'enableRansomwareProtection';
+  fixAction?: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen' | 'enableRansomwareProtection' | 'enableMemoryIntegrity';
 }
 
 // ── Derivation helpers ─────────────────────────────────────────
@@ -345,6 +347,7 @@ function deriveRecommendations(metrics: DashboardMetrics | null): Recommendation
       id: 'enable-memory-integrity',
       title: 'Memory Integrity is off',
       description: 'Enable Memory Integrity (Core Isolation) in Windows Security to protect against malicious code injection.',
+      fixAction: 'enableMemoryIntegrity',
     });
   }
 
@@ -475,7 +478,7 @@ export function ProtectionCenterPage() {
   }, [vm]);
 
   const handleFix = useCallback(
-    (action: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen' | 'enableRansomwareProtection') => {
+    (action: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen' | 'enableRansomwareProtection' | 'enableMemoryIntegrity') => {
       void vm.fixIssue(action);
     },
     [vm],
@@ -562,7 +565,7 @@ export function ProtectionCenterPage() {
       )}
       {state.fixMessage && !state.fixSuccess && (
         <ModuleErrorBanner
-          message="Unable to fix the protection issue. Please try again."
+          message={state.fixMessage}
           onDismiss={handleDismissFixMessage}
           testId="protection-fix-message"
         />

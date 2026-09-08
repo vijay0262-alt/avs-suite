@@ -370,7 +370,7 @@ function SummaryStat({ icon, label, value }: { icon?: React.ReactNode; label: st
         {icon}
         {label}
       </div>
-      <div className="mt-1 text-statistic font-semibold text-[var(--avs-text-primary)] tabular-nums">{value}</div>
+      <div className="mt-1 text-statistic-sm font-semibold text-[var(--avs-text-primary)] tabular-nums">{value}</div>
     </Card>
   );
 }

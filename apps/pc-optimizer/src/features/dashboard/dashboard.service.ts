@@ -35,6 +35,7 @@ export interface DashboardService {
   enableDefender(): Promise<{ enabled: boolean; message: string }>;
   enableFirewall(): Promise<{ enabled: boolean; message: string }>;
   enableRansomwareProtection(): Promise<{ enabled: boolean; message: string }>;
+  enableMemoryIntegrity(): Promise<{ enabled: boolean; message: string }>;
 }
 
 export const dashboardService: DashboardService = {
@@ -48,4 +49,5 @@ export const dashboardService: DashboardService = {
   enableDefender: () => client().call(RPC_METHODS.SECURITY_ENABLE_DEFENDER),
   enableFirewall: () => client().call(RPC_METHODS.SECURITY_ENABLE_FIREWALL),
   enableRansomwareProtection: () => client().call(RPC_METHODS.SECURITY_ENABLE_RANSOMWARE_PROTECTION),
+  enableMemoryIntegrity: () => client().call(RPC_METHODS.SECURITY_ENABLE_MEMORY_INTEGRITY),
 };

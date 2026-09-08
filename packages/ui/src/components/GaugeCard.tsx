@@ -70,15 +70,15 @@ export function GaugeCard({
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             {icon && <div className={clsx('mb-1', config.text)}>{icon}</div>}
-            <div className={clsx('text-3xl font-bold tabular-nums', config.text)}>
+            <div className={clsx('text-statistic font-bold tabular-nums', config.text)}>
               {Math.round(value)}
             </div>
-            <div className="text-xs text-[var(--avs-text-muted)]">{unit}</div>
+            <div className="text-caption text-[var(--avs-text-muted)]">{unit}</div>
           </div>
         </div>
         <div className="mt-3 text-center">
-          <div className="text-sm font-semibold text-[var(--avs-text-primary)]">{title}</div>
-          {description && <div className="mt-0.5 text-xs text-[var(--avs-text-secondary)]">{description}</div>}
+          <div className="text-card-title font-semibold text-[var(--avs-text-primary)]">{title}</div>
+          {description && <div className="mt-0.5 text-caption text-[var(--avs-text-secondary)]">{description}</div>}
         </div>
       </div>
     </Card>

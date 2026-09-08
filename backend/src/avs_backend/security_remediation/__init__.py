@@ -14,6 +14,7 @@ RPC methods:
     security.enableDefender                 — enable Windows Defender
     security.enableFirewall                 — enable Windows Firewall
     security.enableRansomwareProtection     — enable Controlled Folder Access
+    security.enableMemoryIntegrity          — enable Core Isolation / HVCI
 """
 
 from __future__ import annotations
@@ -256,5 +257,61 @@ def enable_ransomware_protection(_params: dict[str, Any] | None = None) -> dict[
     return {
         "enabled": success,
         "message": "Ransomware Protection enabled" if success else f"Failed: {output}",
+        "timestamp": _now_iso(),
+    }
+
+
+@register("security.enableMemoryIntegrity")
+def enable_memory_integrity(_params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Enable Memory Integrity (Core Isolation / HVCI).
+
+    Sets the Hypervisor-Enforced Code Integrity registry key so that
+    HVCI is enabled after the next reboot. Memory Integrity cannot be
+    toggled live — it requires a restart for the hypervisor to apply
+    the change.
+
+    Requires admin privileges.
+    """
+    if os.name != "nt":
+        return {"enabled": False, "error": "Not supported on this platform"}
+
+    try:
+        import ctypes
+        is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+    except Exception:
+        is_admin = False
+
+    if not is_admin:
+        return {
+            "enabled": False,
+            "message": "Administrator privileges required. Please run AVS AI Shield as Administrator to enable Memory Integrity.",
+            "timestamp": _now_iso(),
+        }
+
+    # Enable HVCI via the DeviceGuard registry key.
+    # HKLM\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity
+    #   Enabled = 1 (enabled, applies after reboot)
+    ps_script = r"""
+    try {
+        $path = 'HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity'
+        if (-not (Test-Path $path)) {
+            New-Item -Path $path -Force -ErrorAction Stop | Out-Null
+        }
+        Set-ItemProperty -Path $path -Name 'Enabled' -Value 1 -Type DWord -ErrorAction Stop
+        # Also ensure the hypervisor is configured to launch at boot
+        $dgPath = 'HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard'
+        if (-not (Test-Path $dgPath)) {
+            New-Item -Path $dgPath -Force -ErrorAction Stop | Out-Null
+        }
+        Set-ItemProperty -Path $dgPath -Name 'EnableVirtualizationBasedSecurity' -Value 1 -Type DWord -ErrorAction Stop
+        Write-Output 'OK'
+    } catch {
+        Write-Output $_.Exception.Message
+    }
+"""
+    success, output = _run_powershell(ps_script)
+    return {
+        "enabled": success,
+        "message": "Memory Integrity enabled. Please restart your PC for the change to take effect." if success else f"Failed: {output}",
         "timestamp": _now_iso(),
     }

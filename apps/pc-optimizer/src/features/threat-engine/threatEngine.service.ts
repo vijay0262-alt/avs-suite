@@ -21,6 +21,8 @@ export type ThreatScanType = 'quick' | 'full' | 'custom';
 export type ThreatScanStatusValue =
   | 'idle'
   | 'running'
+  | 'enumerating'
+  | 'scanning'
   | 'completed'
   | 'cancelled'
   | 'failed';

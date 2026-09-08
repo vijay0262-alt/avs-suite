@@ -246,8 +246,20 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
         log.warning("One-click: Hash cache not available: %s", e)
 
     # ─── Collect all files to scan first ───────────────────────────
+    # NOTE: This enumeration (os.walk over every drive) can take several
+    # minutes on a real Windows system. Without periodic progress updates
+    # here, _progress stayed frozen at its initial value (scan_progress=1,
+    # files_scanned=0) for the entire enumeration phase, making the scan
+    # appear permanently stuck to the user. Update _progress periodically
+    # below so the UI shows real activity, and check for cancellation so
+    # the Cancel button works even before scanning actually starts.
     all_files: list[str] = []
+    _enum_last_update = time.monotonic()
     for root_path in scan_roots:
+        with _lock:
+            if _progress.get("cancel_requested"):
+                break
+            _progress["current_file"] = f"Enumerating files in {root_path}..."
         try:
             for root, dirs, files in os.walk(root_path):
                 if _is_excluded(root):
@@ -268,8 +280,24 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
                     except OSError:
                         continue
                     all_files.append(fpath)
+
+                # Periodic progress + cancellation check (every ~0.5s)
+                now = time.monotonic()
+                if now - _enum_last_update >= 0.5:
+                    _enum_last_update = now
+                    with _lock:
+                        if _progress.get("cancel_requested"):
+                            break
+                        _progress["current_file"] = f"Enumerating files… {len(all_files):,} found so far ({root})"
+            else:
+                continue
+            break  # cancelled mid-walk
         except Exception:
             pass
+
+    with _lock:
+        if _progress.get("cancel_requested"):
+            return {"files_scanned": 0, "threats_found": 0, "threats": []}
 
     total_files = max(len(all_files), 1)
     log.info("One-click: %d files to scan", total_files)

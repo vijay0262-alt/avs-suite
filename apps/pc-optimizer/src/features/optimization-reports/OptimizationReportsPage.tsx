@@ -452,7 +452,7 @@ function StatCard({ label, value, icon: Icon }: { label: string; value: string |
         <Icon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
         <div>
           <p className="text-caption text-[var(--avs-text-muted)]">{label}</p>
-          <p className="text-section-title font-bold text-[var(--avs-text-primary)]">{value}</p>
+          <p className="text-statistic-sm font-bold text-[var(--avs-text-primary)]">{value}</p>
         </div>
       </div>
     </Card>

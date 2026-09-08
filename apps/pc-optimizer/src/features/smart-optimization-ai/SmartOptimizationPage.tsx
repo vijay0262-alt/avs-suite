@@ -149,7 +149,7 @@ export default function SmartOptimizationPage() {
             <div className="flex-1 min-w-0">
               <div className="text-caption text-[var(--avs-text-muted)]">Optimization Score</div>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-[var(--avs-text-primary)] tabular-nums">{healthScore ?? '—'}</span>
+                <span className="text-statistic-sm font-bold text-[var(--avs-text-primary)] tabular-nums">{healthScore ?? '—'}</span>
                 {healthScore != null && <span className="text-caption text-[var(--avs-text-muted)]">/100</span>}
               </div>
               <div className={`text-caption ${scoreDelta > 0 ? 'text-[var(--avs-success)]' : 'text-[var(--avs-text-muted)]'}`}>
@@ -167,7 +167,7 @@ export default function SmartOptimizationPage() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-caption text-[var(--avs-text-muted)]">Storage Recovered</div>
-              <div className="text-2xl font-bold text-[var(--avs-text-primary)] tabular-nums">
+              <div className="text-statistic-sm font-bold text-[var(--avs-text-primary)] tabular-nums">
                 {formatDataSize(spaceRecovered)}
               </div>
               <div className="text-caption text-[var(--avs-text-muted)]">
@@ -185,7 +185,7 @@ export default function SmartOptimizationPage() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-caption text-[var(--avs-text-muted)]">Items Fixed</div>
-              <div className="text-2xl font-bold text-[var(--avs-text-primary)] tabular-nums">
+              <div className="text-statistic-sm font-bold text-[var(--avs-text-primary)] tabular-nums">
                 {filesCleaned.toLocaleString()}
               </div>
               <div className="text-caption text-[var(--avs-text-muted)]">
@@ -222,25 +222,25 @@ export default function SmartOptimizationPage() {
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-[var(--avs-text-primary)] tabular-nums">
+              <div className="text-statistic-sm font-bold text-[var(--avs-text-primary)] tabular-nums">
                 {filesDetected.toLocaleString()}
               </div>
               <div className="text-caption text-[var(--avs-text-muted)] mt-1">Files Detected</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-[var(--avs-success)] tabular-nums">
+              <div className="text-statistic-sm font-bold text-[var(--avs-success)] tabular-nums">
                 {filesCleaned.toLocaleString()}
               </div>
               <div className="text-caption text-[var(--avs-text-muted)] mt-1">Files Cleaned</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-[var(--avs-warning)] tabular-nums">
+              <div className="text-statistic-sm font-bold text-[var(--avs-warning)] tabular-nums">
                 {snapshot.cleanupResult.failed.toLocaleString()}
               </div>
               <div className="text-caption text-[var(--avs-text-muted)] mt-1">Files Skipped</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-[var(--avs-brand-primary)] tabular-nums">
+              <div className="text-statistic-sm font-bold text-[var(--avs-brand-primary)] tabular-nums">
                 {snapshot.cleanupResult.foldersCleaned.toLocaleString()}
               </div>
               <div className="text-caption text-[var(--avs-text-muted)] mt-1">Folders Removed</div>
@@ -327,14 +327,14 @@ export default function SmartOptimizationPage() {
               <BoltIcon className="h-6 w-6 text-amber-500" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-[var(--avs-text-primary)]">AI Smart Optimization</h3>
-              <p className="text-sm text-[var(--avs-text-muted)]">A Professional edition feature</p>
+              <h3 className="text-section-title font-semibold text-[var(--avs-text-primary)]">AI Smart Optimization</h3>
+              <p className="text-small text-[var(--avs-text-muted)]">A Professional edition feature</p>
             </div>
           </div>
-          <p className="text-sm text-[var(--avs-text-secondary)]">
+          <p className="text-small text-[var(--avs-text-secondary)]">
             Unlock AI-driven automatic system optimization with:
           </p>
-          <ul className="text-sm text-[var(--avs-text-secondary)] space-y-2 list-disc list-inside">
+          <ul className="text-small text-[var(--avs-text-secondary)] space-y-2 list-disc list-inside">
             <li>One-click optimization with automatic sequencing</li>
             <li>Rollback protection for every action</li>
             <li>Scheduled and background optimization</li>

@@ -54,7 +54,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in"
       onClick={onClose}
       data-testid={testId}
       role="dialog"
@@ -62,7 +62,8 @@ export function Modal({
       aria-labelledby={titleId}
     >
       <div
-        className={`bg-[var(--avs-surface)] border border-[var(--avs-border)] rounded-[var(--avs-radius-lg)] shadow-2xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col`}
+        className={`border border-[var(--avs-border)] rounded-[var(--avs-radius-lg)] shadow-2xl ring-1 ring-black/5 w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col animate-scale-in`}
+        style={{ backgroundColor: 'var(--avs-surface, #111827)' }}
         onClick={(e) => e.stopPropagation()}
         role="document"
       >

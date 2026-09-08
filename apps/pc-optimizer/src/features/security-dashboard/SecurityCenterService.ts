@@ -256,7 +256,7 @@ export class SecurityCenterService {
         };
       }
 
-      if (status.status === 'complete' || status.status === 'cancelled' || status.status === 'error') {
+      if (status.status === 'completed' || status.status === 'cancelled' || status.status === 'failed') {
         break;
       }
     }

@@ -176,7 +176,7 @@ export interface ThreatEngineScanResult {
 export interface ThreatEngineScanStatus {
   success: boolean;
   scan_id: string;
-  status: 'scanning' | 'complete' | 'cancelled' | 'error' | 'idle';
+  status: 'enumerating' | 'scanning' | 'completed' | 'cancelled' | 'failed' | 'idle';
   progress: number;
   files_scanned: number;
   files_total: number;
