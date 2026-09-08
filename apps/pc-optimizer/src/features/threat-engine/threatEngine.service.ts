@@ -89,6 +89,9 @@ export interface ThreatScanStatus {
   files_scanned: number;
   files_total: number;
   threats_found: number;
+  current_file?: string;
+  eta_seconds?: number | null;
+  scan_rate?: number;
 }
 
 export interface ThreatHistoryEntry {

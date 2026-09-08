@@ -108,6 +108,21 @@ _DEFAULT_CONFIG = {
         "C:\\ProgramData\\Microsoft\\Windows\\WinSxS",
         "C:\\ProgramData\\Microsoft\\Windows\\Installer",
         "C:\\Program Files\\WindowsApps",
+        # AVS Shield own directories — never scan our own backups/quarantine
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "AVS Shield", "backups"),
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "AVS Shield", "quarantine"),
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "AVS AI Shield", "threat_engine"),
+        # Development / build directories — huge, slow, and safe
+        "node_modules",
+        ".git",
+        "__pycache__",
+        ".cache",
+        "site-packages",
+        "dist",
+        "build",
+        "release",
+        ".vscode",
+        ".idea",
     ],
     "exclude_extensions": [
         ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv",
@@ -242,6 +257,13 @@ def _should_scan(file_path: str, config: dict[str, Any]) -> bool:
     return False
 
 
+_EXCLUDE_DIR_NAMES = {
+    "node_modules", ".git", "__pycache__", ".cache",
+    "site-packages", "dist", "build", "release",
+    ".vscode", ".idea", ".venv", "venv",
+}
+
+
 def _enumerate_scan_targets(path: str, config: dict[str, Any]) -> list[str]:
     """Enumerate files to scan in the given path."""
     targets = []
@@ -258,6 +280,10 @@ def _enumerate_scan_targets(path: str, config: dict[str, Any]) -> list[str]:
                 if any(root_lower.startswith(excl.lower()) for excl in config.get("exclude_paths", [])):
                     dirs.clear()
                     continue
+
+                # Skip known-safe directory names (node_modules, .git, etc.)
+                # by removing them from dirs so os.walk doesn't descend into them
+                dirs[:] = [d for d in dirs if d.lower() not in _EXCLUDE_DIR_NAMES]
 
                 for fname in files:
                     fpath = os.path.join(root, fname)
@@ -305,13 +331,142 @@ def _get_quick_scan_targets() -> list[str]:
 
 # ─── Scan execution ─────────────────────────────────────────────────
 
+# File extensions that AMSI should scan (scripts only)
+_AMSI_EXTENSIONS = {".ps1", ".vbs", ".js", ".jse", ".wsf", ".wsh", ".bat", ".cmd", ".hta", ".vba", ".hta"}
+
+# PE file extensions for ML detector
+_PE_EXTENSIONS = {".exe", ".dll", ".sys", ".scr", ".ocx", ".cpl"}
+
+
+def _get_detectors_for_file(file_path: str, all_detectors: list, enabled: dict) -> list:
+    """Return only the detectors that should run on this file type.
+
+    This dramatically speeds up scanning by skipping irrelevant detectors:
+    - AMSI only runs on script files (.ps1, .vbs, .js, .bat, etc.)
+    - ML detector only runs on PE files (.exe, .dll, .sys)
+    - Behavioral detector is for process scanning, not file scanning
+    """
+    ext = os.path.splitext(file_path)[1].lower()
+    result = []
+    for det in all_detectors:
+        name = getattr(det, "name", "")
+        # Skip behavioral for file scanning — it's for process scanning
+        if name == "behavioral":
+            continue
+        # AMSI only for scripts
+        if name == "amsi" and ext not in _AMSI_EXTENSIONS:
+            continue
+        # ML detector only for PE files
+        if name == "ml_detector" and ext not in _PE_EXTENSIONS:
+            continue
+        result.append(det)
+    return result
+
+
+def _scan_single_file(file_path: str, detectors: list, detector_executor: ThreadPoolExecutor,
+                      config: dict, hash_cache, detected_threats: list, errors: list) -> bool:
+    """Scan a single file with the appropriate detectors. Returns True if clean."""
+    # Incremental scanning: skip unchanged files that were clean
+    if hash_cache.should_skip(file_path):
+        return True  # skipped = clean
+
+    # Compute SHA256 once — used for both whitelist check and hash cache
+    file_sha256 = None
+    try:
+        file_sha256 = _compute_sha256(file_path)
+    except Exception:
+        pass
+
+    # False positive check: skip files in the trusted whitelist
+    try:
+        from avs_backend.threat_engine.cloud_reputation import _is_whitelisted, _is_trusted_path
+        if file_sha256 and _is_whitelisted(file_sha256):
+            hash_cache.record_result(file_path, "clean", file_sha256)
+            return True
+        if _is_trusted_path(file_path):
+            hash_cache.record_result(file_path, "clean", file_sha256 or "")
+            return True
+    except Exception:
+        pass
+
+    # Get only the detectors relevant to this file type
+    file_detectors = _get_detectors_for_file(file_path, detectors, config.get("enabled_sources", {}))
+    file_was_clean = True
+
+    for detector in file_detectors:
+        try:
+            result = None
+            future: Future = detector_executor.submit(detector.scan_file, file_path)
+            try:
+                result = future.result(timeout=5)
+            except FutureTimeoutError:
+                log.warning("Detector %s timed out on %s, skipping", detector.name, file_path)
+                continue
+            if result and result.get("detected"):
+                file_was_clean = False
+                threat = {
+                    "id": str(uuid.uuid4()),
+                    "file_path": file_path,
+                    "path": file_path,
+                    "file_name": os.path.basename(file_path),
+                    "name": result.get("threat_name", "Unknown"),
+                    "file_size": os.path.getsize(file_path) if os.path.exists(file_path) else 0,
+                    "detection_source": detector.name,
+                    "source": detector.name,
+                    "threat_name": result.get("threat_name", "Unknown"),
+                    "threat_type": result.get("threat_type", "unknown"),
+                    "category": result.get("threat_type", "unknown"),
+                    "severity": result.get("severity", "medium"),
+                    "confidence": result.get("confidence", 0.5),
+                    "details": result.get("details", {}),
+                    "sha256": result.get("sha256"),
+                    "md5": result.get("md5"),
+                    "detected_at": datetime.now(timezone.utc).isoformat(),
+                    "status": "detected",
+                    "quarantined": False,
+                }
+                detected_threats.append(threat)
+
+                # Auto-quarantine if enabled
+                if config.get("auto_quarantine", False):
+                    try:
+                        from avs_backend.threat_engine.quarantine_manager import quarantine_file
+                        qresult = quarantine_file(file_path, threat)
+                        if qresult.get("quarantine_id"):
+                            threat["status"] = "quarantined"
+                            threat["quarantined"] = True
+                            threat["quarantine_id"] = qresult["quarantine_id"]
+                        elif qresult.get("skipped"):
+                            threat["status"] = "detected"
+                            threat["quarantined"] = False
+                            threat["quarantine_skip_reason"] = qresult.get("reason", "policy")
+                        else:
+                            threat["status"] = "detected"
+                            threat["quarantined"] = False
+                            threat["quarantine_error"] = qresult.get("error", "unknown")
+                            errors.append(f"Quarantine failed for {file_path}: {threat['quarantine_error']}")
+                    except Exception as qe:
+                        log.error("Auto-quarantine failed for %s: %s", file_path, qe)
+                        threat["status"] = "detected"
+                        threat["quarantined"] = False
+                        threat["quarantine_error"] = str(qe)
+                        errors.append(f"Quarantine failed for {file_path}: {qe}")
+
+        except Exception as e:
+            log.debug("Detector %s error on %s: %s", detector.name, file_path, e)
+
+    # Record scan result in hash cache (reuse already-computed hash)
+    hash_cache.record_result(file_path, "clean" if file_was_clean else "threat", file_sha256 or "")
+    return file_was_clean
+
+
 def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> None:
-    """Execute a scan across all enabled detection sources."""
+    """Execute a scan across all enabled detection sources using parallel file scanning."""
     scan = _scans[scan_id]
     detected_threats: list[dict[str, Any]] = []
     files_scanned = 0
     files_skipped = 0
-    errors = []
+    errors: list[str] = []
 
     # Initialize hash cache for incremental scanning
     from avs_backend.threat_engine.hash_cache import HashCache
@@ -399,22 +554,32 @@ def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> N
 
     import time as _time
     scan_start = _time.monotonic()
-    eta_update_interval = 10  # Update ETA every 10 files
-    last_eta_update = 0
+    total = len(targets)
+    progress_interval = max(1, total // 200)  # Update progress ~200 times during scan
 
-    # Single shared executor for all per-detector timeouts across the whole
-    # scan. Previously a brand new ThreadPoolExecutor was created (via a
-    # 'with' block) for every file x every detector — extremely slow, and
-    # if any detector call ever hung (e.g. ClamAV daemon unreachable, a
-    # stalled subprocess, a blocking Windows API call), the 'with' block's
-    # shutdown(wait=True) on exit would block forever waiting for that one
-    # stuck worker thread, freezing the ENTIRE scan permanently at whatever
-    # progress it had reached. A persistent executor with no blocking
-    # shutdown-per-file avoids this deadlock.
-    detector_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="avs-detector")
+    # Shared executor for detector timeouts — 4 workers for parallel detector calls
+    detector_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="avs-detector")
+
+    # Parallel file scanning executor — 8 workers for scanning multiple files at once
+    scan_executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="avs-scan")
+
+    # Thread-safe counters
+    counter_lock = threading.Lock()
+    completed_count = 0
+    skip_count = 0
+
+    def _process_file(file_path: str) -> None:
+        nonlocal completed_count, skip_count
+        is_clean = _scan_single_file(file_path, detectors, detector_executor, config, hash_cache, detected_threats, errors)
+        with counter_lock:
+            completed_count += 1
+            if is_clean and hash_cache.should_skip(file_path):
+                skip_count += 1
 
     try:
-        for file_path in targets:
+        # Submit files in batches for parallel scanning
+        batch_size = 32
+        for batch_start in range(0, total, batch_size):
             # Check for cancellation
             if scan.get("cancel", False):
                 scan["status"] = "cancelled"
@@ -422,125 +587,40 @@ def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> N
                 hash_cache.save()
                 return
 
-            # Incremental scanning: skip unchanged files that were clean
-            if hash_cache.should_skip(file_path):
-                files_skipped += 1
-                files_scanned += 1
-                scan["files_scanned"] = files_scanned
-                scan["files_skipped"] = files_skipped
-                scan["progress"] = int((files_scanned / max(len(targets), 1)) * 100)
-                continue
+            batch_end = min(batch_start + batch_size, total)
+            batch = targets[batch_start:batch_end]
 
-            files_scanned += 1
-            scan["files_scanned"] = files_scanned
-            scan["progress"] = int((files_scanned / max(len(targets), 1)) * 100)
+            # Submit all files in this batch for parallel scanning
+            futures = [scan_executor.submit(_process_file, fp) for fp in batch]
 
-            # False positive check: skip files in the trusted whitelist
-            try:
-                from avs_backend.threat_engine.cloud_reputation import _is_whitelisted, _is_trusted_path
-                file_sha256 = _compute_sha256(file_path)
-                if file_sha256 and _is_whitelisted(file_sha256):
-                    hash_cache.record_result(file_path, "clean", file_sha256)
-                    continue
-                # Also skip files in trusted publisher paths (Microsoft, Google, Mozilla)
-                if _is_trusted_path(file_path):
-                    hash_cache.record_result(file_path, "clean", file_sha256 or "")
-                    continue
-            except Exception:
-                pass  # Whitelist check is optional, don't block scanning
-
-            # Update ETA periodically
-            if files_scanned - last_eta_update >= eta_update_interval:
-                last_eta_update = files_scanned
-                elapsed = _time.monotonic() - scan_start
-                if elapsed > 0 and files_scanned > 0:
-                    rate = files_scanned / elapsed  # files per second
-                    remaining = len(targets) - files_scanned
-                    eta_seconds = int(remaining / rate) if rate > 0 else None
-                    scan["eta_seconds"] = eta_seconds
-                    scan["scan_rate"] = round(rate, 1)
-
-            file_was_clean = True
-
-            # Run each detector on this file with a per-detector timeout.
-            # Uses the single shared detector_executor (see comment above)
-            # instead of creating a new ThreadPoolExecutor per file/detector.
-            for detector in detectors:
+            # Wait for the batch to complete
+            for f in futures:
                 try:
-                    result = None
-                    future: Future = detector_executor.submit(detector.scan_file, file_path)
-                    try:
-                        result = future.result(timeout=15)
-                    except FutureTimeoutError:
-                        log.warning("Detector %s timed out on %s, skipping", detector.name, file_path)
-                        continue
-                    if result and result.get("detected"):
-                        file_was_clean = False
-                        threat = {
-                            "id": str(uuid.uuid4()),
-                            "file_path": file_path,
-                            "path": file_path,  # Normalized key for consumers
-                            "file_name": os.path.basename(file_path),
-                            "name": result.get("threat_name", "Unknown"),  # Normalized key
-                            "file_size": os.path.getsize(file_path) if os.path.exists(file_path) else 0,
-                            "detection_source": detector.name,
-                            "source": detector.name,  # Normalized key
-                            "threat_name": result.get("threat_name", "Unknown"),
-                            "threat_type": result.get("threat_type", "unknown"),
-                            "category": result.get("threat_type", "unknown"),  # Normalized key
-                            "severity": result.get("severity", "medium"),
-                            "confidence": result.get("confidence", 0.5),
-                            "details": result.get("details", {}),
-                            "sha256": result.get("sha256"),
-                            "md5": result.get("md5"),
-                            "detected_at": datetime.now(timezone.utc).isoformat(),
-                            "status": "detected",  # detected, quarantined, removed, ignored
-                            "quarantined": False,  # Normalized key
-                        }
-                        detected_threats.append(threat)
-                        scan["threats_found"] = len(detected_threats)
-
-                        # Auto-quarantine if enabled
-                        if config.get("auto_quarantine", False):
-                            try:
-                                from avs_backend.threat_engine.quarantine_manager import quarantine_file
-                                qresult = quarantine_file(file_path, threat)
-                                # Only mark as quarantined if the operation actually succeeded
-                                if qresult.get("quarantine_id"):
-                                    threat["status"] = "quarantined"
-                                    threat["quarantined"] = True
-                                    threat["quarantine_id"] = qresult["quarantine_id"]
-                                elif qresult.get("skipped"):
-                                    # Policy says skip (ignore or alert_only)
-                                    threat["status"] = "detected"
-                                    threat["quarantined"] = False
-                                    threat["quarantine_skip_reason"] = qresult.get("reason", "policy")
-                                else:
-                                    # Quarantine failed — keep status as detected
-                                    threat["status"] = "detected"
-                                    threat["quarantined"] = False
-                                    threat["quarantine_error"] = qresult.get("error", "unknown")
-                                    errors.append(f"Quarantine failed for {file_path}: {threat['quarantine_error']}")
-                            except Exception as qe:
-                                log.error("Auto-quarantine failed for %s: %s", file_path, qe)
-                                threat["status"] = "detected"
-                                threat["quarantined"] = False
-                                threat["quarantine_error"] = str(qe)
-                                errors.append(f"Quarantine failed for {file_path}: {qe}")
-
+                    f.result(timeout=30)
                 except Exception as e:
-                    log.debug("Detector %s error on %s: %s", detector.name, file_path, e)
+                    log.debug("File scan error: %s", e)
 
-            # Record scan result in hash cache for incremental scanning
-            sha256 = ""
-            try:
-                sha256 = _compute_sha256(file_path) or ""
-            except Exception:
-                pass
-            hash_cache.record_result(file_path, "clean" if file_was_clean else "threat", sha256)
+            # Update progress after each batch
+            with counter_lock:
+                files_scanned = completed_count
+                files_skipped = skip_count
+            scan["files_scanned"] = files_scanned
+            scan["files_skipped"] = files_skipped
+            scan["progress"] = int((files_scanned / max(total, 1)) * 100)
+            scan["current_file"] = batch[-1] if batch else ""
+
+            # Update ETA
+            elapsed = _time.monotonic() - scan_start
+            if elapsed > 0 and files_scanned > 0:
+                rate = files_scanned / elapsed
+                remaining = total - files_scanned
+                scan["eta_seconds"] = int(remaining / rate) if rate > 0 else None
+                scan["scan_rate"] = round(rate, 1)
+
+            scan["threats_found"] = len(detected_threats)
     finally:
-        # Never block waiting for hung detector threads — abandon them.
         detector_executor.shutdown(wait=False, cancel_futures=True)
+        scan_executor.shutdown(wait=False, cancel_futures=True)
 
     # Save hash cache
     hash_cache.save()
@@ -553,6 +633,7 @@ def _execute_scan(scan_id: str, targets: list[str], config: dict[str, Any]) -> N
     scan["progress"] = 100
     scan["files_skipped"] = files_skipped
     scan["cache_stats"] = hash_cache.get_stats()
+    scan["current_file"] = ""
 
     # Memory/process scan phase for full scans
     if scan.get("scan_type") in ("full", "custom") and enabled.get("memory_scan", True):
@@ -687,17 +768,17 @@ def threat_scan(params: dict[str, Any] | None) -> dict[str, Any]:
     def _run():
         try:
             # Determine targets (may take a while for quick/full scans)
+            all_targets: list[str] = []
             if scan_type == "quick":
                 target_paths = _get_quick_scan_targets()
-                all_targets: list[str] = []
                 for tp in target_paths:
                     if scan.get("cancel", False):
                         scan["status"] = "cancelled"
                         scan["completed_at"] = datetime.now(timezone.utc).isoformat()
                         return
                     all_targets.extend(_enumerate_scan_targets(tp, _config))
+                    scan["files_total"] = len(all_targets)
             elif scan_type == "full":
-                all_targets = []
                 if IS_WINDOWS:
                     try:
                         import string
@@ -709,12 +790,15 @@ def threat_scan(params: dict[str, Any] | None) -> dict[str, Any]:
                             drive = f"{letter}:\\"
                             if os.path.exists(drive):
                                 all_targets.extend(_enumerate_scan_targets(drive, _config))
+                                scan["files_total"] = len(all_targets)
                     except Exception:
                         pass
                 else:
                     all_targets = _enumerate_scan_targets(path or "/", _config)
+                    scan["files_total"] = len(all_targets)
             else:
                 all_targets = _enumerate_scan_targets(path, _config)
+                scan["files_total"] = len(all_targets)
 
             scan["files_total"] = len(all_targets)
             scan["status"] = "scanning"
@@ -804,6 +888,9 @@ def threat_scan_status(params: dict[str, Any] | None) -> dict[str, Any]:
         "files_scanned": scan.get("files_scanned", 0),
         "files_total": scan.get("files_total", 0),
         "threats_found": scan.get("threats_found", 0),
+        "current_file": scan.get("current_file", ""),
+        "eta_seconds": scan.get("eta_seconds"),
+        "scan_rate": scan.get("scan_rate", 0),
     }
 
 

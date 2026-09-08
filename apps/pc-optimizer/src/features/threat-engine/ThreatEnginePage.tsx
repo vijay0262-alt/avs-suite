@@ -305,7 +305,7 @@ export default function ThreatEnginePage() {
 
         setScanStatus({
           scan_id: res.scan_id,
-          status: 'running',
+          status: 'enumerating',
           progress: 0,
           files_scanned: 0,
           files_total: res.files_total,
@@ -957,11 +957,15 @@ export default function ThreatEnginePage() {
                 <div className="text-small font-semibold text-text-primary">
                   {scanStatus.status === 'enumerating'
                     ? 'Enumerating files…'
-                    : `Scanning… ${progressPct}%`}
+                    : `Scanning for threats… ${progressPct}%`}
                 </div>
                 <div className="text-caption text-text-muted">
                   {scanStatus.status === 'enumerating' ? (
-                    'Building the list of files to scan…'
+                    <>
+                      {scanStatus.files_total > 0
+                        ? `${scanStatus.files_total.toLocaleString()} files found so far`
+                        : 'Building the list of files to scan…'}
+                    </>
                   ) : (
                     <>
                       {scanStatus.files_scanned.toLocaleString()} /{' '}
@@ -1000,6 +1004,15 @@ export default function ThreatEnginePage() {
               style={{ width: `${progressPct}%` }}
             />
           </div>
+          {/* Current file being scanned */}
+          {scanStatus.status !== 'enumerating' && scanStatus.current_file && (
+            <div className="mt-3 flex items-center gap-2 text-caption text-text-muted">
+              <DocumentTextIcon className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate" title={scanStatus.current_file}>
+                {scanStatus.current_file}
+              </span>
+            </div>
+          )}
         </Card>
       )}
 

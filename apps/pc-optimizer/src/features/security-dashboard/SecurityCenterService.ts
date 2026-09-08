@@ -236,9 +236,9 @@ export class SecurityCenterService {
 
     const scanId = startResult.scan_id;
 
-    // Poll for completion (max 120 seconds)
-    const pollIntervalMs = 1000;
-    const maxWaitMs = 120000;
+    // Poll for completion (max 30 minutes for full system scans)
+    const pollIntervalMs = 2000;
+    const maxWaitMs = 1800000;
     let elapsed = 0;
 
     while (elapsed < maxWaitMs) {
@@ -253,6 +253,7 @@ export class SecurityCenterService {
         this.scanProgress = {
           ...this.scanProgress,
           currentPhase: `Threat engine: ${status.files_scanned}/${status.files_total} files (${status.threats_found} threats)`,
+          currentFilePath: status.current_file ?? this.scanProgress.currentFilePath,
         };
       }
 
