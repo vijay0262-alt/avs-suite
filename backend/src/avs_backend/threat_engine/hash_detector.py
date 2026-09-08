@@ -173,6 +173,29 @@ class HashDetector:
 
         log.info("HashDetector initialized: %d hashes in blocklist", len(self._sha256_index))
 
+    def check_sha256(self, sha256: str) -> dict[str, Any] | None:
+        """Check a pre-computed SHA-256 against the blocklist (no file read).
+
+        This is the fast path — caller computes SHA256 once and passes it
+        here for an instant dict lookup. Returns detection dict or None.
+        """
+        entry = self._sha256_index.get(sha256.lower())
+        if entry:
+            return {
+                "detected": True,
+                "threat_name": entry.get("name", "Unknown malware"),
+                "threat_type": entry.get("type", "malware"),
+                "severity": entry.get("severity", "high"),
+                "confidence": 0.99,
+                "sha256": sha256,
+                "md5": "",
+                "details": {
+                    "source": entry.get("source", "unknown"),
+                    "match_type": "sha256",
+                },
+            }
+        return None
+
     def scan_file(self, file_path: str) -> dict[str, Any] | None:
         """Scan a file by checking its hash against the blocklist."""
         if not os.path.exists(file_path) or not os.path.isfile(file_path):
@@ -182,27 +205,29 @@ class HashDetector:
         if not sha256:
             return None
 
+        # Fast path: check SHA-256 first
+        result = self.check_sha256(sha256)
+        if result:
+            return result
+
+        # Fallback: check MD5
         md5 = _compute_md5(file_path)
-
-        # Check SHA-256 first (more specific)
-        entry = self._sha256_index.get(sha256.lower())
-        if not entry and md5:
+        if md5:
             entry = self._md5_index.get(md5.lower())
-
-        if entry:
-            return {
-                "detected": True,
-                "threat_name": entry.get("name", "Unknown malware"),
-                "threat_type": entry.get("type", "malware"),
-                "severity": entry.get("severity", "high"),
-                "confidence": 0.99,
-                "sha256": sha256,
-                "md5": md5,
-                "details": {
-                    "source": entry.get("source", "unknown"),
-                    "match_type": "sha256" if entry.get("sha256", "").lower() == sha256.lower() else "md5",
-                },
-            }
+            if entry:
+                return {
+                    "detected": True,
+                    "threat_name": entry.get("name", "Unknown malware"),
+                    "threat_type": entry.get("type", "malware"),
+                    "severity": entry.get("severity", "high"),
+                    "confidence": 0.99,
+                    "sha256": sha256,
+                    "md5": md5,
+                    "details": {
+                        "source": entry.get("source", "unknown"),
+                        "match_type": "md5",
+                    },
+                }
 
         return {"detected": False, "sha256": sha256, "md5": md5}
 

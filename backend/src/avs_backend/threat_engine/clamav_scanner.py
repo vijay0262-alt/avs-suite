@@ -652,7 +652,6 @@ def _classify_threat(virus_name: str) -> tuple[str, str]:
         return "cryptominer", "medium"
     if any(k in name_lower for k in ("test", "eicar")):
         return "test", "low"
-
     return "malware", "high"
 
 
@@ -662,8 +661,11 @@ class ClamAvScanner:
     Connects to the ClamAV daemon (clamd) to scan files for known malware
     signatures. If clamd is not available, the scanner degrades gracefully
     and scan_file() returns None.
-    """
 
+    Uses thread-local connections so that each worker thread in a
+    ThreadPoolExecutor gets its own persistent clamd connection,
+    avoiding the overhead of creating a new TCP connection per file.
+    """
     name = "clamav"
 
     def __init__(self, config: dict[str, Any]):
@@ -672,6 +674,8 @@ class ClamAvScanner:
         self.tcp_host: str = config.get("clamav_tcp_host", _DEFAULT_TCP_HOST)
         self.tcp_port: int = int(config.get("clamav_tcp_port", _DEFAULT_TCP_PORT))
         self._available: bool | None = None
+        import threading
+        self._tls = threading.local()
 
         # Check availability at init time
         if not CLAMD_PACKAGE_AVAILABLE:
@@ -694,8 +698,33 @@ class ClamAvScanner:
             )
 
     def _get_client(self) -> Any | None:
-        """Get a clamd client for this scanner's configured endpoints."""
-        return _get_clamd_client(self.unix_socket, self.tcp_host, self.tcp_port)
+        """Get a thread-local clamd client, creating one if needed.
+
+        Each thread gets its own persistent connection, avoiding
+        the overhead of creating a new TCP connection per scan_file call.
+        """
+        client = getattr(self._tls, "client", None)
+        if client is not None:
+            # Verify the connection is still alive
+            try:
+                if hasattr(client, "ping"):
+                    result = client.ping()
+                    if isinstance(result, dict):
+                        if "PONG" not in str(result.values()):
+                            raise ConnectionError("clamd ping failed")
+                    elif not result:
+                        raise ConnectionError("clamd ping failed")
+                return client
+            except Exception:
+                # Connection died — close and recreate
+                if isinstance(client, _RawSocketClamd):
+                    client.close()
+                self._tls.client = None
+
+        # Create a new connection for this thread
+        client = _get_clamd_client(self.unix_socket, self.tcp_host, self.tcp_port)
+        self._tls.client = client
+        return client
 
     def scan_file(self, file_path: str) -> dict[str, Any] | None:
         """Scan a single file using ClamAV via the INSTREAM command.
@@ -774,10 +803,72 @@ class ClamAvScanner:
 
         except Exception as e:
             log.warning("ClamAV scan_file error on %s: %s", file_path, e)
+            # Connection may be dead — clear it so next call recreates
+            self._tls.client = None
             return None
-        finally:
+
+    def scan_file_fast(self, file_path: str, sha256: str = "") -> dict[str, Any] | None:
+        """Scan a file using ClamAV with a pre-computed SHA256.
+
+        Same as scan_file but skips the internal SHA256 computation
+        since the caller already computed it. This saves one full file
+        read per file. Uses thread-local connections for pooling.
+        """
+        if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            return None
+
+        client = self._get_client()
+        if client is None:
+            return None
+
+        try:
             if isinstance(client, _RawSocketClamd):
-                client.close()
+                _, result_str = client.instream(file_path)
+            else:
+                raw = client.instream_file(file_path)
+                if isinstance(raw, dict):
+                    values = list(raw.values())
+                    if values and isinstance(values[0], tuple):
+                        parts = values[0]
+                        if len(parts) >= 2:
+                            result_str = f"stream: {parts[0]} {parts[1]}"
+                        elif len(parts) == 1:
+                            result_str = f"stream: {parts[0]}"
+                        else:
+                            result_str = "stream: OK"
+                    else:
+                        result_str = str(raw)
+                else:
+                    result_str = str(raw)
+
+            parsed = _parse_clamd_result(result_str)
+
+            if parsed["status"] == "detected":
+                virus_name = parsed["virus_name"]
+                threat_type, severity = _classify_threat(virus_name)
+                return {
+                    "detected": True,
+                    "threat_name": virus_name,
+                    "threat_type": threat_type,
+                    "severity": severity,
+                    "confidence": 0.95,
+                    "sha256": sha256,
+                    "details": {
+                        "source": "clamav",
+                        "engine": "clamd",
+                        "raw_result": result_str,
+                        "scanner": self.name,
+                    },
+                }
+            elif parsed["status"] == "clean":
+                return {"detected": False, "sha256": sha256}
+            else:
+                return None
+
+        except Exception as e:
+            log.debug("ClamAV scan_file_fast error on %s: %s", file_path, e)
+            self._tls.client = None
+            return None
 
     def scan_directory(self, dir_path: str) -> dict[str, Any]:
         """Scan all files in a directory using ClamAV.

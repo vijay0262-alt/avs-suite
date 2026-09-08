@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import hashlib
 import os
 import string
 import threading
@@ -318,7 +319,11 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
 
     # ─── Scan a single file with smart detector routing ────────────
     def _scan_single_file(fpath: str) -> dict[str, Any] | None:
-        """Scan one file with appropriate detectors based on file type."""
+        """Scan one file with all applicable detectors.
+
+        Computes SHA256 once and reuses it across detectors to avoid
+        redundant file reads. Uses thread-local ClamAV connections.
+        """
         # Incremental scan: skip unchanged files that were previously clean
         if hash_cache and hash_cache.should_skip(fpath):
             return None
@@ -327,30 +332,29 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
         is_pe = ext in _PE_EXTENSIONS
         is_script = ext in _SCRIPT_EXTENSIONS
 
-        # 1. ClamAV (primary — fast, in-process via clamd socket)
-        if clamav_scanner:
-            try:
-                result = clamav_scanner.scan_file(fpath)
-                if result and result.get("detected"):
-                    if hash_cache:
-                        hash_cache.record_result(fpath, "threat")
-                    return {
-                        "path": fpath,
-                        "threat_name": result.get("threat_name", "Unknown"),
-                        "threat_type": result.get("threat_type", "malware"),
-                        "severity": result.get("severity", "high"),
-                        "source": "clamav",
-                    }
-            except Exception:
-                pass
+        # Compute SHA256 once — used by hash detector (instant lookup)
+        # and recorded in hash cache. This is the only file read for
+        # hash detection; ClamAV still reads the file for INSTREAM.
+        sha256 = ""
+        try:
+            h = hashlib.sha256()
+            with open(fpath, "rb") as f:
+                while True:
+                    chunk = f.read(65536)
+                    if not chunk:
+                        break
+                    h.update(chunk)
+            sha256 = h.hexdigest()
+        except Exception:
+            pass
 
-        # 2. Hash detector (fast — SHA256 lookup in local blocklist)
-        if hash_detector:
+        # 1. Hash detector (instant — dict lookup, no file read)
+        if hash_detector and sha256:
             try:
-                result = hash_detector.scan_file(fpath)
+                result = hash_detector.check_sha256(sha256)
                 if result and result.get("detected"):
                     if hash_cache:
-                        hash_cache.record_result(fpath, "threat")
+                        hash_cache.record_result(fpath, "threat", sha256)
                     return {
                         "path": fpath,
                         "threat_name": result.get("threat_name", "Unknown"),
@@ -361,13 +365,30 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
             except Exception:
                 pass
 
+        # 2. ClamAV (primary — fast, thread-local clamd connection)
+        if clamav_scanner:
+            try:
+                result = clamav_scanner.scan_file_fast(fpath, sha256)
+                if result and result.get("detected"):
+                    if hash_cache:
+                        hash_cache.record_result(fpath, "threat", sha256)
+                    return {
+                        "path": fpath,
+                        "threat_name": result.get("threat_name", "Unknown"),
+                        "threat_type": result.get("threat_type", "malware"),
+                        "severity": result.get("severity", "high"),
+                        "source": "clamav",
+                    }
+            except Exception:
+                pass
+
         # 3. YARA (medium — rule matching)
         if yara_scanner:
             try:
                 result = yara_scanner.scan_file(fpath)
                 if result and result.get("detected"):
                     if hash_cache:
-                        hash_cache.record_result(fpath, "threat")
+                        hash_cache.record_result(fpath, "threat", sha256)
                     return {
                         "path": fpath,
                         "threat_name": result.get("threat_name", "Unknown"),
@@ -384,7 +405,7 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
                 result = heuristic_detector.scan_file(fpath)
                 if result and result.get("detected"):
                     if hash_cache:
-                        hash_cache.record_result(fpath, "threat")
+                        hash_cache.record_result(fpath, "threat", sha256)
                     return {
                         "path": fpath,
                         "threat_name": result.get("threat_name", "Suspicious"),
@@ -401,7 +422,7 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
                 result = amsi_scanner.scan_file(fpath)
                 if result and result.get("detected"):
                     if hash_cache:
-                        hash_cache.record_result(fpath, "threat")
+                        hash_cache.record_result(fpath, "threat", sha256)
                     return {
                         "path": fpath,
                         "threat_name": result.get("threat_name", "AMSI.Detected"),
@@ -418,7 +439,7 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
                 result = behavioral_detector.scan_file(fpath)
                 if result and result.get("detected"):
                     if hash_cache:
-                        hash_cache.record_result(fpath, "threat")
+                        hash_cache.record_result(fpath, "threat", sha256)
                     return {
                         "path": fpath,
                         "threat_name": result.get("threat_name", "Behavioral.Detected"),
@@ -435,7 +456,7 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
                 result = ml_detector.scan_file(fpath)
                 if result and result.get("detected"):
                     if hash_cache:
-                        hash_cache.record_result(fpath, "threat")
+                        hash_cache.record_result(fpath, "threat", sha256)
                     return {
                         "path": fpath,
                         "threat_name": result.get("threat_name", "ML.Detected"),
@@ -448,7 +469,7 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
 
         # File is clean — record in hash cache for incremental scanning
         if hash_cache:
-            hash_cache.record_result(fpath, "clean")
+            hash_cache.record_result(fpath, "clean", sha256)
 
         return None
 
