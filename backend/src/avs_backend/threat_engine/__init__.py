@@ -101,7 +101,7 @@ _DEFAULT_CONFIG = {
     "scan_max_file_size_mb": 100,
     "scan_archives": True,
     "scan_email": True,  # Scan email attachments (Outlook/Thunderbird/Windows Mail)
-    "auto_quarantine": True,  # Auto-quarantine detected threats (Pro behavior)
+    "auto_quarantine": False,  # Don't auto-quarantine during scan — user reviews and confirms
     "exclude_paths": [
         "C:\\Windows\\WinSxS",
         "C:\\ProgramData\\Microsoft\\Windows Defender",
@@ -725,10 +725,18 @@ def threat_scan(params: dict[str, Any] | None) -> dict[str, Any]:
     Params:
         path: File or directory path to scan
         scan_type: "quick", "full", or "custom" (default: "custom")
+        auto_quarantine: Override the config default — if True, detected
+            threats are quarantined as they are found during the scan.
+            If False or omitted, threats are listed but not quarantined.
     """
     params = params or {}
     path = params.get("path", "")
     scan_type = params.get("scan_type", "custom")
+
+    # Build effective config, allowing caller to override auto_quarantine
+    effective_config = dict(_config)
+    if "auto_quarantine" in params:
+        effective_config["auto_quarantine"] = bool(params["auto_quarantine"])
 
     if not path and scan_type == "custom":
         return {"success": False, "error": "path is required for custom scan", "error_code": "INVALID_PARAMS"}
@@ -803,7 +811,7 @@ def threat_scan(params: dict[str, Any] | None) -> dict[str, Any]:
             scan["files_total"] = len(all_targets)
             scan["status"] = "scanning"
 
-            _execute_scan(scan_id, all_targets, _config)
+            _execute_scan(scan_id, all_targets, effective_config)
         except Exception as e:
             log.error("Scan %s failed: %s", scan_id, e)
             with _scans_lock:

@@ -64,6 +64,8 @@ export const RPC_METHODS = {
   ONE_CLICK_START: 'one_click.start',
   ONE_CLICK_PROGRESS: 'one_click.progress',
   ONE_CLICK_CANCEL: 'one_click.cancel',
+  ONE_CLICK_CONFIRM_QUARANTINE: 'one_click.confirm_quarantine',
+  ONE_CLICK_SKIP_QUARANTINE: 'one_click.skip_quarantine',
   THREAT_SCAN_SUMMARY_GENERATE: 'threat.scanSummary.generate',
   THREAT_SCAN_SUMMARY_RECENT: 'threat.scanSummary.recent',
   THREAT_SCAN_SUMMARY_TREND: 'threat.scanSummary.trend',

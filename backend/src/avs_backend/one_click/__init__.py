@@ -1,10 +1,10 @@
 """One-Click Security Scan — antivirus-only whole-computer scan.
 
 Scans the entire computer for threats using ClamAV and other detection
-sources (hash blocklist, YARA, heuristics). Detected threats are
-quarantined automatically. This is the "one button does everything"
-antivirus feature that competitors like Norton, McAfee, and Trend Micro
-offer as their primary scan action.
+sources (hash blocklist, YARA, heuristics). After detection, the user is
+prompted to confirm before any files are quarantined. This is the "one
+button does everything" antivirus feature that competitors like Norton,
+McAfee, and Trend Micro offer as their primary scan action.
 
 This module does NOT perform any optimization/cleanup. Temp file
 cleanup, recycle bin emptying, and cache clearing are handled by the
@@ -48,9 +48,15 @@ _PHASE_QUARANTINE_END = 100
 # Track running one-click operations
 _lock = threading.Lock()
 _running = False
+
+# Quarantine confirmation gate — the scan thread pauses after detecting
+# threats and waits for the user to confirm before quarantining any files.
+_quarantine_confirmed = threading.Event()
+_quarantine_skipped = False
+
 _progress: dict[str, Any] = {
     "active": False,
-    "phase": "idle",  # idle | scanning | cleaning | complete
+    "phase": "idle",  # idle | scanning | pending_confirmation | cleaning | complete
     "scan_progress": 0,
     "optimize_progress": 0,
     "threats_found": 0,
@@ -747,44 +753,64 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
     # Add email and memory threats collected above
     all_threats.extend(_extra_threats)
     if all_threats and not _cancel_requested():
+        # ── Quarantine confirmation gate ──────────────────────────────
+        # Pause and ask the user for permission before quarantining any
+        # files. The frontend detects the "pending_confirmation" phase
+        # and shows a dialog. The user must call one_click.confirm_quarantine
+        # to proceed, or one_click.skip_quarantine to skip.
         with _lock:
-            _progress["phase"] = "cleaning"
-            _progress["current_file"] = "Quarantining detected threats..."
+            _progress["phase"] = "pending_confirmation"
+            _progress["current_file"] = (
+                f"{len(all_threats)} threat{'s' if len(all_threats) != 1 else ''} found. "
+                "Waiting for your confirmation to quarantine."
+            )
+        log.info("One-click: %d threats found, waiting for user confirmation to quarantine", len(all_threats))
 
-        try:
-            from avs_backend.threat_engine import threat_quarantine
-            total_threats = len(all_threats)
-            for idx, threat in enumerate(all_threats, start=1):
-                try:
-                    q_result = threat_quarantine({
-                        "file_path": threat["path"],
-                        "threat_info": {
-                            "threat_name": threat.get("threat_name", "Unknown"),
-                            "threat_type": threat.get("threat_type", "malware"),
-                            "severity": threat.get("severity", "high"),
-                            "source": threat.get("source", "clamav"),
-                        },
-                    })
-                    if q_result.get("success"):
-                        result["threats_quarantined"] += 1
-                        result["threats_cleaned"] += 1
-                except Exception as e:
-                    log.warning("One-click: Failed to quarantine %s: %s", threat["path"], e)
+        _quarantine_confirmed.wait(timeout=300)  # 5-minute timeout
 
-                # Update quarantine count LIVE after every item (not just once
-                # at the end) so the UI's "quarantined" counter increments in
-                # sync with the "threats found" counter instead of staying
-                # frozen at 0 until the whole batch finishes.
-                with _lock:
-                    _progress["threats_quarantined"] = result["threats_quarantined"]
-                    _progress["current_file"] = f"Quarantining threat {idx}/{total_threats}: {os.path.basename(str(threat.get('path', '')))}"
-                    if not _progress.get("cancel_requested"):
-                        span = _PHASE_QUARANTINE_END - _PHASE_NETWORK_END
-                        _progress["scan_progress"] = _PHASE_NETWORK_END + int((idx / total_threats) * span)
-        except ImportError:
-            log.warning("One-click: threat_quarantine not available, threats detected but not quarantined")
-        except Exception as e:
-            log.error("One-click: Quarantine phase failed: %s", e)
+        if _quarantine_skipped or not _quarantine_confirmed.is_set():
+            log.info("One-click: Quarantine skipped by user (or timeout)")
+            with _lock:
+                _progress["current_file"] = "Quarantine skipped by user."
+        else:
+            with _lock:
+                _progress["phase"] = "cleaning"
+                _progress["current_file"] = "Quarantining detected threats..."
+
+            try:
+                from avs_backend.threat_engine import threat_quarantine
+                total_threats = len(all_threats)
+                for idx, threat in enumerate(all_threats, start=1):
+                    try:
+                        q_result = threat_quarantine({
+                            "file_path": threat["path"],
+                            "threat_info": {
+                                "threat_name": threat.get("threat_name", "Unknown"),
+                                "threat_type": threat.get("threat_type", "malware"),
+                                "severity": threat.get("severity", "high"),
+                                "source": threat.get("source", "clamav"),
+                            },
+                        })
+                        if q_result.get("success"):
+                            result["threats_quarantined"] += 1
+                            result["threats_cleaned"] += 1
+                    except Exception as e:
+                        log.warning("One-click: Failed to quarantine %s: %s", threat["path"], e)
+
+                    # Update quarantine count LIVE after every item (not just once
+                    # at the end) so the UI's "quarantined" counter increments in
+                    # sync with the "threats found" counter instead of staying
+                    # frozen at 0 until the whole batch finishes.
+                    with _lock:
+                        _progress["threats_quarantined"] = result["threats_quarantined"]
+                        _progress["current_file"] = f"Quarantining threat {idx}/{total_threats}: {os.path.basename(str(threat.get('path', '')))}"
+                        if not _progress.get("cancel_requested"):
+                            span = _PHASE_QUARANTINE_END - _PHASE_NETWORK_END
+                            _progress["scan_progress"] = _PHASE_NETWORK_END + int((idx / total_threats) * span)
+            except ImportError:
+                log.warning("One-click: threat_quarantine not available, threats detected but not quarantined")
+            except Exception as e:
+                log.error("One-click: Quarantine phase failed: %s", e)
 
     # Finalize — don't override 'cancelled' or 'error' phase
     with _lock:
@@ -818,12 +844,16 @@ def one_click_start(params: dict[str, Any] | None) -> dict[str, Any]:
     Use one_click.progress to poll for progress.
     """
     scan_type = (params or {}).get("scan_type", "full")
-    global _running
+    global _running, _quarantine_skipped
 
     with _lock:
         if _running:
             return {"success": False, "error": "One-click already running", "progress": _progress}
         _running = True
+
+    # Reset quarantine confirmation gate for this scan
+    _quarantine_skipped = False
+    _quarantine_confirmed.clear()
 
     def _run():
         global _running
@@ -867,3 +897,23 @@ def one_click_cancel(_params: dict[str, Any] | None) -> dict[str, Any]:
         _progress["current_file"] = None
     log.info("One-click: Cancel requested by user")
     return {"success": True, "message": "Scan cancelled"}
+
+
+@register("one_click.confirm_quarantine")
+def one_click_confirm_quarantine(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """User confirmed — proceed with quarantining detected threats."""
+    global _quarantine_skipped
+    _quarantine_skipped = False
+    _quarantine_confirmed.set()
+    log.info("One-click: User confirmed quarantine")
+    return {"success": True, "message": "Quarantine confirmed"}
+
+
+@register("one_click.skip_quarantine")
+def one_click_skip_quarantine(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """User declined — skip quarantining, leave detected threats as-is."""
+    global _quarantine_skipped
+    _quarantine_skipped = True
+    _quarantine_confirmed.set()  # unblock the waiting scan thread
+    log.info("One-click: User skipped quarantine")
+    return {"success": True, "message": "Quarantine skipped"}

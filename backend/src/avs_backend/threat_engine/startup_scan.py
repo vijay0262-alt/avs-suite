@@ -244,7 +244,7 @@ def _run_startup_scan(scan_boot_sector: bool = True) -> dict[str, Any]:
             def _scan_single_file(file_path: str) -> tuple[str, list, str | None]:
                 """Scan a single file and return (path, threats, error)."""
                 try:
-                    scan_result = threat_scan({"path": file_path, "scan_type": "custom"})
+                    scan_result = threat_scan({"path": file_path, "scan_type": "custom", "auto_quarantine": True})
                     if scan_result.get("success"):
                         scan_id = scan_result.get("scan_id")
                         if scan_id:

@@ -160,7 +160,7 @@ def scan_usb_drive(drive_letter: str) -> dict[str, Any]:
         return {"success": False, "error": "threat_engine_unavailable", "drive": path}
 
     try:
-        result = handler({"path": path, "scan_type": "custom"})
+        result = handler({"path": path, "scan_type": "custom", "auto_quarantine": True})
         log.info("Triggered scan on USB drive %s: %s", path, result)
         return {
             "success": result.get("success", False),

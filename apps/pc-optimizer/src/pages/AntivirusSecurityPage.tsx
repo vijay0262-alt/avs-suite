@@ -361,6 +361,18 @@ export default function AntivirusSecurityPage() {
     } catch { /* ignore */ }
   }, []);
 
+  const confirmQuarantine = useCallback(async () => {
+    try {
+      await rpc.raw(RPC_METHODS.ONE_CLICK_CONFIRM_QUARANTINE);
+    } catch { /* ignore */ }
+  }, []);
+
+  const skipQuarantine = useCallback(async () => {
+    try {
+      await rpc.raw(RPC_METHODS.ONE_CLICK_SKIP_QUARANTINE);
+    } catch { /* ignore */ }
+  }, []);
+
   const closeOneClickModal = useCallback(() => {
     if (oneClickProgress?.active && !oneClickCancelling) return;
     setOneClickModalOpen(false);
@@ -631,7 +643,27 @@ export default function AntivirusSecurityPage() {
           hideCloseButton={oneClickProgress?.active && !oneClickCancelling}
           actions={
             <>
-              {oneClickProgress?.active ? (
+              {oneClickProgress?.phase === 'pending_confirmation' ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={skipQuarantine}
+                    data-testid="one-click-skip-quarantine"
+                  >
+                    Skip Quarantine
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={confirmQuarantine}
+                    leftIcon={<ShieldExclamationIcon className="h-4 w-4" />}
+                    data-testid="one-click-confirm-quarantine"
+                  >
+                    Quarantine {oneClickProgress.threats_found || 0} Threat{(oneClickProgress.threats_found || 0) !== 1 ? 's' : ''}
+                  </Button>
+                </>
+              ) : oneClickProgress?.active ? (
                 <Button
                   variant="danger"
                   size="sm"
@@ -664,12 +696,14 @@ export default function AntivirusSecurityPage() {
             {/* Phase indicator */}
             <div className="flex items-center gap-3">
               {oneClickProgress?.phase === 'scanning' && <ArrowPathIcon className="h-5 w-5 animate-spin text-brand-primary" />}
+              {oneClickProgress?.phase === 'pending_confirmation' && <ShieldExclamationIcon className="h-5 w-5 text-semantic-warning" />}
               {oneClickProgress?.phase === 'cleaning' && <ShieldExclamationIcon className="h-5 w-5 text-semantic-warning" />}
               {oneClickProgress?.phase === 'complete' && <ShieldCheckIcon className="h-5 w-5 text-semantic-success" />}
               {oneClickProgress?.phase === 'cancelled' && <XMarkIcon className="h-5 w-5 text-semantic-danger" />}
               {oneClickProgress?.phase === 'error' && <ShieldExclamationIcon className="h-5 w-5 text-semantic-danger" />}
               <span className="text-small font-semibold text-text-primary">
                 {oneClickProgress?.phase === 'scanning' && 'Scanning for threats...'}
+                {oneClickProgress?.phase === 'pending_confirmation' && `${oneClickProgress.threats_found || 0} threat${(oneClickProgress.threats_found || 0) !== 1 ? 's' : ''} found — review required`}
                 {oneClickProgress?.phase === 'cleaning' && 'Quarantining detected threats...'}
                 {oneClickProgress?.phase === 'complete' && 'Scan complete.'}
                 {oneClickProgress?.phase === 'cancelled' && 'Scan cancelled.'}
@@ -745,7 +779,9 @@ export default function AntivirusSecurityPage() {
                   <span className="text-caption text-text-secondary">
                     {oneClickProgress.phase === 'scanning'
                       ? `${oneClickProgress.scan_progress}% complete`
-                      : oneClickProgress.phase === 'cleaning'
+                      : oneClickProgress.phase === 'pending_confirmation'
+                        ? `${oneClickProgress.scan_progress}% — awaiting your decision`
+                        : oneClickProgress.phase === 'cleaning'
                         ? `${oneClickProgress.scan_progress}% \u2014 ${oneClickProgress.threats_quarantined || 0} threats quarantined`
                         : oneClickProgress.phase === 'complete'
                           ? '100% Complete'
@@ -759,6 +795,42 @@ export default function AntivirusSecurityPage() {
                     </span>
                   )}
                 </div>
+
+                {/* Quarantine confirmation banner */}
+                {oneClickProgress.phase === 'pending_confirmation' && (
+                  <div className="p-4 rounded-[var(--avs-radius-md)] border border-semantic-warning/30 bg-semantic-warning/5" data-testid="quarantine-confirmation-banner">
+                    <div className="flex items-start gap-3">
+                      <ShieldExclamationIcon className="h-6 w-6 text-semantic-warning shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <div className="text-small font-semibold text-text-primary mb-1">
+                          {oneClickProgress.threats_found} threat{(oneClickProgress.threats_found || 0) !== 1 ? 's' : ''} detected
+                        </div>
+                        <div className="text-caption text-text-secondary mb-3">
+                          Quarantine moves threats to a secure, isolated folder where they can&apos;t harm your PC. You can restore or permanently delete them later from the Quarantine tab.
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={confirmQuarantine}
+                            leftIcon={<ShieldExclamationIcon className="h-4 w-4" />}
+                            data-testid="quarantine-confirm-btn"
+                          >
+                            Quarantine Now
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={skipQuarantine}
+                            data-testid="quarantine-skip-btn"
+                          >
+                            Skip — I&apos;ll review later
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Current file being scanned (live) */}
                 {oneClickProgress.phase === 'scanning' && oneClickProgress.current_file && (
@@ -991,7 +1063,7 @@ export default function AntivirusSecurityPage() {
                 <div>
                   <div className="text-small font-semibold text-text-primary">Scheduled Scans</div>
                   <div className="text-caption text-text-secondary">
-                    Automatically scan your PC on a schedule. Threats are auto-quarantined.
+                    Automatically scan your PC on a schedule. Threats are quarantined automatically.
                   </div>
                 </div>
               </div>
@@ -1157,7 +1229,7 @@ export default function AntivirusSecurityPage() {
 
             {!usbStatus?.running && (
               <p className="mt-3 text-caption text-text-muted">
-                Enable to automatically scan any USB drive or external device the moment it&apos;s plugged in. Threats are auto-quarantined.
+                Enable to automatically scan any USB drive or external device the moment it&apos;s plugged in. Threats are quarantined automatically.
               </p>
             )}
           </Card>
@@ -1332,7 +1404,7 @@ export default function AntivirusSecurityPage() {
                 <div>
                   <div className="text-small font-semibold text-text-primary">Manual Scan</div>
                   <div className="text-caption text-text-secondary">
-                    Choose a scan type and run it now. Threats are auto-quarantined.
+                    Choose a scan type and run it now. Detected threats are listed for your review.
                   </div>
                 </div>
               </div>

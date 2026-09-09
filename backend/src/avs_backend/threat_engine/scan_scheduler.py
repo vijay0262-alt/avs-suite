@@ -62,7 +62,7 @@ def _run_scheduled_scan(scan_type: str) -> dict:
     """Run a scan and return the result."""
     try:
         from avs_backend.threat_engine import threat_scan
-        result = threat_scan({"scan_type": scan_type})
+        result = threat_scan({"scan_type": scan_type, "auto_quarantine": True})
         log.info("Scheduled %s scan started: %s", scan_type, result.get("scan_id"))
         return result
     except Exception as e:
