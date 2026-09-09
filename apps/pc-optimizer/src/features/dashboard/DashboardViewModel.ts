@@ -35,6 +35,7 @@ import type { NavigateFunction } from 'react-router-dom';
 import { calculateHealthScore } from './dashboard.utils';
 import { invalidateMetricsCache, dashboardRefreshManager } from '../health';
 import { withRetry } from '../health/RpcRetryWrapper';
+import { OptimizationEventType } from '../health';
 import type { OptimizationEvent } from '../health';
 import { healthTimelineService } from '../health/HealthTimelineService';
 import { healthNotificationService } from '../health/HealthNotificationService';
@@ -76,6 +77,14 @@ export interface DashboardState {
   healthScore: HealthScore | null;
   healthScoreLoading: boolean;
   healthScoreError: string | null;
+
+  // Holistic health score snapshot around the last optimization/cleanup —
+  // uses the SAME calculateHealthScore() formula as the live "System
+  // Health" tile, so the "Health X → Y" text shown in scan summaries
+  // always agrees with the number on the tile (unlike the backend's
+  // narrow junk-bytes-only score).
+  lastOptimizationHealthBefore: number | null;
+  lastOptimizationHealthAfter: number | null;
 
   // Privacy risk count (loaded from privacy service)
   privacyRisks: number | null;
@@ -141,6 +150,13 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   private optimizationUnsub: (() => void) | null = null;
   private optimizationRefreshTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingEventModuleId: string | null = null;
+  // Set to the live holistic health score the moment the first
+  // change-producing event of a debounce burst arrives, so we can compute
+  // a true before → after delta once the burst's reload finishes. null
+  // means "no change event pending" (a burst made up only of ScanCompleted
+  // events, which don't modify the system, doesn't touch the snapshot).
+  private pendingHealthBeforeSnapshot: number | null = null;
+  private hasPendingHealthChangeEvent = false;
   private verificationLogFlushTimer: ReturnType<typeof setTimeout> | null = null;
 
   /**
@@ -191,6 +207,9 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       healthScore: null,
       healthScoreLoading: false,
       healthScoreError: null,
+
+      lastOptimizationHealthBefore: null,
+      lastOptimizationHealthAfter: null,
 
       privacyRisks: null,
       privacyRisksLoading: false,
@@ -335,6 +354,18 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
   private handleOptimizationEvent(event: OptimizationEvent): void {
     // Track the latest module that triggered an event for targeted refresh
     this.pendingEventModuleId = event.moduleId;
+
+    // Snapshot the CURRENT holistic health score (same formula as the live
+    // "System Health" tile) the moment the first change-producing event of
+    // this debounce burst arrives — before any reload can move it. This
+    // lets us report a true, apples-to-apples before → after delta once
+    // the burst's reload finishes. ScanCompleted doesn't modify the
+    // system, so it doesn't start a snapshot on its own.
+    if (event.type !== OptimizationEventType.ScanCompleted && !this.hasPendingHealthChangeEvent) {
+      this.hasPendingHealthChangeEvent = true;
+      this.pendingHealthBeforeSnapshot = this.state.healthScore?.overallScore ?? null;
+    }
+
     if (this.optimizationRefreshTimer) {
       clearTimeout(this.optimizationRefreshTimer);
     }
@@ -342,6 +373,10 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       this.optimizationRefreshTimer = null;
       const moduleId = this.pendingEventModuleId;
       this.pendingEventModuleId = null;
+      const healthBeforeSnapshot = this.pendingHealthBeforeSnapshot;
+      const hadHealthChangeEvent = this.hasPendingHealthChangeEvent;
+      this.pendingHealthBeforeSnapshot = null;
+      this.hasPendingHealthChangeEvent = false;
 
       // Invalidate the backend metrics cache so we get fresh data
       try {
@@ -380,7 +415,18 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       // Use allSettled so one failure doesn't block the others.
       // Each load* method already handles its own errors and updates
       // its portion of state independently.
-      void Promise.allSettled(reloads);
+      void Promise.allSettled(reloads).then(() => {
+        // Once fresh metrics have been loaded and the holistic health
+        // score recalculated, record the before → after delta for any
+        // change-producing event burst so scan/cleanup summaries can show
+        // the SAME number as the live System Health tile.
+        if (hadHealthChangeEvent) {
+          this.setState({
+            lastOptimizationHealthBefore: healthBeforeSnapshot,
+            lastOptimizationHealthAfter: this.state.healthScore?.overallScore ?? null,
+          });
+        }
+      });
     }, 500);
   }
 

@@ -265,8 +265,14 @@ export default function DashboardPage() {
                           const cleaned = snapshot.cleanupResult!.cleaned ?? 0;
                           const foldersCleaned = snapshot.cleanupResult!.foldersCleaned ?? 0;
                           const space = snapshot.cleanupResult!.spaceRecovered ?? 0;
-                          const healthBefore = snapshot.cleanupResult!.healthBefore;
-                          const healthAfter = snapshot.cleanupResult!.healthAfter;
+                          // Prefer the holistic health score (same formula as the
+                          // System Health tile above) over the backend's cleanup
+                          // summary, which only scores leftover junk bytes and can
+                          // disagree with the tile (e.g. "81 → 84" while the tile
+                          // shows 78). Fall back to the backend values if no
+                          // holistic snapshot was captured for this cleanup.
+                          const healthBefore = state.lastOptimizationHealthBefore ?? snapshot.cleanupResult!.healthBefore;
+                          const healthAfter = state.lastOptimizationHealthAfter ?? snapshot.cleanupResult!.healthAfter;
                           if (cleaned > 0 || foldersCleaned > 0) {
                             const parts: string[] = [];
                             parts.push(`${cleaned.toLocaleString()} files cleaned`);
