@@ -753,7 +753,8 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
 
         try:
             from avs_backend.threat_engine import threat_quarantine
-            for threat in all_threats:
+            total_threats = len(all_threats)
+            for idx, threat in enumerate(all_threats, start=1):
                 try:
                     q_result = threat_quarantine({
                         "file_path": threat["path"],
@@ -770,8 +771,16 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
                 except Exception as e:
                     log.warning("One-click: Failed to quarantine %s: %s", threat["path"], e)
 
-            with _lock:
-                _progress["threats_quarantined"] = result["threats_quarantined"]
+                # Update quarantine count LIVE after every item (not just once
+                # at the end) so the UI's "quarantined" counter increments in
+                # sync with the "threats found" counter instead of staying
+                # frozen at 0 until the whole batch finishes.
+                with _lock:
+                    _progress["threats_quarantined"] = result["threats_quarantined"]
+                    _progress["current_file"] = f"Quarantining threat {idx}/{total_threats}: {os.path.basename(str(threat.get('path', '')))}"
+                    if not _progress.get("cancel_requested"):
+                        span = _PHASE_QUARANTINE_END - _PHASE_NETWORK_END
+                        _progress["scan_progress"] = _PHASE_NETWORK_END + int((idx / total_threats) * span)
         except ImportError:
             log.warning("One-click: threat_quarantine not available, threats detected but not quarantined")
         except Exception as e:
