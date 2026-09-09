@@ -39,6 +39,12 @@ function getSecurityTone(metrics: DashboardMetrics | null): 'success' | 'warning
   const avsActive = !!metrics.avsAvActive;
   if ((avsActive || metrics.security.realTimeProtection) && (avsActive || metrics.security.defender.enabled)) return 'success';
   if (metrics.security.defender.enabled || metrics.security.firewall.enabled || avsActive) return 'warning';
+  // If security metrics are empty (backend still initializing), show warning not danger
+  const hasSecurityData = metrics.security && (
+    Object.keys(metrics.security.defender ?? {}).length > 0 ||
+    Object.keys(metrics.security.firewall ?? {}).length > 0
+  );
+  if (!hasSecurityData) return 'warning';
   return 'danger';
 }
 
@@ -47,6 +53,11 @@ function getSecurityLabel(metrics: DashboardMetrics | null): string {
   const avsActive = !!metrics.avsAvActive;
   if ((avsActive || metrics.security.realTimeProtection) && (avsActive || metrics.security.defender.enabled)) return 'Protected';
   if (metrics.security.defender.enabled || metrics.security.firewall.enabled || avsActive) return 'At Risk';
+  const hasSecurityData = metrics.security && (
+    Object.keys(metrics.security.defender ?? {}).length > 0 ||
+    Object.keys(metrics.security.firewall ?? {}).length > 0
+  );
+  if (!hasSecurityData) return 'Preparing...';
   return 'Unprotected';
 }
 

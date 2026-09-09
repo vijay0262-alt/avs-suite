@@ -984,16 +984,22 @@ export default function AntivirusSecurityPage() {
       {/* Status summary */}
       <div className="grid grid-cols-3 gap-3">
         <Card variant="glass" className="p-4 text-center" data-testid="av-status-card">
-          <ShieldCheckIcon className={`h-6 w-6 mx-auto mb-1 ${avStatus?.clamd_running ? 'text-semantic-success' : 'text-text-muted'}`} />
+          <ShieldCheckIcon className={`h-6 w-6 mx-auto mb-1 ${
+            avStatus?.clamd_running ? 'text-semantic-success'
+              : avStatus?.installed ? 'text-semantic-warning'
+              : 'text-text-muted'
+          }`} />
           <div className="text-section-title font-bold text-text-primary">
-            {avStatus?.clamd_running ? 'Protected' : 'Not Active'}
+            {avStatus?.clamd_running ? 'Protected'
+              : avStatus?.installed ? 'Starting'
+              : 'Preparing'}
           </div>
           <div className="text-caption text-text-secondary">AV Engine</div>
         </Card>
         <Card variant="glass" className="p-4 text-center" data-testid="rt-status-card">
-          <EyeIcon className={`h-6 w-6 mx-auto mb-1 ${rtGuardEnabled ? 'text-semantic-success' : 'text-text-muted'}`} />
+          <EyeIcon className={`h-6 w-6 mx-auto mb-1 ${rtGuardEnabled ? 'text-semantic-success' : 'text-semantic-warning'}`} />
           <div className="text-section-title font-bold text-text-primary">
-            {rtGuardEnabled ? 'Active' : 'Off'}
+            {rtGuardEnabled ? 'Active' : 'Disabled'}
           </div>
           <div className="text-caption text-text-secondary">Real-Time Guard</div>
         </Card>
