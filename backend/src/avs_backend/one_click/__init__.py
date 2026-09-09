@@ -196,9 +196,24 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
         scan_roots = _get_scan_roots()
     log.info("One-click: Scan type=%s, roots=%s", scan_type, scan_roots)
 
-    total_files = 50000  # rough estimate, refined as we scan
+    # ─── Phase 1: Count scannable files for accurate progress ───────
+    # Count files first so the progress bar advances smoothly from 1%
+    # to 90% as files are scanned, instead of jumping to 90% early
+    # (which happens when scanning catches up to enumeration with hash cache).
     with _lock:
-        _progress["current_file"] = f"Scanning {scan_roots[0] if scan_roots else 'C:\\'}..."
+        _progress["current_file"] = "Counting files to scan..."
+        _progress["scan_progress"] = 1
+
+    total_files = _count_scannable_files(scan_roots)
+    if total_files == 0:
+        total_files = 1
+
+    with _lock:
+        if _progress.get("cancel_requested"):
+            return {"files_scanned": 0, "threats_found": 0, "threats": []}
+        _progress["total_files"] = total_files
+        _progress["current_file"] = f"Scanning {total_files:,} files..."
+        _progress["scan_progress"] = 2
 
     files_scanned = 0
     threats_found = 0
@@ -419,20 +434,14 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
             if now - last_update >= 0.25:
                 last_update = now
                 with _lock:
-                    total_est = max(files_enumerated[0], files_scanned, 1)
-                    if enum_done.is_set():
-                        frac = files_scanned / max(files_enumerated[0], 1)
-                    else:
-                        frac = files_scanned / total_est
+                    # Use pre-counted total for smooth, accurate progress
+                    frac = files_scanned / max(total_files, 1)
                     pct = min(_PHASE_FILE_SCAN_END, int(frac * _PHASE_FILE_SCAN_END))
-                    # Ensure progress never goes backwards — the enumeration
-                    # thread may discover large batches of files at once,
-                    # causing frac to drop. Track the maximum and use that.
                     if pct > _max_scan_pct:
                         _max_scan_pct = pct
                     _progress["scan_progress"] = _max_scan_pct
                     _progress["files_scanned"] = files_scanned
-                    _progress["total_files"] = files_enumerated[0]
+                    _progress["total_files"] = max(total_files, files_enumerated[0])
                     elapsed = max(now - scan_started_mono, 0.001)
                     _progress["scan_speed"] = round(files_scanned / elapsed, 1)
     finally:
@@ -443,7 +452,7 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
             _progress["scan_progress"] = _PHASE_FILE_SCAN_END
         _progress["current_file"] = None
         _progress["files_scanned"] = files_scanned
-        _progress["total_files"] = files_enumerated[0]
+        _progress["total_files"] = max(total_files, files_enumerated[0])
 
     # Save hash cache for incremental scanning next time
     if hash_cache:
