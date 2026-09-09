@@ -363,13 +363,16 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     // system, so it doesn't start a snapshot on its own.
     if (event.type !== OptimizationEventType.ScanCompleted && !this.hasPendingHealthChangeEvent) {
       this.hasPendingHealthChangeEvent = true;
-      this.pendingHealthBeforeSnapshot = this.state.healthScore?.overallScore ?? null;
+      // Prefer the scan's measured pre-cleanup score if the backend already
+      // computed it; otherwise use the current live tile score.
+      this.pendingHealthBeforeSnapshot =
+        event.healthBefore ?? this.state.healthScore?.overallScore ?? null;
     }
 
     if (this.optimizationRefreshTimer) {
       clearTimeout(this.optimizationRefreshTimer);
     }
-    this.optimizationRefreshTimer = setTimeout(() => {
+    this.optimizationRefreshTimer = setTimeout(async () => {
       this.optimizationRefreshTimer = null;
       const moduleId = this.pendingEventModuleId;
       this.pendingEventModuleId = null;
@@ -378,9 +381,11 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       this.pendingHealthBeforeSnapshot = null;
       this.hasPendingHealthChangeEvent = false;
 
-      // Invalidate the backend metrics cache so we get fresh data
+      // Invalidate the backend metrics cache and wait for it to refresh
+      // before loading metrics, so the dashboard reads truly post-optimization
+      // state instead of a stale 15s TTL snapshot.
       try {
-        void this.service.refreshCache();
+        await this.service.refreshCache();
       } catch {
         // Best-effort
       }
@@ -415,18 +420,32 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
       // Use allSettled so one failure doesn't block the others.
       // Each load* method already handles its own errors and updates
       // its portion of state independently.
-      void Promise.allSettled(reloads).then(() => {
-        // Once fresh metrics have been loaded and the holistic health
-        // score recalculated, record the before → after delta for any
-        // change-producing event burst so scan/cleanup summaries can show
-        // the SAME number as the live System Health tile.
-        if (hadHealthChangeEvent) {
-          this.setState({
-            lastOptimizationHealthBefore: healthBeforeSnapshot,
-            lastOptimizationHealthAfter: this.state.healthScore?.overallScore ?? null,
-          });
-        }
-      });
+      await Promise.allSettled(reloads);
+
+      // If the optimization provided an authoritative post-cleanup health
+      // score, apply it immediately so the live System Health tile matches
+      // the scan summary. This avoids the tile getting stuck on a stale
+      // 15s cache while fresh metrics still trickle in.
+      if (event.healthAfter != null) {
+        const rawScore = Math.max(0, Math.min(100, event.healthAfter));
+        const baseScore = this.state.healthScore ?? calculateHealthScore(this.state.metrics, this.state.privacyRisks);
+        const updatedHealth: HealthScore = {
+          ...baseScore,
+          overallScore: Math.round(rawScore),
+        };
+        this.setState({ healthScore: updatedHealth });
+      }
+
+      // Once fresh metrics have been loaded and the holistic health
+      // score recalculated, record the before → after delta for any
+      // change-producing event burst so scan/cleanup summaries can show
+      // the SAME number as the live System Health tile.
+      if (hadHealthChangeEvent) {
+        this.setState({
+          lastOptimizationHealthBefore: healthBeforeSnapshot,
+          lastOptimizationHealthAfter: Math.max(0, Math.min(100, event.healthAfter ?? this.state.healthScore?.overallScore ?? 0)),
+        });
+      }
     }, 500);
   }
 

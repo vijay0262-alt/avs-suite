@@ -125,6 +125,8 @@ export function AutoOptimizeView({ planId, onClose, module = 'optimize' }: AutoO
         bytesRecovered: space,
         itemsProcessed: cleaned,
         timestamp: Date.now(),
+        healthBefore: autoOpt.result?.health_before,
+        healthAfter: autoOpt.result?.health_after,
       });
       // V1.0: Update unifiedScanState with cleanup result so all
       // dashboard cards and Smart Optimize cards sync with actual data.

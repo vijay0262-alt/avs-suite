@@ -39,6 +39,10 @@ export interface OptimizationEvent {
   bytesRecovered?: number;
   itemsProcessed?: number;
   timestamp: number;
+  /** Backend-computed holistic health score before this optimization ran. */
+  healthBefore?: number;
+  /** Backend-computed holistic health score after this optimization ran. */
+  healthAfter?: number;
 }
 
 type Listener = (event: OptimizationEvent) => void;

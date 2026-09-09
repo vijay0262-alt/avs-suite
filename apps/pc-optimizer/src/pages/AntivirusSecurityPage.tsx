@@ -718,13 +718,13 @@ export default function AntivirusSecurityPage() {
                       }
                       stroke="currentColor"
                       strokeDasharray={565.49}
-                      strokeDashoffset={565.49 * (1 - (oneClickProgress.phase === 'complete' ? 100 : (oneClickProgress.scan_progress || 0)) / 100)}
+                      strokeDashoffset={565.49 * (1 - Math.max(0, Math.min(100, oneClickProgress.scan_progress ?? 0)) / 100)}
                       style={{ transition: 'stroke-dashoffset 0.3s ease' }}
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-4xl font-bold text-text-primary">
-                      {oneClickProgress.phase === 'complete' ? 100 : (oneClickProgress.scan_progress || 0)}%
+                      {Math.round(Math.max(0, Math.min(100, oneClickProgress.scan_progress ?? 0)))}%
                     </span>
                     <span className="text-caption text-text-muted mt-1">
                       {oneClickProgress.phase === 'scanning' && 'Scanning'}
