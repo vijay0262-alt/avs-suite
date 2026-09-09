@@ -66,6 +66,8 @@ export const RPC_METHODS = {
   ONE_CLICK_CANCEL: 'one_click.cancel',
   ONE_CLICK_CONFIRM_QUARANTINE: 'one_click.confirm_quarantine',
   ONE_CLICK_SKIP_QUARANTINE: 'one_click.skip_quarantine',
+  ONE_CLICK_SCAN_EMAIL: 'one_click.scan_email',
+  ONE_CLICK_SCAN_MEMORY: 'one_click.scan_memory',
   THREAT_SCAN_SUMMARY_GENERATE: 'threat.scanSummary.generate',
   THREAT_SCAN_SUMMARY_RECENT: 'threat.scanSummary.recent',
   THREAT_SCAN_SUMMARY_TREND: 'threat.scanSummary.trend',
@@ -239,6 +241,9 @@ export const RPC_METHODS = {
   SECURITY_ENABLE_FIREWALL: 'security.enableFirewall',
   SECURITY_ENABLE_RANSOMWARE_PROTECTION: 'security.enableRansomwareProtection',
   SECURITY_ENABLE_MEMORY_INTEGRITY: 'security.enableMemoryIntegrity',
+  SECURITY_ENABLE_AVS_AV: 'security.enableAvsAv',
+  SECURITY_ENABLE_REALTIME: 'security.enableRealtime',
+  SECURITY_FIX: 'security.fix',
 
   // Hardware Monitoring
   HARDWARE_SENSORS: 'hardware.sensors',

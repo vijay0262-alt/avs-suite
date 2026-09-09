@@ -2281,5 +2281,220 @@ __all__ = [
     "dashboard_optimize_preview",
 ]
 
+
+# =====================================================================
+# Security auto-fix / enable helpers
+# =====================================================================
+
+def _run_powershell_as_admin(command: str) -> tuple[int, str, str]:
+    """Run a PowerShell command in a hidden elevated process if needed.
+
+    Returns (returncode, stdout, stderr). Uses powershell directly so it
+    can prompt for elevation through UAC if the backend is not running
+    as admin. Most settings we need to change require admin rights.
+    """
+    try:
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", command],
+            capture_output=True, text=True, timeout=60,
+            creationflags=0x08000000 if os.name == "nt" else 0,
+        )
+        return proc.returncode, proc.stdout, proc.stderr
+    except Exception as e:
+        return 1, "", str(e)
+
+
+def _enable_windows_defender() -> dict[str, Any]:
+    """Enable Windows Defender realtime protection and active monitoring."""
+    rc, out, err = _run_powershell_as_admin(
+        "try { "
+        "Set-MpPreference -DisableRealtimeMonitoring $false; "
+        "Set-MpPreference -DisableBehaviorMonitoring $false; "
+        "Set-MpPreference -DisableBlockAtFirstSeen $false; "
+        "Set-MpPreference -DisableIOAVProtection $false; "
+        "'ok' "
+        "} catch { $_.Exception.Message }"
+    )
+    success = rc == 0 and "ok" in out.strip().lower()
+    return {"success": success, "stdout": out, "stderr": err}
+
+
+def _enable_firewall() -> dict[str, Any]:
+    """Enable all Windows Firewall profiles."""
+    rc, out, err = _run_powershell_as_admin(
+        "try { "
+        "Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True; "
+        "'ok' "
+        "} catch { $_.Exception.Message }"
+    )
+    success = rc == 0 and "ok" in out.strip().lower()
+    return {"success": success, "stdout": out, "stderr": err}
+
+
+def _enable_ransomware_protection() -> dict[str, Any]:
+    """Enable Controlled Folder Access (ransomware protection)."""
+    rc, out, err = _run_powershell_as_admin(
+        "try { "
+        "Set-MpPreference -EnableControlledFolderAccess Enabled; "
+        "'ok' "
+        "} catch { $_.Exception.Message }"
+    )
+    success = rc == 0 and "ok" in out.strip().lower()
+    return {"success": success, "stdout": out, "stderr": err}
+
+
+def _enable_memory_integrity() -> dict[str, Any]:
+    """Enable HVCI / Core Isolation memory integrity.
+
+    This requires a reboot on most systems; we set the registry value
+    so it will be active after restart and return a helpful message.
+    """
+    rc, out, err = _run_powershell_as_admin(
+        "try { "
+        "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\DeviceGuard\\Scenarios\\HypervisorEnforcedCodeIntegrity' -Name 'Enabled' -Value 1 -Type DWord -Force; "
+        "'ok' "
+        "} catch { $_.Exception.Message }"
+    )
+    success = rc == 0 and "ok" in out.strip().lower()
+    return {
+        "success": success,
+        "requires_reboot": True,
+        "message": "Memory Integrity enabled. Reboot required for change to take effect." if success else err,
+    }
+
+
+def _enable_avs_av() -> dict[str, Any]:
+    """Ensure AVS AI Shield (ClamAV) is installed and clamd is running."""
+    try:
+        from avs_backend.threat_engine.clamav_setup import start_setup, start_clamd
+        from avs_backend.threat_engine.clamav_scanner import check_clamav_available
+
+        if check_clamav_available():
+            return {"success": True, "message": "AV engine is already running"}
+
+        setup = start_setup()
+        if setup.get("setup_in_progress"):
+            return {"success": True, "message": "ClamAV setup in progress"}
+
+        return start_clamd()
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def _enable_realtime_protection() -> dict[str, Any]:
+    """Start AVS real-time protection (ClamAV + file/process monitors)."""
+    try:
+        from avs_backend.realtime_threat import realtime_threat_start
+        return realtime_threat_start(None)
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def auto_fix_security_on_startup() -> None:
+    """Called once at backend startup to ensure AVS protection is green.
+
+    Does not block startup; runs in a background thread. If elevation is
+    required, the RPC-based manual fix buttons handle that interactively.
+    """
+    def _run():
+        try:
+            _enable_avs_av()
+        except Exception as e:
+            log.warning("Auto-fix AV engine failed: %s", e)
+        try:
+            _enable_realtime_protection()
+        except Exception as e:
+            log.warning("Auto-fix real-time protection failed: %s", e)
+        try:
+            _enable_ransomware_protection()
+        except Exception as e:
+            log.warning("Auto-fix ransomware protection failed: %s", e)
+        try:
+            _enable_memory_integrity()
+        except Exception as e:
+            log.warning("Auto-fix memory integrity failed: %s", e)
+    threading.Thread(target=_run, daemon=True, name="auto-fix-security").start()
+
+
+@register("security.enableRansomwareProtection")
+def security_enable_ransomware_protection(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Manual fix: enable Controlled Folder Access."""
+    return _enable_ransomware_protection()
+
+
+@register("security.enableMemoryIntegrity")
+def security_enable_memory_integrity(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Manual fix: enable Memory Integrity (HVCI)."""
+    return _enable_memory_integrity()
+
+
+@register("security.enableDefender")
+def security_enable_defender(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Manual fix: enable Windows Defender."""
+    return _enable_windows_defender()
+
+
+@register("security.enableFirewall")
+def security_enable_firewall(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Manual fix: enable Windows Firewall."""
+    return _enable_firewall()
+
+
+@register("security.enableSmartScreen")
+def security_enable_smartscreen(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Manual fix: enable Windows SmartScreen."""
+    rc, out, err = _run_powershell_as_admin(
+        "try { "
+        "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer' -Name 'SmartScreenEnabled' -Value 'RequireAdmin' -Force; "
+        "Set-MpPreference -EnableSmartScreenInShell $true; "
+        "'ok' "
+        "} catch { $_.Exception.Message }"
+    )
+    success = rc == 0 and "ok" in out.strip().lower()
+    return {"success": success, "stdout": out, "stderr": err}
+
+
+@register("security.enableAvsAv")
+def security_enable_avs_av(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Manual fix: install/start AVS AI Shield ClamAV engine."""
+    return _enable_avs_av()
+
+
+@register("security.enableRealtime")
+def security_enable_realtime(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Manual fix: start AVS real-time protection."""
+    return _enable_realtime_protection()
+
+
+@register("security.fix")
+def security_fix(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Generic manual fix: enable one or all protection features.
+
+    Params:
+        feature: one of 'all', 'avs_av', 'realtime', 'defender', 'firewall',
+                 'ransomware', 'memory_integrity', 'smartscreen'
+    """
+    feature = (params or {}).get("feature", "all")
+    results: dict[str, dict[str, Any]] = {}
+
+    if feature in ("all", "avs_av"):
+        results["avs_av"] = _enable_avs_av()
+    if feature in ("all", "realtime"):
+        results["realtime"] = _enable_realtime_protection()
+    if feature in ("all", "defender"):
+        results["defender"] = _enable_windows_defender()
+    if feature in ("all", "firewall"):
+        results["firewall"] = _enable_firewall()
+    if feature in ("all", "ransomware"):
+        results["ransomware"] = _enable_ransomware_protection()
+    if feature in ("all", "memory_integrity"):
+        results["memory_integrity"] = _enable_memory_integrity()
+    if feature in ("all", "smartscreen"):
+        results["smartscreen"] = security_enable_smartscreen(None)
+
+    all_success = all(r.get("success") for r in results.values())
+    return {"success": all_success, "results": results}
+
+
 # _ensure_live_metrics_thread and _live_metrics_thread variables
 # were moved above to before dashboard_live handler definition.

@@ -1921,3 +1921,12 @@ try:
     log.info("Real-time threat monitors auto-started on startup")
 except Exception as _e:
     log.warning("Real-time threat monitors auto-start failed: %s", _e)
+
+# Auto-fix security protections on startup (ClamAV, Defender, firewall,
+# ransomware protection, memory integrity) so cards are green after install.
+try:
+    from avs_backend.dashboard import auto_fix_security_on_startup
+    auto_fix_security_on_startup()
+    log.info("Security auto-fix started on startup")
+except Exception as _e:
+    log.warning("Security auto-fix startup failed: %s", _e)

@@ -30,18 +30,12 @@ _IS_WINDOWS = os.name == "nt"
 _CREATE_NO_WINDOW = 0x08000000 if _IS_WINDOWS else 0
 
 # ─── Unified progress weighting ──────────────────────────────────────
-# The one-click scan runs through several sequential detectors after the
-# main file scan (email attachments, process memory, browser extensions,
-# network connections, quarantine). Each detector is allotted a fixed
-# slice of the overall 0-100 progress bar so the UI shows one continuous,
-# monotonically increasing percentage instead of resetting to 0% (or
-# appearing frozen at 100%) when a new detector starts. The file scan is
-# by far the most expensive phase on a full system scan, so it gets the
-# bulk of the range.
-_PHASE_FILE_SCAN_END = 90
-_PHASE_EMAIL_END = 93
-_PHASE_MEMORY_END = 96
-_PHASE_EXTENSIONS_END = 98
+# The one-click scan focuses on files, folders, and archives only. Email
+# attachments and process memory scanning are offered as separate optional
+# cards so they don't block or slow down the main one-click scan.
+# Progress is one continuous, monotonically increasing percentage.
+_PHASE_FILE_SCAN_END = 95
+_PHASE_EXTENSIONS_END = 97
 _PHASE_NETWORK_END = 99
 _PHASE_QUARANTINE_END = 100
 
@@ -136,37 +130,51 @@ def _should_scan_file(file_path: str) -> bool:
     return False
 
 
-def _count_scannable_files(roots: list[str]) -> int:
-    """Count all scannable files across all scan roots."""
-    count = 0
-    for root_path in roots:
-        try:
-            for root, dirs, files in os.walk(root_path):
-                # Skip excluded paths
-                if _is_excluded(root):
-                    dirs.clear()
+def _collect_scannable_files(root_path: str) -> list[str]:
+    """Collect all scannable file paths under one scan root."""
+    paths: list[str] = []
+    try:
+        for root, dirs, files in os.walk(root_path):
+            if _progress.get("cancel_requested"):
+                return paths
+            if _is_excluded(root):
+                dirs.clear()
+                continue
+            depth = root.replace(root_path, "").count(os.sep)
+            if depth > _MAX_DEPTH:
+                dirs.clear()
+                continue
+            dirs[:] = [d for d in dirs if d.lower() not in _CFG_EXCLUDE_DIR_NAMES]
+            for fname in files:
+                fpath = os.path.join(root, fname)
+                if not _should_scan_file(fpath):
                     continue
-                # Skip very deep directories
-                depth = root.replace(root_path, "").count(os.sep)
-                if depth > _MAX_DEPTH:
-                    dirs.clear()
+                try:
+                    fsize = os.path.getsize(fpath)
+                    if fsize > _MAX_FILE_SIZE:
+                        continue
+                except OSError:
                     continue
-                # Prune excluded directory names
-                dirs[:] = [d for d in dirs if d.lower() not in _CFG_EXCLUDE_DIR_NAMES]
-                for fname in files:
-                    fpath = os.path.join(root, fname)
-                    if not _should_scan_file(fpath):
-                        continue
-                    try:
-                        fsize = os.path.getsize(fpath)
-                        if fsize > _MAX_FILE_SIZE:
-                            continue
-                    except OSError:
-                        continue
-                    count += 1
-        except Exception:
-            pass
-    return count
+                paths.append(fpath)
+    except Exception:
+        pass
+    return paths
+
+
+def _collect_all_scannable_files(roots: list[str]) -> list[str]:
+    """Collect scannable file paths across all scan roots in parallel."""
+    all_paths: list[str] = []
+    try:
+        from concurrent.futures import ThreadPoolExecutor as _TPE, as_completed as _as_completed
+        with _TPE(max_workers=min(len(roots), 8)) as pool:
+            futures = {pool.submit(_collect_scannable_files, r): r for r in roots}
+            for fut in _as_completed(futures):
+                all_paths.extend(fut.result())
+    except Exception:
+        # Fallback to sequential enumeration
+        for r in roots:
+            all_paths.extend(_collect_scannable_files(r))
+    return all_paths
 
 
 def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
@@ -195,25 +203,6 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
     else:
         scan_roots = _get_scan_roots()
     log.info("One-click: Scan type=%s, roots=%s", scan_type, scan_roots)
-
-    # ─── Phase 1: Count scannable files for accurate progress ───────
-    # Count files first so the progress bar advances smoothly from 1%
-    # to 90% as files are scanned, instead of jumping to 90% early
-    # (which happens when scanning catches up to enumeration with hash cache).
-    with _lock:
-        _progress["current_file"] = "Counting files to scan..."
-        _progress["scan_progress"] = 1
-
-    total_files = _count_scannable_files(scan_roots)
-    if total_files == 0:
-        total_files = 1
-
-    with _lock:
-        if _progress.get("cancel_requested"):
-            return {"files_scanned": 0, "threats_found": 0, "threats": []}
-        _progress["total_files"] = total_files
-        _progress["current_file"] = f"Scanning {total_files:,} files..."
-        _progress["scan_progress"] = 2
 
     files_scanned = 0
     threats_found = 0
@@ -248,11 +237,24 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
     except Exception as e:
         log.warning("One-click: Hash cache not available: %s", e)
 
-    # ─── Streaming scan: enumerate + scan in one pass ───────────────
-    # Instead of collecting all files first (which takes minutes on a
-    # real system), we submit files to the executor as they're found
-    # during os.walk. This eliminates the separate enumeration phase
-    # and starts scanning immediately.
+    # ─── Phase 1: Collect all scannable file paths in parallel ─────
+    # Parallel per-drive enumeration is much faster than the previous
+    # sequential count + sequential walk. Once we know the total, the
+    # scan can use the saturated executor from the very first file.
+    with _lock:
+        _progress["current_file"] = "Collecting files to scan..."
+        _progress["scan_progress"] = 1
+
+    file_list = _collect_all_scannable_files(scan_roots)
+    if _progress.get("cancel_requested"):
+        return {"files_scanned": 0, "threats_found": 0, "threats": []}
+
+    total_files = len(file_list) or 1
+
+    with _lock:
+        _progress["total_files"] = total_files
+        _progress["current_file"] = f"Scanning {total_files:,} files..."
+        _progress["scan_progress"] = 2
 
     _PE_EXTENSIONS = {".exe", ".dll", ".scr", ".sys", ".ocx", ".com", ".pif"}
 
@@ -319,102 +321,37 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
 
         return None
 
-    # ─── Streaming parallel scan (producer/consumer) ────────────────
-    # A background thread walks the filesystem and pushes scannable file
-    # paths onto a bounded queue. The main thread pulls from the queue,
-    # keeps the ThreadPoolExecutor saturated, and drains completed
-    # futures continuously. This gives real-time progress (files_scanned
-    # reflects files actually finished, current_file is the last file
-    # that finished scanning) and starts scanning immediately instead of
-    # waiting for a full filesystem walk to complete first.
-    import queue as _queue_mod
-
+    # ─── Batch parallel scan ───────────────────────────────────────
+    # The file list is already known, so we can keep the executor saturated
+    # from the very first file. As each scan completes we immediately submit
+    # the next path; this maximizes throughput (target 350-500 files/sec)
+    # and gives a smooth progress bar based on the exact total.
     max_workers = min(48, (os.cpu_count() or 4) * 6)
-    file_queue: "_queue_mod.Queue[str]" = _queue_mod.Queue(maxsize=4000)
-    enum_done = threading.Event()
-    files_enumerated = [0]  # mutable box for closure
-
-    def _enumerate() -> None:
-        try:
-            for root_path in scan_roots:
-                with _lock:
-                    if _progress.get("cancel_requested"):
-                        return
-                try:
-                    for root, dirs, files in os.walk(root_path):
-                        with _lock:
-                            if _progress.get("cancel_requested"):
-                                return
-                        if _is_excluded(root):
-                            dirs.clear()
-                            continue
-                        depth = root.replace(root_path, "").count(os.sep)
-                        if depth > _MAX_DEPTH:
-                            dirs.clear()
-                            continue
-                        dirs[:] = [d for d in dirs if d.lower() not in _CFG_EXCLUDE_DIR_NAMES]
-
-                        for fname in files:
-                            fpath = os.path.join(root, fname)
-                            if not _should_scan_file(fpath):
-                                continue
-                            try:
-                                fsize = os.path.getsize(fpath)
-                                if fsize > _MAX_FILE_SIZE:
-                                    continue
-                            except OSError:
-                                continue
-
-                            with _lock:
-                                if _progress.get("cancel_requested"):
-                                    return
-                            file_queue.put(fpath)  # blocks if queue is full
-                            files_enumerated[0] += 1
-                            with _lock:
-                                _progress["total_files"] = files_enumerated[0]
-                except Exception:
-                    pass
-        finally:
-            enum_done.set()
-
-    enum_thread = threading.Thread(target=_enumerate, daemon=True)
-    enum_thread.start()
-
-    with _lock:
-        _progress["phase"] = "scanning"
-        _progress["current_file"] = "Starting scan..."
-        _progress["total_files"] = 0
-
     executor = ThreadPoolExecutor(max_workers=max_workers)
     futures: dict = {}
+    file_iter = iter(file_list)
     last_update = time.monotonic()
     scan_started_mono = time.monotonic()
     _max_scan_pct = 0  # track max progress so scan_progress never goes backwards
 
     try:
-        while True:
+        # Pre-fill the executor before draining
+        for _ in range(max_workers * 3):
+            try:
+                fpath = next(file_iter)
+            except StopIteration:
+                break
+            future = executor.submit(_scan_single_file, fpath)
+            futures[future] = fpath
+
+        while futures:
             with _lock:
                 if _progress.get("cancel_requested"):
                     break
 
-            # Keep the executor saturated by pulling from the queue
-            while len(futures) < max_workers * 3:
-                try:
-                    fpath = file_queue.get_nowait()
-                except _queue_mod.Empty:
-                    break
-                future = executor.submit(_scan_single_file, fpath)
-                futures[future] = fpath
-
-            if not futures:
-                if enum_done.is_set() and file_queue.empty():
-                    break  # enumeration finished and nothing left to scan
-                time.sleep(0.05)
-                continue
-
             done_futures = [f for f in futures if f.done()]
             if not done_futures:
-                time.sleep(0.02)
+                time.sleep(0.01)
                 continue
 
             for f in done_futures:
@@ -430,18 +367,25 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
                 with _lock:
                     _progress["current_file"] = fpath
 
+                # Keep executor saturated by submitting the next file immediately
+                try:
+                    next_path = next(file_iter)
+                    future = executor.submit(_scan_single_file, next_path)
+                    futures[future] = next_path
+                except StopIteration:
+                    pass
+
             now = time.monotonic()
             if now - last_update >= 0.25:
                 last_update = now
                 with _lock:
-                    # Use pre-counted total for smooth, accurate progress
-                    frac = files_scanned / max(total_files, 1)
+                    frac = files_scanned / total_files
                     pct = min(_PHASE_FILE_SCAN_END, int(frac * _PHASE_FILE_SCAN_END))
                     if pct > _max_scan_pct:
                         _max_scan_pct = pct
                     _progress["scan_progress"] = _max_scan_pct
                     _progress["files_scanned"] = files_scanned
-                    _progress["total_files"] = max(total_files, files_enumerated[0])
+                    _progress["total_files"] = total_files
                     elapsed = max(now - scan_started_mono, 0.001)
                     _progress["scan_speed"] = round(files_scanned / elapsed, 1)
     finally:
@@ -452,7 +396,7 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
             _progress["scan_progress"] = _PHASE_FILE_SCAN_END
         _progress["current_file"] = None
         _progress["files_scanned"] = files_scanned
-        _progress["total_files"] = max(total_files, files_enumerated[0])
+        _progress["total_files"] = total_files
 
     # Save hash cache for incremental scanning next time
     if hash_cache:
@@ -533,106 +477,18 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
     except Exception as e:
         log.error("One-click scan phase failed: %s", e)
 
-    # Collect threats from additional scan phases (email, memory)
+    # Email attachment and process memory scans are offered as separate
+    # optional scans (one_click.scan_email, one_click.scan_memory) so they
+    # don't slow down or block the main one-click file scan.
     _extra_threats: list[dict[str, Any]] = []
 
-    # Phase 1.5: Email attachment scanning
-    if not _cancel_requested():
-        try:
-            from avs_backend.threat_engine.email_scanner import EmailScanner
-            email_scanner = EmailScanner()
-            with _lock:
-                _progress["current_file"] = "Scanning email attachments..."
-                _progress["scan_progress"] = _PHASE_FILE_SCAN_END + 1
-
-            # Scan common email file locations
-            email_dirs = []
-            if _IS_WINDOWS:
-                local_app_data = os.environ.get("LOCALAPPDATA", "")
-                app_data = os.environ.get("APPDATA", "")
-                user_profile = os.environ.get("USERPROFILE", "")
-                email_dirs = [
-                    os.path.join(user_profile, "Documents"),
-                    os.path.join(local_app_data, "Microsoft", "Outlook"),
-                    os.path.join(app_data, "Thunderbird", "Profiles"),
-                    os.path.join(local_app_data, "Microsoft", "Windows", "Mail"),
-                ]
-
-            email_threats = 0
-            for email_dir in email_dirs:
-                if not os.path.isdir(email_dir):
-                    continue
-                for root, _dirs, files in os.walk(email_dir):
-                    for fname in files:
-                        ext = os.path.splitext(fname)[1].lower()
-                        if ext in (".eml", ".msg"):
-                            fpath = os.path.join(root, fname)
-                            try:
-                                email_result = email_scanner.scan_email_file(fpath)
-                                if email_result.get("threats"):
-                                    for threat in email_result["threats"]:
-                                        _extra_threats.append({
-                                            "path": threat.get("file_path", fpath),
-                                            "threat_name": threat.get("threat_name", "Email.Malware"),
-                                            "threat_type": threat.get("threat_type", "malware"),
-                                            "severity": threat.get("severity", "high"),
-                                            "source": "email_scanner",
-                                        })
-                                        email_threats += 1
-                            except Exception:
-                                pass
-
-            if email_threats:
-                result["threats_found"] += email_threats
-                with _lock:
-                    _progress["threats_found"] = result["threats_found"]
-            log.info("One-click: Email scan found %d threats", email_threats)
-        except Exception as e:
-            log.warning("One-click: Email scanning phase failed: %s", e)
-
-    with _lock:
-        if not _progress.get("cancel_requested"):
-            _progress["scan_progress"] = _PHASE_EMAIL_END
-
-    # Phase 1.6: Memory/process scanning
-    if not _cancel_requested():
-        try:
-            from avs_backend.threat_engine.memory_scanner import MemoryScanner
-            mem_scanner = MemoryScanner()
-            with _lock:
-                _progress["current_file"] = "Scanning running processes memory..."
-                _progress["scan_progress"] = _PHASE_EMAIL_END + 1
-
-            mem_result = mem_scanner.scan_all_processes()
-            mem_threats = mem_result.get("threats_found", 0)
-            if mem_threats:
-                for threat in mem_result.get("threats", []):
-                    _extra_threats.append({
-                        "path": threat.get("process", "unknown"),
-                        "threat_name": threat.get("threat_name", "Memory.Injection"),
-                        "threat_type": threat.get("threat_type", "malware"),
-                        "severity": threat.get("severity", "high"),
-                        "source": "memory_scanner",
-                    })
-                result["threats_found"] += mem_threats
-                with _lock:
-                    _progress["threats_found"] = result["threats_found"]
-            log.info("One-click: Memory scan found %d threats in %d processes",
-                     mem_threats, mem_result.get("processes_scanned", 0))
-        except Exception as e:
-            log.warning("One-click: Memory scanning phase failed: %s", e)
-
-    with _lock:
-        if not _progress.get("cancel_requested"):
-            _progress["scan_progress"] = _PHASE_MEMORY_END
-
-    # Phase 1.7: Browser extension scanning
+    # Phase 1.5: Browser extension scanning
     if not _cancel_requested():
         try:
             from avs_backend.browser_extensions import _get_all_extensions
             with _lock:
                 _progress["current_file"] = "Scanning browser extensions..."
-                _progress["scan_progress"] = _PHASE_MEMORY_END + 1
+                _progress["scan_progress"] = _PHASE_FILE_SCAN_END + 1
 
             extensions = _get_all_extensions()
             ext_threats = 0
@@ -932,3 +788,29 @@ def one_click_skip_quarantine(_params: dict[str, Any] | None) -> dict[str, Any]:
     _quarantine_confirmed.set()  # unblock the waiting scan thread
     log.info("One-click: User skipped quarantine")
     return {"success": True, "message": "Quarantine skipped"}
+
+
+@register("one_click.scan_email")
+def one_click_scan_email(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Standalone email attachment scan, run outside the main one-click flow."""
+    try:
+        from avs_backend.threat_engine.email_scanner import EmailScanner
+        scanner = EmailScanner()
+        result = scanner.scan_mailbox()
+        return {"success": True, **result}
+    except Exception as e:
+        log.error("Email scan failed: %s", e)
+        return {"success": False, "error": str(e)}
+
+
+@register("one_click.scan_memory")
+def one_click_scan_memory(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Standalone process memory scan, run outside the main one-click flow."""
+    try:
+        from avs_backend.threat_engine.memory_scanner import MemoryScanner
+        scanner = MemoryScanner()
+        result = scanner.scan_all_processes()
+        return {"success": True, **result}
+    except Exception as e:
+        log.error("Memory scan failed: %s", e)
+        return {"success": False, "error": str(e)}

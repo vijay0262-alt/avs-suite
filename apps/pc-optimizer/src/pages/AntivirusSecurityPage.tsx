@@ -106,6 +106,14 @@ export default function AntivirusSecurityPage() {
   const [emailScanResult, setEmailScanResult] = useState<{ scanned: number; threats_found: number; safe: boolean; threat_level: string; results: Array<{ file_info: { name: string }; threat_level: string; threats: string[] }>; message?: string } | null>(null);
   const [emailScanning, setEmailScanning] = useState(false);
 
+  // Memory/process scanner state
+  const [memoryScanResult, setMemoryScanResult] = useState<{ processes_scanned: number; threats_found: number; safe: boolean; message?: string } | null>(null);
+  const [memoryScanning, setMemoryScanning] = useState(false);
+
+  // Manual security fix state
+  const [fixLoading, setFixLoading] = useState<string | null>(null);
+  const [fixMessage, setFixMessage] = useState<{ feature: string; text: string; type: 'success' | 'error' | 'info' } | null>(null);
+
   // Gaming Mode state
   const [gameModeActive, setGameModeActive] = useState(false);
   const [gameModeLoading, setGameModeLoading] = useState(false);
@@ -229,11 +237,34 @@ export default function AntivirusSecurityPage() {
 
   const scanOutlookAttachments = useCallback(async () => {
     setEmailScanning(true);
+    setEmailScanResult(null);
     try {
-      const res = await rpc.raw<{ result: { scanned: number; threats_found: number; safe: boolean; threat_level: string; results: Array<{ file_info: { name: string }; threat_level: string; threats: string[] }>; message?: string } }>(RPC_METHODS.ADV_SECURITY_EMAIL_SCAN_OUTLOOK);
-      setEmailScanResult(res.result);
+      const res = await rpc.raw<{ attachments_scanned?: number; threats_found?: number; threats?: unknown[]; message?: string }>(RPC_METHODS.ONE_CLICK_SCAN_EMAIL);
+      setEmailScanResult({
+        scanned: res.attachments_scanned ?? 0,
+        threats_found: res.threats_found ?? 0,
+        safe: (res.threats_found ?? 0) === 0,
+        threat_level: (res.threats_found ?? 0) > 0 ? 'danger' : 'safe',
+        results: [],
+        message: res.message,
+      });
     } catch { /* ignore */ }
     setEmailScanning(false);
+  }, []);
+
+  const scanMemoryProcesses = useCallback(async () => {
+    setMemoryScanning(true);
+    setMemoryScanResult(null);
+    try {
+      const res = await rpc.raw<{ processes_scanned?: number; threats_found?: number; threats?: unknown[]; message?: string }>(RPC_METHODS.ONE_CLICK_SCAN_MEMORY);
+      setMemoryScanResult({
+        processes_scanned: res.processes_scanned ?? 0,
+        threats_found: res.threats_found ?? 0,
+        safe: (res.threats_found ?? 0) === 0,
+        message: res.message,
+      });
+    } catch { /* ignore */ }
+    setMemoryScanning(false);
   }, []);
 
   const refreshGameMode = useCallback(async () => {
@@ -397,6 +428,38 @@ export default function AntivirusSecurityPage() {
     } catch { /* ignore */ }
     setRtGuardLoading(false);
   }, [rtGuardEnabled]);
+
+  const refreshRtGuardStatus = useCallback(async () => {
+    try {
+      const res = await rpc.raw<{ success: boolean; status: Record<string, { running: boolean } | null> }>(RPC_METHODS.REALTIME_THREAT_STATUS);
+      const st = res?.status ?? (res as Record<string, unknown>);
+      if (st && typeof st === 'object') {
+        const etw = (st as Record<string, { running?: boolean } | null>)?.etw_file_monitor;
+        const usb = (st as Record<string, { running?: boolean } | null>)?.usb_monitor;
+        const net = (st as Record<string, { running?: boolean } | null>)?.network_c2;
+        setRtGuardEnabled(etw?.running === true || usb?.running === true || net?.running === true);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  const runSecurityFix = useCallback(async (feature: string, label: string) => {
+    setFixLoading(feature);
+    setFixMessage(null);
+    try {
+      const res = await rpc.raw<{ success?: boolean; requires_reboot?: boolean; message?: string; results?: Record<string, { success?: boolean; message?: string; error?: string }> }>(RPC_METHODS.SECURITY_FIX, { feature });
+      if (res.success) {
+        setFixMessage({ feature: label, text: res.requires_reboot ? (res.message ?? `${label} enabled — reboot required.`) : `${label} is now active.`, type: 'success' });
+      } else {
+        const firstError = Object.values(res.results || {}).find((r) => !r.success)?.error;
+        setFixMessage({ feature: label, text: firstError ?? 'Could not enable protection. Run as administrator and try again.', type: 'error' });
+      }
+      await refreshAvStatus();
+      await refreshRtGuardStatus();
+    } catch {
+      setFixMessage({ feature: label, text: 'Could not enable protection. Make sure AVS AI Shield is running as administrator.', type: 'error' });
+    }
+    setFixLoading(null);
+  }, [refreshAvStatus, refreshRtGuardStatus]);
 
   const handleRestoreThreat = useCallback(async (threatId: string) => {
     try {
@@ -1603,6 +1666,21 @@ export default function AntivirusSecurityPage() {
                 <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${rtGuardEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
               </button>
             </div>
+            {!rtGuardEnabled && (
+              <div className="mt-3 flex items-center gap-3">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => runSecurityFix('realtime', 'Real-Time Protection')}
+                  loading={fixLoading === 'realtime'}
+                  disabled={fixLoading === 'realtime'}
+                  leftIcon={<ArrowPathIcon className="h-4 w-4" />}
+                  data-testid="rt-protection-fix-btn"
+                >
+                  Fix Now
+                </Button>
+              </div>
+            )}
           </Card>
 
           {/* AV Engine status — auto-setup, no button needed */}
@@ -1662,9 +1740,30 @@ export default function AntivirusSecurityPage() {
             )}
 
             {!avStatus?.clamd_running && !setupStatus?.setup_in_progress && (
-              <p className="mt-2 text-caption text-text-muted" data-testid="av-auto-setup-msg">
-                The antivirus engine starts automatically with AVS AI Shield. Virus definitions download in the background and update daily.
-              </p>
+              <div className="mt-3 flex flex-col sm:flex-row items-start sm:items-center gap-3" data-testid="av-auto-setup-msg">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => runSecurityFix('avs_av', 'AV Engine')}
+                  loading={fixLoading === 'avs_av'}
+                  disabled={fixLoading === 'avs_av'}
+                  leftIcon={<ArrowPathIcon className="h-4 w-4" />}
+                  data-testid="av-engine-fix-btn"
+                >
+                  Fix Now
+                </Button>
+                <span className="text-caption text-text-muted">
+                  Starts the AV engine if setup is already complete.
+                </span>
+              </div>
+            )}
+
+            {fixMessage?.feature && (
+              <div className={`mt-3 p-3 rounded border ${fixMessage.type === 'success' ? 'bg-semantic-success/5 border-semantic-success/20' : 'bg-semantic-danger/5 border-semantic-danger/20'}`}>
+                <p className={`text-small ${fixMessage.type === 'success' ? 'text-semantic-success' : 'text-semantic-danger'}`}>
+                  {fixMessage.text}
+                </p>
+              </div>
             )}
           </Card>
         </div>
@@ -2045,13 +2144,93 @@ export default function AntivirusSecurityPage() {
             </Button>
           </Card>
 
+          {/* Email attachment scan — optional, no longer part of one-click scan */}
+          <Card variant="glass" className="p-5" data-testid="av-email-scan-card">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="shrink-0 rounded-[var(--avs-radius-md)] bg-brand-primary/10 p-2.5">
+                  <DocumentTextIcon className="h-6 w-6 text-brand-primary" />
+                </div>
+                <div>
+                  <div className="text-small font-semibold text-text-primary">Email Attachment Scan</div>
+                  <p className="text-caption text-text-secondary">
+                    Scan Outlook mailbox and email files (.eml, .msg) for malicious attachments. This is now an optional scan and no longer blocks the main one-click scan.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={scanOutlookAttachments}
+                loading={emailScanning}
+                disabled={emailScanning}
+                data-testid="av-email-scan-btn"
+              >
+                {emailScanning ? 'Scanning...' : 'Scan Email'}
+              </Button>
+            </div>
+
+            {emailScanResult && (
+              <div className={`mt-4 p-3 rounded border ${emailScanResult.threats_found > 0 ? 'bg-semantic-danger/5 border-semantic-danger/20' : 'bg-semantic-success/5 border-semantic-success/20'}`}>
+                <p className={`text-small ${emailScanResult.threats_found > 0 ? 'text-semantic-danger' : 'text-semantic-success'}`}>
+                  {emailScanResult.threats_found > 0
+                    ? `${emailScanResult.threats_found} threat(s) found in ${emailScanResult.scanned} attachments.`
+                    : `${emailScanResult.scanned} attachment(s) scanned — no threats found.`}
+                </p>
+                {emailScanResult.message && (
+                  <p className="text-caption text-text-muted mt-1">{emailScanResult.message}</p>
+                )}
+              </div>
+            )}
+          </Card>
+
+          {/* Process memory scan — optional, no longer part of one-click scan */}
+          <Card variant="glass" className="p-5" data-testid="av-memory-scan-card">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="shrink-0 rounded-[var(--avs-radius-md)] bg-brand-primary/10 p-2.5">
+                  <BoltIcon className="h-6 w-6 text-brand-primary" />
+                </div>
+                <div>
+                  <div className="text-small font-semibold text-text-primary">Process Memory Scan</div>
+                  <p className="text-caption text-text-secondary">
+                    Scan running process memory for injected code, fileless malware, and suspicious payloads. This is now an optional scan and no longer blocks the main one-click scan.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={scanMemoryProcesses}
+                loading={memoryScanning}
+                disabled={memoryScanning}
+                data-testid="av-memory-scan-btn"
+              >
+                {memoryScanning ? 'Scanning...' : 'Scan Memory'}
+              </Button>
+            </div>
+
+            {memoryScanResult && (
+              <div className={`mt-4 p-3 rounded border ${memoryScanResult.threats_found > 0 ? 'bg-semantic-danger/5 border-semantic-danger/20' : 'bg-semantic-success/5 border-semantic-success/20'}`}>
+                <p className={`text-small ${memoryScanResult.threats_found > 0 ? 'text-semantic-danger' : 'text-semantic-success'}`}>
+                  {memoryScanResult.threats_found > 0
+                    ? `${memoryScanResult.threats_found} threat(s) found in ${memoryScanResult.processes_scanned} processes.`
+                    : `${memoryScanResult.processes_scanned} process(es) scanned — no threats found.`}
+                </p>
+                {memoryScanResult.message && (
+                  <p className="text-caption text-text-muted mt-1">{memoryScanResult.message}</p>
+                )}
+              </div>
+            )}
+          </Card>
+
           {/* Advanced Security */}
           <Card variant="glass" className="p-5">
             <div className="flex items-center gap-3 mb-3">
               <ShieldExclamationIcon className="h-6 w-6 text-brand-primary" />
               <div>
                 <div className="text-small font-semibold text-text-primary">Advanced Security Tools</div>
-                <p className="text-caption text-text-secondary">Boot sector scanning, email scanner, web shield, behavioral sandbox, and ML anomaly detection.</p>
+                <p className="text-caption text-text-secondary">Boot sector scanning, web shield, behavioral sandbox, and ML anomaly detection.</p>
               </div>
             </div>
             <Button variant="secondary" size="sm" onClick={() => window.location.hash = '#/advanced-security'} data-testid="av-advanced-security-btn">
