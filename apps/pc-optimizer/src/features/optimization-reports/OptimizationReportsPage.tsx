@@ -274,7 +274,7 @@ export default function OptimizationReportsPage() {
 
       {/* Statistics */}
       {(s.statistics || s.v1Statistics) && (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-3">
           <StatCard label="Total Reports" value={(s.statistics?.totalReports ?? 0) + (s.v1Statistics?.totalReports ?? 0)} icon={DocumentChartBarIcon} />
           <StatCard label="Avg Health Delta" value={`+${(s.statistics?.averageHealthDelta ?? 0).toFixed(1)}`} icon={ArrowTrendingUpIcon} />
           <StatCard label="Storage Recovered" value={formatBytes(s.statistics?.totalStorageRecovered ?? 0)} icon={CircleStackIcon} />
@@ -447,12 +447,12 @@ export default function OptimizationReportsPage() {
 
 function StatCard({ label, value, icon: Icon }: { label: string; value: string | number; icon: ComponentType<SVGProps<SVGSVGElement>> }) {
   return (
-    <Card variant="glass" className="p-3">
-      <div className="flex items-center gap-2">
-        <Icon className="h-5 w-5 text-[var(--avs-brand-primary)]" />
-        <div>
-          <p className="text-caption text-[var(--avs-text-muted)]">{label}</p>
-          <p className="text-statistic-sm font-bold text-[var(--avs-text-primary)]">{value}</p>
+    <Card variant="glass" className="p-3 overflow-hidden">
+      <div className="flex items-center gap-2 min-w-0">
+        <Icon className="h-5 w-5 text-[var(--avs-brand-primary)] shrink-0" />
+        <div className="min-w-0 overflow-hidden">
+          <p className="text-caption text-[var(--avs-text-muted)] truncate">{label}</p>
+          <p className="text-small font-bold text-[var(--avs-text-primary)] truncate" title={String(value)}>{value}</p>
         </div>
       </div>
     </Card>
@@ -675,12 +675,12 @@ function V1ReportDetail({ report }: { report: V1IntelligenceReport }) {
 
 function MetricBox({ label, value, icon: Icon }: { label: string; value: string; icon: ComponentType<SVGProps<SVGSVGElement>> }) {
   return (
-    <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3">
-      <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-[var(--avs-text-muted)]" />
-        <span className="text-caption text-[var(--avs-text-muted)]">{label}</span>
+    <div className="rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] p-3 overflow-hidden">
+      <div className="flex items-center gap-2 min-w-0">
+        <Icon className="h-4 w-4 text-[var(--avs-text-muted)] shrink-0" />
+        <span className="text-caption text-[var(--avs-text-muted)] truncate">{label}</span>
       </div>
-      <p className="text-small font-semibold text-[var(--avs-text-primary)] mt-1">{value}</p>
+      <p className="text-small font-semibold text-[var(--avs-text-primary)] mt-1 truncate" title={value}>{value}</p>
     </div>
   );
 }

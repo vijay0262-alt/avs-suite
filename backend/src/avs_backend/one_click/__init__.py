@@ -374,6 +374,7 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
     futures: dict = {}
     last_update = time.monotonic()
     scan_started_mono = time.monotonic()
+    _max_scan_pct = 0  # track max progress so scan_progress never goes backwards
 
     try:
         while True:
@@ -424,7 +425,12 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
                     else:
                         frac = files_scanned / total_est
                     pct = min(_PHASE_FILE_SCAN_END, int(frac * _PHASE_FILE_SCAN_END))
-                    _progress["scan_progress"] = pct
+                    # Ensure progress never goes backwards — the enumeration
+                    # thread may discover large batches of files at once,
+                    # causing frac to drop. Track the maximum and use that.
+                    if pct > _max_scan_pct:
+                        _max_scan_pct = pct
+                    _progress["scan_progress"] = _max_scan_pct
                     _progress["files_scanned"] = files_scanned
                     _progress["total_files"] = files_enumerated[0]
                     elapsed = max(now - scan_started_mono, 0.001)

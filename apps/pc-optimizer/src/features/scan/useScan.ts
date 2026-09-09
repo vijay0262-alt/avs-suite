@@ -68,6 +68,7 @@ function mapStatusCounters(
   //   findings, actions_available, elapsed_time_ms, is_cancelled, completion_percent
   const counters: Record<string, number> = {
     filesScanned: getProgressValue<number>(progress, 'assets_discovered', 0),
+    totalFiles: getProgressValue<number>(progress, 'total_files', 0),
     itemsScanned: getProgressValue<number>(progress, 'assets_evaluated', 0),
     recommendations: getProgressValue<number>(progress, 'findings', 0),
     actionsAvailable: getProgressValue<number>(progress, 'actions_available', 0),

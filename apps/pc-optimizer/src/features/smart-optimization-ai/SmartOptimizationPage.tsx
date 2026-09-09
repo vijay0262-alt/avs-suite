@@ -131,8 +131,8 @@ export default function SmartOptimizationPage() {
       {/* ── Summary Cards (4) — synced with real scan data ────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" data-testid="smart-opt-cards">
         {/* Card 1: Optimization Score */}
-        <Card variant="glass" className="p-5" data-testid="smart-opt-score">
-          <div className="flex items-center gap-3">
+        <Card variant="glass" className="p-4 overflow-hidden" data-testid="smart-opt-score">
+          <div className="flex items-center gap-3 min-w-0">
             <div className={`shrink-0 rounded-[var(--avs-radius-md)] p-2.5 ${
               healthScore == null ? 'bg-[var(--avs-surface-muted)]' :
               healthScore >= 80 ? 'bg-[var(--avs-success)]/10' :
@@ -146,31 +146,31 @@ export default function SmartOptimizationPage() {
                 'text-[var(--avs-danger)]'
               }`} />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-caption text-[var(--avs-text-muted)]">Optimization Score</div>
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <div className="text-caption text-[var(--avs-text-muted)] truncate">Optimization Score</div>
               <div className="flex items-baseline gap-1">
-                <span className="text-statistic-sm font-bold text-[var(--avs-text-primary)] tabular-nums">{healthScore ?? '—'}</span>
+                <span className="text-small font-bold text-[var(--avs-text-primary)] tabular-nums">{healthScore ?? '—'}</span>
                 {healthScore != null && <span className="text-caption text-[var(--avs-text-muted)]">/100</span>}
               </div>
-              <div className={`text-caption ${scoreDelta > 0 ? 'text-[var(--avs-success)]' : 'text-[var(--avs-text-muted)]'}`}>
-                {scoreDelta > 0 ? `+${scoreDelta} improved` : 'Run optimization to improve'}
+              <div className={`text-caption truncate ${scoreDelta > 0 ? 'text-[var(--avs-success)]' : 'text-[var(--avs-text-muted)]'}`}>
+                {scoreDelta > 0 ? `+${scoreDelta} improved` : 'Run to improve'}
               </div>
             </div>
           </div>
         </Card>
 
         {/* Card 2: Storage Recovered */}
-        <Card variant="glass" className="p-5" data-testid="smart-opt-storage">
-          <div className="flex items-center gap-3">
+        <Card variant="glass" className="p-4 overflow-hidden" data-testid="smart-opt-storage">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-[var(--avs-success)]/10">
               <CircleStackIcon className="h-5 w-5 text-[var(--avs-success)]" />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-caption text-[var(--avs-text-muted)]">Storage Recovered</div>
-              <div className="text-statistic-sm font-bold text-[var(--avs-text-primary)] tabular-nums">
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <div className="text-caption text-[var(--avs-text-muted)] truncate">Storage Recovered</div>
+              <div className="text-small font-bold text-[var(--avs-text-primary)] tabular-nums truncate">
                 {formatDataSize(spaceRecovered)}
               </div>
-              <div className="text-caption text-[var(--avs-text-muted)]">
+              <div className="text-caption text-[var(--avs-text-muted)] truncate">
                 {spaceRecovered > 0 ? 'Total recovered' : 'Not yet optimized'}
               </div>
             </div>
@@ -178,17 +178,17 @@ export default function SmartOptimizationPage() {
         </Card>
 
         {/* Card 3: Items Fixed */}
-        <Card variant="glass" className="p-5" data-testid="smart-opt-items">
-          <div className="flex items-center gap-3">
+        <Card variant="glass" className="p-4 overflow-hidden" data-testid="smart-opt-items">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-[var(--avs-warning)]/10">
               <BoltIcon className="h-5 w-5 text-[var(--avs-warning)]" />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-caption text-[var(--avs-text-muted)]">Items Fixed</div>
-              <div className="text-statistic-sm font-bold text-[var(--avs-text-primary)] tabular-nums">
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <div className="text-caption text-[var(--avs-text-muted)] truncate">Items Fixed</div>
+              <div className="text-small font-bold text-[var(--avs-text-primary)] tabular-nums truncate">
                 {filesCleaned.toLocaleString()}
               </div>
-              <div className="text-caption text-[var(--avs-text-muted)]">
+              <div className="text-caption text-[var(--avs-text-muted)] truncate">
                 {filesCleaned > 0 ? 'Files cleaned' : 'Not yet optimized'}
               </div>
             </div>
@@ -196,17 +196,17 @@ export default function SmartOptimizationPage() {
         </Card>
 
         {/* Card 4: Last Optimization */}
-        <Card variant="glass" className="p-5" data-testid="smart-opt-last">
-          <div className="flex items-center gap-3">
+        <Card variant="glass" className="p-4 overflow-hidden" data-testid="smart-opt-last">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="shrink-0 rounded-[var(--avs-radius-md)] p-2.5 bg-[var(--avs-surface-muted)]">
               <ClockIcon className="h-5 w-5 text-[var(--avs-text-muted)]" />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-caption text-[var(--avs-text-muted)]">Last Optimization</div>
-              <div className="text-small font-semibold text-[var(--avs-text-primary)]">
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <div className="text-caption text-[var(--avs-text-muted)] truncate">Last Optimization</div>
+              <div className="text-small font-semibold text-[var(--avs-text-primary)] truncate">
                 {lastOptLabel}
               </div>
-              <div className="text-caption text-[var(--avs-text-muted)]">
+              <div className="text-caption text-[var(--avs-text-muted)] truncate">
                 {isComplete ? 'Completed' : isScanning ? 'In progress...' : 'Ready'}
               </div>
             </div>
@@ -222,25 +222,25 @@ export default function SmartOptimizationPage() {
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-statistic-sm font-bold text-[var(--avs-text-primary)] tabular-nums">
+              <div className="text-small font-bold text-[var(--avs-text-primary)] tabular-nums">
                 {filesDetected.toLocaleString()}
               </div>
               <div className="text-caption text-[var(--avs-text-muted)] mt-1">Files Detected</div>
             </div>
             <div className="text-center">
-              <div className="text-statistic-sm font-bold text-[var(--avs-success)] tabular-nums">
+              <div className="text-small font-bold text-[var(--avs-success)] tabular-nums">
                 {filesCleaned.toLocaleString()}
               </div>
               <div className="text-caption text-[var(--avs-text-muted)] mt-1">Files Cleaned</div>
             </div>
             <div className="text-center">
-              <div className="text-statistic-sm font-bold text-[var(--avs-warning)] tabular-nums">
+              <div className="text-small font-bold text-[var(--avs-warning)] tabular-nums">
                 {snapshot.cleanupResult.failed.toLocaleString()}
               </div>
               <div className="text-caption text-[var(--avs-text-muted)] mt-1">Files Skipped</div>
             </div>
             <div className="text-center">
-              <div className="text-statistic-sm font-bold text-[var(--avs-brand-primary)] tabular-nums">
+              <div className="text-small font-bold text-[var(--avs-brand-primary)] tabular-nums">
                 {snapshot.cleanupResult.foldersCleaned.toLocaleString()}
               </div>
               <div className="text-caption text-[var(--avs-text-muted)] mt-1">Folders Removed</div>

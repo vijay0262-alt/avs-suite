@@ -698,13 +698,13 @@ export default function SettingsPage() {
 
         <Card title="AVS AI Shield Account" variant="glass">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <UserCircleIcon className="h-10 w-10 text-text-muted" aria-hidden />
-              <div>
-                <div className="text-small font-medium text-text-primary">
+            <div className="flex items-center gap-3 min-w-0">
+              <UserCircleIcon className="h-10 w-10 text-text-muted shrink-0" aria-hidden />
+              <div className="min-w-0 overflow-hidden">
+                <div className="text-small font-medium text-text-primary truncate" title={customer?.display_name ?? session?.customerName ?? ''}>
                   {customer?.display_name ?? session?.customerName ?? 'AVS AI Shield Customer'}
                 </div>
-                <div className="text-caption text-text-secondary">
+                <div className="text-caption text-text-secondary truncate" title={customer?.email ?? session?.customerEmail ?? ''}>
                   {customer?.email ?? session?.customerEmail ?? '—'}
                 </div>
                 <div className="mt-1 flex items-center gap-2">

@@ -36,6 +36,7 @@ import {
 import { ScanHeader } from './ScanHeader';
 import { ScanProgress } from './ScanProgress';
 import { ScanCounters } from './ScanCounters';
+import { CircularScanProgress } from '../../shared/components/CircularScanProgress';
 import { ScanTree } from './ScanTree';
 import { ScanFooter } from './ScanFooter';
 import { ScanSummary } from './ScanSummary';
@@ -153,7 +154,24 @@ export function UnifiedScanView({
           step={step as 'preparing' | 'scanning' | 'paused' | 'complete' | 'error'}
         />
 
-        {/* Progress bar */}
+        {/* Circular progress ring (Trend Micro-style) */}
+        <div className="flex justify-center py-2">
+          <CircularScanProgress
+            progress={liveStatus.overallProgress}
+            phase={step}
+            phaseLabel={
+              isOptimizeModule && currentCategory
+                ? `Cleaning ${currentCategory}`
+                : liveStatus.currentPhase || currentPhase?.label || 'Scanning'
+            }
+            title={config.moduleName}
+            subtitle={liveStatus.currentFile ?? undefined}
+            filesScanned={counters.filesScanned}
+            totalFiles={counters.totalFiles ?? counters.filesScanned}
+          />
+        </div>
+
+        {/* Current file / sub-progress (kept for detailed view below ring) */}
         <ScanProgress
           progress={liveStatus.overallProgress}
           subProgress={liveStatus.subProgress}

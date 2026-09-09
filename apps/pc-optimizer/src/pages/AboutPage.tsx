@@ -193,15 +193,15 @@ export default function AboutPage() {
 
       <Card title="Company & Contact">
         <dl className="grid grid-cols-1 gap-3 text-small md:grid-cols-2">
-          <div>
+          <div className="min-w-0 overflow-hidden">
             <dt className="text-text-muted">Publisher</dt>
-            <dd className="text-text-primary">{APP_METADATA.vendor}</dd>
+            <dd className="text-text-primary truncate">{APP_METADATA.vendor}</dd>
           </div>
-          <div>
+          <div className="min-w-0 overflow-hidden">
             <dt className="text-text-muted">Website</dt>
-            <dd>
+            <dd className="truncate">
               <a
-                className="text-[var(--avs-brand-primary)] hover:underline"
+                className="text-[var(--avs-brand-primary)] hover:underline truncate inline-block max-w-full"
                 href={APP_METADATA.websiteUrl}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -211,11 +211,11 @@ export default function AboutPage() {
               </a>
             </dd>
           </div>
-          <div>
+          <div className="min-w-0 overflow-hidden">
             <dt className="text-text-muted">Support</dt>
-            <dd>
+            <dd className="truncate">
               <a
-                className="text-[var(--avs-brand-primary)] hover:underline"
+                className="text-[var(--avs-brand-primary)] hover:underline truncate inline-block max-w-full"
                 href={`mailto:${APP_METADATA.supportEmail}`}
                 data-testid="about-support-link"
               >
@@ -223,9 +223,9 @@ export default function AboutPage() {
               </a>
             </dd>
           </div>
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 min-w-0 overflow-hidden">
             <dt className="text-text-muted">Copyright</dt>
-            <dd className="text-text-secondary">{APP_METADATA.copyright}</dd>
+            <dd className="text-text-secondary truncate">{APP_METADATA.copyright}</dd>
           </div>
         </dl>
       </Card>

@@ -295,6 +295,8 @@ function ReportContent({ report }: { report: ExecutionReport }) {
           <SummaryStat label="Total Files" value={report.recoveredSpace.totalFiles} />
           <SummaryStat label="Total Folders" value={report.recoveredSpace.totalFolders} />
           <SummaryStat label="Largest Cleanup" value={formatBytes(report.recoveredSpace.largestSingleCleanup)} />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
           <SummaryStat label="Recycle Bin" value={report.recoveredSpace.totalRecycleBinItems} />
           <SummaryStat label="Temp Files" value={report.recoveredSpace.totalTempFiles} />
           <SummaryStat label="Browser Data" value={report.recoveredSpace.totalBrowserData} />
@@ -365,12 +367,12 @@ function ReportContent({ report }: { report: ExecutionReport }) {
 
 function SummaryStat({ icon, label, value }: { icon?: React.ReactNode; label: string; value: React.ReactNode }) {
   return (
-    <Card variant="glass" padded={false} className="p-3">
-      <div className="flex items-center gap-1.5 text-caption font-medium uppercase tracking-wide text-[var(--avs-text-muted)]">
+    <Card variant="glass" padded={false} className="p-3 overflow-hidden">
+      <div className="flex items-center gap-1.5 text-caption font-medium uppercase tracking-wide text-[var(--avs-text-muted)] truncate">
         {icon}
-        {label}
+        <span className="truncate">{label}</span>
       </div>
-      <div className="mt-1 text-statistic-sm font-semibold text-[var(--avs-text-primary)] tabular-nums">{value}</div>
+      <div className="mt-1 text-small font-semibold text-[var(--avs-text-primary)] tabular-nums truncate" title={String(value)}>{value}</div>
     </Card>
   );
 }

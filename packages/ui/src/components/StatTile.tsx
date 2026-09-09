@@ -52,20 +52,20 @@ export function StatTile({ label, value, hint, icon, trend, trendValue, variant 
           {icon}
         </div>
       )}
-      <div className="min-w-0 flex-1">
-        <div className="text-caption font-medium uppercase tracking-wide text-[var(--avs-text-muted)]">
+      <div className="min-w-0 flex-1 overflow-hidden">
+        <div className="text-caption font-medium uppercase tracking-wide text-[var(--avs-text-muted)] truncate">
           {label}
         </div>
-        <div className="mt-1 flex items-baseline gap-2">
-          <span className="text-statistic-sm font-semibold text-[var(--avs-text-primary)] tabular-nums">{value}</span>
+        <div className="mt-1 flex items-baseline gap-2 overflow-hidden">
+          <span className="text-statistic-sm font-semibold text-[var(--avs-text-primary)] tabular-nums truncate" title={typeof value === 'string' ? value : undefined}>{value}</span>
           {trend && trendValue && (
-            <span className={clsx('text-caption font-medium', trendColors[trend])}>
+            <span className={clsx('text-caption font-medium shrink-0', trendColors[trend])}>
               {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} {trendValue}
             </span>
           )}
         </div>
         {hint && (
-          <div className="mt-0.5 text-caption text-[var(--avs-text-secondary)]">{hint}</div>
+          <div className="mt-0.5 text-caption text-[var(--avs-text-secondary)] truncate" title={typeof hint === 'string' ? hint : undefined}>{hint}</div>
         )}
       </div>
     </div>
