@@ -29,6 +29,22 @@ log = logging.getLogger("avs.one_click")
 _IS_WINDOWS = os.name == "nt"
 _CREATE_NO_WINDOW = 0x08000000 if _IS_WINDOWS else 0
 
+# ─── Unified progress weighting ──────────────────────────────────────
+# The one-click scan runs through several sequential detectors after the
+# main file scan (email attachments, process memory, browser extensions,
+# network connections, quarantine). Each detector is allotted a fixed
+# slice of the overall 0-100 progress bar so the UI shows one continuous,
+# monotonically increasing percentage instead of resetting to 0% (or
+# appearing frozen at 100%) when a new detector starts. The file scan is
+# by far the most expensive phase on a full system scan, so it gets the
+# bulk of the range.
+_PHASE_FILE_SCAN_END = 90
+_PHASE_EMAIL_END = 93
+_PHASE_MEMORY_END = 96
+_PHASE_EXTENSIONS_END = 98
+_PHASE_NETWORK_END = 99
+_PHASE_QUARANTINE_END = 100
+
 # Track running one-click operations
 _lock = threading.Lock()
 _running = False
@@ -398,9 +414,10 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
                 with _lock:
                     total_est = max(files_enumerated[0], files_scanned, 1)
                     if enum_done.is_set():
-                        pct = min(100, int(files_scanned / max(files_enumerated[0], 1) * 100))
+                        frac = files_scanned / max(files_enumerated[0], 1)
                     else:
-                        pct = min(95, int(files_scanned / total_est * 95))
+                        frac = files_scanned / total_est
+                    pct = min(_PHASE_FILE_SCAN_END, int(frac * _PHASE_FILE_SCAN_END))
                     _progress["scan_progress"] = pct
                     _progress["files_scanned"] = files_scanned
                     _progress["total_files"] = files_enumerated[0]
@@ -411,7 +428,7 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
 
     with _lock:
         if not _progress.get("cancel_requested"):
-            _progress["scan_progress"] = 100
+            _progress["scan_progress"] = _PHASE_FILE_SCAN_END
         _progress["current_file"] = None
         _progress["files_scanned"] = files_scanned
         _progress["total_files"] = files_enumerated[0]
@@ -505,6 +522,7 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
             email_scanner = EmailScanner()
             with _lock:
                 _progress["current_file"] = "Scanning email attachments..."
+                _progress["scan_progress"] = _PHASE_FILE_SCAN_END + 1
 
             # Scan common email file locations
             email_dirs = []
@@ -551,6 +569,10 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
         except Exception as e:
             log.warning("One-click: Email scanning phase failed: %s", e)
 
+    with _lock:
+        if not _progress.get("cancel_requested"):
+            _progress["scan_progress"] = _PHASE_EMAIL_END
+
     # Phase 1.6: Memory/process scanning
     if not _cancel_requested():
         try:
@@ -558,6 +580,7 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
             mem_scanner = MemoryScanner()
             with _lock:
                 _progress["current_file"] = "Scanning running processes memory..."
+                _progress["scan_progress"] = _PHASE_EMAIL_END + 1
 
             mem_result = mem_scanner.scan_all_processes()
             mem_threats = mem_result.get("threats_found", 0)
@@ -578,12 +601,17 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
         except Exception as e:
             log.warning("One-click: Memory scanning phase failed: %s", e)
 
+    with _lock:
+        if not _progress.get("cancel_requested"):
+            _progress["scan_progress"] = _PHASE_MEMORY_END
+
     # Phase 1.7: Browser extension scanning
     if not _cancel_requested():
         try:
             from avs_backend.browser_extensions import _get_all_extensions
             with _lock:
                 _progress["current_file"] = "Scanning browser extensions..."
+                _progress["scan_progress"] = _PHASE_MEMORY_END + 1
 
             extensions = _get_all_extensions()
             ext_threats = 0
@@ -679,12 +707,17 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
         except Exception as e:
             log.warning("One-click: Browser extension scanning phase failed: %s", e)
 
+    with _lock:
+        if not _progress.get("cancel_requested"):
+            _progress["scan_progress"] = _PHASE_EXTENSIONS_END
+
     # Phase 1.8: Network connection scanning (C2 callbacks, suspicious connections)
     if not _cancel_requested():
         try:
             from avs_backend.threat_engine.network_monitor import scan_network_connections
             with _lock:
                 _progress["current_file"] = "Scanning network connections..."
+                _progress["scan_progress"] = _PHASE_EXTENSIONS_END + 1
 
             net_result = scan_network_connections()
             net_threats = net_result.get("suspicious_count", 0)
@@ -705,6 +738,10 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
         except Exception as e:
             log.warning("One-click: Network scanning phase failed: %s", e)
 
+    with _lock:
+        if not _progress.get("cancel_requested"):
+            _progress["scan_progress"] = _PHASE_NETWORK_END
+
     # Phase 2: Quarantine/clean detected threats (skip if cancelled)
     all_threats = list(scan_result.get("threats", []))
     # Add email and memory threats collected above
@@ -712,6 +749,7 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
     if all_threats and not _cancel_requested():
         with _lock:
             _progress["phase"] = "cleaning"
+            _progress["current_file"] = "Quarantining detected threats..."
 
         try:
             from avs_backend.threat_engine import threat_quarantine
@@ -744,6 +782,8 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
         if _progress.get("phase") not in ("cancelled", "error"):
             _progress["active"] = False
             _progress["phase"] = "complete"
+            _progress["scan_progress"] = _PHASE_QUARANTINE_END
+            _progress["current_file"] = None
             _progress["threats_found"] = result["threats_found"]
             _progress["threats_quarantined"] = result["threats_quarantined"]
             _progress["completed_at"] = _now_ms()

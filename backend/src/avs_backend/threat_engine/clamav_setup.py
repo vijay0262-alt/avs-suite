@@ -349,9 +349,9 @@ DatabaseDirectory "{db_dir}"
 LocalSocket "{install_dir / 'clamd.sock'}"
 TCPAddr 127.0.0.1
 TCPSocket 3310
-MaxConnectionQueueLength 200
+MaxConnectionQueueLength 400
 StreamMaxLength 100M
-MaxThreads 12
+MaxThreads 48
 ReadTimeout 180
 CommandReadTimeout 30
 SendBufTimeout 200
@@ -792,6 +792,15 @@ def start_clamd() -> dict[str, Any]:
             return {"success": True, "message": "clamd already running", "pid": None}
     except Exception:
         pass
+
+    # Regenerate clamd.conf before every (re)start so existing installs
+    # pick up config tuning changes (e.g. MaxThreads) without requiring a
+    # full re-setup/re-download of ClamAV. Cheap — just rewrites two small
+    # text files.
+    try:
+        _generate_config(_DATA_DIR)
+    except Exception as e:
+        log.warning("Failed to regenerate clamd.conf before start: %s", e)
 
     # Kill any stale clamd processes that might be holding the port
     import time as _time
