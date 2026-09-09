@@ -803,7 +803,7 @@ export default function AntivirusSecurityPage() {
                               onClick={skipQuarantine}
                               data-testid="quarantine-skip-btn"
                             >
-                              Skip — I'll review later
+                              Skip — I{"'"}ll review later
                             </Button>
                           </div>
                         </div>
