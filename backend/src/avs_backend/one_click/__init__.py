@@ -46,6 +46,8 @@ _progress: dict[str, Any] = {
     "error": None,
     "current_file": None,
     "files_scanned": 0,
+    "total_files": 0,
+    "scan_speed": 0.0,
 }
 
 
@@ -227,10 +229,12 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
         if hash_cache and hash_cache.should_skip(fpath):
             return None
 
-        # 1. ClamAV (primary — reads file via INSTREAM, does its own hashing)
+        # 1. ClamAV (primary — reads file via INSTREAM). Uses scan_file_fast
+        # with an empty sha256 to skip the internal SHA-256 computation,
+        # which would otherwise read the whole file a second time.
         if clamav_scanner:
             try:
-                result = clamav_scanner.scan_file(fpath)
+                result = clamav_scanner.scan_file_fast(fpath, "")
                 if result and result.get("detected"):
                     if hash_cache:
                         hash_cache.record_result(fpath, "threat", "")
@@ -278,138 +282,130 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
 
         return None
 
-    # ─── Streaming parallel scan ────────────────────────────────────
-    max_workers = min(32, (os.cpu_count() or 4) * 4)
-    executor = ThreadPoolExecutor(max_workers=max_workers)
-    futures: dict = {}
-    files_enumerated = 0
-    files_submitted = 0
-    _enum_last_update = time.monotonic()
+    # ─── Streaming parallel scan (producer/consumer) ────────────────
+    # A background thread walks the filesystem and pushes scannable file
+    # paths onto a bounded queue. The main thread pulls from the queue,
+    # keeps the ThreadPoolExecutor saturated, and drains completed
+    # futures continuously. This gives real-time progress (files_scanned
+    # reflects files actually finished, current_file is the last file
+    # that finished scanning) and starts scanning immediately instead of
+    # waiting for a full filesystem walk to complete first.
+    import queue as _queue_mod
+
+    max_workers = min(48, (os.cpu_count() or 4) * 6)
+    file_queue: "_queue_mod.Queue[str]" = _queue_mod.Queue(maxsize=4000)
+    enum_done = threading.Event()
+    files_enumerated = [0]  # mutable box for closure
+
+    def _enumerate() -> None:
+        try:
+            for root_path in scan_roots:
+                with _lock:
+                    if _progress.get("cancel_requested"):
+                        return
+                try:
+                    for root, dirs, files in os.walk(root_path):
+                        with _lock:
+                            if _progress.get("cancel_requested"):
+                                return
+                        if _is_excluded(root):
+                            dirs.clear()
+                            continue
+                        depth = root.replace(root_path, "").count(os.sep)
+                        if depth > _MAX_DEPTH:
+                            dirs.clear()
+                            continue
+                        dirs[:] = [d for d in dirs if d.lower() not in _CFG_EXCLUDE_DIR_NAMES]
+
+                        for fname in files:
+                            fpath = os.path.join(root, fname)
+                            if not _should_scan_file(fpath):
+                                continue
+                            try:
+                                fsize = os.path.getsize(fpath)
+                                if fsize > _MAX_FILE_SIZE:
+                                    continue
+                            except OSError:
+                                continue
+
+                            with _lock:
+                                if _progress.get("cancel_requested"):
+                                    return
+                            file_queue.put(fpath)  # blocks if queue is full
+                            files_enumerated[0] += 1
+                            with _lock:
+                                _progress["total_files"] = files_enumerated[0]
+                except Exception:
+                    pass
+        finally:
+            enum_done.set()
+
+    enum_thread = threading.Thread(target=_enumerate, daemon=True)
+    enum_thread.start()
 
     with _lock:
         _progress["phase"] = "scanning"
         _progress["current_file"] = "Starting scan..."
         _progress["total_files"] = 0
 
+    executor = ThreadPoolExecutor(max_workers=max_workers)
+    futures: dict = {}
+    last_update = time.monotonic()
+    scan_started_mono = time.monotonic()
+
     try:
-        for root_path in scan_roots:
+        while True:
             with _lock:
                 if _progress.get("cancel_requested"):
                     break
-                _progress["current_file"] = f"Scanning {root_path}..."
 
-            try:
-                for root, dirs, files in os.walk(root_path):
-                    if _is_excluded(root):
-                        dirs.clear()
-                        continue
-                    depth = root.replace(root_path, "").count(os.sep)
-                    if depth > _MAX_DEPTH:
-                        dirs.clear()
-                        continue
-                    dirs[:] = [d for d in dirs if d.lower() not in _CFG_EXCLUDE_DIR_NAMES]
-
-                    for fname in files:
-                        fpath = os.path.join(root, fname)
-                        if not _should_scan_file(fpath):
-                            continue
-                        try:
-                            fsize = os.path.getsize(fpath)
-                            if fsize > _MAX_FILE_SIZE:
-                                continue
-                        except OSError:
-                            continue
-
-                        files_enumerated += 1
-
-                        # Check for cancel
-                        if files_enumerated % 100 == 0:
-                            with _lock:
-                                if _progress.get("cancel_requested"):
-                                    break
-
-                        # Submit to executor immediately — scan as you go
-                        future = executor.submit(_scan_single_file, fpath)
-                        futures[future] = fpath
-                        files_submitted += 1
-
-                        # Throttle: if too many futures in flight, drain completed ones
-                        # to avoid memory issues with 600K+ files
-                        if len(futures) >= max_workers * 4:
-                            done = [f for f in futures if f.done()]
-                            for f in done:
-                                files_scanned += 1
-                                del futures[f]
-                                try:
-                                    result = f.result()
-                                    if result:
-                                        threats_found += 1
-                                        detected_threats.append(result)
-                                except Exception:
-                                    pass
-                            # If nothing completed, wait for at least one
-                            if len(futures) >= max_workers * 6:
-                                for f in as_completed(list(futures.keys())[:1]):
-                                    files_scanned += 1
-                                    del futures[f]
-                                    try:
-                                        result = f.result()
-                                        if result:
-                                            threats_found += 1
-                                            detected_threats.append(result)
-                                    except Exception:
-                                        pass
-
-                        # Update progress periodically
-                        now = time.monotonic()
-                        if now - _enum_last_update >= 0.3:
-                            _enum_last_update = now
-                            with _lock:
-                                if _progress.get("cancel_requested"):
-                                    break
-                                _progress["total_files"] = files_enumerated
-                                _progress["files_scanned"] = files_scanned
-                                _progress["current_file"] = fpath
-                                # Rough progress: files scanned vs enumerated so far
-                                if files_enumerated > 0:
-                                    _progress["scan_progress"] = min(95, int(files_scanned / max(files_enumerated, 1) * 95))
-                    else:
-                        continue
-                    break  # cancel was requested in inner loop
-            except Exception:
-                pass
-
-        # All files submitted — now drain remaining futures
-        with _lock:
-            _progress["total_files"] = files_enumerated
-            total_files = max(files_enumerated, 1)
-
-        for future in as_completed(futures):
-            with _lock:
-                if _progress.get("cancel_requested"):
-                    for f in futures:
-                        f.cancel()
+            # Keep the executor saturated by pulling from the queue
+            while len(futures) < max_workers * 3:
+                try:
+                    fpath = file_queue.get_nowait()
+                except _queue_mod.Empty:
                     break
+                future = executor.submit(_scan_single_file, fpath)
+                futures[future] = fpath
 
-            files_scanned += 1
+            if not futures:
+                if enum_done.is_set() and file_queue.empty():
+                    break  # enumeration finished and nothing left to scan
+                time.sleep(0.05)
+                continue
 
-            # Update progress every file for smooth bar
-            now = time.monotonic()
-            if now - _enum_last_update >= 0.3 or files_scanned == total_files:
-                _enum_last_update = now
+            done_futures = [f for f in futures if f.done()]
+            if not done_futures:
+                time.sleep(0.02)
+                continue
+
+            for f in done_futures:
+                fpath = futures.pop(f)
+                files_scanned += 1
+                try:
+                    result = f.result()
+                    if result:
+                        threats_found += 1
+                        detected_threats.append(result)
+                except Exception:
+                    pass
                 with _lock:
-                    pct = min(100, int(files_scanned / total_files * 100))
+                    _progress["current_file"] = fpath
+
+            now = time.monotonic()
+            if now - last_update >= 0.25:
+                last_update = now
+                with _lock:
+                    total_est = max(files_enumerated[0], files_scanned, 1)
+                    if enum_done.is_set():
+                        pct = min(100, int(files_scanned / max(files_enumerated[0], 1) * 100))
+                    else:
+                        pct = min(95, int(files_scanned / total_est * 95))
                     _progress["scan_progress"] = pct
                     _progress["files_scanned"] = files_scanned
-                    _progress["current_file"] = futures[future]
-
-            try:
-                result = future.result()
-                if result:
-                    threats_found += 1
-                    detected_threats.append(result)
-            except Exception:
-                pass
+                    _progress["total_files"] = files_enumerated[0]
+                    elapsed = max(now - scan_started_mono, 0.001)
+                    _progress["scan_speed"] = round(files_scanned / elapsed, 1)
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
 
@@ -418,7 +414,7 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
             _progress["scan_progress"] = 100
         _progress["current_file"] = None
         _progress["files_scanned"] = files_scanned
-        _progress["total_files"] = files_enumerated
+        _progress["total_files"] = files_enumerated[0]
 
     # Save hash cache for incremental scanning next time
     if hash_cache:
@@ -468,6 +464,7 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
             "current_file": "Initializing scan...",
             "files_scanned": 0,
             "total_files": 0,
+            "scan_speed": 0.0,
             "cancel_requested": False,
         }
 
