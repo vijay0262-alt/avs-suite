@@ -736,7 +736,7 @@ export default function AntivirusSecurityPage() {
                       oneClickProgress.phase === 'complete' ? 'bg-semantic-success' :
                       'bg-brand-primary'
                     }`}
-                    style={{ width: `${oneClickProgress.phase === 'complete' ? 100 : oneClickProgress.phase === 'cleaning' ? 95 : (oneClickProgress.scan_progress || 0)}%` }}
+                    style={{ width: `${oneClickProgress.phase === 'complete' ? 100 : (oneClickProgress.scan_progress || 0)}%` }}
                   />
                 </div>
 
@@ -746,7 +746,7 @@ export default function AntivirusSecurityPage() {
                     {oneClickProgress.phase === 'scanning'
                       ? `${oneClickProgress.scan_progress}% complete`
                       : oneClickProgress.phase === 'cleaning'
-                        ? `${oneClickProgress.threats_quarantined || 0} threats quarantined`
+                        ? `${oneClickProgress.scan_progress}% \u2014 ${oneClickProgress.threats_quarantined || 0} threats quarantined`
                         : oneClickProgress.phase === 'complete'
                           ? '100% Complete'
                           : oneClickProgress.phase === 'cancelled'
@@ -791,7 +791,7 @@ export default function AntivirusSecurityPage() {
                   </div>
                   <div>
                     <div className="text-caption text-text-muted">Files Scanned</div>
-                    <div className="text-small font-bold text-text-primary">{oneClickResult.files_scanned || 0}</div>
+                    <div className="text-small font-bold text-text-primary">{(oneClickResult.files_scanned || 0).toLocaleString()}</div>
                   </div>
                 </div>
               </div>
