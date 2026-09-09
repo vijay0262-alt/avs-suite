@@ -692,40 +692,86 @@ export default function AntivirusSecurityPage() {
             </>
           }
         >
-          <div className="space-y-4">
-            {/* Phase indicator */}
-            <div className="flex items-center gap-3">
-              {oneClickProgress?.phase === 'scanning' && <ArrowPathIcon className="h-5 w-5 animate-spin text-brand-primary" />}
-              {oneClickProgress?.phase === 'pending_confirmation' && <ShieldExclamationIcon className="h-5 w-5 text-semantic-warning" />}
-              {oneClickProgress?.phase === 'cleaning' && <ShieldExclamationIcon className="h-5 w-5 text-semantic-warning" />}
-              {oneClickProgress?.phase === 'complete' && <ShieldCheckIcon className="h-5 w-5 text-semantic-success" />}
-              {oneClickProgress?.phase === 'cancelled' && <XMarkIcon className="h-5 w-5 text-semantic-danger" />}
-              {oneClickProgress?.phase === 'error' && <ShieldExclamationIcon className="h-5 w-5 text-semantic-danger" />}
-              <span className="text-small font-semibold text-text-primary">
-                {oneClickProgress?.phase === 'scanning' && 'Scanning for threats...'}
-                {oneClickProgress?.phase === 'pending_confirmation' && `${oneClickProgress.threats_found || 0} threat${(oneClickProgress.threats_found || 0) !== 1 ? 's' : ''} found — review required`}
-                {oneClickProgress?.phase === 'cleaning' && 'Quarantining detected threats...'}
-                {oneClickProgress?.phase === 'complete' && 'Scan complete.'}
-                {oneClickProgress?.phase === 'cancelled' && 'Scan cancelled.'}
-                {oneClickProgress?.phase === 'error' && 'Scan failed.'}
-              </span>
-            </div>
-
-            {/* Progress bar */}
+          <div className="space-y-5">
+            {/* Circular progress — Trend Micro style */}
             {oneClickProgress && (
-              <div className="space-y-3" data-testid="one-click-progress">
-                {/* Stats row */}
-                <div className="grid grid-cols-5 gap-3">
-                  <div className="rounded-lg bg-surface-muted px-3 py-2">
-                    <div className="text-caption text-text-muted">Progress</div>
-                    <div className="text-small font-bold text-text-primary">
-                      {oneClickProgress.phase === 'complete'
-                        ? '100%'
-                        : `${oneClickProgress.scan_progress || 0}%`}
-                    </div>
+              <div className="flex flex-col items-center text-center" data-testid="one-click-progress">
+                {/* Ring */}
+                <div className="relative w-52 h-52 mb-4">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
+                    <circle
+                      cx="100" cy="100" r="90"
+                      fill="none"
+                      stroke="var(--avs-border)"
+                      strokeWidth="12"
+                    />
+                    <circle
+                      cx="100" cy="100" r="90"
+                      fill="none"
+                      strokeWidth="12"
+                      strokeLinecap="round"
+                      className={
+                        oneClickProgress.phase === 'complete' ? 'text-semantic-success'
+                        : oneClickProgress.phase === 'cancelled' || oneClickProgress.phase === 'error' ? 'text-semantic-danger'
+                        : oneClickProgress.phase === 'pending_confirmation' || oneClickProgress.phase === 'cleaning' ? 'text-semantic-warning'
+                        : 'text-brand-primary'
+                      }
+                      stroke="currentColor"
+                      strokeDasharray={565.49}
+                      strokeDashoffset={565.49 * (1 - (oneClickProgress.phase === 'complete' ? 100 : (oneClickProgress.scan_progress || 0)) / 100)}
+                      style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-4xl font-bold text-text-primary">
+                      {oneClickProgress.phase === 'complete' ? 100 : (oneClickProgress.scan_progress || 0)}%
+                    </span>
+                    <span className="text-caption text-text-muted mt-1">
+                      {oneClickProgress.phase === 'scanning' && 'Scanning'}
+                      {oneClickProgress.phase === 'pending_confirmation' && 'Review'}
+                      {oneClickProgress.phase === 'cleaning' && 'Cleaning'}
+                      {oneClickProgress.phase === 'complete' && 'Complete'}
+                      {oneClickProgress.phase === 'cancelled' && 'Cancelled'}
+                      {oneClickProgress.phase === 'error' && 'Error'}
+                    </span>
                   </div>
+                </div>
+
+                {/* Phase title */}
+                <h3 className="text-base font-semibold text-text-primary">
+                  {oneClickProgress.phase === 'scanning' && 'Scanning your PC for threats...'}
+                  {oneClickProgress.phase === 'pending_confirmation' && `${oneClickProgress.threats_found || 0} threat${(oneClickProgress.threats_found || 0) !== 1 ? 's' : ''} found — review required`}
+                  {oneClickProgress.phase === 'cleaning' && 'Quarantining detected threats...'}
+                  {oneClickProgress.phase === 'complete' && 'Scan complete.'}
+                  {oneClickProgress.phase === 'cancelled' && 'Scan cancelled.'}
+                  {oneClickProgress.phase === 'error' && 'Scan failed.'}
+                </h3>
+
+                {/* Subtitle / current file */}
+                {oneClickProgress.phase === 'scanning' && oneClickProgress.current_file ? (
+                  <p className="text-caption text-text-secondary max-w-md truncate" title={oneClickProgress.current_file}>
+                    {oneClickProgress.current_file}
+                  </p>
+                ) : oneClickProgress.phase === 'pending_confirmation' ? (
+                  <p className="text-caption text-text-secondary max-w-md">
+                    Quarantine moves threats to a secure, isolated folder where they can&apos;t harm your PC.
+                  </p>
+                ) : oneClickProgress.phase === 'cleaning' ? (
+                  <p className="text-caption text-text-secondary max-w-md">
+                    {oneClickProgress.threats_quarantined || 0} of {oneClickProgress.threats_found || 0} threats quarantined
+                  </p>
+                ) : oneClickProgress.phase === 'complete' ? (
+                  <p className="text-caption text-text-secondary max-w-md">
+                    {oneClickProgress.threats_found > 0
+                      ? `${oneClickProgress.threats_found} threat${oneClickProgress.threats_found !== 1 ? 's' : ''} detected, ${oneClickProgress.threats_quarantined || 0} quarantined.`
+                      : 'No threats found. Your PC is protected.'}
+                  </p>
+                ) : null}
+
+                {/* Stats grid */}
+                <div className="grid grid-cols-4 gap-3 w-full max-w-lg mt-2">
                   <div className="rounded-lg bg-surface-muted px-3 py-2">
-                    <div className="text-caption text-text-muted">Files Scanned</div>
+                    <div className="text-caption text-text-muted">Files</div>
                     <div className="text-small font-bold text-text-primary">
                       {(oneClickProgress.files_scanned || 0).toLocaleString()}
                       {oneClickProgress.total_files > 0 && oneClickProgress.phase === 'scanning' && (
@@ -761,52 +807,17 @@ export default function AntivirusSecurityPage() {
                   </div>
                 </div>
 
-                {/* Progress bar */}
-                <div className="h-2 rounded-full bg-[var(--avs-border)] overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-300 ${
-                      oneClickProgress.phase === 'cancelled' ? 'bg-semantic-danger' :
-                      oneClickProgress.phase === 'error' ? 'bg-semantic-danger' :
-                      oneClickProgress.phase === 'complete' ? 'bg-semantic-success' :
-                      'bg-brand-primary'
-                    }`}
-                    style={{ width: `${oneClickProgress.phase === 'complete' ? 100 : (oneClickProgress.scan_progress || 0)}%` }}
-                  />
-                </div>
-
-                {/* Status text */}
-                <div className="flex items-center justify-between">
-                  <span className="text-caption text-text-secondary">
-                    {oneClickProgress.phase === 'scanning'
-                      ? `${oneClickProgress.scan_progress}% complete`
-                      : oneClickProgress.phase === 'pending_confirmation'
-                        ? `${oneClickProgress.scan_progress}% — awaiting your decision`
-                        : oneClickProgress.phase === 'cleaning'
-                        ? `${oneClickProgress.scan_progress}% \u2014 ${oneClickProgress.threats_quarantined || 0} threats quarantined`
-                        : oneClickProgress.phase === 'complete'
-                          ? '100% Complete'
-                          : oneClickProgress.phase === 'cancelled'
-                            ? `Cancelled at ${oneClickProgress.scan_progress || 0}%`
-                            : 'Error'}
-                  </span>
-                  {oneClickProgress.threats_found > 0 && (
-                    <span className="text-caption text-semantic-danger font-medium">
-                      {oneClickProgress.threats_found} threat{oneClickProgress.threats_found !== 1 ? 's' : ''} found
-                    </span>
-                  )}
-                </div>
-
                 {/* Quarantine confirmation banner */}
                 {oneClickProgress.phase === 'pending_confirmation' && (
-                  <div className="p-4 rounded-[var(--avs-radius-md)] border border-semantic-warning/30 bg-semantic-warning/5" data-testid="quarantine-confirmation-banner">
+                  <div className="w-full max-w-lg p-4 rounded-[var(--avs-radius-md)] border border-semantic-warning/30 bg-semantic-warning/5" data-testid="quarantine-confirmation-banner">
                     <div className="flex items-start gap-3">
                       <ShieldExclamationIcon className="h-6 w-6 text-semantic-warning shrink-0 mt-0.5" />
-                      <div className="flex-1">
+                      <div className="flex-1 text-left">
                         <div className="text-small font-semibold text-text-primary mb-1">
                           {oneClickProgress.threats_found} threat{(oneClickProgress.threats_found || 0) !== 1 ? 's' : ''} detected
                         </div>
                         <div className="text-caption text-text-secondary mb-3">
-                          Quarantine moves threats to a secure, isolated folder where they can&apos;t harm your PC. You can restore or permanently delete them later from the Quarantine tab.
+                          You can restore or permanently delete quarantined files later from the Quarantine tab.
                         </div>
                         <div className="flex items-center gap-2">
                           <Button
@@ -829,13 +840,6 @@ export default function AntivirusSecurityPage() {
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
-
-                {/* Current file being scanned (live) */}
-                {oneClickProgress.phase === 'scanning' && oneClickProgress.current_file && (
-                  <div className="text-caption text-text-muted truncate" data-testid="one-click-current-file" title={oneClickProgress.current_file}>
-                    <span className="font-medium text-text-secondary">Scanning: </span>{oneClickProgress.current_file}
                   </div>
                 )}
               </div>
