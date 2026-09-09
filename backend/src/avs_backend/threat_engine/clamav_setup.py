@@ -351,7 +351,7 @@ TCPAddr 127.0.0.1
 TCPSocket 3310
 MaxConnectionQueueLength 400
 StreamMaxLength 100M
-MaxThreads 48
+MaxThreads 56
 ReadTimeout 180
 CommandReadTimeout 30
 SendBufTimeout 200
