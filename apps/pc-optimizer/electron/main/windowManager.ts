@@ -23,8 +23,17 @@ export function getMainWindow(): BrowserWindow | null {
 export function showMainWindow(): void {
   if (!mainWindow) return;
   if (mainWindow.isMinimized()) mainWindow.restore();
+  // Force the window to the foreground.  On Windows, a window created by
+  // a child process (e.g. the installer) may not be allowed to steal
+  // focus, so we briefly set alwaysOnTop to bring it forward.
+  mainWindow.setAlwaysOnTop(true);
   mainWindow.show();
   mainWindow.focus();
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setAlwaysOnTop(false);
+    }
+  }, 500);
 }
 
 /**

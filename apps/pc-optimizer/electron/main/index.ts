@@ -250,7 +250,7 @@ async function createMainWindow(): Promise<void> {
     if (process.argv.includes('--minimized')) {
       log.info('[startup] Launched with --minimized — window hidden to tray');
     } else {
-      mainWindow?.show();
+      showMainWindow();
     }
   });
 
