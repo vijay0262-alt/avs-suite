@@ -128,7 +128,7 @@ export default function AntivirusSecurityPage() {
   const [excludeLoading, setExcludeLoading] = useState(false);
 
   // One-click security scan state
-  const [oneClickProgress, setOneClickProgress] = useState<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_scanned: number; total_files: number; scan_speed: number; started_at: number | null; completed_at: number | null } | null>(null);
+  const [oneClickProgress, setOneClickProgress] = useState<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_found?: number; files_scanned: number; total_files: number; scan_speed: number; started_at: number | null; completed_at: number | null } | null>(null);
   const [oneClickResult, setOneClickResult] = useState<{ threats_found: number; threats_quarantined: number; files_scanned: number; success: boolean } | null>(null);
   const [oneClickModalOpen, setOneClickModalOpen] = useState(false);
   const [oneClickCancelling, setOneClickCancelling] = useState(false);
@@ -344,7 +344,7 @@ export default function AntivirusSecurityPage() {
     setOneClickResult(null);
     setOneClickCancelling(false);
     setOneClickModalOpen(true);
-    setOneClickProgress({ active: true, phase: 'scanning', scan_progress: 1, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: null, current_file: 'Initializing scan...', files_scanned: 0, total_files: 0, scan_speed: 0, started_at: Date.now(), completed_at: null });
+    setOneClickProgress({ active: true, phase: 'finding_files', scan_progress: 1, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: null, current_file: 'Finding files to scan...', files_found: 0, files_scanned: 0, total_files: 0, scan_speed: 0, started_at: Date.now(), completed_at: null });
     try {
       const startRes = await rpc.raw<{ success?: boolean; error?: string; progress?: Record<string, unknown> }>(RPC_METHODS.ONE_CLICK_START, { scan_type: 'full' });
       if (!startRes.success && startRes.error) {
@@ -354,7 +354,7 @@ export default function AntivirusSecurityPage() {
       // Poll progress — tracked via ref for cleanup on unmount
       const poll = setInterval(async () => {
         try {
-          const prog = await rpc.raw<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_scanned: number; total_files: number; scan_speed: number; started_at: number | null; completed_at: number | null }>(RPC_METHODS.ONE_CLICK_PROGRESS);
+          const prog = await rpc.raw<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_found?: number; files_scanned: number; total_files: number; scan_speed: number; started_at: number | null; completed_at: number | null }>(RPC_METHODS.ONE_CLICK_PROGRESS);
           setOneClickProgress(prog);
           if (!prog.active) {
             clearInterval(poll);
@@ -764,7 +764,8 @@ export default function AntivirusSecurityPage() {
                   progress={oneClickProgress.scan_progress ?? 0}
                   phase={oneClickProgress.phase ?? 'scanning'}
                   phaseLabel={
-                    oneClickProgress.phase === 'scanning' ? 'Scanning'
+                    oneClickProgress.phase === 'finding_files' ? 'Finding Files'
+                    : oneClickProgress.phase === 'scanning' ? 'Scanning'
                     : oneClickProgress.phase === 'pending_confirmation' ? 'Review'
                     : oneClickProgress.phase === 'cleaning' ? 'Cleaning'
                     : oneClickProgress.phase === 'complete' ? 'Complete'
@@ -773,7 +774,8 @@ export default function AntivirusSecurityPage() {
                     : 'Scanning'
                   }
                   title={
-                    oneClickProgress.phase === 'scanning' ? 'Scanning your PC for threats...'
+                    oneClickProgress.phase === 'finding_files' ? 'Finding files to scan...'
+                    : oneClickProgress.phase === 'scanning' ? 'Scanning your PC for threats...'
                     : oneClickProgress.phase === 'pending_confirmation' ? `${oneClickProgress.threats_found || 0} threat${(oneClickProgress.threats_found || 0) !== 1 ? 's' : ''} found — review required`
                     : oneClickProgress.phase === 'cleaning' ? 'Quarantining detected threats...'
                     : oneClickProgress.phase === 'complete' ? 'Scan complete.'
@@ -782,7 +784,9 @@ export default function AntivirusSecurityPage() {
                     : 'Scanning your PC...'
                   }
                   subtitle={
-                    oneClickProgress.phase === 'scanning' && oneClickProgress.current_file
+                    oneClickProgress.phase === 'finding_files'
+                      ? `${(oneClickProgress.files_found || 0).toLocaleString()} files found so far`
+                    : oneClickProgress.phase === 'scanning' && oneClickProgress.current_file
                       ? oneClickProgress.current_file
                     : oneClickProgress.phase === 'pending_confirmation'
                       ? 'Quarantine moves threats to a secure, isolated folder where they can\u2019t harm your PC.'
@@ -802,9 +806,13 @@ export default function AntivirusSecurityPage() {
                   {/* Stats grid */}
                   <div className="grid grid-cols-4 gap-3 w-full max-w-lg mt-4">
                     <div className="rounded-lg bg-surface-muted px-3 py-2">
-                      <div className="text-caption text-text-muted">Files</div>
+                      <div className="text-caption text-text-muted">
+                        {oneClickProgress.phase === 'finding_files' ? 'Files Found' : 'Files'}
+                      </div>
                       <div className="text-small font-bold text-text-primary">
-                        {(oneClickProgress.files_scanned || 0).toLocaleString()}
+                        {oneClickProgress.phase === 'finding_files'
+                          ? (oneClickProgress.files_found || 0).toLocaleString()
+                          : (oneClickProgress.files_scanned || 0).toLocaleString()}
                         {oneClickProgress.total_files > 0 && oneClickProgress.phase === 'scanning' && (
                           <span className="text-caption text-text-muted font-normal"> / {(oneClickProgress.total_files).toLocaleString()}</span>
                         )}

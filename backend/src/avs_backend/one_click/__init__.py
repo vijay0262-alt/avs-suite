@@ -20,6 +20,7 @@ import string
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 from typing import Any
 
 from avs_backend.api.registry import register
@@ -43,6 +44,18 @@ _PHASE_QUARANTINE_END = 100
 _lock = threading.Lock()
 _running = False
 
+# Live enumeration counters (updated while _collect_scannable_files runs)
+_enum_state: dict[str, int] = {
+    "files_found": 0,
+    "dirs_visited": 0,
+}
+
+# Persistent estimate of total files for progress smoothing
+_enum_estimate_path = Path(
+    os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
+) / "AVS AI Shield" / "threat_engine" / "one_click_enum_estimate.json"
+_enum_estimate_path.parent.mkdir(parents=True, exist_ok=True)
+
 # Quarantine confirmation gate — the scan thread pauses after detecting
 # threats and waits for the user to confirm before quarantining any files.
 _quarantine_confirmed = threading.Event()
@@ -50,7 +63,7 @@ _quarantine_skipped = False
 
 _progress: dict[str, Any] = {
     "active": False,
-    "phase": "idle",  # idle | scanning | pending_confirmation | cleaning | complete
+    "phase": "idle",  # idle | finding_files | scanning | pending_confirmation | cleaning | complete
     "scan_progress": 0,
     "optimize_progress": 0,
     "threats_found": 0,
@@ -61,6 +74,7 @@ _progress: dict[str, Any] = {
     "completed_at": None,
     "error": None,
     "current_file": None,
+    "files_found": 0,
     "files_scanned": 0,
     "total_files": 0,
     "scan_speed": 0.0,
@@ -130,40 +144,89 @@ def _should_scan_file(file_path: str) -> bool:
     return False
 
 
-def _collect_scannable_files(root_path: str) -> list[str]:
-    """Collect all scannable file paths under one scan root."""
-    paths: list[str] = []
+def _load_enum_estimate() -> int:
+    """Load the previous scan's file count as an estimate for progress."""
     try:
-        for root, dirs, files in os.walk(root_path):
-            if _progress.get("cancel_requested"):
-                return paths
-            if _is_excluded(root):
-                dirs.clear()
-                continue
-            depth = root.replace(root_path, "").count(os.sep)
-            if depth > _MAX_DEPTH:
-                dirs.clear()
-                continue
-            dirs[:] = [d for d in dirs if d.lower() not in _CFG_EXCLUDE_DIR_NAMES]
-            for fname in files:
-                fpath = os.path.join(root, fname)
-                if not _should_scan_file(fpath):
-                    continue
-                try:
-                    fsize = os.path.getsize(fpath)
-                    if fsize > _MAX_FILE_SIZE:
-                        continue
-                except OSError:
-                    continue
-                paths.append(fpath)
+        if _enum_estimate_path.exists():
+            with open(_enum_estimate_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return int(data.get("total_files", 0))
     except Exception:
         pass
+    return 500_000  # Conservative default for first full scan
+
+
+def _save_enum_estimate(total_files: int) -> None:
+    """Persist the latest file count so the next scan can show smooth progress."""
+    try:
+        tmp = _enum_estimate_path.with_suffix(".tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump({"total_files": total_files, "updated_at": _now_ms()}, f)
+        tmp.replace(_enum_estimate_path)
+    except Exception:
+        pass
+
+
+def _collect_scannable_files(root_path: str) -> list[str]:
+    """Collect all scannable file paths under one scan root using os.scandir.
+
+    Uses a stack-based walk with DirEntry objects so stat() calls are cached
+    by the OS. This is significantly faster than os.path.getsize() per file.
+    Updates live counters so the UI can show progress during enumeration.
+    """
+    paths: list[str] = []
+    stack = [root_path]
+    while stack:
+        with _lock:
+            if _progress.get("cancel_requested"):
+                return paths
+        current = stack.pop()
+        if _is_excluded(current):
+            continue
+        depth = current.replace(root_path, "").count(os.sep)
+        if depth > _MAX_DEPTH:
+            continue
+        try:
+            with os.scandir(current) as it:
+                for entry in it:
+                    with _lock:
+                        if _progress.get("cancel_requested"):
+                            return paths
+                    try:
+                        if entry.is_dir(follow_symlinks=False):
+                            if entry.name.lower() not in _CFG_EXCLUDE_DIR_NAMES:
+                                stack.append(entry.path)
+                                with _lock:
+                                    _enum_state["dirs_visited"] += 1
+                        elif entry.is_file(follow_symlinks=False):
+                            fpath = entry.path
+                            if not _should_scan_file(fpath):
+                                continue
+                            try:
+                                if entry.stat().st_size > _MAX_FILE_SIZE:
+                                    continue
+                            except OSError:
+                                continue
+                            paths.append(fpath)
+                            with _lock:
+                                _enum_state["files_found"] += 1
+                    except OSError:
+                        continue
+        except OSError:
+            continue
     return paths
 
 
 def _collect_all_scannable_files(roots: list[str]) -> list[str]:
-    """Collect scannable file paths across all scan roots in parallel."""
+    """Collect scannable file paths across all scan roots in parallel.
+
+    Resets live counters before starting and updates the progress dictionary
+    so the frontend can show the "Finding Files" phase.
+    """
     all_paths: list[str] = []
+    with _lock:
+        _enum_state["files_found"] = 0
+        _enum_state["dirs_visited"] = 0
     try:
         from concurrent.futures import ThreadPoolExecutor as _TPE, as_completed as _as_completed
         with _TPE(max_workers=min(len(roots), 8)) as pool:
@@ -239,22 +302,59 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
 
     # ─── Phase 1: Collect all scannable file paths in parallel ─────
     # Parallel per-drive enumeration is much faster than the previous
-    # sequential count + sequential walk. Once we know the total, the
-    # scan can use the saturated executor from the very first file.
+    # sequential count + sequential walk. The frontend now shows a
+    # dedicated "Finding Files" phase (1-100%) before scanning begins.
     with _lock:
-        _progress["current_file"] = "Collecting files to scan..."
+        _progress["phase"] = "finding_files"
+        _progress["current_file"] = "Finding files to scan..."
         _progress["scan_progress"] = 1
+        _progress["files_found"] = 0
+        _progress["files_scanned"] = 0
+        _progress["total_files"] = 0
+
+    enum_started = time.monotonic()
+    enum_estimate = _load_enum_estimate()
+
+    def _update_enum_progress() -> None:
+        """Update finding-files progress every ~250ms based on files found."""
+        last = time.monotonic()
+        while _progress.get("phase") == "finding_files" and not _progress.get("cancel_requested"):
+            time.sleep(0.25)
+            with _lock:
+                if _progress.get("phase") != "finding_files":
+                    return
+                files_found = _enum_state["files_found"]
+                _progress["files_found"] = files_found
+                # Percentage against the last scan's total; cap at 99% until done
+                pct = min(99, int((files_found / max(enum_estimate, 1)) * 100))
+                _progress["scan_progress"] = max(_progress.get("scan_progress", 1), pct)
+                _progress["scan_speed"] = round(
+                    files_found / max(time.monotonic() - enum_started, 0.001), 1
+                )
+            now = time.monotonic()
+            if now - last < 0.25:
+                continue
+            last = now
+
+    enum_progress_thread = threading.Thread(target=_update_enum_progress, daemon=True)
+    enum_progress_thread.start()
 
     file_list = _collect_all_scannable_files(scan_roots)
+    with _lock:
+        _progress["phase"] = "scanning"
+        _progress["scan_progress"] = 1
+    enum_progress_thread.join(timeout=1.0)
+
     if _progress.get("cancel_requested"):
         return {"files_scanned": 0, "threats_found": 0, "threats": []}
 
     total_files = len(file_list) or 1
+    _save_enum_estimate(total_files)
 
     with _lock:
         _progress["total_files"] = total_files
         _progress["current_file"] = f"Scanning {total_files:,} files..."
-        _progress["scan_progress"] = 2
+        _progress["scan_progress"] = 1
 
     _PE_EXTENSIONS = {".exe", ".dll", ".scr", ".sys", ".ocx", ".com", ".pif"}
 
@@ -444,6 +544,7 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
             "completed_at": None,
             "error": None,
             "current_file": "Initializing scan...",
+            "files_found": 0,
             "files_scanned": 0,
             "total_files": 0,
             "scan_speed": 0.0,
