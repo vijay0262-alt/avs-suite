@@ -14,10 +14,8 @@ import {
   ChartBarIcon,
   ExclamationCircleIcon,
   CheckCircleIcon,
-  ClockIcon,
   TrophyIcon,
   CircleStackIcon,
-  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import { maintenanceHistoryService } from '../../maintenance-history';
 import type { ExecutionReport, ReportHealthStatus } from '../../maintenance-history';
@@ -229,7 +227,7 @@ function ReportContent({ report }: { report: ExecutionReport }) {
         />
 
         {/* Key stats */}
-        <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="lg:col-span-2 grid grid-cols-2 gap-3">
           <StatTile
             label="Successful"
             value={report.summary.successful.toString()}
@@ -250,20 +248,6 @@ function ReportContent({ report }: { report: ExecutionReport }) {
             value={`${report.summary.successRate.toFixed(0)}%`}
             hint="Overall rate"
             icon={<TrophyIcon className="h-5 w-5" />}
-            variant="glass"
-          />
-          <StatTile
-            label="Avg Duration"
-            value={formatDuration(report.summary.averageDurationMs)}
-            hint="Per execution"
-            icon={<ClockIcon className="h-5 w-5" />}
-            variant="glass"
-          />
-          <StatTile
-            label="Files Removed"
-            value={report.summary.totalFilesRemoved.toLocaleString()}
-            hint="Total cleaned"
-            icon={<DocumentTextIcon className="h-5 w-5" />}
             variant="glass"
           />
           <StatTile

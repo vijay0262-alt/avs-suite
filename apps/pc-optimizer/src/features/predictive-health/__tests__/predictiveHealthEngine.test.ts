@@ -374,7 +374,10 @@ describe('PredictiveHealthEngine', () => {
       const repo = new TrendRepository();
       const points: HistoricalDataPoint[] = [];
       for (let i = 0; i < 20; i++) {
-        points.push(makeDataPoint('cpu', 'temp', 50 + Math.random() * 30, 90 * (1 - i / 19), '°C'));
+        // Alternating values around a flat mean produce a noisy series with
+        // no meaningful trend, which the validator should flag as a false positive.
+        const value = 50 + (i % 2) * 30;
+        points.push(makeDataPoint('cpu', 'temp', value, 90 * (1 - i / 19), '°C'));
       }
       repo.recordMany(points);
       const series = repo.getSeries('cpu', 'temp')!;

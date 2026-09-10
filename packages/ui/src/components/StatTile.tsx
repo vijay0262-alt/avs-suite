@@ -65,7 +65,7 @@ export function StatTile({ label, value, hint, icon, trend, trendValue, variant 
           )}
         </div>
         {hint && (
-          <div className="mt-0.5 text-caption text-[var(--avs-text-secondary)] truncate" title={typeof hint === 'string' ? hint : undefined}>{hint}</div>
+          <div className="mt-0.5 text-xs leading-tight text-[var(--avs-text-secondary)] truncate" title={typeof hint === 'string' ? hint : undefined}>{hint}</div>
         )}
       </div>
     </div>

@@ -5,7 +5,7 @@ import { HelpButton } from '../components/HelpButton';
 import type { ThemeMode } from '@avs/shared/types';
 import { useEffect, useState, useCallback } from 'react';
 import { useEdition } from '../config/EditionManager';
-import { getVersionString, getBuildString, getChannelString, getEditionString } from '../config/version';
+import { getVersionString, getBuildString, getEditionString } from '../config/version';
 import { useUpgradeDialog } from '../components/UpgradeDialog';
 import { useAuthStore } from '../features/auth/authStore';
 import { useSubscriptionStore } from '../features/subscription/subscriptionStore';
@@ -13,7 +13,6 @@ import { ArrowRightOnRectangleIcon, UserCircleIcon, ArrowPathIcon, StarIcon, Che
 import { useTraySettings } from '../hooks/useTraySettings';
 import { useScheduledCleanup } from '../features/scheduled-cleanup/useScheduledCleanup';
 import { useJunkMonitor } from '../features/scheduled-cleanup/useJunkMonitor';
-import { replayWelcome } from '../features/onboarding';
 import { rpc } from '../services/rpc';
 import { RPC_METHODS } from '@avs/shared/rpc';
 
@@ -38,11 +37,9 @@ export default function SettingsPage() {
   const subscription = useSubscriptionStore((s) => s.subscription);
   const { settings: schedSettings, loading: schedLoading, saving: schedSaving, saveSettings: saveSchedSettings } = useScheduledCleanup();
   const { status: junkStatus } = useJunkMonitor();
-  const [autoBrowserCleanEnabled, setAutoBrowserCleanEnabled] = useState(false);
-  const [internetBoosterEnabled, setInternetBoosterEnabled] = useState(false);
-  const [internetBoosterLoading, setInternetBoosterLoading] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [pingStatus, setPingStatus] = useState<string | null>(null);
+  const [, forceUpdate] = useState(0);
 
   useEffect(() => {
     // Sync dev mode state from localStorage
@@ -67,24 +64,6 @@ export default function SettingsPage() {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // Load auto browser clean and internet booster settings from backend
-  useEffect(() => {
-    rpc.raw<{ autoBrowserCleanEnabled?: boolean; internetBoosterEnabled?: boolean }>(RPC_METHODS.SETTINGS_GET)
-      .then((s) => {
-        if (s) {
-          setAutoBrowserCleanEnabled(!!s.autoBrowserCleanEnabled);
-          setInternetBoosterEnabled(!!s.internetBoosterEnabled);
-          // Re-start watcher if it was previously enabled
-          if (s.autoBrowserCleanEnabled) {
-            rpc.raw(RPC_METHODS.AUTO_BROWSER_CLEAN_START, {
-              categories: ['browser_cache', 'browser_history', 'browser_cookies'],
-            }).catch(() => {});
-          }
-        }
-      })
-      .catch(() => {});
-  }, []);
-
   return (
     <div data-testid="page-settings">
       <PageHeader
@@ -107,19 +86,12 @@ export default function SettingsPage() {
         />
 
         {/* Key stats */}
-        <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="lg:col-span-2 grid grid-cols-2 gap-3">
           <StatTile
             label="Version"
             value={getVersionString()}
             hint={`Build ${getBuildString()}`}
             icon={<CircleStackIcon className="h-5 w-5" />}
-            variant="glass"
-          />
-          <StatTile
-            label="Channel"
-            value={getChannelString()}
-            hint={getEditionString()}
-            icon={<CloudArrowDownIcon className="h-5 w-5" />}
             variant="glass"
           />
           <StatTile
@@ -136,13 +108,6 @@ export default function SettingsPage() {
             icon={<RocketLaunchIcon className="h-5 w-5" />}
             variant="glass"
             accentColor={startupEnabled ? 'var(--avs-success)' : undefined}
-          />
-          <StatTile
-            label="Tray"
-            value={traySettings.closeBehavior === 'minimize-to-tray' ? 'Minimize' : 'Exit'}
-            hint="Close behavior"
-            icon={<CpuChipIcon className="h-5 w-5" />}
-            variant="glass"
           />
           <StatTile
             label="Account"
@@ -443,12 +408,12 @@ export default function SettingsPage() {
                   <p className="text-caption font-medium text-text-muted mb-3">Included with your subscription</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {[
-                      { label: 'Active Protection', icon: CheckCircleIcon },
-                      { label: 'Unlimited Optimization', icon: RocketLaunchIcon },
-                      { label: 'Predictive Health', icon: ArrowPathIcon },
-                      { label: 'Priority Updates', icon: CloudArrowDownIcon },
-                      { label: 'Background Monitoring', icon: CheckCircleIcon },
-                      { label: 'Smart Optimize', icon: SparklesIcon },
+                      { label: 'AI Active Protection', icon: CheckCircleIcon },
+                      { label: 'AI Smart Optimization', icon: RocketLaunchIcon },
+                      { label: 'AI Predictive Health', icon: ArrowPathIcon },
+                      { label: 'AI Process Intelligence', icon: CpuChipIcon },
+                      { label: 'AI Hardware Intelligence', icon: CloudArrowDownIcon },
+                      { label: 'Real-Time Protection & Scans', icon: CheckCircleIcon },
                     ].map((feat) => (
                       <div key={feat.label} className="flex items-center gap-2">
                         <feat.icon className="h-4 w-4 text-brand-primary shrink-0" />
@@ -504,24 +469,25 @@ export default function SettingsPage() {
                   </thead>
                   <tbody>
                     {[
-                      { label: 'Dashboard & Health Scores', free: true, pro: true },
-                      { label: 'Daily Briefing', free: '1/day', pro: 'Unlimited' },
-                      { label: 'Smart Optimize', free: '5/run', pro: 'Unlimited' },
+                      { label: 'AI Active Protection', free: '—', pro: true },
+                      { label: 'AI Smart Optimization', free: 'Limited', pro: true },
+                      { label: 'AI Predictive Health', free: '7-day history', pro: true },
+                      { label: 'AI Process Intelligence', free: 'Top 10 only', pro: true },
+                      { label: 'AI Hardware Intelligence', free: true, pro: true },
+                      { label: 'Real-Time Threat Protection', free: '—', pro: true },
                       { label: 'Junk Cleaner', free: '500 MB/run', pro: 'Unlimited' },
-                      { label: 'Registry Cleaner', free: '50 issues', pro: 'Unlimited' },
+                      { label: 'Registry Cleaner', free: '50 issues/run', pro: 'Unlimited' },
                       { label: 'Startup Manager', free: '3 entries', pro: 'Unlimited' },
                       { label: 'Browser Cleaner', free: '1 browser', pro: 'All browsers' },
                       { label: 'Duplicate Finder', free: '20 files', pro: 'Unlimited' },
                       { label: 'Disk Analyzer', free: '10 files', pro: 'Unlimited' },
+                      { label: 'Large Files Finder', free: true, pro: true },
                       { label: 'Software Uninstaller', free: 'Manual', pro: 'Batch + cleanup' },
-                      { label: 'Process Intelligence', free: 'Top 10', pro: 'Unlimited' },
-                      { label: 'Hardware Center History', free: '24 hours', pro: 'Unlimited' },
-                      { label: 'Predictive Health', free: '7-day', pro: 'Unlimited' },
-                      { label: 'Real-Time Protection', free: 'Pro only', pro: true },
-                      { label: 'Scheduled Scans', free: 'Pro only', pro: true },
-                      { label: 'Automatic Optimization', free: 'Pro only', pro: true },
-                      { label: 'Background Monitoring', free: 'Pro only', pro: true },
-                      { label: 'Priority Support', free: 'Pro only', pro: true },
+                      { label: 'Scheduled Scans & Auto-Care', free: '—', pro: true },
+                      { label: 'Privacy Score', free: 'Basic', pro: 'Advanced' },
+                      { label: 'Game / Movie Mode', free: '—', pro: true },
+                      { label: 'AI Assistant & Help Center', free: true, pro: true },
+                      { label: 'Priority Support', free: '—', pro: true },
                     ].map((row) => (
                       <tr key={row.label} className="border-t border-[var(--avs-border)]">
                         <td className="p-2 text-text-secondary">{row.label}</td>
@@ -545,154 +511,6 @@ export default function SettingsPage() {
                 </table>
               </div>
             </div>
-          </div>
-        </Card>
-
-        <Card title="Version" variant="glass">
-          <dl className="grid grid-cols-2 gap-3 text-small md:grid-cols-3">
-            <div>
-              <dt className="text-text-muted">Version</dt>
-              <dd className="font-medium text-text-primary">{getVersionString()}</dd>
-            </div>
-            <div>
-              <dt className="text-text-muted">Build</dt>
-              <dd className="font-medium text-text-primary">{getBuildString()}</dd>
-            </div>
-            <div>
-              <dt className="text-text-muted">Channel</dt>
-              <dd className="font-medium text-text-primary">{getChannelString()}</dd>
-            </div>
-          </dl>
-        </Card>
-
-        <Card title="Update Preferences" variant="glass">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-small font-medium text-text-primary">Check for updates automatically</div>
-                <p className="text-caption text-text-secondary">Automatic update checks run every 24 hours. Use the Check Now button to check immediately.</p>
-              </div>
-              <Badge tone="success" data-testid="settings-auto-update-toggle">Enabled</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-small font-medium text-text-primary">Update channel</div>
-                <p className="text-caption text-text-secondary">Stable channel is recommended for most users.</p>
-              </div>
-              <Badge tone="brand">Stable</Badge>
-            </div>
-          </div>
-        </Card>
-
-        {/* Telemetry */}
-        <Card title="Telemetry & Diagnostics" variant="glass">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-small font-medium text-text-primary">Anonymous usage data</div>
-                <p className="text-caption text-text-secondary">
-                  Help improve AVS AI Shield by sending anonymous crash reports and usage statistics. No personal data is collected.
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  const newVal = !(typeof window !== 'undefined' && window.localStorage.getItem('avs-telemetry-enabled') === 'true');
-                  try {
-                    if (newVal) window.localStorage.setItem('avs-telemetry-enabled', 'true');
-                    else window.localStorage.removeItem('avs-telemetry-enabled');
-                  } catch { /* ignore */ }
-                  // Force re-render
-                  setAutoBrowserCleanEnabled((v) => v);
-                }}
-                className={`relative h-6 w-11 rounded-full transition-colors ${
-                  (typeof window !== 'undefined' && window.localStorage.getItem('avs-telemetry-enabled') === 'true') ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'
-                }`}
-                data-testid="telemetry-toggle"
-              >
-                <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${(typeof window !== 'undefined' && window.localStorage.getItem('avs-telemetry-enabled') === 'true') ? 'translate-x-5' : 'translate-x-0.5'}`} />
-              </button>
-            </div>
-          </div>
-        </Card>
-
-        <Card title="Auto Browser Clean" variant="glass">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-small font-medium text-text-primary">Clean browser data on close</div>
-                <p className="text-caption text-text-secondary">
-                  Automatically clean cache, history, and cookies when you close your browser.
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  const newVal = !autoBrowserCleanEnabled;
-                  setAutoBrowserCleanEnabled(newVal);
-                  rpc.raw(RPC_METHODS.SETTINGS_UPDATE, { autoBrowserCleanEnabled: newVal }).catch(() => {});
-                  if (newVal) {
-                    rpc.raw(RPC_METHODS.AUTO_BROWSER_CLEAN_START, {
-                      categories: ['browser_cache', 'browser_history', 'browser_cookies'],
-                    }).catch(() => {});
-                  } else {
-                    rpc.raw(RPC_METHODS.AUTO_BROWSER_CLEAN_STOP).catch(() => {});
-                  }
-                }}
-                className={`relative h-6 w-11 rounded-full transition-colors ${autoBrowserCleanEnabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'}`}
-                data-testid="auto-browser-clean-toggle"
-              >
-                <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${autoBrowserCleanEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
-              </button>
-            </div>
-            {autoBrowserCleanEnabled && (
-              <p className="text-caption text-text-muted">
-                Watching for browser exits: Chrome, Edge, Firefox, Brave, Opera, Vivaldi.
-              </p>
-            )}
-          </div>
-        </Card>
-
-        <Card title="Internet Booster" variant="glass">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-small font-medium text-text-primary">One-click Internet Booster</div>
-                <p className="text-caption text-text-secondary">
-                  Optimize TCP/IP settings, flush DNS cache, and clear browser network data for faster browsing.
-                </p>
-              </div>
-              <Button
-                variant={internetBoosterEnabled ? 'secondary' : 'primary'}
-                size="sm"
-                onClick={async () => {
-                  if (edition === 'free') { showUpgrade(); return; }
-                  setInternetBoosterLoading(true);
-                  try {
-                    await rpc.raw(RPC_METHODS.NETWORK_OPT_BOOST, {
-                      tcpTuning: true, dnsFlush: true, browserNetwork: true,
-                    });
-                    setInternetBoosterEnabled(true);
-                    rpc.raw(RPC_METHODS.SETTINGS_UPDATE, { internetBoosterEnabled: true }).catch(() => {});
-                  } catch { /* ignore */ }
-                  setInternetBoosterLoading(false);
-                }}
-                disabled={internetBoosterLoading}
-                data-testid="internet-booster-apply"
-              >
-                {internetBoosterLoading ? 'Boosting...' : internetBoosterEnabled ? 'Re-apply' : 'Boost Now'}
-              </Button>
-            </div>
-            {edition === 'free' && (
-              <p className="text-caption text-brand-primary">Professional edition required.</p>
-            )}
-          </div>
-        </Card>
-
-        <Card title="Threat Engine" variant="glass">
-          <div className="space-y-4">
-            <p className="text-caption text-text-secondary">
-              Configure signature-based malware detection engines. These run during Security Center scans alongside behavioral analysis.
-            </p>
-            <ThreatEngineConfig />
           </div>
         </Card>
 
@@ -776,7 +594,7 @@ export default function SettingsPage() {
                     if (newVal) window.localStorage.setItem('avs-auto-update', 'true');
                     else window.localStorage.removeItem('avs-auto-update');
                   } catch { /* ignore */ }
-                  setAutoBrowserCleanEnabled((v) => v);
+                  forceUpdate((v) => v + 1);
                 }}
                 className={`relative h-6 w-11 rounded-full transition-colors shrink-0 ${
                   (typeof window !== 'undefined' && window.localStorage.getItem('avs-auto-update') === 'true') ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'
@@ -817,7 +635,7 @@ export default function SettingsPage() {
                     if (newVal) window.localStorage.setItem('avs-debug-mode', 'true');
                     else window.localStorage.removeItem('avs-debug-mode');
                   } catch { /* ignore */ }
-                  setAutoBrowserCleanEnabled((v) => v);
+                  forceUpdate((v) => v + 1);
                 }}
                 className={`relative h-6 w-11 rounded-full transition-colors shrink-0 ${
                   (typeof window !== 'undefined' && window.localStorage.getItem('avs-debug-mode') === 'true') ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'
@@ -861,25 +679,6 @@ export default function SettingsPage() {
           </div>
         </Card>
         )}
-
-        <Card title="Help & Onboarding" variant="glass">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-small font-medium text-text-primary">Replay Welcome Tour</div>
-              <p className="text-caption text-text-secondary">
-                See the introductory tour and first-scan prompt again.
-              </p>
-            </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => replayWelcome()}
-              data-testid="settings-replay-welcome"
-            >
-              Replay
-            </Button>
-          </div>
-        </Card>
 
         {/* Keyboard Shortcuts disabled */}
       </div>
@@ -984,180 +783,6 @@ function DeviceManagement() {
       ) : !loading && !error ? (
         <p className="text-caption text-text-muted">No devices found.</p>
       ) : null}
-    </div>
-  );
-}
-
-// ── Threat Engine Configuration ───────────────────────────────
-
-function ThreatEngineConfig() {
-  const [status, setStatus] = useState<{
-    enabled_sources: Record<string, boolean>;
-    definitions: Record<string, number>;
-    config: { virustotal_configured: boolean; auto_quarantine: boolean };
-  } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [vtApiKey, setVtApiKey] = useState('');
-  const [vtKeySaving, setVtKeySaving] = useState(false);
-
-  const refresh = useCallback(async () => {
-    try {
-      const res = await rpc.raw<{
-        enabled_sources: Record<string, boolean>;
-        definitions: Record<string, number>;
-        config: { virustotal_configured: boolean; auto_quarantine: boolean };
-      }>(RPC_METHODS.THREAT_STATUS);
-      setStatus({
-        enabled_sources: res.enabled_sources || {},
-        definitions: res.definitions || {},
-        config: res.config || { virustotal_configured: false, auto_quarantine: false },
-      });
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  const toggleSource = async (source: string, enabled: boolean) => {
-    setLoading(true);
-    try {
-      await rpc.raw(RPC_METHODS.THREAT_CONFIGURE, {
-        enabled_sources: { [source]: !enabled },
-      });
-      refresh();
-    } catch {
-      /* ignore */
-    }
-    setLoading(false);
-  };
-
-  const saveVtApiKey = async () => {
-    if (!vtApiKey.trim()) return;
-    setVtKeySaving(true);
-    try {
-      await rpc.raw(RPC_METHODS.THREAT_CONFIGURE, {
-        virustotal_api_key: vtApiKey.trim(),
-        enabled_sources: { virustotal: true },
-      });
-      setVtApiKey('');
-      refresh();
-    } catch {
-      /* ignore */
-    }
-    setVtKeySaving(false);
-  };
-
-  const toggleAutoQuarantine = async () => {
-    setLoading(true);
-    try {
-      await rpc.raw(RPC_METHODS.THREAT_CONFIGURE, {
-        auto_quarantine: !status?.config.auto_quarantine,
-      });
-      refresh();
-    } catch {
-      /* ignore */
-    }
-    setLoading(false);
-  };
-
-  if (!status) {
-    return <p className="text-caption text-text-muted">Loading threat engine status...</p>;
-  }
-
-  const sources: Array<{ key: string; label: string; desc: string }> = [
-    { key: 'hash_blocklist', label: 'Hash Blocklist', desc: 'NIST NSRL, Abuse.ch, MalwareBazaar hash matching' },
-    { key: 'yara', label: 'YARA Rules', desc: 'Rule-based threat detection' },
-    { key: 'amsi', label: 'AMSI', desc: 'Windows Anti-Malware Scan Interface' },
-    { key: 'defender', label: 'Windows Defender', desc: 'Microsoft Defender integration' },
-    { key: 'heuristic', label: 'Heuristic Analysis', desc: 'Behavioral heuristics and anomaly detection' },
-    { key: 'clamav', label: 'AVS AI Shield AV Engine', desc: 'AVS AI Shield signature-based antivirus scanning' },
-    { key: 'virustotal', label: 'VirusTotal', desc: 'Cloud hash lookup (requires API key)' },
-  ];
-
-  return (
-    <div className="space-y-3">
-      {sources.map((src) => {
-        const enabled = status.enabled_sources[src.key] ?? false;
-        const defCount = status.definitions[src.key];
-        return (
-          <div key={src.key} className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <div className="text-small font-medium text-text-primary">{src.label}</div>
-              <div className="text-caption text-text-muted">
-                {src.desc}
-                {defCount !== undefined && defCount > 0 && ` — ${defCount.toLocaleString()} definitions`}
-              </div>
-            </div>
-            <button
-              onClick={() => toggleSource(src.key, enabled)}
-              disabled={loading || (src.key === 'virustotal' && !status.config.virustotal_configured)}
-              className={`relative h-6 w-11 rounded-full transition-colors shrink-0 ${
-                enabled ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'
-              } ${(src.key === 'virustotal' && !status.config.virustotal_configured) ? 'opacity-50 cursor-not-allowed' : ''}`}
-              data-testid={`threat-engine-${src.key}-toggle`}
-            >
-              <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
-            </button>
-          </div>
-        );
-      })}
-
-      {/* VirusTotal API Key */}
-      <div className="border-t border-[var(--avs-border)] pt-3">
-        <div className="mb-2">
-          <div className="text-small font-medium text-text-primary">VirusTotal API Key</div>
-          <div className="text-caption text-text-secondary">
-            {status.config.virustotal_configured
-              ? 'VirusTotal is configured. Cloud hash lookup is active.'
-              : 'Enter a VirusTotal public API key to enable cloud-based hash lookup.'}
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <input
-            type="password"
-            placeholder="Enter VirusTotal API key..."
-            value={vtApiKey}
-            onChange={(e) => setVtApiKey(e.target.value)}
-            className="flex-1 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-small text-text-primary placeholder:text-text-muted focus:border-brand-primary focus:outline-none"
-            data-testid="virustotal-api-key-input"
-          />
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={saveVtApiKey}
-            disabled={vtKeySaving || !vtApiKey.trim()}
-            data-testid="virustotal-api-key-save"
-          >
-            {vtKeySaving ? 'Saving...' : 'Save'}
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between border-t border-[var(--avs-border)] pt-3">
-        <div>
-          <div className="text-small font-medium text-text-primary">Auto-quarantine detected threats</div>
-          <div className="text-caption text-text-secondary">Automatically quarantine files when a threat is detected</div>
-        </div>
-        <button
-          onClick={toggleAutoQuarantine}
-          disabled={loading}
-          className={`relative h-6 w-11 rounded-full transition-colors shrink-0 ${
-            status.config.auto_quarantine ? 'bg-semantic-danger' : 'bg-[var(--avs-border)]'
-          }`}
-          data-testid="threat-engine-auto-quarantine-toggle"
-        >
-          <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${status.config.auto_quarantine ? 'translate-x-5' : 'translate-x-0.5'}`} />
-        </button>
-      </div>
-
-      <div className="flex justify-end">
-        <Button variant="ghost" size="sm" onClick={refresh} disabled={loading}>
-          Refresh Status
-        </Button>
-      </div>
     </div>
   );
 }

@@ -97,19 +97,12 @@ export default function AboutPage() {
         />
 
         {/* Key stats */}
-        <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="lg:col-span-2 grid grid-cols-2 gap-3">
           <StatTile
             label="Version"
             value={getVersionString()}
             hint={`Build ${getBuildString()}`}
             icon={<CircleStackIcon className="h-5 w-5" />}
-            variant="glass"
-          />
-          <StatTile
-            label="Channel"
-            value={getChannelString()}
-            hint={getArchitectureString()}
-            icon={<ComputerDesktopIcon className="h-5 w-5" />}
             variant="glass"
           />
           <StatTile
@@ -127,13 +120,6 @@ export default function AboutPage() {
             icon={<CpuChipIcon className="h-5 w-5" />}
             variant="glass"
             accentColor={!isOffline ? 'var(--avs-success)' : 'var(--avs-danger)'}
-          />
-          <StatTile
-            label="SDK"
-            value={sdkInfo?.sdk_version ?? '—'}
-            hint="SDK version"
-            icon={<CircleStackIcon className="h-5 w-5" />}
-            variant="glass"
           />
           <StatTile
             label="Release Date"

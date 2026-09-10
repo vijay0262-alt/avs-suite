@@ -17,10 +17,8 @@ import { RPC_METHODS } from '@avs/shared/rpc';
 import {
   ChartBarIcon,
   ArrowPathIcon,
-  TrashIcon,
   ShieldCheckIcon,
   CircleStackIcon,
-  ExclamationTriangleIcon,
   DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 
@@ -174,19 +172,12 @@ export default function AnalyticsPage() {
         />
 
         {/* Key stats */}
-        <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="lg:col-span-2 grid grid-cols-2 gap-3">
           <StatTile
             label="Total Scans"
             value={summary?.totalScans?.toString() ?? '—'}
             hint="All-time scans"
             icon={<ChartBarIcon className="h-5 w-5" />}
-            variant="glass"
-          />
-          <StatTile
-            label="Cleanups Run"
-            value={summary?.totalCleanups?.toString() ?? '—'}
-            hint="Cleanup operations"
-            icon={<TrashIcon className="h-5 w-5" />}
             variant="glass"
           />
           <StatTile
@@ -210,13 +201,6 @@ export default function AnalyticsPage() {
             icon={<ShieldCheckIcon className="h-5 w-5" />}
             variant="glass"
             accentColor={(summary?.totalThreatsDetected ?? 0) > 0 ? 'var(--avs-danger)' : undefined}
-          />
-          <StatTile
-            label="Quarantined"
-            value={summary?.totalThreatsQuarantined?.toString() ?? '—'}
-            hint="Threats isolated"
-            icon={<ExclamationTriangleIcon className="h-5 w-5" />}
-            variant="glass"
           />
         </div>
       </div>

@@ -115,8 +115,10 @@ export default function ActivationPage() {
     void syncRef.current();
   }, []);
 
-  const plan = syncData?.subscription.plan ?? 'FREE';
-  const isProfessional = planToEdition(plan, syncData?.license?.edition) === 'PROFESSIONAL';
+  const rawPlan = syncData?.subscription.plan ?? 'FREE';
+  const isProfessional = planToEdition(rawPlan, syncData?.license?.edition) === 'PROFESSIONAL';
+  const plan = isProfessional ? 'Professional' : rawPlan;
+  const planStatus = isProfessional ? 'Active' : (syncData?.subscription.status ?? '—');
   const isConnected = !isOffline && phase !== 'offline';
   const customerName = customer?.display_name ?? session?.customerName ?? syncData?.customer?.display_name ?? '—';
   const customerEmail = customer?.email ?? session?.customerEmail ?? syncData?.customer?.email ?? '—';
@@ -158,7 +160,7 @@ export default function ActivationPage() {
           <StatTile
             label="Plan"
             value={plan}
-            hint={syncData?.subscription.status ?? '—'}
+            hint={planStatus}
             icon={<KeyIcon className="h-5 w-5" />}
             variant="glass"
             accentColor={isProfessional ? 'var(--avs-success)' : undefined}
@@ -335,7 +337,11 @@ export default function ActivationPage() {
                 {license.product_name && (
                   <div>
                     <div className="text-text-muted">Product</div>
-                    <div className="font-medium text-text-primary mt-1">{license.product_name}</div>
+                    <div className="font-medium text-text-primary mt-1">
+                      {license.product_name.toLowerCase().includes('optimizer')
+                        ? 'AVS AI Shield : Security & PC Intelligence'
+                        : license.product_name}
+                    </div>
                   </div>
                 )}
               </div>

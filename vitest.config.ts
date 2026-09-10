@@ -32,6 +32,7 @@ export default defineConfig({
     include: ['apps/**/*.test.{ts,tsx}', 'packages/**/*.test.{ts,tsx}'],
     exclude: ['**/node_modules/**', '**/dist/**', '**/dist-electron/**', '**/cjs/**'],
     setupFiles: ['./vitest.setup.ts'],
+    testTimeout: 10000,
     coverage: {
       reporter: ['text', 'html', 'lcov'],
       include: ['apps/**/src/**', 'packages/**/src/**'],

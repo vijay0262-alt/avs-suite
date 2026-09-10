@@ -24,24 +24,36 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 const QUICK_LINKS = [
-  { label: 'Run a Health Scan', path: '/dashboard', icon: ShieldCheckIcon, description: 'Analyze your PC health with AI' },
-  { label: 'Open AVS AI Assistant', path: '/ai-assistant', icon: ChatBubbleLeftRightIcon, description: 'Ask questions about your PC' },
-  { label: 'Run Smart Optimize', path: '/ai-smart-optimize', icon: BoltIcon, description: 'Optimize your PC with AI recommendations' },
-  { label: 'View Hardware Info', path: '/hardware-center', icon: CpuChipIcon, description: 'Check hardware health and status' },
+  { label: 'Run a Health Scan', path: '/dashboard', icon: ShieldCheckIcon, description: 'Analyze health, performance, and security with AI' },
+  { label: 'Open AVS AI Assistant', path: '/ai-assistant', icon: ChatBubbleLeftRightIcon, description: 'Ask the AI assistant about any PC question' },
+  { label: 'Run Smart Optimize', path: '/ai-smart-optimize', icon: BoltIcon, description: 'Get evidence-based AI optimization recommendations' },
+  { label: 'AI Process Intelligence', path: '/process-intelligence', icon: CpuChipIcon, description: 'Understand every process and its impact on your PC' },
 ];
 
 const FAQS = [
   {
-    q: 'What is AI Smart Optimization?',
-    a: 'AI Smart Optimization analyzes your system using evidence-based metrics and recommends the safest, highest-impact optimizations. It never makes changes without your approval.',
+    q: 'What is AVS AI Shield?',
+    a: 'AVS AI Shield is an AI-powered PC Health, Performance & Security Platform. It does not just monitor your PC—it understands it—using sensor evidence, confidence scores, and explainable AI.',
   },
   {
-    q: 'How does the AI Security Center work?',
-    a: 'The Security Center uses multiple detection providers (behavior, signature, persistence, browser protection, reputation) to identify threats. Every detection includes evidence and a confidence score.',
+    q: 'What is AI Active Protection?',
+    a: 'AI Active Protection combines Protection (real-time monitoring, behavior analysis), Investigation (explainable AI, threat timeline, correlation), Remediation (safe quarantine, rollback, recovery), and Intelligence (process, hardware, and predictive analytics).',
+  },
+  {
+    q: 'What is AI Smart Optimization?',
+    a: 'AI Smart Optimization analyzes your system using evidence-based metrics and recommends the safest, highest-impact optimizations. It never tweaks hardware or makes changes without your approval.',
   },
   {
     q: 'What is AI Predictive Health?',
-    a: 'Predictive Health analyzes trend history to detect degrading system performance before it becomes visible. It forecasts potential issues using sensor evidence.',
+    a: 'Predictive Health analyzes trend history to detect degrading system performance before it becomes user-visible. It forecasts potential failures using sensor evidence and confidence scores.',
+  },
+  {
+    q: 'What is AI Process Intelligence?',
+    a: 'AI Process Intelligence explains every running process and its impact on system health, performance, and security, backed by live sensor evidence.',
+  },
+  {
+    q: 'What is AI Hardware Intelligence?',
+    a: 'AI Hardware Intelligence analyzes, explains, and recommends actions for your hardware health. It never modifies hardware, BIOS, fans, or clock speeds.',
   },
   {
     q: 'Is my data sent to the cloud?',
@@ -49,7 +61,7 @@ const FAQS = [
   },
   {
     q: 'What\'s the difference between FREE and PRO?',
-    a: 'FREE includes basic scanning, dashboard, and AVS AI Assistant. PRO adds Smart Optimization, Predictive Health, Advanced Security, Export Center, and more.',
+    a: 'FREE includes basic scanning, dashboard, AI Assistant, hardware information, and limited analysis. PRO unlocks AI Smart Optimization, AI Predictive Health, AI Process Intelligence, advanced security, unlimited cleaning, and priority support.',
   },
   {
     q: 'How do I restore quarantined files?',
@@ -89,7 +101,7 @@ export default function HelpCenterPage() {
         />
 
         {/* Key stats */}
-        <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="lg:col-span-2 grid grid-cols-2 gap-3">
           <StatTile
             label="Quick Actions"
             value={QUICK_LINKS.length.toString()}
@@ -109,20 +121,6 @@ export default function HelpCenterPage() {
             value={SHORTCUTS.length.toString()}
             hint="Keyboard hotkeys"
             icon={<ChatBubbleLeftRightIcon className="h-5 w-5" />}
-            variant="glass"
-          />
-          <StatTile
-            label="Email"
-            value="help@avsshield.com"
-            hint="Support email"
-            icon={<EnvelopeIcon className="h-5 w-5" />}
-            variant="glass"
-          />
-          <StatTile
-            label="Website"
-            value="avsshield.com"
-            hint="Online resources"
-            icon={<GlobeAltIcon className="h-5 w-5" />}
             variant="glass"
           />
           <StatTile
