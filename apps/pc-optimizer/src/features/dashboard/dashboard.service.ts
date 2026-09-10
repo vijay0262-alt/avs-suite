@@ -31,11 +31,11 @@ export interface DashboardService {
   refreshCache(): Promise<{ refreshed: boolean }>;
   getOptimizePreview(): Promise<OptimizePreview>;
   getHardwareSensors(): Promise<HardwareSensors>;
-  enableSmartScreen(): Promise<{ enabled: boolean; message: string }>;
-  enableDefender(): Promise<{ enabled: boolean; message: string }>;
-  enableFirewall(): Promise<{ enabled: boolean; message: string }>;
-  enableRansomwareProtection(): Promise<{ enabled: boolean; message: string }>;
-  enableMemoryIntegrity(): Promise<{ enabled: boolean; message: string }>;
+  enableSmartScreen(): Promise<{ success?: boolean; enabled?: boolean; requires_reboot?: boolean; message?: string; error?: string }>;
+  enableDefender(): Promise<{ success?: boolean; enabled?: boolean; requires_reboot?: boolean; message?: string; error?: string }>;
+  enableFirewall(): Promise<{ success?: boolean; enabled?: boolean; requires_reboot?: boolean; message?: string; error?: string }>;
+  enableRansomwareProtection(): Promise<{ success?: boolean; enabled?: boolean; requires_reboot?: boolean; message?: string; error?: string }>;
+  enableMemoryIntegrity(): Promise<{ success?: boolean; enabled?: boolean; requires_reboot?: boolean; message?: string; error?: string }>;
 }
 
 export const dashboardService: DashboardService = {

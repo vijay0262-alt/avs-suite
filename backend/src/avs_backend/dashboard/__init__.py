@@ -1509,24 +1509,29 @@ def _get_memory_integrity_status() -> bool:
     """
     if os.name != "nt":
         return False
-    # Check if HVCI (Hypervisor-Protected Code Integrity) is running
-    out = _run_powershell(
-        "try { "
-        "(Get-CimInstance -ClassName Win32_DeviceGuard -Namespace "
-        "'root\\Microsoft\\Windows\\DeviceGuard').SecurityServicesRunning "
-        "-join ',' "
-        "} catch { 'unknown' }"
-    )
-    if not out:
-        return False
-    val = out.strip()
-    # SecurityServicesRunning is an array; value 2 means HVCI is running
-    # (1 = Credential Guard, 2 = HVCI, 3 = both)
-    try:
-        parts = [int(p.strip()) for p in val.split(",") if p.strip().isdigit()]
-        return 2 in parts
-    except (ValueError, TypeError):
-        return False
+    # Check if HVCI (Hypervisor-Protected Code Integrity) is running OR
+    # configured (enabled but pending reboot). SecurityServicesRunning only
+    # reflects the live state; SecurityServicesConfigured reflects the
+    # registry/policy state which changes immediately after our fix.
+    for prop in ("SecurityServicesRunning", "SecurityServicesConfigured"):
+        out = _run_powershell(
+            "try { "
+            f"(Get-CimInstance -ClassName Win32_DeviceGuard -Namespace "
+            f"'root\\Microsoft\\Windows\\DeviceGuard').{prop} "
+            "-join ',' "
+            "} catch { 'unknown' }"
+        )
+        if not out:
+            continue
+        val = out.strip()
+        # Value 2 means HVCI (1 = Credential Guard, 2 = HVCI, 3 = both)
+        try:
+            parts = [int(p.strip()) for p in val.split(",") if p.strip().isdigit()]
+            if 2 in parts:
+                return True
+        except (ValueError, TypeError):
+            continue
+    return False
 
 
 def _decode_wsc_product_state(state: int) -> tuple[str, str]:

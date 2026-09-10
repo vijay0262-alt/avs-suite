@@ -132,11 +132,12 @@ class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
               : action === 'enableRansomwareProtection'
                 ? dashboardService.enableRansomwareProtection()
                 : dashboardService.enableMemoryIntegrity();
-      const result = await rpcCall as { enabled?: boolean; message?: string; error?: string };
-      const message = result?.message ?? result?.error ?? (result?.enabled ? 'Fix applied successfully' : 'Fix failed');
+      const result = await rpcCall as { success?: boolean; enabled?: boolean; requires_reboot?: boolean; message?: string; error?: string };
+      const ok = result?.success === true || result?.enabled === true;
+      const message = result?.message ?? result?.error ?? (ok ? 'Fix applied successfully' : 'Fix failed');
       this.setState({
         fixMessage: message,
-        fixSuccess: result?.enabled === true,
+        fixSuccess: ok,
         fixInProgress: null,
       });
       // Give the system time to apply the change before re-checking status.

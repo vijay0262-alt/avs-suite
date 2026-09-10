@@ -710,6 +710,22 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
 
     result["completed_at"] = _progress.get("completed_at")
     result["success"] = True
+
+    # Record the one-click scan in shared history so statistics, score and
+    # timeline widgets show real results instead of stale / partial data.
+    try:
+        from avs_backend.threat_engine import _save_scan_history
+        _save_scan_history(result.get("scan_id") or f"one_click_{int(time.time())}", {
+            "scan_type": f"one_click_{scan_type}",
+            "started_at": _progress.get("started_at"),
+            "completed_at": _progress.get("completed_at"),
+            "files_scanned": result["files_scanned"],
+            "threats_found": result["threats_found"],
+            "threats": all_threats,
+        })
+    except Exception as e:
+        log.warning("Failed to save one-click scan history: %s", e)
+
     return result
 
 

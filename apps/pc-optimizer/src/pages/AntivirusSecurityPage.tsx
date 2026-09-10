@@ -849,8 +849,8 @@ export default function AntivirusSecurityPage() {
                   progress={oneClickProgress.scan_progress ?? 0}
                   phase={oneClickProgress.phase ?? 'scanning'}
                   phaseLabel={
-                    oneClickProgress.phase === 'finding_files' ? 'Finding Files'
-                    : oneClickProgress.phase === 'scanning' ? 'Scanning'
+                    oneClickProgress.phase === 'finding_files' ? 'Scanning Files'
+                    : oneClickProgress.phase === 'scanning' ? 'Search & Cleaning Threats'
                     : oneClickProgress.phase === 'pending_confirmation' ? 'Review'
                     : oneClickProgress.phase === 'cleaning' ? 'Cleaning'
                     : oneClickProgress.phase === 'complete' ? 'Complete'
@@ -859,8 +859,8 @@ export default function AntivirusSecurityPage() {
                     : 'Scanning'
                   }
                   title={
-                    oneClickProgress.phase === 'finding_files' ? 'Finding files to scan...'
-                    : oneClickProgress.phase === 'scanning' ? 'Scanning your PC for threats...'
+                    oneClickProgress.phase === 'finding_files' ? 'Scanning files...'
+                    : oneClickProgress.phase === 'scanning' ? 'Search & Cleaning Threats...'
                     : oneClickProgress.phase === 'pending_confirmation' ? `${oneClickProgress.threats_found || 0} threat${(oneClickProgress.threats_found || 0) !== 1 ? 's' : ''} found — review required`
                     : oneClickProgress.phase === 'cleaning' ? 'Quarantining detected threats...'
                     : oneClickProgress.phase === 'complete' ? 'Scan complete.'
@@ -869,9 +869,7 @@ export default function AntivirusSecurityPage() {
                     : 'Scanning your PC...'
                   }
                   subtitle={
-                    oneClickProgress.phase === 'finding_files'
-                      ? `${(oneClickProgress.files_found || 0).toLocaleString()} files found so far`
-                    : oneClickProgress.phase === 'scanning' && oneClickProgress.current_file
+                    oneClickProgress.current_file
                       ? oneClickProgress.current_file
                     : oneClickProgress.phase === 'pending_confirmation'
                       ? 'Quarantine moves threats to a secure, isolated folder where they can\u2019t harm your PC.'
@@ -891,14 +889,10 @@ export default function AntivirusSecurityPage() {
                   {/* Stats grid */}
                   <div className="grid grid-cols-4 gap-3 w-full max-w-lg mt-4">
                     <div className="rounded-lg bg-surface-muted px-3 py-2">
-                      <div className="text-caption text-text-muted">
-                        {oneClickProgress.phase === 'finding_files' ? 'Files Found' : 'Files'}
-                      </div>
+                      <div className="text-caption text-text-muted">Files</div>
                       <div className="text-small font-bold text-text-primary">
-                        {oneClickProgress.phase === 'finding_files'
-                          ? (oneClickProgress.files_found || 0).toLocaleString()
-                          : (oneClickProgress.files_scanned || 0).toLocaleString()}
-                        {oneClickProgress.total_files > 0 && oneClickProgress.phase === 'scanning' && (
+                        {(oneClickProgress.files_scanned || oneClickProgress.files_found || 0).toLocaleString()}
+                        {oneClickProgress.total_files > 0 && (
                           <span className="text-caption text-text-muted font-normal"> / {(oneClickProgress.total_files).toLocaleString()}</span>
                         )}
                       </div>
@@ -1234,20 +1228,7 @@ export default function AntivirusSecurityPage() {
       )}
 
       {/* Status summary */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card variant="glass" className="p-4 text-center" data-testid="av-status-card">
-          <ShieldCheckIcon className={`h-6 w-6 mx-auto mb-1 ${
-            avStatus?.clamd_running ? 'text-semantic-success'
-              : avStatus?.installed ? 'text-semantic-warning'
-              : 'text-text-muted'
-          }`} />
-          <div className="text-section-title font-bold text-text-primary">
-            {avStatus?.clamd_running ? 'Protected'
-              : avStatus?.installed ? 'Starting'
-              : 'Preparing'}
-          </div>
-          <div className="text-caption text-text-secondary">AV Engine</div>
-        </Card>
+      <div className="grid grid-cols-2 gap-3">
         <Card variant="glass" className="p-4 text-center" data-testid="rt-status-card">
           <EyeIcon className={`h-6 w-6 mx-auto mb-1 ${rtGuardEnabled ? 'text-semantic-success' : 'text-semantic-warning'}`} />
           <div className="text-section-title font-bold text-text-primary">
@@ -1461,174 +1442,6 @@ export default function AntivirusSecurityPage() {
             {!usbStatus?.running && (
               <p className="mt-3 text-caption text-text-muted">
                 Enable to automatically scan any USB drive or external device the moment it&apos;s plugged in. Threats are quarantined automatically.
-              </p>
-            )}
-          </Card>
-
-          {/* Email Attachment Scanner */}
-          <Card variant="glass" className="p-5" data-testid="av-email-scanner">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="shrink-0 rounded-[var(--avs-radius-md)] bg-brand-primary/10 p-2.5">
-                  <ChartBarIcon className="h-5 w-5 text-brand-primary" />
-                </div>
-                <div>
-                  <div className="text-small font-semibold text-text-primary">Email Attachment Scanner</div>
-                  <div className="text-caption text-text-secondary">
-                    Scan Outlook email attachments for malware, macros, and dangerous files.
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={scanOutlookAttachments}
-                disabled={emailScanning}
-                className="px-4 py-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-brand-primary)] text-white text-small font-medium hover:opacity-90 disabled:opacity-50"
-                data-testid="email-scan-outlook-btn"
-              >
-                {emailScanning ? 'Scanning...' : 'Scan Outlook'}
-              </button>
-            </div>
-
-            {emailScanResult && (
-              <div className="mt-3" data-testid="email-scan-result">
-                {emailScanResult.message ? (
-                  <p className="text-caption text-text-muted">Email scan completed. See results below.</p>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-3 mb-3">
-                      <Badge tone={emailScanResult.threat_level === 'safe' ? 'success' : emailScanResult.threat_level === 'suspicious' ? 'warning' : 'danger'}>
-                        {emailScanResult.threats_found > 0 ? `${emailScanResult.threats_found} threat${emailScanResult.threats_found === 1 ? '' : 's'} found` : 'Clean'}
-                      </Badge>
-                      <span className="text-caption text-text-muted">
-                        Scanned {emailScanResult.scanned} attachment{emailScanResult.scanned === 1 ? '' : 's'}
-                      </span>
-                    </div>
-                    {emailScanResult.results && emailScanResult.results.length > 0 && (
-                      <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {emailScanResult.results.filter((r) => r.threat_level !== 'safe').map((r, i) => (
-                          <div key={i} className="flex items-center justify-between rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-surface px-3 py-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Badge tone={r.threat_level === 'malicious' ? 'danger' : 'warning'}>{r.threat_level}</Badge>
-                              <span className="text-caption text-text-primary truncate">{r.file_info.name}</span>
-                            </div>
-                            <span className="text-micro text-text-muted shrink-0">{r.threats[0] || ''}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-
-            {!emailScanResult && (
-              <p className="mt-3 text-caption text-text-muted">
-                Automatically detects and scans your Outlook attachment folder for dangerous file types, macro-enabled documents, embedded executables, and double-extension tricks.
-              </p>
-            )}
-          </Card>
-
-          {/* Browser Extension Scanner */}
-          <Card variant="glass" className="p-5" data-testid="av-extension-scanner">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="shrink-0 rounded-[var(--avs-radius-md)] bg-brand-primary/10 p-2.5">
-                  <GlobeAltIcon className="h-5 w-5 text-brand-primary" />
-                </div>
-                <div>
-                  <div className="text-small font-semibold text-text-primary">Browser Extension Scanner</div>
-                  <div className="text-caption text-text-secondary">
-                    Scan installed browser extensions for suspicious permissions and malicious code.
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={scanBrowserExtensions}
-                disabled={extScanning}
-                className="px-4 py-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-brand-primary)] text-white text-small font-medium hover:opacity-90 disabled:opacity-50"
-                data-testid="extension-scan-btn"
-              >
-                {extScanning ? 'Scanning...' : 'Scan Extensions'}
-              </button>
-            </div>
-
-            {extScanResult && (
-              <div className="mt-3" data-testid="extension-scan-result">
-                <div className="flex items-center gap-3 mb-3">
-                  <Badge tone={extScanResult.threats_found > 0 ? 'danger' : 'success'}>
-                    {extScanResult.threats_found > 0 ? `${extScanResult.threats_found} threat${extScanResult.threats_found === 1 ? '' : 's'} found` : 'Clean'}
-                  </Badge>
-                  <span className="text-caption text-text-muted">
-                    Scanned {extScanResult.extensions_scanned} extension{extScanResult.extensions_scanned === 1 ? '' : 's'}
-                  </span>
-                </div>
-                {extScanResult.threats.length > 0 && (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {extScanResult.threats.map((t, i) => (
-                      <div key={i} className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-surface px-3 py-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Badge tone={t.severity === 'critical' || t.severity === 'high' ? 'danger' : 'warning'}>{t.severity}</Badge>
-                            <span className="text-caption text-text-primary truncate">{t.threat_name}</span>
-                          </div>
-                          <span className="text-micro text-text-muted shrink-0">{t.extension?.browser || ''}</span>
-                        </div>
-                        <div className="text-caption text-text-muted truncate mt-1">{t.path}</div>
-                        {t.reasons && t.reasons.length > 0 && (
-                          <div className="text-micro text-text-muted mt-1">{t.reasons.join('; ')}</div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {!extScanResult && (
-              <p className="mt-3 text-caption text-text-muted">
-                Detects extensions with dangerous permissions, obfuscated code, cryptocurrency miners, and other malicious patterns.
-              </p>
-            )}
-          </Card>
-
-          {/* Gaming Mode */}
-          <Card variant="glass" className="p-5" data-testid="av-gaming-mode">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="shrink-0 rounded-[var(--avs-radius-md)] bg-brand-primary/10 p-2.5">
-                  <FireIcon className="h-5 w-5 text-brand-primary" />
-                </div>
-                <div>
-                  <div className="text-small font-semibold text-text-primary">Gaming Mode</div>
-                  <div className="text-caption text-text-secondary">
-                    Pause scans and notifications while gaming or watching full-screen media.
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={toggleGameMode}
-                disabled={gameModeLoading}
-                className={`relative h-6 w-11 rounded-full transition-colors shrink-0 ${
-                  gameModeActive ? 'bg-[var(--avs-brand-primary)]' : 'bg-[var(--avs-border)]'
-                }`}
-                data-testid="gaming-mode-toggle"
-              >
-                <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${gameModeActive ? 'translate-x-5' : 'translate-x-0.5'}`} />
-              </button>
-            </div>
-
-            {gameModeActive && (
-              <div className="flex items-center gap-2 mt-3">
-                <Badge tone="success" data-testid="gaming-active-badge">Active</Badge>
-                <span className="text-caption text-text-muted">
-                  Scans paused • Notifications silenced • Real-time protection stays on
-                </span>
-              </div>
-            )}
-
-            {!gameModeActive && (
-              <p className="mt-3 text-caption text-text-muted">
-                When active, scheduled scans and non-critical notifications are paused. Real-time protection continues running for safety. Auto-detects full-screen apps when enabled in AI Features.
               </p>
             )}
           </Card>
@@ -1935,89 +1748,14 @@ export default function AntivirusSecurityPage() {
             )}
           </Card>
 
-          {/* AV Engine status — auto-setup, no button needed */}
-          <Card variant="glass" className="p-5" data-testid="av-engine-card">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className={`rounded-[var(--avs-radius-md)] p-2.5 ${avStatus?.clamd_running ? 'bg-semantic-success/10' : avStatus?.installed ? 'bg-semantic-warning/10' : 'bg-surface-muted'}`}>
-                  <ShieldCheckIcon className={`h-6 w-6 ${avStatus?.clamd_running ? 'text-semantic-success' : avStatus?.installed ? 'text-semantic-warning' : 'text-text-muted'}`} />
-                </div>
-                <div>
-                  <div className="text-small font-semibold text-text-primary">AVS AI Shield Antivirus Engine</div>
-                  <p className="text-caption text-text-secondary">
-                    {avStatus?.clamd_running
-                      ? 'Active — Your PC is protected'
-                      : avStatus?.installed
-                        ? 'Starting automatically...'
-                        : 'Preparing antivirus engine...'}
-                  </p>
-                </div>
-              </div>
-              {avStatus?.clamd_running ? (
-                <Badge tone="success">Active</Badge>
-              ) : avStatus?.installed ? (
-                <Badge tone="warning">Starting</Badge>
-              ) : (
-                <Badge tone="neutral"><ArrowPathIcon className="h-3 w-3 inline mr-1 animate-spin" />Preparing</Badge>
-              )}
+          {/* Fix message for real-time protection */}
+          {fixMessage?.feature === 'Real-Time Protection' && (
+            <div className={`p-3 rounded border ${fixMessage.type === 'success' ? 'bg-semantic-success/5 border-semantic-success/20' : 'bg-semantic-danger/5 border-semantic-danger/20'}`}>
+              <p className={`text-small ${fixMessage.type === 'success' ? 'text-semantic-success' : 'text-semantic-danger'}`}>
+                {fixMessage.text}
+              </p>
             </div>
-
-            {avStatus?.clamd_running && (
-              <div className="flex items-center gap-2 mt-2">
-                <Badge tone="success">Protected</Badge>
-                <span className="text-caption text-text-muted">Auto-update enabled</span>
-              </div>
-            )}
-
-            {!avStatus?.clamd_running && setupStatus?.setup_in_progress && (
-              <div className="mt-3 p-3 rounded bg-semantic-info/5 border border-semantic-info/20" data-testid="av-setup-progress">
-                <div className="flex items-center gap-2">
-                  <ArrowPathIcon className="h-4 w-4 animate-spin text-semantic-info" />
-                  <span className="text-small font-medium text-text-primary">
-                    {setupStatus.setup_progress?.phase === 'downloading_signatures'
-                      ? 'Preparing antivirus engine...'
-                      : setupStatus.setup_progress?.phase === 'copying_bundled'
-                        ? 'Setting up antivirus engine...'
-                        : setupStatus.setup_progress?.phase === 'starting_engine'
-                          ? 'Starting antivirus engine...'
-                          : setupStatus.setup_progress?.phase === 'configuring'
-                            ? 'Configuring antivirus engine...'
-                            : 'Preparing antivirus engine...'}
-                  </span>
-                </div>
-                <p className="text-caption text-text-muted mt-1">
-                  This happens once. Future scans start instantly with auto-updated definitions.
-                </p>
-              </div>
-            )}
-
-            {!avStatus?.clamd_running && !setupStatus?.setup_in_progress && (
-              <div className="mt-3 flex flex-col sm:flex-row items-start sm:items-center gap-3" data-testid="av-auto-setup-msg">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => runSecurityFix('avs_av', 'AV Engine')}
-                  loading={fixLoading === 'avs_av'}
-                  disabled={fixLoading === 'avs_av'}
-                  leftIcon={<ArrowPathIcon className="h-4 w-4" />}
-                  data-testid="av-engine-fix-btn"
-                >
-                  Fix Now
-                </Button>
-                <span className="text-caption text-text-muted">
-                  Starts the AV engine if setup is already complete.
-                </span>
-              </div>
-            )}
-
-            {fixMessage?.feature && (
-              <div className={`mt-3 p-3 rounded border ${fixMessage.type === 'success' ? 'bg-semantic-success/5 border-semantic-success/20' : 'bg-semantic-danger/5 border-semantic-danger/20'}`}>
-                <p className={`text-small ${fixMessage.type === 'success' ? 'text-semantic-success' : 'text-semantic-danger'}`}>
-                  {fixMessage.text}
-                </p>
-              </div>
-            )}
-          </Card>
+          )}
         </div>
       )}
 
@@ -2396,7 +2134,7 @@ export default function AntivirusSecurityPage() {
             </Button>
           </Card>
 
-          {/* Email attachment scan — optional, no longer part of one-click scan */}
+          {/* Email Attachment Scanner */}
           <Card variant="glass" className="p-5" data-testid="av-email-scan-card">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -2472,6 +2210,98 @@ export default function AntivirusSecurityPage() {
                 {memoryScanResult.message && (
                   <p className="text-caption text-text-muted mt-1">{memoryScanResult.message}</p>
                 )}
+              </div>
+            )}
+          </Card>
+
+          {/* Browser Extension Scanner */}
+          <Card variant="glass" className="p-5" data-testid="av-extension-scan-card">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="shrink-0 rounded-[var(--avs-radius-md)] bg-brand-primary/10 p-2.5">
+                  <GlobeAltIcon className="h-6 w-6 text-brand-primary" />
+                </div>
+                <div>
+                  <div className="text-small font-semibold text-text-primary">Browser Extension Scanner</div>
+                  <p className="text-caption text-text-secondary">
+                    Scan installed browser extensions for suspicious permissions and malicious code.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={scanBrowserExtensions}
+                loading={extScanning}
+                disabled={extScanning}
+                data-testid="av-extension-scan-btn"
+              >
+                {extScanning ? 'Scanning...' : 'Scan Extensions'}
+              </Button>
+            </div>
+
+            {extScanResult && (
+              <div className={`mt-4 p-3 rounded border ${extScanResult.threats_found > 0 ? 'bg-semantic-danger/5 border-semantic-danger/20' : 'bg-semantic-success/5 border-semantic-success/20'}`}>
+                <p className={`text-small ${extScanResult.threats_found > 0 ? 'text-semantic-danger' : 'text-semantic-success'}`}>
+                  {extScanResult.threats_found > 0
+                    ? `${extScanResult.threats_found} threat(s) found in ${extScanResult.extensions_scanned} extensions.`
+                    : `${extScanResult.extensions_scanned} extension(s) scanned — no threats found.`}
+                </p>
+                {extScanResult.threats.length > 0 && (
+                  <div className="space-y-2 max-h-48 overflow-y-auto mt-2">
+                    {extScanResult.threats.map((t, i) => (
+                      <div key={i} className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-surface px-3 py-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Badge tone={t.severity === 'critical' || t.severity === 'high' ? 'danger' : 'warning'}>{t.severity}</Badge>
+                            <span className="text-caption text-text-primary truncate">{t.threat_name}</span>
+                          </div>
+                          <span className="text-micro text-text-muted shrink-0">{t.extension?.browser || ''}</span>
+                        </div>
+                        <div className="text-caption text-text-muted truncate mt-1">{t.path}</div>
+                        {t.reasons && t.reasons.length > 0 && (
+                          <div className="text-micro text-text-muted mt-1">{t.reasons.join('; ')}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+
+          {/* Gaming Mode */}
+          <Card variant="glass" className="p-5" data-testid="av-gaming-mode-card">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="shrink-0 rounded-[var(--avs-radius-md)] bg-brand-primary/10 p-2.5">
+                  <FireIcon className="h-6 w-6 text-brand-primary" />
+                </div>
+                <div>
+                  <div className="text-small font-semibold text-text-primary">Gaming Mode</div>
+                  <p className="text-caption text-text-secondary">
+                    Pause scans and notifications while gaming or watching full-screen media.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant={gameModeActive ? 'primary' : 'secondary'}
+                size="sm"
+                onClick={toggleGameMode}
+                loading={gameModeLoading}
+                disabled={gameModeLoading}
+                data-testid="av-gaming-mode-btn"
+              >
+                {gameModeActive ? 'On' : 'Off'}
+              </Button>
+            </div>
+
+            {gameModeActive && (
+              <div className="mt-3 flex items-center gap-2">
+                <Badge tone="success" data-testid="gaming-active-badge">Active</Badge>
+                <span className="text-caption text-text-muted">
+                  Scans paused • Notifications silenced • Real-time protection stays on
+                </span>
               </div>
             )}
           </Card>

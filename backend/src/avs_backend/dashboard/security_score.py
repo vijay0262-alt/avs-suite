@@ -146,28 +146,24 @@ def compute_security_score() -> dict[str, Any]:
     recommendations: list[dict[str, Any]] = []
 
     # ─── 1. AVS AV Engine (20 points) ───
+    # Binary: the engine is either on (full protection) or off (no points).
     avs = _get_avs_av_status()
-    avs_score = 0
-    if avs["installed"]:
-        avs_score += 8
-    if avs["clamd_running"]:
-        avs_score += 8
-    if avs["signature_count"] > 0:
-        avs_score += 4
+    avs_on = bool(avs["clamd_running"]) and avs["signature_count"] > 0
+    avs_score = 20 if avs_on else 0
     factors.append({
         "id": "avs_av_engine",
         "name": "AVS AI Shield AV Engine",
         "score": avs_score,
         "max": 20,
-        "status": "ok" if avs_score >= 16 else "warning" if avs_score >= 8 else "critical",
-        "detail": f"Installed: {avs['installed']}, Running: {avs['clamd_running']}, Signatures: {avs['signature_count']}",
+        "status": "ok" if avs_on else "critical",
+        "detail": f"Running: {avs['clamd_running']}, Signatures: {avs['signature_count']}",
     })
-    if avs_score < 16:
+    if not avs_on:
         recommendations.append({
             "id": "enable_avs_av",
             "priority": "high",
             "title": "Enable AVS AI Shield AV Engine",
-            "description": "The AV engine is not fully active. Ensure ClamAV is running with fresh definitions.",
+            "description": "The AV engine is not active. It should start automatically — use Fix Now if it does not.",
         })
 
     # ─── 2. Detection Sources (15 points) ───
@@ -226,33 +222,24 @@ def compute_security_score() -> dict[str, Any]:
         })
 
     # ─── 4. Real-time Protection (15 points) ───
+    # Binary: on = full points, off = zero.
     rt = _get_realtime_status()
-    rt_score = 0
-    # ClamAV daemon running = full real-time protection (15 points)
-    if avs.get("clamd_running"):
-        rt_score = 15
-    else:
-        # Partial credit for advanced monitoring if no ClamAV
-        if rt["file_monitor"]:
-            rt_score += 6
-        if rt["process_monitor"]:
-            rt_score += 5
-        if rt["usb_monitor"]:
-            rt_score += 4
+    rt_on = bool(avs.get("clamd_running")) or rt["file_monitor"] or rt["process_monitor"]
+    rt_score = 15 if rt_on else 0
     factors.append({
         "id": "realtime_protection",
         "name": "Real-time Protection",
         "score": rt_score,
         "max": 15,
-        "status": "ok" if rt_score >= 11 else "warning" if rt_score >= 6 else "critical",
+        "status": "ok" if rt_on else "critical",
         "detail": f"AV Engine: {avs.get('clamd_running', False)}, File: {rt['file_monitor']}, Process: {rt['process_monitor']}, USB: {rt['usb_monitor']}",
     })
-    if rt_score < 6:
+    if not rt_on:
         recommendations.append({
             "id": "enable_realtime",
             "priority": "high",
             "title": "Enable real-time protection",
-            "description": "Real-time file, process, or USB monitoring is not fully active.",
+            "description": "Real-time monitoring is not active. It should start automatically — use Fix Now if it does not.",
         })
 
     # ─── 5. Windows Updates (10 points) ───
