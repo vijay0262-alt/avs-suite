@@ -33,6 +33,7 @@ import {
   ChartBarIcon,
   DocumentTextIcon,
   XMarkIcon,
+  GlobeAltIcon,
 } from '@heroicons/react/24/outline';
 
 type TabId = 'scan' | 'realtime' | 'quarantine' | 'statistics' | 'advanced';
@@ -128,11 +129,19 @@ export default function AntivirusSecurityPage() {
   const [excludeLoading, setExcludeLoading] = useState(false);
 
   // One-click security scan state
-  const [oneClickProgress, setOneClickProgress] = useState<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_found?: number; files_scanned: number; total_files: number; scan_speed: number; started_at: number | null; completed_at: number | null } | null>(null);
-  const [oneClickResult, setOneClickResult] = useState<{ threats_found: number; threats_quarantined: number; files_scanned: number; success: boolean } | null>(null);
+  const [oneClickProgress, setOneClickProgress] = useState<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_found?: number; files_scanned: number; total_files: number; scan_speed: number; started_at: number | null; completed_at: number | null; detected_threats?: Array<{ path: string; threat_name: string; threat_type: string; severity: string; source: string; quarantined?: boolean; quarantine_id?: string; quarantine_error?: string }> } | null>(null);
+  const [oneClickResult, setOneClickResult] = useState<{ threats_found: number; threats_quarantined: number; files_scanned: number; success: boolean; threats?: Array<{ path: string; threat_name: string; threat_type: string; severity: string; source: string; quarantined?: boolean; quarantine_id?: string; quarantine_error?: string }> } | null>(null);
   const [oneClickModalOpen, setOneClickModalOpen] = useState(false);
   const [oneClickCancelling, setOneClickCancelling] = useState(false);
   const oneClickPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Per-threat action state
+  const [threatActionLoading, setThreatActionLoading] = useState<string | null>(null);
+  const [threatActionMessage, setThreatActionMessage] = useState<{ path: string; text: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Browser extension scan state
+  const [extScanResult, setExtScanResult] = useState<{ extensions_scanned: number; threats_found: number; threats: Array<{ path: string; threat_name: string; threat_type: string; severity: string; source: string; reasons?: string[]; extension?: { name?: string; browser?: string } }> } | null>(null);
+  const [extScanning, setExtScanning] = useState(false);
 
   // Post-scan summary state
   const [scanSummary, setScanSummary] = useState<{ report_id: string; scan_type: string; duration_seconds: number; files_scanned: number; threats_found: number; posture: { status: string; score: number; label: string; color: string; high_severity_count: number; critical_count: number }; threat_breakdown: { by_category: Record<string, number>; by_severity: Record<string, number>; quarantined: number; pending: number }; recommendations: Array<{ id: string; priority: string; title: string; description: string; action: string | null }>; top_threats: Array<{ name: string; category: string; severity: string; path: string; quarantined: boolean }> } | null>(null);
@@ -267,6 +276,81 @@ export default function AntivirusSecurityPage() {
     setMemoryScanning(false);
   }, []);
 
+  const scanBrowserExtensions = useCallback(async () => {
+    setExtScanning(true);
+    setExtScanResult(null);
+    try {
+      const res = await rpc.raw<{ extensions_scanned?: number; threats_found?: number; threats?: Array<{ path: string; threat_name: string; threat_type: string; severity: string; source: string; reasons?: string[]; extension?: { name?: string; browser?: string } }> }>(RPC_METHODS.ONE_CLICK_SCAN_EXTENSIONS);
+      setExtScanResult({
+        extensions_scanned: res.extensions_scanned ?? 0,
+        threats_found: res.threats_found ?? 0,
+        threats: res.threats ?? [],
+      });
+    } catch { /* ignore */ }
+    setExtScanning(false);
+  }, []);
+
+  const quarantineThreat = useCallback(async (threat: { path: string; threat_name: string; threat_type: string; severity: string; source: string }) => {
+    setThreatActionLoading(threat.path);
+    setThreatActionMessage(null);
+    try {
+      const res = await rpc.raw<{ success?: boolean; error?: string; result?: { quarantine_id?: string } }>(RPC_METHODS.THREAT_QUARANTINE, {
+        file_path: threat.path,
+        threat_info: {
+          threat_name: threat.threat_name,
+          threat_type: threat.threat_type,
+          severity: threat.severity,
+          source: threat.source,
+        },
+      });
+      if (res.success) {
+        setThreatActionMessage({ path: threat.path, text: 'Quarantined', type: 'success' });
+        setOneClickProgress(prev => prev ? { ...prev, detected_threats: prev.detected_threats?.map(t => t.path === threat.path ? { ...t, quarantined: true, quarantine_id: res.result?.quarantine_id } : t) } : prev);
+        setOneClickResult(prev => prev ? { ...prev, threats: prev.threats?.map(t => t.path === threat.path ? { ...t, quarantined: true, quarantine_id: res.result?.quarantine_id } : t) } : prev);
+      } else {
+        setThreatActionMessage({ path: threat.path, text: res.error || 'Quarantine failed', type: 'error' });
+      }
+    } catch (e) {
+      setThreatActionMessage({ path: threat.path, text: e instanceof Error ? e.message : 'Quarantine failed', type: 'error' });
+    }
+    setThreatActionLoading(null);
+  }, []);
+
+  const deleteThreat = useCallback(async (threat: { path: string }) => {
+    setThreatActionLoading(threat.path);
+    setThreatActionMessage(null);
+    try {
+      const res = await rpc.raw<{ success?: boolean; error?: string }>(RPC_METHODS.THREAT_REMOVE, { file_path: threat.path });
+      if (res.success) {
+        setThreatActionMessage({ path: threat.path, text: 'Deleted', type: 'success' });
+        setOneClickProgress(prev => prev ? { ...prev, detected_threats: prev.detected_threats?.map(t => t.path === threat.path ? { ...t, quarantined: true } : t) } : prev);
+        setOneClickResult(prev => prev ? { ...prev, threats: prev.threats?.map(t => t.path === threat.path ? { ...t, quarantined: true } : t) } : prev);
+      } else {
+        setThreatActionMessage({ path: threat.path, text: res.error || 'Delete failed', type: 'error' });
+      }
+    } catch (e) {
+      setThreatActionMessage({ path: threat.path, text: e instanceof Error ? e.message : 'Delete failed', type: 'error' });
+    }
+    setThreatActionLoading(null);
+  }, []);
+
+  const excludeThreat = useCallback(async (threat: { path: string }) => {
+    setThreatActionLoading(threat.path);
+    setThreatActionMessage(null);
+    try {
+      const cfgRes = await rpc.raw<{ config?: { exclude_paths?: string[] } }>(RPC_METHODS.THREAT_STATUS);
+      const current = cfgRes.config?.exclude_paths ?? [];
+      const updated = [...current, threat.path];
+      await rpc.raw(RPC_METHODS.THREAT_CONFIGURE, { exclude_paths: updated });
+      setThreatActionMessage({ path: threat.path, text: 'Excluded from future scans', type: 'success' });
+      setOneClickProgress(prev => prev ? { ...prev, detected_threats: prev.detected_threats?.map(t => t.path === threat.path ? { ...t, quarantined: true } : t) } : prev);
+      setOneClickResult(prev => prev ? { ...prev, threats: prev.threats?.map(t => t.path === threat.path ? { ...t, quarantined: true } : t) } : prev);
+    } catch (e) {
+      setThreatActionMessage({ path: threat.path, text: e instanceof Error ? e.message : 'Exclude failed', type: 'error' });
+    }
+    setThreatActionLoading(null);
+  }, []);
+
   const refreshGameMode = useCallback(async () => {
     try {
       const res = await rpc.raw<{ status: { active: boolean } }>(RPC_METHODS.AI_GAME_MODE_STATUS);
@@ -354,7 +438,7 @@ export default function AntivirusSecurityPage() {
       // Poll progress — tracked via ref for cleanup on unmount
       const poll = setInterval(async () => {
         try {
-          const prog = await rpc.raw<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_found?: number; files_scanned: number; total_files: number; scan_speed: number; started_at: number | null; completed_at: number | null }>(RPC_METHODS.ONE_CLICK_PROGRESS);
+          const prog = await rpc.raw<{ active: boolean; phase: string; scan_progress: number; optimize_progress: number; threats_found: number; threats_quarantined: number; space_freed: number; files_cleaned: number; error: string | null; current_file: string | null; files_found?: number; files_scanned: number; total_files: number; scan_speed: number; started_at: number | null; completed_at: number | null; detected_threats?: Array<{ path: string; threat_name: string; threat_type: string; severity: string; source: string; quarantined?: boolean; quarantine_id?: string; quarantine_error?: string }> }>(RPC_METHODS.ONE_CLICK_PROGRESS);
           setOneClickProgress(prog);
           if (!prog.active) {
             clearInterval(poll);
@@ -366,6 +450,7 @@ export default function AntivirusSecurityPage() {
                 threats_quarantined: prog.threats_quarantined || 0,
                 files_scanned: prog.files_scanned || 0,
                 success: true,
+                threats: prog.detected_threats || [],
               });
               refreshThreats();
               refreshAvStatus();
@@ -845,6 +930,102 @@ export default function AntivirusSecurityPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Detected threats list */}
+                  {(oneClickProgress.detected_threats?.length ?? 0) > 0 && (
+                    <div className="w-full max-w-lg mt-4" data-testid="detected-threats-list">
+                      <div className="text-small font-semibold text-text-primary mb-2">
+                        Detected Threats ({oneClickProgress.detected_threats?.length})
+                      </div>
+                      <div className="max-h-64 overflow-y-auto space-y-2">
+                        {oneClickProgress.detected_threats?.map((threat, idx) => (
+                          <div key={`${threat.path}-${idx}`} className="p-3 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-surface-muted">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-small font-medium text-text-primary truncate">{threat.threat_name}</div>
+                                <div className="text-caption text-text-muted truncate mt-0.5">{threat.path}</div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className={`text-caption px-1.5 py-0.5 rounded ${
+                                    threat.severity === 'critical' ? 'bg-semantic-danger/10 text-semantic-danger' :
+                                    threat.severity === 'high' ? 'bg-semantic-danger/10 text-semantic-danger' :
+                                    threat.severity === 'medium' ? 'bg-semantic-warning/10 text-semantic-warning' :
+                                    'bg-semantic-info/10 text-semantic-info'
+                                  }`}>
+                                    {threat.severity}
+                                  </span>
+                                  <span className="text-caption text-text-muted">{threat.threat_type}</span>
+                                  {threat.quarantined && (
+                                    <span className="text-caption text-semantic-success">Quarantined</span>
+                                  )}
+                                  {threat.quarantine_error && (
+                                    <span className="text-caption text-semantic-danger">{threat.quarantine_error}</span>
+                                  )}
+                                </div>
+                                {threatActionMessage?.path === threat.path && (
+                                  <div className={`text-caption mt-1 ${
+                                    threatActionMessage.type === 'success' ? 'text-semantic-success' :
+                                    threatActionMessage.type === 'error' ? 'text-semantic-danger' : 'text-semantic-info'
+                                  }`}>
+                                    {threatActionMessage.text}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex flex-col gap-1 shrink-0">
+                                {!threat.quarantined ? (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="primary"
+                                      onClick={() => quarantineThreat(threat)}
+                                      disabled={threatActionLoading === threat.path}
+                                      data-testid={`threat-quarantine-${idx}`}
+                                    >
+                                      {threatActionLoading === threat.path ? '...' : 'Quarantine'}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="danger"
+                                      onClick={() => deleteThreat(threat)}
+                                      disabled={threatActionLoading === threat.path}
+                                      data-testid={`threat-delete-${idx}`}
+                                    >
+                                      Delete
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => excludeThreat(threat)}
+                                      disabled={threatActionLoading === threat.path}
+                                      data-testid={`threat-exclude-${idx}`}
+                                    >
+                                      Exclude
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      if (threat.quarantine_id) {
+                                        rpc.raw(RPC_METHODS.THREAT_RESTORE, { quarantine_id: threat.quarantine_id }).then(() => {
+                                          setOneClickProgress(prev => prev ? { ...prev, detected_threats: prev.detected_threats?.map(t => t.path === threat.path ? { ...t, quarantined: false } : t) } : prev);
+                                          setOneClickResult(prev => prev ? { ...prev, threats: prev.threats?.map(t => t.path === threat.path ? { ...t, quarantined: false } : t) } : prev);
+                                        });
+                                      }
+                                    }}
+                                    disabled={threatActionLoading === threat.path}
+                                    data-testid={`threat-restore-${idx}`}
+                                  >
+                                    Restore
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Quarantine confirmation banner */}
                   {oneClickProgress.phase === 'pending_confirmation' && (
@@ -1343,6 +1524,69 @@ export default function AntivirusSecurityPage() {
             {!emailScanResult && (
               <p className="mt-3 text-caption text-text-muted">
                 Automatically detects and scans your Outlook attachment folder for dangerous file types, macro-enabled documents, embedded executables, and double-extension tricks.
+              </p>
+            )}
+          </Card>
+
+          {/* Browser Extension Scanner */}
+          <Card variant="glass" className="p-5" data-testid="av-extension-scanner">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="shrink-0 rounded-[var(--avs-radius-md)] bg-brand-primary/10 p-2.5">
+                  <GlobeAltIcon className="h-5 w-5 text-brand-primary" />
+                </div>
+                <div>
+                  <div className="text-small font-semibold text-text-primary">Browser Extension Scanner</div>
+                  <div className="text-caption text-text-secondary">
+                    Scan installed browser extensions for suspicious permissions and malicious code.
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={scanBrowserExtensions}
+                disabled={extScanning}
+                className="px-4 py-2 rounded-[var(--avs-radius-md)] bg-[var(--avs-brand-primary)] text-white text-small font-medium hover:opacity-90 disabled:opacity-50"
+                data-testid="extension-scan-btn"
+              >
+                {extScanning ? 'Scanning...' : 'Scan Extensions'}
+              </button>
+            </div>
+
+            {extScanResult && (
+              <div className="mt-3" data-testid="extension-scan-result">
+                <div className="flex items-center gap-3 mb-3">
+                  <Badge tone={extScanResult.threats_found > 0 ? 'danger' : 'success'}>
+                    {extScanResult.threats_found > 0 ? `${extScanResult.threats_found} threat${extScanResult.threats_found === 1 ? '' : 's'} found` : 'Clean'}
+                  </Badge>
+                  <span className="text-caption text-text-muted">
+                    Scanned {extScanResult.extensions_scanned} extension{extScanResult.extensions_scanned === 1 ? '' : 's'}
+                  </span>
+                </div>
+                {extScanResult.threats.length > 0 && (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {extScanResult.threats.map((t, i) => (
+                      <div key={i} className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-surface px-3 py-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Badge tone={t.severity === 'critical' || t.severity === 'high' ? 'danger' : 'warning'}>{t.severity}</Badge>
+                            <span className="text-caption text-text-primary truncate">{t.threat_name}</span>
+                          </div>
+                          <span className="text-micro text-text-muted shrink-0">{t.extension?.browser || ''}</span>
+                        </div>
+                        <div className="text-caption text-text-muted truncate mt-1">{t.path}</div>
+                        {t.reasons && t.reasons.length > 0 && (
+                          <div className="text-micro text-text-muted mt-1">{t.reasons.join('; ')}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!extScanResult && (
+              <p className="mt-3 text-caption text-text-muted">
+                Detects extensions with dangerous permissions, obfuscated code, cryptocurrency miners, and other malicious patterns.
               </p>
             )}
           </Card>

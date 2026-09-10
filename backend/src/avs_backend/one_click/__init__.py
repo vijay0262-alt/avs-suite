@@ -78,6 +78,7 @@ _progress: dict[str, Any] = {
     "files_scanned": 0,
     "total_files": 0,
     "scan_speed": 0.0,
+    "detected_threats": [],
 }
 
 
@@ -548,6 +549,7 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
             "files_scanned": 0,
             "total_files": 0,
             "scan_speed": 0.0,
+            "detected_threats": [],
             "cancel_requested": False,
         }
 
@@ -578,116 +580,11 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
     except Exception as e:
         log.error("One-click scan phase failed: %s", e)
 
-    # Email attachment and process memory scans are offered as separate
-    # optional scans (one_click.scan_email, one_click.scan_memory) so they
-    # don't slow down or block the main one-click file scan.
+    # Email attachment, process memory, and browser extension scans are
+    # offered as separate optional scans (one_click.scan_email,
+    # one_click.scan_memory, one_click.scan_extensions) so they don't slow
+    # down or block the main one-click file scan.
     _extra_threats: list[dict[str, Any]] = []
-
-    # Phase 1.5: Browser extension scanning
-    if not _cancel_requested():
-        try:
-            from avs_backend.browser_extensions import _get_all_extensions
-            with _lock:
-                _progress["current_file"] = "Scanning browser extensions..."
-                _progress["scan_progress"] = _PHASE_FILE_SCAN_END + 1
-
-            extensions = _get_all_extensions()
-            ext_threats = 0
-            for ext in extensions:
-                ext_path = ext.get("path", "")
-                ext_id = ext.get("extensionId", "")
-                browser = ext.get("browser", "")
-                ext_name = ext.get("name", "Unknown")
-
-                if not ext_path or not os.path.isdir(ext_path):
-                    continue
-
-                # Scan extension JS files and manifest for malicious patterns
-                threat_score = 0
-                reasons: list[str] = []
-
-                # Check manifest for suspicious permissions
-                manifest_path = os.path.join(ext_path, "manifest.json")
-                if os.path.isfile(manifest_path):
-                    try:
-                        with open(manifest_path, "r", encoding="utf-8", errors="ignore") as f:
-                            manifest = json.load(f)
-                        perms = manifest.get("permissions", [])
-                        host_perms = manifest.get("host_permissions", [])
-                        all_perms = perms + host_perms
-
-                        has_all_urls = "<all_urls>" in all_perms or "*://*/*" in all_perms
-                        has_tabs = "tabs" in all_perms
-                        has_cookies = "cookies" in all_perms
-                        has_web_request = "webRequest" in all_perms
-                        has_native_messaging = "nativeMessaging" in all_perms
-
-                        if has_all_urls and has_web_request:
-                            threat_score += 4
-                            reasons.append("Can intercept all web requests")
-                        if has_all_urls and has_tabs:
-                            threat_score += 3
-                            reasons.append("Can read all web pages and tab content")
-                        if has_cookies and has_all_urls:
-                            threat_score += 3
-                            reasons.append("Can read cookies from all sites")
-                        if has_native_messaging:
-                            threat_score += 3
-                            reasons.append("Can communicate with native applications")
-                    except Exception:
-                        pass
-
-                # Scan JavaScript files for suspicious patterns
-                js_patterns = [
-                    ("eval(atob(", 5, "Base64-encoded eval (obfuscation)"),
-                    ("eval(unescape(", 4, "Escaped eval (obfuscation)"),
-                    ("Function(atob(", 5, "Base64-encoded Function constructor"),
-                    ("crypto.miner", 5, "Cryptocurrency mining"),
-                    ("coinhive", 5, "Coinhive miner"),
-                    ("crypto-loot", 5, "Crypto-Loot miner"),
-                    ("chrome.debugger", 4, "Debugger API access"),
-                ]
-
-                for root, _dirs, files in os.walk(ext_path):
-                    for fname in files:
-                        if not fname.endswith((".js", ".html")):
-                            continue
-                        fpath = os.path.join(root, fname)
-                        try:
-                            if os.path.getsize(fpath) > 500 * 1024:
-                                continue
-                            with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
-                                content = f.read()
-                            for pattern, score, reason in js_patterns:
-                                if pattern in content:
-                                    threat_score += score
-                                    reasons.append(f"{reason} in {fname}")
-                                    break
-                        except Exception:
-                            pass
-
-                if threat_score >= 5:
-                    severity = "critical" if threat_score >= 10 else "high" if threat_score >= 7 else "medium"
-                    _extra_threats.append({
-                        "path": ext_path,
-                        "threat_name": f"BrowserExt.Suspicious.{ext_name}",
-                        "threat_type": "adware" if "ad" in str(reasons).lower() else "spyware",
-                        "severity": severity,
-                        "source": "browser_ext_scanner",
-                    })
-                    ext_threats += 1
-
-            if ext_threats:
-                result["threats_found"] += ext_threats
-                with _lock:
-                    _progress["threats_found"] = result["threats_found"]
-            log.info("One-click: Browser extension scan found %d threats in %d extensions", ext_threats, len(extensions))
-        except Exception as e:
-            log.warning("One-click: Browser extension scanning phase failed: %s", e)
-
-    with _lock:
-        if not _progress.get("cancel_requested"):
-            _progress["scan_progress"] = _PHASE_EXTENSIONS_END
 
     # Phase 1.8: Network connection scanning (C2 callbacks, suspicious connections)
     if not _cancel_requested():
@@ -722,7 +619,7 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
 
     # Phase 2: Quarantine/clean detected threats (skip if cancelled)
     all_threats = list(scan_result.get("threats", []))
-    # Add email and memory threats collected above
+    # Add network threats collected above
     all_threats.extend(_extra_threats)
     if all_threats and not _cancel_requested():
         # ── Quarantine confirmation gate ──────────────────────────────
@@ -732,6 +629,7 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
         # to proceed, or one_click.skip_quarantine to skip.
         with _lock:
             _progress["phase"] = "pending_confirmation"
+            _progress["detected_threats"] = all_threats
             _progress["current_file"] = (
                 f"{len(all_threats)} threat{'s' if len(all_threats) != 1 else ''} found. "
                 "Waiting for your confirmation to quarantine."
@@ -766,8 +664,15 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
                         if q_result.get("success"):
                             result["threats_quarantined"] += 1
                             result["threats_cleaned"] += 1
+                            threat["quarantined"] = True
+                            threat["quarantine_id"] = q_result.get("result", {}).get("quarantine_id")
+                        else:
+                            threat["quarantined"] = False
+                            threat["quarantine_error"] = q_result.get("error", "Quarantine failed")
                     except Exception as e:
                         log.warning("One-click: Failed to quarantine %s: %s", threat["path"], e)
+                        threat["quarantined"] = False
+                        threat["quarantine_error"] = str(e)
 
                     # Update quarantine count LIVE after every item (not just once
                     # at the end) so the UI's "quarantined" counter increments in
@@ -775,6 +680,7 @@ def _run_one_click(scan_type: str = "full") -> dict[str, Any]:
                     # frozen at 0 until the whole batch finishes.
                     with _lock:
                         _progress["threats_quarantined"] = result["threats_quarantined"]
+                        _progress["detected_threats"] = all_threats
                         _progress["current_file"] = f"Quarantining threat {idx}/{total_threats}: {os.path.basename(str(threat.get('path', '')))}"
                         if not _progress.get("cancel_requested"):
                             span = _PHASE_QUARANTINE_END - _PHASE_NETWORK_END
@@ -914,4 +820,105 @@ def one_click_scan_memory(_params: dict[str, Any] | None) -> dict[str, Any]:
         return {"success": True, **result}
     except Exception as e:
         log.error("Memory scan failed: %s", e)
+        return {"success": False, "error": str(e)}
+
+
+@register("one_click.scan_extensions")
+def one_click_scan_extensions(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Standalone browser extension scan, run outside the main one-click flow."""
+    try:
+        from avs_backend.browser_extensions import _get_all_extensions
+        extensions = _get_all_extensions()
+        detected: list[dict[str, Any]] = []
+
+        js_patterns = [
+            ("eval(atob(", 5, "Base64-encoded eval (obfuscation)"),
+            ("eval(unescape(", 4, "Escaped eval (obfuscation)"),
+            ("Function(atob(", 5, "Base64-encoded Function constructor"),
+            ("crypto.miner", 5, "Cryptocurrency mining"),
+            ("coinhive", 5, "Coinhive miner"),
+            ("crypto-loot", 5, "Crypto-Loot miner"),
+            ("chrome.debugger", 4, "Debugger API access"),
+        ]
+
+        for ext in extensions:
+            ext_path = ext.get("path", "")
+            ext_name = ext.get("name", "Unknown")
+
+            if not ext_path or not os.path.isdir(ext_path):
+                continue
+
+            threat_score = 0
+            reasons: list[str] = []
+
+            # Check manifest for suspicious permissions
+            manifest_path = os.path.join(ext_path, "manifest.json")
+            if os.path.isfile(manifest_path):
+                try:
+                    with open(manifest_path, "r", encoding="utf-8", errors="ignore") as f:
+                        manifest = json.load(f)
+                    perms = manifest.get("permissions", [])
+                    host_perms = manifest.get("host_permissions", [])
+                    all_perms = perms + host_perms
+
+                    has_all_urls = "<all_urls>" in all_perms or "*://*/*" in all_perms
+                    has_tabs = "tabs" in all_perms
+                    has_cookies = "cookies" in all_perms
+                    has_web_request = "webRequest" in all_perms
+                    has_native_messaging = "nativeMessaging" in all_perms
+
+                    if has_all_urls and has_web_request:
+                        threat_score += 4
+                        reasons.append("Can intercept all web requests")
+                    if has_all_urls and has_tabs:
+                        threat_score += 3
+                        reasons.append("Can read all web pages and tab content")
+                    if has_cookies and has_all_urls:
+                        threat_score += 3
+                        reasons.append("Can read cookies from all sites")
+                    if has_native_messaging:
+                        threat_score += 3
+                        reasons.append("Can communicate with native applications")
+                except Exception:
+                    pass
+
+            # Scan JavaScript files for suspicious patterns
+            for root, _dirs, files in os.walk(ext_path):
+                for fname in files:
+                    if not fname.endswith((".js", ".html")):
+                        continue
+                    fpath = os.path.join(root, fname)
+                    try:
+                        if os.path.getsize(fpath) > 500 * 1024:
+                            continue
+                        with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+                            content = f.read()
+                        for pattern, score, reason in js_patterns:
+                            if pattern in content:
+                                threat_score += score
+                                reasons.append(f"{reason} in {fname}")
+                                break
+                    except Exception:
+                        pass
+
+            if threat_score >= 5:
+                severity = "critical" if threat_score >= 10 else "high" if threat_score >= 7 else "medium"
+                detected.append({
+                    "path": ext_path,
+                    "threat_name": f"BrowserExt.Suspicious.{ext_name}",
+                    "threat_type": "adware" if "ad" in str(reasons).lower() else "spyware",
+                    "severity": severity,
+                    "source": "browser_ext_scanner",
+                    "reasons": reasons,
+                    "extension": ext,
+                })
+
+        return {
+            "success": True,
+            "extensions_scanned": len(extensions),
+            "threats_found": len(detected),
+            "threats": detected,
+        }
+    except Exception as e:
+        log.error("Browser extension scan failed: %s", e)
         return {"success": False, "error": str(e)}
