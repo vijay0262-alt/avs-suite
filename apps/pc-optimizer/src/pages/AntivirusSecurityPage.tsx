@@ -79,9 +79,6 @@ export default function AntivirusSecurityPage() {
   const [rtGuardEnabled, setRtGuardEnabled] = useState(false);
   const [rtGuardLoading, setRtGuardLoading] = useState(false);
 
-  // AV engine state
-  const [avStatus, setAvStatus] = useState<{ installed: boolean; clamd_running: boolean; signature_count: number; version: string | null } | null>(null);
-
   // Unified AV status (detects third-party AV, hides Defender when our AV is active)
   const [unifiedAv, setUnifiedAv] = useState<{ avs_av_active: boolean; avs_signatures: number; primary_av: string | null; defender_visible: boolean; third_party_av: string | null; protected: boolean } | null>(null);
 
@@ -90,9 +87,6 @@ export default function AntivirusSecurityPage() {
   const [threatsLoading, setThreatsLoading] = useState(false);
   const [selectedThreats, setSelectedThreats] = useState<Set<string>>(new Set());
   const [batchLoading, setBatchLoading] = useState(false);
-
-  // Setup status (definitions downloading, etc.)
-  const [setupStatus, setSetupStatus] = useState<{ setup_in_progress: boolean; setup_progress?: { phase?: string } } | null>(null);
 
   // Scan scheduler state
   const [schedule, setSchedule] = useState<{ enabled: boolean; frequency: string; time: string; scan_type: string; day_of_week: number; last_run: string | null; scheduler_running: boolean } | null>(null);
@@ -156,20 +150,6 @@ export default function AntivirusSecurityPage() {
 
   // ── Data loading ──────────────────────────────────────────────
 
-  const refreshAvStatus = useCallback(async () => {
-    try {
-      const res = await rpc.raw<{ success?: boolean; status?: { installed: boolean; clamd_running: boolean; signature_count: number; version: string | null }; installed?: boolean; clamd_running?: boolean; signature_count?: number; version?: string | null }>(RPC_METHODS.THREAT_CLAMAV_STATUS);
-      // Backend returns { success, status: {...} } — unwrap if needed
-      const flat = res.status ? res.status : res;
-      setAvStatus({
-        installed: flat.installed ?? false,
-        clamd_running: flat.clamd_running ?? false,
-        signature_count: flat.signature_count ?? 0,
-        version: flat.version ?? null,
-      });
-    } catch { /* ignore */ }
-  }, []);
-
   const refreshThreats = useCallback(async () => {
     setThreatsLoading(true);
     try {
@@ -196,15 +176,6 @@ export default function AntivirusSecurityPage() {
       }
     }
     setThreatsLoading(false);
-  }, []);
-
-  const refreshSetupStatus = useCallback(async () => {
-    try {
-      const res = await rpc.raw<{ success?: boolean; status?: { setup_in_progress: boolean; setup_progress?: { phase?: string } }; setup_in_progress?: boolean; setup_progress?: { phase?: string } }>(RPC_METHODS.THREAT_CLAMAV_SETUP_STATUS);
-      // Backend returns { success, status: {...} } — unwrap if needed
-      const flat = res.status ? res.status : res;
-      setSetupStatus({ setup_in_progress: flat.setup_in_progress ?? false, setup_progress: flat.setup_progress });
-    } catch { /* ignore */ }
   }, []);
 
   const refreshSchedule = useCallback(async () => {
@@ -453,7 +424,6 @@ export default function AntivirusSecurityPage() {
                 threats: prog.detected_threats || [],
               });
               refreshThreats();
-              refreshAvStatus();
             }
           }
         } catch (e) {
@@ -469,7 +439,7 @@ export default function AntivirusSecurityPage() {
       const errMsg = e instanceof Error ? e.message : 'Failed to start security scan';
       setOneClickProgress({ active: false, phase: 'error', scan_progress: 0, optimize_progress: 0, threats_found: 0, threats_quarantined: 0, space_freed: 0, files_cleaned: 0, error: errMsg, current_file: null, files_scanned: 0, total_files: 0, scan_speed: 0, started_at: null, completed_at: null });
     }
-  }, [refreshThreats, refreshAvStatus]);
+  }, [refreshThreats]);
 
   const cancelOneClick = useCallback(async () => {
     setOneClickCancelling(true);
@@ -538,13 +508,12 @@ export default function AntivirusSecurityPage() {
         const firstError = Object.values(res.results || {}).find((r) => !r.success)?.error;
         setFixMessage({ feature: label, text: firstError ?? 'Could not enable protection. Run as administrator and try again.', type: 'error' });
       }
-      await refreshAvStatus();
       await refreshRtGuardStatus();
     } catch {
       setFixMessage({ feature: label, text: 'Could not enable protection. Make sure AVS AI Shield is running as administrator.', type: 'error' });
     }
     setFixLoading(null);
-  }, [refreshAvStatus, refreshRtGuardStatus]);
+  }, [refreshRtGuardStatus]);
 
   const handleRestoreThreat = useCallback(async (threatId: string) => {
     try {
@@ -674,9 +643,7 @@ export default function AntivirusSecurityPage() {
         }
       })
       .catch(() => {});
-    refreshAvStatus();
     refreshThreats();
-    refreshSetupStatus();
     refreshSchedule();
     refreshUsbStatus();
     refreshGameMode();
@@ -688,25 +655,7 @@ export default function AntivirusSecurityPage() {
     rpc.raw<{ avs_av_active: boolean; avs_signatures: number; primary_av: string | null; defender_visible: boolean; third_party_av: string | null; protected: boolean }>(RPC_METHODS.SYSTEM_AV_STATUS)
       .then(setUnifiedAv)
       .catch(() => {});
-    // Poll setup status every 5s only while setup is in progress.
-    // Use a ref-like approach: check the fresh response each time.
-    let poll: ReturnType<typeof setInterval> | null = null;
-    poll = setInterval(async () => {
-      try {
-        const res = await rpc.raw<{ success?: boolean; status?: { setup_in_progress: boolean }; setup_in_progress?: boolean }>(RPC_METHODS.THREAT_CLAMAV_SETUP_STATUS);
-        const flat = res.status ? res.status : res;
-        const inProgress = flat.setup_in_progress ?? false;
-        setSetupStatus({ setup_in_progress: inProgress, setup_progress: (flat as Record<string, unknown>).setup_progress as { phase?: string } | undefined });
-        if (!inProgress) {
-          refreshAvStatus();
-          if (poll) { clearInterval(poll); poll = null; }
-        } else {
-          refreshAvStatus();
-        }
-      } catch { /* ignore */ }
-    }, 5000);
-    return () => { if (poll) clearInterval(poll); };
-  }, [refreshAvStatus, refreshThreats, refreshSetupStatus, refreshSchedule, refreshUsbStatus, refreshGameMode, refreshStartupScan, refreshExclusions, refreshRecentSummaries, refreshSecurityScore, refreshThreatStats]);
+  }, [refreshThreats, refreshSchedule, refreshUsbStatus, refreshGameMode, refreshStartupScan, refreshExclusions, refreshRecentSummaries, refreshSecurityScore, refreshThreatStats]);
 
   // Clean up one-click poll on unmount
   useEffect(() => {
