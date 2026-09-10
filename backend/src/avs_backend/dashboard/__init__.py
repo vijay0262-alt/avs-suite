@@ -627,16 +627,19 @@ def system_av_status(_params: dict[str, Any] | None) -> dict[str, Any]:
     try:
         from avs_backend.threat_engine.clamav_scanner import detect_clamav_installation, check_clamav_available
         av_info = detect_clamav_installation()
-        # Treat the engine as active only when clamd is running and has
-        # signatures. Being merely installed causes the UI to falsely claim
-        # protection while the score shows 0/20 for the engine.
-        if av_info.get("installed") and av_info.get("clamd_running") and av_info.get("signature_count", 0) > 0:
+        # The engine is functional if it is installed and has signatures.
+        # On-demand scans work via clamscan even when the clamd daemon is
+        # not currently running, so we must not treat clamd as the only
+        # signal. This makes the banner and score consistent with reality.
+        installed = bool(av_info.get("installed"))
+        sig_count = av_info.get("signature_count", 0) or 0
+        if installed and sig_count > 0:
             result["avs_av_active"] = True
-            result["avs_signatures"] = av_info.get("signature_count", 0)
+            result["avs_signatures"] = sig_count
             result["primary_av"] = "AVS AI Shield"
             result["defender_visible"] = False
             result["protected"] = True
-            result["clamd_running"] = av_info.get("clamd_running", False)
+            result["clamd_running"] = bool(av_info.get("clamd_running", False))
     except Exception:
         pass
 
@@ -1606,20 +1609,17 @@ _last_good_defender: dict[str, Any] | None = None
 def _get_avs_av_active() -> bool:
     """Check if AVS AI Shield's ClamAV engine is active.
 
-    Returns True if ClamAV is installed (even if clamd is still starting),
-    because AVS AI Shield is the user's antivirus product. The daemon
-    may take a few seconds to start on boot, but the product is still
-    considered "active" as long as it's installed.
+    The engine is considered active when ClamAV is installed and has
+    signature definitions on disk. On-demand scans work via clamscan
+    even when the clamd daemon is not currently running, so the daemon
+    state alone should not block the UI from showing the engine as on.
     """
     try:
-        from avs_backend.threat_engine.clamav_scanner import check_clamav_available, detect_clamav_installation
-        # If clamd is already running, definitely active
-        if check_clamav_available():
-            return True
-        # If ClamAV is installed but clamd not yet running, still consider
-        # AVS active — the daemon auto-starts on backend launch
+        from avs_backend.threat_engine.clamav_scanner import detect_clamav_installation
         info = detect_clamav_installation()
-        return bool(info.get("installed", False))
+        installed = bool(info.get("installed", False))
+        sig_count = info.get("signature_count", 0) or 0
+        return installed and sig_count > 0
     except Exception:
         return False
 

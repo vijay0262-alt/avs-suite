@@ -146,9 +146,12 @@ def compute_security_score() -> dict[str, Any]:
     recommendations: list[dict[str, Any]] = []
 
     # ─── 1. AVS AV Engine (20 points) ───
-    # Binary: the engine is either on (full protection) or off (no points).
+    # Binary: the engine is either functional (installed + signatures) or not.
+    # On-demand scans work via clamscan even when the clamd daemon is not
+    # currently running, so the engine must not be scored 0 just because
+    # the daemon hasn't started yet.
     avs = _get_avs_av_status()
-    avs_on = bool(avs["clamd_running"]) and avs["signature_count"] > 0
+    avs_on = bool(avs["installed"]) and avs["signature_count"] > 0
     avs_score = 20 if avs_on else 0
     factors.append({
         "id": "avs_av_engine",
@@ -156,7 +159,7 @@ def compute_security_score() -> dict[str, Any]:
         "score": avs_score,
         "max": 20,
         "status": "ok" if avs_on else "critical",
-        "detail": f"Running: {avs['clamd_running']}, Signatures: {avs['signature_count']}",
+        "detail": f"Installed: {avs['installed']}, Signatures: {avs['signature_count']}, Daemon: {avs.get('clamd_running', False)}",
     })
     if not avs_on:
         recommendations.append({
@@ -225,9 +228,11 @@ def compute_security_score() -> dict[str, Any]:
         })
 
     # ─── 4. Real-time Protection (15 points) ───
-    # Binary: on = full points, off = zero.
+    # Binary: on = full points, off = zero. The AV engine itself counts as
+    # real-time protection when it is functional; the standalone file/process
+    # monitors are additional layers.
     rt = _get_realtime_status()
-    rt_on = bool(avs.get("clamd_running")) or rt["file_monitor"] or rt["process_monitor"]
+    rt_on = bool(avs_on) or rt["file_monitor"] or rt["process_monitor"]
     rt_score = 15 if rt_on else 0
     factors.append({
         "id": "realtime_protection",
@@ -235,7 +240,7 @@ def compute_security_score() -> dict[str, Any]:
         "score": rt_score,
         "max": 15,
         "status": "ok" if rt_on else "critical",
-        "detail": f"AV Engine: {avs.get('clamd_running', False)}, File: {rt['file_monitor']}, Process: {rt['process_monitor']}, USB: {rt['usb_monitor']}",
+        "detail": f"AV Engine: {avs_on}, File: {rt['file_monitor']}, Process: {rt['process_monitor']}, USB: {rt['usb_monitor']}",
     })
     if not rt_on:
         recommendations.append({

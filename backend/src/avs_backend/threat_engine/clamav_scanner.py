@@ -303,12 +303,18 @@ def get_clamav_signature_count() -> int:
         except (ValueError, IndexError):
             pass
 
-    # Also count main.cvd and bytecode.cvd signatures from file headers
+    # Count signatures from CVD file headers. When clamd is running we
+    # already have the daily count from VERSION; when it is not running
+    # (on-demand clamscan mode) we read daily.cvd's header too so the
+    # engine still reports its real signature count.
     total = daily_count
+    cvd_names = ["main.cvd", "bytecode.cvd"]
+    if daily_count == 0:
+        cvd_names.append("daily.cvd")
     try:
         db_dir = _get_clamav_db_dir()
         if db_dir:
-            for cvd_name in ["main.cvd", "bytecode.cvd"]:
+            for cvd_name in cvd_names:
                 cvd_path = os.path.join(db_dir, cvd_name)
                 if os.path.isfile(cvd_path):
                     try:
@@ -442,7 +448,10 @@ def detect_clamav_installation() -> dict[str, Any]:
     result["clamd_running"] = check_clamav_available()
     if result["clamd_running"]:
         result["version"] = get_clamav_version()
-        result["signature_count"] = get_clamav_signature_count()
+    # Always report the signature count from the on-disk database — the
+    # engine is functional (scans work via clamscan) even when the clamd
+    # daemon is not running, so the UI must not show 0 signatures.
+    result["signature_count"] = get_clamav_signature_count()
 
     return result
 
