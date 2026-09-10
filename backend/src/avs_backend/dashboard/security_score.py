@@ -206,7 +206,10 @@ def compute_security_score() -> dict[str, Any]:
         "status": "ok" if df_score >= 12 else "warning" if df_score >= 7 else "critical",
         "detail": f"Defender: {defender.get('enabled', False)}, Real-time: {defender.get('realTimeProtection', False)}, Firewall: {firewall.get('enabled', False)}",
     })
-    if not defender.get("enabled"):
+    if not defender.get("enabled") and not avs_on:
+        # Only suggest Defender when our own engine is not active — Windows
+        # automatically disables Defender when a third-party AV is registered,
+        # so recommending it while our engine runs is confusing.
         recommendations.append({
             "id": "enable_defender",
             "priority": "high",

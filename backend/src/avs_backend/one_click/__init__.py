@@ -45,9 +45,10 @@ _lock = threading.Lock()
 _running = False
 
 # Live enumeration counters (updated while _collect_scannable_files runs)
-_enum_state: dict[str, int] = {
+_enum_state: dict[str, Any] = {
     "files_found": 0,
     "dirs_visited": 0,
+    "current_dir": "",
 }
 
 # Persistent estimate of total files for progress smoothing
@@ -182,6 +183,8 @@ def _collect_scannable_files(root_path: str) -> list[str]:
             if _progress.get("cancel_requested"):
                 return paths
         current = stack.pop()
+        with _lock:
+            _enum_state["current_dir"] = current
         if _is_excluded(current):
             continue
         depth = current.replace(root_path, "").count(os.sep)
@@ -326,6 +329,7 @@ def _run_full_scan(scan_type: str = "full") -> dict[str, Any]:
                     return
                 files_found = _enum_state["files_found"]
                 _progress["files_found"] = files_found
+                _progress["current_file"] = _enum_state.get("current_dir") or "Finding files to scan..."
                 # Percentage against the last scan's total; cap at 99% until done
                 pct = min(99, int((files_found / max(enum_estimate, 1)) * 100))
                 _progress["scan_progress"] = max(_progress.get("scan_progress", 1), pct)

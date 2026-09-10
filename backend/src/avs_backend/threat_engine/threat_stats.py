@@ -66,14 +66,32 @@ def compute_threat_statistics() -> dict[str, Any]:
     history = _load_history()
     summaries = _load_summaries()
 
-    # ─── Overall totals ───
-    total_scans = len(history)
-    total_threats = sum(h.get("threats_found", 0) for h in history)
-    total_files_scanned = sum(h.get("files_scanned", 0) for h in history)
+    # Merge full scan records from both history and scan_summaries so the
+    # totals reflect actual scan results even if older, partial per-file
+    # records were mixed into history.json. Use scan_id as a merge key
+    # so the same scan is never counted twice.
+    merged_scans: dict[str, dict[str, Any]] = {}
+    for record in history:
+        scan_id = record.get("scan_id")
+        if not scan_id:
+            continue
+        merged_scans.setdefault(scan_id, record)
+    for record in summaries:
+        scan_id = record.get("scan_id")
+        if not scan_id:
+            continue
+        merged_scans[scan_id] = record
 
-    # ─── Collect all threats from history ───
+    scan_records = list(merged_scans.values())
+
+    # ─── Overall totals ───
+    total_scans = len(scan_records)
+    total_threats = sum(s.get("threats_found", 0) for s in scan_records)
+    total_files_scanned = sum(s.get("files_scanned", 0) for s in scan_records)
+
+    # ─── Collect all threats from merged scan records ───
     all_threats: list[dict[str, Any]] = []
-    for h in history:
+    for h in scan_records:
         all_threats.extend(h.get("threats", []))
 
     # ─── By category ───
@@ -113,7 +131,7 @@ def compute_threat_statistics() -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     thirty_days_ago = now - timedelta(days=30)
     scan_frequency: list[dict[str, Any]] = []
-    for h in history:
+    for h in scan_records:
         completed = h.get("completed_at")
         if completed:
             try:
@@ -131,7 +149,7 @@ def compute_threat_statistics() -> dict[str, Any]:
 
     # ─── Threats over time (daily aggregation) ───
     daily_threats: dict[str, int] = {}
-    for h in history:
+    for h in scan_records:
         completed = h.get("completed_at")
         if completed:
             try:
@@ -147,7 +165,7 @@ def compute_threat_statistics() -> dict[str, Any]:
     ]
 
     # ─── Scan type breakdown ───
-    by_scan_type = Counter(h.get("scan_type", "custom") for h in history)
+    by_scan_type = Counter(h.get("scan_type", "custom") for h in scan_records)
 
     # ─── Quarantine stats ───
     current_quarantine = _get_quarantine_count()
@@ -157,7 +175,7 @@ def compute_threat_statistics() -> dict[str, Any]:
 
     # ─── Recent activity timeline ───
     recent_activity: list[dict[str, Any]] = []
-    for h in history[-10:]:
+    for h in scan_records[-10:]:
         recent_activity.append({
             "type": "scan",
             "scan_type": h.get("scan_type", "custom"),
@@ -169,11 +187,11 @@ def compute_threat_statistics() -> dict[str, Any]:
 
     # ─── Avg stats ───
     avg_files = total_files_scanned // total_scans if total_scans > 0 else 0
-    clean_scans = sum(1 for h in history if h.get("threats_found", 0) == 0)
+    clean_scans = sum(1 for h in scan_records if h.get("threats_found", 0) == 0)
     infected_scans = total_scans - clean_scans
 
     # ─── Last scan info ───
-    last_scan = history[-1] if history else None
+    last_scan = scan_records[-1] if scan_records else None
     last_scan_info = None
     if last_scan:
         last_scan_info = {

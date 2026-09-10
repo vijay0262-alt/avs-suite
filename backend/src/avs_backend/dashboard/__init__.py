@@ -627,13 +627,15 @@ def system_av_status(_params: dict[str, Any] | None) -> dict[str, Any]:
     try:
         from avs_backend.threat_engine.clamav_scanner import detect_clamav_installation, check_clamav_available
         av_info = detect_clamav_installation()
-        if av_info.get("installed"):
+        # Treat the engine as active only when clamd is running and has
+        # signatures. Being merely installed causes the UI to falsely claim
+        # protection while the score shows 0/20 for the engine.
+        if av_info.get("installed") and av_info.get("clamd_running") and av_info.get("signature_count", 0) > 0:
             result["avs_av_active"] = True
             result["avs_signatures"] = av_info.get("signature_count", 0)
             result["primary_av"] = "AVS AI Shield"
             result["defender_visible"] = False
             result["protected"] = True
-            # If clamd is actually running, we have full real-time protection
             result["clamd_running"] = av_info.get("clamd_running", False)
     except Exception:
         pass

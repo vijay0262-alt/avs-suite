@@ -123,6 +123,24 @@ _FEATURE_WEIGHTS = {
 
 _BIAS = -2.0  # Base bias — most files are benign
 
+# Trusted publisher substrings found in Authenticode certificates.
+# Files signed by these vendors are treated as benign — flagging them
+# produces false positives on legitimate software (HP Support Framework,
+# Microsoft Office, Intel/NVIDIA drivers, etc.).
+_TRUSTED_SIGNERS = (
+    b"microsoft", b"windows", b"hewlett", b"hp inc", b"hp development",
+    b"intel", b"nvidia", b"amd", b"advanced micro devices", b"realtek",
+    b"google", b"adobe", b"apple", b"mozilla", b"opera", b"brave",
+    b"dell", b"lenovo", b"asus", b"acer", b"samsung", b"lg electronics",
+    b"logitech", b"razer", b"corsair", b"steelseries", b"vmware",
+    b"oracle", b"jetbrains", b"github", b"gitlab", b"docker",
+    b"advanced vision software", b"avs",
+)
+
+# Weight adjustments for signed files — a valid Authenticode signature is a
+# strong benign signal. Malware is overwhelmingly unsigned.
+_FEATURE_WEIGHTS["has_signature"] = -2.5
+
 # Known malicious import table hashes (SHA-256[:16] of sorted import names).
 # These are fingerprints of known malware families. The set starts empty
 # and can be populated from threat intelligence feeds or manual analysis.
@@ -192,6 +210,10 @@ class MlDetector:
             pe = pefile.PE(file_path, fast_load=True)
             try:
                 features = self._extract_features(pe, file_path)
+                # Trusted-publisher signed files are never flagged — this
+                # eliminates false positives on legitimate vendor software.
+                if features.get("trusted_signature"):
+                    return None
                 score = self._score(features)
                 probability = _sigmoid(score)
 
@@ -375,6 +397,25 @@ class MlDetector:
                     break
         except Exception:
             pass
+
+        # Authenticode signature — check the certificate table
+        # (IMAGE_DIRECTORY_ENTRY_SECURITY, index 4). The VirtualAddress field
+        # is a file offset (not an RVA) for the security directory.
+        try:
+            sec_dir = pe.OPTIONAL_HEADER.DATA_DIRECTORY[4]
+            cert_offset = getattr(sec_dir, "VirtualAddress", 0)
+            cert_size = getattr(sec_dir, "Size", 0)
+            features["has_signature"] = bool(cert_offset and cert_size)
+            if cert_offset and cert_size:
+                with open(file_path, "rb") as fh:
+                    fh.seek(cert_offset)
+                    cert_blob = fh.read(min(cert_size, 64 * 1024))
+                cert_lower = cert_blob.lower()
+                features["trusted_signature"] = any(
+                    signer in cert_lower for signer in _TRUSTED_SIGNERS
+                )
+        except Exception:
+            features["has_signature"] = False
 
         # Is DLL?
         features["is_dll"] = bool(pe.is_dll())

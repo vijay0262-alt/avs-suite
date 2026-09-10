@@ -259,7 +259,31 @@ def _import_all_modules() -> None:
     print("========== END RPC REGISTRY ==========\n", file=sys.stderr, flush=True)
 
 
-threading.Thread(target=_import_all_modules, daemon=True, name="module-loader").start()
+def _warm_caches() -> None:
+    """Pre-warm expensive dashboard/security caches after module import.
+
+    The first dashboard.metrics call otherwise takes several seconds while
+    PowerShell probes run, leaving the UI stuck on 'Checking...'. Running
+    the collection once in the background makes the first page load fast.
+    """
+    try:
+        from avs_backend.dashboard import _collect_metrics  # type: ignore[attr-defined]
+        _collect_metrics()
+    except Exception:
+        pass
+    try:
+        from avs_backend.dashboard.security_score import compute_security_score
+        compute_security_score()
+    except Exception:
+        pass
+
+
+def _import_all_and_warm() -> None:
+    _import_all_modules()
+    _warm_caches()
+
+
+threading.Thread(target=_import_all_and_warm, daemon=True, name="module-loader").start()
 
 
 # Register a simple ping handler immediately so the Electron bridge can

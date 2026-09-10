@@ -967,20 +967,7 @@ export function ProtectionCenterPage() {
         )}
 
         {/* Bottom status cards */}
-        <div className="mt-4 grid grid-cols-3 gap-3">
-          <Card variant="glass" className="p-4 text-center" data-testid="protection-av-engine-card">
-            <ShieldCheckIcon className={`h-6 w-6 mx-auto mb-1 ${
-              state.avStatus?.clamd_running ? 'text-semantic-success'
-                : state.avStatus?.installed ? 'text-semantic-warning'
-                : 'text-text-muted'
-            }`} />
-            <div className="text-section-title font-bold text-text-primary">
-              {state.avStatus?.clamd_running ? 'Active'
-                : state.avStatus?.installed ? 'Starting'
-                : 'Preparing'}
-            </div>
-            <div className="text-caption text-text-secondary">AV Engine</div>
-          </Card>
+        <div className="mt-4 grid grid-cols-2 gap-3">
           <Card variant="glass" className="p-4 text-center" data-testid="protection-rt-guard-card">
             <EyeIcon className={`h-6 w-6 mx-auto mb-1 ${state.rtGuardEnabled ? 'text-semantic-success' : 'text-semantic-warning'}`} />
             <div className="text-section-title font-bold text-text-primary">
