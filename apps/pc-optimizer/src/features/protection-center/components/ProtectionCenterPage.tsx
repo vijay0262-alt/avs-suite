@@ -38,6 +38,8 @@ import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import { dashboardService } from '../../dashboard/dashboard.service';
 import type { DashboardMetrics, HealthScore } from '../../dashboard/dashboard.types';
+import { rpc } from '../../../services/rpc';
+import { RPC_METHODS } from '@avs/shared/rpc';
 import { ProStatusBanner, ProStatusPill } from '../../licensing/ProStatusBadge';
 import { PageHeader } from '../../../components/PageHeader';
 import { HelpButton } from '../../../components/HelpButton';
@@ -54,6 +56,15 @@ interface ProtectionPostureState {
   fixMessage: string | null;
   fixSuccess: boolean;
   fixInProgress: string | null;
+  avStatus: { installed: boolean; clamd_running: boolean; signature_count: number; version: string | null } | null;
+  rtGuardEnabled: boolean;
+  quarantineCount: number;
+  securityScoreDetails: {
+    overall_score: number;
+    status: string;
+    factors: Array<{ id: string; name: string; score: number; max: number; status: string; detail: string }>;
+    recommendations: Array<{ id: string; priority: string; title: string; description: string }>;
+  } | null;
 }
 
 class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
@@ -67,6 +78,10 @@ class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
       fixMessage: null,
       fixSuccess: false,
       fixInProgress: null,
+      avStatus: null,
+      rtGuardEnabled: false,
+      quarantineCount: 0,
+      securityScoreDetails: null,
     });
   }
 
@@ -89,6 +104,13 @@ class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
         healthScore,
         lastRefresh: Date.now(),
       });
+
+      // Load antivirus-specific details in the background so the page
+      // stays responsive and the score cards populate quickly.
+      void this.refreshAvStatus();
+      void this.refreshRtGuardStatus();
+      void this.refreshQuarantineCount();
+      void this.refreshSecurityScoreDetails();
     } catch (err) {
       this.setState({
         loading: false,
@@ -142,6 +164,51 @@ class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
 
   isAnyFixInProgress(): boolean {
     return this.state.fixInProgress !== null;
+  }
+
+  async refreshAvStatus(): Promise<void> {
+    try {
+      const res = await rpc.raw<{ success?: boolean; status?: { installed: boolean; clamd_running: boolean; signature_count: number; version: string | null }; installed?: boolean; clamd_running?: boolean; signature_count?: number; version?: string | null }>(RPC_METHODS.THREAT_CLAMAV_STATUS);
+      const flat = res.status ? res.status : res;
+      this.setState({
+        avStatus: {
+          installed: flat.installed ?? false,
+          clamd_running: flat.clamd_running ?? false,
+          signature_count: flat.signature_count ?? 0,
+          version: flat.version ?? null,
+        },
+      });
+    } catch { /* ignore */ }
+  }
+
+  async refreshRtGuardStatus(): Promise<void> {
+    try {
+      const res = await rpc.raw<{ success: boolean; status: Record<string, { running: boolean } | null> }>(RPC_METHODS.REALTIME_THREAT_STATUS);
+      const st = res?.status ?? (res as Record<string, unknown>);
+      if (st && typeof st === 'object') {
+        const typed = st as Record<string, { running?: boolean } | null>;
+        const anyRunning =
+          typed.etw_file_monitor?.running === true ||
+          typed.usb_monitor?.running === true ||
+          typed.network_c2?.running === true;
+        this.setState({ rtGuardEnabled: anyRunning });
+      }
+    } catch { /* ignore */ }
+  }
+
+  async refreshQuarantineCount(): Promise<void> {
+    try {
+      const res = await rpc.raw<{ items?: unknown[]; threats?: unknown[] }>(RPC_METHODS.THREAT_QUARANTINE_LIST);
+      const items = res.items || (res.threats ?? []);
+      this.setState({ quarantineCount: items.length });
+    } catch { /* ignore */ }
+  }
+
+  async refreshSecurityScoreDetails(): Promise<void> {
+    try {
+      const res = await rpc.raw<{ overall_score: number; status: string; factors: Array<{ id: string; name: string; score: number; max: number; status: string; detail: string }>; recommendations: Array<{ id: string; priority: string; title: string; description: string }> }>(RPC_METHODS.DASHBOARD_SECURITY_SCORE);
+      this.setState({ securityScoreDetails: res });
+    } catch { /* ignore */ }
   }
 }
 
@@ -789,6 +856,144 @@ export function ProtectionCenterPage() {
           </Button>
         </div>
       </Card>
+
+      {/* ── 7. ANTIVIRUS SECURITY ─────────────────────────────── */}
+      <div>
+        <h2 className="mb-3 text-section-title font-semibold text-text-primary">
+          Antivirus Security
+        </h2>
+
+        {/* One-Click Security Scan */}
+        <Card variant="glass" className="p-6 bg-gradient-to-br from-brand-primary/10 to-transparent" data-testid="protection-one-click">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="shrink-0 rounded-[var(--avs-radius-lg)] bg-brand-primary/20 p-3">
+                <BoltIcon className="h-8 w-8 text-brand-primary" />
+              </div>
+              <div>
+                <div className="text-base font-bold text-text-primary">One-Click Security Scan</div>
+                <div className="text-small text-text-secondary">
+                  Scan for viruses, malware, spyware, PUPs, and other threats. Detected threats are automatically quarantined.
+                </div>
+              </div>
+            </div>
+            <Button
+              size="md"
+              variant="primary"
+              onClick={() => navigate('/antivirus-security')}
+              data-testid="protection-one-click-scan"
+            >
+              Scan Now
+            </Button>
+          </div>
+        </Card>
+
+        {/* Protection status */}
+        <div className="mt-4 flex items-center gap-2">
+          <CheckCircleIcon className={`h-5 w-5 ${state.metrics?.avsAvActive ? 'text-semantic-success' : 'text-text-muted'}`} />
+          <span className={`text-small font-medium ${state.metrics?.avsAvActive ? 'text-semantic-success' : 'text-text-muted'}`}>
+            {state.metrics?.avsAvActive ? 'Your PC is protected' : 'Protection status unknown'}
+          </span>
+        </div>
+
+        {/* AVS AI Antivirus score breakdown */}
+        {state.securityScoreDetails && (
+          <Card variant="glass" className="mt-4 p-5" data-testid="protection-av-score">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="relative inline-flex items-center justify-center h-16 w-16 rounded-full bg-brand-primary/10">
+                <ShieldCheckIcon className="h-8 w-8 text-brand-primary" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-lg font-bold text-text-primary">{state.securityScoreDetails.overall_score}</span>
+                  <span className="text-caption text-text-muted">/ 100</span>
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-small font-semibold text-text-primary">AVS AI Antivirus</div>
+                <div className={`text-caption font-medium capitalize ${
+                  state.securityScoreDetails.status === 'excellent' || state.securityScoreDetails.status === 'good' ? 'text-semantic-success' :
+                  state.securityScoreDetails.status === 'fair' ? 'text-semantic-warning' : 'text-semantic-danger'
+                }`}>
+                  {state.securityScoreDetails.status === 'excellent' && 'Excellent Protection'}
+                  {state.securityScoreDetails.status === 'good' && 'Good Protection'}
+                  {state.securityScoreDetails.status === 'fair' && 'Fair Protection'}
+                  {state.securityScoreDetails.status === 'poor' && 'Poor Protection'}
+                  {state.securityScoreDetails.status === 'critical' && 'Critical Risk'}
+                </div>
+              </div>
+            </div>
+
+            {/* Factor bars */}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+              {state.securityScoreDetails.factors.map((factor) => (
+                <div key={factor.id} className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-caption text-text-secondary truncate">{factor.name}</span>
+                      <span className="text-caption text-text-muted">{factor.score}/{factor.max}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-[var(--avs-border)] overflow-hidden">
+                      <div
+                        className={`h-full transition-all ${
+                          factor.status === 'ok' ? 'bg-semantic-success' :
+                          factor.status === 'warning' ? 'bg-semantic-warning' : 'bg-semantic-danger'
+                        }`}
+                        style={{ width: `${(factor.score / factor.max) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Recommendations */}
+            {state.securityScoreDetails.recommendations.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-[var(--avs-border)]">
+                <div className="text-caption font-medium text-text-secondary mb-2">Improve your score:</div>
+                <div className="space-y-1.5">
+                  {state.securityScoreDetails.recommendations.slice(0, 3).map((rec) => (
+                    <div key={rec.id} className="flex items-center gap-2">
+                      <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                        rec.priority === 'high' ? 'bg-semantic-danger' :
+                        rec.priority === 'medium' ? 'bg-semantic-warning' : 'bg-semantic-info'
+                      }`} />
+                      <span className="text-caption text-text-primary">{rec.title}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* Bottom status cards */}
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          <Card variant="glass" className="p-4 text-center" data-testid="protection-av-engine-card">
+            <ShieldCheckIcon className={`h-6 w-6 mx-auto mb-1 ${
+              state.avStatus?.clamd_running ? 'text-semantic-success'
+                : state.avStatus?.installed ? 'text-semantic-warning'
+                : 'text-text-muted'
+            }`} />
+            <div className="text-section-title font-bold text-text-primary">
+              {state.avStatus?.clamd_running ? 'Active'
+                : state.avStatus?.installed ? 'Starting'
+                : 'Preparing'}
+            </div>
+            <div className="text-caption text-text-secondary">AV Engine</div>
+          </Card>
+          <Card variant="glass" className="p-4 text-center" data-testid="protection-rt-guard-card">
+            <EyeIcon className={`h-6 w-6 mx-auto mb-1 ${state.rtGuardEnabled ? 'text-semantic-success' : 'text-semantic-warning'}`} />
+            <div className="text-section-title font-bold text-text-primary">
+              {state.rtGuardEnabled ? 'Active' : 'Disabled'}
+            </div>
+            <div className="text-caption text-text-secondary">Real-Time Guard</div>
+          </Card>
+          <Card variant="glass" className="p-4 text-center" data-testid="protection-quarantine-card">
+            <ShieldExclamationIcon className={`h-6 w-6 mx-auto mb-1 ${state.quarantineCount > 0 ? 'text-semantic-warning' : 'text-semantic-success'}`} />
+            <div className="text-section-title font-bold text-text-primary">{state.quarantineCount}</div>
+            <div className="text-caption text-text-secondary">Quarantined</div>
+          </Card>
+        </div>
+      </div>
 
       {state.loading && state.metrics && (
         <div className="flex items-center gap-1.5 text-caption text-text-muted">
