@@ -710,7 +710,7 @@ export function ProtectionCenterPage() {
         <h2 className="mb-3 text-section-title font-semibold text-text-primary">
           Protection Status
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 auto-rows-fr">
           {protectionItems.map((item) => {
             const cfg = STATUS_CONFIG[item.status];
             const tone = toneClasses(cfg.tone);
@@ -718,7 +718,7 @@ export function ProtectionCenterPage() {
               <Card
                 key={item.id}
                 variant="glass"
-                className="p-4"
+                className="p-4 h-full"
                 data-testid={`protection-card-${item.id}`}
               >
                 <div className="flex items-start gap-3">

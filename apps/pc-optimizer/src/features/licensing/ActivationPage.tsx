@@ -26,7 +26,6 @@ import {
   UserCircleIcon,
   KeyIcon,
   ComputerDesktopIcon,
-  CircleStackIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 
@@ -148,7 +147,7 @@ export default function ActivationPage() {
         />
 
         {/* Key stats */}
-        <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="lg:col-span-2 grid grid-cols-2 gap-3">
           <StatTile
             label="Account"
             value={customerName}
@@ -171,20 +170,6 @@ export default function ActivationPage() {
             icon={<ComputerDesktopIcon className="h-5 w-5" />}
             variant="glass"
             accentColor={isConnected ? 'var(--avs-success)' : 'var(--avs-danger)'}
-          />
-          <StatTile
-            label="Devices"
-            value={devices.length.toString()}
-            hint="Registered devices"
-            icon={<ComputerDesktopIcon className="h-5 w-5" />}
-            variant="glass"
-          />
-          <StatTile
-            label="Features"
-            value={features.length.toString()}
-            hint="Enabled features"
-            icon={<CircleStackIcon className="h-5 w-5" />}
-            variant="glass"
           />
           <StatTile
             label="App Version"

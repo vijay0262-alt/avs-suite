@@ -120,7 +120,10 @@ export default function DashboardPage() {
   useEffect(() => {
     return optimizationEventBus.subscribe((event) => {
       if (event.type === OptimizationEventType.CleaningCompleted) {
-        void vm.loadMetrics();
+        // Force fresh data from the backend (clear 15s metrics cache) and
+        // the frontend rpcCache, then reload so the health score updates
+        // immediately after a cleanup/scan.
+        void dashboardService.refreshCache().then(() => vm.loadMetrics());
       }
     });
   }, [vm]);

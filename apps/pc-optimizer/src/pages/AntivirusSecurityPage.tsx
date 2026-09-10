@@ -18,6 +18,7 @@ import { rpc } from '../services/rpc';
 import { RPC_METHODS } from '@avs/shared/rpc';
 import { useEdition } from '../config/EditionManager';
 import { ScanView } from '../features/scan';
+import { dashboardService } from '../features/dashboard/dashboard.service';
 import { Modal } from '../features/dashboard/components/Modal';
 import { CircularScanProgress } from '../features/shared/components/CircularScanProgress';
 import {
@@ -424,6 +425,10 @@ export default function AntivirusSecurityPage() {
                 threats: prog.detected_threats || [],
               });
               refreshThreats();
+              // Fresh scan can change health/junk metrics; invalidate the
+              // dashboard caches so the next Dashboard view shows updated
+              // scores immediately.
+              void dashboardService.refreshCache();
             }
           }
         } catch (e) {
@@ -1177,15 +1182,15 @@ export default function AntivirusSecurityPage() {
       )}
 
       {/* Status summary */}
-      <div className="grid grid-cols-2 gap-3">
-        <Card variant="glass" className="p-4 text-center" data-testid="rt-status-card">
+      <div className="grid grid-cols-2 gap-3 auto-rows-fr">
+        <Card variant="glass" className="p-4 text-center h-full" data-testid="rt-status-card">
           <EyeIcon className={`h-6 w-6 mx-auto mb-1 ${rtGuardEnabled ? 'text-semantic-success' : 'text-semantic-warning'}`} />
           <div className="text-section-title font-bold text-text-primary">
             {rtGuardEnabled ? 'Active' : 'Disabled'}
           </div>
           <div className="text-caption text-text-secondary">Real-Time Guard</div>
         </Card>
-        <Card variant="glass" className="p-4 text-center" data-testid="threat-count-card">
+        <Card variant="glass" className="p-4 text-center h-full" data-testid="threat-count-card">
           <ShieldExclamationIcon className={`h-6 w-6 mx-auto mb-1 ${threats.length > 0 ? 'text-semantic-warning' : 'text-semantic-success'}`} />
           <div className="text-section-title font-bold text-text-primary">{threats.length}</div>
           <div className="text-caption text-text-secondary">Quarantined</div>
@@ -1530,22 +1535,22 @@ export default function AntivirusSecurityPage() {
                 </div>
 
                 {/* Stats grid */}
-                <div className="grid grid-cols-4 gap-3">
-                  <div className="p-3 rounded border border-[var(--avs-border)]">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 auto-rows-fr">
+                  <div className="p-3 rounded border border-[var(--avs-border)] h-full">
                     <div className="text-caption text-text-muted">Scan Type</div>
                     <div className="text-small font-bold text-text-primary capitalize">{scanSummary.scan_type}</div>
                   </div>
-                  <div className="p-3 rounded border border-[var(--avs-border)]">
+                  <div className="p-3 rounded border border-[var(--avs-border)] h-full">
                     <div className="text-caption text-text-muted">Duration</div>
                     <div className="text-small font-bold text-text-primary">
                       {Math.floor(scanSummary.duration_seconds / 60)}m {scanSummary.duration_seconds % 60}s
                     </div>
                   </div>
-                  <div className="p-3 rounded border border-[var(--avs-border)]">
+                  <div className="p-3 rounded border border-[var(--avs-border)] h-full">
                     <div className="text-caption text-text-muted">Files Scanned</div>
                     <div className="text-small font-bold text-text-primary">{scanSummary.files_scanned}</div>
                   </div>
-                  <div className="p-3 rounded border border-[var(--avs-border)]">
+                  <div className="p-3 rounded border border-[var(--avs-border)] h-full">
                     <div className="text-caption text-text-muted">Threats</div>
                     <div className={`text-small font-bold ${scanSummary.threats_found > 0 ? 'text-semantic-danger' : 'text-semantic-success'}`}>
                       {scanSummary.threats_found}
@@ -1825,23 +1830,23 @@ export default function AntivirusSecurityPage() {
               </div>
 
               {/* Overview stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Card variant="glass" className="p-4 text-center" data-testid="stat-total-scans">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 auto-rows-fr">
+                <Card variant="glass" className="p-4 text-center h-full" data-testid="stat-total-scans">
                   <ChartBarIcon className="h-6 w-6 text-brand-primary mx-auto mb-1" />
                   <div className="text-2xl font-bold text-text-primary">{threatStats.total_scans}</div>
                   <div className="text-caption text-text-muted">Total Scans</div>
                 </Card>
-                <Card variant="glass" className="p-4 text-center" data-testid="stat-total-threats">
+                <Card variant="glass" className="p-4 text-center h-full" data-testid="stat-total-threats">
                   <ShieldExclamationIcon className="h-6 w-6 text-semantic-danger mx-auto mb-1" />
                   <div className="text-2xl font-bold text-text-primary">{threatStats.total_threats_detected}</div>
                   <div className="text-caption text-text-muted">Threats Detected</div>
                 </Card>
-                <Card variant="glass" className="p-4 text-center" data-testid="stat-files-scanned">
+                <Card variant="glass" className="p-4 text-center h-full" data-testid="stat-files-scanned">
                   <DocumentTextIcon className="h-6 w-6 text-brand-primary mx-auto mb-1" />
                   <div className="text-2xl font-bold text-text-primary">{threatStats.total_files_scanned.toLocaleString()}</div>
                   <div className="text-caption text-text-muted">Files Scanned</div>
                 </Card>
-                <Card variant="glass" className="p-4 text-center" data-testid="stat-quarantine">
+                <Card variant="glass" className="p-4 text-center h-full" data-testid="stat-quarantine">
                   <LockClosedIcon className="h-6 w-6 text-semantic-warning mx-auto mb-1" />
                   <div className="text-2xl font-bold text-text-primary">{threatStats.current_quarantine_count}</div>
                   <div className="text-caption text-text-muted">In Quarantine</div>
