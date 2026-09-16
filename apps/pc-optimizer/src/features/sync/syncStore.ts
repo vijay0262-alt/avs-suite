@@ -136,7 +136,7 @@ export function planToEdition(
 
 // ── Store ───────────────────────────────────────────────────────
 
-const SYNC_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+const SYNC_INTERVAL_MS = 60 * 1000; // 1 minute — keeps the license server's last_seen fresh
 let syncIntervalId: ReturnType<typeof setInterval> | null = null;
 
 /**

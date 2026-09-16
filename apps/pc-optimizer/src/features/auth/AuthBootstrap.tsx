@@ -64,6 +64,28 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
     }
   }, [phase, sync, restoreFromCache]);
 
+  // Quick sync when the app comes online or becomes visible again
+  useEffect(() => {
+    if (phase !== 'authenticated') return;
+
+    const handleVisibility = () => {
+      if (document.hidden) return;
+      void sync().catch(() => {});
+    };
+
+    const handleOnline = () => {
+      void sync().catch(() => {});
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [phase, sync]);
+
   if (phase === 'checking') {
     return (
       <div
