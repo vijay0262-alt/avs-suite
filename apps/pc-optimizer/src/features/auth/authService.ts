@@ -375,10 +375,14 @@ export const authService = {
 
   /**
    * Logout: clear all stored tokens.
+   *
+   * Does NOT fire the onExpired callback — that callback (registered by
+   * AuthBootstrap) calls authStore.logout(), which calls this method,
+   * which would fire the callback again, and so on: infinite recursion.
+   * The caller (authStore.logout()) already updates auth state directly.
    */
   logout(): void {
     tokenStorage.clear();
-    onExpiredCallback?.();
   },
 
   /**
