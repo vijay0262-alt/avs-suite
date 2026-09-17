@@ -11,7 +11,6 @@ vi.mock('../syncService', () => ({
   syncService: {
     sync: vi.fn(),
     fetchSubscription: vi.fn(),
-    fetchFeatures: vi.fn(),
   },
   SyncServiceError: class SyncServiceError extends Error {
     constructor(message: string, public code: string) {

@@ -151,18 +151,4 @@ describe('syncService', () => {
       expect(result.plan).toBe('FREE');
     });
   });
-
-  describe('fetchFeatures()', () => {
-    it('should return features list on success', async () => {
-      vi.mocked(apiClient.get).mockResolvedValueOnce({
-        plan: 'PROFESSIONAL',
-        features: ['JUNK_CLEANER', 'REGISTRY_CLEANER'],
-      });
-
-      const result = await syncService.fetchFeatures();
-
-      expect(apiClient.get).toHaveBeenCalledWith('/api/customer/features');
-      expect(result).toEqual(['JUNK_CLEANER', 'REGISTRY_CLEANER']);
-    });
-  });
 });

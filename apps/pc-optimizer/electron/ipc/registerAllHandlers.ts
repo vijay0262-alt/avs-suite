@@ -392,7 +392,7 @@ function registerNotificationHandlers(logger: Logger): void {
 
   // Server-pushed notifications — the renderer forwards items from the
   // sync response here and we show them as native tray popups.
-  ipcMain.on('avs:notification:deliver', (_e, payload: unknown) => {
+  registerHandler('avs:notification:deliver', (_e, payload: unknown) => {
     try {
       const n = payload as { title?: unknown; body?: unknown };
       if (typeof n?.title !== 'string' || typeof n?.body !== 'string') return;

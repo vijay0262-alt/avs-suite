@@ -246,16 +246,4 @@ export const syncService = {
       throw classifyError(err);
     }
   },
-
-  /**
-   * Fetch only the features list (for feature-gate refresh).
-   */
-  async fetchFeatures(): Promise<string[]> {
-    try {
-      const resp = await apiClient.get<{ plan: string; features: string[] }>('/api/customer/features');
-      return resp.features;
-    } catch (err) {
-      throw classifyError(err);
-    }
-  },
 };

@@ -142,7 +142,9 @@ const api = {
     /** Forward a server-pushed notification to main for tray display. */
     deliver(notification: { id: number; title: string; body: string; kind?: string; action_url?: string | null }): void {
       if (typeof notification?.title !== 'string' || typeof notification?.body !== 'string') return;
-      ipcRenderer.send('avs:notification:deliver', notification);
+      void invokeWithTimeout<void>('avs:notification:deliver', notification).catch(() => {
+        // Best-effort — tray delivery failure is non-fatal.
+      });
     },
   },
 } as const;
