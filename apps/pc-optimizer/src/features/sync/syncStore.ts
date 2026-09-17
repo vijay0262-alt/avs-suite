@@ -40,6 +40,7 @@ const REVOKED_DEVICE_STATUSES = new Set([
   'force_logged_out',
   'deactivated',
   'uninstalled',
+  'removed', // tombstoned — admin hard-removed, fingerprint is banned
 ]);
 
 /**
