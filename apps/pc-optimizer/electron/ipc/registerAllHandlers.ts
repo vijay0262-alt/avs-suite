@@ -20,7 +20,7 @@ import type { LicenseBridge } from '../licensing/licenseBridge';
 import { checkForUpdates as updaterCheck, downloadUpdate as updaterDownload, quitAndInstall as updaterInstall } from '../updater/updater';
 import { getTraySettings, updateTraySettings, onSettingsChanged, type TraySettings } from '../tray/traySettings';
 import { isStartupEnabled, enableStartup, disableStartup } from '../tray/windowsStartup';
-import { onNotification, type AvsNotification } from '../notifications/NotificationManager';
+import { onNotification, Notifications, type AvsNotification } from '../notifications/NotificationManager';
 
 export interface IpcDependencies {
   rpc: RpcClient;
@@ -387,6 +387,21 @@ function registerNotificationHandlers(logger: Logger): void {
       win.webContents.send('avs:notification:event', notification);
     }
   });
+
+  // Server-pushed notifications — the renderer forwards items from the
+  // sync response here and we show them as native tray popups.
+  ipcMain.on('avs:notification:deliver', (_e, payload: unknown) => {
+    try {
+      const n = payload as { title?: unknown; body?: unknown };
+      if (typeof n?.title !== 'string' || typeof n?.body !== 'string') return;
+      if (n.title.length === 0 || n.title.length > 200) return;
+      if (n.body.length === 0 || n.body.length > 2000) return;
+      Notifications.serverMessage(n.title, n.body);
+    } catch (err) {
+      logger.warn('[ipc] Failed to deliver server notification', err);
+    }
+  });
+
   logger.info('[ipc] Notification handlers registered');
 }
 

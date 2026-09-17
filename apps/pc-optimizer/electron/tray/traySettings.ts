@@ -25,6 +25,7 @@ export interface TraySettings {
     predictionAlert: boolean;
     hardwareAlert: boolean;
     storageWarning: boolean;
+    serverMessage: boolean;
   };
   pauseUntil: number | null;
 }
@@ -44,6 +45,7 @@ const DEFAULT_SETTINGS: TraySettings = {
     predictionAlert: true,
     hardwareAlert: true,
     storageWarning: true,
+    serverMessage: true,
   },
   pauseUntil: null,
 };

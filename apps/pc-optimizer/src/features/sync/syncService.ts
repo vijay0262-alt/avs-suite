@@ -58,12 +58,21 @@ export interface SyncDeviceInfo {
   windows_version: string | null;
 }
 
+export interface SyncNotification {
+  id: number;
+  title: string;
+  body: string;
+  kind: string;
+  action_url: string | null;
+}
+
 export interface SyncResponse {
   customer: SyncCustomerInfo;
   subscription: SyncSubscriptionInfo;
   license: SyncLicenseInfo | null;
   features: string[];
   devices: SyncDeviceInfo[];
+  notifications: SyncNotification[];
   server_time: string;
   server_version: string | null;
 }
@@ -200,6 +209,26 @@ export const syncService = {
       return await apiClient.get<SyncResponse>(path);
     } catch (err) {
       throw classifyError(err);
+    }
+  },
+
+  /**
+   * Acknowledge a delivered notification (shown/clicked/dismissed).
+   * Best-effort — failures are swallowed so they never break sync.
+   */
+  async ackNotification(
+    notificationId: number,
+    deviceFingerprint: string,
+    action: 'shown' | 'clicked' | 'dismissed' = 'shown',
+  ): Promise<void> {
+    try {
+      await apiClient.post('/api/customer/device/notifications/ack', {
+        device_fingerprint: deviceFingerprint,
+        notification_id: notificationId,
+        action,
+      });
+    } catch {
+      // Best-effort analytics — never throw
     }
   },
 

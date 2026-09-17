@@ -20,6 +20,7 @@ vi.mock('electron', () => ({
         throw new Error(`Attempted to register second handler '${channel}'`);
       }
     },
+    on: vi.fn(),
     removeHandler: vi.fn(),
   },
   BrowserWindow: {

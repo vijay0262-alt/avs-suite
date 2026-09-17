@@ -18,7 +18,8 @@ export type NotificationCategory =
   | 'optimizationComplete'
   | 'predictionAlert'
   | 'hardwareAlert'
-  | 'storageWarning';
+  | 'storageWarning'
+  | 'serverMessage';
 
 export interface AvsNotification {
   title: string;
@@ -142,6 +143,15 @@ export const Notifications = {
       title: 'Storage Almost Full',
       body: `Only ${remainingGB.toFixed(1)} GB remaining on your primary drive.`,
       category: 'storageWarning',
+    });
+  },
+
+  /** Admin-pushed message from the license server (upgrade reminders, broadcasts). */
+  serverMessage(title: string, body: string): void {
+    showNotification({
+      title,
+      body,
+      category: 'serverMessage',
     });
   },
 };

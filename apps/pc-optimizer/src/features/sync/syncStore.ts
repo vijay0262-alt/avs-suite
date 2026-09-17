@@ -213,6 +213,39 @@ function resetBackendEdition(): void {
   }
 }
 
+/**
+ * Deliver server-pushed notifications to the system tray.
+ *
+ * The sync response carries pending admin notifications; we forward
+ * each to the Electron main process (which shows a native tray popup)
+ * and then ack it so the server can track delivery. Best-effort —
+ * never breaks sync.
+ */
+async function deliverNotifications(data: SyncResponse): Promise<void> {
+  const notifications = data.notifications;
+  if (!notifications || notifications.length === 0) return;
+
+  const avs = (window as unknown as {
+    avs?: { notifications?: { deliver?: (n: unknown) => void } };
+  }).avs;
+  if (!avs?.notifications?.deliver) return;
+
+  let fingerprint = '';
+  try {
+    const info = await getDeviceInfo();
+    fingerprint = info?.fingerprint ?? '';
+  } catch { /* ignore */ }
+
+  for (const n of notifications) {
+    try {
+      avs.notifications.deliver(n);
+      if (fingerprint) {
+        void syncService.ackNotification(n.id, fingerprint, 'shown');
+      }
+    } catch { /* ignore single-notification failures */ }
+  }
+}
+
 export const useSyncStore = create<SyncStoreState>((set, _get) => ({
   data: null,
   phase: 'idle',
@@ -237,6 +270,7 @@ export const useSyncStore = create<SyncStoreState>((set, _get) => ({
         fromCache: false,
       });
       void pushEditionToBackend(data);
+      void deliverNotifications(data);
       void enforceRemoteSignOut(data);
       return true;
     } catch (err) {

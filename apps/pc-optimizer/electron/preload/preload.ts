@@ -138,6 +138,11 @@ const api = {
       ipcRenderer.on('avs:notification:event', wrapped);
       return () => ipcRenderer.removeListener('avs:notification:event', wrapped);
     },
+    /** Forward a server-pushed notification to main for tray display. */
+    deliver(notification: { id: number; title: string; body: string; kind?: string; action_url?: string | null }): void {
+      if (typeof notification?.title !== 'string' || typeof notification?.body !== 'string') return;
+      ipcRenderer.send('avs:notification:deliver', notification);
+    },
   },
 } as const;
 
