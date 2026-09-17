@@ -29,19 +29,25 @@ const CREATE_ACCOUNT_URL = 'https://www.avsshield.com/register';
 const FORGOT_PASSWORD_URL = 'https://www.avsshield.com/forgot-password';
 
 export function LoginDialog() {
-  const { login, loading, error, clearError } = useAuthStore();
+  const { login, submit2fa, cancel2fa, pending2fa, loading, error, clearError } = useAuthStore();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [totpCode, setTotpCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
+      if (pending2fa) {
+        if (!totpCode.trim()) return;
+        await submit2fa(totpCode.trim());
+        return;
+      }
       if (!identifier.trim() || !password) return;
       await login(identifier.trim(), password);
     },
-    [identifier, password, login],
+    [pending2fa, totpCode, identifier, password, login, submit2fa],
   );
 
   const openExternal = (url: string) => {
@@ -57,6 +63,11 @@ export function LoginDialog() {
 
   const handlePasswordChange = (value: string) => {
     setPassword(value);
+    if (error) clearError();
+  };
+
+  const handleTotpChange = (value: string) => {
+    setTotpCode(value.replace(/\D/g, '').slice(0, 8));
     if (error) clearError();
   };
 
@@ -81,7 +92,71 @@ export function LoginDialog() {
           </p>
         </div>
 
-        {/* Form */}
+        {/* 2FA step — shown after password succeeds on a 2FA account */}
+        {pending2fa ? (
+          <form onSubmit={handleSubmit} className="space-y-4" data-testid="login-2fa-form">
+            <div>
+              <label
+                htmlFor="login-totp"
+                className="block text-caption font-medium text-text-secondary mb-1"
+              >
+                Authenticator Code
+              </label>
+              <input
+                id="login-totp"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                autoFocus
+                value={totpCode}
+                onChange={(e) => handleTotpChange(e.target.value)}
+                placeholder="000000"
+                disabled={loading}
+                className="w-full rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface)] px-3 py-2 text-center text-section-title tracking-[0.5em] text-text-primary placeholder-text-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-50"
+                data-testid="login-totp"
+              />
+              <p className="mt-1.5 text-micro text-text-muted">
+                Enter the 6-digit code from your authenticator app.
+              </p>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div
+                className="flex items-start gap-2 rounded-[var(--avs-radius-md)] bg-semantic-danger/10 px-3 py-2 text-caption text-semantic-danger"
+                data-testid="login-error"
+                role="alert"
+              >
+                <ExclamationCircleIcon className="h-4 w-4 shrink-0 mt-0.5" aria-hidden />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              loading={loading}
+              disabled={totpCode.length < 6}
+              className="w-full"
+              data-testid="login-2fa-submit"
+              rightIcon={!loading ? <ArrowRightIcon className="h-4 w-4" /> : undefined}
+            >
+              {loading ? 'Verifying…' : 'Verify'}
+            </Button>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={cancel2fa}
+                className="text-caption text-text-secondary hover:text-text-primary"
+                data-testid="login-2fa-back"
+              >
+                Back to sign in
+              </button>
+            </div>
+          </form>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-4" data-testid="login-form">
           {/* Identifier */}
           <div>
@@ -188,6 +263,7 @@ export function LoginDialog() {
             {loading ? 'Signing in…' : 'Sign In'}
           </Button>
         </form>
+        )}
 
         {/* Create Account */}
         <div className="text-center">

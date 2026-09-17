@@ -74,8 +74,11 @@ describe('authService', () => {
     it('succeeds with valid credentials', async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(LOGIN_RESPONSE));
 
-      const session = await authService.login('vijay@example.com', 'SecurePass123');
+      const result = await authService.login('vijay@example.com', 'SecurePass123');
 
+      expect(result.kind).toBe('session');
+      if (result.kind !== 'session') return;
+      const session = result.session;
       expect(session.accessToken).toBe('access-token-123');
       expect(session.refreshToken).toBe('refresh-token-456');
       expect(session.customerId).toBe('cust-uuid-789');
@@ -87,6 +90,28 @@ describe('authService', () => {
       // Session is stored
       const stored = tokenStorage.load();
       expect(stored?.accessToken).toBe('access-token-123');
+    });
+
+    it('returns a 2FA challenge when the account has TOTP enabled', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse({
+          access_token: '',
+          refresh_token: '',
+          token_type: 'bearer',
+          expires_in: 0,
+          customer: null,
+          requires_2fa: true,
+          pre_2fa_token: 'pre-2fa-token-abc',
+        }),
+      );
+
+      const result = await authService.login('vijay@example.com', 'SecurePass123');
+
+      expect(result.kind).toBe('2fa');
+      if (result.kind !== '2fa') return;
+      expect(result.pre2faToken).toBe('pre-2fa-token-abc');
+      // No session stored yet
+      expect(tokenStorage.load()).toBeNull();
     });
 
     it('fails with invalid credentials (401)', async () => {
@@ -170,6 +195,38 @@ describe('authService', () => {
         const authErr = err as AuthResultError;
         expect(authErr.code).toBe('NETWORK_ERROR');
         expect(authErr.message).toContain('Failed to fetch');
+      }
+    });
+  });
+
+  describe('complete2fa', () => {
+    it('exchanges pre-2FA token + code for a session', async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(LOGIN_RESPONSE));
+
+      const session = await authService.complete2fa('pre-2fa-token-abc', '123456');
+
+      expect(session.accessToken).toBe('access-token-123');
+      expect(session.customerId).toBe('cust-uuid-789');
+      expect(tokenStorage.load()?.accessToken).toBe('access-token-123');
+
+      const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/api/customer/auth/login/2fa');
+      expect(JSON.parse(init.body as string)).toEqual({
+        pre_2fa_token: 'pre-2fa-token-abc',
+        code: '123456',
+      });
+    });
+
+    it('fails on a bad code', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockResponse({ detail: 'Invalid or expired 2FA code.' }, 401),
+      );
+
+      try {
+        await authService.complete2fa('pre-2fa-token-abc', '000000');
+        expect.fail('Should have thrown');
+      } catch (err) {
+        expect((err as AuthResultError).code).toBe('INVALID_CREDENTIALS');
       }
     });
   });

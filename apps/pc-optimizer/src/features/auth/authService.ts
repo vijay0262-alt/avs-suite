@@ -25,8 +25,16 @@ export interface LoginResponse {
     account_status: string;
     email_verified: boolean;
     phone_verified: boolean;
-  };
+  } | null;
+  /** Present when the account has TOTP 2FA enabled — no tokens issued yet. */
+  requires_2fa?: boolean;
+  pre_2fa_token?: string;
 }
+
+/** Result of a login attempt — either a session or a 2FA challenge. */
+export type LoginResult =
+  | { kind: 'session'; session: StoredSession }
+  | { kind: '2fa'; pre2faToken: string };
 
 export interface RefreshResponse {
   access_token: string;
@@ -167,13 +175,16 @@ function classifyError(err: unknown): AuthResultError {
 }
 
 /** Build a display name from the customer response. */
-function buildDisplayName(customer: LoginResponse['customer']): string {
+function buildDisplayName(customer: NonNullable<LoginResponse['customer']>): string {
   if (customer.display_name) return customer.display_name;
   return `${customer.first_name} ${customer.last_name}`.trim();
 }
 
 /** Convert a login response into a StoredSession. */
 function sessionFromLogin(resp: LoginResponse): StoredSession {
+  if (!resp.customer) {
+    throw new AuthResultError('Malformed login response from server.', 'UNKNOWN');
+  }
   return {
     accessToken: resp.access_token,
     refreshToken: resp.refresh_token ?? null,
@@ -225,7 +236,7 @@ export const authService = {
    * On success, stores the session and returns it.
    * On failure, throws AuthResultError with a classified code.
    */
-  async login(identifier: string, password: string): Promise<StoredSession> {
+  async login(identifier: string, password: string): Promise<LoginResult> {
     const endpoint = '/api/customer/auth/login';
     try {
       const resp = await apiClient.post<LoginResponse>(
@@ -233,9 +244,14 @@ export const authService = {
         { identifier, password },
         { noAuth: true, timeoutMs: 15000 },
       );
+      // 2FA challenge — no tokens yet, exchange pre_2fa_token + code
+      // via complete2fa() to finish signing in.
+      if (resp.requires_2fa && resp.pre_2fa_token) {
+        return { kind: '2fa', pre2faToken: resp.pre_2fa_token };
+      }
       const session = sessionFromLogin(resp);
       tokenStorage.save(session);
-      return session;
+      return { kind: 'session', session };
     } catch (err) {
       if (err instanceof ApiError) {
         console.error(
@@ -250,6 +266,26 @@ export const authService = {
           `[AVS] Login failed: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
+      throw classifyError(err);
+    }
+  },
+
+  /**
+   * Complete a 2FA login — exchange the pre-2FA token plus the
+   * authenticator code for real tokens.
+   */
+  async complete2fa(pre2faToken: string, code: string): Promise<StoredSession> {
+    const endpoint = '/api/customer/auth/login/2fa';
+    try {
+      const resp = await apiClient.post<LoginResponse>(
+        endpoint,
+        { pre_2fa_token: pre2faToken, code },
+        { noAuth: true, timeoutMs: 15000 },
+      );
+      const session = sessionFromLogin(resp);
+      tokenStorage.save(session);
+      return session;
+    } catch (err) {
       throw classifyError(err);
     }
   },

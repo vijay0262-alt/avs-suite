@@ -18,8 +18,12 @@ export interface AuthState {
   loading: boolean;
   error: string | null;
   errorCode: string | null;
+  /** Pre-2FA token when the account requires a TOTP code to finish login. */
+  pending2fa: string | null;
 
   login: (identifier: string, password: string) => Promise<boolean>;
+  submit2fa: (code: string) => Promise<boolean>;
+  cancel2fa: () => void;
   logout: () => void;
   restoreSession: () => Promise<void>;
   clearError: () => void;
@@ -43,17 +47,23 @@ export const useAuthStore = create<AuthState>((set) => {
     loading: false,
     error: null,
     errorCode: null,
+    pending2fa: null,
 
   login: async (identifier: string, password: string): Promise<boolean> => {
-    set({ loading: true, error: null, errorCode: null });
+    set({ loading: true, error: null, errorCode: null, pending2fa: null });
     try {
-      const session = await authService.login(identifier, password);
+      const result = await authService.login(identifier, password);
+      // 2FA challenge — park the token, UI prompts for the code.
+      if (result.kind === '2fa') {
+        set({ loading: false, pending2fa: result.pre2faToken });
+        return false;
+      }
       // Login response already contains full customer profile —
       // skip the extra validate() round-trip to speed up login.
-      const profile = authService.getProfileFromSession(session);
+      const profile = authService.getProfileFromSession(result.session);
       set({
         phase: 'authenticated',
-        session,
+        session: result.session,
         customer: profile,
         loading: false,
       });
@@ -69,6 +79,34 @@ export const useAuthStore = create<AuthState>((set) => {
     }
   },
 
+  submit2fa: async (code: string): Promise<boolean> => {
+    const token = useAuthStore.getState().pending2fa;
+    if (!token) return false;
+    set({ loading: true, error: null, errorCode: null });
+    try {
+      const session = await authService.complete2fa(token, code);
+      const profile = authService.getProfileFromSession(session);
+      set({
+        phase: 'authenticated',
+        session,
+        customer: profile,
+        loading: false,
+        pending2fa: null,
+      });
+      return true;
+    } catch (err) {
+      const authErr = err as AuthResultError;
+      set({
+        loading: false,
+        error: authErr.message ?? 'Verification failed.',
+        errorCode: authErr.code ?? 'UNKNOWN',
+      });
+      return false;
+    }
+  },
+
+  cancel2fa: () => set({ pending2fa: null, error: null, errorCode: null }),
+
   logout: () => {
     authService.logout();
     stopPeriodicSync();
@@ -79,6 +117,7 @@ export const useAuthStore = create<AuthState>((set) => {
       session: null,
       error: null,
       errorCode: null,
+      pending2fa: null,
     });
   },
 
