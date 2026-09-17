@@ -31,42 +31,34 @@ interface FeatureRow {
   feature: string;
   free: string | boolean;
   professional: string | boolean;
-  ultimate: string | boolean;
 }
 
 const COMPARISON: readonly FeatureRow[] = [
-  { feature: 'Junk Cleaner (Basic)', free: true, professional: true, ultimate: true },
-  { feature: 'Junk Cleaner (Deep Scan)', free: false, professional: true, ultimate: true },
-  { feature: 'Unlimited Junk Cleaning', free: '500 MB/run', professional: true, ultimate: true },
-  { feature: 'Registry Fix', free: true, professional: true, ultimate: true },
-  { feature: 'Startup Disable', free: true, professional: true, ultimate: true },
-  { feature: 'Privacy Cleaning', free: false, professional: true, ultimate: true },
-  { feature: 'Duplicate File Finder', free: false, professional: true, ultimate: true },
-  { feature: 'Disk Analyzer', free: false, professional: true, ultimate: true },
-  { feature: 'Uninstaller', free: false, professional: true, ultimate: true },
-  { feature: 'Software Updater', free: false, professional: true, ultimate: true },
-  { feature: 'Uninstaller Deep Cleanup', free: false, professional: true, ultimate: true },
-  { feature: 'Software Update (Manual)', free: false, professional: true, ultimate: true },
-  { feature: 'Performance Optimization', free: false, professional: true, ultimate: true },
-  { feature: 'Scheduled Maintenance', free: false, professional: true, ultimate: true },
-  { feature: 'Smart Recommendations', free: false, professional: true, ultimate: true },
-  { feature: 'Optimization History', free: false, professional: true, ultimate: true },
-  { feature: 'Health Timeline', free: false, professional: true, ultimate: true },
-  { feature: 'Priority Support', free: false, professional: true, ultimate: true },
-  { feature: 'Driver Updater', free: false, professional: false, ultimate: true },
-  { feature: 'Antivirus', free: false, professional: false, ultimate: true },
-  { feature: 'AI Smart Optimization', free: false, professional: false, ultimate: true },
-  { feature: 'One-Click Update All', free: false, professional: false, ultimate: true },
-  { feature: 'Automatic Background Cleanup', free: false, professional: false, ultimate: true },
-  { feature: 'Real-Time Health Monitoring', free: false, professional: false, ultimate: true },
-  { feature: 'Auto Startup Optimization', free: false, professional: false, ultimate: true },
-  { feature: 'Browser Protection', free: false, professional: false, ultimate: true },
-  { feature: 'Battery Optimization', free: false, professional: false, ultimate: true },
-  { feature: 'Game Mode', free: false, professional: false, ultimate: true },
-  { feature: 'Auto Privacy Protection', free: false, professional: false, ultimate: true },
-  { feature: 'Auto Junk Cleanup', free: false, professional: false, ultimate: true },
-  { feature: 'Real-Time Notifications', free: false, professional: false, ultimate: true },
-  { feature: 'Premium 24/7 Support', free: false, professional: false, ultimate: true },
+  { feature: 'Junk Cleaner (Basic)', free: true, professional: true },
+  { feature: 'Junk Cleaner (Deep Scan)', free: false, professional: true },
+  { feature: 'Unlimited Junk Cleaning', free: '500 MB/run', professional: true },
+  { feature: 'Registry Fix', free: true, professional: true },
+  { feature: 'Startup Disable', free: true, professional: true },
+  { feature: 'Privacy Cleaning', free: false, professional: true },
+  { feature: 'Duplicate File Finder', free: false, professional: true },
+  { feature: 'Disk Analyzer', free: false, professional: true },
+  { feature: 'Uninstaller', free: false, professional: true },
+  { feature: 'Software Updater', free: false, professional: true },
+  { feature: 'Uninstaller Deep Cleanup', free: false, professional: true },
+  { feature: 'Software Update (Manual)', free: false, professional: true },
+  { feature: 'Performance Optimization', free: false, professional: true },
+  { feature: 'Scheduled Maintenance', free: false, professional: true },
+  { feature: 'Smart Recommendations', free: false, professional: true },
+  { feature: 'Optimization History', free: false, professional: true },
+  { feature: 'Health Timeline', free: false, professional: true },
+  { feature: 'AI Smart Optimization & Auto-Care', free: false, professional: true },
+  { feature: 'Automatic Background Cleanup', free: false, professional: true },
+  { feature: 'Real-Time Health Monitoring', free: false, professional: true },
+  { feature: 'Auto Startup Optimization', free: false, professional: true },
+  { feature: 'Browser Extension Manager', free: 'View only', professional: true },
+  { feature: 'App Freezer', free: 'View only', professional: true },
+  { feature: 'Anomaly Detection', free: 'View only', professional: true },
+  { feature: 'Priority Support', free: false, professional: true },
 ];
 
 const PROFESSIONAL_BENEFITS: readonly string[] = [
@@ -79,27 +71,12 @@ const PROFESSIONAL_BENEFITS: readonly string[] = [
   'Manual software updates for installed applications',
   'One-click performance tuning presets for gaming, work, and battery',
   'Scheduled maintenance — weekly, monthly, or custom',
+  'AI Smart Optimization & Auto-Care — automatic system tuning',
+  'Automatic background cleanup — no user intervention needed',
+  'Real-time health monitoring with instant alerts',
   'Smart recommendations powered by system analysis',
   'Optimization history and health timeline',
   'Priority email support',
-];
-
-const ULTIMATE_BENEFITS: readonly string[] = [
-  'Everything in Professional, plus:',
-  'Driver updater — scan and update all system drivers',
-  'Built-in antivirus scanning and real-time protection',
-  'AI Smart Optimization — automatic system tuning',
-  'One-click Update All — update every app at once',
-  'Automatic background cleanup — no user intervention needed',
-  'Real-time health monitoring with instant alerts',
-  'Automatic startup optimization',
-  'Browser protection — real-time web security',
-  'Battery optimization for extended laptop life',
-  'Game Mode — optimized settings for gaming sessions',
-  'Auto privacy protection — clear traces automatically',
-  'Automatic junk cleanup on schedule',
-  'Real-time system notifications',
-  'Premium 24/7 support with remote assistance',
 ];
 
 function CheckIcon() {
@@ -148,7 +125,6 @@ export function UpgradeDialog({ open, onClose, onUpgrade, onActivate, onLearnMor
   };
 
   const showProfessional = currentEdition === 'free';
-  const showUltimate = currentEdition === 'free' || currentEdition === 'professional';
 
   return (
     <div
@@ -200,20 +176,6 @@ export function UpgradeDialog({ open, onClose, onUpgrade, onActivate, onLearnMor
           </div>
         )}
 
-        {showUltimate && (
-          <div className="mb-6" data-testid="upgrade-dialog-ultimate-section">
-            <h3 className="mb-2 text-small font-semibold text-text-secondary">Ultimate Benefits</h3>
-            <ul className="space-y-1.5">
-              {ULTIMATE_BENEFITS.map((benefit) => (
-                <li key={benefit} className="flex items-start gap-2 text-small text-text-secondary">
-                  <CheckIcon />
-                  <span>{benefit}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
         <Card title="Feature Comparison">
           <div className="overflow-x-auto">
             <table className="w-full text-small">
@@ -222,7 +184,6 @@ export function UpgradeDialog({ open, onClose, onUpgrade, onActivate, onLearnMor
                   <th className="py-2 text-left text-text-muted">Feature</th>
                   <th className="py-2 text-center text-text-muted">Free</th>
                   <th className="py-2 text-center text-brand-primary">Professional</th>
-                  <th className="py-2 text-center text-brand-primary">Ultimate</th>
                 </tr>
               </thead>
               <tbody>
@@ -231,7 +192,6 @@ export function UpgradeDialog({ open, onClose, onUpgrade, onActivate, onLearnMor
                     <td className="py-2 text-text-primary">{row.feature}</td>
                     <td className="py-2 text-center">{renderCell(row.free)}</td>
                     <td className="py-2 text-center">{renderCell(row.professional)}</td>
-                    <td className="py-2 text-center">{renderCell(row.ultimate)}</td>
                   </tr>
                 ))}
               </tbody>

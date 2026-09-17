@@ -21,7 +21,8 @@ import {
 } from '@heroicons/react/24/outline';
 
 const SPLASH_SEEN_KEY = 'avs-pro-splash-seen';
-const SPLASH_DURATION_MS = 3000;
+const SPLASH_DURATION_MS = 10000;
+const FADE_OUT_MS = 300;
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -33,6 +34,7 @@ function getGreeting(): string {
 export function ProSplashOverlay() {
   const isPro = useIsPro();
   const [visible, setVisible] = useState(false);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     if (!isPro) return;
@@ -45,10 +47,14 @@ export function ProSplashOverlay() {
     setVisible(true);
   }, [isPro]);
 
-  const dismiss = useCallback(() => setVisible(false), []);
+  // Fade out smoothly instead of vanishing instantly.
+  const dismiss = useCallback(() => {
+    setClosing(true);
+    setTimeout(() => setVisible(false), FADE_OUT_MS);
+  }, []);
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || closing) return;
 
     const timer = setTimeout(dismiss, SPLASH_DURATION_MS);
 
@@ -61,7 +67,7 @@ export function ProSplashOverlay() {
       clearTimeout(timer);
       document.removeEventListener('keydown', onKey);
     };
-  }, [visible, dismiss]);
+  }, [visible, closing, dismiss]);
 
   if (!visible) return null;
 
@@ -74,7 +80,9 @@ export function ProSplashOverlay() {
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-[var(--avs-bg)]/95 backdrop-blur-sm animate-in fade-in duration-300"
+      className={`fixed inset-0 z-[200] flex items-center justify-center bg-[var(--avs-bg)]/95 backdrop-blur-sm transition-opacity duration-300 ${
+        closing ? 'opacity-0' : 'opacity-100 animate-in fade-in'
+      }`}
       onClick={dismiss}
       data-testid="pro-splash-overlay"
     >
@@ -119,8 +127,19 @@ export function ProSplashOverlay() {
           <p className="mt-1 text-small text-text-secondary">Your PC is protected and optimized.</p>
         </div>
 
+        {/* Countdown progress bar */}
+        <div className="mt-8 h-1 w-48 overflow-hidden rounded-full bg-[var(--avs-border)]">
+          <div
+            className="h-full rounded-full"
+            style={{
+              background: 'var(--avs-gradient-brand)',
+              animation: closing ? 'none' : `pro-splash-countdown ${SPLASH_DURATION_MS}ms linear forwards`,
+            }}
+          />
+        </div>
+
         {/* Skip hint */}
-        <p className="mt-8 text-caption text-text-muted">
+        <p className="mt-3 text-caption text-text-muted">
           Click or press Escape to continue
         </p>
       </div>
@@ -129,6 +148,10 @@ export function ProSplashOverlay() {
         @keyframes pro-splash-rise {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pro-splash-countdown {
+          from { width: 100%; }
+          to { width: 0%; }
         }
       `}</style>
     </div>
