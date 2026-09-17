@@ -22,8 +22,6 @@ export interface EditionManagerValue {
   isOffline: boolean;
   isFeatureAvailable: (feature: FeatureKey) => boolean;
   isFeatureHidden: (feature: FeatureKey) => boolean;
-  /** Check if a backend feature flag is present. */
-  hasBackendFeature: (feature: string) => boolean;
   refresh: () => Promise<void>;
 }
 
@@ -34,7 +32,6 @@ const EditionManagerContext = createContext<EditionManagerValue>({
   isOffline: false,
   isFeatureAvailable: () => false,
   isFeatureHidden: () => false,
-  hasBackendFeature: () => false,
   refresh: async () => {},
 });
 
@@ -50,7 +47,6 @@ export function EditionManagerProvider({
     const licenseEdition = data?.license?.edition ?? null;
     const edition: Edition = planToEdition(plan, licenseEdition) === 'PROFESSIONAL' ? 'professional' : 'free';
     const isActivated = edition === 'professional';
-    const backendFeatures = data?.features ?? [];
 
     return {
       edition,
@@ -58,7 +54,6 @@ export function EditionManagerProvider({
       isOffline,
       isFeatureAvailable: (feature: FeatureKey) => isFeatureEnabled(feature, edition),
       isFeatureHidden: (feature: FeatureKey) => shouldHideFeature(feature, edition),
-      hasBackendFeature: (feature: string) => backendFeatures.includes(feature),
       refresh: async () => {
         await sync();
       },

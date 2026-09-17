@@ -1,7 +1,11 @@
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
 import { PredictiveHealthEngine } from '../PredictiveHealthEngine';
-import type { Prediction, Forecast, PredictionDashboardData, PredictionNotification, PredictionInput } from '../types';
+import type { Prediction, Forecast, PredictionDashboardData, PredictionNotification, PredictionInput, PredictionConfiguration } from '../types';
 import { DEFAULT_PREDICTION_CONFIG } from '../types';
+import { getIsPro } from '../../sync/syncStore';
+
+/** Forecast horizon (days) granted to the Free edition. */
+const FREE_FORECAST_HORIZON_DAYS = 7;
 
 export interface PredictiveHealthState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
@@ -27,12 +31,31 @@ export class PredictiveHealthViewModel extends ViewModel<PredictiveHealthState> 
       lastGeneratedAt: null,
     });
 
-    this.engine = new PredictiveHealthEngine(DEFAULT_PREDICTION_CONFIG);
+    this.engine = this.buildEngine();
+  }
+
+  /**
+   * Build the engine with the edition-appropriate forecast horizon.
+   * Free users get a capped (7-day) forecast; Professional is unlimited.
+   */
+  private buildEngine(): PredictiveHealthEngine {
+    const config: PredictionConfiguration = {
+      ...DEFAULT_PREDICTION_CONFIG,
+      forecastHorizonCapDays: getIsPro() ? null : FREE_FORECAST_HORIZON_DAYS,
+    };
+    return new PredictiveHealthEngine(config);
+  }
+
+  /** Recreate the engine so an edition change takes effect on next run. */
+  private resetEngine(): void {
+    this.engine.dispose();
+    this.engine = this.buildEngine();
   }
 
   async bootstrap(): Promise<void> {
     this.setState({ bootstrap: 'loading' });
     try {
+      this.resetEngine();
       this.ingestMockData();
       this.engine.generateForecasts();
       const dashboard = this.engine.buildDashboard();
@@ -58,6 +81,7 @@ export class PredictiveHealthViewModel extends ViewModel<PredictiveHealthState> 
 
   async refresh(): Promise<void> {
     try {
+      this.resetEngine();
       this.ingestMockData();
       this.engine.generateForecasts();
       const dashboard = this.engine.buildDashboard();

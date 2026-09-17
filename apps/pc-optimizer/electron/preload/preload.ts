@@ -64,6 +64,7 @@ const api = {
   app: {
     getVersion: (): Promise<string> => invokeWithTimeout<string>('avs:app:getVersion'),
     getPlatform: (): Promise<string> => invokeWithTimeout<string>('avs:app:getPlatform'),
+    getHostname: (): Promise<string> => invokeWithTimeout<string>('avs:app:getHostname'),
     openExternal: (url: string): Promise<void> => {
       if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
         return Promise.reject(new Error('Invalid URL: must be http(s)://'));

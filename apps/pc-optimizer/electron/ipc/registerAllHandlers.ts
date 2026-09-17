@@ -15,6 +15,7 @@
 
 import { app, ipcMain, shell, BrowserWindow } from 'electron';
 import { exec } from 'child_process';
+import { hostname as osHostname } from 'os';
 import type { RpcClient } from './pythonBridge';
 import type { LicenseBridge } from '../licensing/licenseBridge';
 import { checkForUpdates as updaterCheck, downloadUpdate as updaterDownload, quitAndInstall as updaterInstall } from '../updater/updater';
@@ -105,6 +106,7 @@ function registerHandler(channel: string, handler: IpcHandler, timeoutMs?: numbe
 function registerAppHandlers(rpc: RpcClient, logger: Logger): void {
   registerHandler('avs:app:getVersion', () => app.getVersion());
   registerHandler('avs:app:getPlatform', () => process.platform);
+  registerHandler('avs:app:getHostname', () => osHostname());
 
   registerHandler('avs:app:openExternal', async (_e, url: string) => {
     const validated = requireString(url, 'url');

@@ -595,6 +595,8 @@ _EDITION_LIMITS: dict[str, int | None] = {
     "process_intelligence.top_n": 10,
     "reports.history_days": 30,
     "reports.export_formats": 1,
+    # Hardware Center — free users see last 24h of sensor history
+    "hardware_center.history_hours": 24,
 }
 
 

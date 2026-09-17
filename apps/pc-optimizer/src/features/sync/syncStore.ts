@@ -377,16 +377,6 @@ export function useEdition(): 'FREE' | 'PROFESSIONAL' {
 }
 
 /**
- * Check if a feature is enabled based on backend feature flags.
- */
-export function useFeatureEnabled(feature: string): boolean {
-  return useSyncStore((s) => {
-    if (!s.data) return false;
-    return s.data.features.includes(feature);
-  });
-}
-
-/**
  * Get the current subscription plan.
  */
 export function usePlan(): string {

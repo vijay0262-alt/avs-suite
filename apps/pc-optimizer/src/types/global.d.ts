@@ -16,6 +16,7 @@ declare global {
   interface AvsAppApi {
     getVersion(): Promise<string>;
     getPlatform(): Promise<string>;
+    getHostname(): Promise<string>;
     openExternal(url: string): Promise<void>;
     isAdmin(): Promise<boolean>;
     relaunchAsAdmin(): Promise<{ success: boolean }>;

@@ -72,7 +72,8 @@ export interface SyncResponse {
   license: SyncLicenseInfo | null;
   features: string[];
   devices: SyncDeviceInfo[];
-  notifications: SyncNotification[];
+  /** Optional — older servers may not send this field. */
+  notifications?: SyncNotification[];
   server_time: string;
   server_version: string | null;
 }
@@ -146,7 +147,7 @@ export async function getDeviceInfo(): Promise<{
   windowsVersion: string;
 } | null> {
   try {
-    const avs = (window as unknown as { avs?: { license?: { getInfo?: () => Promise<unknown> }; app?: { getVersion?: () => Promise<string>; getPlatform?: () => Promise<string> } } }).avs;
+    const avs = (window as unknown as { avs?: { license?: { getInfo?: () => Promise<unknown> }; app?: { getVersion?: () => Promise<string>; getPlatform?: () => Promise<string>; getHostname?: () => Promise<string> } } }).avs;
     if (!avs?.license?.getInfo) return null;
 
     const info = await avs.license.getInfo() as {
@@ -159,9 +160,12 @@ export async function getDeviceInfo(): Promise<{
       if (avs.app?.getVersion) appVersion = await avs.app.getVersion();
     } catch { /* ignore */ }
 
-    let deviceName = 'Unknown';
+    let deviceName = 'Desktop';
     try {
-      deviceName = typeof navigator !== 'undefined' ? navigator.userAgent : 'Desktop';
+      if (avs.app?.getHostname) {
+        const host = await avs.app.getHostname();
+        if (host) deviceName = host;
+      }
     } catch { /* ignore */ }
 
     let windowsVersion = '';

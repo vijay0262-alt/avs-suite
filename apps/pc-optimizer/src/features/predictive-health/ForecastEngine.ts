@@ -93,7 +93,9 @@ export class ForecastEngine {
     series: HistoricalSeries,
     trend: TrendAnalysis,
   ): Prediction | null {
-    const horizonDays = this.estimateHorizon(trend);
+    let horizonDays = this.estimateHorizon(trend);
+    const cap = this.config.forecastHorizonCapDays;
+    if (cap != null && cap > 0) horizonDays = Math.min(horizonDays, cap);
     if (horizonDays <= 0 || horizonDays > this.config.maxPredictionHorizonDays) return null;
 
     const projectionTimestamp = Date.now() + horizonDays * 24 * 60 * 60 * 1000;

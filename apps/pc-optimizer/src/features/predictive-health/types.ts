@@ -362,6 +362,14 @@ export interface PredictionConfiguration {
   enabled: boolean;
   minDataPoints: number;
   maxPredictionHorizonDays: number;
+  /**
+   * Optional cap on the forecast horizon (days). When set, every
+   * prediction's projectionHorizonDays is clamped to this value so the
+   * projected value reflects a nearer-term forecast. Used to give the
+   * Free edition a limited forecast while Professional stays unlimited.
+   * Null/undefined = no cap.
+   */
+  forecastHorizonCapDays?: number | null;
   minConfidence: number;
   notificationThreshold: number;
   notificationMinRisk: PredictionRisk;
