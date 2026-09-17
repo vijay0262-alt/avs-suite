@@ -25,11 +25,47 @@
 import { create } from 'zustand';
 import {
   syncService,
+  getDeviceInfo,
   type SyncResponse,
   type SyncServiceError,
   type SyncErrorCode,
 } from './syncService';
 import { rpc } from '../../services/rpc';
+
+// ── Remote sign-out ───────────────────────────────────────────
+
+/** Device statuses that mean "this PC must not stay signed in". */
+const REVOKED_DEVICE_STATUSES = new Set([
+  'disabled',
+  'force_logged_out',
+  'deactivated',
+  'uninstalled',
+]);
+
+/**
+ * Check whether this device was revoked server-side (admin disable,
+ * force-logout, or portal removal). If so, sign the app out.
+ *
+ * Dynamic import avoids the authStore ↔ syncStore circular dependency.
+ */
+async function enforceRemoteSignOut(data: SyncResponse): Promise<void> {
+  try {
+    const info = await getDeviceInfo();
+    if (!info?.fingerprint) return;
+    const own = data.devices.find((d) => d.device_fingerprint === info.fingerprint);
+    if (!own || !REVOKED_DEVICE_STATUSES.has(own.status)) return;
+
+    const { useAuthStore } = await import('../auth/authStore');
+    useAuthStore.getState().logout();
+    // Surface a reason on the login screen after logout clears state.
+    useAuthStore.setState({
+      error: 'This device was signed out remotely. Contact support if you believe this is a mistake.',
+      errorCode: 'DEVICE_REVOKED',
+    });
+  } catch {
+    // Best-effort enforcement — never break sync over it
+  }
+}
 
 // ── Cache persistence ───────────────────────────────────────────
 
@@ -200,6 +236,7 @@ export const useSyncStore = create<SyncStoreState>((set, _get) => ({
         fromCache: false,
       });
       void pushEditionToBackend(data);
+      void enforceRemoteSignOut(data);
       return true;
     } catch (err) {
       const syncErr = err as SyncServiceError;

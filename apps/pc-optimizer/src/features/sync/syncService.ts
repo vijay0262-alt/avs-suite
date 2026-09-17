@@ -130,7 +130,7 @@ function classifyError(err: unknown): SyncServiceError {
  * Get device info from the Electron backend for sync registration.
  * Returns null if not available (e.g. running in browser/test).
  */
-async function getDeviceInfo(): Promise<{
+export async function getDeviceInfo(): Promise<{
   fingerprint: string;
   deviceName: string;
   appVersion: string;
