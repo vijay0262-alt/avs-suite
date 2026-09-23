@@ -67,25 +67,62 @@ interface ProtectionPostureState {
   } | null;
 }
 
+// Module-level cache so the Protection Center does not re-scan the system
+// every time the page is mounted. The first visit loads fresh data, then
+// subsequent visits (within the TTL) show the cache and only refresh in
+// the background after the TTL expires.
+const PROTECTION_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let _protectionCache: Partial<ProtectionPostureState> | null = null;
+
+function _updateCache(state: ProtectionPostureState): void {
+  // Only persist data fields, not loading / error / fix UI state.
+  _protectionCache = {
+    metrics: state.metrics,
+    healthScore: state.healthScore,
+    lastRefresh: state.lastRefresh,
+    avStatus: state.avStatus,
+    rtGuardEnabled: state.rtGuardEnabled,
+    quarantineCount: state.quarantineCount,
+    securityScoreDetails: state.securityScoreDetails,
+  };
+}
+
 class ProtectionPostureViewModel extends ViewModel<ProtectionPostureState> {
   constructor() {
-    super({
-      loading: true,
+    const hasCache = _protectionCache != null;
+    const initialState: ProtectionPostureState = {
+      loading: !hasCache,
       error: null,
-      metrics: null,
-      healthScore: null,
-      lastRefresh: null,
+      metrics: _protectionCache?.metrics ?? null,
+      healthScore: _protectionCache?.healthScore ?? null,
+      lastRefresh: _protectionCache?.lastRefresh ?? null,
       fixMessage: null,
       fixSuccess: false,
       fixInProgress: null,
-      avStatus: null,
-      rtGuardEnabled: false,
-      quarantineCount: 0,
-      securityScoreDetails: null,
-    });
+      avStatus: _protectionCache?.avStatus ?? null,
+      rtGuardEnabled: _protectionCache?.rtGuardEnabled ?? false,
+      quarantineCount: _protectionCache?.quarantineCount ?? 0,
+      securityScoreDetails: _protectionCache?.securityScoreDetails ?? null,
+    };
+    super(initialState);
+  }
+
+  protected override setState(update: Partial<ProtectionPostureState> | ((prev: ProtectionPostureState) => ProtectionPostureState)): void {
+    super.setState(update);
+    _updateCache(this.state);
   }
 
   async refresh(forceRefresh = false): Promise<void> {
+    const now = Date.now();
+    const hasCache = this.state.metrics != null;
+    const isFresh = this.state.lastRefresh != null && now - this.state.lastRefresh < PROTECTION_CACHE_TTL_MS;
+    if (!forceRefresh && hasCache && isFresh) {
+      // Cached data is still fresh; no need to re-query the backend now.
+      return;
+    }
+
+    // Keep any existing cached metrics/healthScore so the page does not go
+    // blank while the backend is re-queried in the background.
     this.setState({ loading: true, error: null });
     try {
       // Only invalidate caches on explicit "Check Protection" click,
