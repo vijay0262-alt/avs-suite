@@ -32,7 +32,7 @@ import type { DashboardService } from './dashboard.service';
 import { privacyService as defaultPrivacyService } from '../privacy/privacy.service';
 import type { IPrivacyService } from '../privacy/privacy.service';
 import type { NavigateFunction } from 'react-router-dom';
-import { calculateHealthScore } from './dashboard.utils';
+import { calculateHealthScore, determineScoreZone, determineStatus } from './dashboard.utils';
 import { invalidateMetricsCache, dashboardRefreshManager } from '../health';
 import { withRetry } from '../health/RpcRetryWrapper';
 import { OptimizationEventType } from '../health';
@@ -630,8 +630,26 @@ export class DashboardViewModel extends ViewModel<DashboardState> {
     // recalculations from rapid event bursts.
     try {
       const score = calculateHealthScore(metrics, privacyRisks);
+
+      // The backend reports an authoritative post-optimization health score.
+      // While fresh metrics are still trickling in, the live calculation can
+      // read stale cached values and drop the score (e.g. 84 → 76). Floor it
+      // to the last known post-optimization result so the dashboard matches
+      // the "Health X → Y" summary shown after a scan.
+      const floor = this.state.lastOptimizationHealthAfter;
+      const flooredOverall = floor !== null && score.overallScore < floor ? floor : score.overallScore;
+      const finalScore =
+        flooredOverall === score.overallScore
+          ? score
+          : {
+              ...score,
+              overallScore: flooredOverall,
+              scoreZone: determineScoreZone(flooredOverall),
+              status: determineStatus(flooredOverall),
+            };
+
       this.setState({
-        healthScore: score,
+        healthScore: finalScore,
         healthScoreLoading: false,
         healthScoreError: null,
       });

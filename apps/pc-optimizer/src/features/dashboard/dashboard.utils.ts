@@ -28,7 +28,7 @@ function clamp(value: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function determineStatus(overallScore: number): HealthStatus {
+export function determineStatus(overallScore: number): HealthStatus {
   const t = getHealthEngineConfig().scoreZoneThresholds;
   if (overallScore >= t.perfect) return 'perfect';
   if (overallScore >= t.excellent) return 'excellent';
@@ -43,7 +43,7 @@ function determineStatus(overallScore: number): HealthStatus {
  * Used by the UI to pick the correct color and message for the gauge.
  * Thresholds are configurable via HealthEngineConfig (Part 12).
  */
-function determineScoreZone(overallScore: number): ScoreZone {
+export function determineScoreZone(overallScore: number): ScoreZone {
   const t = getHealthEngineConfig().scoreZoneThresholds;
   if (overallScore >= t.perfect) return 'perfect';
   if (overallScore >= t.excellent) return 'excellent';
