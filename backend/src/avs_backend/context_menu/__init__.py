@@ -1,4 +1,4 @@
-"""Context Menu Manager — manage right-click context menu entries.
+r"""Context Menu Manager — manage right-click context menu entries.
 
 Reads and manages Windows Explorer context menu entries from the registry:
   - HKCR\*\shell                          (all files)

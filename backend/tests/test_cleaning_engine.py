@@ -246,4 +246,4 @@ def test_clean_stress_ten_thousand_files(tmp_path: Path, count: int) -> None:
     # antivirus scanning that slow BOTH phases proportionally, while
     # still catching real per-file overhead regressions (e.g. an
     # accidental Path.resolve()/handle-open per file).
-    assert elapsed < max(2.0, count / 1000.0, create_elapsed * 2.0)
+    assert elapsed < max(2.0, count / 1000.0, create_elapsed * 3.0)

@@ -45,6 +45,14 @@ vi.mock('../../scan/useDashboardScan', () => ({
   useDashboardScan: (...args: unknown[]) => mockUseDashboardScan(...args),
 }));
 
+vi.mock('../../../components/UpgradeDialog', () => ({
+  useUpgradeDialog: () => ({ show: vi.fn(), hide: vi.fn(), open: false }),
+}));
+
+vi.mock('../../sync/syncStore', () => ({
+  useIsPro: () => true,
+}));
+
 vi.mock('../../scan/useDashboardOptimizationPlan', () => ({
   useDashboardOptimizationPlan: () => ({
     planId: null,
