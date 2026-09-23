@@ -16,6 +16,8 @@
 import { app, ipcMain, shell, BrowserWindow } from 'electron';
 import { exec } from 'child_process';
 import { hostname as osHostname } from 'os';
+import { writeFile } from 'fs/promises';
+import { join } from 'path';
 import type { RpcClient } from './pythonBridge';
 import type { LicenseBridge } from '../licensing/licenseBridge';
 import { checkForUpdates as updaterCheck, downloadUpdate as updaterDownload, quitAndInstall as updaterInstall } from '../updater/updater';
@@ -146,6 +148,22 @@ function registerAppHandlers(rpc: RpcClient, logger: Logger): void {
       return { success: false };
     }
   });
+}
+
+// ── Device handlers ─────────────────────────────────────────
+
+function registerDeviceHandlers(logger: Logger): void {
+  registerHandler(
+    'avs:device:writeUninstallInfo',
+    async (_e, info: { device_fingerprint: string; uninstall_token: string; api_url: string }) => {
+      if (!info || typeof info.device_fingerprint !== 'string' || typeof info.uninstall_token !== 'string') {
+        throw new Error('Invalid uninstall info payload');
+      }
+      const filePath = join(app.getPath('userData'), 'uninstall.json');
+      await writeFile(filePath, JSON.stringify(info, null, 2), 'utf-8');
+      logger.info(`[device] Wrote uninstall info to ${filePath}`);
+    },
+  );
 }
 
 // ── RPC passthrough handler ─────────────────────────────────
@@ -441,6 +459,7 @@ export function registerAllHandlers(deps: IpcDependencies): void {
   logger.info('[ipc] Registering all IPC handlers...');
 
   registerAppHandlers(rpc, logger);
+  registerDeviceHandlers(logger);
   registerRpcHandler(rpc, logger);
   registerLicenseHandlers(licenseBridge, logger);
   registerUpdaterHandlers();

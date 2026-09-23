@@ -167,6 +167,14 @@ declare global {
     onEvent(cb: (notification: unknown) => void): () => void;
   }
 
+  interface AvsDeviceApi {
+    writeUninstallInfo(info: {
+      device_fingerprint: string;
+      uninstall_token: string;
+      api_url: string;
+    }): Promise<void>;
+  }
+
   interface Window {
     avs: {
       rpc: AvsRpcClient;
@@ -175,6 +183,7 @@ declare global {
       license: AvsLicenseApi;
       tray?: AvsTrayApi;
       notifications?: AvsNotificationsApi;
+      device?: AvsDeviceApi;
     };
   }
 }

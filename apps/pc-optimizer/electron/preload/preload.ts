@@ -147,6 +147,20 @@ const api = {
       });
     },
   },
+  device: {
+    /** Persist the per-device uninstall token so the NSIS uninstaller
+     * can mark this device uninstalled without an auth session. */
+    writeUninstallInfo(info: {
+      device_fingerprint: string;
+      uninstall_token: string;
+      api_url: string;
+    }): Promise<void> {
+      if (typeof info?.device_fingerprint !== 'string' || typeof info?.uninstall_token !== 'string') {
+        return Promise.reject(new Error('device_fingerprint and uninstall_token required'));
+      }
+      return invokeWithTimeout<void>('avs:device:writeUninstallInfo', info);
+    },
+  },
 } as const;
 
 contextBridge.exposeInMainWorld('avs', api);

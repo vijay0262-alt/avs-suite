@@ -52,6 +52,11 @@
 !macroend
 
 !macro customUnInstall
+  ; Notify the license server that this device is being uninstalled.
+  ; The app writes %APPDATA%\AVS AI Shield\uninstall.json on sync with
+  ; the device fingerprint, per-device uninstall token, and API URL.
+  nsExec::ExecToLog 'powershell -NoProfile -Command "try { $p = Join-Path $env:APPDATA `"AVS AI Shield\uninstall.json`"; if (Test-Path $p) { $j = Get-Content $p | ConvertFrom-Json; Invoke-RestMethod -Method Post -Uri ($j.api_url + `"/api/customer/device/uninstall-public`") -Body (@{device_fingerprint=$j.device_fingerprint; uninstall_token=$j.uninstall_token} | ConvertTo-Json) -ContentType `"application/json`" -TimeoutSec 10 } } catch {}"'
+  Pop $0
   ; Kill the running AVS AI Shield process before uninstalling.
   ; Without this, the app stays in the system tray and files are locked.
   ; Try graceful close first, then force kill after 3 seconds.

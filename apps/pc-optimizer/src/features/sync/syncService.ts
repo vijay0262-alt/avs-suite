@@ -12,7 +12,7 @@
  * The desktop app must NOT infer plan, edition, features, or device limits
  * locally. Everything comes from this single API call.
  */
-import { apiClient, ApiError, NetworkError, AuthError } from '../auth/apiClient';
+import { apiClient, ApiError, NetworkError, AuthError, getBaseUrl } from '../auth/apiClient';
 
 // ── Types matching the backend SyncResponse schema ──────────────
 
@@ -52,10 +52,14 @@ export interface SyncDeviceInfo {
   device_fingerprint: string;
   device_name: string | null;
   status: string;
+  edition: string;
   activated_at: string | null;
+  installed_at: string | null;
+  uninstalled_at: string | null;
   last_seen: string | null;
   app_version: string | null;
   windows_version: string | null;
+  uninstall_token: string | null;
 }
 
 export interface SyncNotification {
@@ -215,7 +219,24 @@ export const syncService = {
       if (query) {
         path += `?${query}`;
       }
-      return await apiClient.get<SyncResponse>(path);
+      const data = await apiClient.get<SyncResponse>(path);
+      // Persist the per-device uninstall token so the NSIS uninstaller
+      // can mark this device uninstalled without an auth session.
+      if (deviceInfo) {
+        const current = data.devices?.find(
+          (d) => d.device_fingerprint === deviceInfo.fingerprint,
+        );
+        if (current?.uninstall_token && typeof window !== 'undefined' && window.avs?.device?.writeUninstallInfo) {
+          void window.avs.device.writeUninstallInfo({
+            device_fingerprint: current.device_fingerprint,
+            uninstall_token: current.uninstall_token,
+            api_url: getBaseUrl(),
+          }).catch(() => {
+            // Best-effort — uninstall tracking is non-fatal.
+          });
+        }
+      }
+      return data;
     } catch (err) {
       throw classifyError(err);
     }
