@@ -16,6 +16,7 @@ import { useState, useCallback, createContext, useContext, type ReactNode } from
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, Badge } from '@avs/ui';
 import { useEdition } from '../config/EditionManager';
+import { useAuthStore } from '../features/auth/authStore';
 import type { Edition } from '@avs/shared/featureFlags';
 
 interface UpgradeDialogProps {
@@ -105,6 +106,20 @@ const EDITION_LABELS: Record<Edition, string> = {
   free: 'Free',
   professional: 'Professional',
 };
+
+const STRIPE_PAYMENT_LINKS = {
+  yearly: 'https://buy.stripe.com/28E5kDeNNc8U995g2a0x200',
+  monthly: 'https://buy.stripe.com/4gM5kDdJJ8WIdpl7vE0x201',
+} as const;
+
+type BillingInterval = keyof typeof STRIPE_PAYMENT_LINKS;
+
+function buildCheckoutUrl(interval: BillingInterval, customerId: string, email: string): string {
+  const url = new URL(STRIPE_PAYMENT_LINKS[interval]);
+  url.searchParams.set('client_reference_id', customerId);
+  url.searchParams.set('prefilled_email', email);
+  return url.toString();
+}
 
 export function UpgradeDialog({ open, onClose, onUpgrade, onActivate, onLearnMore, trigger }: UpgradeDialogProps) {
   const currentEdition = useEdition();
@@ -239,6 +254,7 @@ export function UpgradeDialogProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [trigger, setTrigger] = useState<string | undefined>(undefined);
   const navigate = useNavigate();
+  const customer = useAuthStore((state) => state.customer);
 
   const show = useCallback((t?: string) => {
     setTrigger(t);
@@ -258,7 +274,11 @@ export function UpgradeDialogProvider({ children }: { children: ReactNode }) {
         trigger={trigger}
         onClose={hide}
         onUpgrade={() => {
-          navigate('/license');
+          if (customer?.id && customer?.email) {
+            window.open(buildCheckoutUrl('yearly', customer.id, customer.email), '_blank');
+          } else {
+            window.open('https://www.avsshield.com/pricing', '_blank');
+          }
         }}
         onActivate={() => {
           navigate('/license');
