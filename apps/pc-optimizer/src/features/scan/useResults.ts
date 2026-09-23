@@ -97,6 +97,14 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
   const isPreparingRef = useRef(false);
   const isValidatingRef = useRef(false);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const actionable = useMemo(
     () => findings.filter(isActionable),
@@ -165,6 +173,7 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
     setError(null);
     try {
       const response = await remediationService.prepare(planId);
+      if (!isMountedRef.current) return;
       if (response.ok === false || response.error) {
         throw new Error(response.error ?? 'Failed to prepare remediation preview');
       }
@@ -178,11 +187,13 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
         error: null,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to prepare remediation preview');
-      setStep('error');
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to prepare remediation preview');
+        setStep('error');
+      }
     } finally {
       isPreparingRef.current = false;
-      setIsPreparing(false);
+      if (isMountedRef.current) setIsPreparing(false);
     }
   }, [planId]);
 
@@ -201,6 +212,7 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
     setStep('validating');
     try {
       const response = await remediationService.validate(planId);
+      if (!isMountedRef.current) return;
       if (response.ok === false || response.error) {
         throw new Error(response.error ?? 'Failed to validate remediation plan');
       }
@@ -212,11 +224,13 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
         error: null,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to validate remediation plan');
-      setStep('error');
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to validate remediation plan');
+        setStep('error');
+      }
     } finally {
       isValidatingRef.current = false;
-      setIsValidating(false);
+      if (isMountedRef.current) setIsValidating(false);
     }
   }, [planId]);
 
@@ -239,6 +253,7 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
         preview.approval_token,
         'live',
       );
+      if (!isMountedRef.current) return;
       if (response.ok === false) {
         if (response.status === 'rejected') {
           setStep('rejected');
@@ -279,8 +294,10 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
         setStep('executing');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start remediation execution');
-      setStep('error');
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to start remediation execution');
+        setStep('error');
+      }
       hasRequestedExecution.current = false;
     }
   }, [preview, validation]);
@@ -333,6 +350,7 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
     setRollbackError(null);
     try {
       const response = await remediationService.rollback(executionId);
+      if (!isMountedRef.current) return;
       if (response.ok === false || !response.rollback) {
         const msg = response.error ?? 'Rollback failed';
         setRollbackError(msg);
@@ -362,14 +380,16 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Rollback request failed';
-      setRollbackError(msg);
-      setRollbackStep('failed');
-      unifiedScanState.updateLatest({
-        remediationStatus: 'rollback_failed',
-        error: msg,
-      });
+      if (isMountedRef.current) {
+        setRollbackError(msg);
+        setRollbackStep('failed');
+        unifiedScanState.updateLatest({
+          remediationStatus: 'rollback_failed',
+          error: msg,
+        });
+      }
     } finally {
-      setIsRollbacking(false);
+      if (isMountedRef.current) setIsRollbacking(false);
       // The single rollback attempt flag stays true to prevent double rollback.
     }
   }, [executionId, isRollbacking, rollbackAvailable]);
@@ -385,8 +405,10 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
     }
 
     const poll = async () => {
+      if (!isMountedRef.current) return;
       try {
         const response = await remediationService.status(executionId);
+        if (!isMountedRef.current) return;
         if (response.ok === false || !response.status) {
           throw new Error(response.error ?? 'execution status unavailable');
         }
@@ -415,9 +437,11 @@ export function useResults({ planId, findings, statistics: _statistics }: UseRes
           pollTimer.current = null;
         }
         const msg = err instanceof Error ? err.message : 'execution status unavailable';
-        setError(msg);
-        setStep('error');
-        unifiedScanState.updateLatest({ remediationStatus: 'failed', error: msg });
+        if (isMountedRef.current) {
+          setError(msg);
+          setStep('error');
+          unifiedScanState.updateLatest({ remediationStatus: 'failed', error: msg });
+        }
       }
     };
 
