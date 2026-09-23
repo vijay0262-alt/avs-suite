@@ -258,7 +258,11 @@ export const useSyncStore = create<SyncStoreState>((set, _get) => ({
   sync: async (): Promise<boolean> => {
     set({ phase: 'syncing', error: null, errorCode: null });
     try {
-      const data = await syncService.sync();
+      // Only allow device reactivation/transfer on the first sync after
+      // login or startup. Periodic syncs should not resurrect a
+      // user-removed device.
+      const isFirstSync = _get().data === null;
+      const data = await syncService.sync({ allowReactivate: isFirstSync });
       saveCache(data);
       set({
         data,

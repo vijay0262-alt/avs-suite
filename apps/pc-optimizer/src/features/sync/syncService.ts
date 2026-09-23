@@ -195,20 +195,25 @@ export const syncService = {
    * If device info is available (from the SDK), it is passed as query params
    * so the backend can auto-register the device for this customer.
    */
-  async sync(): Promise<SyncResponse> {
+  async sync(options: { allowReactivate?: boolean } = {}): Promise<SyncResponse> {
     try {
       const deviceInfo = await getDeviceInfo();
       let path = '/api/customer/sync';
+      const params = new URLSearchParams();
       if (deviceInfo) {
-        const params = new URLSearchParams({
-          device_fingerprint: deviceInfo.fingerprint,
-          device_name: deviceInfo.deviceName,
-          app_version: deviceInfo.appVersion,
-        });
+        params.set('device_fingerprint', deviceInfo.fingerprint);
+        params.set('device_name', deviceInfo.deviceName);
+        params.set('app_version', deviceInfo.appVersion);
         if (deviceInfo.windowsVersion) {
           params.set('windows_version', deviceInfo.windowsVersion);
         }
-        path += `?${params.toString()}`;
+      }
+      if (options.allowReactivate) {
+        params.set('allow_reactivate', 'true');
+      }
+      const query = params.toString();
+      if (query) {
+        path += `?${query}`;
       }
       return await apiClient.get<SyncResponse>(path);
     } catch (err) {
