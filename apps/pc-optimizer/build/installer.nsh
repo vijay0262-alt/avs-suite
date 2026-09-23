@@ -72,3 +72,22 @@
   nsExec::ExecToLog 'schtasks /delete /tn "AVS_AI_Shield_Elevated" /f 2>nul'
   Pop $0
 !macroend
+
+!macro customCheckAppRunning
+  ; Override the default "app is running" check. The default NSIS logic
+  ; shows a Retry/Cancel dialog if the executable is still in the process
+  ; list, but AVS processes can take a few seconds to fully exit. Kill all
+  ; known AVS/ClamAV/backend processes and remove any scheduled task that
+  ; might relaunch them, then let the OS flush handles before continuing.
+  !insertmacro _DeleteScheduledTasks
+  !insertmacro _KillAppProcesses
+  Sleep 2000
+!macroend
+
+!macro customUnInit
+  ; The uninstaller needs all AVS processes dead before it tries to remove
+  ; the install directory. Otherwise backend/ClamAV child processes can keep
+  ; files locked and the uninstaller leaves the folder behind.
+  !insertmacro _DeleteScheduledTasks
+  !insertmacro _KillAppProcesses
+!macroend
