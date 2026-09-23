@@ -22,6 +22,7 @@ import { DashboardScanStatusCard } from '../scan/components/DashboardScanStatusC
 import { useDashboardScan } from '../scan/useDashboardScan';
 import { ProStatusBanner } from '../licensing/ProStatusBadge';
 import { useIsPro } from '../sync/syncStore';
+import { useUpgradeDialog } from '../../components/UpgradeDialog';
 import { ScanView } from '../scan';
 import { Modal } from './components/Modal';
 import { AIStatusOverview } from './components/AIStatusOverview';
@@ -86,12 +87,12 @@ export default function DashboardPage() {
   const { snapshot } = useDashboardScan();
   const [scanModalOpen, setScanModalOpen] = useState(false);
   const isPro = useIsPro();
+  const { show: showUpgrade } = useUpgradeDialog();
   const location = useLocation();
   // V1.0: When set, the modal shows previous scan results (Review Findings)
   // instead of auto-starting a new scan. null = start a new scan.
   const [reviewPlanId, setReviewPlanId] = useState<string | null>(null);
   const [viewCleanupResults, setViewCleanupResults] = useState(false);
-  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const { status: junkStatus } = useJunkMonitor();
   const [boosting, setBoosting] = useState(false);
   const [boostResult, setBoostResult] = useState<MemoryOptimizeResult | null>(null);
@@ -130,7 +131,7 @@ export default function DashboardPage() {
 
   const handleBoostMemory = async () => {
     if (!isPro) {
-      setUpgradeModalOpen(true);
+      showUpgrade('Boost Memory');
       return;
     }
     setBoosting(true);
@@ -366,7 +367,7 @@ export default function DashboardPage() {
                 <Button
                   onClick={() => {
                     if (!isPro) {
-                      setUpgradeModalOpen(true);
+                      showUpgrade('One Click Optimize');
                       return;
                     }
                     setReviewPlanId(null);
@@ -587,43 +588,9 @@ export default function DashboardPage() {
           viewCleanupResults={viewCleanupResults}
           onUpgrade={() => {
             setScanModalOpen(false);
-            setUpgradeModalOpen(true);
+            showUpgrade('One Click Optimize');
           }}
         />
-      </Modal>
-
-      {/* ── Upgrade Modal ─────────────────────────────────────── */}
-      <Modal
-        open={upgradeModalOpen}
-        onClose={() => setUpgradeModalOpen(false)}
-        title="Upgrade to Professional"
-        size="md"
-        testId="dashboard-upgrade-modal"
-      >
-        <div className="text-center space-y-4 py-4">
-          <h3 className="text-lg font-semibold text-text-primary">
-            Unlock 1-Click Optimization
-          </h3>
-          <p className="text-small text-text-secondary">
-            Professional edition cleans all junk files, browser caches, temp files,
-            and more in a single click. Free users can clean manually from Junk Cleaner.
-          </p>
-          <div className="flex justify-center gap-3">
-            <Button onClick={() => setUpgradeModalOpen(false)} variant="secondary">
-              Maybe Later
-            </Button>
-            <Button
-              onClick={() => {
-                setUpgradeModalOpen(false);
-                window.open('https://avsshield.com/upgrade', '_blank');
-              }}
-              variant="primary"
-              data-testid="dashboard-upgrade-cta"
-            >
-              Upgrade Now
-            </Button>
-          </div>
-        </div>
       </Modal>
 
     </div>
