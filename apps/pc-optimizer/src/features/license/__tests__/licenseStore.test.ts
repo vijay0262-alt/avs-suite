@@ -35,6 +35,7 @@ const LICENSE_ISSUED = {
   issued: true,
 };
 
+const now = new Date();
 const VALID_CACHED: StoredLicense = {
   uuid: 'lic-uuid-cached',
   license_key: 'AVS-OLD1-1234-OLD2-5678',
@@ -43,9 +44,9 @@ const VALID_CACHED: StoredLicense = {
   issued_at: '2026-07-20T10:00:00+00:00',
   expires_at: null,
   signature: 'cached-signature-data-here-at-least-10',
-  last_refreshed: '2026-07-20T10:00:00+00:00',
-  last_successful_validation: '2026-08-20T10:00:00+00:00',
-  grace_period_expiration: '2026-09-19T10:00:00+00:00',
+  last_refreshed: now.toISOString(),
+  last_successful_validation: now.toISOString(),
+  grace_period_expiration: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
   product_version: '1.0.0',
   cache_version: 2,
 };
