@@ -365,6 +365,10 @@ export default function DashboardPage() {
               <div className="shrink-0">
                 <Button
                   onClick={() => {
+                    if (!isPro) {
+                      setUpgradeModalOpen(true);
+                      return;
+                    }
                     setReviewPlanId(null);
                     setViewCleanupResults(false);
                     setScanModalOpen(true);
@@ -378,7 +382,7 @@ export default function DashboardPage() {
                 </Button>
                 {!isPro && (
                   <p className="text-xs text-white/40 mt-1.5 text-right" data-testid="dashboard-free-limit-hint">
-                    Free edition: up to 500 MB per run
+                    One Click Optimize is available in Pro version. Clean manually from Junk Cleaner in the sidebar.
                   </p>
                 )}
               </div>

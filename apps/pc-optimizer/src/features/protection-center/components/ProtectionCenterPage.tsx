@@ -44,6 +44,9 @@ import { ProStatusBanner, ProStatusPill } from '../../licensing/ProStatusBadge';
 import { PageHeader } from '../../../components/PageHeader';
 import { HelpButton } from '../../../components/HelpButton';
 import { ModuleSuccessBanner, ModuleErrorBanner } from '../../../components/ModuleStates';
+import { useUpgradeDialog } from '../../../components/UpgradeDialog';
+import { FreeEditionNotice } from '../../../components/FreeEditionNotice';
+import { useIsPro } from '../../sync/syncStore';
 
 // ── ViewModel ──────────────────────────────────────────────────
 
@@ -270,10 +273,36 @@ interface Recommendation {
 
 // ── Derivation helpers ─────────────────────────────────────────
 
-function deriveProtectionItems(metrics: DashboardMetrics | null): ProtectionItem[] {
+function deriveProtectionItems(metrics: DashboardMetrics | null, isPro: boolean): ProtectionItem[] {
   const sec = metrics?.security;
   const win = metrics?.windows;
   const items: ProtectionItem[] = [];
+
+  if (!isPro) {
+    // Free edition: only basic AV and firewall are active; everything
+    // else is shown as disabled and prompts an upgrade on click.
+    items.push({
+      id: 'antivirus',
+      name: 'BASIC AI SHIELD ANTiVIRUS',
+      status: 'enabled',
+      icon: ShieldCheckIcon,
+    });
+    items.push({
+      id: 'firewall',
+      name: 'Firewall',
+      status: sec?.firewall.enabled ? 'enabled' : 'disabled',
+      icon: FireIcon,
+    });
+    items.push(
+      { id: 'realtime-protection', name: 'Real-Time Protection', status: 'disabled', icon: EyeIcon },
+      { id: 'smartscreen', name: 'SmartScreen', status: 'disabled', icon: GlobeAltIcon },
+      { id: 'ransomware-protection', name: 'Ransomware Protection', status: 'disabled', icon: LockClosedIcon },
+      { id: 'secure-boot', name: 'Secure Boot', status: 'disabled', icon: KeyIcon },
+      { id: 'memory-integrity', name: 'Memory Integrity', status: 'disabled', icon: CpuChipIcon },
+      { id: 'security-updates', name: 'Security Updates', status: 'disabled', icon: BoltIcon },
+    );
+    return items;
+  }
 
   // 1. Antivirus — AVS AI Shield is always shown first when installed
   const avsActive = !!metrics?.avsAvActive;
@@ -363,10 +392,14 @@ function deriveProtectionItems(metrics: DashboardMetrics | null): ProtectionItem
   return items;
 }
 
-function deriveProvider(metrics: DashboardMetrics | null): {
+function deriveProvider(metrics: DashboardMetrics | null, isPro: boolean): {
   name: string;
   active: boolean;
 } | null {
+  if (!isPro) {
+    return { name: 'BASIC AI SHIELD ANTiVIRUS', active: true };
+  }
+
   const sec = metrics?.security;
   if (!sec) return null;
 
@@ -541,6 +574,9 @@ function toneClasses(tone: 'success' | 'warning' | 'danger' | 'muted'): {
 
 export function ProtectionCenterPage() {
   const navigate = useNavigate();
+  const isPro = useIsPro();
+  const { show: showUpgrade } = useUpgradeDialog();
+  const showScoreDetails = false as boolean;
   const vmRef = useRef<ProtectionPostureViewModel | null>(null);
 
   if (!vmRef.current) {
@@ -558,11 +594,11 @@ export function ProtectionCenterPage() {
   }, [vm]);
 
   const protectionItems = useMemo(
-    () => deriveProtectionItems(state.metrics),
-    [state.metrics],
+    () => deriveProtectionItems(state.metrics, isPro),
+    [state.metrics, isPro],
   );
 
-  const provider = useMemo(() => deriveProvider(state.metrics), [state.metrics]);
+  const provider = useMemo(() => deriveProvider(state.metrics, isPro), [state.metrics, isPro]);
 
   const recommendations = useMemo(
     () => deriveRecommendations(state.metrics),
@@ -589,9 +625,13 @@ export function ProtectionCenterPage() {
 
   const handleFix = useCallback(
     (action: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen' | 'enableRansomwareProtection' | 'enableMemoryIntegrity') => {
+      if (!isPro) {
+        showUpgrade('Enable protection feature');
+        return;
+      }
       void vm.fixIssue(action);
     },
-    [vm],
+    [isPro, showUpgrade, vm],
   );
 
   const handleDismissFixMessage = useCallback(() => {
@@ -627,6 +667,18 @@ export function ProtectionCenterPage() {
       data-testid="page-protection-center"
     >
       <ProStatusBanner compact />
+
+      {!isPro && (
+        <FreeEditionNotice
+          title="Free Version Limited Protection"
+          message="Only Firewall and Basic Antivirus are active. Upgrade to Professional to unlock all protection features."
+          action={
+            <Button size="sm" variant="primary" onClick={() => showUpgrade('Free Version Limited Protection')}>
+              Upgrade to Pro
+            </Button>
+          }
+        />
+      )}
 
       {/* ── 1. HEADER ─────────────────────────────────────────── */}
       <PageHeader
@@ -751,11 +803,14 @@ export function ProtectionCenterPage() {
           {protectionItems.map((item) => {
             const cfg = STATUS_CONFIG[item.status];
             const tone = toneClasses(cfg.tone);
+            const isProOnlyDisabled = !isPro && item.status === 'disabled';
             return (
               <Card
                 key={item.id}
                 variant="glass"
-                className="p-4 h-full"
+                className={`p-4 h-full ${isProOnlyDisabled ? 'cursor-pointer hover:bg-amber-500/5' : ''}`}
+                onClick={isProOnlyDisabled ? () => showUpgrade(item.name) : undefined}
+                title={isProOnlyDisabled ? 'Upgrade to Pro to enable' : undefined}
                 data-testid={`protection-card-${item.id}`}
               >
                 <div className="flex items-start gap-3">
@@ -934,8 +989,7 @@ export function ProtectionCenterPage() {
           </span>
         </div>
 
-        {/* AVS AI Antivirus score breakdown */}
-        {state.securityScoreDetails && (
+        {showScoreDetails && state.securityScoreDetails && (
           <Card variant="glass" className="mt-4 p-5" data-testid="protection-av-score">
             <div className="flex items-center gap-4 mb-4">
               <div className="relative inline-flex items-center justify-center h-16 w-16 rounded-full bg-brand-primary/10">

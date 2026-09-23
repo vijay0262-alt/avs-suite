@@ -1,4 +1,4 @@
-!macro _KillAppProcesses
+!macro _KillAppProcesses _ID
   ; Kill all known AVS AI Shield processes (main app, backend, ClamAV)
   nsExec::ExecToLog 'taskkill /IM "AVS AI Shield.exe" /T /F'
   Pop $0
@@ -12,14 +12,14 @@
   Pop $0
   ; Wait up to 5s until the main executable is truly gone.
   StrCpy $R1 0
-  loop_check:
+  avs_loop_${_ID}:
     nsExec::ExecToLog 'taskkill /IM "AVS AI Shield.exe" /T /F'
     Pop $0
-    IntCmp $0 128 done_check done_check
+    IntCmp $0 128 avs_done_${_ID} avs_loop_${_ID}
     Sleep 1000
     IntOp $R1 $R1 + 1
-    IntCmp $R1 5 done_check done_check loop_check
-  done_check:
+    IntCmp $R1 5 avs_done_${_ID} avs_loop_${_ID} avs_done_${_ID}
+  avs_done_${_ID}:
 !macroend
 
 !macro _DeleteScheduledTasks
@@ -38,7 +38,7 @@
   ; Force-kill any lingering AVS AI Shield processes before the installer
   ; pages are shown. Also remove any scheduled auto-elevate task.
   !insertmacro _DeleteScheduledTasks
-  !insertmacro _KillAppProcesses
+  !insertmacro _KillAppProcesses init
 !macroend
 
 !macro customInstall
@@ -48,7 +48,7 @@
   ; check would otherwise prompt the user. This catches them before the
   ; actual file-copy/install section runs.
   !insertmacro _DeleteScheduledTasks
-  !insertmacro _KillAppProcesses
+  !insertmacro _KillAppProcesses install
 !macroend
 
 !macro customUnInstall
@@ -80,7 +80,7 @@
   ; known AVS/ClamAV/backend processes and remove any scheduled task that
   ; might relaunch them, then let the OS flush handles before continuing.
   !insertmacro _DeleteScheduledTasks
-  !insertmacro _KillAppProcesses
+  !insertmacro _KillAppProcesses check
   Sleep 2000
 !macroend
 
@@ -89,5 +89,5 @@
   ; the install directory. Otherwise backend/ClamAV child processes can keep
   ; files locked and the uninstaller leaves the folder behind.
   !insertmacro _DeleteScheduledTasks
-  !insertmacro _KillAppProcesses
+  !insertmacro _KillAppProcesses uninit
 !macroend
