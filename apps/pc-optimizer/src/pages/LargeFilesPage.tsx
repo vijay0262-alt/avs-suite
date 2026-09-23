@@ -10,8 +10,6 @@ import { PageHeader } from '../components/PageHeader';
 import { HelpButton } from '../components/HelpButton';
 import { rpc } from '../services/rpc';
 import { RPC_METHODS } from '@avs/shared/rpc';
-import { useEdition } from '../config/EditionManager';
-import { useUpgradeDialog } from '../components/UpgradeDialog';
 import {
   DocumentIcon,
   ArrowPathIcon,
@@ -45,9 +43,6 @@ function formatSize(bytes: number): string {
 }
 
 export default function LargeFilesPage() {
-  const edition = useEdition();
-  const { show: showUpgrade } = useUpgradeDialog();
-  const isPro = edition === 'professional';
   const [drives, setDrives] = useState<DriveInfo[]>([]);
   const [selectedDrive, setSelectedDrive] = useState<string>('');
   const [files, setFiles] = useState<LargeFile[]>([]);
@@ -84,10 +79,6 @@ export default function LargeFilesPage() {
   }, [selectedDrive]);
 
   const handleDelete = useCallback(async (file: LargeFile) => {
-    if (!isPro) {
-      showUpgrade('Large Files');
-      return;
-    }
     if (!confirm(`Delete "${file.name}" (${formatSize(file.size)})?\nThis cannot be undone.`)) return;
     setDeleting(file.path);
     try {
@@ -98,7 +89,7 @@ export default function LargeFilesPage() {
       setError('Could not delete the file. Please try again.');
     }
     setDeleting(null);
-  }, [isPro, showUpgrade]);
+  }, []);
 
   const totalSize = files.reduce((sum, f) => sum + f.size, 0);
 
@@ -107,7 +98,7 @@ export default function LargeFilesPage() {
       <PageHeader
         title="Large Files"
         description="Find and remove the largest files taking up space on your drives."
-        actions={<HelpButton text="Select a drive and click Scan to find the 20 largest files. Pro users can delete files directly." />}
+        actions={<HelpButton text="Select a drive and click Scan to find the 20 largest files, then delete any you no longer need." />}
       />
 
       {/* Drive selector + scan */}
@@ -207,12 +198,12 @@ export default function LargeFilesPage() {
               variant="glass"
             />
             <StatTile
-              label="Edition"
-              value={isPro ? 'Pro' : 'Free'}
-              hint={isPro ? 'Can delete' : 'View only'}
+              label="Actions"
+              value="Enabled"
+              hint="Scan & delete"
               icon={<CpuChipIcon className="h-5 w-5" />}
               variant="glass"
-              accentColor={isPro ? 'var(--avs-success)' : 'var(--avs-warning)'}
+              accentColor="var(--avs-success)"
             />
           </div>
         </div>
@@ -238,7 +229,7 @@ export default function LargeFilesPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => handleDelete(file)}
-                  disabled={deleting === file.path || !isPro}
+                  disabled={deleting === file.path}
                   leftIcon={<TrashIcon className="h-4 w-4" />}
                   data-testid={`large-files-delete-${i}`}
                 >
@@ -247,9 +238,6 @@ export default function LargeFilesPage() {
               </div>
             ))}
           </div>
-          {!isPro && (
-            <p className="text-caption text-[var(--avs-brand-primary)] mt-3">Professional edition required to delete files.</p>
-          )}
         </Card>
       )}
 

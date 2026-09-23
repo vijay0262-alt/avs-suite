@@ -99,9 +99,9 @@ const NAV_SECTIONS: readonly NavSection[] = [
     labelKey: 'nav.section.reportsTools',
     entries: [
       { id: 'reports', to: '/reports', labelKey: 'nav.reports', Icon: DocumentChartBarIcon },
-      { id: 'analytics', to: '/analytics', labelKey: 'nav.analytics', Icon: ChartBarIcon, proEnhanced: true },
+      { id: 'analytics', to: '/analytics', labelKey: 'nav.analytics', Icon: ChartBarIcon },
       { id: 'system-information', to: '/system-information', labelKey: 'nav.systemInformation', Icon: CpuChipIcon },
-      { id: 'large-files', to: '/large-files', labelKey: 'nav.largeFiles', Icon: ChartBarIcon, proEnhanced: true },
+      { id: 'large-files', to: '/large-files', labelKey: 'nav.largeFiles', Icon: ChartBarIcon },
     ],
   },
   // ── ACCOUNT ───────────────────────────────────────────────────
