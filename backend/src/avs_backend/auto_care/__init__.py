@@ -42,7 +42,7 @@ _LOG_PATH = os.path.join(os.path.expanduser("~"), ".avs", "auto_care_log.json")
 
 # Default configuration
 _DEFAULT_CONFIG = {
-    "enabled": False,
+    "enabled": True,
     "idleThresholdSeconds": 300,  # 5 minutes
     "checkIntervalSeconds": 60,   # check every minute
     "tasks": {
@@ -460,6 +460,12 @@ def auto_care_status(_params: dict[str, Any] | None) -> dict[str, Any]:
     config = _load_config()
     idle_seconds = _get_idle_seconds()
     _state["lastIdleTime"] = idle_seconds
+
+    # Ensure the auto-care daemon is running when the feature is enabled.
+    # This means the AI Integration Hub shows "connected" and the daemon
+    # actually starts without requiring the user to manually configure it.
+    if config.get("enabled") and IS_WINDOWS:
+        _start_daemon(config)
 
     return {
         "config": config,
