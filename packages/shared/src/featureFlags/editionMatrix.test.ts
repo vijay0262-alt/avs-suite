@@ -45,12 +45,12 @@ describe('Edition Matrix', () => {
       expect(isFeatureEnabled('STARTUP_DISABLE', edition)).toBe(true);
     });
 
-    it('denies Privacy Scan and Privacy Clean', () => {
-      expect(isFeatureEnabled('PRIVACY_SCAN', edition)).toBe(false);
-      expect(isFeatureEnabled('PRIVACY_CLEAN', edition)).toBe(false);
+    it('grants Privacy Scan and Privacy Clean', () => {
+      expect(isFeatureEnabled('PRIVACY_SCAN', edition)).toBe(true);
+      expect(isFeatureEnabled('PRIVACY_CLEAN', edition)).toBe(true);
     });
 
-    it('grants Duplicate Scan and Duplicate Delete in Free (with 20-file limit)', () => {
+    it('grants Duplicate Scan and Duplicate Delete in Free (unlimited)', () => {
       expect(isFeatureEnabled('DUPLICATE_SCAN', edition)).toBe(true);
       expect(isFeatureEnabled('DUPLICATE_DELETE', edition)).toBe(true);
     });
