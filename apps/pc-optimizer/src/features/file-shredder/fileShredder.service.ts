@@ -23,14 +23,8 @@ export interface ShredResponse {
   message: string;
   method: string;
   results: ShredResultItem[];
-  edition: string;
   totalShredded: number;
   totalFailed: number;
-  error_code?: string;
-  required_edition?: string;
-  current_edition?: string;
-  file_limit?: number;
-  files_requested?: number;
 }
 
 export interface DriveInfo {

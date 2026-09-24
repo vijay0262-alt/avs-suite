@@ -5,18 +5,12 @@ Provides secure file deletion with multiple overwrite patterns:
   - DoD 5220.22-M: 3-pass (zeros, 0xFF, random)
   - Gutmann: 35-pass with specific byte patterns
 
-Free edition: limited to 3 files per run
-Professional edition: unlimited files, all methods
+All editions: unlimited files, all methods.
 """
 from typing import Any
 
 from avs_backend.api.registry import register
-from avs_backend.licensing import require_feature
-from avs_backend.licensing import _get_current_edition as get_current_edition
 from .wiper_engine import list_drives, shred_items, wipe_free_space
-
-# Free edition limit: max 3 files per shred operation
-FREE_FILE_LIMIT = 3
 
 
 @register("wiper.drives")
@@ -46,8 +40,7 @@ def wiper_shred(request: dict[str, Any] | None) -> dict[str, Any]:
         passes: number of passes (for "random" method, default 3)
         zeros: use zeros instead of random (for "random" method)
 
-    Free edition: limited to 3 files, "quick" method only
-    Professional edition: unlimited files, all methods
+    All editions: unlimited files, all methods.
     """
     request = request or {}
     paths = request.get("paths", [])
@@ -57,40 +50,6 @@ def wiper_shred(request: dict[str, Any] | None) -> dict[str, Any]:
 
     if not paths:
         return {"success": False, "message": "No paths provided", "results": []}
-
-    edition = get_current_edition()
-    is_free = edition == "free"
-
-    # Free edition: limit number of files
-    if is_free:
-        # Count total files (including files inside directories)
-        total_files = 0
-        for raw in paths:
-            p_path = raw
-            try:
-                import os
-                if os.path.isdir(p_path):
-                    for _root, _dirs, files in os.walk(p_path):
-                        total_files += len(files)
-                else:
-                    total_files += 1
-            except Exception:
-                total_files += 1
-
-        if total_files > FREE_FILE_LIMIT:
-            return {
-                "success": False,
-                "message": f"Free edition limits shredding to {FREE_FILE_LIMIT} files. Upgrade to Professional for unlimited shredding.",
-                "error_code": "EDITION_LIMIT",
-                "required_edition": "professional",
-                "current_edition": edition,
-                "file_limit": FREE_FILE_LIMIT,
-                "files_requested": total_files,
-                "results": [],
-            }
-
-        # Free edition: force "quick" method only
-        method = "quick"
 
     results = shred_items(paths, method=method, passes=passes, zeros=zeros)
 
@@ -112,16 +71,14 @@ def wiper_shred(request: dict[str, Any] | None) -> dict[str, Any]:
             }
             for r in results
         ],
-        "edition": edition,
         "totalShredded": succeeded,
         "totalFailed": failed,
     }
 
 
 @register("wiper.wipeFreeSpace")
-@require_feature("wiper.wipeFreeSpace")
 def wiper_wipe_free_space(request: dict[str, Any] | None) -> dict[str, Any]:
-    """Wipe free space on a drive (Pro feature).
+    """Wipe free space on a drive.
 
     Fills the drive's free space with random data, then deletes the temp files.
     This prevents recovery of previously deleted files.

@@ -77,18 +77,18 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'software-updater', to: '/software-updater', labelKey: 'nav.softwareUpdater', Icon: ArrowPathIcon, proEnhanced: true },
       { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon },
       { id: 'browser-cleaner', to: '/browser-cleaner', labelKey: 'nav.browserCleaner', Icon: GlobeAltIcon, proEnhanced: true },
+      { id: 'file-shredder', to: '/file-shredder', labelKey: 'nav.fileShredder', Icon: FireIcon },
       { id: 'auto-care', to: '/auto-care', labelKey: 'nav.autoCare', Icon: ClockIcon, proEnhanced: true },
     ],
   },
   // ── 3. AI PROTECTION ──────────────────────────────────────────
-  //  Safe folder, file recovery, shredder, driver updater, etc.
+  //  Safe folder, file recovery, driver updater, etc.
   {
     id: 'protection',
     labelKey: 'nav.section.protection',
     entries: [
       { id: 'safe-folder', to: '/safe-folder', labelKey: 'nav.safeFolder', Icon: LockClosedIcon, proEnhanced: true },
       { id: 'file-recovery', to: '/file-recovery', labelKey: 'nav.fileRecovery', Icon: ArrowUturnLeftIcon, proEnhanced: true },
-      { id: 'file-shredder', to: '/file-shredder', labelKey: 'nav.fileShredder', Icon: FireIcon, proEnhanced: true },
       { id: 'driver-updater', to: '/driver-updater', labelKey: 'nav.driverUpdater', Icon: ArrowDownTrayIcon, proEnhanced: true },
       { id: 'network-optimizer', to: '/network-optimizer', labelKey: 'nav.networkOptimizer', Icon: WifiIcon, proEnhanced: true },
     ],

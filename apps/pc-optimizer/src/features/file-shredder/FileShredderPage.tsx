@@ -2,19 +2,16 @@
  * FileShredderPage — Secure file deletion with multiple overwrite patterns.
  *
  * Methods:
- *   - Quick (1-pass random) — Free users
- *   - DoD 5220.22-M (3-pass) — Pro users
- *   - Gutmann (35-pass) — Pro users
+ *   - Quick (1-pass random)
+ *   - DoD 5220.22-M (3-pass)
+ *   - Gutmann (35-pass)
  *
- * Free: 3 files per run, Quick method only
- * Pro: Unlimited files, all methods
+ * All editions: unlimited files, all methods.
  */
 import { useState, useCallback } from 'react';
-import { Card, Button, Badge } from '@avs/ui';
+import { Card, Button } from '@avs/ui';
 import { PageHeader } from '../../components/PageHeader';
 import { HelpButton } from '../../components/HelpButton';
-import { useUpgradeDialog } from '../../components/UpgradeDialog';
-import { useIsPro } from '../sync/syncStore';
 import {
   FireIcon,
   DocumentArrowUpIcon,
@@ -34,28 +31,24 @@ const SHRED_METHODS: {
   label: string;
   description: string;
   passes: number;
-  proOnly: boolean;
 }[] = [
   {
     id: 'quick',
     label: 'Quick',
     description: '1-pass random overwrite. Fast, prevents casual recovery.',
     passes: 1,
-    proOnly: false,
   },
   {
     id: 'dod',
     label: 'DoD 5220.22-M',
     description: '3-pass: zeros, ones, random. US Dept. of Defense standard.',
     passes: 3,
-    proOnly: true,
   },
   {
     id: 'gutmann',
     label: 'Gutmann',
     description: '35-pass with specific patterns. Maximum security, slowest.',
     passes: 35,
-    proOnly: true,
   },
 ];
 
@@ -67,8 +60,6 @@ function formatBytes(b: number): string {
 }
 
 export default function FileShredderPage() {
-  const isPro = useIsPro();
-  const { show: showUpgrade } = useUpgradeDialog();
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [method, setMethod] = useState<ShredMethod>('dod');
   const [shredding, setShredding] = useState(false);
@@ -120,23 +111,13 @@ export default function FileShredderPage() {
   const handleShred = async () => {
     if (selectedFiles.length === 0) return;
 
-    // Check if method requires Pro
-    const methodInfo = SHRED_METHODS.find((m) => m.id === method);
-    if (methodInfo?.proOnly && !isPro) {
-      showUpgrade('File Shredder');
-      return;
-    }
-
     setShredding(true);
     setError(null);
     setResults(null);
 
     try {
       const response = await fileShredderService.shred(selectedFiles, method);
-      if (response.error_code === 'EDITION_LIMIT') {
-        setError(response.message);
-        showUpgrade('File Shredder');
-      } else if (!response.success && response.results.length === 0) {
+      if (!response.success && response.results.length === 0) {
         setError(response.message);
       } else {
         setResults(response.results);
@@ -179,7 +160,6 @@ export default function FileShredderPage() {
       <Card title="Shredding Method" variant="glass">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {SHRED_METHODS.map((m) => {
-            const locked = m.proOnly && !isPro;
             const selected = method === m.id;
             return (
               <button
@@ -190,14 +170,11 @@ export default function FileShredderPage() {
                   selected
                     ? 'border-brand-primary bg-brand-primary/5'
                     : 'border-[var(--avs-border)] hover:border-[var(--avs-border-hover, var(--avs-border))]'
-                } ${locked ? 'opacity-60' : ''}`}
+                }`}
                 data-testid={`shred-method-${m.id}`}
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-small font-medium text-text-primary">{m.label}</span>
-                  {m.proOnly && (
-                    <Badge tone={isPro ? 'brand' : 'neutral'}>{isPro ? 'PRO' : 'PRO'}</Badge>
-                  )}
                 </div>
                 <p className="text-caption text-text-secondary">{m.description}</p>
                 <p className="text-caption text-text-muted mt-1">{m.passes} pass(es)</p>
@@ -312,21 +289,6 @@ export default function FileShredderPage() {
             </div>
           </div>
         </Card>
-      )}
-
-      {/* Free edition limitation notice */}
-      {!isPro && (
-        <div className="rounded-[var(--avs-radius-md)] border border-brand-primary/20 bg-brand-primary/5 p-4 flex items-center justify-between" data-testid="shred-free-notice">
-          <div>
-            <div className="text-small font-medium text-text-primary">Free Edition Limitations</div>
-            <p className="text-caption text-text-secondary mt-1">
-              Quick method only (1-pass). Maximum 3 files per run. Upgrade for DoD 5220.22-M and Gutmann methods.
-            </p>
-          </div>
-          <Button variant="primary" size="sm" onClick={() => showUpgrade('File Shredder')} leftIcon={<FireIcon className="h-4 w-4" />}>
-            Upgrade
-          </Button>
-        </div>
       )}
     </div>
   );

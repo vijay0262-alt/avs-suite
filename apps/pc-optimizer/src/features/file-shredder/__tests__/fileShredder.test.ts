@@ -83,22 +83,24 @@ describe('fileShredderService', () => {
     expect(result.bytesProcessed).toBe(1000000);
   });
 
-  it('handles free edition limit error', async () => {
+  it('passes any shred method through without edition gating', async () => {
     mockCall.mockResolvedValue({
-      success: false,
-      message: 'Free edition limits shredding to 3 files.',
-      error_code: 'EDITION_LIMIT',
-      required_edition: 'professional',
-      current_edition: 'free',
-      file_limit: 3,
-      files_requested: 10,
+      success: true,
+      message: 'Shredded 5 item(s)',
+      method: 'gutmann',
       results: [],
+      totalShredded: 5,
+      totalFailed: 0,
     });
 
-    const result = await fileShredderService.shred(['f1', 'f2', 'f3', 'f4', 'f5'], 'quick');
+    const result = await fileShredderService.shred(['f1', 'f2', 'f3', 'f4', 'f5'], 'gutmann');
 
-    expect(result.success).toBe(false);
-    expect(result.error_code).toBe('EDITION_LIMIT');
-    expect(result.file_limit).toBe(3);
+    expect(result.success).toBe(true);
+    expect(mockCall).toHaveBeenCalledWith('wiper.shred', {
+      paths: ['f1', 'f2', 'f3', 'f4', 'f5'],
+      method: 'gutmann',
+      passes: undefined,
+      zeros: undefined,
+    });
   });
 });

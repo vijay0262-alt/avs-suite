@@ -25,6 +25,47 @@ log = logging.getLogger("avs.shredder")
 
 DEFAULT_BUFFER = 1024 * 1024  # 1 MiB
 
+# Windows file attributes for cloud (OneDrive) placeholder files.
+# These are reparse points whose content lives in the cloud — opening them
+# for writing fails with [Errno 9] Bad file descriptor until hydrated.
+_FILE_ATTRIBUTE_REPARSE_POINT = 0x00000400
+_FILE_ATTRIBUTE_RECALL_ON_OPEN = 0x00040000
+_FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS = 0x00400000
+_CLOUD_PLACEHOLDER_ATTRS = (
+    _FILE_ATTRIBUTE_REPARSE_POINT
+    | _FILE_ATTRIBUTE_RECALL_ON_OPEN
+    | _FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS
+)
+
+
+def _fsync_best_effort(f) -> None:
+    """fsync without letting a sync failure abort the shred."""
+    try:
+        os.fsync(f.fileno())
+    except OSError:
+        pass
+
+
+def _hydrate_if_cloud_placeholder(p: Path) -> None:
+    """Trigger a recall for OneDrive Files On-Demand placeholders.
+
+    Cloud placeholder files are reparse points; opening them with "r+b"
+    raises OSError [Errno 9] Bad file descriptor. Reading a byte forces
+    Windows to download (hydrate) the file so it can be opened for writing.
+    """
+    if os.name != "nt":
+        return
+    try:
+        attrs = p.stat().st_file_attributes
+    except (OSError, AttributeError):
+        return
+    if attrs & _CLOUD_PLACEHOLDER_ATTRS:
+        try:
+            with open(p, "rb") as f:
+                f.read(1)
+        except OSError:
+            pass
+
 
 # ─── Shredding Methods ────────────────────────────────────────────
 
@@ -140,7 +181,16 @@ def _secure_delete_file(
         size = p.stat().st_size
         actual_passes = _get_method_pass_count(method, passes)
 
-        with open(p, "r+b") as f:
+        # Hydrate OneDrive/cloud placeholders before opening for write
+        _hydrate_if_cloud_placeholder(p)
+        try:
+            f = open(p, "r+b")
+        except OSError:
+            # Retry once — the first open may have triggered the recall
+            _hydrate_if_cloud_placeholder(p)
+            f = open(p, "r+b")
+
+        with f:
             for pass_idx in range(actual_passes):
                 f.seek(0)
                 written = 0
@@ -156,13 +206,13 @@ def _secure_delete_file(
                     f.write(chunk)
                     written += len(chunk)
                 f.flush()
-                os.fsync(f.fileno())
+                _fsync_best_effort(f)
 
         # Truncate file to zero size
         with open(p, "wb") as f:
             f.truncate(0)
             f.flush()
-            os.fsync(f.fileno())
+            _fsync_best_effort(f)
 
         # Rename to obscure the original filename, then delete
         # Fix: capture the renamed path and unlink that

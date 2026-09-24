@@ -479,8 +479,6 @@ _LOCKED_RPC_METHODS: dict[str, str] = {
     "health.forecast": "professional",
     "health.trends": "professional",
     "health.history": "professional",
-    # Secure file shredder — free-space wipe requires Pro
-    "wiper.wipeFreeSpace": "professional",
     # Driver updater — installing updates requires Pro (Free can scan)
     "drivers.update": "professional",
     # Disk optimizer — defrag/TRIM requires Pro (Free can analyze)
