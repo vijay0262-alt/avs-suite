@@ -240,15 +240,8 @@ def cleaner_clean_execute(params: dict[str, Any] | None) -> dict[str, str]:
     log.info("[RPC] cleaner.clean.execute called for taskId=%s, only=%s", scan_task_id, only)
     start = time.monotonic()
 
-    # Enforce Free edition limit: max 500 MB cleaned per session.
-    # Passed as a byte budget so the manager cleans UP TO the limit
-    # (partial categories allowed) instead of rejecting the whole run.
-    from avs_backend.licensing import get_edition_limit
-
-    limit = get_edition_limit("junk.bytes_per_run")
-
     try:
-        cleaning_task_id = _cleaning_manager.execute(scan_task_id, only, max_bytes=limit)
+        cleaning_task_id = _cleaning_manager.execute(scan_task_id, only)
     except ValueError as e:
         log.error("[RPC] cleaner.clean.execute failed with ValueError: %s", e)
         raise RpcError(INVALID_PARAMS, str(e)) from e

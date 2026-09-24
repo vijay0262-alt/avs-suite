@@ -52,6 +52,12 @@ export interface StartupBackup {
   enabled: boolean;
 }
 
+export interface StartupScanProgress {
+  running: boolean;
+  currentPath: string | null;
+  entriesFound: number;
+}
+
 export interface StartupState {
   entries: StartupEntry[];
   loading: boolean;

@@ -1,30 +1,18 @@
 /**
  * RegistryCleanerPage — scan, review, and safely fix invalid registry entries.
  */
-import { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Badge, GaugeCard, StatTile } from '@avs/ui';
+import { useEffect, useMemo } from 'react';
+import { Card, Button, Badge } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleSuccessBanner, ModuleErrorBanner, ModuleEmptyState } from '../../components/ModuleStates';
 import { HelpButton } from '../../components/HelpButton';
-import { UnifiedScanProgressCard, REGISTRY_SCAN_CONFIG } from '../unified-scan';
-import { UnifiedCleanerResults } from '../unified-results';
 import { RegistryCleanerViewModel } from './RegistryCleanerViewModel';
 import { registryService } from './registry.service';
-import { CATEGORY_LABELS } from './registry.types';
-import { useIsPro } from '../sync/syncStore';
-import { useFeatureGuard } from '../licensing/useFeatureGuard';
-import { useEditionLimits } from '../licensing/editionLimits';
-import { ProStatusPill } from '../licensing/ProStatusBadge';
 import {
   WrenchScrewdriverIcon,
-  ShieldCheckIcon,
-  ClockIcon,
-  ArrowPathIcon,
-  LockClosedIcon,
   CheckCircleIcon,
-  ServerStackIcon,
-  ExclamationTriangleIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 
 const SEVERITY_TONE: Record<string, 'neutral' | 'warning' | 'danger'> = {
@@ -36,11 +24,6 @@ const SEVERITY_TONE: Record<string, 'neutral' | 'warning' | 'danger'> = {
 export default function RegistryCleanerPage() {
   const vm = useMemo(() => new RegistryCleanerViewModel(registryService), []);
   const state = useViewModel(vm);
-  const isPro = useIsPro();
-  const { guard, dialogElement } = useFeatureGuard();
-  const limits = useEditionLimits();
-  const fixLimit = limits.getLimit('registryCleanerIssuesPerRun');
-  const [scanStartTime, setScanStartTime] = useState<number | null>(null);
 
   useEffect(() => {
     void vm.bootstrap();
@@ -49,9 +32,6 @@ export default function RegistryCleanerPage() {
 
   const selectedCount = state.selected.size;
   const issueCount = state.issues.length;
-  const remainingFixes = fixLimit !== null ? Math.max(0, fixLimit - selectedCount) : null;
-  const limitReached = fixLimit !== null && selectedCount >= fixLimit;
-  const hasMoreIssues = issueCount > (fixLimit ?? 0);
 
   return (
     <div data-testid="page-registry-cleaner">
@@ -71,68 +51,6 @@ export default function RegistryCleanerPage() {
 
       {state.bootstrap === 'ready' && (
         <>
-          {/* Hero status section — System Mechanic style */}
-          <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="registry-hero-section">
-            {/* Gauge */}
-            <GaugeCard
-              title={state.scanning ? 'Scanning…' : issueCount > 0 ? 'Issues Found' : 'Registry Clean'}
-              value={state.scanning ? 100 : Math.min(100, issueCount)}
-              unit=""
-              tone={issueCount > 10 ? 'danger' : issueCount > 0 ? 'warning' : 'success'}
-              icon={<ServerStackIcon className="h-6 w-6" />}
-              description={state.scanning ? 'Analyzing registry hives' : issueCount > 0 ? `${issueCount} invalid entries detected` : 'No issues found'}
-              data-testid="registry-hero-gauge"
-            />
-
-            {/* Key stats */}
-            <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <StatTile
-                label="Issues Found"
-                value={issueCount.toString()}
-                hint={issueCount > 0 ? 'Ready to fix' : 'Registry is clean'}
-                icon={<ExclamationTriangleIcon className="h-5 w-5" />}
-                variant="glass"
-                accentColor={issueCount > 0 ? 'var(--avs-warning)' : 'var(--avs-success)'}
-              />
-              <StatTile
-                label="Selected"
-                value={selectedCount.toString()}
-                hint={selectedCount > 0 ? 'Ready to fix' : 'Select issues below'}
-                icon={<CheckCircleIcon className="h-5 w-5" />}
-                variant="glass"
-              />
-              <StatTile
-                label="Categories"
-                value={Object.keys(state.breakdown).length.toString()}
-                hint={Object.keys(state.breakdown).length > 0 ? 'Affected areas' : '—'}
-                icon={<WrenchScrewdriverIcon className="h-5 w-5" />}
-                variant="glass"
-              />
-              <StatTile
-                label="Backups"
-                value={state.backups.length.toString()}
-                hint={state.backups.length > 0 ? 'Can be restored' : 'No backups yet'}
-                icon={<ArrowPathIcon className="h-5 w-5" />}
-                variant="glass"
-              />
-              <StatTile
-                label="Safety"
-                value="Protected"
-                hint="Restore Point + Backup"
-                icon={<ShieldCheckIcon className="h-5 w-5" />}
-                variant="glass"
-                accentColor="var(--avs-success)"
-              />
-              <StatTile
-                label="Edition"
-                value={isPro ? 'Pro' : 'Free'}
-                hint={!isPro ? `${fixLimit} fixes per scan` : 'Unlimited'}
-                icon={<ClockIcon className="h-5 w-5" />}
-                variant="glass"
-              />
-            </div>
-          </div>
-
           {/* Scan controls */}
           <div className="mb-4 flex items-center justify-between">
             <div>
@@ -142,7 +60,7 @@ export default function RegistryCleanerPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button onClick={() => { setScanStartTime(Date.now()); vm.scan(); }} disabled={state.scanning} leftIcon={<WrenchScrewdriverIcon className="h-4 w-4" />}>
+              <Button onClick={() => vm.scan()} disabled={state.scanning} leftIcon={<WrenchScrewdriverIcon className="h-4 w-4" />}>
                 {state.scanning ? 'Scanning…' : 'Scan Registry'}
               </Button>
               <Button
@@ -179,90 +97,26 @@ export default function RegistryCleanerPage() {
             />
           )}
 
+          {/* Scanning — show the registry path currently being checked */}
           {state.scanning && (
-            <div className="mb-4">
-              <UnifiedScanProgressCard
-                config={REGISTRY_SCAN_CONFIG}
-                isRunning={state.scanning}
-                startTime={Date.now()}
-                counters={{
-                  registryEntries: state.issues.length,
-                  issuesFound: state.issues.length,
-                }}
-              />
-            </div>
-          )}
-
-          {/* Unified AI Results */}
-          {!state.scanning && state.issues.length > 0 && !state.cleanResult && (
-            <div className="mb-4">
-              <UnifiedCleanerResults
-                data={{
-                  moduleId: 'registry',
-                  moduleName: 'Registry Cleaner',
-                  moduleIcon: 'ServerStackIcon',
-                  timestamp: Date.now(),
-                  durationMs: scanStartTime ? Date.now() - scanStartTime : 5000,
-                  itemsAnalyzed: state.issues.length,
-                  issuesFound: state.issues.length,
-                  categoryBreakdown: state.breakdown,
-                  categoryLabels: CATEGORY_LABELS,
-                  issues: state.issues.map((i) => ({
-                    id: i.id,
-                    description: i.description,
-                    category: i.category,
-                    severity: i.severity,
-                    location: `${i.hive}\\${i.subkey}${i.valueName ? ` : ${i.valueName}` : ''}`,
-                  })),
-                }}
-                isPro={isPro}
-                onClose={() => vm.selectNone()}
-                onFix={(ids) => { ids.forEach((id) => { if (!state.selected.has(id)) vm.toggleIssue(id); }); vm.clean(); }}
-                onRescan={() => vm.scan()}
-              />
-            </div>
-          )}
-
-          {/* Free edition limit banner — compact */}
-          {!isPro && issueCount > 0 && (
-            <div
-              className={`mb-4 flex items-center gap-2 rounded-[var(--avs-radius-md)] border px-4 py-2 ${
-                limitReached
-                  ? 'border-semantic-warning/30 bg-semantic-warning/10'
-                  : 'border-[var(--avs-border)] bg-[var(--avs-surface-muted)]'
-              }`}
-              data-testid="registry-free-limit-banner"
-            >
-              <ClockIcon className="h-4 w-4 text-text-secondary shrink-0" />
-              <span className="text-caption text-text-secondary flex-1">
-                Free edition: <strong className="text-text-primary">{selectedCount} of {fixLimit}</strong> issues selected
-                {remainingFixes !== null && remainingFixes > 0 && ` (${remainingFixes} remaining)`}
-              </span>
-              {limitReached && hasMoreIssues && (
-                <button
-                  onClick={() => guard('registry.fix', 'Registry Cleaner', () => {}, {
-                    limitDescription: `Free edition repairs up to ${fixLimit} issues per scan. ${issueCount} issues found.`,
-                    proBenefit: 'Unlimited repairs + automatic backup + scheduled repair.',
-                  })}
-                  className="text-caption font-medium text-[var(--avs-brand-primary)] hover:underline"
-                  data-testid="registry-upgrade-link"
-                >
-                  Upgrade →
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Category summary — compact */}
-          {Object.keys(state.breakdown).length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-              {Object.entries(state.breakdown).map(([cat, count]) => (
-                <Card key={cat} variant="glass" padded={false} className="p-3">
-                  <p className="text-statistic text-text-primary">{count}</p>
-                  <p className="text-caption text-text-secondary truncate">{CATEGORY_LABELS[cat] ?? cat}</p>
-                </Card>
-              ))}
-            </div>
+            <Card className="mb-4" data-testid="registry-scan-progress">
+              <div className="flex items-center gap-3">
+                <ArrowPathIcon className="h-5 w-5 animate-spin text-[var(--avs-brand-primary)] shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-small font-medium text-text-primary">
+                    Scanning registry…
+                    {state.scanProgress && state.scanProgress.categoriesTotal > 0 && (
+                      <span className="text-text-muted"> ({state.scanProgress.categoriesDone}/{state.scanProgress.categoriesTotal} categories)</span>
+                    )}
+                  </p>
+                  {state.scanProgress?.currentPath && (
+                    <p className="text-caption text-text-muted truncate font-mono" title={state.scanProgress.currentPath} data-testid="registry-scan-path">
+                      {state.scanProgress.currentPath}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </Card>
           )}
 
           {/* Empty state */}
@@ -280,16 +134,14 @@ export default function RegistryCleanerPage() {
             <>
               <div className="flex items-center gap-2 mb-3">
                 <Button variant="ghost" size="sm" onClick={() => vm.selectAll()}>
-                  Select all{!isPro && fixLimit !== null ? ` (max ${fixLimit})` : ''}
+                  Select all
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => vm.selectNone()}>
                   Clear
                 </Button>
-                {!isPro && (
-                  <span className="ml-auto text-caption text-text-muted">
-                    {selectedCount}/{fixLimit} selected
-                  </span>
-                )}
+                <span className="ml-auto text-caption text-text-muted">
+                  {selectedCount} selected
+                </span>
               </div>
               <Card>
                 <div className="space-y-1">
@@ -351,62 +203,6 @@ export default function RegistryCleanerPage() {
             </div>
           )}
 
-          {/* Pro Features — compact */}
-          <Card title="Professional Features" variant="glass" className="mt-6">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)]' : 'bg-[var(--avs-surface-muted)]'}`}>
-                    <ClockIcon className={`h-4 w-4 ${isPro ? 'text-[var(--avs-brand-primary)]' : 'text-text-muted'}`} />
-                  </div>
-                  <div>
-                    <span className="text-small font-medium text-text-primary">Scheduled Repair</span>
-                    <p className="text-caption text-text-muted">Auto-scan and repair on schedule</p>
-                  </div>
-                </div>
-                {isPro ? (
-                  <Button variant="secondary" size="sm" leftIcon={<ArrowPathIcon className="h-4 w-4" />}>Configure</Button>
-                ) : (
-                  <Button variant="ghost" size="sm" leftIcon={<LockClosedIcon className="h-4 w-4" />}
-                    onClick={() => guard('registry.fix', 'Registry Cleaner', () => {}, {
-                      limitDescription: 'Scheduled repair is a Professional feature.',
-                      proBenefit: 'Automatically scan and repair registry issues on a schedule.',
-                    })}
-                    data-testid="registry-schedule-upgrade"
-                  >Upgrade</Button>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between border-t border-[var(--avs-border)] pt-3">
-                <div className="flex items-center gap-3">
-                  <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)]' : 'bg-[var(--avs-surface-muted)]'}`}>
-                    <ShieldCheckIcon className={`h-4 w-4 ${isPro ? 'text-[var(--avs-brand-primary)]' : 'text-text-muted'}`} />
-                  </div>
-                  <div>
-                    <span className="text-small font-medium text-text-primary">Automatic Backup</span>
-                    <p className="text-caption text-text-muted">Every repair is backed up</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between border-t border-[var(--avs-border)] pt-3">
-                <div className="flex items-center gap-3">
-                  <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)]' : 'bg-[var(--avs-surface-muted)]'}`}>
-                    <WrenchScrewdriverIcon className={`h-4 w-4 ${isPro ? 'text-[var(--avs-brand-primary)]' : 'text-text-muted'}`} />
-                  </div>
-                  <div>
-                    <span className="text-small font-medium text-text-primary">Unlimited Repairs</span>
-                    <p className="text-caption text-text-muted">
-                      {isPro ? 'No limits on repairs' : `Free: up to ${fixLimit} per scan`}
-                    </p>
-                  </div>
-                </div>
-                {!isPro && <ProStatusPill />}
-              </div>
-            </div>
-          </Card>
-
-          {dialogElement}
         </>
       )}
     </div>

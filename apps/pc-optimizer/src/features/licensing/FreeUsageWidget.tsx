@@ -1,8 +1,8 @@
 /**
  * FreeUsageWidget — transparent usage tracker for Free edition users.
  *
- * Shows remaining limits for Smart Optimize, Junk Cleaner,
- * Registry Cleaner, and Predictive Health forecast.
+ * Shows remaining limits for Smart Optimize and the
+ * Predictive Health forecast.
  *
  * In Professional edition, renders nothing — Pro has unlimited usage.
  *
@@ -14,8 +14,6 @@ import { useEditionLimits } from './editionLimits';
 import { Card } from '@avs/ui';
 import {
   BoltIcon,
-  TrashIcon,
-  WrenchScrewdriverIcon,
   ArrowTrendingUpIcon,
   ClockIcon,
 } from '@heroicons/react/24/outline';
@@ -68,11 +66,6 @@ export function FreeUsageWidget() {
 
   const smartOptMax = limits.getLimit('aiSmartOptimizePerRun') ?? 0;
 
-  const junkMax = limits.getLimit('junkCleanerBytesPerRun') ?? 0;
-  const junkMaxMB = Math.round(junkMax / (1024 * 1024));
-
-  const registryMax = limits.getLimit('registryCleanerIssuesPerRun') ?? 0;
-
   const forecastMax = limits.getLimit('predictiveHealthForecastDays') ?? 0;
 
   return (
@@ -88,22 +81,6 @@ export function FreeUsageWidget() {
           current={0}
           max={smartOptMax}
           unit="per run"
-        />
-
-        <UsageRow
-          icon={TrashIcon}
-          label="Junk Cleaner"
-          current={0}
-          max={junkMaxMB}
-          unit="MB"
-        />
-
-        <UsageRow
-          icon={WrenchScrewdriverIcon}
-          label="Registry Repair"
-          current={0}
-          max={registryMax}
-          unit="fixes"
         />
 
         {/* Forecast — not a usage counter, just a limit indicator */}

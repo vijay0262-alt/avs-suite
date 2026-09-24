@@ -2,7 +2,7 @@
  * Startup Manager service
  */
 
-import type { StartupEntry, StartupDisableResponse, StartupEnableResponse, StartupBackup } from './startup.types';
+import type { StartupEntry, StartupDisableResponse, StartupEnableResponse, StartupBackup, StartupScanProgress } from './startup.types';
 import { RPC_METHODS } from '@avs/shared/rpc';
 
 function client() {
@@ -14,6 +14,7 @@ function client() {
 
 export interface IStartupService {
   listEntries(): Promise<StartupEntry[]>;
+  scanProgress(): Promise<StartupScanProgress>;
   disableEntry(entry: StartupEntry): Promise<StartupDisableResponse>;
   enableEntry(entry: StartupEntry): Promise<StartupEnableResponse>;
   getBackups(): Promise<StartupBackup[]>;
@@ -23,6 +24,10 @@ export interface IStartupService {
 class StartupService implements IStartupService {
   async listEntries(): Promise<StartupEntry[]> {
     return await client().call(RPC_METHODS.STARTUP_LIST);
+  }
+
+  async scanProgress(): Promise<StartupScanProgress> {
+    return await client().call(RPC_METHODS.STARTUP_SCAN_PROGRESS);
   }
 
   async disableEntry(entry: StartupEntry): Promise<StartupDisableResponse> {

@@ -98,10 +98,12 @@ export const RPC_METHODS = {
   STARTUP_BACKUPS: 'startup.backups',
   STARTUP_RESTORE: 'startup.restore',
   STARTUP_REFRESH_CACHE: 'startup.refreshCache',
+  STARTUP_SCAN_PROGRESS: 'startup.scan.progress',
 
   // Registry Cleaner
   REGISTRY_CATEGORIES: 'registry.categories',
   REGISTRY_SCAN: 'registry.scan',
+  REGISTRY_SCAN_PROGRESS: 'registry.scan.progress',
   REGISTRY_CLEAN: 'registry.clean',
   REGISTRY_BACKUPS: 'registry.backups',
   REGISTRY_RESTORE: 'registry.restore',

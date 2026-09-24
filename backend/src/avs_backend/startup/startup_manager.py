@@ -18,6 +18,7 @@ import json
 import logging
 import platform
 import sqlite3
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -390,6 +391,29 @@ def _write_startup_approved(root: int, bucket: str, name: str, enabled: bool) ->
         winreg.CloseKey(key)
 
 
+# ---------------------------------------------------------------------------
+# Scan progress — polled by the frontend while a scan runs
+# ---------------------------------------------------------------------------
+
+_progress_lock = threading.Lock()
+_progress: dict[str, Any] = {
+    "running": False,
+    "currentPath": None,
+    "entriesFound": 0,
+}
+
+
+def _report_progress(path: str) -> None:
+    with _progress_lock:
+        _progress["currentPath"] = path
+
+
+def get_scan_progress() -> dict[str, Any]:
+    """Return a snapshot of the current scan progress for RPC polling."""
+    with _progress_lock:
+        return dict(_progress)
+
+
 def _scan_registry_run() -> list[StartupEntry]:
     """Scan registry Run keys for startup entries."""
     if not IS_WINDOWS:
@@ -409,6 +433,7 @@ def _scan_registry_run() -> list[StartupEntry]:
     ]
 
     for root_key, sub_key, source in registry_keys:
+        _report_progress(f"{_get_root_key_name(root_key)}\\{sub_key}")
         bucket = _approved_subkey_for(sub_key)
         bucket_flags = approved.get((root_key, bucket), {}) if bucket else {}
         try:
@@ -474,6 +499,7 @@ def _scan_startup_folder() -> list[StartupEntry]:
         for scan_dir, enabled in ((folder, True), (folder / "Disabled", False)):
             if not scan_dir.exists():
                 continue
+            _report_progress(str(scan_dir))
             try:
                 for item in scan_dir.glob("*.lnk"):
                     # location always points at the *original* Startup path so
@@ -649,23 +675,32 @@ def scan_startup_entries() -> list[StartupEntry]:
     """
     logger.info("Scanning startup entries")
 
-    all_entries: list[StartupEntry] = []
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        reg_future = pool.submit(_scan_registry_run)
-        folder_future = pool.submit(_scan_startup_folder)
-        ts_future = pool.submit(_scan_tasks_and_services)
+    with _progress_lock:
+        _progress.update({"running": True, "currentPath": None, "entriesFound": 0})
 
-        for future in (reg_future, folder_future):
+    all_entries: list[StartupEntry] = []
+    try:
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            reg_future = pool.submit(_scan_registry_run)
+            folder_future = pool.submit(_scan_startup_folder)
+            ts_future = pool.submit(_scan_tasks_and_services)
+
+            for future in (reg_future, folder_future):
+                try:
+                    all_entries.extend(future.result())
+                except Exception as e:
+                    logger.error(f"Startup scan worker failed: {e}")
             try:
-                all_entries.extend(future.result())
+                tasks, services = ts_future.result()
+                all_entries.extend(tasks)
+                all_entries.extend(services)
             except Exception as e:
-                logger.error(f"Startup scan worker failed: {e}")
-        try:
-            tasks, services = ts_future.result()
-            all_entries.extend(tasks)
-            all_entries.extend(services)
-        except Exception as e:
-            logger.error(f"Task/service scan worker failed: {e}")
+                logger.error(f"Task/service scan worker failed: {e}")
+    finally:
+        with _progress_lock:
+            _progress["running"] = False
+            _progress["currentPath"] = None
+            _progress["entriesFound"] = len(all_entries)
 
     logger.info(f"Found {len(all_entries)} startup entries")
     return all_entries

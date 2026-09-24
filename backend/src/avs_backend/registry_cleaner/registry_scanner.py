@@ -14,8 +14,10 @@ import json
 import logging
 import os
 import platform
+import threading
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from typing import Any, Iterable
@@ -192,6 +194,33 @@ def _path_exists(path: str | None) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Scan progress — polled by the frontend while a scan runs
+# ---------------------------------------------------------------------------
+
+_progress_lock = threading.Lock()
+_progress: dict[str, Any] = {
+    "running": False,
+    "currentPath": None,
+    "currentCategory": None,
+    "categoriesDone": 0,
+    "categoriesTotal": 0,
+    "issuesFound": 0,
+}
+
+
+def _report_progress(path: str, category: str) -> None:
+    with _progress_lock:
+        _progress["currentPath"] = path
+        _progress["currentCategory"] = category
+
+
+def get_scan_progress() -> dict[str, Any]:
+    """Return a snapshot of the current scan progress for RPC polling."""
+    with _progress_lock:
+        return dict(_progress)
+
+
+# ---------------------------------------------------------------------------
 # Scanners (each yields RegistryIssue)
 # ---------------------------------------------------------------------------
 
@@ -205,6 +234,7 @@ _RUN_LOCATIONS = [
 def _scan_startup() -> list[RegistryIssue]:
     issues: list[RegistryIssue] = []
     for hive, subkey in _RUN_LOCATIONS:
+        _report_progress(f"{hive}\\{subkey}", "startup")
         for name, data, _ in _iter_values(hive, subkey):
             if not isinstance(data, str):
                 continue
@@ -236,6 +266,7 @@ def _scan_app_paths() -> list[RegistryIssue]:
     for hive, base in _APP_PATHS:
         for app in _iter_subkeys(hive, base):
             sub = base + "\\" + app
+            _report_progress(f"{hive}\\{sub}", "app_paths")
             res = _read_value(hive, sub, "")  # default value = exe path
             if not res:
                 continue
@@ -259,6 +290,7 @@ def _scan_app_paths() -> list[RegistryIssue]:
 def _scan_shared_dlls() -> list[RegistryIssue]:
     issues: list[RegistryIssue] = []
     hive, subkey = "HKLM", r"Software\Microsoft\Windows\CurrentVersion\SharedDLLs"
+    _report_progress(f"{hive}\\{subkey}", "shared_dlls")
     for name, _data, _ in _iter_values(hive, subkey):
         # For SharedDLLs the value NAME is the DLL path.
         if name and not _path_exists(name):
@@ -289,6 +321,7 @@ def _scan_uninstall() -> list[RegistryIssue]:
     for hive, base in _UNINSTALL:
         for app in _iter_subkeys(hive, base):
             sub = base + "\\" + app
+            _report_progress(f"{hive}\\{sub}", "uninstall")
             install_loc = _read_value(hive, sub, "InstallLocation")
             uninstall = _read_value(hive, sub, "UninstallString")
             display = _read_value(hive, sub, "DisplayName")
@@ -319,6 +352,7 @@ def _scan_muicache() -> list[RegistryIssue]:
     issues: list[RegistryIssue] = []
     hive = "HKCU"
     subkey = r"Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache"
+    _report_progress(f"{hive}\\{subkey}", "muicache")
     for name, _data, _ in _iter_values(hive, subkey):
         if not name or "." not in name:
             continue
@@ -363,6 +397,7 @@ def _scan_file_extensions() -> list[RegistryIssue]:
                 i += 1
                 if not name.startswith("."):
                     continue
+                _report_progress(f"{hive}\\{name}", "file_extensions")
                 # Read the default value — it's the ProgID
                 prog_id_res = _read_value(hive, name, "")
                 if not prog_id_res:
@@ -412,6 +447,7 @@ def _scan_installer_cache() -> list[RegistryIssue]:
         components_base = f"{base}\\{user_sid}\\Components"
         for component_guid in _iter_subkeys(hive, components_base):
             comp_subkey = f"{components_base}\\{component_guid}"
+            _report_progress(f"{hive}\\{comp_subkey}", "installer_cache")
             for name, data, _ in _iter_values(hive, comp_subkey):
                 # In the Components key, value names are product GUIDs
                 # and the data is the file path (KeyPath).
@@ -453,7 +489,13 @@ def _scan_com_clsid() -> list[RegistryIssue]:
     }
     for clsid in _iter_subkeys(hive, base):
         clsid_sub = f"{base}\\{clsid}"
+        _report_progress(f"{hive}\\{clsid_sub}", "com_clsid")
+        # Enumerate the CLSID's subkeys once — most CLSIDs have no server
+        # key at all, so this avoids 3 blind OpenKey calls per entry.
+        subkey_names = set(_iter_subkeys(hive, clsid_sub))
         for server_type in ("InprocServer32", "LocalServer32", "InprocHandler32"):
+            if server_type not in subkey_names:
+                continue
             server_sub = f"{clsid_sub}\\{server_type}"
             res = _read_value(hive, server_sub, "")
             if not res:
@@ -495,19 +537,46 @@ _SCANNERS = {
 
 
 def scan_registry(categories: Iterable[str] | None = None) -> ScanResult:
-    """Scan the selected categories (or all) for invalid registry entries."""
+    """Scan the selected categories (or all) for invalid registry entries.
+
+    Category scanners run in parallel — the COM/CLSID and installer-cache
+    walks are orders of magnitude larger than the rest, so serial scanning
+    made the whole operation appear hung.
+    """
     result = ScanResult()
     if not IS_WINDOWS:
         return result
-    selected = list(categories) if categories else list(_SCANNERS.keys())
-    for cat in selected:
-        scanner = _SCANNERS.get(cat)
-        if not scanner:
-            continue
-        try:
-            result.issues.extend(scanner())
-        except Exception as e:  # noqa: BLE001
-            log.warning("Registry scan for %s failed: %s", cat, e)
+    selected = [c for c in (categories or _SCANNERS.keys()) if c in _SCANNERS]
+    with _progress_lock:
+        _progress.update({
+            "running": True,
+            "currentPath": None,
+            "currentCategory": None,
+            "categoriesDone": 0,
+            "categoriesTotal": len(selected),
+            "issuesFound": 0,
+        })
+    try:
+        with ThreadPoolExecutor(
+            max_workers=min(4, max(1, len(selected))),
+            thread_name_prefix="regscan",
+        ) as pool:
+            futures = {pool.submit(_SCANNERS[cat]): cat for cat in selected}
+            for fut in as_completed(futures):
+                cat = futures[fut]
+                try:
+                    issues = fut.result()
+                except Exception as e:  # noqa: BLE001
+                    log.warning("Registry scan for %s failed: %s", cat, e)
+                    issues = []
+                result.issues.extend(issues)
+                with _progress_lock:
+                    _progress["categoriesDone"] += 1
+                    _progress["issuesFound"] += len(issues)
+    finally:
+        with _progress_lock:
+            _progress["running"] = False
+            _progress["currentPath"] = None
     return result
 
 
@@ -666,6 +735,7 @@ __all__ = [
     "RegistryIssue",
     "ScanResult",
     "scan_registry",
+    "get_scan_progress",
     "fix_issues",
     "list_backups",
     "restore_backup",

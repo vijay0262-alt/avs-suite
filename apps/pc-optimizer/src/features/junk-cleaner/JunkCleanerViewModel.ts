@@ -280,12 +280,6 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
     const only = preview.cleaners.filter((c) => c.totalFiles > 0).map((c) => c.id);
     if (only.length === 0) return;
 
-    // Free edition 500 MB cap is enforced byte-level by the backend
-    // (cleaner.clean.execute passes junk.bytes_per_run as a budget), so
-    // all eligible categories are sent — the backend cleans up to the
-    // limit, partially cleaning the largest remainder instead of
-    // skipping whole categories.
-
     this.setState({ cleaningStep: 'running', lastCleaningError: null });
     try {
       const { cleaningTaskId } = await this.service.executeClean(taskId, only);

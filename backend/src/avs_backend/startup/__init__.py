@@ -16,6 +16,7 @@ from avs_backend.startup.startup_manager import (
     disable_startup_entry,
     enable_startup_entry,
     get_backups,
+    get_scan_progress,
     StartupEntry,
     StartupSource,
     StartupStatus,
@@ -77,6 +78,12 @@ def startup_list(_params: dict[str, Any] | None) -> list[dict[str, Any]]:
     except Exception as e:
         logger.error(f"Failed to list startup entries: {e}")
         raise
+
+
+@register("startup.scan.progress")
+def startup_scan_progress(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Return live scan progress (current path) for UI polling."""
+    return get_scan_progress()
 
 
 @register("startup.refreshCache")

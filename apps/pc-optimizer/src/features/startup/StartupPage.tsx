@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Card, Button, GaugeCard, StatTile } from '@avs/ui';
+import { Card, Button, StatTile } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleLoadingState, ModuleEmptyState } from '../../components/ModuleStates';
@@ -153,45 +153,48 @@ export default function StartupPage() {
 
       {state.bootstrap === 'ready' && (
         <>
-          {/* Hero status section — System Mechanic style */}
-          <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="startup-hero-section">
-            {/* Gauge */}
-            <GaugeCard
-              title={highImpactCount > 0 ? 'Boot Impact' : 'Startup Healthy'}
-              value={Math.min(100, Math.round((highImpactCount / Math.max(1, state.entries.length)) * 100))}
-              unit=""
-              tone={highImpactCount > 0 ? 'danger' : 'success'}
-              icon={<BoltIcon className="h-6 w-6" />}
-              description={highImpactCount > 0 ? `${highImpactCount} high-impact entries slowing boot` : `${enabledCount} entries enabled, all low impact`}
-              data-testid="startup-hero-gauge"
-            />
+          {/* Scanning — show the path currently being scanned */}
+          {state.loading && (
+            <Card className="mb-4" data-testid="startup-scan-progress">
+              <div className="flex items-center gap-3">
+                <ArrowPathIcon className="h-5 w-5 animate-spin text-[var(--avs-brand-primary)] shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-small font-medium text-text-primary">Scanning startup locations…</p>
+                  {state.scanProgress?.currentPath && (
+                    <p className="text-caption text-text-muted truncate font-mono" title={state.scanProgress.currentPath} data-testid="startup-scan-path">
+                      {state.scanProgress.currentPath}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </Card>
+          )}
 
-            {/* Key stats */}
-            <div className="lg:col-span-2 grid grid-cols-3 gap-3">
-              <StatTile
-                label="Total Entries"
-                value={state.entries.length.toString()}
-                hint="Detected on system"
-                icon={<ComputerDesktopIcon className="h-5 w-5" />}
-                variant="glass"
-              />
-              <StatTile
-                label="Enabled"
-                value={enabledCount.toString()}
-                hint={`${state.entries.length - enabledCount} disabled`}
-                icon={<BoltIcon className="h-5 w-5" />}
-                variant="glass"
-                accentColor="var(--avs-success)"
-              />
-              <StatTile
-                label="High Impact"
-                value={highImpactCount.toString()}
-                hint={highImpactCount > 0 ? 'Consider disabling' : 'None detected'}
-                icon={<ChartBarIcon className="h-5 w-5" />}
-                variant="glass"
-                accentColor={highImpactCount > 0 ? 'var(--avs-danger)' : 'var(--avs-success)'}
-              />
-            </div>
+          {/* Key stats */}
+          <div className="mb-4 grid grid-cols-3 gap-3" data-testid="startup-hero-section">
+            <StatTile
+              label="Total Entries"
+              value={state.entries.length.toString()}
+              hint="Detected on system"
+              icon={<ComputerDesktopIcon className="h-5 w-5" />}
+              variant="glass"
+            />
+            <StatTile
+              label="Enabled"
+              value={enabledCount.toString()}
+              hint={`${state.entries.length - enabledCount} disabled`}
+              icon={<BoltIcon className="h-5 w-5" />}
+              variant="glass"
+              accentColor="var(--avs-success)"
+            />
+            <StatTile
+              label="High Impact"
+              value={highImpactCount.toString()}
+              hint={highImpactCount > 0 ? 'Consider disabling' : 'None detected'}
+              icon={<ChartBarIcon className="h-5 w-5" />}
+              variant="glass"
+              accentColor={highImpactCount > 0 ? 'var(--avs-danger)' : 'var(--avs-success)'}
+            />
           </div>
 
           <Card className="mb-4">

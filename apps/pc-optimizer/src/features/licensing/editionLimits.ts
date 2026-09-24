@@ -37,12 +37,6 @@ export interface EditionLimits {
   // AI Daily Briefing
   dailyBriefingPerDay: EditionLimit;
 
-  // Junk Cleaner
-  junkCleanerBytesPerRun: EditionLimit;
-
-  // Registry Cleaner
-  registryCleanerIssuesPerRun: EditionLimit;
-
   // Browser Cleaner
   browserCleanerBrowsersPerRun: EditionLimit;
 
@@ -123,23 +117,6 @@ export const EDITION_LIMITS: EditionLimits = {
     freeLabel: 'One briefing per day',
     proLabel: 'Unlimited briefings + custom reports',
   },
-
-  // Junk Cleaner
-  junkCleanerBytesPerRun: {
-    free: 500 * 1024 * 1024, // 500 MB
-    professional: null,
-    freeLabel: 'Clean up to 500 MB per run',
-    proLabel: 'Unlimited cleaning',
-  },
-
-  // Registry Cleaner
-  registryCleanerIssuesPerRun: {
-    free: 20,
-    professional: null,
-    freeLabel: 'Repair up to 20 issues per scan',
-    proLabel: 'Unlimited repairs + automatic backup + scheduled repair',
-  },
-
 
   // Browser Cleaner
   browserCleanerBrowsersPerRun: {

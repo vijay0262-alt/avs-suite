@@ -37,6 +37,15 @@ export interface RegistryBackup {
   count: number;
 }
 
+export interface RegistryScanProgress {
+  running: boolean;
+  currentPath: string | null;
+  currentCategory: string | null;
+  categoriesDone: number;
+  categoriesTotal: number;
+  issuesFound: number;
+}
+
 export const CATEGORY_LABELS: Record<string, string> = {
   startup: 'Obsolete startup entries',
   app_paths: 'Invalid application paths',
@@ -45,4 +54,5 @@ export const CATEGORY_LABELS: Record<string, string> = {
   muicache: 'Invalid MUICache entries',
   file_extensions: 'Unused file extensions',
   installer_cache: 'Installer cache leftovers',
+  com_clsid: 'Missing COM/CLSID entries',
 };

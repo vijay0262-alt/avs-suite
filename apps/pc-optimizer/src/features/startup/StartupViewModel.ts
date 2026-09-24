@@ -3,10 +3,12 @@
  */
 
 import { ViewModel } from '@avs/core/mvvm/ViewModel';
-import type { StartupEntry, StartupBackup } from './startup.types';
+import type { StartupEntry, StartupBackup, StartupScanProgress } from './startup.types';
 import type { IStartupService } from './startup.service';
 import { startupService } from './startup.service';
 import { optimizationEventBus, OptimizationEventType } from '../health';
+
+const SCAN_POLL_INTERVAL_MS = 250;
 
 export interface StartupState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
@@ -18,6 +20,8 @@ export interface StartupState {
   backups: StartupBackup[];
   /** Names of entries with a toggle currently in flight. */
   pendingToggles: string[];
+  /** Live scan progress — current path being scanned. */
+  scanProgress: StartupScanProgress | null;
 }
 
 export class StartupViewModel extends ViewModel<StartupState> {
@@ -31,7 +35,33 @@ export class StartupViewModel extends ViewModel<StartupState> {
       selectedEntry: null,
       backups: [],
       pendingToggles: [],
+      scanProgress: null,
     });
+  }
+
+  private scanPollTimer: ReturnType<typeof setInterval> | null = null;
+
+  private startScanPolling(): void {
+    this.stopScanPolling();
+    void this.pollScanOnce();
+    this.scanPollTimer = setInterval(() => void this.pollScanOnce(), SCAN_POLL_INTERVAL_MS);
+  }
+
+  private stopScanPolling(): void {
+    if (this.scanPollTimer) {
+      clearInterval(this.scanPollTimer);
+      this.scanPollTimer = null;
+    }
+  }
+
+  private async pollScanOnce(): Promise<void> {
+    if (!this.state.loading) return this.stopScanPolling();
+    try {
+      const progress = await this.service.scanProgress();
+      this.setState({ scanProgress: progress });
+    } catch {
+      // Progress polling is best-effort — never break the load.
+    }
   }
 
   async bootstrap() {
@@ -47,14 +77,17 @@ export class StartupViewModel extends ViewModel<StartupState> {
   }
 
   async loadEntries() {
-    this.setState({ loading: true, error: null });
+    this.setState({ loading: true, error: null, scanProgress: null });
+    this.startScanPolling();
     try {
       const entries = await this.service.listEntries();
-      this.setState({ entries, loading: false });
+      this.setState({ entries, loading: false, scanProgress: null });
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to load startup entries';
-      this.setState({ error, loading: false });
+      this.setState({ error, loading: false, scanProgress: null });
       throw err;
+    } finally {
+      this.stopScanPolling();
     }
   }
 

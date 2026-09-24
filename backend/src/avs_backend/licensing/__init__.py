@@ -581,8 +581,6 @@ def _get_current_edition() -> str:
 # This mirrors the frontend EDITION_LIMITS so the backend can enforce
 # limits even if the RPC is called directly.
 _EDITION_LIMITS: dict[str, int | None] = {
-    "registry.issues_per_run": 20,
-    "junk.bytes_per_run": 500 * 1024 * 1024,  # 500 MB
     "duplicate.files_per_run": 20,
     "large_files.per_session": 10,
     # Additional limits matching frontend editionLimits.ts

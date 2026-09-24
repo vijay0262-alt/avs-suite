@@ -7,6 +7,7 @@ import type {
   RegistryIssue,
   RegistryBackup,
   RegistryCategory,
+  RegistryScanProgress,
 } from './registry.types';
 import { RPC_METHODS } from '@avs/shared/rpc';
 
@@ -20,6 +21,7 @@ function client() {
 export interface IRegistryService {
   listCategories(): Promise<{ categories: RegistryCategory[] }>;
   scan(categories?: string[]): Promise<RegistryScanResult>;
+  scanProgress(): Promise<RegistryScanProgress>;
   clean(issues: RegistryIssue[]): Promise<RegistryCleanResult>;
   listBackups(): Promise<{ backups: RegistryBackup[] }>;
   restore(backupId: string): Promise<{ success: boolean; restored: number; errors: string[] }>;
@@ -33,6 +35,10 @@ class RegistryService implements IRegistryService {
   async scan(categories?: string[]): Promise<RegistryScanResult> {
     const params = categories ? { categories } : undefined;
     return await client().call(RPC_METHODS.REGISTRY_SCAN, params);
+  }
+
+  async scanProgress(): Promise<RegistryScanProgress> {
+    return await client().call(RPC_METHODS.REGISTRY_SCAN_PROGRESS);
   }
 
   async clean(issues: RegistryIssue[]): Promise<RegistryCleanResult> {

@@ -10,6 +10,7 @@ from avs_backend.registry_cleaner.registry_scanner import (
     CATEGORIES,
     RegistryIssue,
     fix_issues,
+    get_scan_progress,
     list_backups,
     restore_backup,
     scan_registry,
@@ -44,6 +45,12 @@ def registry_scan(params: dict[str, Any] | None) -> dict[str, Any]:
         raise
 
 
+@register("registry.scan.progress")
+def registry_scan_progress(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Return live scan progress (current registry path) for UI polling."""
+    return get_scan_progress()
+
+
 @register("registry.clean")
 def registry_clean(params: dict[str, Any] | None) -> dict[str, Any]:
     """Back up and remove the selected invalid registry entries."""
@@ -51,28 +58,6 @@ def registry_clean(params: dict[str, Any] | None) -> dict[str, Any]:
         raise ValueError("Missing 'issues' parameter")
     try:
         issues = [RegistryIssue.from_dict(d) for d in params["issues"]]
-
-        # Enforce Free edition limit: max 20 issues per scan
-        from avs_backend.licensing import get_edition_limit
-
-        limit = get_edition_limit("registry.issues_per_run")
-        if limit is not None and len(issues) > limit:
-            logger.warning(
-                "Registry clean blocked: %d issues exceed Free limit of %d",
-                len(issues), limit,
-            )
-            return {
-                "fixed": 0,
-                "failed": 0,
-                "backupId": None,
-                "errors": [
-                    f"Free edition repairs up to {limit} issues per scan. "
-                    f"Upgrade to Professional for unlimited repairs."
-                ],
-                "limitExceeded": True,
-                "limit": limit,
-            }
-
         return fix_issues(issues)
     except Exception as e:  # noqa: BLE001
         logger.error("Registry clean failed: %s", e)
