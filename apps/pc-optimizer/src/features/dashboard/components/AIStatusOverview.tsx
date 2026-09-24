@@ -19,6 +19,7 @@ import {
   XCircleIcon,
 } from '@heroicons/react/24/outline';
 import { aiIntegrationService, type IntegrationStatus } from '../../ai-integration/aiIntegration.service';
+import { useIsPro } from '../../sync/syncStore';
 
 interface AISubsystem {
   id: string;
@@ -27,10 +28,13 @@ interface AISubsystem {
   icon: typeof BoltIcon;
   connected: boolean;
   detail?: string;
+  /** True when the subsystem requires the Professional edition. */
+  proOnly?: boolean;
 }
 
 export function AIStatusOverview() {
   const navigate = useNavigate();
+  const isPro = useIsPro();
   const [status, setStatus] = useState<IntegrationStatus | null>(null);
 
   useEffect(() => {
@@ -47,6 +51,11 @@ export function AIStatusOverview() {
     return () => { cancelled = true; };
   }, []);
 
+  // Free edition: pro-gated subsystems are shown as off. Workload detection
+  // stays live (view-only in free); the AI Hub count only reflects the
+  // subsystems actually available in this edition.
+  const freeActive = (status?.workloadConnected ?? false) ? 1 : 0;
+
   const subsystems: AISubsystem[] = [
     {
       id: 'self-learning',
@@ -55,6 +64,7 @@ export function AIStatusOverview() {
       icon: AcademicCapIcon,
       connected: status?.selfLearningConnected ?? false,
       detail: status?.selfLearningHasData ? 'Has data' : 'Learning...',
+      proOnly: true,
     },
     {
       id: 'workload',
@@ -70,6 +80,7 @@ export function AIStatusOverview() {
       path: '/auto-care',
       icon: ClockIcon,
       connected: status?.autoCareConnected ?? false,
+      proOnly: true,
     },
     {
       id: 'anomaly',
@@ -80,6 +91,7 @@ export function AIStatusOverview() {
       detail: status?.anomalyActiveCount && status.anomalyActiveCount > 0
         ? `${status.anomalyActiveCount} active`
         : undefined,
+      proOnly: true,
     },
     {
       id: 'smart-notif',
@@ -87,16 +99,28 @@ export function AIStatusOverview() {
       path: '/smart-notifications',
       icon: BoltIcon,
       connected: status?.smartNotificationsConnected ?? false,
+      proOnly: true,
     },
     {
       id: 'integration',
       label: 'AI Hub',
       path: '/ai-integration',
       icon: ArrowsRightLeftIcon,
-      connected: (status?.activeIntegrations ?? 0) > 0,
-      detail: status ? `${status.activeIntegrations}/${status.totalIntegrations}` : undefined,
+      connected: isPro ? (status?.activeIntegrations ?? 0) > 0 : freeActive > 0,
+      detail: status
+        ? isPro
+          ? `${status.activeIntegrations}/${status.totalIntegrations}`
+          : `${freeActive}/${status.totalIntegrations}`
+        : undefined,
     },
   ];
+
+  // In the free edition, pro-only subsystems render as off with a "Pro" hint.
+  const visible = subsystems.map((sub) =>
+    !isPro && sub.proOnly
+      ? { ...sub, connected: false, detail: 'Pro' }
+      : sub,
+  );
 
   return (
     <Card variant="glass" className="p-4" data-testid="dashboard-ai-overview">
@@ -116,7 +140,7 @@ export function AIStatusOverview() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {subsystems.map((sub) => {
+        {visible.map((sub) => {
           const Icon = sub.icon;
           return (
             <button

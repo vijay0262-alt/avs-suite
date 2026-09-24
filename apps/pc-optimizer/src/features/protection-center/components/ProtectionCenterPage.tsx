@@ -269,6 +269,8 @@ interface Recommendation {
   title: string;
   description: string;
   fixAction?: 'enableDefender' | 'enableFirewall' | 'enableSmartScreen' | 'enableRansomwareProtection' | 'enableMemoryIntegrity';
+  /** When true, the action button opens the upgrade dialog instead of a fix. */
+  upgrade?: boolean;
 }
 
 // ── Derivation helpers ─────────────────────────────────────────
@@ -426,8 +428,41 @@ function deriveProvider(metrics: DashboardMetrics | null, isPro: boolean): {
   return null;
 }
 
-function deriveRecommendations(metrics: DashboardMetrics | null): Recommendation[] {
+function deriveRecommendations(metrics: DashboardMetrics | null, isPro: boolean): Recommendation[] {
   const sec = metrics?.security;
+
+  // Free edition: every pro-only protection feature that is locked shows up
+  // as a recommended upgrade action so the list reflects the reduced
+  // protection instead of claiming "settings look good".
+  if (!isPro) {
+    const recs: Recommendation[] = [];
+    if (sec && !sec.firewall.enabled) {
+      recs.push({
+        id: 'enable-firewall',
+        title: 'Firewall is off',
+        description: 'Enable the Windows Firewall to block unauthorized network access.',
+        fixAction: 'enableFirewall',
+      });
+    }
+    const proOnly: Array<{ id: string; name: string }> = [
+      { id: 'realtime-protection', name: 'Real-Time Protection' },
+      { id: 'smartscreen', name: 'SmartScreen' },
+      { id: 'ransomware-protection', name: 'Ransomware Protection' },
+      { id: 'secure-boot', name: 'Secure Boot' },
+      { id: 'memory-integrity', name: 'Memory Integrity' },
+      { id: 'security-updates', name: 'Security Updates' },
+    ];
+    for (const f of proOnly) {
+      recs.push({
+        id: `upgrade-${f.id}`,
+        title: `${f.name} is off`,
+        description: `Upgrade to Professional to enable ${f.name}.`,
+        upgrade: true,
+      });
+    }
+    return recs;
+  }
+
   if (!sec) return [];
 
   const recs: Recommendation[] = [];
@@ -502,6 +537,7 @@ type OverallStatus = 'protected' | 'at_risk' | 'action_required' | 'unknown';
 function deriveOverallStatus(
   items: ProtectionItem[],
   metrics: DashboardMetrics | null,
+  isPro: boolean,
 ): OverallStatus {
   if (!metrics) return 'unknown';
 
@@ -510,6 +546,9 @@ function deriveOverallStatus(
   const hasDisabled = items.some(
     (i) => i.status === 'disabled' || i.status === 'needs_attention',
   );
+  // Free edition always has locked (disabled) features — report reduced
+  // protection instead of "Protected".
+  if (!isPro && hasDisabled) return 'at_risk';
   // If AVS is active, don't flag "action_required" just because Defender is off
   if (hasDisabled && !avsActive) return 'action_required';
 
@@ -523,7 +562,27 @@ function deriveOverallStatus(
   return 'at_risk';
 }
 
-function deriveProtectionScore(healthScore: HealthScore | null): number | null {
+/**
+ * Compute the protection score from the displayed protection items so the
+ * score always matches what the user sees: enabled/protected = full credit,
+ * needs_attention = half, disabled = none. Items with unknown telemetry are
+ * excluded from the denominator. Falls back to the backend health score
+ * when no item status is known yet.
+ */
+function deriveProtectionScore(
+  items: ProtectionItem[],
+  healthScore: HealthScore | null,
+): number | null {
+  let earned = 0;
+  let counted = 0;
+  for (const item of items) {
+    if (item.status === 'unknown') continue;
+    counted += 1;
+    if (item.status === 'enabled' || item.status === 'protected') earned += 1;
+    else if (item.status === 'needs_attention') earned += 0.5;
+  }
+  if (counted > 0) return Math.round((earned / counted) * 100);
+
   if (!healthScore) return null;
   const score = healthScore.categoryScores?.security;
   if (typeof score !== 'number' || Number.isNaN(score)) return null;
@@ -601,19 +660,23 @@ export function ProtectionCenterPage() {
   const provider = useMemo(() => deriveProvider(state.metrics, isPro), [state.metrics, isPro]);
 
   const recommendations = useMemo(
-    () => deriveRecommendations(state.metrics),
-    [state.metrics],
+    () => deriveRecommendations(state.metrics, isPro),
+    [state.metrics, isPro],
   );
 
   const overallStatus = useMemo(
-    () => deriveOverallStatus(protectionItems, state.metrics),
-    [protectionItems, state.metrics],
+    () => deriveOverallStatus(protectionItems, state.metrics, isPro),
+    [protectionItems, state.metrics, isPro],
   );
 
   const protectionScore = useMemo(
-    () => deriveProtectionScore(state.healthScore),
-    [state.healthScore],
+    () => deriveProtectionScore(protectionItems, state.healthScore),
+    [protectionItems, state.healthScore],
   );
+
+  // Real-Time Guard is a Professional feature — in the free edition it is
+  // always off regardless of what the backend monitors report.
+  const rtGuardActive = isPro && state.rtGuardEnabled;
 
   const overallConfig = OVERALL_CONFIG[overallStatus];
   const overallTone = toneClasses(overallConfig.tone);
@@ -899,21 +962,32 @@ export function ProtectionCenterPage() {
                       </p>
                     </div>
                   </div>
-                  {rec.fixAction && (
+                  {rec.upgrade ? (
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() => handleFix(rec.fixAction!)}
-                      disabled={vm.isAnyFixInProgress()}
-                      leftIcon={
-                        vm.isFixInProgress(rec.fixAction) ? (
-                          <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
-                        ) : undefined
-                      }
-                      data-testid={`protection-fix-${rec.id}`}
+                      onClick={() => showUpgrade(rec.title)}
+                      data-testid={`protection-upgrade-${rec.id}`}
                     >
-                      {vm.isFixInProgress(rec.fixAction) ? 'Fixing...' : 'Fix'}
+                      Upgrade
                     </Button>
+                  ) : (
+                    rec.fixAction && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleFix(rec.fixAction!)}
+                        disabled={vm.isAnyFixInProgress()}
+                        leftIcon={
+                          vm.isFixInProgress(rec.fixAction) ? (
+                            <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
+                          ) : undefined
+                        }
+                        data-testid={`protection-fix-${rec.id}`}
+                      >
+                        {vm.isFixInProgress(rec.fixAction) ? 'Fixing...' : 'Fix'}
+                      </Button>
+                    )
                   )}
                 </div>
               </Card>
@@ -985,7 +1059,11 @@ export function ProtectionCenterPage() {
         <div className="mt-4 flex items-center gap-2">
           <CheckCircleIcon className={`h-5 w-5 ${state.metrics?.avsAvActive ? 'text-semantic-success' : 'text-text-muted'}`} />
           <span className={`text-small font-medium ${state.metrics?.avsAvActive ? 'text-semantic-success' : 'text-text-muted'}`}>
-            {state.metrics?.avsAvActive ? 'Your PC is protected' : 'Protection status unknown'}
+            {state.metrics?.avsAvActive
+              ? isPro
+                ? 'Your PC is protected'
+                : 'Basic protection active'
+              : 'Protection status unknown'}
           </span>
         </div>
 
@@ -1060,9 +1138,9 @@ export function ProtectionCenterPage() {
         {/* Bottom status cards */}
         <div className="mt-4 grid grid-cols-2 gap-3">
           <Card variant="glass" className="p-4 text-center" data-testid="protection-rt-guard-card">
-            <EyeIcon className={`h-6 w-6 mx-auto mb-1 ${state.rtGuardEnabled ? 'text-semantic-success' : 'text-semantic-warning'}`} />
+            <EyeIcon className={`h-6 w-6 mx-auto mb-1 ${rtGuardActive ? 'text-semantic-success' : 'text-semantic-warning'}`} />
             <div className="text-section-title font-bold text-text-primary">
-              {state.rtGuardEnabled ? 'Active' : 'Disabled'}
+              {rtGuardActive ? 'Active' : 'Disabled'}
             </div>
             <div className="text-caption text-text-secondary">Real-Time Guard</div>
           </Card>
