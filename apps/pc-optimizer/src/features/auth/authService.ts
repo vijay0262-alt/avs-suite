@@ -9,6 +9,7 @@
  */
 import { apiClient, ApiError, NetworkError, AuthError, configureApiClient } from './apiClient';
 import { tokenStorage, type StoredSession } from './tokenStorage';
+import { getDeviceInfo } from '../sync/syncService';
 
 export interface LoginResponse {
   access_token: string;
@@ -239,9 +240,23 @@ export const authService = {
   async login(identifier: string, password: string): Promise<LoginResult> {
     const endpoint = '/api/customer/auth/login';
     try {
+      // Attach device identity so the backend marks this PC active for
+      // whoever signs in — the device moves between accounts on login.
+      const device = await getDeviceInfo().catch(() => null);
       const resp = await apiClient.post<LoginResponse>(
         endpoint,
-        { identifier, password },
+        {
+          identifier,
+          password,
+          ...(device
+            ? {
+                device_fingerprint: device.fingerprint,
+                device_name: device.deviceName,
+                app_version: device.appVersion,
+                windows_version: device.windowsVersion || undefined,
+              }
+            : {}),
+        },
         { noAuth: true, timeoutMs: 15000 },
       );
       // 2FA challenge — no tokens yet, exchange pre_2fa_token + code
@@ -277,9 +292,21 @@ export const authService = {
   async complete2fa(pre2faToken: string, code: string): Promise<StoredSession> {
     const endpoint = '/api/customer/auth/login/2fa';
     try {
+      const device = await getDeviceInfo().catch(() => null);
       const resp = await apiClient.post<LoginResponse>(
         endpoint,
-        { pre_2fa_token: pre2faToken, code },
+        {
+          pre_2fa_token: pre2faToken,
+          code,
+          ...(device
+            ? {
+                device_fingerprint: device.fingerprint,
+                device_name: device.deviceName,
+                app_version: device.appVersion,
+                windows_version: device.windowsVersion || undefined,
+              }
+            : {}),
+        },
         { noAuth: true, timeoutMs: 15000 },
       );
       const session = sessionFromLogin(resp);

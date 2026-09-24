@@ -6,8 +6,10 @@
  */
 import { create } from 'zustand';
 import { authService, type AuthResultError, type CustomerProfile } from './authService';
+import { apiClient } from './apiClient';
 import { tokenStorage, type StoredSession } from './tokenStorage';
 import { useSyncStore, stopPeriodicSync } from '../sync/syncStore';
+import { getDeviceInfo } from '../sync/syncService';
 
 export type AuthPhase = 'checking' | 'authenticated' | 'unauthenticated';
 
@@ -108,6 +110,26 @@ export const useAuthStore = create<AuthState>((set) => {
   cancel2fa: () => set({ pending2fa: null, error: null, errorCode: null }),
 
   logout: () => {
+    // Mark this device inactive in the backend so the admin/portal view
+    // shows the PC as inactive on sign-out. Best-effort fire-and-forget —
+    // the access token is captured now and sent as an explicit header so
+    // the request still authenticates after tokenStorage.clear() runs.
+    const accessToken = tokenStorage.load()?.accessToken;
+    if (accessToken) {
+      void (async () => {
+        try {
+          const info = await getDeviceInfo();
+          if (!info?.fingerprint) return;
+          await apiClient.post(
+            '/api/customer/device/logout',
+            { device_fingerprint: info.fingerprint },
+            { headers: { Authorization: `Bearer ${accessToken}` }, timeoutMs: 5000 },
+          );
+        } catch {
+          // Best-effort — logout must never fail on a network error
+        }
+      })();
+    }
     authService.logout();
     stopPeriodicSync();
     useSyncStore.getState().clear();
