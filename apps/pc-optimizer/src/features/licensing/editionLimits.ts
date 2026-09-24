@@ -40,9 +40,6 @@ export interface EditionLimits {
   // Browser Cleaner
   browserCleanerBrowsersPerRun: EditionLimit;
 
-  // Duplicate Finder
-  duplicateFinderFilesPerRun: EditionLimit;
-
   // Large File Analyzer
   largeFileAnalyzerFilesPerSession: EditionLimit;
 
@@ -124,14 +121,6 @@ export const EDITION_LIMITS: EditionLimits = {
     professional: null,
     freeLabel: 'Clean one browser at a time',
     proLabel: 'Clean all browsers simultaneously',
-  },
-
-  // Duplicate Finder
-  duplicateFinderFilesPerRun: {
-    free: 20,
-    professional: null,
-    freeLabel: 'Delete up to 20 duplicates per session',
-    proLabel: 'Unlimited deletion + smart duplicate detection + automatic grouping',
   },
 
   // Large File Analyzer

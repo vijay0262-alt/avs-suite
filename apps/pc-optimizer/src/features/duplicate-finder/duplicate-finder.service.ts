@@ -2,7 +2,7 @@
  * Duplicate Finder service
  */
 
-import type { DuplicateScanResult, DuplicateDeleteResult, DuplicateEstimateResult, DuplicateFile, DriveInfo, DuplicateScope } from './duplicate-finder.types';
+import type { DuplicateScanResult, DuplicateDeleteResult, DuplicateEstimateResult, DuplicateFile, DriveInfo, DuplicateScope, DuplicateScanProgress } from './duplicate-finder.types';
 import { RPC_METHODS } from '@avs/shared/rpc';
 
 function client() {
@@ -15,6 +15,7 @@ function client() {
 export interface IDuplicateFinderService {
   listDrives(): Promise<DriveInfo[]>;
   scan(scope: DuplicateScope, directories?: string[], excludeDirs?: string[], minFileSize?: number): Promise<DuplicateScanResult>;
+  scanProgress(): Promise<DuplicateScanProgress>;
   delete(files: DuplicateFile[]): Promise<DuplicateDeleteResult>;
   estimate(scope: DuplicateScope, directories?: string[]): Promise<DuplicateEstimateResult>;
 }
@@ -32,6 +33,10 @@ class DuplicateFinderService implements IDuplicateFinderService {
       minFileSize,
     };
     return await client().call(RPC_METHODS.DUPLICATE_SCAN, params);
+  }
+
+  async scanProgress(): Promise<DuplicateScanProgress> {
+    return await client().call(RPC_METHODS.DUPLICATE_SCAN_PROGRESS);
   }
 
   async delete(files: DuplicateFile[]): Promise<DuplicateDeleteResult> {

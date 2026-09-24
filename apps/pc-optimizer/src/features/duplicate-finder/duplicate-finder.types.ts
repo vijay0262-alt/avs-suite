@@ -47,6 +47,15 @@ export interface DuplicateEstimateResult {
   estimatedBytes: number;
 }
 
+export interface DuplicateScanProgress {
+  running: boolean;
+  currentPath: string | null;
+  filesScanned: number;
+  phase: 'idle' | 'scanning' | 'hashing';
+  hashTotal: number;
+  hashDone: number;
+}
+
 export type DuplicateScope = 'entire' | 'pictures' | 'videos' | 'music' | 'documents' | 'downloads' | 'desktop' | 'custom';
 
 export interface DuplicateFinderState {
@@ -66,4 +75,6 @@ export interface DuplicateFinderState {
   estimateLoading: boolean;
   scanError: string | null;
   deleteError: string | null;
+  /** Live scan progress — current path being scanned/hashed. */
+  scanProgress: DuplicateScanProgress | null;
 }

@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -84,34 +85,74 @@ def _calculate_file_hash(file_path: str, block_size: int = 65536) -> str:
         return ""
 
 
-MAX_FILES_PER_SCAN = 5000
+MAX_FILES_PER_SCAN = 250_000
 MAX_SCAN_TIMEOUT_S = 60.0
+# Files larger than this are skipped — hashing them dominates scan time.
+MAX_HASH_FILE_SIZE = 1024 * 1024 * 1024  # 1 GB
+_HASH_WORKERS = 8
+_DIR_WORKERS = 4
+
+# Live scan progress — polled by the frontend via duplicate.scan.progress.
+_progress_lock = threading.Lock()
+_progress: dict[str, Any] = {
+    'running': False,
+    'currentPath': None,
+    'filesScanned': 0,
+    'phase': 'idle',  # idle | scanning | hashing
+    'hashTotal': 0,
+    'hashDone': 0,
+}
+
+
+def _report_progress(**kwargs: Any) -> None:
+    with _progress_lock:
+        _progress.update(kwargs)
+
+
+def _bump_scanned(path: str) -> None:
+    with _progress_lock:
+        _progress['currentPath'] = path
+        _progress['filesScanned'] += 1
+
+
+def _bump_hashed(path: str) -> None:
+    with _progress_lock:
+        _progress['currentPath'] = path
+        _progress['hashDone'] += 1
+
+
+@register("duplicate.scan.progress")
+def duplicate_scan_progress(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Return live duplicate-scan progress for the frontend to poll."""
+    with _progress_lock:
+        return dict(_progress)
 
 
 def _scan_directory(directory: str, exclude_dirs: list[str] | None = None) -> dict[str, list[dict[str, Any]]]:
     """Scan directory for files and group by hash.
-    
+
     Safety limits:
     - MAX_FILES_PER_SCAN: stop after scanning this many files
     - MAX_SCAN_TIMEOUT_S: stop after this many seconds
-    - Files >100MB are skipped (too slow to hash)
+    - Files >1GB are skipped (too slow to hash)
     - First pass groups by size, then only hashes files with same size
+    - Hashing runs on a thread pool — it is the dominant cost
     """
     if exclude_dirs is None:
         exclude_dirs = ['$RECYCLE.BIN', 'System Volume Information', 'Windows', 'Program Files', 'Program Files (x86)']
-    
+
     hash_map: dict[str, list[dict[str, Any]]] = {}
     scanned_count = 0
     start_time = time.monotonic()
-    
+
     # Phase 1: Group by size first (fast, no hashing)
     size_map: dict[int, list[dict[str, Any]]] = {}
-    
+
     try:
         for root, dirs, files in os.walk(directory):
             # Skip excluded directories
             dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith('.')]
-            
+
             for file in files:
                 if scanned_count >= MAX_FILES_PER_SCAN:
                     logger.info(f"Scan limit reached: {MAX_FILES_PER_SCAN} files in {directory}")
@@ -123,13 +164,13 @@ def _scan_directory(directory: str, exclude_dirs: list[str] | None = None) -> di
                     file_path = os.path.join(root, file)
                     if not os.path.isfile(file_path):
                         continue
-                    
-                    # Skip files larger than 100MB to avoid long scans
+
                     file_size = os.path.getsize(file_path)
-                    if file_size > 100 * 1024 * 1024:
+                    if file_size > MAX_HASH_FILE_SIZE:
                         continue
-                    
+
                     scanned_count += 1
+                    _bump_scanned(file_path)
                     file_info = {
                         'path': file_path,
                         'size': file_size,
@@ -144,25 +185,35 @@ def _scan_directory(directory: str, exclude_dirs: list[str] | None = None) -> di
             break  # Break outer loop if inner loop broke
     except (OSError, PermissionError) as e:
         logger.warning(f"Could not scan directory {directory}: {e}")
-    
-    # Phase 2: Only hash files that share a size with another file
-    for file_size, file_list in size_map.items():
-        if len(file_list) < 2:
-            # Unique size — no possible duplicates, skip hashing
-            continue
-        for file_info in file_list:
-            if time.monotonic() - start_time > MAX_SCAN_TIMEOUT_S:
+
+    # Phase 2: Only hash files that share a size with another file.
+    # Hashing is the dominant cost — run it on a thread pool.
+    to_hash: list[dict[str, Any]] = [
+        info for file_list in size_map.values() if len(file_list) > 1 for info in file_list
+    ]
+    with _progress_lock:
+        _progress['phase'] = 'hashing'
+        _progress['hashTotal'] += len(to_hash)
+
+    deadline = start_time + MAX_SCAN_TIMEOUT_S
+    with ThreadPoolExecutor(max_workers=_HASH_WORKERS) as pool:
+        futures = {pool.submit(_calculate_file_hash, info['path']): info for info in to_hash}
+        for future in as_completed(futures):
+            info = futures[future]
+            _bump_hashed(info['path'])
+            if time.monotonic() > deadline:
                 logger.info(f"Hash timeout reached: {MAX_SCAN_TIMEOUT_S}s in {directory}")
+                for f in futures:
+                    f.cancel()
                 break
-            file_hash = _calculate_file_hash(file_info['path'])
+            try:
+                file_hash = future.result()
+            except Exception:
+                continue
             if not file_hash:
                 continue
-            
-            if file_hash not in hash_map:
-                hash_map[file_hash] = []
-            
-            hash_map[file_hash].append(file_info)
-    
+            hash_map.setdefault(file_hash, []).append(info)
+
     logger.info(f"Scanned {scanned_count} files in {directory} ({time.monotonic() - start_time:.1f}s)")
     return hash_map
 
@@ -200,16 +251,23 @@ def duplicate_scan(params: dict[str, Any] | None) -> dict[str, Any]:
     min_file_size = params.get('minFileSize', 1024)  # Default 1KB
     
     logger.info(f"Starting duplicate scan in {len(directories)} directories")
-    
-    # Scan all directories
+
+    _report_progress(
+        running=True, currentPath=None, filesScanned=0,
+        phase='scanning', hashTotal=0, hashDone=0,
+    )
+
+    # Scan directories in parallel — each is bounded by its own timeout,
+    # so the whole scan stays within one MAX_SCAN_TIMEOUT_S window.
+    valid_dirs = [d for d in directories if os.path.isdir(d)]
     hash_map: dict[str, list[dict[str, Any]]] = {}
-    for directory in directories:
-        if os.path.isdir(directory):
-            dir_hash_map = _scan_directory(directory, exclude_dirs)
-            for file_hash, files in dir_hash_map.items():
-                if file_hash not in hash_map:
-                    hash_map[file_hash] = []
-                hash_map[file_hash].extend(files)
+    try:
+        with ThreadPoolExecutor(max_workers=min(_DIR_WORKERS, max(1, len(valid_dirs)))) as pool:
+            for dir_hash_map in pool.map(lambda d: _scan_directory(d, exclude_dirs), valid_dirs):
+                for file_hash, files in dir_hash_map.items():
+                    hash_map.setdefault(file_hash, []).extend(files)
+    finally:
+        _report_progress(running=False, phase='idle')
     
     # Filter for duplicates (groups with more than 1 file)
     duplicate_groups = []
@@ -377,26 +435,6 @@ def duplicate_delete(params: dict[str, Any] | None) -> dict[str, Any]:
         raise ValueError("Missing 'files' parameter")
 
     files_to_delete = params['files']
-
-    # Enforce Free edition limit: max 20 files per session
-    from avs_backend.licensing import get_edition_limit
-
-    limit = get_edition_limit("duplicate.files_per_run")
-    if limit is not None and len(files_to_delete) > limit:
-        logger.warning(
-            "Duplicate delete blocked: %d files exceed Free limit of %d",
-            len(files_to_delete), limit,
-        )
-        return {
-            'deletedCount': 0,
-            'spaceFreed': 0,
-            'errors': [
-                f"Free edition allows deleting up to {limit} duplicate files per session. "
-                f"Upgrade to Professional for unlimited deletion."
-            ],
-            'limitExceeded': True,
-            'limit': limit,
-        }
 
     deleted_count = 0
     space_freed = 0

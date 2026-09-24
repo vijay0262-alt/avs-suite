@@ -3,24 +3,17 @@
  */
 
 import { useEffect, useMemo } from 'react';
-import { Card, Button, Badge, GaugeCard, StatTile } from '@avs/ui';
+import { Card, Button, Badge, StatTile } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleLoadingState, ModuleEmptyState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
 import { HelpButton } from '../../components/HelpButton';
 import { UnifiedScanProgressCard, DUPLICATE_SCAN_CONFIG } from '../unified-scan';
-import { UnifiedCleanerResults } from '../unified-results';
 import { DuplicateFinderViewModel } from './DuplicateFinderViewModel';
 import { duplicateFinderService } from './duplicate-finder.service';
 import type { DuplicateScope } from './duplicate-finder.types';
-import { useIsPro } from '../sync/syncStore';
-import { useFeatureGuard } from '../licensing/useFeatureGuard';
-import { useEditionLimits } from '../licensing/editionLimits';
-import { ProStatusPill } from '../licensing/ProStatusBadge';
 import {
   SparklesIcon,
-  Squares2X2Icon,
-  LockClosedIcon,
   ClockIcon,
   CheckCircleIcon,
   DocumentDuplicateIcon,
@@ -42,12 +35,6 @@ const SCOPE_OPTIONS: { id: DuplicateScope; label: string }[] = [
 export default function DuplicateFinderPage() {
   const vm = useMemo(() => new DuplicateFinderViewModel(duplicateFinderService), []);
   const state = useViewModel(vm);
-  const { guard, dialogElement } = useFeatureGuard();
-  const isPro = useIsPro();
-  const limits = useEditionLimits();
-  const deleteLimit = limits.getLimit('duplicateFinderFilesPerRun');
-  const remainingDeletes = vm.remainingDeletes();
-  const limitReached = vm.isDeleteLimitReached();
 
   useEffect(() => {
     void vm.bootstrap();
@@ -59,14 +46,7 @@ export default function DuplicateFinderPage() {
   };
 
   const handleDelete = () => {
-    if (limitReached) {
-      guard('duplicate.delete', 'Duplicate Finder', () => {}, {
-        limitDescription: `Free edition allows deleting up to ${deleteLimit} duplicate files per session.`,
-        proBenefit: 'Unlimited deletion + smart duplicate detection + automatic grouping.',
-      });
-      return;
-    }
-    guard('duplicate.delete', 'Duplicate Finder', () => vm.delete());
+    void vm.delete();
   };
 
   const handleToggleFile = (filePath: string) => {
@@ -212,131 +192,63 @@ export default function DuplicateFinderPage() {
               <UnifiedScanProgressCard
                 config={DUPLICATE_SCAN_CONFIG}
                 isRunning={state.scanning}
+                progress={
+                  state.scanProgress && state.scanProgress.hashTotal > 0
+                    ? Math.round((state.scanProgress.hashDone / state.scanProgress.hashTotal) * 100)
+                    : undefined
+                }
+                currentFile={state.scanProgress?.currentPath ?? null}
                 startTime={Date.now()}
+                counters={{
+                  filesScanned: state.scanProgress?.filesScanned ?? 0,
+                  filesHashed: state.scanProgress?.hashDone ?? 0,
+                }}
               />
             </div>
           )}
 
           {state.scanResult && (
             <>
-              <div className="mb-4">
-                <UnifiedCleanerResults
-                  data={{
-                    moduleId: 'duplicate',
-                    moduleName: 'Duplicate Finder',
-                    moduleIcon: 'DocumentDuplicateIcon',
-                    timestamp: Date.now(),
-                    durationMs: state.scanResult.scanDurationMs,
-                    itemsAnalyzed: state.scanResult.totalFiles,
-                    issuesFound: state.scanResult.totalDuplicates,
-                    recoverableSpace: state.scanResult.recoverableSpace,
-                    issues: state.scanResult.groups.flatMap((g, gi) =>
-                      g.files.map((f, fi) => ({
-                        id: `dup-${gi}-${fi}`,
-                        description: `Duplicate of ${f.name}`,
-                        category: 'duplicate',
-                        severity: 'low' as const,
-                        location: f.path,
-                      })),
-                    ),
-                  }}
-                  isPro={isPro}
-                  onClose={() => {}}
-                  onRescan={() => vm.scan()}
+              {/* Key stats */}
+              <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5" data-testid="duplicate-hero-section">
+                <StatTile
+                  label="Files Scanned"
+                  value={state.scanResult.totalFiles.toLocaleString()}
+                  hint="Total analyzed"
+                  icon={<CircleStackIcon className="h-5 w-5" />}
+                  variant="glass"
+                />
+                <StatTile
+                  label="Duplicates"
+                  value={state.scanResult.totalDuplicates.toString()}
+                  hint={`${state.scanResult.groups.length} groups`}
+                  icon={<DocumentDuplicateIcon className="h-5 w-5" />}
+                  variant="glass"
+                  accentColor={state.scanResult.totalDuplicates > 0 ? 'var(--avs-warning)' : 'var(--avs-success)'}
+                />
+                <StatTile
+                  label="Recoverable"
+                  value={vm.formatBytes(state.scanResult.recoverableSpace)}
+                  hint="Space to reclaim"
+                  icon={<ArrowDownTrayIcon className="h-5 w-5" />}
+                  variant="glass"
+                  accentColor="var(--avs-success)"
+                />
+                <StatTile
+                  label="Selected"
+                  value={vm.getSelectedCount().toString()}
+                  hint={vm.getSelectedCount() > 0 ? `${vm.formatBytes(vm.getSelectedSize())} to free` : 'Select files below'}
+                  icon={<CheckCircleIcon className="h-5 w-5" />}
+                  variant="glass"
+                />
+                <StatTile
+                  label="Duration"
+                  value={`${(state.scanResult.scanDurationMs / 1000).toFixed(1)}s`}
+                  hint="Scan time"
+                  icon={<ClockIcon className="h-5 w-5" />}
+                  variant="glass"
                 />
               </div>
-
-              {/* Hero status section — System Mechanic style */}
-              <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3" data-testid="duplicate-hero-section">
-                {/* Gauge */}
-                <GaugeCard
-                  title={state.scanResult.totalDuplicates > 0 ? 'Duplicates Found' : 'No Duplicates'}
-                  value={Math.min(100, state.scanResult.totalDuplicates)}
-                  unit=""
-                  tone={state.scanResult.totalDuplicates > 50 ? 'danger' : state.scanResult.totalDuplicates > 0 ? 'warning' : 'success'}
-                  icon={<DocumentDuplicateIcon className="h-6 w-6" />}
-                  description={state.scanResult.totalDuplicates > 0 ? `${vm.formatBytes(state.scanResult.recoverableSpace)} recoverable` : 'No duplicate files detected'}
-                  data-testid="duplicate-hero-gauge"
-                />
-
-                {/* Key stats */}
-                <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <StatTile
-                    label="Files Scanned"
-                    value={state.scanResult.totalFiles.toLocaleString()}
-                    hint="Total analyzed"
-                    icon={<CircleStackIcon className="h-5 w-5" />}
-                    variant="glass"
-                  />
-                  <StatTile
-                    label="Duplicates"
-                    value={state.scanResult.totalDuplicates.toString()}
-                    hint={`${state.scanResult.groups.length} groups`}
-                    icon={<DocumentDuplicateIcon className="h-5 w-5" />}
-                    variant="glass"
-                    accentColor={state.scanResult.totalDuplicates > 0 ? 'var(--avs-warning)' : 'var(--avs-success)'}
-                  />
-                  <StatTile
-                    label="Recoverable"
-                    value={vm.formatBytes(state.scanResult.recoverableSpace)}
-                    hint="Space to reclaim"
-                    icon={<ArrowDownTrayIcon className="h-5 w-5" />}
-                    variant="glass"
-                    accentColor="var(--avs-success)"
-                  />
-                  <StatTile
-                    label="Selected"
-                    value={vm.getSelectedCount().toString()}
-                    hint={vm.getSelectedCount() > 0 ? `${vm.formatBytes(vm.getSelectedSize())} to free` : 'Select files below'}
-                    icon={<CheckCircleIcon className="h-5 w-5" />}
-                    variant="glass"
-                  />
-                  <StatTile
-                    label="Duration"
-                    value={`${(state.scanResult.scanDurationMs / 1000).toFixed(1)}s`}
-                    hint="Scan time"
-                    icon={<ClockIcon className="h-5 w-5" />}
-                    variant="glass"
-                  />
-                  <StatTile
-                    label="Edition"
-                    value={isPro ? 'Pro' : 'Free'}
-                    hint={!isPro ? `${deleteLimit} files per session` : 'Unlimited'}
-                    icon={<SparklesIcon className="h-5 w-5" />}
-                    variant="glass"
-                  />
-                </div>
-              </div>
-
-              {/* Free edition limit banner — compact */}
-              {!isPro && state.scanResult.totalDuplicates > 0 && (
-                <div
-                  className={`mb-4 flex items-center gap-2 rounded-[var(--avs-radius-md)] border px-4 py-2 ${
-                    limitReached
-                      ? 'border-semantic-warning/30 bg-semantic-warning/10'
-                      : 'border-[var(--avs-border)] bg-[var(--avs-surface-muted)]'
-                  }`}
-                  data-testid="duplicate-free-limit-banner"
-                >
-                  <ClockIcon className="h-4 w-4 text-text-secondary shrink-0" />
-                  <span className="text-caption text-text-secondary flex-1">
-                    Free edition: <strong className="text-text-primary">{vm.getSelectedCount()} of {deleteLimit}</strong> files selected
-                    {remainingDeletes !== null && remainingDeletes > 0 && ` (${remainingDeletes} remaining)`}
-                  </span>
-                  {limitReached && (
-                    <button
-                      onClick={() => guard('duplicate.delete', 'Duplicate Finder', () => {}, {
-                        limitDescription: `Free edition allows deleting up to ${deleteLimit} duplicate files per session.`,
-                        proBenefit: 'Unlimited deletion + smart duplicate detection + automatic grouping.',
-                      })}
-                      className="text-caption font-medium text-[var(--avs-brand-primary)] hover:underline"
-                      data-testid="duplicate-upgrade-link"
-                    >
-                      Upgrade →
-                    </button>
-                  )}
-                </div>
-              )}
 
               {/* Duplicate Groups */}
               <div className="flex items-center justify-between mb-3">
@@ -454,91 +366,10 @@ export default function DuplicateFinderPage() {
                   testId="duplicate-finder-delete-result"
                 />
               )}
-
-              {/* Professional Features — compact */}
-              <Card title="Professional Features" variant="glass" className="mt-6">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)]' : 'bg-[var(--avs-surface-muted)]'}`}>
-                        <SparklesIcon className={`h-4 w-4 ${isPro ? 'text-[var(--avs-brand-primary)]' : 'text-text-muted'}`} />
-                      </div>
-                      <div>
-                        <span className="text-small font-medium text-text-primary">Smart Detection</span>
-                        <p className="text-caption text-text-muted">AI-powered near-duplicate detection</p>
-                      </div>
-                    </div>
-                    {isPro ? (
-                      <Button variant="secondary" size="sm" leftIcon={<SparklesIcon className="h-4 w-4" />}>
-                        Run
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        leftIcon={<LockClosedIcon className="h-4 w-4" />}
-                        onClick={() => guard('duplicate.delete', 'Duplicate Finder', () => {}, {
-                          limitDescription: 'Smart duplicate detection is a Professional feature.',
-                          proBenefit: 'AI-powered near-duplicate detection with content similarity analysis.',
-                        })}
-                        data-testid="duplicate-smart-detection-upgrade"
-                      >
-                        Upgrade
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between border-t border-[var(--avs-border)] pt-3">
-                    <div className="flex items-center gap-3">
-                      <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)]' : 'bg-[var(--avs-surface-muted)]'}`}>
-                        <Squares2X2Icon className={`h-4 w-4 ${isPro ? 'text-[var(--avs-brand-primary)]' : 'text-text-muted'}`} />
-                      </div>
-                      <div>
-                        <span className="text-small font-medium text-text-primary">Auto Grouping</span>
-                        <p className="text-caption text-text-muted">Smart keep/delete recommendations</p>
-                      </div>
-                    </div>
-                    {isPro ? (
-                      <Button variant="secondary" size="sm" leftIcon={<Squares2X2Icon className="h-4 w-4" />}>
-                        Group
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        leftIcon={<LockClosedIcon className="h-4 w-4" />}
-                        onClick={() => guard('duplicate.delete', 'Duplicate Finder', () => {}, {
-                          limitDescription: 'Automatic grouping is a Professional feature.',
-                          proBenefit: 'Smart grouping with keep/delete recommendations.',
-                        })}
-                        data-testid="duplicate-auto-grouping-upgrade"
-                      >
-                        Upgrade
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between border-t border-[var(--avs-border)] pt-3">
-                    <div className="flex items-center gap-3">
-                      <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)]' : 'bg-[var(--avs-surface-muted)]'}`}>
-                        <ClockIcon className={`h-4 w-4 ${isPro ? 'text-[var(--avs-brand-primary)]' : 'text-text-muted'}`} />
-                      </div>
-                      <div>
-                        <span className="text-small font-medium text-text-primary">Unlimited Deletion</span>
-                        <p className="text-caption text-text-muted">
-                          {isPro ? 'No session limits' : `Free: up to ${deleteLimit} files per session`}
-                        </p>
-                      </div>
-                    </div>
-                    {!isPro && <ProStatusPill />}
-                  </div>
-                </div>
-              </Card>
             </>
           )}
         </>
       )}
-      {dialogElement}
     </div>
   );
 }

@@ -402,6 +402,8 @@ export const DUPLICATE_SCAN_CONFIG: UnifiedScanModuleConfig = {
     },
   ],
   counters: [
+    { id: 'filesScanned', label: 'Files Scanned', icon: 'CircleStackIcon', format: 'number' },
+    { id: 'filesHashed', label: 'Files Hashed', icon: 'DocumentDuplicateIcon', format: 'number' },
     { id: 'duplicateFiles', label: 'Duplicate Files', icon: 'DocumentDuplicateIcon', format: 'number' },
     { id: 'duplicateGroups', label: 'Duplicate Groups', icon: 'DocumentDuplicateIcon', format: 'number' },
     { id: 'wastedSpace', label: 'Wasted Space', icon: 'CircleStackIcon', format: 'bytes' },

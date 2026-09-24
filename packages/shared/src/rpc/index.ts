@@ -115,6 +115,7 @@ export const RPC_METHODS = {
 
   // Duplicate Finder
   DUPLICATE_SCAN: 'duplicate.scan',
+  DUPLICATE_SCAN_PROGRESS: 'duplicate.scan.progress',
   DUPLICATE_DELETE: 'duplicate.delete',
   DUPLICATE_LIST_DRIVES: 'duplicate.listDrives',
   DUPLICATE_ESTIMATE: 'duplicate.estimate',

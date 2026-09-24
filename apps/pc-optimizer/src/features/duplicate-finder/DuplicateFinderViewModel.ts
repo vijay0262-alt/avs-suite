@@ -7,10 +7,8 @@ import type { DuplicateFile, DuplicateScope, DuplicateFinderState } from './dupl
 import type { IDuplicateFinderService } from './duplicate-finder.service';
 import { duplicateFinderService } from './duplicate-finder.service';
 import { optimizationEventBus, OptimizationEventType } from '../health';
-import { currentEdition, canUse } from '../licensing/FeatureGate';
-import { getEditionLimit } from '../licensing/editionLimits';
 
-const FREE_DELETE_LIMIT = 20;
+const SCAN_POLL_INTERVAL_MS = 250;
 
 export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
   constructor(private service: IDuplicateFinderService = duplicateFinderService) {
@@ -31,7 +29,33 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
       estimateLoading: false,
       scanError: null,
       deleteError: null,
+      scanProgress: null,
     });
+  }
+
+  private scanPollTimer: ReturnType<typeof setInterval> | null = null;
+
+  private startScanPolling(): void {
+    this.stopScanPolling();
+    void this.pollScanOnce();
+    this.scanPollTimer = setInterval(() => void this.pollScanOnce(), SCAN_POLL_INTERVAL_MS);
+  }
+
+  private stopScanPolling(): void {
+    if (this.scanPollTimer) {
+      clearInterval(this.scanPollTimer);
+      this.scanPollTimer = null;
+    }
+  }
+
+  private async pollScanOnce(): Promise<void> {
+    if (!this.state.scanning) return this.stopScanPolling();
+    try {
+      const progress = await this.service.scanProgress();
+      this.setState({ scanProgress: progress });
+    } catch {
+      // Progress polling is best-effort — never break the scan.
+    }
   }
 
   async bootstrap() {
@@ -73,13 +97,16 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
 
   async scan(excludeDirs?: string[], minFileSize?: number) {
     const directories = this.getScanDirectories();
-    this.setState({ scanning: true, scanResult: null, selectedFiles: new Set(), deleteResult: null, scanError: null });
+    this.setState({ scanning: true, scanResult: null, selectedFiles: new Set(), deleteResult: null, scanError: null, scanProgress: null });
+    this.startScanPolling();
     try {
       const result = await this.service.scan(this.state.scope, directories, excludeDirs, minFileSize);
-      this.setState({ scanResult: result, directories: result.scannedDirectories, scanning: false });
+      this.setState({ scanResult: result, directories: result.scannedDirectories, scanning: false, scanProgress: null });
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to scan for duplicates';
-      this.setState({ scanError: error, scanning: false });
+      this.setState({ scanError: error, scanning: false, scanProgress: null });
+    } finally {
+      this.stopScanPolling();
     }
   }
 
@@ -88,14 +115,8 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
       return;
     }
 
-    // Enforce Free edition limit: max 20 files per session
-    const isFree = currentEdition() === 'free';
-    const hasUnlimited = canUse('duplicate.delete');
     const filesToDelete = this.getFilesToDelete();
-    if (isFree && !hasUnlimited && filesToDelete.length > FREE_DELETE_LIMIT) {
-      this.setState({
-        deleteError: `Free edition allows deleting up to ${FREE_DELETE_LIMIT} duplicate files per session. Upgrade to Professional for unlimited deletion.`,
-      });
+    if (filesToDelete.length === 0) {
       return;
     }
 
@@ -138,15 +159,6 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
     if (newSelected.has(filePath)) {
       newSelected.delete(filePath);
     } else {
-      // Enforce Free edition limit on selection
-      const isFree = currentEdition() === 'free';
-      const hasUnlimited = canUse('duplicate.delete');
-      if (isFree && !hasUnlimited && newSelected.size >= FREE_DELETE_LIMIT) {
-        this.setState({
-          deleteError: `Free edition allows selecting up to ${FREE_DELETE_LIMIT} files. Upgrade to Professional for unlimited deletion.`,
-        });
-        return;
-      }
       newSelected.add(filePath);
     }
     this.setState({ selectedFiles: newSelected, deleteError: null });
@@ -166,21 +178,6 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
           allFiles.add(file.path);
         }
       }
-    }
-    // Enforce Free edition limit on select all
-    const isFree = currentEdition() === 'free';
-    const hasUnlimited = canUse('duplicate.delete');
-    if (isFree && !hasUnlimited && allFiles.size > FREE_DELETE_LIMIT) {
-      // Only select up to the limit
-      const limited = new Set<string>();
-      let count = 0;
-      for (const path of allFiles) {
-        if (count >= FREE_DELETE_LIMIT) break;
-        limited.add(path);
-        count++;
-      }
-      this.setState({ selectedFiles: limited });
-      return;
     }
     this.setState({ selectedFiles: allFiles });
   }
@@ -205,15 +202,6 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
     for (let i = 1; i < group.files.length; i++) {
       const file = group.files[i];
       if (file && file.path) {
-        // Enforce Free edition limit
-        const isFree = currentEdition() === 'free';
-        const hasUnlimited = canUse('duplicate.delete');
-        if (isFree && !hasUnlimited && newSelected.size >= FREE_DELETE_LIMIT) {
-          this.setState({
-            deleteError: `Free edition allows selecting up to ${FREE_DELETE_LIMIT} files. Upgrade to Professional for unlimited deletion.`,
-          });
-          break;
-        }
         newSelected.add(file.path);
       }
     }
@@ -264,32 +252,6 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
 
   getSelectedCount(): number {
     return this.state.selectedFiles.size;
-  }
-
-  /**
-   * Returns the maximum number of files that can be deleted in the current edition.
-   * Returns null for unlimited (Professional).
-   */
-  getDeleteLimit(): number | null {
-    return getEditionLimit('duplicateFinderFilesPerRun', currentEdition() === 'professional');
-  }
-
-  /**
-   * Remaining deletions available (Free edition only).
-   * Returns null for unlimited (Professional).
-   */
-  remainingDeletes(): number | null {
-    const limit = this.getDeleteLimit();
-    if (limit === null) return null;
-    return Math.max(0, limit - this.state.selectedFiles.size);
-  }
-
-  /**
-   * Whether the delete limit has been reached (Free edition only).
-   */
-  isDeleteLimitReached(): boolean {
-    const remaining = this.remainingDeletes();
-    return remaining !== null && remaining === 0;
   }
 
   getSelectedSize(): number {

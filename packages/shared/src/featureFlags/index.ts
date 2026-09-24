@@ -141,7 +141,7 @@ export const FEATURES = {
   },
   DUPLICATE_DELETE: {
     key: 'duplicate-delete',
-    description: 'Delete duplicate files (up to 20 per session in Free).',
+    description: 'Delete duplicate files.',
     editions: ['free', 'professional'] as const,
   },
 
