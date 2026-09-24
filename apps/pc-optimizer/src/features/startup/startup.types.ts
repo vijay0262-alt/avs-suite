@@ -2,20 +2,26 @@
  * Startup Manager types
  */
 
+export type StartupSource =
+  | 'registry_run'
+  | 'registry_run_once'
+  | 'startup_folder'
+  | 'task_scheduler'
+  | 'startup_service'
+  | 'unknown';
+
 export interface StartupEntry {
   name: string;
   publisher: string;
   status: 'enabled' | 'disabled' | 'unknown';
   impact: 'high' | 'medium' | 'low' | 'unknown';
-  source: 'registry' | 'folder' | 'task' | 'unknown';
+  source: StartupSource;
   location: string;
   command: string;
   enabled: boolean;
-  /** Digital signature status, e.g. 'Signed', 'Unsigned', 'Unknown' */
+  /** Optional enrichment fields used by the startup-optimizer module. */
   signatureStatus?: string;
-  /** Estimated boot impact in milliseconds */
   bootImpactMs?: number;
-  /** Last launch timestamp or humanized string */
   lastLaunch?: string;
 }
 
@@ -41,8 +47,9 @@ export interface StartupBackup {
   backupId: string;
   timestamp: string;
   entryName: string;
-  originalLocation: string;
-  originalCommand: string;
+  source: string;
+  location: string;
+  enabled: boolean;
 }
 
 export interface StartupState {

@@ -43,9 +43,6 @@ export interface EditionLimits {
   // Registry Cleaner
   registryCleanerIssuesPerRun: EditionLimit;
 
-  // Startup Manager
-  startupManagerEntriesPerRun: EditionLimit;
-
   // Browser Cleaner
   browserCleanerBrowsersPerRun: EditionLimit;
 
@@ -143,13 +140,6 @@ export const EDITION_LIMITS: EditionLimits = {
     proLabel: 'Unlimited repairs + automatic backup + scheduled repair',
   },
 
-  // Startup Manager
-  startupManagerEntriesPerRun: {
-    free: 3,
-    professional: null,
-    freeLabel: 'Disable up to 3 entries per session',
-    proLabel: 'Unlimited management + AI recommendations + impact analysis + auto-delay + startup history',
-  },
 
   // Browser Cleaner
   browserCleanerBrowsersPerRun: {

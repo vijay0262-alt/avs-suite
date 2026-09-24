@@ -12,18 +12,9 @@ import { StartupViewModel } from './StartupViewModel';
 import { startupService } from './startup.service';
 import { StartupEntryCard } from './components/StartupEntryCard';
 import type { StartupEntry } from './startup.types';
-import { useIsPro } from '../sync/syncStore';
-import { useFeatureGuard } from '../licensing/useFeatureGuard';
-import { useEditionLimits } from '../licensing/editionLimits';
-import { ProStatusPill } from '../licensing/ProStatusBadge';
 import {
-  ClockIcon,
   ChartBarIcon,
-  SparklesIcon,
   ArrowPathIcon,
-  LockClosedIcon,
-  ShieldCheckIcon,
-  XMarkIcon,
   BoltIcon,
   ComputerDesktopIcon,
 } from '@heroicons/react/24/outline';
@@ -37,12 +28,6 @@ export default function StartupPage() {
   const [impactFilter, setImpactFilter] = useState<'all' | 'high' | 'medium' | 'low' | 'unknown'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'enabled' | 'disabled'>('all');
   const [sortBy, setSortBy] = useState<SortBy>('name');
-  const isPro = useIsPro();
-  const { guard, dialogElement } = useFeatureGuard();
-  const limits = useEditionLimits();
-  const disableLimit = limits.getLimit('startupManagerEntriesPerRun');
-  const remainingDisables = vm.remainingDisables();
-  const limitReached = vm.isDisableLimitReached();
 
   useEffect(() => {
     void vm.bootstrap();
@@ -53,13 +38,6 @@ export default function StartupPage() {
     /admin|permission|elevat|access.*denied/i.test(msg);
 
   const handleDisable = async (entry: StartupEntry) => {
-    if (limitReached) {
-      guard('startup.disable', 'Startup Manager', () => {}, {
-        limitDescription: `Free edition allows disabling up to ${disableLimit} startup entries.`,
-        proBenefit: 'Unlimited startup management + AI recommendations + auto-delay + startup history.',
-      });
-      return;
-    }
     try {
       const result = await vm.disableEntry(entry);
       if (!result.success) {
@@ -111,48 +89,6 @@ export default function StartupPage() {
 
   const handleRefresh = () => {
     void vm.loadEntries();
-  };
-
-  const [proFeatureModal, setProFeatureModal] = useState<{ title: string; content: string } | null>(null);
-
-  const handleProFeature = (feature: string) => {
-    const enabled = state.entries.filter((e) => e.enabled);
-    const highImpact = enabled.filter((e) => e.impact === 'high');
-    const mediumImpact = enabled.filter((e) => e.impact === 'medium');
-    const lowImpact = enabled.filter((e) => e.impact === 'low');
-
-    switch (feature) {
-      case 'recommendations':
-        setProFeatureModal({
-          title: 'Startup Recommendations',
-          content: highImpact.length > 0
-            ? `Found ${highImpact.length} high-impact startup entries. Consider disabling: ${highImpact.slice(0, 5).map((e) => e.name).join(', ')}${highImpact.length > 5 ? ' and others' : ''}. These applications significantly slow down your boot time.`
-            : 'No high-impact startup entries detected. Your startup configuration is well-optimized.',
-        });
-        break;
-      case 'impact-analysis':
-        setProFeatureModal({
-          title: 'Startup Impact Analysis',
-          content: `Enabled entries: ${enabled.length}\nHigh impact: ${highImpact.length}\nMedium impact: ${mediumImpact.length}\nLow impact: ${lowImpact.length}\n\nHigh-impact applications consume significant CPU, memory, and disk resources during boot, delaying your system's readiness by several seconds each.`,
-        });
-        break;
-      case 'auto-delay':
-        setProFeatureModal({
-          title: 'Auto-Delay Configuration',
-          content: 'Auto-Delay will gradually launch non-critical startup programs after boot, prioritizing essential system services first. This reduces peak boot resource contention and gets you to a responsive desktop faster. Configure which applications to delay based on impact level.',
-        });
-        break;
-      case 'history':
-        setProFeatureModal({
-          title: 'Startup History',
-          content: state.backups.length > 0
-            ? `Found ${state.backups.length} recorded changes. Recent changes:\n${state.backups.slice(0, 5).map((b) => `• ${b.entryName} — ${b.timestamp}`).join('\n')}`
-            : 'No startup changes have been recorded yet. Changes will appear here after you disable or enable startup entries.',
-        });
-        break;
-      default:
-        break;
-    }
   };
 
   const enabledCount = state.entries.filter((e) => e.enabled).length;
@@ -231,7 +167,7 @@ export default function StartupPage() {
             />
 
             {/* Key stats */}
-            <div className="lg:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="lg:col-span-2 grid grid-cols-3 gap-3">
               <StatTile
                 label="Total Entries"
                 value={state.entries.length.toString()}
@@ -255,60 +191,8 @@ export default function StartupPage() {
                 variant="glass"
                 accentColor={highImpactCount > 0 ? 'var(--avs-danger)' : 'var(--avs-success)'}
               />
-              <StatTile
-                label="Changes Made"
-                value={state.backups.length.toString()}
-                hint={state.backups.length > 0 ? 'Can be restored' : 'No changes yet'}
-                icon={<ArrowPathIcon className="h-5 w-5" />}
-                variant="glass"
-              />
-              <StatTile
-                label="Safety"
-                value="Protected"
-                hint="Backup + Restore"
-                icon={<ShieldCheckIcon className="h-5 w-5" />}
-                variant="glass"
-                accentColor="var(--avs-success)"
-              />
-              <StatTile
-                label="Edition"
-                value={isPro ? 'Pro' : 'Free'}
-                hint={!isPro ? `${remainingDisables ?? '∞'} disables left` : 'Unlimited'}
-                icon={<SparklesIcon className="h-5 w-5" />}
-                variant="glass"
-              />
             </div>
           </div>
-
-          {/* Free edition limit banner — compact */}
-          {!isPro && state.entries.length > 0 && (
-            <div
-              className={`mb-4 flex items-center gap-2 rounded-[var(--avs-radius-md)] border px-4 py-2 ${
-                limitReached
-                  ? 'border-semantic-warning/30 bg-semantic-warning/10'
-                  : 'border-[var(--avs-border)] bg-[var(--avs-surface-muted)]'
-              }`}
-              data-testid="startup-free-limit-banner"
-            >
-              <ClockIcon className="h-4 w-4 text-text-secondary shrink-0" />
-              <span className="text-caption text-text-secondary flex-1">
-                Free edition: <strong className="text-text-primary">{state.sessionDisabledCount} of {disableLimit}</strong> disabled
-                {remainingDisables !== null && remainingDisables > 0 && ` (${remainingDisables} remaining)`}
-              </span>
-              {limitReached && (
-                <button
-                  onClick={() => guard('startup.disable', 'Startup Manager', () => {}, {
-                    limitDescription: `Free edition allows disabling up to ${disableLimit} startup entries.`,
-                    proBenefit: 'Unlimited startup management + AI recommendations + auto-delay + startup history.',
-                  })}
-                  className="text-caption font-medium text-[var(--avs-brand-primary)] hover:underline"
-                  data-testid="startup-upgrade-link"
-                >
-                  Upgrade →
-                </button>
-              )}
-            </div>
-          )}
 
           <Card className="mb-4">
             <div className="flex flex-col md:flex-row md:items-center gap-3">
@@ -373,7 +257,7 @@ export default function StartupPage() {
                   entry={entry}
                   onDisable={handleDisable}
                   onEnable={handleEnable}
-                  loading={state.loading}
+                  pending={vm.isTogglePending(entry)}
                 />
               ))}
             </div>
@@ -404,156 +288,6 @@ export default function StartupPage() {
             </div>
           )}
 
-          {/* Professional Features — compact */}
-          <Card title="Professional Features" variant="glass" className="mt-6">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)]' : 'bg-[var(--avs-surface-muted)]'}`}>
-                    <SparklesIcon className={`h-4 w-4 ${isPro ? 'text-[var(--avs-brand-primary)]' : 'text-text-muted'}`} />
-                  </div>
-                  <div>
-                    <span className="text-small font-medium text-text-primary">AI Recommendations</span>
-                    <p className="text-caption text-text-muted">Smart disable suggestions</p>
-                  </div>
-                </div>
-                {isPro ? (
-                  <Button variant="secondary" size="sm" onClick={() => handleProFeature('recommendations')}>View</Button>
-                ) : (
-                  <Button variant="ghost" size="sm" leftIcon={<LockClosedIcon className="h-4 w-4" />}
-                    onClick={() => guard('auto.startup_optimization', 'Startup Manager', () => {}, {
-                      limitDescription: 'AI startup recommendations are a Professional feature.',
-                      proBenefit: 'AI-powered startup analysis with personalized recommendations.',
-                    })}
-                    data-testid="startup-ai-recommendations-upgrade"
-                  >Upgrade</Button>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between border-t border-[var(--avs-border)] pt-3">
-                <div className="flex items-center gap-3">
-                  <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)]' : 'bg-[var(--avs-surface-muted)]'}`}>
-                    <ChartBarIcon className={`h-4 w-4 ${isPro ? 'text-[var(--avs-brand-primary)]' : 'text-text-muted'}`} />
-                  </div>
-                  <div>
-                    <span className="text-small font-medium text-text-primary">Impact Analysis</span>
-                    <p className="text-caption text-text-muted">CPU, memory & disk impact</p>
-                  </div>
-                </div>
-                {isPro ? (
-                  <Button variant="secondary" size="sm" onClick={() => handleProFeature('impact-analysis')}>View</Button>
-                ) : (
-                  <Button variant="ghost" size="sm" leftIcon={<LockClosedIcon className="h-4 w-4" />}
-                    onClick={() => guard('auto.startup_optimization', 'Startup Manager', () => {}, {
-                      limitDescription: 'Startup impact analysis is a Professional feature.',
-                      proBenefit: 'Detailed boot impact analysis with CPU, memory, and disk estimates.',
-                    })}
-                    data-testid="startup-impact-analysis-upgrade"
-                  >Upgrade</Button>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between border-t border-[var(--avs-border)] pt-3">
-                <div className="flex items-center gap-3">
-                  <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)]' : 'bg-[var(--avs-surface-muted)]'}`}>
-                    <ArrowPathIcon className={`h-4 w-4 ${isPro ? 'text-[var(--avs-brand-primary)]' : 'text-text-muted'}`} />
-                  </div>
-                  <div>
-                    <span className="text-small font-medium text-text-primary">Auto-Delay</span>
-                    <p className="text-caption text-text-muted">Delay non-critical apps for faster boot</p>
-                  </div>
-                </div>
-                {isPro ? (
-                  <Button variant="secondary" size="sm" onClick={() => handleProFeature('auto-delay')}>Configure</Button>
-                ) : (
-                  <Button variant="ghost" size="sm" leftIcon={<LockClosedIcon className="h-4 w-4" />}
-                    onClick={() => guard('auto.startup_optimization', 'Startup Manager', () => {}, {
-                      limitDescription: 'Auto-delay is a Professional feature.',
-                      proBenefit: 'Automatically delay non-critical startup programs for faster boot.',
-                    })}
-                    data-testid="startup-auto-delay-upgrade"
-                  >Upgrade</Button>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between border-t border-[var(--avs-border)] pt-3">
-                <div className="flex items-center gap-3">
-                  <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)]' : 'bg-[var(--avs-surface-muted)]'}`}>
-                    <ClockIcon className={`h-4 w-4 ${isPro ? 'text-[var(--avs-brand-primary)]' : 'text-text-muted'}`} />
-                  </div>
-                  <div>
-                    <span className="text-small font-medium text-text-primary">Startup History</span>
-                    <p className="text-caption text-text-muted">Audit trail of all changes</p>
-                  </div>
-                </div>
-                {isPro ? (
-                  <Button variant="secondary" size="sm" onClick={() => handleProFeature('history')}>View</Button>
-                ) : (
-                  <Button variant="ghost" size="sm" leftIcon={<LockClosedIcon className="h-4 w-4" />}
-                    onClick={() => guard('auto.startup_optimization', 'Startup Manager', () => {}, {
-                      limitDescription: 'Startup history is a Professional feature.',
-                      proBenefit: 'Complete audit trail of all startup changes with timestamps.',
-                    })}
-                    data-testid="startup-history-upgrade"
-                  >Upgrade</Button>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between border-t border-[var(--avs-border)] pt-3">
-                <div className="flex items-center gap-3">
-                  <div className={`rounded-[var(--avs-radius-md)] p-2 ${isPro ? 'bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)]' : 'bg-[var(--avs-surface-muted)]'}`}>
-                    <ShieldCheckIcon className={`h-4 w-4 ${isPro ? 'text-[var(--avs-brand-primary)]' : 'text-text-muted'}`} />
-                  </div>
-                  <div>
-                    <span className="text-small font-medium text-text-primary">Unlimited Management</span>
-                    <p className="text-caption text-text-muted">
-                      {isPro ? 'No session limits' : `Free: up to ${disableLimit} per session`}
-                    </p>
-                  </div>
-                </div>
-                {!isPro && <ProStatusPill />}
-              </div>
-            </div>
-          </Card>
-
-          {dialogElement}
-
-          {proFeatureModal && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="pro-feature-modal-title"
-              onClick={() => setProFeatureModal(null)}
-            >
-              <div
-                className="max-w-lg w-full mx-4 rounded-[var(--avs-radius-lg)] border border-[var(--avs-border)] bg-[var(--avs-surface)] shadow-[var(--avs-shadow-xl,var(--avs-shadow-lg))]"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <header className="flex items-center justify-between border-b border-[var(--avs-border)] px-6 py-4">
-                  <h2 id="pro-feature-modal-title" className="text-section-title font-semibold text-text-primary">
-                    {proFeatureModal.title}
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={() => setProFeatureModal(null)}
-                    className="rounded-[var(--avs-radius-md)] p-1 text-text-muted hover:bg-[var(--avs-surface-muted)] hover:text-text-primary outline-none focus-visible:shadow-focus"
-                    aria-label="Close"
-                  >
-                    <XMarkIcon className="h-5 w-5" />
-                  </button>
-                </header>
-                <div className="max-h-[60vh] overflow-y-auto px-6 py-4">
-                  <p className="text-small text-text-secondary whitespace-pre-line">{proFeatureModal.content}</p>
-                </div>
-                <footer className="flex items-center justify-end gap-2 border-t border-[var(--avs-border)] px-6 py-3">
-                  <Button variant="secondary" size="sm" onClick={() => setProFeatureModal(null)}>
-                    Close
-                  </Button>
-                </footer>
-              </div>
-            </div>
-          )}
         </>
       )}
     </div>

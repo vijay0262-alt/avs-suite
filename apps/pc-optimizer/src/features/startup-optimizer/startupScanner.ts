@@ -22,14 +22,21 @@ import { startupEvents } from './startupEvents';
 /**
  * Map raw source strings from the RPC service to our typed source.
  */
-function mapSource(raw: string): StartupSource {
+function mapSource(raw: string, location = ''): StartupSource {
+  const isMachine = location.startsWith('HKEY_LOCAL_MACHINE') || location.startsWith('C:\\ProgramData');
   switch (raw) {
-    case 'registry':
-      return 'registry_hkcu_run'; // Default to HKCU; the RPC doesn't distinguish
-    case 'folder':
-      return 'startup_folder_user';
-    case 'task':
+    case 'registry_run':
+    case 'registry_run_once':
+    case 'registry': // legacy
+      return isMachine ? 'registry_hklm_run' : 'registry_hkcu_run';
+    case 'startup_folder':
+    case 'folder': // legacy
+      return isMachine ? 'startup_folder_all' : 'startup_folder_user';
+    case 'task_scheduler':
+    case 'task': // legacy
       return 'task_scheduler';
+    case 'startup_service':
+      return 'startup_services';
     default:
       return 'registry_hkcu_run';
   }
@@ -163,7 +170,7 @@ export class StartupScanner {
    * Convert a raw RPC startup entry to our enriched type.
    */
   private _convertEntry(raw: RawStartupEntry): StartupEntry {
-    const source = mapSource(raw.source);
+    const source = mapSource(raw.source, raw.location);
     const executablePath = extractExecutablePath(raw.command);
     const protected_ = isProtectedApp(raw.name);
 

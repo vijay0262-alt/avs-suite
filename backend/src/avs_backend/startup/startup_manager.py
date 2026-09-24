@@ -14,16 +14,16 @@ Features:
 
 from __future__ import annotations
 
+import json
 import logging
 import platform
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
-
-import psutil
 
 logger = logging.getLogger(__name__)
 
@@ -332,12 +332,71 @@ def _restore_startup_service(location: str, entry_name: str, enabled: bool) -> N
         raise
 
 
+# ── StartupApproved helpers ─────────────────────────────────
+# Windows stores per-entry enable/disable flags under
+#   …\Explorer\StartupApproved\{Run,Run32,StartupFolder}
+# as 12-byte REG_BINARY values. First byte odd (03/05/07…) = disabled,
+# even (02/06…) = enabled. This is the same mechanism Task Manager uses,
+# so toggling here keeps entries visible and instantly reversible.
+
+_STARTUP_APPROVED_BASE = r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved"
+
+
+def _approved_subkey_for(sub_key: str) -> str | None:
+    """Map a Run/Run32 registry subkey to its StartupApproved bucket."""
+    lowered = sub_key.lower()
+    if lowered == r"software\microsoft\windows\currentversion\run":
+        return "Run"
+    if lowered == r"software\wow6432node\microsoft\windows\currentversion\run":
+        return "Run32"
+    return None  # RunOnce has no StartupApproved bucket
+
+
+def _read_startup_approved() -> dict[tuple[int, str], dict[str, int]]:
+    """Read all StartupApproved flags → {(root, bucket): {value_name: first_byte}}."""
+    flags: dict[tuple[int, str], dict[str, int]] = {}
+    if not IS_WINDOWS:
+        return flags
+    for root in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+        for bucket in ("Run", "Run32", "StartupFolder"):
+            try:
+                key = winreg.OpenKey(root, f"{_STARTUP_APPROVED_BASE}\\{bucket}")
+            except OSError:
+                continue
+            bucket_flags: dict[str, int] = {}
+            try:
+                i = 0
+                while True:
+                    try:
+                        name, value, _ = winreg.EnumValue(key, i)
+                        if isinstance(value, (bytes, bytearray)) and value:
+                            bucket_flags[name] = value[0]
+                        i += 1
+                    except OSError:
+                        break
+            finally:
+                winreg.CloseKey(key)
+            flags[(root, bucket)] = bucket_flags
+    return flags
+
+
+def _write_startup_approved(root: int, bucket: str, name: str, enabled: bool) -> None:
+    """Write a StartupApproved flag for an entry (02 = enabled, 03 = disabled)."""
+    flag = bytes([0x02 if enabled else 0x03]) + bytes(11)
+    key = winreg.CreateKey(root, f"{_STARTUP_APPROVED_BASE}\\{bucket}")
+    try:
+        winreg.SetValueEx(key, name, 0, winreg.REG_BINARY, flag)
+    finally:
+        winreg.CloseKey(key)
+
+
 def _scan_registry_run() -> list[StartupEntry]:
     """Scan registry Run keys for startup entries."""
     if not IS_WINDOWS:
         return []
 
     entries = []
+    approved = _read_startup_approved()
 
     # Registry keys to scan
     registry_keys = [
@@ -350,6 +409,8 @@ def _scan_registry_run() -> list[StartupEntry]:
     ]
 
     for root_key, sub_key, source in registry_keys:
+        bucket = _approved_subkey_for(sub_key)
+        bucket_flags = approved.get((root_key, bucket), {}) if bucket else {}
         try:
             key = winreg.OpenKey(root_key, sub_key)
             i = 0
@@ -359,15 +420,19 @@ def _scan_registry_run() -> list[StartupEntry]:
                     publisher = _extract_publisher_from_path(value)
                     impact = _estimate_startup_impact(value)
 
+                    # StartupApproved flag: odd first byte = disabled.
+                    flag = bucket_flags.get(name)
+                    enabled = not (flag is not None and flag % 2 == 1)
+
                     entry = StartupEntry(
                         name=name,
                         publisher=publisher,
-                        status=StartupStatus.ENABLED,
+                        status=StartupStatus.ENABLED if enabled else StartupStatus.DISABLED,
                         impact=impact,
                         source=source,
                         location=f"{_get_root_key_name(root_key)}\\{sub_key}",
                         command=value,
-                        enabled=True,
+                        enabled=enabled,
                     )
                     entries.append(entry)
                     i += 1
@@ -395,7 +460,8 @@ def _get_root_key_name(root_key: int) -> str:
 
 
 def _scan_startup_folder() -> list[StartupEntry]:
-    """Scan startup folder for startup entries."""
+    """Scan startup folders — including the ``Disabled`` subfolder this app
+    moves shortcuts into, so disabled entries stay visible and re-enableable."""
     entries = []
 
     startup_folders = [
@@ -404,111 +470,127 @@ def _scan_startup_folder() -> list[StartupEntry]:
     ]
 
     for folder in startup_folders:
-        if not folder.exists():
-            continue
-
-        try:
-            for item in folder.glob("*.lnk"):
-                # Extract target from shortcut (simplified)
-                # Would need COM for proper shortcut parsing
-                entry = StartupEntry(
-                    name=item.stem,
-                    publisher="Unknown",
-                    status=StartupStatus.ENABLED,
-                    impact=StartupImpact.MEDIUM,
-                    source=StartupSource.STARTUP_FOLDER,
-                    location=str(item),
-                    command=str(item),
-                    enabled=True,
-                )
-                entries.append(entry)
-        except Exception as e:
-            logger.error(f"Failed to scan startup folder {folder}: {e}")
+        # (directory, enabled) — Disabled subfolder holds toggled-off shortcuts.
+        for scan_dir, enabled in ((folder, True), (folder / "Disabled", False)):
+            if not scan_dir.exists():
+                continue
+            try:
+                for item in scan_dir.glob("*.lnk"):
+                    # location always points at the *original* Startup path so
+                    # enable/disable can move the shortcut back and forth.
+                    original = folder / item.name
+                    entry = StartupEntry(
+                        name=item.stem,
+                        publisher="Unknown",
+                        status=StartupStatus.ENABLED if enabled else StartupStatus.DISABLED,
+                        impact=StartupImpact.MEDIUM,
+                        source=StartupSource.STARTUP_FOLDER,
+                        location=str(original),
+                        command=str(item),
+                        enabled=enabled,
+                    )
+                    entries.append(entry)
+            except Exception as e:
+                logger.error(f"Failed to scan startup folder {scan_dir}: {e}")
 
     return entries
 
 
-def _scan_task_scheduler() -> list[StartupEntry]:
-    """Scan Task Scheduler for startup tasks."""
-    if not IS_WINDOWS:
-        return []
+def _scan_tasks_and_services() -> tuple[list[StartupEntry], list[StartupEntry]]:
+    """Scan Task Scheduler logon/boot tasks AND auto-start services in a
+    single PowerShell process.
 
-    entries = []
+    Replaces ``schtasks /query /v`` (verbose enumeration, ~10-30s) and
+    ``psutil.win_service_iter()`` (per-service SCM queries) with one
+    ``Get-ScheduledTask`` + ``Get-CimInstance`` call returning JSON —
+    typically 10x faster.
+    """
+    if not IS_WINDOWS:
+        return [], []
+
+    ps_script = r"""
+$tasks = @(Get-ScheduledTask | Where-Object {
+  $_.Triggers | Where-Object { $_.CimClass.CimClassName -match 'LogonTrigger|BootTrigger' }
+} | ForEach-Object {
+  $a = $_.Actions | Select-Object -First 1
+  $cmd = if ($a) { ($a.Execute + ' ' + $a.Arguments).Trim() } else { '' }
+  [pscustomobject]@{ name = $_.TaskName; enabled = ($_.State -ne 'Disabled'); command = $cmd }
+})
+$svcs = @(Get-CimInstance Win32_Service -Filter "StartMode='Auto'" | ForEach-Object {
+  [pscustomobject]@{ name = $_.Name; display = $_.DisplayName; state = $_.State; binpath = $_.PathName }
+})
+@{ tasks = $tasks; services = $svcs } | ConvertTo-Json -Depth 4 -Compress
+"""
+
+    task_entries: list[StartupEntry] = []
+    service_entries: list[StartupEntry] = []
 
     try:
         import subprocess
 
-        # Use schtasks.exe to query startup tasks
         result = subprocess.run(
-            ["schtasks", "/query", "/fo", "CSV", "/v"],
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=60,
         )
+        if result.returncode != 0 or not result.stdout.strip():
+            logger.warning(f"Task/service scan failed: {result.stderr.strip()[:200]}")
+            return [], []
 
-        if result.returncode != 0:
-            logger.warning(f"Task Scheduler query failed: {result.stderr}")
-            return []
+        data = json.loads(result.stdout)
+        tasks = data.get("tasks") or []
+        services = data.get("services") or []
+        # PS 5.1 unwraps single-element arrays to a scalar object.
+        if isinstance(tasks, dict):
+            tasks = [tasks]
+        if isinstance(services, dict):
+            services = [services]
 
-        # Parse CSV output
-        lines = result.stdout.split("\n")
-        if len(lines) < 2:
-            return []
-
-        # Skip header line
-        for line in lines[1:]:
-            if not line.strip():
-                continue
-
-            try:
-                parts = [p.strip('"') for p in line.split('","')]
-                if len(parts) < 8:
-                    continue
-
-                task_name = parts[1]
-                author = parts[7] if len(parts) > 7 else "Unknown"
-                status = parts[3] if len(parts) > 3 else "Unknown"
-                trigger = parts[6] if len(parts) > 6 else "Unknown"
-                command = parts[8] if len(parts) > 8 else ""
-
-                # Only include startup-related tasks
-                # Check if trigger contains "AtLogon" or "AtStartup"
-                if "AtLogon" not in trigger and "AtStartup" not in trigger:
-                    continue
-
-                # Check if enabled
-                enabled = status == "Ready"
-
-                # Extract publisher from author or command
-                publisher = author if author and author != "Unknown" else _extract_publisher_from_path(command)
-
-                # Estimate impact
-                impact = _estimate_startup_impact(command)
-
-                entry = StartupEntry(
-                    name=task_name,
-                    publisher=publisher,
+        for t in tasks:
+            command = t.get("command") or ""
+            enabled = bool(t.get("enabled"))
+            task_entries.append(
+                StartupEntry(
+                    name=t.get("name") or "Unknown",
+                    publisher=_extract_publisher_from_path(command),
                     status=StartupStatus.ENABLED if enabled else StartupStatus.DISABLED,
-                    impact=impact,
+                    impact=_estimate_startup_impact(command),
                     source=StartupSource.TASK_SCHEDULER,
                     location="Task Scheduler",
                     command=command,
                     enabled=enabled,
                 )
-                entries.append(entry)
+            )
 
-            except Exception as e:
-                logger.debug(f"Failed to parse task scheduler line: {e}")
+        for s in services:
+            name = s.get("name") or ""
+            if any(crit in name.lower() for crit in CRITICAL_SYSTEM_ENTRIES):
                 continue
+            binpath = s.get("binpath") or ""
+            display = s.get("display") or name
+            service_entries.append(
+                StartupEntry(
+                    name=display,
+                    publisher=_extract_publisher_from_path(binpath) if binpath else "Unknown",
+                    status=StartupStatus.ENABLED if s.get("state") == "Running" else StartupStatus.DISABLED,
+                    impact=_estimate_startup_impact(binpath or display),
+                    source=StartupSource.STARTUP_SERVICE,
+                    location=f"Services\\{name}",
+                    command=binpath,
+                    enabled=True,
+                )
+            )
 
-        logger.info(f"Found {len(entries)} startup tasks in Task Scheduler")
-
+        logger.info(
+            f"Found {len(task_entries)} startup tasks and {len(service_entries)} auto-start services"
+        )
     except subprocess.TimeoutExpired:
-        logger.error("Task Scheduler query timed out")
+        logger.error("Task/service scan timed out")
     except Exception as e:
-        logger.error(f"Failed to scan Task Scheduler: {e}")
+        logger.error(f"Failed to scan tasks/services: {e}")
 
-    return entries
+    return task_entries, service_entries
 
 
 def _extract_publisher_from_path(path: str) -> str:
@@ -558,75 +640,32 @@ def _estimate_startup_impact(command: str) -> StartupImpact:
     return StartupImpact.LOW
 
 
-def _scan_startup_services() -> list[StartupEntry]:
-    """Scan Windows services with Automatic startup type.
-
-    Uses psutil's win_service_iter to enumerate all services and filters
-    for those with start_type == 'auto' or 'auto_delayed'. These services
-    run at boot and impact startup performance.
-    """
-    if not IS_WINDOWS:
-        return []
-
-    entries: list[StartupEntry] = []
-    try:
-        import psutil as _psutil
-        for svc in _psutil.win_service_iter():
-            try:
-                info = svc.as_dict()
-                start_type = info.get("start_type", "")
-                if start_type not in ("auto", "auto_delayed"):
-                    continue
-                name = info.get("name", "")
-                display_name = info.get("display_name", name)
-                status_str = info.get("status", "unknown")
-                binpath = info.get("binpath", "")
-                username = info.get("username", "")
-
-                # Skip critical Windows services
-                name_lower = name.lower()
-                if any(crit in name_lower for crit in CRITICAL_SYSTEM_ENTRIES):
-                    continue
-
-                impact = _estimate_startup_impact(binpath or display_name)
-
-                entry = StartupEntry(
-                    name=display_name or name,
-                    publisher=_extract_publisher_from_path(binpath) if binpath else "Unknown",
-                    status=StartupStatus.ENABLED if status_str == "running" else StartupStatus.DISABLED,
-                    impact=impact,
-                    source=StartupSource.STARTUP_SERVICE,
-                    location=f"Services\\{name}",
-                    command=binpath or "",
-                    enabled=True,
-                )
-                entries.append(entry)
-            except Exception:
-                continue
-        logger.info(f"Found {len(entries)} startup services")
-    except Exception as e:
-        logger.error(f"Failed to scan startup services: {e}")
-
-    return entries
-
-
 def scan_startup_entries() -> list[StartupEntry]:
-    """Scan all startup sources for startup entries."""
+    """Scan all startup sources in parallel.
+
+    Registry + folder scans are near-instant; the tasks/services scan is
+    one PowerShell process. Running them concurrently keeps total scan
+    time at the slowest single source instead of the sum.
+    """
     logger.info("Scanning startup entries")
 
-    all_entries = []
+    all_entries: list[StartupEntry] = []
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        reg_future = pool.submit(_scan_registry_run)
+        folder_future = pool.submit(_scan_startup_folder)
+        ts_future = pool.submit(_scan_tasks_and_services)
 
-    # Scan registry
-    all_entries.extend(_scan_registry_run())
-
-    # Scan startup folder
-    all_entries.extend(_scan_startup_folder())
-
-    # Scan task scheduler
-    all_entries.extend(_scan_task_scheduler())
-
-    # Scan startup services
-    all_entries.extend(_scan_startup_services())
+        for future in (reg_future, folder_future):
+            try:
+                all_entries.extend(future.result())
+            except Exception as e:
+                logger.error(f"Startup scan worker failed: {e}")
+        try:
+            tasks, services = ts_future.result()
+            all_entries.extend(tasks)
+            all_entries.extend(services)
+        except Exception as e:
+            logger.error(f"Task/service scan worker failed: {e}")
 
     logger.info(f"Found {len(all_entries)} startup entries")
     return all_entries
@@ -741,6 +780,11 @@ def disable_startup_entry(entry: StartupEntry) -> dict[str, Any]:
 def _disable_registry_entry(entry: StartupEntry) -> tuple[bool, str]:
     """Disable registry startup entry.
 
+    For Run/Run32 entries this writes a StartupApproved flag (the same
+    mechanism Task Manager uses) so the entry stays listed and can be
+    re-enabled instantly. RunOnce entries — which StartupApproved does
+    not cover — are still removed from the key.
+
     Returns:
         (success, message) tuple where message explains the outcome.
     """
@@ -763,7 +807,22 @@ def _disable_registry_entry(entry: StartupEntry) -> tuple[bool, str]:
         return False, f"Unsupported registry root: {root_key_str}"
 
     root_key = root_key_map[root_key_str]
+    bucket = _approved_subkey_for(sub_key)
 
+    # Preferred path: StartupApproved flag — entry stays visible.
+    if bucket is not None:
+        try:
+            _write_startup_approved(root_key, bucket, entry.name, enabled=False)
+            logger.info(f"Disabled registry entry via StartupApproved: {entry.name}")
+            return True, "Disabled Successfully"
+        except PermissionError:
+            return False, "Administrator permission required to modify this registry entry"
+        except OSError as e:
+            if e.winerror == 5:
+                return False, "Administrator permission required to modify this registry entry"
+            return False, f"Registry access denied: {e}"
+
+    # Fallback for RunOnce: remove the value (no StartupApproved bucket).
     try:
         key = winreg.OpenKey(root_key, sub_key, 0, winreg.KEY_SET_VALUE)
     except FileNotFoundError:
@@ -873,7 +932,12 @@ def enable_startup_entry(entry: StartupEntry) -> bool:
 
 
 def _enable_registry_entry(entry: StartupEntry) -> bool:
-    """Enable registry startup entry."""
+    """Enable registry startup entry.
+
+    For Run/Run32 entries this flips the StartupApproved flag back to
+    enabled — the Run value was never deleted, so nothing to recreate.
+    RunOnce entries are re-written with the stored command.
+    """
     if not IS_WINDOWS:
         return False
 
@@ -893,11 +957,15 @@ def _enable_registry_entry(entry: StartupEntry) -> bool:
         return False
 
     root_key = root_key_map[root_key_str]
+    bucket = _approved_subkey_for(sub_key)
 
     try:
-        key = winreg.OpenKey(root_key, sub_key, 0, winreg.KEY_SET_VALUE)
-        winreg.SetValueEx(key, entry.name, 0, winreg.REG_SZ, entry.command)
-        winreg.CloseKey(key)
+        if bucket is not None:
+            _write_startup_approved(root_key, bucket, entry.name, enabled=True)
+        else:
+            key = winreg.OpenKey(root_key, sub_key, 0, winreg.KEY_SET_VALUE)
+            winreg.SetValueEx(key, entry.name, 0, winreg.REG_SZ, entry.command)
+            winreg.CloseKey(key)
         logger.info(f"Enabled registry entry: {entry.name}")
         return True
     except Exception as e:

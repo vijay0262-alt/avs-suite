@@ -297,7 +297,14 @@ export class StartupExecutionTask extends BaseMaintenanceTask {
       publisher: entry.publisher,
       status: entry.enabled ? 'enabled' : 'disabled',
       impact: entry.impactLevel === 'very_high' ? 'high' : entry.impactLevel === 'none' ? 'unknown' : entry.impactLevel,
-      source: entry.launchType === 'folder' ? 'folder' : entry.launchType === 'task' ? 'task' : 'registry',
+      source:
+        entry.launchType === 'folder'
+          ? 'startup_folder'
+          : entry.launchType === 'task'
+            ? 'task_scheduler'
+            : entry.launchType === 'service'
+              ? 'startup_service'
+              : 'registry_run',
       location: (entry.metadata?.location as string) ?? '',
       command: entry.commandLine,
       enabled: entry.enabled,

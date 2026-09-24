@@ -7,10 +7,6 @@ import type { StartupEntry, StartupBackup } from './startup.types';
 import type { IStartupService } from './startup.service';
 import { startupService } from './startup.service';
 import { optimizationEventBus, OptimizationEventType } from '../health';
-import { currentEdition, canUse } from '../licensing/FeatureGate';
-import { getEditionLimit } from '../licensing/editionLimits';
-
-const FREE_DISABLE_LIMIT = 3;
 
 export interface StartupState {
   bootstrap: 'idle' | 'loading' | 'ready' | 'error';
@@ -20,8 +16,8 @@ export interface StartupState {
   error: string | null;
   selectedEntry: StartupEntry | null;
   backups: StartupBackup[];
-  /** Number of entries disabled in the current session */
-  sessionDisabledCount: number;
+  /** Names of entries with a toggle currently in flight. */
+  pendingToggles: string[];
 }
 
 export class StartupViewModel extends ViewModel<StartupState> {
@@ -34,7 +30,7 @@ export class StartupViewModel extends ViewModel<StartupState> {
       error: null,
       selectedEntry: null,
       backups: [],
-      sessionDisabledCount: 0,
+      pendingToggles: [],
     });
   }
 
@@ -71,59 +67,82 @@ export class StartupViewModel extends ViewModel<StartupState> {
     }
   }
 
-  async disableEntry(entry: StartupEntry) {
-    // Enforce Free edition limit: max 3 disables per session
-    const isFree = currentEdition() === 'free';
-    const hasUnlimited = canUse('startup.disable');
-    if (isFree && !hasUnlimited && this.state.sessionDisabledCount >= FREE_DISABLE_LIMIT) {
-      this.setState({
-        error: `Free edition allows disabling up to ${FREE_DISABLE_LIMIT} startup entries. Upgrade to Professional for unlimited management.`,
-      });
-      return { success: false, message: 'Free limit reached' };
-    }
-
-    try {
-      const result = await this.service.disableEntry(entry);
-      if (result.success) {
-        this.setState({ sessionDisabledCount: this.state.sessionDisabledCount + 1 });
-      }
-      await this.loadEntries();
-      await this.loadBackups();
-      optimizationEventBus.emit({
-        type: OptimizationEventType.StartupOptimized,
-        moduleId: 'startup',
-        action: 'disable',
-        itemsProcessed: 1,
-        timestamp: Date.now(),
-      });
-      return result;
-    } catch (err) {
-      const error = err instanceof Error ? err.message : 'Failed to disable entry';
-      this.setState({ error });
-      throw err;
-    }
+  /** Identity key for an entry — name + location disambiguates dupes. */
+  private entryKey(entry: StartupEntry): string {
+    return `${entry.name}::${entry.location}`;
   }
 
-  async enableEntry(entry: StartupEntry) {
+  /** Optimistically flip an entry's enabled flag in place. */
+  private setEntryEnabled(entry: StartupEntry, enabled: boolean): void {
+    const key = this.entryKey(entry);
+    this.setState({
+      entries: this.state.entries.map((e) =>
+        this.entryKey(e) === key
+          ? { ...e, enabled, status: enabled ? 'enabled' : 'disabled' }
+          : e,
+      ),
+    });
+  }
+
+  private setPending(entry: StartupEntry, pending: boolean): void {
+    const key = this.entryKey(entry);
+    this.setState({
+      pendingToggles: pending
+        ? [...this.state.pendingToggles, key]
+        : this.state.pendingToggles.filter((k) => k !== key),
+    });
+  }
+
+  isTogglePending(entry: StartupEntry): boolean {
+    return this.state.pendingToggles.includes(this.entryKey(entry));
+  }
+
+  /**
+   * Toggle an entry on/off. Optimistic: the UI flips instantly, the
+   * backend updates its cache in place, and the flag is reverted only
+   * if the call fails. No full rescan per toggle.
+   */
+  private async toggleEntry(
+    entry: StartupEntry,
+    enabled: boolean,
+    action: 'disable' | 'enable',
+    call: () => Promise<{ success: boolean; message?: string; error?: string; reason?: string }>,
+  ) {
+    if (this.isTogglePending(entry)) return { success: false, message: 'Busy' };
+    this.setPending(entry, true);
+    this.setEntryEnabled(entry, enabled);
     try {
-      const result = await this.service.enableEntry(entry);
+      const result = await call();
       if (result.success) {
-        await this.loadEntries();
-        await this.loadBackups();
         optimizationEventBus.emit({
           type: OptimizationEventType.StartupOptimized,
           moduleId: 'startup',
-          action: 'enable',
+          action,
           itemsProcessed: 1,
           timestamp: Date.now(),
         });
+        void this.loadBackups();
+      } else {
+        // Revert the optimistic flip.
+        this.setEntryEnabled(entry, !enabled);
       }
       return result;
     } catch (err) {
-      const error = err instanceof Error ? err.message : 'Failed to enable entry';
+      this.setEntryEnabled(entry, !enabled);
+      const error = err instanceof Error ? err.message : `Failed to ${action} entry`;
       this.setState({ error });
       throw err;
+    } finally {
+      this.setPending(entry, false);
     }
+  }
+
+  async disableEntry(entry: StartupEntry) {
+    return this.toggleEntry(entry, false, 'disable', () => this.service.disableEntry(entry));
+  }
+
+  async enableEntry(entry: StartupEntry) {
+    return this.toggleEntry(entry, true, 'enable', () => this.service.enableEntry(entry));
   }
 
   async restoreBackup(backupId: string) {
@@ -150,31 +169,5 @@ export class StartupViewModel extends ViewModel<StartupState> {
 
   selectEntry(entry: StartupEntry | null) {
     this.setState({ selectedEntry: entry });
-  }
-
-  /**
-   * Returns the maximum number of entries that can be disabled in the current edition.
-   * Returns null for unlimited (Professional).
-   */
-  getDisableLimit(): number | null {
-    return getEditionLimit('startupManagerEntriesPerRun', currentEdition() === 'professional');
-  }
-
-  /**
-   * Remaining disables available in this session (Free edition only).
-   * Returns null for unlimited (Professional).
-   */
-  remainingDisables(): number | null {
-    const limit = this.getDisableLimit();
-    if (limit === null) return null;
-    return Math.max(0, limit - this.state.sessionDisabledCount);
-  }
-
-  /**
-   * Whether the disable limit has been reached (Free edition only).
-   */
-  isDisableLimitReached(): boolean {
-    const remaining = this.remainingDisables();
-    return remaining !== null && remaining === 0;
   }
 }
