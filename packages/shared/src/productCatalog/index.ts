@@ -57,21 +57,37 @@ export interface ProductCatalogEntry {
 // ── Feature definitions per plan ─────────────────────────────────
 
 const FREE_FEATURES = [
+  'Dashboard (Health Score, CPU/RAM/Disk)',
   'Junk Cleaner',
-  'Registry Cleaner',
-  'Startup Manager',
+  'Registry Cleaner (scan + fix)',
+  'Startup Manager (full control)',
+  'Duplicate Finder (unlimited scan + delete)',
+  'Browser & Privacy Cleaner (all browsers)',
+  'File Shredder (all methods, unlimited files)',
+  'Disk Analyzer (analyze)',
+  'Security Scan',
+  'Reports (last 30 days, PDF export)',
+  'System Information',
 ];
 
 const PROFESSIONAL_FEATURES = [
-  'Junk Cleaner',
-  'Registry Cleaner',
-  'Startup Manager',
-  'Privacy Cleaner',
-  'Duplicate Finder',
-  'Disk Analyzer',
-  'Software Uninstaller',
+  'Everything in Free, plus:',
+  'AI Smart Optimize (Evidence-Based Tuning)',
+  'AI Antivirus Security (Real-time Protection)',
+  'AI Predictive Health (Trend Forecasting)',
+  'AI Daily Briefing',
+  'AI Auto-Care (Scheduled Maintenance)',
+  'Security Remediation & Quarantine',
+  'Software Uninstaller (Batch + Leftover Cleanup)',
   'Software Updater',
-  'Performance Optimization',
+  'Driver Updater',
+  'Disk Analyzer (delete files)',
+  'Safe Folder (Encrypted File Protection)',
+  'File Recovery',
+  'Network Optimizer',
+  'Analytics (Advanced Performance Insights)',
+  'Unlimited Reports History + All Export Formats',
+  'Priority Support',
 ];
 
 // ── Product Catalog ──────────────────────────────────────────────
@@ -98,8 +114,8 @@ export const PRODUCT_CATALOG: readonly ProductCatalogEntry[] = [
       {
         edition: EDITIONS.PROFESSIONAL,
         label: 'Professional',
-        price: '$29.99',
-        priceValue: 29.99,
+        price: '$39.99',
+        priceValue: 39.99,
         period: '/year',
         description: 'Complete optimization suite with advanced tools.',
         features: PROFESSIONAL_FEATURES,

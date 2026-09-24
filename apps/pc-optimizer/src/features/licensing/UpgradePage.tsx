@@ -21,6 +21,16 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 const PRO_FEATURES = [
+  { label: 'Dashboard & Health Score', icon: ChartBarIcon, free: true, pro: true },
+  { label: 'Junk Cleaner', icon: RocketLaunchIcon, free: true, pro: true },
+  { label: 'Registry Cleaner', icon: RocketLaunchIcon, free: true, pro: true },
+  { label: 'Startup Manager', icon: RocketLaunchIcon, free: true, pro: true },
+  { label: 'Duplicate File Finder', icon: ChartBarIcon, free: true, pro: true },
+  { label: 'Browser & Privacy Cleaner', icon: ShieldCheckIcon, free: true, pro: true },
+  { label: 'File Shredder', icon: ShieldCheckIcon, free: true, pro: true },
+  { label: 'Disk Analyzer', icon: ChartBarIcon, free: 'Analyze only', pro: 'Analyze + delete' },
+  { label: 'Security Scan', icon: ShieldCheckIcon, free: 'Scan only', pro: 'Scan + quarantine + remediate' },
+  { label: 'Reports', icon: DocumentArrowDownIcon, free: '30 days, PDF', pro: 'Unlimited, all formats' },
   { label: 'AI Smart Optimization', icon: BoltIcon, free: false, pro: true },
   { label: 'AI Predictive Health', icon: ChartBarIcon, free: false, pro: true },
   { label: 'AI Hardware Intelligence', icon: CpuChipIcon, free: 'Limited', pro: 'Full' },
@@ -28,13 +38,13 @@ const PRO_FEATURES = [
   { label: 'AI Threat Investigation', icon: ShieldCheckIcon, free: 'Basic', pro: 'Advanced' },
   { label: 'AI Remediation & Quarantine', icon: ShieldCheckIcon, free: false, pro: true },
   { label: 'AI Daily Briefing', icon: SparklesIcon, free: false, pro: true },
-  { label: 'Export Center (JSON, CSV, HTML)', icon: DocumentArrowDownIcon, free: false, pro: true },
-  { label: 'Advanced Security Scanning', icon: ShieldCheckIcon, free: 'Quick only', pro: 'All modes' },
-  { label: 'Startup Manager', icon: RocketLaunchIcon, free: 'View only', pro: 'Full control' },
-  { label: 'Duplicate File Finder', icon: ChartBarIcon, free: false, pro: true },
+  { label: 'AI Auto-Care (Scheduled Maintenance)', icon: SparklesIcon, free: false, pro: true },
   { label: 'Software Uninstaller', icon: RocketLaunchIcon, free: false, pro: true },
+  { label: 'Software Updater', icon: RocketLaunchIcon, free: false, pro: true },
+  { label: 'Driver Updater', icon: RocketLaunchIcon, free: false, pro: true },
+  { label: 'Safe Folder & File Recovery', icon: ShieldCheckIcon, free: false, pro: true },
+  { label: 'Network Optimizer', icon: RocketLaunchIcon, free: false, pro: true },
   { label: 'AVS AI Assistant', icon: SparklesIcon, free: true, pro: true },
-  { label: 'Dashboard & Health Score', icon: ChartBarIcon, free: true, pro: true },
 ];
 
 export default function UpgradePage() {
@@ -58,10 +68,10 @@ export default function UpgradePage() {
             &ldquo;AVS AI Shield doesn&apos;t just monitor your PC&mdash;it understands it.&rdquo;
           </p>
           <div className="mt-6 flex items-baseline gap-2">
-            <span className="text-statistic font-bold text-[var(--avs-text-primary)]">$49.99</span>
+            <span className="text-statistic font-bold text-[var(--avs-text-primary)]">$39.99</span>
             <span className="text-small text-[var(--avs-text-muted)]">/year</span>
           </div>
-          <p className="mt-1 text-caption text-[var(--avs-text-muted)]">30-day money-back guarantee</p>
+          <p className="mt-1 text-caption text-[var(--avs-text-muted)]">or $4.99/month · 30-day money-back guarantee</p>
           <Button
             size="lg"
             className="mt-6"
@@ -128,7 +138,7 @@ export default function UpgradePage() {
           unit="%"
           tone="success"
           icon={<SparklesIcon className="h-6 w-6" />}
-          description="$49.99/year · 30-day guarantee"
+          description="$39.99/year or $4.99/month · 30-day guarantee"
           data-testid="upgrade-hero-gauge"
         />
 
