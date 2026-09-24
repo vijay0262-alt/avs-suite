@@ -3,11 +3,13 @@ import { formatBytes } from '@avs/shared/utils';
 import { CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon, ArrowUturnLeftIcon, ShieldExclamationIcon } from '@heroicons/react/24/outline';
 import { Modal } from './Modal';
 import { useElevation } from '../../../hooks/useElevation';
-import type { CleaningStatusSnapshot } from '../junkCleaner.types';
+import type { CleaningPreview, CleaningStatusSnapshot } from '../junkCleaner.types';
 
 export interface CleaningSummaryProps {
   open: boolean;
   snapshot: CleaningStatusSnapshot;
+  /** The confirmed preview — used to show "recovered X of Y" accuracy. */
+  preview?: CleaningPreview | null;
   onClose: () => void;
   onUndo?: () => void;
 }
@@ -39,7 +41,7 @@ function fmtSpeed(bytesPerSec: number): string {
  * Post-clean summary — shown once the CleaningManager marks the task
  * as completed / cancelled / failed. Per-category rollup + aggregate.
  */
-export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSummaryProps) {
+export function CleaningSummary({ open, snapshot, preview, onClose, onUndo }: CleaningSummaryProps) {
   const { isAdmin, relaunchAsAdmin } = useElevation();
   const overall = snapshot.status ?? 'completed';
   const Icon =
@@ -72,6 +74,25 @@ export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSum
     0,
   );
   const remaining = Math.max(0, totalCandidates - totalFiles);
+
+  // Space-to-clean vs actually cleaned — the preview total is what the
+  // user confirmed; bytesRecovered is what was actually freed.
+  const plannedBytes = preview?.totalBytes ?? 0;
+  const plannedFiles = preview?.totalFiles ?? totalCandidates;
+  const plannedByCleaner = new Map(
+    (preview?.cleaners ?? []).map((c) => [c.id, c.totalBytes]),
+  );
+
+  // Aggregate skip/failure reasons across cleaners for the breakdown.
+  const skipReasons = new Map<string, number>();
+  for (const c of snapshot.cleaners ?? []) {
+    for (const [reason, count] of Object.entries(c.skipReasons ?? {})) {
+      skipReasons.set(reason, (skipReasons.get(reason) ?? 0) + count);
+    }
+    for (const [reason, count] of Object.entries(c.failureReasons ?? {})) {
+      skipReasons.set(reason, (skipReasons.get(reason) ?? 0) + count);
+    }
+  }
 
   return (
     <Modal
@@ -108,16 +129,21 @@ export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSum
               data-testid="cleaning-summary-recovered"
             >
               Recovered {formatBytes(bytesRecovered)}
+              {plannedBytes > 0 && (
+                <span className="text-section-title font-medium text-text-muted">
+                  {' '}of {formatBytes(plannedBytes)}
+                </span>
+              )}
             </div>
             <div className="text-small text-text-secondary">
-              {filesRemoved.toLocaleString()} files removed in {fmtDuration(durationMs)}
+              {filesRemoved.toLocaleString()} of {plannedFiles.toLocaleString()} files removed in {fmtDuration(durationMs)}
             </div>
           </div>
         </div>
 
         {/* Detailed metrics */}
         <div className="grid grid-cols-5 gap-3">
-          <StatCard label="Cleanable Files" value={totalFiles} testId="cs-total" />
+          <StatCard label="Cleanable Files" value={plannedFiles || totalFiles} testId="cs-total" />
           <StatCard label="Removed" value={filesRemoved} testId="cs-removed" />
           <StatCard label="Skipped" value={filesSkipped} testId="cs-skipped" />
           <StatCard label="Failed" value={filesFailed} testId="cs-failed" />
@@ -149,7 +175,12 @@ export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSum
                 <tr key={c.id} className="border-b border-[var(--avs-border)]/60">
                   <td className="py-2 text-text-primary">{c.name}</td>
                   <td className="py-2 text-right tabular-nums">{c.filesRemoved.toLocaleString()}</td>
-                  <td className="py-2 text-right tabular-nums">{formatBytes(c.bytesRecovered)}</td>
+                  <td className="py-2 text-right tabular-nums">
+                    {formatBytes(c.bytesRecovered)}
+                    {plannedByCleaner.has(c.id) && (
+                      <span className="text-text-muted"> / {formatBytes(plannedByCleaner.get(c.id)!)}</span>
+                    )}
+                  </td>
                   <td className="py-2 text-right tabular-nums">{c.filesSkipped.toLocaleString()}</td>
                   <td className="py-2 text-right tabular-nums">{c.filesFailed.toLocaleString()}</td>
                   <td className="py-2 text-right">
@@ -161,6 +192,20 @@ export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSum
           </table>
         </div>
         
+        {/* Skip/failure reason breakdown */}
+        {skipReasons.size > 0 && (
+          <div className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-3" data-testid="cleaning-summary-skip-reasons">
+            <div className="mb-1 text-caption uppercase tracking-wide text-text-muted">Why files were skipped</div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-caption text-text-secondary">
+              {Array.from(skipReasons.entries()).map(([reason, count]) => (
+                <span key={reason}>
+                  {SKIP_REASON_LABELS[reason] ?? reason}: <span className="font-medium tabular-nums">{count.toLocaleString()}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Errors/warnings if any */}
         {(snapshot.totalFilesFailed ?? 0) > 0 && (
           <div className="rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] p-3 text-caption text-text-secondary">
@@ -190,6 +235,19 @@ export function CleaningSummary({ open, snapshot, onClose, onUndo }: CleaningSum
     </Modal>
   );
 }
+
+const SKIP_REASON_LABELS: Record<string, string> = {
+  'missing': 'Already gone',
+  'symlink': 'Links / reparse points',
+  'out-of-scope': 'Outside safe folders',
+  'forbidden': 'Protected system path',
+  'not-a-file': 'Not a file',
+  'permission-denied': 'Access denied',
+  'cancelled': 'Cancelled',
+  'invalid-path': 'Invalid path',
+  'inaccessible': 'Not accessible',
+  'invalid': 'Invalid path',
+};
 
 function StatCard({ label, value, testId }: { label: string; value: number | string; testId: string }) {
   return (

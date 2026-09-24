@@ -35,11 +35,9 @@ class IconCacheCleaner(BaseCleaner):
         return []
 
     def include(self, entry: os.DirEntry[str]) -> bool:
-        name = entry.name.lower()
-        return (
-            name.startswith("thumbcache")
-            or name.startswith("iconcache")
-        )
+        # Only iconcache* — thumbcache* belongs to thumbnail-cache and
+        # would otherwise be counted (and cleaned) by both cleaners.
+        return entry.name.lower().startswith("iconcache")
 
     def scan(
         self,

@@ -1,16 +1,19 @@
+import type { ReactNode } from 'react';
 import { Card, ProgressBar } from '@avs/ui';
 import { formatBytes } from '@avs/shared/utils';
 import type { ScanStatusSnapshot } from '../junkCleaner.types';
 
 export interface ScanProgressProps {
   snapshot: ScanStatusSnapshot;
+  /** Optional action buttons rendered in the card header (e.g. Clean). */
+  actions?: ReactNode;
 }
 
 /**
  * Live-progress panel — total junk, files, current scanner, ETA.
  * Shown while scanning; also shown after completion as a summary.
  */
-export function ScanProgress({ snapshot }: ScanProgressProps) {
+export function ScanProgress({ snapshot, actions }: ScanProgressProps) {
   const running = snapshot.status === 'running';
   const progress = snapshot.progress ?? 0;
   const totalBytes = snapshot.totalBytes ?? 0;
@@ -25,6 +28,7 @@ export function ScanProgress({ snapshot }: ScanProgressProps) {
       title={running ? 'Scanning your PC…' : 'Scan summary'}
       className="mb-4"
       data-testid="junk-scan-progress"
+      actions={actions}
     >
       {/* Live file display — prominent like SUPERAntiSpyware / CCleaner */}
       {running && (

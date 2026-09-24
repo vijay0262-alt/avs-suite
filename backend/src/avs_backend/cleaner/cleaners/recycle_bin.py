@@ -50,6 +50,12 @@ class RecycleBinCleaner(BaseCleaner):
                 roots.append(candidate)
         return roots
 
+    def include(self, entry: os.DirEntry[str]) -> bool:
+        # Skip $I* metadata sidecars — every recycled file has a $I*
+        # index record plus a $R* content file. Counting both inflated
+        # the file count ~2x and added metadata bytes to the total.
+        return not entry.name.startswith("$I")
+
     def clean(
         self,
         candidate_paths: list[str],

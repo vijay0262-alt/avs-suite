@@ -517,9 +517,10 @@ export class JunkCleanerViewModel extends ViewModel<JunkCleanerState> {
         });
         // Clear stale scan results and trigger a rescan so the UI
         // shows fresh "remaining junk" instead of pre-cleaning values.
+        // NOTE: keep `selected` — clearing it makes startScan() fail
+        // with "Select at least one category" and shows an error banner.
         this.setState({
           snapshot: { present: false },
-          selected: new Set<string>(),
           detailsCleanerId: null,
           detailsItems: [],
         });

@@ -25,14 +25,10 @@ class RecentItemsCleaner(BaseCleaner):
     category = CleanerCategory.USER
 
     def targets(self) -> Iterable[Path]:
+        # AutomaticDestinations / CustomDestinations live *inside* Recent —
+        # listing them as separate roots would double-count every file.
         roots: list[Path] = []
         recent = expand(r"%APPDATA%\Microsoft\Windows\Recent")
         if recent.exists():
             roots.append(recent)
-        auto_dest = expand(r"%APPDATA%\Microsoft\Windows\Recent\AutomaticDestinations")
-        if auto_dest.exists():
-            roots.append(auto_dest)
-        custom_dest = expand(r"%APPDATA%\Microsoft\Windows\Recent\CustomDestinations")
-        if custom_dest.exists():
-            roots.append(custom_dest)
         return roots

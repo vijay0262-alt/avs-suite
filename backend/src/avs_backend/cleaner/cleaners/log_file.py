@@ -29,9 +29,9 @@ class LogFileCleaner(BaseCleaner):
     min_age_days = 14
 
     def targets(self) -> Iterable[Path]:
+        # NOTE: %TEMP% is owned by user-temp and WebCache by
+        # offline-web-pages — scanning them here double-counted files.
         return [
             expand(r"%SystemRoot%\Logs"),
             expand(r"%SystemRoot%\System32\LogFiles"),
-            expand(r"%LOCALAPPDATA%\Microsoft\Windows\WebCache"),
-            expand(r"%TEMP%"),
         ]

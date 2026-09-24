@@ -188,6 +188,9 @@ class BaseCleaner(ICleaner):
         # keep it O(1) and estimate by root index).
         n_roots = len(valid_roots)
         processed_files = 0
+        # Dedupe guard — when two declared roots overlap (one inside the
+        # other) the same file would otherwise be counted twice.
+        seen_paths: set[str] = set()
 
         for root_idx, root in enumerate(valid_roots):
             if cancel.is_set():
@@ -199,6 +202,7 @@ class BaseCleaner(ICleaner):
                 ext_filter,
                 min_age_cutoff,
                 processed_ref=[processed_files],
+                seen_paths=seen_paths,
                 on_file=on_file,
                 on_progress=on_progress,
                 root_idx=root_idx,
@@ -221,6 +225,7 @@ class BaseCleaner(ICleaner):
         ext_filter: set[str] | None,
         min_age_cutoff: float,
         processed_ref: list[int],
+        seen_paths: set[str] | None = None,
         on_file: "Callable[[str], None] | None" = None,
         on_progress: "ProgressCallback | None" = None,
         root_idx: int = 0,
@@ -283,6 +288,13 @@ class BaseCleaner(ICleaner):
                         # User predicate
                         if not self.include(entry):
                             continue
+
+                        # Skip duplicates from overlapping roots.
+                        if seen_paths is not None:
+                            key = os.path.normcase(entry.path)
+                            if key in seen_paths:
+                                continue
+                            seen_paths.add(key)
 
                         # Reuse the splitext result from the extension filter
                         # (computed above when ext_filter is set; recompute only
@@ -365,7 +377,9 @@ class BaseCleaner(ICleaner):
             if not t:
                 continue
             try:
-                allowed_roots.append(os.path.normpath(str(t)))
+                # normcase folds case on Windows so the prefix check is
+                # case-insensitive like the filesystem itself.
+                allowed_roots.append(os.path.normcase(os.path.normpath(str(t))))
             except (OSError, RuntimeError, ValueError):
                 continue
 
@@ -377,7 +391,7 @@ class BaseCleaner(ICleaner):
             # which opens a file handle per call — far too expensive for
             # 10k+ files. Scan paths are already absolute.
             try:
-                resolved = os.path.normpath(raw)
+                resolved = os.path.normcase(os.path.normpath(raw))
             except (OSError, RuntimeError, ValueError):
                 preview.warnings.append(ValidationIssue(path=raw, reason="invalid", detail="Path could not be normalized"))
                 continue
@@ -471,7 +485,7 @@ class BaseCleaner(ICleaner):
             if not t:
                 continue
             try:
-                allowed_roots.append(os.path.normpath(str(t)))
+                allowed_roots.append(os.path.normcase(os.path.normpath(str(t))))
             except (OSError, RuntimeError):
                 continue
 
@@ -538,7 +552,7 @@ class BaseCleaner(ICleaner):
 
         def _worker(raw: str) -> tuple[str, int]:
             """Validate + lstat + delete a single file. Returns (outcome, size)."""
-            resolved = os.path.normpath(raw)
+            resolved = os.path.normcase(os.path.normpath(raw))
             if allowed_roots and not any(
                 resolved == root or resolved.startswith(root + sep)
                 for root in allowed_roots
@@ -703,7 +717,7 @@ class BaseCleaner(ICleaner):
         # a kernel syscall — far too expensive for 10k+ files.
         # Candidate paths from scan results are already absolute.
         try:
-            resolved = os.path.normpath(raw)
+            resolved = os.path.normcase(os.path.normpath(raw))
         except (OSError, RuntimeError, ValueError):
             return "skipped:invalid-path"
 

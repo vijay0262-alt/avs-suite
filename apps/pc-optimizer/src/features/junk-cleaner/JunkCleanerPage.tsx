@@ -204,16 +204,6 @@ export default function JunkCleanerPage() {
                     Rescan
                   </Button>
                 )}
-                {canClean && (
-                  <Button
-                    variant="danger"
-                    onClick={() => void vm.openPreview()}
-                    leftIcon={<SparklesIcon className="h-4 w-4" />}
-                    data-testid="junk-clean-btn"
-                  >
-                    Clean…
-                  </Button>
-                )}
                 <Button
                   variant="ghost"
                   onClick={() => setHistoryOpen((v) => !v)}
@@ -362,7 +352,23 @@ export default function JunkCleanerPage() {
               />
             </div>
           )}
-          {scanEverStarted && state.snapshot.status !== 'running' && <ScanProgress snapshot={state.snapshot} />}
+          {scanEverStarted && state.snapshot.status !== 'running' && (
+            <ScanProgress
+              snapshot={state.snapshot}
+              actions={
+                canClean ? (
+                  <Button
+                    variant="danger"
+                    onClick={() => void vm.openPreview()}
+                    leftIcon={<SparklesIcon className="h-4 w-4" />}
+                    data-testid="junk-clean-btn"
+                  >
+                    Clean {formatBytes(totalJunkBytes)}
+                  </Button>
+                ) : undefined
+              }
+            />
+          )}
 
           <Card
             title="Categories"
@@ -561,6 +567,7 @@ export default function JunkCleanerPage() {
       <CleaningSummary
         open={state.cleaningStep === 'summary'}
         snapshot={state.cleaningSnapshot}
+        preview={state.cleaningPreview}
         onClose={() => vm.closeCleaningSummary()}
         onUndo={() => void vm.undoLastClean()}
       />

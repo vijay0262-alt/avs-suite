@@ -111,6 +111,8 @@ export interface CleaningCategorySummary {
   elapsedMs: number;
   progress: number;
   totalCandidates: number;
+  skipReasons?: Record<string, number>;
+  failureReasons?: Record<string, number>;
 }
 
 export interface CleaningStatusSnapshot {
