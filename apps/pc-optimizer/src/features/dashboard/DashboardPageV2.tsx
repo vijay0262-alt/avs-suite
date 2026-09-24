@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, Card, EmptyState, LoadingState } from '@avs/ui';
 import { ModuleErrorBanner } from '../../components/ModuleStates';
 import {
@@ -89,6 +89,7 @@ export default function DashboardPage() {
   const isPro = useIsPro();
   const { show: showUpgrade } = useUpgradeDialog();
   const location = useLocation();
+  const navigate = useNavigate();
   // V1.0: When set, the modal shows previous scan results (Review Findings)
   // instead of auto-starting a new scan. null = start a new scan.
   const [reviewPlanId, setReviewPlanId] = useState<string | null>(null);
@@ -367,7 +368,9 @@ export default function DashboardPage() {
                 <Button
                   onClick={() => {
                     if (!isPro) {
-                      showUpgrade('One Click Optimize');
+                      // Free: send users to AI Smart Optimize, which has its
+                      // own "Upgrade to Professional" flow.
+                      navigate('/ai-smart-optimize');
                       return;
                     }
                     setReviewPlanId(null);
@@ -379,13 +382,8 @@ export default function DashboardPage() {
                   leftIcon={isScanning ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <BoltIcon className="h-5 w-5" />}
                   data-testid="dashboard-scan-cta"
                 >
-                  {isScanning ? 'Scanning...' : hasScanError ? 'Try Again' : 'Optimize Now'}
+                  {isScanning ? 'Scanning...' : hasScanError ? 'Try Again' : 'One Click Smart Optimize'}
                 </Button>
-                {!isPro && (
-                  <p className="text-xs text-white/40 mt-1.5 text-right" data-testid="dashboard-free-limit-hint">
-                    One Click Optimize is available in Pro version. Clean manually from Junk Cleaner in the sidebar.
-                  </p>
-                )}
               </div>
             </div>
           </div>
