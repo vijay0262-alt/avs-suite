@@ -173,15 +173,28 @@ class CleaningManager:
     # ------------------------------------------------------------------
     # Execute
     # ------------------------------------------------------------------
-    def execute(self, scan_task_id: str, only: list[str] | None = None) -> str:
+    def execute(
+        self,
+        scan_task_id: str,
+        only: list[str] | None = None,
+        max_bytes: int | None = None,
+    ) -> str:
         """Start a cleaning task. Cancels any running task first.
 
         A System Restore Point is created before any files are deleted so
         the user can revert if something goes wrong. This is best-effort —
         if System Protection is disabled or the process lacks admin
         privileges, the cleaning proceeds anyway with a logged warning.
+
+        When ``max_bytes`` is set (Free edition cap), candidate lists are
+        truncated so the total bytes cleaned stays under the budget.
+        Smaller categories are allocated first so more categories finish
+        completely; the largest remainder is cleaned partially. Atomic
+        cleaners (``supports_partial_clean = False``, e.g. Recycle Bin)
+        are included only when their full size fits the remaining budget.
         """
-        log.info("[CleaningManager] execute called for scan_task_id=%s, only=%s", scan_task_id, only)
+        log.info("[CleaningManager] execute called for scan_task_id=%s, only=%s, max_bytes=%s",
+                 scan_task_id, only, max_bytes)
         start = time.monotonic()
 
         # Best-effort System Restore Point before cleaning.
@@ -202,21 +215,69 @@ class CleaningManager:
 
             runtimes: list[_CleanerRuntime] = []
             total_candidates = 0
-            for cleaner_id, cleaner in self._cleaners.items():
-                if only is not None and cleaner_id not in only:
-                    continue
-                candidates = self._scan_manager.get_all_items(scan_task_id, cleaner_id)
-                log.debug("[CleaningManager] Collected %d candidates for cleaner %s", len(candidates), cleaner_id)
-                total_candidates += len(candidates)
-                
-                # Skip validation here - preview already validated these files
-                # Just use the candidates directly for cleaning to avoid double validation delay
-                if candidates:
-                    runtimes.append(
-                        _CleanerRuntime(
-                            cleaner=cleaner, candidate_paths=list(candidates)
+
+            if max_bytes is not None:
+                # Byte-budget path (Free edition cap): collect (path, size)
+                # pairs, then allocate the budget across cleaners —
+                # smallest categories first so more finish completely.
+                sized: list[tuple[ICleaner, list[tuple[str, int]], int]] = []
+                for cleaner_id, cleaner in self._cleaners.items():
+                    if only is not None and cleaner_id not in only:
+                        continue
+                    entries = self._scan_manager.get_all_item_sizes(scan_task_id, cleaner_id)
+                    if not entries:
+                        continue
+                    sized.append((cleaner, entries, sum(s for _, s in entries)))
+                sized.sort(key=lambda ce: ce[2])
+
+                remaining = max_bytes
+                for cleaner, entries, cleaner_bytes in sized:
+                    if remaining <= 0:
+                        break
+                    if not getattr(cleaner, "supports_partial_clean", True):
+                        # Atomic cleaner (e.g. Recycle Bin) — all or nothing.
+                        if cleaner_bytes <= remaining:
+                            runtimes.append(
+                                _CleanerRuntime(
+                                    cleaner=cleaner,
+                                    candidate_paths=[p for p, _ in entries],
+                                )
+                            )
+                            total_candidates += len(entries)
+                            remaining -= cleaner_bytes
+                        continue
+                    budget = remaining
+                    paths: list[str] = []
+                    for p, s in entries:
+                        if s <= budget:
+                            paths.append(p)
+                            budget -= s
+                    if paths:
+                        runtimes.append(
+                            _CleanerRuntime(cleaner=cleaner, candidate_paths=paths)
                         )
-                    )
+                        total_candidates += len(paths)
+                        remaining = budget
+                log.info(
+                    "[CleaningManager] Byte cap %d applied: %d candidates within budget",
+                    max_bytes, total_candidates,
+                )
+            else:
+                for cleaner_id, cleaner in self._cleaners.items():
+                    if only is not None and cleaner_id not in only:
+                        continue
+                    candidates = self._scan_manager.get_all_items(scan_task_id, cleaner_id)
+                    log.debug("[CleaningManager] Collected %d candidates for cleaner %s", len(candidates), cleaner_id)
+                    total_candidates += len(candidates)
+
+                    # Skip validation here - preview already validated these files
+                    # Just use the candidates directly for cleaning to avoid double validation delay
+                    if candidates:
+                        runtimes.append(
+                            _CleanerRuntime(
+                                cleaner=cleaner, candidate_paths=list(candidates)
+                            )
+                        )
             
             log.info("[CleaningManager] Total candidates for cleaning: %d across %d cleaners", 
                      total_candidates, len(runtimes))

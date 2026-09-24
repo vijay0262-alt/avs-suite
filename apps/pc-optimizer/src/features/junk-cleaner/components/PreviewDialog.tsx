@@ -3,6 +3,9 @@ import { formatBytes } from '@avs/shared/utils';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { Modal } from './Modal';
 import type { CleaningPreview } from '../junkCleaner.types';
+import { canUse, currentEdition } from '../../licensing/FeatureGate';
+
+const FREE_CLEAN_LIMIT_BYTES = 500 * 1024 * 1024; // 500 MB
 
 export interface PreviewDialogProps {
   open: boolean;
@@ -22,6 +25,11 @@ export function PreviewDialog({ open, loading, error, preview, onCancel, onProce
   const totalFiles = preview?.totalFiles ?? 0;
   const totalBytes = preview?.totalBytes ?? 0;
   const canProceed = !loading && !error && totalFiles > 0;
+
+  const isFree = currentEdition() === 'free';
+  const hasUnlimited = canUse('junk.clean_unlimited');
+  const exceedsLimit = isFree && !hasUnlimited && totalBytes > FREE_CLEAN_LIMIT_BYTES;
+  const cappedBytes = exceedsLimit ? FREE_CLEAN_LIMIT_BYTES : totalBytes;
 
   return (
     <Modal
@@ -67,7 +75,12 @@ export function PreviewDialog({ open, loading, error, preview, onCancel, onProce
             <div>
               <div className="text-caption uppercase text-text-muted">Estimated recovery</div>
               <div className="mt-1 text-statistic font-semibold text-text-primary tabular-nums">
-                {formatBytes(totalBytes)}
+                {formatBytes(cappedBytes)}
+                {exceedsLimit && (
+                  <span className="text-section-title font-medium text-text-muted">
+                    {' '}of {formatBytes(totalBytes)}
+                  </span>
+                )}
               </div>
             </div>
             <div>
@@ -121,6 +134,19 @@ export function PreviewDialog({ open, loading, error, preview, onCancel, onProce
               ))}
             </tbody>
           </table>
+
+          {exceedsLimit && (
+            <div
+              className="mt-4 flex items-start gap-2 rounded-[var(--avs-radius-md)] border border-semantic-warning/30 bg-semantic-warning/10 px-3 py-2"
+              data-testid="cleaning-preview-free-limit"
+            >
+              <ExclamationTriangleIcon className="h-4 w-4 shrink-0 text-semantic-warning" />
+              <span className="text-caption text-text-secondary">
+                Free edition cleans up to 500 MB per session. {formatBytes(totalBytes)} detected —
+                upgrade to Professional to clean everything.
+              </span>
+            </div>
+          )}
 
           <p className="mt-4 text-caption text-text-muted">
             Files sitting in protected Windows folders or symlinked paths have been

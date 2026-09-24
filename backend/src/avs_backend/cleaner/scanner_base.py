@@ -106,6 +106,11 @@ class BaseCleaner(ICleaner):
     # threshold are included. Zero = no age filter.
     min_age_days: int = 0
 
+    # Whether this cleaner can clean a subset of its candidates. Atomic
+    # cleaners (e.g. Recycle Bin via SHEmptyRecycleBin) set this to False
+    # so the byte-budget allocator treats them as all-or-nothing.
+    supports_partial_clean: bool = True
+
     # ------------------------------------------------------------------
     # Contract
     # ------------------------------------------------------------------

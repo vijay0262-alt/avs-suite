@@ -41,6 +41,8 @@ class RecycleBinCleaner(BaseCleaner):
     name = "Recycle Bin"
     description = "Files sitting in the Recycle Bin across all fixed drives."
     category = CleanerCategory.SYSTEM
+    # SHEmptyRecycleBin empties the whole bin — cannot partially clean.
+    supports_partial_clean = False
 
     def targets(self) -> Iterable[Path]:
         roots: list[Path] = []

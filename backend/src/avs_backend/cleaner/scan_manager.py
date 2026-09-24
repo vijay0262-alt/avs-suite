@@ -385,11 +385,28 @@ class ScanManager:
                         return []
                     # Extract paths directly from in-memory items list
                     paths = [item.path for item in rt.result.items]
-                    log.debug("[ScanManager] get_all_items: returning %d paths from memory for cleaner %s", 
+                    log.debug("[ScanManager] get_all_items: returning %d paths from memory for cleaner %s",
                               len(paths), cleaner_id)
                     return paths
-            
+
             log.debug("[ScanManager] get_all_items: cleaner_id=%s not found in runtimes", cleaner_id)
+            return []
+
+    def get_all_item_sizes(self, task_id: str, cleaner_id: str) -> list[tuple[str, int]]:
+        """Get ``(path, size)`` pairs for a cleaner from in-memory scan results.
+
+        Used by CleaningManager to enforce byte-level cleaning budgets
+        (Free edition cap) without re-statting every file.
+        """
+        with self._lock:
+            task = self._task
+            if task is None or task.task_id != task_id:
+                return []
+            for rt in task.runtimes:
+                if rt.cleaner.id == cleaner_id:
+                    if rt.result is None:
+                        return []
+                    return [(item.path, int(item.size)) for item in rt.result.items]
             return []
 
     def items_page(
