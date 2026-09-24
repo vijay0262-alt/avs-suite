@@ -27,6 +27,8 @@ export interface RegistryCategory {
 export interface RegistryCleanResult {
   fixed: number;
   failed: number;
+  /** Entries skipped because they're in use by Windows or a running app — safe to skip. */
+  skipped: number;
   backupId: string | null;
   errors: string[];
 }

@@ -34,7 +34,13 @@ initI18n()
   .then(async () => {
     try {
       registerAllModules();
-      await initializeAllModules();
+      // Cap init at 8s — a module whose initialize() hangs (e.g. waiting on
+      // a backend ping) must not keep the 'Configuring application' loader
+      // up forever. Slow modules finish initializing in the background.
+      await Promise.race([
+        initializeAllModules(),
+        new Promise<void>((resolve) => setTimeout(resolve, 8_000)),
+      ]);
     } catch (err) {
       console.error('[startup] module initialization failed:', err);
     }

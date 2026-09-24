@@ -126,46 +126,37 @@ class CleaningManager:
         """
         log.info("[CleaningManager] preview called for scan_task_id=%s, only=%s", scan_task_id, only)
         start = time.monotonic()
-        
+
         previews: list[CleaningPreview] = []
         total_candidates = 0
-        total_validated = 0
-        
+
         for cleaner_id, cleaner in self._cleaners.items():
             if only is not None and cleaner_id not in only:
                 log.debug("[CleaningManager] Skipping cleaner %s (not in only list)", cleaner_id)
                 continue
-            
-            log.debug("[CleaningManager] Collecting scan paths for cleaner %s", cleaner_id)
-            paths = self._scan_manager.get_all_items(scan_task_id, cleaner_id)
-            log.debug("[CleaningManager] Collected %d paths for cleaner %s", len(paths), cleaner_id)
-            total_candidates += len(paths)
-            
-            if not paths:
-                # Still emit an empty preview so the UI can show "0 files".
-                previews.append(
-                    CleaningPreview(
-                        cleaner_id=cleaner_id, name=cleaner.name, category=cleaner.category
-                    )
-                )
-                continue
-            
-            log.debug("[CleaningManager] Validating %d paths for cleaner %s", len(paths), cleaner_id)
-            validate_start = time.monotonic()
-            preview = cleaner.validate(paths)
-            validate_duration = time.monotonic() - validate_start
-            total_validated += preview.total_files
-            
-            log.debug("[CleaningManager] Validation complete for cleaner %s: %d files, %d warnings in %.2fs", 
-                      cleaner_id, preview.total_files, len(preview.warnings), validate_duration)
+
+            # FAST PATH: use the scan-recorded (path, size) pairs directly.
+            # The scan already filtered scope, symlinks, and forbidden roots,
+            # and clean() re-validates each file immediately before deleting —
+            # so re-running cleaner.validate() here (an os.lstat per file)
+            # only stalls the UI on "Validating cleaning…" for large scans.
+            entries = self._scan_manager.get_all_item_sizes(scan_task_id, cleaner_id)
+            log.debug("[CleaningManager] Collected %d paths for cleaner %s", len(entries), cleaner_id)
+            total_candidates += len(entries)
+
+            preview = CleaningPreview(
+                cleaner_id=cleaner_id, name=cleaner.name, category=cleaner.category
+            )
+            if entries:
+                preview.candidate_paths = [p for p, _ in entries]
+                preview.total_files = len(entries)
+                preview.total_bytes = sum(s for _, s in entries)
             previews.append(preview)
-        
-        validation_duration = time.monotonic() - start
+
         log.info(
-            "[PERFORMANCE] Validation completed: duration=%.2fs, candidates=%d, validated=%d, cleaners=%d",
-            validation_duration,
+            "[PERFORMANCE] Preview built: duration=%.2fs, candidates=%d, cleaners=%d",
+            time.monotonic() - start,
             total_candidates,
-            total_validated,
             len(previews),
         )
         return previews

@@ -18,7 +18,16 @@ import {
   DocumentArrowDownIcon,
   ArrowRightIcon,
 } from '@heroicons/react/24/outline';
-import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../auth/authStore';
+
+const STRIPE_YEARLY_URL = 'https://buy.stripe.com/28E5kDeNNc8U995g2a0x200';
+
+function openCheckout(customerId?: string, email?: string): void {
+  const url = new URL(STRIPE_YEARLY_URL);
+  if (customerId) url.searchParams.set('client_reference_id', customerId);
+  if (email) url.searchParams.set('prefilled_email', email);
+  window.open(url.toString(), '_blank');
+}
 
 const PRO_FEATURES = [
   { label: 'Dashboard & Health Score', icon: ChartBarIcon, free: true, pro: true },
@@ -48,7 +57,9 @@ const PRO_FEATURES = [
 ];
 
 export default function UpgradePage() {
-  const navigate = useNavigate();
+  const { customer, session } = useAuthStore();
+  const openPayment = () =>
+    openCheckout(customer?.id ?? session?.customerId, customer?.email ?? session?.customerEmail);
 
   return (
     <div className="space-y-6">
@@ -75,7 +86,7 @@ export default function UpgradePage() {
           <Button
             size="lg"
             className="mt-6"
-            onClick={() => navigate('/license')}
+            onClick={openPayment}
             leftIcon={<ArrowRightIcon className="h-4 w-4" />}
           >
             Upgrade Now
@@ -192,8 +203,8 @@ export default function UpgradePage() {
       {/* CTA */}
       <Card variant="glass" className="text-center">
         <p className="text-small text-[var(--avs-text-secondary)]">Ready to unlock the full power of AVS AI Shield?</p>
-        <Button size="lg" className="mt-4" onClick={() => navigate('/license')}>
-          Activate Your License
+        <Button size="lg" className="mt-4" onClick={openPayment}>
+          Upgrade to Professional
         </Button>
       </Card>
     </div>

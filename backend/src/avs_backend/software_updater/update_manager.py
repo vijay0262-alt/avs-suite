@@ -139,7 +139,7 @@ def list_upgrades() -> dict[str, Any]:
             "--include-unknown",
             "--accept-source-agreements",
         ],
-        timeout=60.0,
+        timeout=45.0,
     )
     if output is None:
         return {"available": True, "reason": "winget query failed", "upgrades": []}

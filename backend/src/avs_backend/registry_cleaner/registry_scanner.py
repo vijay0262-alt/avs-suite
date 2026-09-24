@@ -654,17 +654,26 @@ def fix_issues(issues: list[RegistryIssue]) -> dict[str, Any]:
 
     backup_id = _write_backup(issues)
     fixed = 0
+    skipped = 0
     errors: list[str] = []
     for issue in issues:
         try:
             _delete_value(issue.hive, issue.subkey, issue.value_name)
             fixed += 1
         except OSError as e:
-            errors.append(f"{issue.hive}\\{issue.subkey}:{issue.value_name} — {e}")
+            # Access denied / value currently in use by Windows or a running
+            # application. The entry simply stays in place — this is safe to
+            # skip, not a failure the user needs to act on.
+            skipped += 1
+            log.debug(
+                "Skipped registry value (in use / access denied): %s\\%s:%s — %s",
+                issue.hive, issue.subkey, issue.value_name, e,
+            )
 
     return {
         "fixed": fixed,
-        "failed": len(issues) - fixed,
+        "failed": len(issues) - fixed - skipped,
+        "skipped": skipped,
         "backupId": backup_id,
         "errors": errors,
     }

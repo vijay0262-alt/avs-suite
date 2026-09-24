@@ -279,12 +279,17 @@ export default function ActivationPage() {
                   variant="primary"
                   onClick={() => {
                     if (typeof window !== 'undefined') {
-                      window.open('https://www.avsshield.com/upgrade', '_blank');
+                      const url = new URL('https://buy.stripe.com/28E5kDeNNc8U995g2a0x200');
+                      const cid = customer?.id ?? session?.customerId;
+                      const email = customer?.email ?? session?.customerEmail;
+                      if (cid) url.searchParams.set('client_reference_id', cid);
+                      if (email) url.searchParams.set('prefilled_email', email);
+                      window.open(url.toString(), '_blank');
                     }
                   }}
                   data-testid="upgrade-to-professional"
                 >
-                  Upgrade to Professional
+                  Upgrade to Professional — $39.99/yr
                 </Button>
               </div>
             )}

@@ -21,6 +21,7 @@ from avs_backend.startup.startup_manager import (
     StartupSource,
     StartupStatus,
     StartupImpact,
+    _is_critical_system_entry,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,12 +41,24 @@ def _is_cache_valid() -> bool:
         return _startup_cache is not None and (time.time() - _cache_timestamp) < CACHE_TTL_SECONDS
 
 
+def _is_user_manageable(entry: StartupEntry) -> bool:
+    """True when the entry can be toggled from the Startup Manager.
+
+    Excludes critical system components (disabling is rejected) and
+    auto-start services (no disable path — services need SCM control,
+    not startup management).
+    """
+    if entry.source == StartupSource.STARTUP_SERVICE:
+        return False
+    return not _is_critical_system_entry(entry)
+
+
 def _refresh_cache() -> list[dict[str, Any]]:
     """Refresh the startup entries cache."""
     global _startup_cache, _cache_timestamp
-    
+
     with _cache_lock:
-        entries = scan_startup_entries()
+        entries = [e for e in scan_startup_entries() if _is_user_manageable(e)]
         _startup_cache = [
             {
                 "name": entry.name,

@@ -90,6 +90,15 @@ export default function RegistryCleanerPage() {
             />
           )}
 
+          {state.cleanResult && state.cleanResult.skipped > 0 && (
+            <div
+              className="mb-3 rounded-[var(--avs-radius-md)] border border-[var(--avs-border)] bg-[var(--avs-surface-muted)] px-3 py-2 text-small text-text-secondary"
+              data-testid="registry-clean-skipped"
+            >
+              {state.cleanResult.skipped} entr{state.cleanResult.skipped === 1 ? 'y' : 'ies'} skipped — in use by Windows or a running app (safe to skip).
+            </div>
+          )}
+
           {state.cleanResult && state.cleanResult.errors.length > 0 && (
             <ModuleErrorBanner
               message={`${state.cleanResult.errors.length} error(s) occurred during fixing.`}

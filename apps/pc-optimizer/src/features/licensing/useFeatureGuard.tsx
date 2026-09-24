@@ -15,11 +15,13 @@
  *   });
  */
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { canUse } from './FeatureGate';
 import type { ManagedFeature } from '@avs/licensing';
 import { UpgradeDialog, type UpgradeTier } from './UpgradeDialog';
 import { useIsPro } from '../sync/syncStore';
+import { useAuthStore } from '../auth/authStore';
+
+const STRIPE_YEARLY_URL = 'https://buy.stripe.com/28E5kDeNNc8U995g2a0x200';
 
 interface UpgradeDialogState {
   open: boolean;
@@ -61,8 +63,8 @@ interface GuardOptions {
 }
 
 export function useFeatureGuard() {
-  const navigate = useNavigate();
   const isPro = useIsPro();
+  const { customer, session } = useAuthStore();
   const [dialog, setDialog] = useState<UpgradeDialogState>({
     open: false,
     moduleName: '',
@@ -114,9 +116,14 @@ export function useFeatureGuard() {
   const handleUpgrade = useCallback(
     (_tier: UpgradeTier) => {
       closeDialog();
-      navigate('/license');
+      const url = new URL(STRIPE_YEARLY_URL);
+      const cid = customer?.id ?? session?.customerId;
+      const email = customer?.email ?? session?.customerEmail;
+      if (cid) url.searchParams.set('client_reference_id', cid);
+      if (email) url.searchParams.set('prefilled_email', email);
+      window.open(url.toString(), '_blank');
     },
-    [closeDialog, navigate],
+    [closeDialog, customer, session],
   );
 
   const handleDontRemind = useCallback((moduleName: string) => {
