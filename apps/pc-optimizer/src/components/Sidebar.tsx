@@ -78,11 +78,10 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'disk-analyzer', to: '/disk-analyzer', labelKey: 'nav.diskAnalyzer', Icon: ChartBarIcon },
       { id: 'browser-cleaner', to: '/browser-cleaner', labelKey: 'nav.browserCleaner', Icon: GlobeAltIcon, proEnhanced: true },
       { id: 'file-shredder', to: '/file-shredder', labelKey: 'nav.fileShredder', Icon: FireIcon },
-      { id: 'auto-care', to: '/auto-care', labelKey: 'nav.autoCare', Icon: ClockIcon, proEnhanced: true },
     ],
   },
   // ── 3. AI PROTECTION ──────────────────────────────────────────
-  //  Safe folder, file recovery, driver updater, etc.
+  //  Safe folder, file recovery, driver updater, auto care, etc.
   {
     id: 'protection',
     labelKey: 'nav.section.protection',
@@ -91,6 +90,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'file-recovery', to: '/file-recovery', labelKey: 'nav.fileRecovery', Icon: ArrowUturnLeftIcon, proEnhanced: true },
       { id: 'driver-updater', to: '/driver-updater', labelKey: 'nav.driverUpdater', Icon: ArrowDownTrayIcon, proEnhanced: true },
       { id: 'network-optimizer', to: '/network-optimizer', labelKey: 'nav.networkOptimizer', Icon: WifiIcon, proEnhanced: true },
+      { id: 'auto-care', to: '/auto-care', labelKey: 'nav.autoCare', Icon: ClockIcon, proEnhanced: true },
     ],
   },
   // ── REPORTS & TOOLS ───────────────────────────────────────────
