@@ -135,12 +135,12 @@ def test_scan_clean_pipeline():
 
 
 def test_free_edition_limit():
-    """Test that Free edition is limited to 500MB but Professional is unlimited."""
+    """Test that Free edition has no junk-cleaning byte cap (unlimited, like Professional)."""
     tmp_dir = Path(tempfile.mkdtemp(prefix="avs_e2e_free_"))
     junk_root = tmp_dir / "junk"
     junk_root.mkdir()
 
-    # Create 600 files of ~1MB each = ~600MB (over the 500MB Free limit)
+    # Create 600 files of ~1MB each = ~600MB (over the old 500MB Free limit)
     for i in range(600):
         (junk_root / f"big_{i:03d}.tmp").write_bytes(b"\x00" * (1024 * 1024))
 
@@ -158,36 +158,17 @@ def test_free_edition_limit():
         snap = scan.snapshot(task_id)
         print(f"Scan: {snap.total_files} files, {snap.total_bytes} bytes")
 
-        # Test 1: Free edition should be blocked by the 500MB limit
+        # Free edition: no byte limit — cleans everything
         print("\n=== FREE EDITION TEST ===")
         with patch("avs_backend.licensing._get_current_edition", return_value="free"):
             from avs_backend.licensing import get_edition_limit
             limit = get_edition_limit("junk.bytes_per_run")
-            print(f"  Free limit: {limit} bytes ({limit // (1024*1024)} MB)")
-            assert limit is not None, "Free edition should have a limit"
+            print(f"  Free limit: {limit}")
+            assert limit is None, "Free edition should have no junk bytes_per_run limit"
 
             previews = clean.preview(task_id)
             total_bytes = sum(p.total_bytes for p in previews)
             print(f"  Total bytes: {total_bytes} ({total_bytes // (1024*1024)} MB)")
-            assert total_bytes > limit, "Test data should exceed Free limit"
-
-            # Try to clean — should be blocked by the RPC layer
-            from avs_backend.cleaner import cleaner_clean_execute
-            from avs_backend.common.errors import RpcError
-            try:
-                cleaner_clean_execute({"taskId": task_id})
-                print("  [FAIL] Free edition should have been blocked")
-                assert False, "Free edition should have been blocked"
-            except RpcError as e:
-                print(f"  [PASS] Free edition correctly blocked: {e}")
-
-        # Test 2: Professional edition should be unlimited
-        print("\n=== PROFESSIONAL EDITION TEST ===")
-        with patch("avs_backend.licensing._get_current_edition", return_value="professional"):
-            from avs_backend.licensing import get_edition_limit
-            limit = get_edition_limit("junk.bytes_per_run")
-            print(f"  Professional limit: {limit}")
-            assert limit is None, "Professional should have no limit"
 
             cleaning_task_id = clean.execute(task_id)
             _wait_until(lambda: clean.snapshot(cleaning_task_id).status != ScanStatus.RUNNING)
@@ -197,15 +178,15 @@ def test_free_edition_limit():
 
             assert csnap.status.value == "completed"
             assert csnap.total_files_removed == 600
-            print("  [PASS] Professional cleaned all 600 files (unlimited)")
+            print("  [PASS] Free edition cleaned all 600 files (unlimited)")
 
         # Verify all files are gone
         remaining = list(junk_root.glob("*.tmp"))
         if remaining:
-            print(f"  [FAIL] {len(remaining)} files still exist after Professional clean")
-            assert False, f"{len(remaining)} files still exist after Professional clean"
+            print(f"  [FAIL] {len(remaining)} files still exist after Free clean")
+            assert False, f"{len(remaining)} files still exist after Free clean"
 
-        print("\n  [PASS] FREE/PRO ENFORCEMENT VERIFIED")
+        print("\n  [PASS] FREE EDITION UNLIMITED VERIFIED")
 
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
