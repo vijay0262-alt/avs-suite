@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useMemo } from 'react';
-import { Card, Button, Badge, StatTile } from '@avs/ui';
+import { Card, Button, Badge } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleLoadingState, ModuleEmptyState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
@@ -14,22 +14,17 @@ import { duplicateFinderService } from './duplicate-finder.service';
 import type { DuplicateScope } from './duplicate-finder.types';
 import {
   SparklesIcon,
-  ClockIcon,
   CheckCircleIcon,
   DocumentDuplicateIcon,
-  CircleStackIcon,
-  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
 
-const SCOPE_OPTIONS: { id: DuplicateScope; label: string }[] = [
-  { id: 'entire', label: 'Entire drive' },
+const FOLDER_SCOPES: { id: DuplicateScope; label: string }[] = [
+  { id: 'downloads', label: 'Downloads' },
+  { id: 'documents', label: 'Documents' },
   { id: 'pictures', label: 'Pictures' },
   { id: 'videos', label: 'Videos' },
   { id: 'music', label: 'Music' },
-  { id: 'documents', label: 'Documents' },
-  { id: 'downloads', label: 'Downloads' },
   { id: 'desktop', label: 'Desktop' },
-  { id: 'custom', label: 'Specific folder' },
 ];
 
 export default function DuplicateFinderPage() {
@@ -56,6 +51,32 @@ export default function DuplicateFinderPage() {
   const handleSelectGroup = (groupIndex: number) => {
     vm.selectGroupFiles(groupIndex);
   };
+
+  // Current picker value derived from VM state.
+  const locationValue =
+    state.scope === 'entire' && state.selectedDrive
+      ? `drive:${state.selectedDrive}`
+      : state.scope === 'custom'
+        ? 'custom'
+        : state.scope === 'entire'
+          ? ''
+          : `folder:${state.scope}`;
+
+  const handleLocationChange = (value: string) => {
+    if (value.startsWith('drive:')) {
+      vm.selectDrive(value.slice(6));
+    } else if (value.startsWith('folder:')) {
+      vm.setScope(value.slice(7) as DuplicateScope);
+    } else if (value === 'custom') {
+      vm.setScope('custom');
+    }
+  };
+
+  const canScan =
+    !state.scanning &&
+    ((state.scope === 'entire' && Boolean(state.selectedDrive)) ||
+      (state.scope === 'custom' && Boolean(state.customDirectories.trim())) ||
+      FOLDER_SCOPES.some((f) => f.id === state.scope));
 
   return (
     <div data-testid="page-duplicate-finder">
@@ -95,96 +116,53 @@ export default function DuplicateFinderPage() {
             />
           )}
 
-          {/* Scan Scope Selection */}
-          <Card title="Scan Scope" className="mb-4">
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                {SCOPE_OPTIONS.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => vm.setScope(s.id)}
-                    className={`px-3 py-1.5 text-small rounded-[var(--avs-radius-md)] border transition-all focus:outline-none focus-visible:shadow-focus ${
-                      state.scope === s.id
-                        ? 'border-[var(--avs-brand-primary)] bg-[color-mix(in_srgb,var(--avs-brand-primary)_10%,transparent)] text-[var(--avs-brand-primary)] font-medium'
-                        : 'border-[var(--avs-border)] bg-[var(--avs-surface)] text-text-secondary hover:border-[color-mix(in_srgb,var(--avs-brand-primary)_40%,var(--avs-border))]'
-                    }`}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-
-              {state.scope === 'entire' && (
-                <div>
-                  {state.drives.length === 0 ? (
-                    <p className="text-small text-text-muted">No drives found.</p>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {state.drives.map((drive) => (
-                        <div
-                          key={drive.device}
-                          className={`p-3 border-2 rounded-[var(--avs-radius-lg)] cursor-pointer transition-all ${
-                            state.selectedDrive === drive.mountpoint
-                              ? 'border-[var(--avs-brand-primary)] bg-[color-mix(in_srgb,var(--avs-brand-primary)_5%,transparent)]'
-                              : 'border-[var(--avs-border)] hover:border-[color-mix(in_srgb,var(--avs-brand-primary)_40%,var(--avs-border))]'
-                          }`}
-                          onClick={() => vm.selectDrive(drive.mountpoint)}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-small font-semibold text-text-primary">{drive.device}</span>
-                            <Badge tone="neutral">{drive.fstype}</Badge>
-                          </div>
-                          <div className="flex justify-between text-caption text-text-secondary">
-                            <span>{vm.formatBytes(drive.free)} free</span>
-                            <span>of {vm.formatBytes(drive.total)}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {state.scope === 'custom' && (
-                <div>
-                  <input
-                    type="text"
-                    placeholder="C:\Users\YourName\Documents, C:\Users\YourName\Downloads"
-                    value={state.customDirectories}
-                    onChange={(e) => vm.setCustomDirectories(e.target.value)}
-                    className="w-full px-3 py-2 bg-[var(--avs-surface)] border border-[var(--avs-border)] rounded-[var(--avs-radius-md)] text-small text-text-primary focus:outline-none focus-visible:shadow-focus"
-                  />
-                </div>
-              )}
-
-              {state.estimate && (
-                <div className="flex flex-wrap gap-4 text-caption text-text-secondary">
-                  <span>
-                    <strong className="text-text-primary">{state.estimate.estimatedFiles.toLocaleString()}</strong> files
-                  </span>
-                  <span>
-                    <strong className="text-text-primary">{vm.formatBytes(state.estimate.estimatedBytes)}</strong> estimated
-                  </span>
-                </div>
-              )}
-
-              {state.estimateLoading && (
-                <div className="animate-pulse h-4 bg-[var(--avs-surface-muted)] rounded w-1/3" />
-              )}
-
+          {/* Location picker + scan */}
+          <Card className="mb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <select
+                aria-label="Scan location"
+                value={locationValue}
+                onChange={(e) => handleLocationChange(e.target.value)}
+                disabled={state.scanning}
+                className="flex-1 rounded-[var(--avs-radius-md)] bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] px-3 py-2 text-small text-text-primary focus:outline-none focus-visible:shadow-focus"
+                data-testid="duplicate-location-select"
+              >
+                <option value="">Choose a location to scan…</option>
+                <optgroup label="Drives">
+                  {state.drives.map((d) => (
+                    <option key={d.device} value={`drive:${d.mountpoint}`}>
+                      {d.device} — {vm.formatBytes(d.free)} free of {vm.formatBytes(d.total)}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Folders">
+                  {FOLDER_SCOPES.map((f) => (
+                    <option key={f.id} value={`folder:${f.id}`}>{f.label}</option>
+                  ))}
+                </optgroup>
+                <option value="custom">Custom folder…</option>
+              </select>
               <Button
                 onClick={handleScan}
-                disabled={
-                  state.scanning ||
-                  ((state.scope === 'entire' && !state.selectedDrive) ||
-                    (state.scope === 'custom' && !state.customDirectories))
-                }
-                className="w-full"
+                disabled={!canScan}
                 leftIcon={<DocumentDuplicateIcon className="h-4 w-4" />}
+                data-testid="duplicate-scan-btn"
               >
-                {state.scanning ? 'Scanning…' : 'Scan for Duplicates'}
+                {state.scanning ? 'Scanning…' : 'Scan'}
               </Button>
             </div>
+            {state.scope === 'custom' && (
+              <input
+                type="text"
+                aria-label="Custom folders"
+                placeholder="D:\Photos, D:\Backup"
+                value={state.customDirectories}
+                onChange={(e) => vm.setCustomDirectories(e.target.value)}
+                disabled={state.scanning}
+                className="mt-3 w-full px-3 py-2 bg-[var(--avs-surface-muted)] border border-[var(--avs-border)] rounded-[var(--avs-radius-md)] text-small text-text-primary focus:outline-none focus-visible:shadow-focus"
+                data-testid="duplicate-custom-dirs"
+              />
+            )}
           </Card>
 
           {state.scanning && (
@@ -209,46 +187,14 @@ export default function DuplicateFinderPage() {
 
           {state.scanResult && (
             <>
-              {/* Key stats */}
-              <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5" data-testid="duplicate-hero-section">
-                <StatTile
-                  label="Files Scanned"
-                  value={state.scanResult.totalFiles.toLocaleString()}
-                  hint="Total analyzed"
-                  icon={<CircleStackIcon className="h-5 w-5" />}
-                  variant="glass"
-                />
-                <StatTile
-                  label="Duplicates"
-                  value={state.scanResult.totalDuplicates.toString()}
-                  hint={`${state.scanResult.groups.length} groups`}
-                  icon={<DocumentDuplicateIcon className="h-5 w-5" />}
-                  variant="glass"
-                  accentColor={state.scanResult.totalDuplicates > 0 ? 'var(--avs-warning)' : 'var(--avs-success)'}
-                />
-                <StatTile
-                  label="Recoverable"
-                  value={vm.formatBytes(state.scanResult.recoverableSpace)}
-                  hint="Space to reclaim"
-                  icon={<ArrowDownTrayIcon className="h-5 w-5" />}
-                  variant="glass"
-                  accentColor="var(--avs-success)"
-                />
-                <StatTile
-                  label="Selected"
-                  value={vm.getSelectedCount().toString()}
-                  hint={vm.getSelectedCount() > 0 ? `${vm.formatBytes(vm.getSelectedSize())} to free` : 'Select files below'}
-                  icon={<CheckCircleIcon className="h-5 w-5" />}
-                  variant="glass"
-                />
-                <StatTile
-                  label="Duration"
-                  value={`${(state.scanResult.scanDurationMs / 1000).toFixed(1)}s`}
-                  hint="Scan time"
-                  icon={<ClockIcon className="h-5 w-5" />}
-                  variant="glass"
-                />
-              </div>
+              {/* Results summary */}
+              <p className="mb-3 text-small text-text-secondary" data-testid="duplicate-results-summary">
+                <strong className="text-text-primary">{state.scanResult.totalDuplicates.toLocaleString()}</strong> duplicates
+                in <strong className="text-text-primary">{state.scanResult.groups.length}</strong> groups ·{' '}
+                <strong className="text-text-primary">{vm.formatBytes(state.scanResult.recoverableSpace)}</strong> recoverable ·{' '}
+                {state.scanResult.totalFiles.toLocaleString()} files scanned in{' '}
+                {(state.scanResult.scanDurationMs / 1000).toFixed(1)}s
+              </p>
 
               {/* Duplicate Groups */}
               <div className="flex items-center justify-between mb-3">

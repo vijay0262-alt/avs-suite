@@ -72,6 +72,14 @@ class DuplicateScanResult:
     scanned_directories: list[str]
 
 
+def _safe_mtime(file_path: str) -> str:
+    """Return an ISO mtime string, or '' for unreadable/insane timestamps."""
+    try:
+        return datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat()
+    except (OSError, ValueError, OverflowError):
+        return ''
+
+
 def _calculate_file_hash(file_path: str, block_size: int = 65536) -> str:
     """Calculate SHA256 hash of a file."""
     hasher = hashlib.sha256()
@@ -175,10 +183,11 @@ def _scan_directory(directory: str, exclude_dirs: list[str] | None = None) -> di
                         'path': file_path,
                         'size': file_size,
                         'name': file,
-                        'modified': datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat(),
+                        'modified': _safe_mtime(file_path),
                     }
                     size_map.setdefault(file_size, []).append(file_info)
-                except (OSError, PermissionError):
+                except Exception:
+                    # A single unreadable/odd file must never abort the scan.
                     continue
             else:
                 continue
@@ -196,15 +205,16 @@ def _scan_directory(directory: str, exclude_dirs: list[str] | None = None) -> di
         _progress['hashTotal'] += len(to_hash)
 
     deadline = start_time + MAX_SCAN_TIMEOUT_S
-    with ThreadPoolExecutor(max_workers=_HASH_WORKERS) as pool:
+    timed_out = False
+    pool = ThreadPoolExecutor(max_workers=_HASH_WORKERS)
+    try:
         futures = {pool.submit(_calculate_file_hash, info['path']): info for info in to_hash}
         for future in as_completed(futures):
             info = futures[future]
             _bump_hashed(info['path'])
             if time.monotonic() > deadline:
                 logger.info(f"Hash timeout reached: {MAX_SCAN_TIMEOUT_S}s in {directory}")
-                for f in futures:
-                    f.cancel()
+                timed_out = True
                 break
             try:
                 file_hash = future.result()
@@ -213,6 +223,11 @@ def _scan_directory(directory: str, exclude_dirs: list[str] | None = None) -> di
             if not file_hash:
                 continue
             hash_map.setdefault(file_hash, []).append(info)
+    finally:
+        # On timeout, don't block the RPC on in-flight hashes —
+        # cancel pending work and let running files finish in the
+        # background so the scan returns within its time budget.
+        pool.shutdown(wait=not timed_out, cancel_futures=True)
 
     logger.info(f"Scanned {scanned_count} files in {directory} ({time.monotonic() - start_time:.1f}s)")
     return hash_map
@@ -227,7 +242,8 @@ def duplicate_scan(params: dict[str, Any] | None) -> dict[str, Any]:
     params = params or {}
     scope = params.get('scope', 'custom')
     explicit_dirs = params.get('directories') or []
-    
+    directories: list[str] = []
+
     # Resolve directories from scope
     if scope and scope != 'custom':
         directories = _resolve_estimate_directories(params)
@@ -259,11 +275,18 @@ def duplicate_scan(params: dict[str, Any] | None) -> dict[str, Any]:
 
     # Scan directories in parallel — each is bounded by its own timeout,
     # so the whole scan stays within one MAX_SCAN_TIMEOUT_S window.
+    # A failure in one directory must not abort the whole scan.
     valid_dirs = [d for d in directories if os.path.isdir(d)]
     hash_map: dict[str, list[dict[str, Any]]] = {}
     try:
         with ThreadPoolExecutor(max_workers=min(_DIR_WORKERS, max(1, len(valid_dirs)))) as pool:
-            for dir_hash_map in pool.map(lambda d: _scan_directory(d, exclude_dirs), valid_dirs):
+            futures = {pool.submit(_scan_directory, d, exclude_dirs): d for d in valid_dirs}
+            for future in as_completed(futures):
+                try:
+                    dir_hash_map = future.result()
+                except Exception as e:
+                    logger.warning(f"Directory scan failed for {futures[future]}: {e}")
+                    continue
                 for file_hash, files in dir_hash_map.items():
                     hash_map.setdefault(file_hash, []).extend(files)
     finally:
@@ -396,7 +419,7 @@ def _estimate_directory(directory: str) -> tuple[int, int]:
                         continue
                     total_files += 1
                     total_bytes += file_size
-                except (OSError, PermissionError):
+                except Exception:
                     continue
             else:
                 continue
