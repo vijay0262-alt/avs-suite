@@ -125,12 +125,12 @@ export const FEATURES = {
   PRIVACY_SCAN: {
     key: 'privacy-scan',
     description: 'Scan and preview privacy traces.',
-    editions: ['professional'] as const,
+    editions: ['free', 'professional'] as const,
   },
   PRIVACY_CLEAN: {
     key: 'privacy-clean',
     description: 'Clear traces from browsers and Windows components.',
-    editions: ['professional'] as const,
+    editions: ['free', 'professional'] as const,
   },
 
   // ── Duplicate Finder ─────────────────────────────────────────

@@ -27,8 +27,8 @@ describe('FeatureGate', () => {
       expect(canUse('registry.fix')).toBe(true);
     });
 
-    it('denies privacy.clean in free edition', () => {
-      expect(canUse('privacy.clean')).toBe(false);
+    it('allows privacy.clean in free edition', () => {
+      expect(canUse('privacy.clean')).toBe(true);
     });
 
     it('denies driver.update in free edition', () => {
@@ -93,10 +93,10 @@ describe('FeatureGate', () => {
   describe('Dynamic unlocking', () => {
     it('unlocks features when state changes from free to annual', () => {
       initFeatureGate('free');
-      expect(canUse('privacy.clean')).toBe(false);
+      expect(canUse('driver.update')).toBe(false);
 
       initFeatureGate('annual');
-      expect(canUse('privacy.clean')).toBe(true);
+      expect(canUse('driver.update')).toBe(true);
     });
 
     it('unlocks all features when edition is updated to professional', () => {
@@ -111,10 +111,10 @@ describe('FeatureGate', () => {
   describe('Dynamic locking (expiry)', () => {
     it('locks features when state changes to expired', () => {
       initFeatureGate('annual');
-      expect(canUse('privacy.clean')).toBe(true);
+      expect(canUse('driver.update')).toBe(true);
 
       initFeatureGate('expired');
-      expect(canUse('privacy.clean')).toBe(false);
+      expect(canUse('driver.update')).toBe(false);
     });
 
     it('locks all features when edition reverts to free', () => {

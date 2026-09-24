@@ -37,9 +37,6 @@ export interface EditionLimits {
   // AI Daily Briefing
   dailyBriefingPerDay: EditionLimit;
 
-  // Browser Cleaner
-  browserCleanerBrowsersPerRun: EditionLimit;
-
   // Large File Analyzer
   largeFileAnalyzerFilesPerSession: EditionLimit;
 
@@ -113,14 +110,6 @@ export const EDITION_LIMITS: EditionLimits = {
     professional: null,
     freeLabel: 'One briefing per day',
     proLabel: 'Unlimited briefings + custom reports',
-  },
-
-  // Browser Cleaner
-  browserCleanerBrowsersPerRun: {
-    free: 1,
-    professional: null,
-    freeLabel: 'Clean one browser at a time',
-    proLabel: 'Clean all browsers simultaneously',
   },
 
   // Large File Analyzer

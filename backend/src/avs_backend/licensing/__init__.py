@@ -451,8 +451,6 @@ _FEATURE_EDITION_RANK: dict[str, int] = {
 # RPC methods that require a minimum edition.
 # Format: { "rpc.method.name": "minimum_edition" }
 _LOCKED_RPC_METHODS: dict[str, str] = {
-    "privacy.scan": "professional",
-    "privacy.clean": "professional",
     "updater.list": "professional",
     "updater.upgrade": "professional",
     "updater.upgradeAll": "professional",
@@ -585,7 +583,6 @@ _EDITION_LIMITS: dict[str, int | None] = {
     # Additional limits matching frontend editionLimits.ts
     "ai_assistant.questions_per_day": 20,
     "daily_briefing.per_day": 1,
-    "browser_cleaner.browsers_per_run": 1,
     "dashboard.recommendations": 3,
     "dashboard.security_events": 5,
     "process_intelligence.top_n": 10,
