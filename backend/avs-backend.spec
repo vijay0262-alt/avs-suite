@@ -20,7 +20,13 @@ a = Analysis(
     [str(src_path / "avs_backend" / "api" / "rpc_server.py")],
     pathex=[str(src_path)],
     binaries=[],
-    datas=[],
+    datas=[
+        # Threat-intel data files (PSL + popular-domain allowlist)
+        (str(src_path / "avs_backend" / "threat_intel" / "data" / "public_suffix_list.dat"),
+         "avs_backend/threat_intel/data"),
+        (str(src_path / "avs_backend" / "threat_intel" / "data" / "popular_domains.txt"),
+         "avs_backend/threat_intel/data"),
+    ],
     hiddenimports=[
         "avs_backend",
         "avs_backend.api",
@@ -120,6 +126,13 @@ a = Analysis(
         "avs_backend.advanced_security.behavioral_sandbox",
         "avs_backend.advanced_security.ml_anomaly",
         "avs_backend.advanced_security.web_shield",
+        # ── Threat-intel client (Scam Shield Phase 1) ──
+        "avs_backend.threat_intel",
+        "avs_backend.threat_intel.domains",
+        "avs_backend.threat_intel.brands",
+        "avs_backend.threat_intel.lookalike",
+        "avs_backend.threat_intel.allowlist",
+        "avs_backend.threat_intel.store",
         "avs_backend.advanced_security.ransomware_vaccine",
         "avs_backend.advanced_security.email_scanner",
         "avs_backend.advanced_security.boot_sector",

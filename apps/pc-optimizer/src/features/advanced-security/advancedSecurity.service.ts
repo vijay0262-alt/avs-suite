@@ -62,12 +62,26 @@ export interface MLAnomaly {
   metrics?: Record<string, number>;
 }
 
+export interface ThreatIntelStatus {
+  configured: boolean;
+  version?: number;
+  issued_at?: string | null;
+  expires_at?: string | null;
+  age_seconds?: number | null;
+  url_count?: number;
+  host_count?: number;
+  sources?: string[];
+  stale?: boolean;
+  last_error?: string | null;
+}
+
 export interface WebShieldStatus {
   available: boolean;
   urls_checked?: number;
   threats_blocked?: number;
-  feeds_loaded?: number;
+  feeds_loaded?: string[];
   blocklist_size?: number;
+  intel?: ThreatIntelStatus;
 }
 
 export interface UrlCheckResult {
@@ -75,6 +89,9 @@ export interface UrlCheckResult {
   risk_level: RiskLevel;
   reasons: string[];
   categories: string[];
+  score?: number;
+  registrable_domain?: string;
+  intel_source?: string | null;
 }
 
 export interface BlockedUrl {

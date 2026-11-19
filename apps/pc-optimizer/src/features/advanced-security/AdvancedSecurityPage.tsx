@@ -525,6 +525,29 @@ function WebShieldTab({
         </Button>
       </div>
 
+      {(() => {
+        const intel = status?.web_shield?.intel;
+        if (!intel?.configured) {
+          return (
+            <div className="mb-4 text-caption text-text-muted" data-testid="web-intel-status">
+              Threat intelligence: not configured — using local checks only.
+            </div>
+          );
+        }
+        const entries = (intel.url_count ?? 0) + (intel.host_count ?? 0);
+        const hours = intel.age_seconds != null ? Math.floor(intel.age_seconds / 3600) : null;
+        const freshness = intel.stale
+          ? 'out of date'
+          : hours != null && hours >= 1 ? `updated ${hours}h ago` : 'up to date';
+        return (
+          <div className="mb-4 text-caption text-text-muted" data-testid="web-intel-status">
+            Threat intelligence: {entries.toLocaleString()} indicators
+            {intel.version ? ` · v${intel.version}` : ''} · {freshness}
+            {intel.last_error ? ` · last sync error: ${intel.last_error}` : ''}
+          </div>
+        );
+      })()}
+
       {result && (
         <div className="mt-4 p-4 rounded border border-[var(--avs-border)]" data-testid="web-result">
           <div className="flex items-center gap-2 mb-2">
