@@ -100,6 +100,7 @@ _FEATURE_MODULES = [
     "avs_backend.advanced_security",
     "avs_backend.scam_detector",
     "avs_backend.scam_guards",
+    "avs_backend.safe_banking",
     "avs_backend.ai_features",
     "avs_backend.one_click",
 ]

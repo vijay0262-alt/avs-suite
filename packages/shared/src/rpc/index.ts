@@ -605,6 +605,15 @@ export const RPC_METHODS = {
   SCAM_GUARDS_ALERTS: 'scam_guards.alerts',
   SCAM_GUARDS_WAVES: 'scam_guards.waves',
   SCAM_GUARDS_UPLOAD: 'scam_guards.uploadReports',
+  SCAM_GUARDS_FAMILY_CONFIG: 'scam_guards.familyConfig',
+  SCAM_GUARDS_FAMILY_TEST: 'scam_guards.testFamilyAlert',
+
+  // Safe Banking (isolated browser profile)
+  SAFE_BANKING_STATUS: 'safe_banking.status',
+  SAFE_BANKING_SITES: 'safe_banking.sites',
+  SAFE_BANKING_ADD: 'safe_banking.addSite',
+  SAFE_BANKING_REMOVE: 'safe_banking.removeSite',
+  SAFE_BANKING_LAUNCH: 'safe_banking.launch',
 
   // AI Features (Tier 4)
   AI_FEATURES_STATUS: 'ai_features.status',

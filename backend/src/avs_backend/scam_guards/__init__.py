@@ -17,6 +17,9 @@ import time
 from typing import Any
 
 from avs_backend.api.registry import register
+from avs_backend.scam_guards.family import configure as _family_configure
+from avs_backend.scam_guards.family import get_config as _family_config
+from avs_backend.scam_guards.family import send_alert as _family_send
 from avs_backend.scam_guards.guards import ScamGuardMonitor
 from avs_backend.scam_guards.reporter import fetch_waves, upload_reports
 
@@ -28,7 +31,10 @@ _monitor: ScamGuardMonitor | None = None
 def _get_monitor() -> ScamGuardMonitor:
     global _monitor
     if _monitor is None:
-        _monitor = ScamGuardMonitor(threat_context_fn=_last_blocked_ts)
+        _monitor = ScamGuardMonitor(
+            threat_context_fn=_last_blocked_ts,
+            on_alert=_family_send,
+        )
     return _monitor
 
 
@@ -100,3 +106,24 @@ def upload(params: dict[str, Any] | None) -> dict[str, Any]:
         return {"success": True, "result": upload_reports(fp)}
     except Exception as e:
         return _error(str(e), "UPLOAD_FAILED")
+
+
+@register("scam_guards.familyConfig")
+def family_config(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Get (no params) or set family alert configuration."""
+    try:
+        if params:
+            return {"success": True, "result": _family_configure(**params)}
+        return {"success": True, "result": _family_config()}
+    except Exception as e:
+        return _error(str(e), "CONFIG_FAILED")
+
+
+@register("scam_guards.testFamilyAlert")
+def test_family_alert(params: dict[str, Any] | None) -> dict[str, Any]:
+    """Send a test alert through the configured family channels."""
+    result = _family_send({
+        "type": "test_alert", "severity": "critical",
+        "message": "AVS AI Shield test alert — family notifications are working.",
+    })
+    return {"success": True, "result": result}

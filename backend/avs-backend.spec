@@ -145,6 +145,9 @@ a = Analysis(
         "avs_backend.scam_guards",
         "avs_backend.scam_guards.guards",
         "avs_backend.scam_guards.reporter",
+        "avs_backend.scam_guards.family",
+        # ── Safe Banking (Scam Shield Phase 5) ──
+        "avs_backend.safe_banking",
         "avs_backend.advanced_security.ransomware_vaccine",
         "avs_backend.advanced_security.email_scanner",
         "avs_backend.advanced_security.boot_sector",

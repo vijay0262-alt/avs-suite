@@ -113,7 +113,41 @@ export const scamDetectorService = {
   async uploadReports(): Promise<{ success: boolean; result?: { uploaded: number; queued: number } }> {
     return client().call(RPC_METHODS.SCAM_GUARDS_UPLOAD);
   },
+  async familyConfig(cfg?: Partial<FamilyConfig>): Promise<{ success: boolean; result?: FamilyConfig }> {
+    return client().call(RPC_METHODS.SCAM_GUARDS_FAMILY_CONFIG, cfg);
+  },
+  async testFamilyAlert(): Promise<{ success: boolean; result?: { sent: number; errors?: string[] } }> {
+    return client().call(RPC_METHODS.SCAM_GUARDS_FAMILY_TEST);
+  },
+
+  // ── Safe Banking (Phase 5) ──
+  async safeBankingStatus(): Promise<{ success: boolean; result?: SafeBankingStatus }> {
+    return client().call(RPC_METHODS.SAFE_BANKING_STATUS);
+  },
+  async safeBankingAdd(domain: string): Promise<{ success: boolean; result?: string[]; error?: string }> {
+    return client().call(RPC_METHODS.SAFE_BANKING_ADD, { domain });
+  },
+  async safeBankingRemove(domain: string): Promise<{ success: boolean; result?: string[] }> {
+    return client().call(RPC_METHODS.SAFE_BANKING_REMOVE, { domain });
+  },
+  async safeBankingLaunch(domain: string): Promise<{ success: boolean; result?: { browser: string; url: string }; error?: string }> {
+    return client().call(RPC_METHODS.SAFE_BANKING_LAUNCH, { domain });
+  },
 };
+
+export interface FamilyConfig {
+  enabled: boolean;
+  ntfy_topic: string;
+  webhook_url: string;
+  contact_name: string;
+  min_severity: string;
+}
+
+export interface SafeBankingStatus {
+  browsers: Record<string, string>;
+  sites: string[];
+  profile_dir: string;
+}
 
 export interface GuardStatus {
   running: boolean;

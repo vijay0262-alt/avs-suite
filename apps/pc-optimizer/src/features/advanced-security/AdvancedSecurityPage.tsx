@@ -43,6 +43,8 @@ import {
   type GuardAlert,
   type GuardStatus,
   type ScamWaves,
+  type FamilyConfig,
+  type SafeBankingStatus,
 } from './scamDetector.service';
 import {
   ArrowPathIcon,
@@ -94,7 +96,7 @@ function formatRelative(ts: string | null | undefined): string {
 
 // ─── Tab definitions ─────────────────────────────────────────────
 
-type TabId = 'sandbox' | 'ml' | 'web' | 'ransomware' | 'email' | 'boot' | 'scam';
+type TabId = 'sandbox' | 'ml' | 'web' | 'ransomware' | 'email' | 'boot' | 'scam' | 'safebanking';
 
 const TABS: { id: TabId; label: string; icon: typeof BeakerIcon }[] = [
   { id: 'sandbox', label: 'Behavioral Sandbox', icon: BeakerIcon },
@@ -104,6 +106,7 @@ const TABS: { id: TabId; label: string; icon: typeof BeakerIcon }[] = [
   { id: 'email', label: 'Email Scanner', icon: EnvelopeIcon },
   { id: 'boot', label: 'Boot Sector', icon: ComputerDesktopIcon },
   { id: 'scam', label: 'Scam Assistant', icon: ExclamationTriangleIcon },
+  { id: 'safebanking', label: 'Safe Banking', icon: LockClosedIcon },
 ];
 
 // ── Component ───────────────────────────────────────────────────
@@ -233,6 +236,7 @@ export default function AdvancedSecurityPage() {
         {activeTab === 'email' && <EmailTab status={status} isPro={isPro} guard={guard} actionLoading={actionLoading} setActionLoading={setActionLoading} />}
         {activeTab === 'boot' && <BootTab status={status} isPro={isPro} guard={guard} actionLoading={actionLoading} setActionLoading={setActionLoading} />}
         {activeTab === 'scam' && <ScamAssistantTab />}
+        {activeTab === 'safebanking' && <SafeBankingTab />}
 
         {!isPro && (
           <Card variant="glass" className="border-brand-primary/30">
@@ -1121,6 +1125,8 @@ function ScamAssistantTab() {
         </div>
       )}
 
+      <FamilyAlertConfig />
+
       {waves && waves.waves.length > 0 && (
         <div data-testid="scam-waves">
           <div className="text-caption text-text-muted mb-1">
@@ -1138,5 +1144,159 @@ function ScamAssistantTab() {
       )}
     </Card>
     </>
+  );
+}
+
+// ── Family Alert Config ─────────────────────────────────────────
+
+function FamilyAlertConfig() {
+  const [cfg, setCfg] = useState<FamilyConfig | null>(null);
+  const [topic, setTopic] = useState('');
+  const [contact, setContact] = useState('');
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    scamDetectorService.familyConfig().then((r) => {
+      if (r.result) {
+        setCfg(r.result);
+        setTopic(r.result.ntfy_topic);
+        setContact(r.result.contact_name);
+      }
+    }).catch(() => {});
+  }, []);
+
+  const save = async (enabled: boolean) => {
+    const r = await scamDetectorService.familyConfig({
+      enabled, ntfy_topic: topic, contact_name: contact,
+    });
+    if (r.result) { setCfg(r.result); setMsg(enabled ? 'Family alerts on' : 'Family alerts off'); }
+  };
+
+  const test = async () => {
+    const r = await scamDetectorService.testFamilyAlert();
+    setMsg(r.result?.sent ? 'Test alert sent' : `Send failed${r.result?.errors ? ': ' + r.result.errors[0] : ''}`);
+  };
+
+  return (
+    <div className="mb-3 p-3 rounded border border-[var(--avs-border)]" data-testid="family-config">
+      <div className="text-caption text-text-muted mb-2">
+        Family alerts — notify a trusted contact on critical events (free via ntfy app)
+      </div>
+      <div className="flex items-center gap-2 mb-2">
+        <input type="text" value={contact} onChange={(e) => setContact(e.target.value)}
+          placeholder="Contact name (e.g. Daughter)"
+          className="w-40 px-2 py-1.5 rounded border border-[var(--avs-border)] bg-[var(--avs-surface)] text-caption" />
+        <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)}
+          placeholder="ntfy topic (e.g. avs-family-9x2k)"
+          className="flex-1 px-2 py-1.5 rounded border border-[var(--avs-border)] bg-[var(--avs-surface)] text-caption"
+          data-testid="family-topic" />
+      </div>
+      <div className="flex items-center gap-2">
+        <Button variant={cfg?.enabled ? 'secondary' : 'primary'} size="sm"
+          onClick={() => save(!cfg?.enabled)} disabled={!topic.trim()}
+          data-testid="family-toggle">
+          {cfg?.enabled ? 'Disable' : 'Enable'}
+        </Button>
+        <Button variant="secondary" size="sm" onClick={test}
+          disabled={!cfg?.enabled} data-testid="family-test">
+          Send test
+        </Button>
+        {msg && <span className="text-caption text-text-muted">{msg}</span>}
+      </div>
+    </div>
+  );
+}
+
+// ── Safe Banking Tab ────────────────────────────────────────────
+
+function SafeBankingTab() {
+  const [status, setStatus] = useState<SafeBankingStatus | null>(null);
+  const [domain, setDomain] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [launched, setLaunched] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const r = await scamDetectorService.safeBankingStatus();
+      if (r.result) setStatus(r.result);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const add = async () => {
+    setError(null);
+    const r = await scamDetectorService.safeBankingAdd(domain.trim());
+    if (r.success) { setDomain(''); refresh(); }
+    else setError(r.error || 'Could not add site');
+  };
+
+  const remove = async (d: string) => {
+    await scamDetectorService.safeBankingRemove(d);
+    refresh();
+  };
+
+  const open = async (d: string) => {
+    setError(null);
+    const r = await scamDetectorService.safeBankingLaunch(d);
+    if (r.success && r.result) setLaunched(`${r.result.url} in ${r.result.browser}`);
+    else setError(r.error || 'Launch failed');
+  };
+
+  return (
+    <Card title="Safe Banking" variant="glass" data-testid="safe-banking-tab">
+      <p className="text-small text-text-secondary mb-4">
+        Opens your bank in an isolated browser profile — separate cookies, no
+        extensions, no sync — so banking sessions cannot be touched by anything
+        in your everyday browser.
+      </p>
+
+      {status && (
+        <div className="text-caption text-text-muted mb-4">
+          Browsers found: {Object.keys(status.browsers).join(', ') || 'none'}
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 mb-4">
+        <input
+          type="text"
+          value={domain}
+          onChange={(e) => setDomain(e.target.value)}
+          placeholder="yourbank.com"
+          className="flex-1 px-3 py-2 rounded border border-[var(--avs-border)] bg-[var(--avs-surface)] text-small"
+          data-testid="sb-domain-input"
+        />
+        <Button variant="primary" size="sm" onClick={add} disabled={!domain.trim()}
+          data-testid="sb-add-btn">
+          Add trusted site
+        </Button>
+      </div>
+
+      {error && <div className="mb-3 text-small text-semantic-danger" data-testid="sb-error">{error}</div>}
+      {launched && <div className="mb-3 text-small text-semantic-success">Opened {launched}</div>}
+
+      {status && status.sites.length > 0 ? (
+        <div className="space-y-2" data-testid="sb-sites">
+          {status.sites.map((d) => (
+            <div key={d} className="flex items-center justify-between p-2.5 rounded border border-[var(--avs-border)]">
+              <span className="text-small font-medium">{d}</span>
+              <div className="flex gap-2">
+                <Button variant="primary" size="sm" onClick={() => open(d)}
+                  leftIcon={<LockClosedIcon className="h-3.5 w-3.5" />}>
+                  Open protected
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => remove(d)}>
+                  Remove
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-caption text-text-muted">
+          No trusted banking sites yet. Add your bank domain above (e.g. chase.com).
+        </div>
+      )}
+    </Card>
   );
 }

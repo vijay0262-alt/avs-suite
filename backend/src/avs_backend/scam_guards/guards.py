@@ -123,12 +123,14 @@ class ScamGuardMonitor:
         process_names_fn: Callable[[], set[str]] | None = None,
         clipboard_fn: Callable[[], str] | None = None,
         threat_context_fn: Callable[[], float] | None = None,
+        on_alert: Callable[[dict[str, Any]], None] | None = None,
         poll_seconds: float = 3.0,
     ) -> None:
         self._proc_fn = process_names_fn or _process_names_psutil
         self._clip_fn = clipboard_fn or read_clipboard_text
         # Returns the epoch of the most recent blocked URL (0 if none).
         self._threat_fn = threat_context_fn or (lambda: 0.0)
+        self._on_alert = on_alert
         self._poll = poll_seconds
         self._alerts: deque[dict[str, Any]] = deque(maxlen=_MAX_ALERTS)
         self._seen_processes: set[str] = set()
@@ -240,6 +242,11 @@ class ScamGuardMonitor:
             self._alerts.append(alert)
             self._persist(alert)
         log.warning("Scam guard alert [%s/%s]: %s", kind, severity, message)
+        if self._on_alert:
+            try:
+                self._on_alert(alert)
+            except Exception as e:
+                log.debug("on_alert callback failed: %s", e)
         return alert
 
     def _persist(self, alert: dict[str, Any]) -> None:
