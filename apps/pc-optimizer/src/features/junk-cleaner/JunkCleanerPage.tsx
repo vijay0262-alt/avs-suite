@@ -68,13 +68,12 @@ export default function JunkCleanerPage() {
     }
   }, [scanIssuedOnce, state.bootstrap, vm]);
 
+  // Single debounced effect — covers open + filter changes without
+  // firing an RPC per keystroke or duplicating the initial load.
   useEffect(() => {
-    if (historyOpen) void vm.loadHistory(true);
-  }, [historyOpen, vm]);
-
-  // Reload history when filters change (already open).
-  useEffect(() => {
-    if (historyOpen) void vm.loadHistory(true);
+    if (!historyOpen) return;
+    const t = setTimeout(() => void vm.loadHistory(true), 300);
+    return () => clearTimeout(t);
   }, [historyOpen, state.historyQuery, state.historyCategory, state.historyResultFilter, vm]);
 
   const running = state.snapshot.status === 'running';
@@ -83,7 +82,7 @@ export default function JunkCleanerPage() {
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleFreq, setScheduleFreq] = useState('weekly');
   const [scheduleLoading, setScheduleLoading] = useState(false);
-  const [bgCleanupEnabled, setBgCleanupEnabled] = useState(true);
+  const [bgCleanupEnabled, setBgCleanupEnabled] = useState(() => backgroundCleanupService.isRunning());
   const hasResults =
     state.snapshot.present && !running && Boolean(state.snapshot.cleaners?.length);
   const scanEverStarted = scanIssuedOnce || state.snapshot.present;
@@ -106,24 +105,23 @@ export default function JunkCleanerPage() {
 
   const handleScheduleToggle = useCallback(async (enabled: boolean) => {
     setScheduleEnabled(enabled);
-    if (!enabled) {
-      try {
-        setScheduleLoading(true);
+    try {
+      setScheduleLoading(true);
+      if (!enabled) {
         await schedulerBackendService.deleteTask('junk_clean');
-      } catch { /* ignore */ } finally {
-        setScheduleLoading(false);
-      }
-    } else {
-      try {
-        setScheduleLoading(true);
+      } else {
         await schedulerBackendService.createTask({
           action: 'junk_clean',
           schedule: scheduleFreq,
           time: '03:00',
         });
-      } catch { /* ignore */ } finally {
-        setScheduleLoading(false);
       }
+    } catch {
+      // Revert — the toggle must reflect reality (create is Pro-gated;
+      // a silent failure previously left it stuck ON).
+      setScheduleEnabled(!enabled);
+    } finally {
+      setScheduleLoading(false);
     }
   }, [scheduleFreq]);
 
@@ -137,7 +135,9 @@ export default function JunkCleanerPage() {
           schedule: freq,
           time: '03:00',
         });
-      } catch { /* ignore */ } finally {
+      } catch {
+        setScheduleFreq(scheduleFreq); // revert — don't lie about the saved value
+      } finally {
         setScheduleLoading(false);
       }
     }
@@ -450,6 +450,7 @@ export default function JunkCleanerPage() {
                   <button
                     onClick={() => {
                       const next = !bgCleanupEnabled;
+                      localStorage.setItem('avs.bgCleanup.disabled', next ? '0' : '1');
                       setBgCleanupEnabled(next);
                       if (next) backgroundCleanupService.start();
                       else backgroundCleanupService.stop();

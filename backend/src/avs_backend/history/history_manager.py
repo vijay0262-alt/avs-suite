@@ -23,6 +23,7 @@ Provides:
 
 from __future__ import annotations
 
+import ast
 import csv
 import logging
 import sqlite3
@@ -94,7 +95,7 @@ def _init_db() -> sqlite3.Connection:
     """Initialize the history database."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -226,8 +227,8 @@ def get_history(
         errors = row[11].split("\n") if row[11] else []
 
         try:
-            details = eval(row[12]) if row[12] else {}
-        except:
+            details = ast.literal_eval(row[12]) if row[12] else {}
+        except (ValueError, SyntaxError):
             details = {}
 
         entries.append(HistoryEntry(
@@ -271,8 +272,8 @@ def get_history_entry(entry_id: int) -> HistoryEntry | None:
     errors = row[11].split("\n") if row[11] else []
 
     try:
-        details = eval(row[12]) if row[12] else {}
-    except:
+        details = ast.literal_eval(row[12]) if row[12] else {}
+    except (ValueError, SyntaxError):
         details = {}
 
     return HistoryEntry(
@@ -462,8 +463,8 @@ def search_history(query: str) -> list[HistoryEntry]:
         errors = row[11].split("\n") if row[11] else []
 
         try:
-            details = eval(row[12]) if row[12] else {}
-        except:
+            details = ast.literal_eval(row[12]) if row[12] else {}
+        except (ValueError, SyntaxError):
             details = {}
 
         entries.append(HistoryEntry(

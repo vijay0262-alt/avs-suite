@@ -35,10 +35,10 @@
   Pop $0
   nsExec::ExecToLog 'taskkill /IM "clamd.exe" /T /F'
   Pop $0
-  ; Also kill via wmic for cases where the process name is truncated or
-  ; an older binary is still running under a different image name.
-  nsExec::ExecToLog 'wmic process where "name like ''%AVS%''" delete 2>nul'
-  Pop $0
+  ; Note: a wildcard wmic kill was removed — "name like '%AVS%'" matched
+  ; unrelated software (AVS4YOU, AvsPmod, OEM tooling) and wmic is not
+  ; installed on recent Windows 11 builds. Exact-name taskkill above is
+  ; sufficient for our known binaries.
   ; Wait up to 5s until the main executable is truly gone.
   StrCpy $R1 0
   avs_loop_${_ID}:

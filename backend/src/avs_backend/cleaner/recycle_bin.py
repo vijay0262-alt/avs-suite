@@ -133,12 +133,12 @@ def _delete_via_file_operation(paths: list[str]) -> tuple[int, int]:
         file_op.PerformOperations()
 
         # Get results
-        success = 0
-        failed = 0
         # Note: Getting detailed results would require implementing
         # IFileOperationProgressSink, which is complex.
-        # For now, we assume success if no exception was raised.
-        success = len([p for p in paths if os.path.exists(p)])
+        # For now, we infer success by the file no longer existing.
+        # (Previously inverted — paths that STILL existed were counted
+        # as successes, which made the caller skip the fallback.)
+        success = len([p for p in paths if not os.path.exists(p)])
         failed = len(paths) - success
 
         return success, failed

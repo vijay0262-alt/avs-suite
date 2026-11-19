@@ -54,6 +54,11 @@ export class StartupViewModel extends ViewModel<StartupState> {
     }
   }
 
+  override dispose(): void {
+    this.stopScanPolling();
+    super.dispose();
+  }
+
   private async pollScanOnce(): Promise<void> {
     if (!this.state.loading) return this.stopScanPolling();
     try {

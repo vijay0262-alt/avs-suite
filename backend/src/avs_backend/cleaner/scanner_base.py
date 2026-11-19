@@ -53,13 +53,7 @@ from .interfaces import (
 )
 from .safe_paths import expand, is_forbidden, is_symlink_like
 
-# Only import recycle_bin functions on Windows
-try:
-    from .recycle_bin import delete_to_recycle_bin_single
-except (ImportError, AttributeError):
-    # Stub for non-Windows platforms or if recycle_bin has issues
-    def delete_to_recycle_bin_single(path: str, on_progress=None) -> bool:
-        return False
+from . import trash
 
 log = logging.getLogger("avs.cleaner")
 
@@ -568,15 +562,15 @@ class BaseCleaner(ICleaner):
                 resolved == root or resolved.startswith(root + sep)
                 for root in allowed_roots
             ):
-                return ("skipped:out-of-scope", 0)
+                return ("skipped:out-of-scope", 0, None)
             if is_forbidden(resolved):
-                return ("skipped:forbidden", 0)
+                return ("skipped:forbidden", 0, None)
             try:
                 st = os.lstat(raw)
             except FileNotFoundError:
-                return ("skipped:missing", 0)
+                return ("skipped:missing", 0, None)
             except (PermissionError, OSError):
-                return ("skipped:permission-denied", 0)
+                return ("skipped:permission-denied", 0, None)
 
             # Symlink / reparse-point check — must use lstat mode.
             is_link = stat.S_ISLNK(st.st_mode)
@@ -585,17 +579,17 @@ class BaseCleaner(ICleaner):
                 if file_attrs & 0x400:  # FILE_ATTRIBUTE_REPARSE_POINT
                     is_link = True
             if is_link:
-                return ("skipped:symlink", 0)
+                return ("skipped:symlink", 0, None)
 
             if not stat.S_ISREG(st.st_mode):
-                return ("skipped:not-a-file", 0)
+                return ("skipped:not-a-file", 0, None)
             size = int(st.st_size)
 
             # Check cancel event before deletion — workers run in parallel
             # so we must check here to ensure cancellation takes effect
             # even when many files are already submitted to the pool.
             if cancel.is_set():
-                return ("skipped:cancelled", 0)
+                return ("skipped:cancelled", 0, None)
 
             # Notify live file callback (called from worker thread so
             # cancellation via on_file works in the parallel path).
@@ -607,32 +601,30 @@ class BaseCleaner(ICleaner):
 
             # Re-check after callback (callback may have set cancel).
             if cancel.is_set():
-                return ("skipped:cancelled", 0)
+                return ("skipped:cancelled", 0, None)
 
-            # Delete with retry for transient failures.
+            # Delete with retry for transient failures. Files are moved
+            # into the app trash store (not permanently removed) so the
+            # undo feature can actually restore them.
             for attempt in range(_DELETE_RETRY_ATTEMPTS):
                 try:
-                    os.remove(raw)
-                    return ("removed", size)
+                    trash_name = trash.move_to_trash(raw)
                 except FileNotFoundError:
-                    return ("skipped:missing", 0)
+                    return ("skipped:missing", 0, None)
                 except PermissionError:
-                    if attempt + 1 < _DELETE_RETRY_ATTEMPTS:
-                        delay_ms = _DELETE_RETRY_BACKOFF_MS[
-                            min(attempt, len(_DELETE_RETRY_BACKOFF_MS) - 1)
-                        ]
-                        time.sleep(delay_ms / 1000.0)
-                except OSError as e:
-                    msg = str(e).lower()
-                    if "used by another process" in msg or "being used" in msg:
-                        if attempt + 1 < _DELETE_RETRY_ATTEMPTS:
-                            delay_ms = _DELETE_RETRY_BACKOFF_MS[
-                                min(attempt, len(_DELETE_RETRY_BACKOFF_MS) - 1)
-                            ]
-                            time.sleep(delay_ms / 1000.0)
-                    else:
-                        return (f"failed:unknown:{e}", size)
-            return ("failed:permission-denied", size)
+                    trash_name = None
+                if trash_name is not None:
+                    return ("removed", size, trash_name)
+                if not os.path.exists(raw):
+                    return ("skipped:missing", 0, None)
+                if attempt + 1 < _DELETE_RETRY_ATTEMPTS:
+                    delay_ms = _DELETE_RETRY_BACKOFF_MS[
+                        min(attempt, len(_DELETE_RETRY_BACKOFF_MS) - 1)
+                    ]
+                    time.sleep(delay_ms / 1000.0)
+                else:
+                    return ("failed:trash-move", size, None)
+            return ("failed:permission-denied", size, None)
 
         cancelled = False
         with ThreadPoolExecutor(max_workers=_CLEAN_WORKER_THREADS) as ex:
@@ -649,18 +641,25 @@ class BaseCleaner(ICleaner):
                 batch = candidate_paths[batch_start:batch_end]
 
                 futures = {ex.submit(_worker, raw): raw for raw in batch}
-                for fut in as_completed(futures):
+                recorded: set = set()
+
+                def _record(fut) -> None:
+                    nonlocal processed
+                    recorded.add(fut)
                     processed += 1
                     try:
-                        outcome, size = fut.result()
+                        outcome, size, trash_name = fut.result()
                     except Exception as e:
                         outcome = f"failed:unknown:{e}"
                         size = 0
+                        trash_name = None
                     if outcome == "removed":
                         result.files_removed += 1
                         result.bytes_recovered += size
                         if len(result.removed_paths) < _REMOVED_MANIFEST_CAP:
                             result.removed_paths.append(futures[fut])
+                            if trash_name:
+                                result.trash_map[futures[fut]] = trash_name
                     elif outcome.startswith("skipped:"):
                         result.files_skipped += 1
                         reason = outcome.split(":", 1)[1] if ":" in outcome else "unknown"
@@ -672,12 +671,23 @@ class BaseCleaner(ICleaner):
                         if size > 0:
                             result.errors.append(f"delete-failed: {outcome}")
 
+                for fut in as_completed(futures):
+                    _record(fut)
+
                     if processed % progress_stride == 0 or processed == total:
                         self._safe_progress(on_progress, int(processed * 100 / total))
 
                     if cancel.is_set():
                         cancelled = True
                         break
+
+                # Workers keep running until the executor shuts down —
+                # drain every submitted future so deletions that completed
+                # after the cancel are still counted and undo-tracked.
+                if cancelled:
+                    for fut in futures:
+                        if fut not in recorded:
+                            _record(fut)
 
         return cancelled
 
@@ -771,12 +781,17 @@ class BaseCleaner(ICleaner):
             size = int(st.st_size)
 
         # Delete with retry for transient failures (file-in-use on Windows).
+        # Files go to the app trash store so undo can restore them.
         last_error: Exception | None = None
         for attempt in range(_DELETE_RETRY_ATTEMPTS):
             try:
-                os.remove(raw)
+                trash_name = trash.move_to_trash(raw)
+                if trash_name is None:
+                    raise OSError("move_to_trash returned None")
                 result.files_removed += 1
                 result.bytes_recovered += size
+                if len(result.removed_paths) < _REMOVED_MANIFEST_CAP:
+                    result.trash_map[raw] = trash_name
                 return "removed"
             except FileNotFoundError:
                 return "skipped:missing"

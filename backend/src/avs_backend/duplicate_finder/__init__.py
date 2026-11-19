@@ -19,6 +19,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import psutil
 
 from avs_backend.api.registry import register
+from avs_backend.cleaner.safe_paths import is_forbidden
 from avs_backend.licensing import require_feature
 
 logger = logging.getLogger(__name__)
@@ -466,6 +467,11 @@ def duplicate_delete(params: dict[str, Any] | None) -> dict[str, Any]:
     for file_info in files_to_delete:
         file_path = file_info['path']
         try:
+            # Re-validate at delete time — the renderer supplies raw paths,
+            # and scan-side exclusions don't protect this RPC.
+            if is_forbidden(file_path):
+                errors.append(f"Refusing to delete protected path: {file_path}")
+                continue
             if os.path.exists(file_path):
                 file_size = os.path.getsize(file_path)
                 os.remove(file_path)

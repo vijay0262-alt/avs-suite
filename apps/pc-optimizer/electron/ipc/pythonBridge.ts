@@ -108,6 +108,11 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
   const RESTART_DELAY_MS = 3000;
   const reconnectCallbacks: ReconnectCallback[] = [];
   let activeChild = child;
+  // Writes to a dead child's stdin raise EPIPE — swallow the error event
+  // so it can't surface as an uncaught main-process exception.
+  child.stdin.on('error', (err) => {
+    logger.warn('Backend stdin error (child likely exited)', err);
+  });
 
   // Cap buffer size to prevent memory growth from malformed backend output.
   // Must be large enough for the biggest JSON-RPC response (scan results
@@ -225,13 +230,23 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
         });
         activeChild = newChild;
         attachChild(newChild);
+        // Writes to a dead child's stdin raise EPIPE — swallow the error
+        // event so it can't surface as an uncaught main-process exception.
+        newChild.stdin.on('error', (err) => {
+          logger.warn('[reconnect] Backend stdin error (child likely exited)', err);
+        });
         // Health-check the restarted backend
         const pingId = `ping-${Date.now()}`;
         const pingReq: JsonRpcRequest = { jsonrpc: '2.0', id: pingId, method: 'system.ping' as never };
         newChild.stdin.write(JSON.stringify(pingReq) + '\n');
-        // Wait for ping response with timeout
+        // Wait for ping response with timeout. If it never arrives, kill
+        // the unresponsive child and release `restarting` so the exit
+        // handler can schedule another attempt instead of deadlocking.
         const pingTimer = setTimeout(() => {
-          logger.warn('[reconnect] Restarted backend ping timed out — will retry on next exit');
+          logger.warn('[reconnect] Restarted backend ping timed out — killing backend');
+          newChild.stdout.removeListener('data', pingHandler);
+          restarting = false;
+          try { newChild.kill('SIGKILL'); } catch { /* ignore */ }
         }, 60000);
         const pingHandler = (chunk: Buffer) => {
           if (chunk.toString('utf8').includes(pingId)) {
@@ -338,6 +353,20 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
     logger.info('Python backend ready.');
   } catch (e) {
     logger.error('Python backend failed initial ping', e);
+    // Kill the backend — otherwise a failed startup leaves a live
+    // process whose exit handler keeps respawning it (zombie loop),
+    // invisible to shutdown() since the client was never returned.
+    disposed = true;
+    for (const [, entry] of pending) {
+      clearTimeout(entry.timer);
+      entry.reject(new Error('Backend startup failed'));
+    }
+    pending.clear();
+    try {
+      const pid = child?.pid;
+      if (pid) execSync(`taskkill /PID ${pid} /T /F`, { stdio: 'ignore' });
+      else child?.kill('SIGKILL');
+    } catch { /* ignore */ }
     // Propagate the failure so the startup state machine can show a
     // proper error dialog / degraded mode instead of silently handing
     // out a client whose calls will always time out.

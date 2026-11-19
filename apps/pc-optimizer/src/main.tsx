@@ -72,8 +72,12 @@ initI18n()
       // checkStartupOpportunities() inspects existing deferred items and
       // sends a notification if cleanup opportunities exist — it does NOT
       // execute any destructive operations.
-      backgroundCleanupService.start();
-      backgroundCleanupService.checkStartupOpportunities();
+      // Honor the user's persisted toggle — don't restart the service
+      // after they turned it off.
+      if (localStorage.getItem('avs.bgCleanup.disabled') !== '1') {
+        backgroundCleanupService.start();
+        backgroundCleanupService.checkStartupOpportunities();
+      }
     });
   })
   .catch((err) => {

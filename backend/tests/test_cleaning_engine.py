@@ -131,17 +131,19 @@ def test_clean_never_touches_out_of_scope_even_if_asked(tmp_path: Path) -> None:
 
 
 def test_clean_reports_partial_when_some_files_fail(tmp_path: Path, monkeypatch) -> None:
+    from avs_backend.cleaner import trash
+
     paths = _make_files(tmp_path, 3)
 
-    real_remove = os.remove
+    real_move = trash.move_to_trash
     fail_target = paths[1]
 
-    def flaky_remove(p):
+    def flaky_move(p):
         if p == fail_target:
             raise PermissionError(13, "denied")
-        return real_remove(p)
+        return real_move(p)
 
-    monkeypatch.setattr(os, "remove", flaky_remove)
+    monkeypatch.setattr(trash, "move_to_trash", flaky_move)
 
     result = _TreeCleaner(tmp_path).clean(paths, Event(), lambda _p: None)
 
@@ -151,17 +153,19 @@ def test_clean_reports_partial_when_some_files_fail(tmp_path: Path, monkeypatch)
 
 
 def test_clean_retries_transient_failures(tmp_path: Path, monkeypatch) -> None:
+    from avs_backend.cleaner import trash
+
     paths = _make_files(tmp_path, 1)
     calls = {"count": 0}
-    real_remove = os.remove
+    real_move = trash.move_to_trash
 
     def transient(p):
         calls["count"] += 1
         if calls["count"] < 3:
             raise PermissionError(13, "temporarily denied")
-        return real_remove(p)
+        return real_move(p)
 
-    monkeypatch.setattr(os, "remove", transient)
+    monkeypatch.setattr(trash, "move_to_trash", transient)
 
     result = _TreeCleaner(tmp_path).clean(paths, Event(), lambda _p: None)
 

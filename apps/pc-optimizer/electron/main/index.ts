@@ -233,7 +233,11 @@ async function createMainWindow(): Promise<void> {
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (/^https?:\/\//i.test(url)) {
+      shell.openExternal(url);
+    } else {
+      log.warn('[security] Blocked openExternal for non-http(s) URL: %s', url);
+    }
     return { action: 'deny' };
   });
 
@@ -255,7 +259,7 @@ async function createMainWindow(): Promise<void> {
   });
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
-  if (devServerUrl) {
+  if (devServerUrl && !app.isPackaged && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?/i.test(devServerUrl)) {
     await mainWindow.loadURL(devServerUrl);
     if (env.openDevTools) mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
@@ -519,10 +523,12 @@ app.whenReady().then(async () => {
 // ── Window lifecycle ──────────────────────────────────────────
 // Do NOT quit when all windows are closed — the app runs in the
 // background via the system tray.  Only quit when the user
-// explicitly chooses "Exit AVS AI Shield" from the tray menu.
-app.on('window-all-closed', (event: Electron.Event) => {
-  // Prevent the default quit behavior
-  event.preventDefault();
+// explicitly chooses "Exit AVS AI Shield" from the tray menu, or
+// when the close-behavior setting is 'exit'.
+app.on('window-all-closed', () => {
+  if (getTraySettings().closeBehavior === 'exit') {
+    app.quit();
+  }
 });
 
 // ── Application shutdown ──────────────────────────────────────
@@ -562,9 +568,14 @@ app.on('will-quit', async (event) => {
   // graceful shutdown.
   if (process.platform === 'win32') {
     try {
+      // Kill only backends running from OUR install directory — a blanket
+      // 'taskkill /IM avs-backend.exe' would also sever the Chrome/Edge
+      // native-messaging host (same image name, spawned by the browser).
+      const ps = `Get-CimInstance Win32_Process -Filter "Name='avs-backend.exe'" | Where-Object { $_.CommandLine -notmatch 'native-messaging|extension://' } | Stop-Process -Force`;
+      const b64 = Buffer.from(ps, 'utf16le').toString('base64');
       await new Promise<void>((resolve) => {
         exec(
-          'taskkill /IM avs-backend.exe /T /F 2>nul',
+          `powershell -NoProfile -EncodedCommand ${b64}`,
           { timeout: 5000, windowsHide: true },
           (err: Error | null) => {
             if (err) {

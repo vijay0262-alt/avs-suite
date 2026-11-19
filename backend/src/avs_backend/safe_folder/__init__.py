@@ -331,6 +331,7 @@ def safe_folder_remove(params: dict[str, Any] | None) -> dict[str, Any]:
     if not folder_path:
         return {"success": False, "error": "path is required", "error_code": "INVALID_PARAMS"}
 
+    global _protected_folders
     with _lock:
         original_len = len(_protected_folders)
         _protected_folders = [f for f in _protected_folders if f["path"].lower() != folder_path.lower()]

@@ -313,6 +313,10 @@ def quarantine_add(params: dict[str, Any] | None) -> dict[str, Any]:
         return {"success": False, "message": "filePath parameter is required"}
 
     file_path = params["filePath"]
+    from avs_backend.cleaner.safe_paths import is_forbidden
+    if is_forbidden(file_path):
+        return {"success": False, "message": f"Path is protected and cannot be quarantined: {file_path}"}
+
     threat_name = params.get("threatName", "Unknown Threat")
     threat_type = params.get("threatType", "unknown")
     source = params.get("source", "manual")

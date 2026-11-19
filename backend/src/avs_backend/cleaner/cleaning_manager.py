@@ -189,6 +189,13 @@ class CleaningManager:
                  scan_task_id, only, max_bytes)
         start = time.monotonic()
 
+        # Reclaim disk space from trash entries past the undo window.
+        try:
+            from avs_backend.cleaner import trash as _trash
+            _trash.purge_expired()
+        except Exception:
+            pass
+
         # Best-effort System Restore Point before cleaning.
         try:
             from avs_backend.system_restore import create_restore_point
@@ -474,7 +481,6 @@ class CleaningManager:
         """
         import json
         import os
-        from avs_backend.cleaner.recycle_bin import restore_from_recycle_bin
 
         # Get the most recent successful cleaning entry
         entries = self._history.query(
@@ -490,11 +496,19 @@ class CleaningManager:
 
         last_entry = entries[0]
         deleted_files_json = last_entry.get("deleted_files_json", "[]")
-        
+
         try:
-            deleted_files = json.loads(deleted_files_json)
+            payload = json.loads(deleted_files_json)
         except (json.JSONDecodeError, TypeError):
-            deleted_files = []
+            payload = []
+        # New format wraps the file list with truncation metadata; legacy
+        # rows stored the bare list.
+        if isinstance(payload, dict):
+            deleted_files = payload.get("files", [])
+            manifest_truncated = bool(payload.get("truncated"))
+        else:
+            deleted_files = payload if isinstance(payload, list) else []
+            manifest_truncated = False
 
         if not deleted_files:
             return {
@@ -504,22 +518,27 @@ class CleaningManager:
                 "bytesRestored": 0,
             }
 
-        # Attempt to restore files from Recycle Bin
+        # Restore files from the app trash store (cleaned files are moved
+        # there, never permanently deleted). Entries written before the
+        # trash store existed have no "trash" name and are unrecoverable.
+        from avs_backend.cleaner import trash as _trash
+
         restored_count = 0
         restored_bytes = 0
+        unrecoverable = 0
         errors = []
 
         for file_info in deleted_files:
             path = file_info.get("path", "")
             if not path:
                 continue
+            trash_name = file_info.get("trash")
+            if not trash_name:
+                unrecoverable += 1
+                continue
 
             try:
-                # Try to restore from Recycle Bin
-                # Note: Windows Recycle Bin doesn't provide direct restore by original path
-                # We can only empty the entire bin or restore via Windows API
-                # For now, we'll attempt to restore using the recycle bin API
-                success = restore_from_recycle_bin(path)
+                success = _trash.restore_from_trash(trash_name, path)
                 
                 if success:
                     restored_count += 1
@@ -555,11 +574,19 @@ class CleaningManager:
             }
         )
 
+        message = f"Restored {restored_count} file(s) from trash."
+        if manifest_truncated:
+            message += " Some removed files were never recorded (manifest limit) and cannot be restored."
+        if unrecoverable:
+            message += f" {unrecoverable} file(s) were permanently deleted before trash tracking existed and cannot be restored."
+        if errors:
+            message += f" {len(errors)} error(s)."
         return {
             "success": restored_count > 0,
-            "message": f"Restored {restored_count} file(s) from Recycle Bin." + (f" {len(errors)} error(s)." if errors else ""),
+            "message": message,
             "filesRestored": restored_count,
             "bytesRestored": restored_bytes,
+            "unrecoverable": unrecoverable,
             "errors": errors,
         }
 
@@ -626,7 +653,10 @@ class CleaningManager:
                 "duration_ms": result.elapsed_ms,
                 "errors_json": _truncated_errors_json(result.errors),
                 "deleted_files_json": json.dumps(
-                    [{"path": p} for p in result.removed_paths]
+                    {"files": [{"path": p, "trash": result.trash_map.get(p)}
+                               for p in result.removed_paths],
+                     "truncated": result.files_removed > len(result.removed_paths),
+                     "total_removed": result.files_removed}
                 ) if result.removed_paths else "[]",
             }
         )

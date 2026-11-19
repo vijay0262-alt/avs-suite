@@ -345,8 +345,32 @@ _IS_NM_LAUNCH = "--native-messaging" in sys.argv or any(
     or arg.startswith("--parent-window")
     for arg in sys.argv[1:]
 )
-if not _IS_NM_LAUNCH:
+# Maintenance launches run a single CLI action — importing 60+ modules and
+# warming caches races the very cleanup they were scheduled to do.
+if not _IS_NM_LAUNCH and "--maintenance" not in sys.argv:
     threading.Thread(target=_import_all_and_warm, daemon=True, name="module-loader").start()
+
+
+# Register a simple ping handler immediately so the Electron bridge can
+# health-check the backend without waiting for all modules to import.
+@registry.register("system.ping")
+def _system_ping(_params: dict[str, Any] | None) -> dict[str, bool]:
+    return {"pong": True}
+
+
+@registry.register("system.shutdown")
+def _system_shutdown(_params: dict[str, Any] | None) -> dict[str, bool]:
+    """Graceful process exit — the Electron bridge sends this before its
+    taskkill fallback so the backend can flush state and stop jobs."""
+    def _exit() -> None:
+        try:
+            _dispatch_pool.shutdown(wait=False, cancel_futures=True)
+        except Exception:
+            pass
+        os._exit(0)
+    # Reply first, then exit — give the response time to flush to stdout.
+    threading.Timer(0.3, _exit).start()
+    return {"shutting_down": True}
 
 
 # Register a simple ping handler immediately so the Electron bridge can

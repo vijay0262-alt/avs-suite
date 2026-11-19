@@ -48,6 +48,11 @@ export class DuplicateFinderViewModel extends ViewModel<DuplicateFinderState> {
     }
   }
 
+  override dispose(): void {
+    this.stopScanPolling();
+    super.dispose();
+  }
+
   private async pollScanOnce(): Promise<void> {
     if (!this.state.scanning) return this.stopScanPolling();
     try {

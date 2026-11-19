@@ -1232,6 +1232,10 @@ def threat_quarantine(params: dict[str, Any] | None) -> dict[str, Any]:
     if not file_path:
         return {"success": False, "error": "file_path is required", "error_code": "INVALID_PARAMS"}
 
+    from avs_backend.cleaner.safe_paths import is_forbidden
+    if is_forbidden(file_path):
+        return {"success": False, "error": "Path is protected and cannot be quarantined", "error_code": "FORBIDDEN_PATH"}
+
     try:
         from avs_backend.threat_engine.quarantine_manager import quarantine_file
         result = quarantine_file(file_path, threat_info)
@@ -1279,6 +1283,10 @@ def threat_remove(params: dict[str, Any] | None) -> dict[str, Any]:
     file_path = params.get("file_path", "")
     if not file_path:
         return {"success": False, "error": "file_path is required", "error_code": "INVALID_PARAMS"}
+
+    from avs_backend.cleaner.safe_paths import is_forbidden
+    if is_forbidden(file_path):
+        return {"success": False, "error": "Path is protected and cannot be removed", "error_code": "FORBIDDEN_PATH"}
 
     try:
         # Securely delete the file using the quarantine manager's secure wipe

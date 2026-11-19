@@ -38,7 +38,13 @@ def _now_iso() -> str:
 def _log_to_file(message: str, action: str) -> None:
     """Append a log line to the maintenance log file."""
     try:
-        log_dir = Path(os.environ.get("LOCALAPPDATA", "")) / "AVSShield" / "logs"
+        # Match the app's log directory and honor the shared override;
+        # fall back to %TEMP% when LOCALAPPDATA is unset (SYSTEM context).
+        base = os.environ.get("AVS_LOG_DIR")
+        if not base:
+            local = os.environ.get("LOCALAPPDATA") or os.environ.get("TEMP", ".")
+            base = str(Path(local) / "AVS AI Shield" / "logs")
+        log_dir = Path(base)
         log_dir.mkdir(parents=True, exist_ok=True)
         log_file = log_dir / "maintenance.log"
         with open(log_file, "a", encoding="utf-8") as f:

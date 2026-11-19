@@ -170,6 +170,7 @@ class CleaningResult:
     skip_reasons: dict[str, int] = field(default_factory=dict)  # Track why files were skipped
     failure_reasons: dict[str, int] = field(default_factory=dict)  # Track why files failed
     removed_paths: list[str] = field(default_factory=list)  # undo manifest (capped)
+    trash_map: dict[str, str] = field(default_factory=dict)  # path -> trash name
 
     def to_summary(self) -> dict[str, object]:
         return {

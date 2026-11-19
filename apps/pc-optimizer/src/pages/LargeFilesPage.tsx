@@ -51,18 +51,26 @@ export default function LargeFilesPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deletedSize, setDeletedSize] = useState(0);
 
-  // Load drives on mount
+  // Load drives on mount — disk.listDrives returns a BARE array of
+  // {device, mountpoint, fstype, total, used, free, percent}.
   useEffect(() => {
-    rpc.raw<{ drives: DriveInfo[] }>(RPC_METHODS.DISK_LIST_DRIVES)
+    interface RawDrive { device: string; mountpoint: string; fstype: string; total: number; free: number }
+    rpc.raw<RawDrive[] | { drives: RawDrive[] }>(RPC_METHODS.DISK_LIST_DRIVES)
       .then((res) => {
-        const driveList = res.drives || [];
+        const raw = Array.isArray(res) ? res : (res.drives || []);
+        const driveList: DriveInfo[] = raw.map((d) => ({
+          letter: d.mountpoint,
+          label: d.fstype,
+          totalBytes: d.total,
+          freeBytes: d.free,
+        }));
         setDrives(driveList);
-        if (driveList.length > 0 && !selectedDrive) {
-          setSelectedDrive(driveList[0]!.letter);
+        if (driveList.length > 0) {
+          setSelectedDrive((prev) => prev || driveList[0]!.letter);
         }
       })
       .catch(() => setError('Could not load drives. Please try again.'));
-  }, [selectedDrive]);
+  }, []);
 
   const handleScan = useCallback(async () => {
     if (!selectedDrive) return;
@@ -70,8 +78,10 @@ export default function LargeFilesPage() {
     setError(null);
     setFiles([]);
     try {
-      const res = await rpc.raw<{ largestFiles: LargeFile[] }>(RPC_METHODS.DISK_ANALYZE, { path: selectedDrive });
-      setFiles(res.largestFiles || []);
+      // disk.analyze returns {analysis: {largestFiles: [...]}}
+      const res = await rpc.raw<{ analysis?: { largestFiles?: LargeFile[] }; largestFiles?: LargeFile[] }>(
+        RPC_METHODS.DISK_ANALYZE, { path: selectedDrive });
+      setFiles(res.analysis?.largestFiles || res.largestFiles || []);
     } catch {
       setError('Scan encountered an issue. Please try again.');
     }

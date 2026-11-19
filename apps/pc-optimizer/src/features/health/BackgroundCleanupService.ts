@@ -62,6 +62,10 @@ class BackgroundCleanupServiceImpl {
   private started = false;
   private lastNotificationTime = new Map<string, number>();
 
+  isRunning(): boolean {
+    return this.started;
+  }
+
   /**
    * Start the background cleanup detection service.
    * Subscribes to process monitor events for detection-only behavior.

@@ -21,6 +21,7 @@ import json
 import logging
 import os
 import shutil
+import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -39,6 +40,9 @@ _INDEX_FILE = _QUARANTINE_DIR / "index.json"
 
 # Size of chunks used when hashing / overwriting files.
 _CHUNK_SIZE = 1024 * 1024  # 1 MiB
+
+# Serializes index read-modify-write across the scan-executor thread pool.
+_INDEX_LOCK = threading.RLock()
 
 
 # ---------------------------------------------------------------------------
@@ -285,17 +289,18 @@ def quarantine_file(file_path: str, threat_info: dict) -> dict:
     # (e.g. in use by a running process) — every subsequent scan would
     # re-detect it and add a brand new duplicate quarantine entry.
     resolved_src = str(src.resolve())
-    existing_index = _load_index()
-    for existing_id, existing_record in existing_index.items():
-        if (
-            existing_record.get("original_path", "").lower() == resolved_src.lower()
-            and existing_record.get("sha256") == sha256
-        ):
-            log.info("File already quarantined (id=%s): %s", existing_id, resolved_src)
-            existing_result = dict(existing_record)
-            existing_result["quarantine_id"] = existing_id
-            existing_result["already_quarantined"] = True
-            return existing_result
+    with _INDEX_LOCK:
+        existing_index = _load_index()
+        for existing_id, existing_record in existing_index.items():
+            if (
+                existing_record.get("original_path", "").lower() == resolved_src.lower()
+                and existing_record.get("sha256") == sha256
+            ):
+                log.info("File already quarantined (id=%s): %s", existing_id, resolved_src)
+                existing_result = dict(existing_record)
+                existing_result["quarantine_id"] = existing_id
+                existing_result["already_quarantined"] = True
+                return existing_result
 
     quarantine_id = str(uuid.uuid4())
     dest = _QUARANTINE_DIR / f"{quarantine_id}.bin"
@@ -356,9 +361,10 @@ def quarantine_file(file_path: str, threat_info: dict) -> dict:
         log.warning("Failed to write metadata snapshot: %s", exc)
 
     # 5. Update the index.
-    index = _load_index()
-    index[quarantine_id] = record
-    _save_index(index)
+    with _INDEX_LOCK:
+        index = _load_index()
+        index[quarantine_id] = record
+        _save_index(index)
 
     # 6. Securely wipe the original file.
     _secure_overwrite_and_delete(src)
@@ -423,8 +429,11 @@ def restore_file(quarantine_id: str) -> dict:
     except OSError:
         pass
 
-    del index[quarantine_id]
-    _save_index(index)
+    with _INDEX_LOCK:
+        index = _load_index()
+        if quarantine_id in index:
+            del index[quarantine_id]
+        _save_index(index)
 
     log.info("Restored file %s (id=%s)", original, quarantine_id)
     return {"restored": True, "original_path": str(original)}
@@ -461,8 +470,11 @@ def delete_quarantined(quarantine_id: str) -> dict:
     except OSError:
         pass
 
-    del index[quarantine_id]
-    _save_index(index)
+    with _INDEX_LOCK:
+        index = _load_index()
+        if quarantine_id in index:
+            del index[quarantine_id]
+        _save_index(index)
 
     log.info("Permanently deleted quarantined file %s (id=%s)", dest, quarantine_id)
     return {"deleted": True, "quarantine_id": quarantine_id}

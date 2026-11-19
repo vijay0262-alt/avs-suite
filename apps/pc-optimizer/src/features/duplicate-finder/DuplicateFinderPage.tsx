@@ -2,13 +2,14 @@
  * DuplicateFinderPage - Main Duplicate Finder page
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Badge } from '@avs/ui';
 import { useViewModel } from '@avs/core/mvvm/useViewModel';
 import { PageHeader } from '../../components/PageHeader';
 import { ModuleErrorState, ModuleLoadingState, ModuleEmptyState, ModuleSuccessBanner, ModuleErrorBanner } from '../../components/ModuleStates';
 import { HelpButton } from '../../components/HelpButton';
 import { UnifiedScanProgressCard, DUPLICATE_SCAN_CONFIG } from '../unified-scan';
+import { SharedConfirmDialog } from '../../components/SharedConfirmDialog';
 import { DuplicateFinderViewModel } from './DuplicateFinderViewModel';
 import { duplicateFinderService } from './duplicate-finder.service';
 import type { DuplicateScope } from './duplicate-finder.types';
@@ -30,6 +31,7 @@ const FOLDER_SCOPES: { id: DuplicateScope; label: string }[] = [
 export default function DuplicateFinderPage() {
   const vm = useMemo(() => new DuplicateFinderViewModel(duplicateFinderService), []);
   const state = useViewModel(vm);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     void vm.bootstrap();
@@ -40,7 +42,9 @@ export default function DuplicateFinderPage() {
     void vm.scan();
   };
 
+  // Permanent deletion (os.remove backend-side) — always confirm first.
   const handleDelete = () => {
+    setConfirmDelete(false);
     void vm.delete();
   };
 
@@ -294,7 +298,7 @@ export default function DuplicateFinderPage() {
                       </p>
                     </div>
                     <Button
-                      onClick={handleDelete}
+                      onClick={() => setConfirmDelete(true)}
                       disabled={state.deleting}
                       variant="danger"
                       leftIcon={<SparklesIcon className="h-4 w-4" />}
@@ -316,6 +320,21 @@ export default function DuplicateFinderPage() {
           )}
         </>
       )}
+      <SharedConfirmDialog
+        open={confirmDelete}
+        title="Delete Selected Files"
+        message={
+          <>
+            This will <strong>permanently delete</strong> {state.selectedFiles?.size ?? 0} file(s).
+            They will <strong>not</strong> go to the Recycle Bin and cannot be recovered.
+          </>
+        }
+        confirmLabel="Delete Permanently"
+        variant="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(false)}
+        testId="duplicate-delete-confirm"
+      />
     </div>
   );
 }
