@@ -1906,49 +1906,54 @@ def threat_scan_export(params: dict[str, Any] | None) -> dict[str, Any]:
 log.info("Threat Engine module loaded — %d detection sources configured",
          sum(1 for v in _config.get("enabled_sources", {}).values() if v))
 
-# Auto-setup ClamAV on startup (uses bundled binaries, downloads definitions
-# in background, auto-starts engine). No user action needed.
-try:
-    from avs_backend.threat_engine.clamav_setup import auto_setup_on_startup
-    auto_setup_on_startup()
-except Exception as _e:
-    log.warning("ClamAV auto-setup on startup failed: %s", _e)
+# Background monitors are only started when this module is imported by the
+# running backend (rpc_server). Tests and tooling set
+# AVS_BACKEND_NO_AUTOSTART=1 so importing the module stays side-effect free.
+if not os.environ.get("AVS_BACKEND_NO_AUTOSTART"):
 
-# Start scan scheduler if enabled (runs scheduled scans automatically)
-try:
-    from avs_backend.threat_engine.scan_scheduler import start_scheduler
-    start_scheduler()
-except Exception as _e:
-    log.warning("Scan scheduler startup failed: %s", _e)
+    # Auto-setup ClamAV on startup (uses bundled binaries, downloads
+    # definitions in background, auto-starts engine). No user action needed.
+    try:
+        from avs_backend.threat_engine.clamav_setup import auto_setup_on_startup
+        auto_setup_on_startup()
+    except Exception as _e:
+        log.warning("ClamAV auto-setup on startup failed: %s", _e)
 
-# Auto-run startup scan if enabled (scans startup items + boot sector)
-try:
-    from avs_backend.threat_engine.startup_scan import auto_start_on_startup
-    auto_start_on_startup()
-except Exception as _e:
-    log.warning("Startup scan auto-start failed: %s", _e)
+    # Start scan scheduler if enabled (runs scheduled scans automatically)
+    try:
+        from avs_backend.threat_engine.scan_scheduler import start_scheduler
+        start_scheduler()
+    except Exception as _e:
+        log.warning("Scan scheduler startup failed: %s", _e)
 
-# Auto-start download scanner (monitors Downloads/Desktop for new files)
-try:
-    from avs_backend.threat_engine.download_scanner import _get_scanner
-    _get_scanner().start()
-    log.info("Download scanner auto-started on startup")
-except Exception as _e:
-    log.warning("Download scanner auto-start failed: %s", _e)
+    # Auto-run startup scan if enabled (scans startup items + boot sector)
+    try:
+        from avs_backend.threat_engine.startup_scan import auto_start_on_startup
+        auto_start_on_startup()
+    except Exception as _e:
+        log.warning("Startup scan auto-start failed: %s", _e)
 
-# Auto-start real-time threat monitors (ETW file monitor + network C2)
-try:
-    from avs_backend.realtime_threat import realtime_threat_start
-    realtime_threat_start(None)
-    log.info("Real-time threat monitors auto-started on startup")
-except Exception as _e:
-    log.warning("Real-time threat monitors auto-start failed: %s", _e)
+    # Auto-start download scanner (monitors Downloads/Desktop for new files)
+    try:
+        from avs_backend.threat_engine.download_scanner import _get_scanner
+        _get_scanner().start()
+        log.info("Download scanner auto-started on startup")
+    except Exception as _e:
+        log.warning("Download scanner auto-start failed: %s", _e)
 
-# Auto-fix security protections on startup (ClamAV, Defender, firewall,
-# ransomware protection, memory integrity) so cards are green after install.
-try:
-    from avs_backend.dashboard import auto_fix_security_on_startup
-    auto_fix_security_on_startup()
-    log.info("Security auto-fix started on startup")
-except Exception as _e:
-    log.warning("Security auto-fix startup failed: %s", _e)
+    # Auto-start real-time threat monitors (ETW file monitor + network C2)
+    try:
+        from avs_backend.realtime_threat import realtime_threat_start
+        realtime_threat_start(None)
+        log.info("Real-time threat monitors auto-started on startup")
+    except Exception as _e:
+        log.warning("Real-time threat monitors auto-start failed: %s", _e)
+
+    # Auto-fix security protections on startup (ClamAV, Defender, firewall,
+    # ransomware protection, memory integrity) so cards are green after install.
+    try:
+        from avs_backend.dashboard import auto_fix_security_on_startup
+        auto_fix_security_on_startup()
+        log.info("Security auto-fix started on startup")
+    except Exception as _e:
+        log.warning("Security auto-fix startup failed: %s", _e)

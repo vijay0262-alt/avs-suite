@@ -198,3 +198,12 @@ class TestFalsePositiveCleanup:
 
         remaining = qm._load_index()
         assert "bogus-id" not in remaining
+
+
+import avs_backend.licensing as _licensing
+
+
+@pytest.fixture(autouse=True)
+def _pro_edition(monkeypatch):
+    """threat.* mutation RPCs are Pro-gated; tests exercise the handlers."""
+    monkeypatch.setattr(_licensing, "_edition_override", "professional")

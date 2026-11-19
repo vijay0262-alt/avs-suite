@@ -6,7 +6,14 @@ can continue logging after pytest closes logging handlers, producing
 """
 from __future__ import annotations
 
+import os
+
 import pytest
+
+# Importing avs_backend.threat_engine auto-starts download scanner, real-time
+# monitors, and other background threads that outlive tests and log to closed
+# pytest streams. Disable autostart for the whole test session.
+os.environ.setdefault("AVS_BACKEND_NO_AUTOSTART", "1")
 
 
 @pytest.fixture(autouse=True)
