@@ -286,7 +286,16 @@ def _import_all_and_warm() -> None:
     _warm_caches()
 
 
-threading.Thread(target=_import_all_and_warm, daemon=True, name="module-loader").start()
+# Native-messaging mode doesn't need the full module set — the host
+# lazy-imports WebShield/classifier itself; loading 40+ modules (and
+# warming caches via PowerShell) just delays first-response time.
+_IS_NM_LAUNCH = "--native-messaging" in sys.argv or any(
+    arg.startswith(("chrome-extension://", "moz-extension://", "extension://"))
+    or arg.startswith("--parent-window")
+    for arg in sys.argv[1:]
+)
+if not _IS_NM_LAUNCH:
+    threading.Thread(target=_import_all_and_warm, daemon=True, name="module-loader").start()
 
 
 # Register a simple ping handler immediately so the Electron bridge can

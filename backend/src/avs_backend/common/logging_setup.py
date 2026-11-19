@@ -30,48 +30,67 @@ def configure_logging(level: str = "INFO") -> logging.Logger:
 
     root.setLevel(level)
 
-    log_dir = Path(os.environ.get("AVS_LOG_DIR", "logs"))
-    log_dir.mkdir(parents=True, exist_ok=True)
+    # Chrome/Task Scheduler spawn us with a foreign, unwritable CWD — a
+    # relative "logs" fallback dies on mkdir before main() can dispatch
+    # --native-messaging / --maintenance. Always resolve an absolute dir.
+    env_dir = os.environ.get("AVS_LOG_DIR")
+    if env_dir:
+        log_dir = Path(env_dir)
+    else:
+        base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+        log_dir = Path(base) / "AVS AI Shield" / "logs"
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        _probe = log_dir / ".probe"
+        _probe.touch()
+        _probe.unlink()
+    except OSError:
+        log_dir = Path(os.environ.get("TEMP", "/tmp")) / "avs-logs"
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            log_dir = None  # type: ignore[assignment]
 
-    # Main application log
-    main_handler = RotatingFileHandler(
-        log_dir / "main.log", maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8"
-    )
-    main_handler.setFormatter(logging.Formatter(_LOG_FORMAT, datefmt=_DATE_FORMAT))
-    root.addHandler(main_handler)
+    if log_dir is not None:
+        # Main application log
+        main_handler = RotatingFileHandler(
+            log_dir / "main.log", maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8"
+        )
+        main_handler.setFormatter(logging.Formatter(_LOG_FORMAT, datefmt=_DATE_FORMAT))
+        root.addHandler(main_handler)
 
-    # Backend-specific log
-    backend_handler = RotatingFileHandler(
-        log_dir / "backend.log", maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8"
-    )
-    backend_handler.setFormatter(logging.Formatter(_LOG_FORMAT, datefmt=_DATE_FORMAT))
-    # Only log backend-related messages to backend.log
-    backend_handler.addFilter(lambda record: record.name.startswith('avs'))
-    root.addHandler(backend_handler)
+        # Backend-specific log
+        backend_handler = RotatingFileHandler(
+            log_dir / "backend.log", maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8"
+        )
+        backend_handler.setFormatter(logging.Formatter(_LOG_FORMAT, datefmt=_DATE_FORMAT))
+        # Only log backend-related messages to backend.log
+        backend_handler.addFilter(lambda record: record.name.startswith('avs'))
+        root.addHandler(backend_handler)
 
-    # Memory Optimizer log
-    memory_handler = RotatingFileHandler(
-        log_dir / "memory_optimizer.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
-    )
-    memory_handler.setFormatter(logging.Formatter(_LOG_FORMAT, datefmt=_DATE_FORMAT))
-    memory_handler.addFilter(lambda record: 'memory' in record.name.lower())
-    root.addHandler(memory_handler)
+        # Memory Optimizer log
+        memory_handler = RotatingFileHandler(
+            log_dir / "memory_optimizer.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+        )
+        memory_handler.setFormatter(logging.Formatter(_LOG_FORMAT, datefmt=_DATE_FORMAT))
+        memory_handler.addFilter(lambda record: 'memory' in record.name.lower())
+        root.addHandler(memory_handler)
 
-    # Startup Manager log
-    startup_handler = RotatingFileHandler(
-        log_dir / "startup_manager.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
-    )
-    startup_handler.setFormatter(logging.Formatter(_LOG_FORMAT, datefmt=_DATE_FORMAT))
-    startup_handler.addFilter(lambda record: 'startup' in record.name.lower())
-    root.addHandler(startup_handler)
+        # Startup Manager log
+        startup_handler = RotatingFileHandler(
+            log_dir / "startup_manager.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+        )
+        startup_handler.setFormatter(logging.Formatter(_LOG_FORMAT, datefmt=_DATE_FORMAT))
+        startup_handler.addFilter(lambda record: 'startup' in record.name.lower())
+        root.addHandler(startup_handler)
 
-    # Performance Monitor log
-    performance_handler = RotatingFileHandler(
-        log_dir / "performance_monitor.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
-    )
-    performance_handler.setFormatter(logging.Formatter(_LOG_FORMAT, datefmt=_DATE_FORMAT))
-    performance_handler.addFilter(lambda record: 'performance' in record.name.lower() or 'monitor' in record.name.lower())
-    root.addHandler(performance_handler)
+        # Performance Monitor log
+        performance_handler = RotatingFileHandler(
+            log_dir / "performance_monitor.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+        )
+        performance_handler.setFormatter(logging.Formatter(_LOG_FORMAT, datefmt=_DATE_FORMAT))
+        performance_handler.addFilter(lambda record: 'performance' in record.name.lower() or 'monitor' in record.name.lower())
+        root.addHandler(performance_handler)
 
     # stderr is captured by the Electron parent; keep this concise.
     stderr_handler = logging.StreamHandler()

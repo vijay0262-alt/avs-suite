@@ -73,11 +73,12 @@ export function useFeatureGuard() {
 
   const guard = useCallback(
     (feature: ManagedFeature, moduleName: string, action: () => void, options?: GuardOptions): void => {
-      if (canUse(feature)) {
+      // Pro entitles every feature — never silently drop the action
+      // just because canUse() returned false for a Pro user.
+      if (isPro || canUse(feature)) {
         action();
         return;
       }
-      if (isPro) return;
       if (isDismissed(moduleName)) return;
       setDialog({
         open: true,

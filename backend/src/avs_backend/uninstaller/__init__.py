@@ -36,11 +36,17 @@ def uninstaller_list(params: dict[str, Any] | None) -> dict[str, Any]:
 @require_feature("uninstaller.uninstall")
 def uninstaller_uninstall(params: dict[str, Any] | None) -> dict[str, Any]:
     """Launch a program's uninstaller."""
-    if not params or "program" not in params:
-        raise ValueError("Missing 'program' parameter")
+    # Accept either {"id": "SOURCE:subkey"} or {"program": {...}} — only the
+    # registry-derived id is used; client-supplied fields are never trusted.
+    program = (params or {}).get("program")
+    program_id = (params or {}).get("id") or (
+        program.get("id") if isinstance(program, dict) else None
+    )
+    if not program_id:
+        raise ValueError("Missing 'id' parameter")
     try:
-        quiet = bool(params.get("quiet"))
-        return uninstall_program(params["program"], quiet=quiet)
+        quiet = bool((params or {}).get("quiet"))
+        return uninstall_program(program_id, quiet=quiet)
     except Exception as e:  # noqa: BLE001
         logger.error("Uninstall failed: %s", e)
         raise

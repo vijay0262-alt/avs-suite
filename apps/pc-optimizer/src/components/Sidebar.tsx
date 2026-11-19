@@ -91,6 +91,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { id: 'driver-updater', to: '/driver-updater', labelKey: 'nav.driverUpdater', Icon: ArrowDownTrayIcon, proEnhanced: true },
       { id: 'network-optimizer', to: '/network-optimizer', labelKey: 'nav.networkOptimizer', Icon: WifiIcon, proEnhanced: true },
       { id: 'auto-care', to: '/auto-care', labelKey: 'nav.autoCare', Icon: ClockIcon, proEnhanced: true },
+      { id: 'advanced-security', to: '/advanced-security', labelKey: 'nav.advancedSecurity', Icon: ShieldExclamationIcon },
     ],
   },
   // ── REPORTS & TOOLS ───────────────────────────────────────────

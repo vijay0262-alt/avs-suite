@@ -166,8 +166,22 @@ def list_programs(include_system: bool = False) -> list[Program]:
     return sorted(programs.values(), key=lambda p: p.name.lower())
 
 
-def uninstall_program(program: dict[str, Any], quiet: bool = False) -> dict[str, Any]:
-    """Launch a program's uninstaller.
+def _resolve_program(program_id: str) -> Program | None:
+    """Re-read a program's data from the registry by its 'SOURCE:subkey' id.
+
+    The uninstall command MUST come from the registry, never from the
+    caller — a client-supplied uninstallString is arbitrary command
+    execution."""
+    if not program_id:
+        return None
+    for p in list_programs(include_system=True):
+        if p.id == program_id:
+            return p
+    return None
+
+
+def uninstall_program(program_id: str, quiet: bool = False) -> dict[str, Any]:
+    """Launch a program's uninstaller, resolved from the registry by id.
 
     The uninstaller runs detached; most Windows uninstallers present their own
     UI, so we launch and return immediately rather than block the RPC loop.
@@ -175,16 +189,19 @@ def uninstall_program(program: dict[str, Any], quiet: bool = False) -> dict[str,
     if not IS_WINDOWS:
         return {"success": False, "message": "Uninstalling is only available on Windows"}
 
-    quiet_cmd = program.get("quietUninstallString") or ""
-    normal_cmd = program.get("uninstallString") or ""
-    command = quiet_cmd if (quiet and quiet_cmd) else normal_cmd
+    prog = _resolve_program(program_id)
+    if prog is None:
+        return {"success": False, "message": "Program not found in the registry"}
 
+    command = prog.quiet_uninstall_string if (quiet and prog.quiet_uninstall_string) \
+        else prog.uninstall_string
     if not command:
         return {"success": False, "message": "No uninstall command is available for this program"}
 
     try:
-        # Launch through the shell so registry commands with arguments work.
-        subprocess.Popen(command, shell=True, creationflags=_NO_WINDOW)
+        # shell=False: CreateProcess parses the command line directly, so
+        # cmd.exe metacharacters in the registry string cannot inject.
+        subprocess.Popen(command, creationflags=_NO_WINDOW)
         return {"success": True, "message": "Uninstaller launched", "launched": True}
     except Exception as e:  # noqa: BLE001
         log.error("Failed to launch uninstaller: %s", e)

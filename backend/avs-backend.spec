@@ -62,7 +62,6 @@ a = Analysis(
         "avs_backend.settings",
         "avs_backend.scheduler",
         "avs_backend.utilities",
-        "avs_backend.logs",
         # ── Modules added after initial scaffold ──
         "avs_backend.licensing",
         "avs_backend.drivers",

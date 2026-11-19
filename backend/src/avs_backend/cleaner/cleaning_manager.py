@@ -24,6 +24,7 @@ Safety guarantees layered on top of :class:`BaseCleaner.clean`:
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import time
@@ -550,6 +551,7 @@ class CleaningManager:
                 "files_failed": len(errors),
                 "duration_ms": 0,
                 "errors_json": json.dumps(errors),
+                "deleted_files_json": "[]",
             }
         )
 
@@ -623,7 +625,9 @@ class CleaningManager:
                 "files_failed": result.files_failed,
                 "duration_ms": result.elapsed_ms,
                 "errors_json": _truncated_errors_json(result.errors),
-                "deleted_files_json": "[]",
+                "deleted_files_json": json.dumps(
+                    [{"path": p} for p in result.removed_paths]
+                ) if result.removed_paths else "[]",
             }
         )
         return result

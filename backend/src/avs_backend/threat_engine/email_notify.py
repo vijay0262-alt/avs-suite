@@ -327,9 +327,12 @@ def email_notify_status(_params: dict[str, Any] | None) -> dict[str, Any]:
     config = _load_config()
     history = _load_history()
 
-    # Don't expose the password
+    # Don't expose the password — but do expose whether it's actually
+    # DPAPI-protected or fell back to base64 (plaintext-equivalent).
     safe_config = {k: v for k, v in config.items() if k != "password"}
-    safe_config["has_password"] = bool(config.get("password"))
+    enc = str(config.get("password_encrypted", ""))
+    safe_config["has_password"] = bool(config.get("password") or enc)
+    safe_config["password_protected"] = bool(enc) and not enc.startswith("b64:")
 
     return {
         "success": True,

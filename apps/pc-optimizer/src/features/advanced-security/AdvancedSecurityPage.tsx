@@ -98,13 +98,15 @@ function formatRelative(ts: string | null | undefined): string {
 
 type TabId = 'sandbox' | 'ml' | 'web' | 'ransomware' | 'email' | 'boot' | 'scam' | 'safebanking';
 
-const TABS: { id: TabId; label: string; icon: typeof BeakerIcon }[] = [
-  { id: 'sandbox', label: 'Behavioral Sandbox', icon: BeakerIcon },
-  { id: 'ml', label: 'ML Anomaly', icon: ChartBarIcon },
-  { id: 'web', label: 'Web Shield', icon: GlobeAltIcon },
-  { id: 'ransomware', label: 'Ransomware Vaccine', icon: LockClosedIcon },
-  { id: 'email', label: 'Email Scanner', icon: EnvelopeIcon },
-  { id: 'boot', label: 'Boot Sector', icon: ComputerDesktopIcon },
+// statusKey maps the tab id onto AdvancedSecurityStatus keys — tab ids
+// and status field names intentionally differ.
+const TABS: { id: TabId; label: string; icon: typeof BeakerIcon; statusKey?: keyof AdvancedSecurityStatus }[] = [
+  { id: 'sandbox', label: 'Behavioral Sandbox', icon: BeakerIcon, statusKey: 'behavioral_sandbox' },
+  { id: 'ml', label: 'ML Anomaly', icon: ChartBarIcon, statusKey: 'ml_anomaly' },
+  { id: 'web', label: 'Web Shield', icon: GlobeAltIcon, statusKey: 'web_shield' },
+  { id: 'ransomware', label: 'Ransomware Vaccine', icon: LockClosedIcon, statusKey: 'ransomware_vaccine' },
+  { id: 'email', label: 'Email Scanner', icon: EnvelopeIcon, statusKey: 'email_scanner' },
+  { id: 'boot', label: 'Boot Sector', icon: ComputerDesktopIcon, statusKey: 'boot_scanner' },
   { id: 'scam', label: 'Scam Assistant', icon: ExclamationTriangleIcon },
   { id: 'safebanking', label: 'Safe Banking', icon: LockClosedIcon },
 ];
@@ -205,8 +207,7 @@ export default function AdvancedSecurityPage() {
         <Card title="Module Status" variant="glass">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {TABS.map((tab) => {
-              const moduleStatus = status?.[`${tab.id}_anomaly` as keyof AdvancedSecurityStatus] ||
-                status?.[tab.id as keyof AdvancedSecurityStatus];
+              const moduleStatus = tab.statusKey ? status?.[tab.statusKey] : { available: true };
               const available = moduleStatus && typeof moduleStatus === 'object' && 'available' in moduleStatus
                 ? (moduleStatus as { available: boolean }).available
                 : false;
@@ -231,7 +232,7 @@ export default function AdvancedSecurityPage() {
         {/* Tab content */}
         {activeTab === 'sandbox' && <SandboxTab status={status} isPro={isPro} guard={guard} actionLoading={actionLoading} setActionLoading={setActionLoading} />}
         {activeTab === 'ml' && <MLTab status={status} isPro={isPro} guard={guard} actionLoading={actionLoading} setActionLoading={setActionLoading} />}
-        {activeTab === 'web' && <WebShieldTab status={status} isPro={isPro} guard={guard} actionLoading={actionLoading} setActionLoading={setActionLoading} />}
+        {activeTab === 'web' && <WebShieldTab status={status} actionLoading={actionLoading} setActionLoading={setActionLoading} />}
         {activeTab === 'ransomware' && <RansomwareTab status={status} isPro={isPro} guard={guard} actionLoading={actionLoading} setActionLoading={setActionLoading} />}
         {activeTab === 'email' && <EmailTab status={status} isPro={isPro} guard={guard} actionLoading={actionLoading} setActionLoading={setActionLoading} />}
         {activeTab === 'boot' && <BootTab status={status} isPro={isPro} guard={guard} actionLoading={actionLoading} setActionLoading={setActionLoading} />}
@@ -473,14 +474,10 @@ function MLTab({
 
 function WebShieldTab({
   status,
-  isPro,
-  guard,
   actionLoading,
   setActionLoading,
 }: {
   status: AdvancedSecurityStatus | null;
-  isPro: boolean;
-  guard: (fn: () => void) => void;
   actionLoading: boolean;
   setActionLoading: (v: boolean) => void;
 }) {
@@ -521,7 +518,7 @@ function WebShieldTab({
           className="flex-1 px-3 py-2 rounded border border-[var(--avs-border)] bg-[var(--avs-surface)] text-small"
           data-testid="web-url-input"
         />
-        <Button variant="primary" size="sm" onClick={() => guard(handleCheck)} disabled={!isPro || actionLoading || !url.trim()}
+        <Button variant="primary" size="sm" onClick={handleCheck} disabled={actionLoading || !url.trim()}
           leftIcon={actionLoading ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <MagnifyingGlassIcon className="h-4 w-4" />}
           data-testid="web-check-btn">
           Check URL
@@ -533,7 +530,7 @@ function WebShieldTab({
           URLs checked: {status?.web_shield?.urls_checked ?? 0} ·
           Threats blocked: {status?.web_shield?.threats_blocked ?? 0}
         </div>
-        <Button variant="secondary" size="sm" onClick={() => guard(handleUpdateFeeds)} disabled={!isPro || updatingFeeds}
+        <Button variant="secondary" size="sm" onClick={handleUpdateFeeds} disabled={updatingFeeds}
           leftIcon={updatingFeeds ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <ArrowDownTrayIcon className="h-4 w-4" />}
           data-testid="web-update-feeds-btn">
           {updatingFeeds ? 'Updating...' : 'Update Feeds'}

@@ -36,8 +36,26 @@ def _host_of(url: str) -> str:
         return ""
 
 
+def _default_fingerprint() -> str:
+    """Stable anonymous device fingerprint: SHA-256 of the Windows
+    MachineGuid (a per-install unique ID that carries no PII). Reports
+    without one can't count toward community-promotion thresholds."""
+    try:
+        import hashlib
+        import winreg
+        with winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE,
+                r"SOFTWARE\Microsoft\Cryptography") as k:
+            guid, _ = winreg.QueryValueEx(k, "MachineGuid")
+        return hashlib.sha256(str(guid).encode()).hexdigest()[:64]
+    except Exception:
+        return ""
+
+
 def upload_reports(device_fingerprint: str | None = None) -> dict[str, Any]:
     """POST queued reports to the license server; clears sent lines."""
+    if not device_fingerprint:
+        device_fingerprint = _default_fingerprint() or None
     if not _REPORTS_PATH.exists():
         return {"uploaded": 0, "queued": 0}
     try:
@@ -47,7 +65,10 @@ def upload_reports(device_fingerprint: str | None = None) -> dict[str, Any]:
     if not lines:
         return {"uploaded": 0, "queued": 0}
 
-    reports: list[dict[str, Any]] = []
+    # Keep (original_line, payload) pairs — a failed batch must re-queue
+    # the ORIGINAL line; re-serializing the server-shaped payload produces
+    # entries that can never re-parse (no 'url' field) and poison the queue.
+    pending: list[tuple[str, dict[str, Any]]] = []
     keep: list[str] = []
     for line in lines:
         try:
@@ -56,23 +77,23 @@ def upload_reports(device_fingerprint: str | None = None) -> dict[str, Any]:
             continue
         host = _host_of(entry.get("url", ""))
         if host and entry.get("verdict") in ("scam", "not_scam"):
-            reports.append({
+            pending.append((line, {
                 "host": host,
                 "verdict": entry["verdict"],
                 "category": entry.get("category"),
                 "note": (entry.get("note") or "")[:500] or None,
                 "reported_at": entry.get("reported_at"),
-            })
+            }))
         else:
             keep.append(line)  # unparseable — retain rather than lose
 
     uploaded = 0
     errors: list[str] = []
-    for i in range(0, len(reports), _MAX_BATCH):
-        chunk = reports[i:i + _MAX_BATCH]
+    for i in range(0, len(pending), _MAX_BATCH):
+        chunk = pending[i:i + _MAX_BATCH]
         body = json.dumps({
             "device_fingerprint": device_fingerprint,
-            "reports": chunk,
+            "reports": [r for _, r in chunk],
         }).encode()
         req = urllib.request.Request(
             f"{_API_BASE}/api/scam-reports", data=body,
@@ -83,7 +104,7 @@ def upload_reports(device_fingerprint: str | None = None) -> dict[str, Any]:
                 uploaded += int(data.get("accepted", 0))
         except Exception as e:
             errors.append(str(e))
-            keep.extend(json.dumps(r) for r in chunk)  # retry later
+            keep.extend(line for line, _ in chunk)  # retry later
 
     try:
         tmp = _REPORTS_PATH.with_suffix(".tmp")

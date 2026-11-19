@@ -85,6 +85,10 @@ _PARALLEL_THRESHOLD = 50
 # memory from Future objects and improves scheduler responsiveness.
 _CLEAN_BATCH_SIZE = 500
 
+# Undo manifest cap — recycling-bin restore works per-path, so there's no
+# benefit to an unbounded list; 10k paths ≈ 1 MB of JSON worst-case.
+_REMOVED_MANIFEST_CAP = 10_000
+
 
 class BaseCleaner(ICleaner):
     """Concrete cleaners subclass this and only override metadata + targets.
@@ -512,6 +516,8 @@ class BaseCleaner(ICleaner):
                         pass
                 outcome = self._delete_one_fast(raw, allowed_roots, on_file, result, None)
                 self._record_outcome(outcome, result)
+                if outcome == "removed" and len(result.removed_paths) < _REMOVED_MANIFEST_CAP:
+                    result.removed_paths.append(raw)
         else:
             # Parallel path — ThreadPoolExecutor for I/O-bound deletion.
             cancelled = self._clean_parallel(
@@ -653,6 +659,8 @@ class BaseCleaner(ICleaner):
                     if outcome == "removed":
                         result.files_removed += 1
                         result.bytes_recovered += size
+                        if len(result.removed_paths) < _REMOVED_MANIFEST_CAP:
+                            result.removed_paths.append(futures[fut])
                     elif outcome.startswith("skipped:"):
                         result.files_skipped += 1
                         reason = outcome.split(":", 1)[1] if ":" in outcome else "unknown"

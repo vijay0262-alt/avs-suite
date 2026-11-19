@@ -324,11 +324,12 @@ def wipe_free_space(drive: str, passes: int = 1, zeros: bool = False) -> WipeRes
     if not drive or not os.path.isdir(drive):
         return WipeResult(drive=drive, bytesProcessed=0, success=False, message="Invalid drive path")
     temp_dir = os.path.join(drive, "AVSWipeTemp")
-    os.makedirs(temp_dir, exist_ok=True)
     total_bytes = 0
     try:
+        os.makedirs(temp_dir, exist_ok=True)
         free = shutil.disk_usage(drive).free
         chunk = 1024 * 1024 * 100  # 100 MiB files
+        fill_ok = True
         for i in range(max(1, free // chunk)):
             temp_file = os.path.join(temp_dir, f"wipe_{i}_{random.randint(1000, 9999)}.tmp")
             try:
@@ -342,15 +343,24 @@ def wipe_free_space(drive: str, passes: int = 1, zeros: bool = False) -> WipeRes
                         total_bytes += to_write
                     f.flush()
                     os.fsync(f.fileno())
-            except OSError:
+            except OSError as exc:
+                # ENOSPC means the drive filled — that's the goal. Anything
+                # else is a real failure, not a partial success.
+                import errno as _errno
+                if exc.errno != _errno.ENOSPC:
+                    fill_ok = False
                 break
         # Delete the temp fill files
         shutil.rmtree(temp_dir, ignore_errors=True)
         return WipeResult(
             drive=drive,
             bytesProcessed=total_bytes,
-            success=True,
-            message=f"Wrote and removed {total_bytes} bytes of free-space filler",
+            success=fill_ok,
+            message=(
+                f"Wrote and removed {total_bytes} bytes of free-space filler"
+                if fill_ok else
+                f"Wipe aborted after {total_bytes} bytes — write failed (not disk-full)"
+            ),
         )
     except Exception as exc:
         return WipeResult(drive=drive, bytesProcessed=total_bytes, success=False, message=str(exc))

@@ -144,7 +144,7 @@ async function checkAndBlock(tabId, url) {
 
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   if (details.frameId !== 0) return; // top frame only
-  checkAndBlock(details.tabId, details.url);
+  checkAndBlock(details.tabId, details.url).catch(() => {});
 });
 
 // ---------------------------------------------------------------------------
@@ -159,10 +159,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     case "scareware_detected": {
       const url = sender.url || (sender.tab && sender.tab.url);
       if (!url || shouldSkip(url)) break;
+      // signals comes over postMessage — a page script can forge it, so
+      // never assume it's an array of strings.
+      const signals = (Array.isArray(msg.signals) ? msg.signals : [msg.signals])
+        .map((s) => String(s).slice(0, 200))
+        .filter(Boolean);
+      if (!signals.length) break;
       const params = new URLSearchParams({
         url,
         level: "critical",
-        reasons: msg.signals.join("|"),
+        reasons: signals.join("|"),
         source: msg.type === "clickfix_detected" ? "clickfix" : "scareware",
       });
       chrome.tabs.update(sender.tab.id, { url: `${BLOCK_PAGE}?${params}` });
@@ -179,10 +185,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       break;
     case "proceed_anyway": {
       const { url } = msg;
+      // A malformed URL throws inside sessionAllow — validate up front so
+      // the block page button can't silently dead-end.
+      try {
+        new URL(url);
+      } catch {
+        break;
+      }
       sessionAllow(url).then(() => {
         sendNative({ type: "allow_url", url });
         if (sender.tab) chrome.tabs.update(sender.tab.id, { url });
-      });
+      }).catch(() => {});
       break;
     }
     case "check_text":

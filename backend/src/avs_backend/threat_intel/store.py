@@ -195,7 +195,6 @@ class ThreatIntelStore:
         now = time.monotonic()
         if not force and (now - self._last_sync_at) < _MIN_SYNC_INTERVAL:
             return {"ok": True, "reason": "rate_limited", "version": self._version}
-        self._last_sync_at = now
 
         headers = {"User-Agent": "AVS-Shield/1.0", "Accept": "application/gzip"}
         if self._etag:
@@ -223,6 +222,8 @@ class ThreatIntelStore:
             canonical = gzip.decompress(body)
             self._public_key.verify(bytes.fromhex(signature_hex), canonical)
             bundle = json.loads(canonical)
+            if not isinstance(bundle, dict):
+                raise ValueError("bundle payload is not a JSON object")
             self._apply(bundle, etag=etag, signature_hex=signature_hex)
             self._save_cache(canonical, signature_hex)
             self._last_error = None
@@ -233,6 +234,8 @@ class ThreatIntelStore:
             self._last_error = f"invalid_bundle:{exc}"
             return {"ok": False, "reason": self._last_error, "version": self._version}
 
+        self._last_sync_at = now  # stamp on success — a failed sync must
+        # not suppress retries for the next rate-limit window
         log.info("threat-intel synced: v%d (%d urls, %d hosts)",
                  self._version,
                  len(self._url_blob) // HASH_BYTES,

@@ -325,3 +325,54 @@ def system_open_windows_update(_params: dict[str, Any] | None) -> dict[str, bool
         logger.warning("Failed to open Windows Update: %s", e)
         return {"success": False}
 
+
+
+@register("system.updateScan")
+def system_update_scan(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Trigger a Windows Update detection scan (UsoClient/wuauclt)."""
+    if not IS_WINDOWS:
+        return {"success": False, "error": "Windows only"}
+    try:
+        import subprocess
+        # UsoClient is the modern trigger; wuauclt covers older builds.
+        # Launch both best-effort — a missing binary just returns nonzero.
+        for cmd in (["UsoClient", "StartScan"], ["wuauclt", "/detectnow"]):
+            try:
+                subprocess.Popen(cmd, creationflags=0x08000000)
+            except OSError:
+                continue
+        return {"success": True}
+    except Exception as e:
+        logger.warning("Failed to trigger update scan: %s", e)
+        return {"success": False, "error": str(e)}
+
+
+@register("system.clearUpdateCache")
+def system_clear_update_cache(_params: dict[str, Any] | None) -> dict[str, Any]:
+    r"""Stop update services, clear SoftwareDistribution\Download, restart.
+
+    Requires administrator — net stop on wuauserv/bits fails otherwise.
+    """
+    if not IS_WINDOWS:
+        return {"success": False, "error": "Windows only"}
+    try:
+        import subprocess
+        script = (
+            "$ErrorActionPreference='SilentlyContinue';"
+            "net stop wuauserv | Out-Null; net stop bits | Out-Null;"
+            "$d = Join-Path $env:WINDIR 'SoftwareDistribution\\Download';"
+            "if (Test-Path $d) { Remove-Item (Join-Path $d '*') -Recurse -Force };"
+            "net start bits | Out-Null; net start wuauserv | Out-Null;"
+            "Write-Output 'OK'"
+        )
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+            capture_output=True, text=True, timeout=60,
+            creationflags=0x08000000,
+        )
+        ok = "OK" in (result.stdout or "")
+        return {"success": ok,
+                "error": None if ok else (result.stderr or "cache clear failed")[:300]}
+    except Exception as e:
+        logger.warning("Failed to clear update cache: %s", e)
+        return {"success": False, "error": str(e)}

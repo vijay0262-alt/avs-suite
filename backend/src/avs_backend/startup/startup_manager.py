@@ -229,17 +229,19 @@ def _restore_startup_folder_entry(location: str, command: str, enabled: bool) ->
         # Use PowerShell to create a Windows shortcut (.lnk)
         ps_script = (
             "$ws = New-Object -ComObject WScript.Shell; "
-            f"$sc = $ws.CreateShortcut('{location}'); "
-            f"$sc.TargetPath = '{command}'; "
+            "$sc = $ws.CreateShortcut($env:AVS_LNK_PATH); "
+            "$sc.TargetPath = $env:AVS_LNK_TARGET; "
             "$sc.Save()"
         )
         try:
+            import os
             import subprocess
             result = subprocess.run(
                 ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
                 capture_output=True,
                 text=True,
                 timeout=10,
+                env=dict(os.environ, AVS_LNK_PATH=location, AVS_LNK_TARGET=command),
             )
             if result.returncode != 0:
                 logger.error(f"Shortcut creation failed: {result.stderr.strip()}")
@@ -259,20 +261,22 @@ def _restore_task_scheduler_entry(entry_name: str, command: str, enabled: bool) 
         logger.warning(f"Cannot restore task on non-Windows: {entry_name}")
         return
     try:
+        import os
         import subprocess
         if enabled:
             # Create a scheduled task that runs at logon
             ps_script = (
-                f"$action = New-ScheduledTaskAction -Execute '{command}'; "
+                "$action = New-ScheduledTaskAction -Execute $env:AVS_TASK_CMD; "
                 "$trigger = New-ScheduledTaskTrigger -AtLogOn; "
-                f"$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries; "
-                f"Register-ScheduledTask -TaskName '{entry_name}' -Action $action -Trigger $trigger -Settings $settings -Force"
+                "$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries; "
+                "Register-ScheduledTask -TaskName $env:AVS_TASK_NAME -Action $action -Trigger $trigger -Settings $settings -Force"
             )
             result = subprocess.run(
                 ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
                 capture_output=True,
                 text=True,
                 timeout=15,
+                env=dict(os.environ, AVS_TASK_CMD=command, AVS_TASK_NAME=entry_name),
             )
             if result.returncode != 0:
                 logger.error(f"Task scheduler restore failed: {result.stderr.strip()}")

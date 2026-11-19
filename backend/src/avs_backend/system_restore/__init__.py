@@ -53,8 +53,10 @@ def create_restore_point(description: str = "AVS AI Shield — Pre-cleaning chec
     # The SystemRestore WMI provider accepts a description and creates
     # a checkpoint with type RESTORE_POINT_APPLICATION_INSTALL (0) which
     # is the standard type for application-driven checkpoints.
+    # Description is passed via env var — never interpolated into the
+    # script (quotes/backticks/$() in it would otherwise inject commands).
     ps_script = (
-        f'$desc = "{description}";'
+        "$desc = $env:AVS_RP_DESC;"
         "try {"
         "  $sysRestore = Get-WmiObject -List -Namespace 'ROOT\\Default' -Class SystemRestore;"
         "  if ($sysRestore) {"
@@ -73,11 +75,14 @@ def create_restore_point(description: str = "AVS AI Shield — Pre-cleaning chec
     )
 
     try:
+        import os
+        env = dict(os.environ, AVS_RP_DESC=description)
         result = subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
             capture_output=True,
             text=True,
             timeout=30,
+            env=env,
         )
         output = (result.stdout or "").strip()
 

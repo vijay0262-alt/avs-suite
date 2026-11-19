@@ -75,7 +75,7 @@ class VirusTotalDetector:
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.cache = _load_cache()
-        log.info("VirusTotalDetector initialized (API key: %s...)", api_key[:8] if api_key else "none")
+        log.info("VirusTotalDetector initialized (API key configured: %s)", bool(api_key))
 
     def _rate_limit(self) -> None:
         """Enforce rate limiting between API calls."""

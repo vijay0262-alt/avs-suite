@@ -380,8 +380,16 @@ def disk_delete_files(params: dict[str, Any] | None) -> dict[str, Any]:
     bytes_freed = 0
     errors: list[dict[str, str]] = []
 
+    from avs_backend.cleaner.safe_paths import is_forbidden
+
     for file_path in files_to_delete:
         try:
+            # Refuse paths inside protected system roots — the caller
+            # supplies raw paths, so enforce the same policy cleaners do.
+            if not isinstance(file_path, str) or is_forbidden(file_path):
+                errors.append({'path': str(file_path), 'error': 'Path is in a protected system location'})
+                failed += 1
+                continue
             if not os.path.exists(file_path):
                 errors.append({'path': file_path, 'error': 'File not found'})
                 failed += 1

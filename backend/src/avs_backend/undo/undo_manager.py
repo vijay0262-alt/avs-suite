@@ -250,13 +250,15 @@ def create_system_restore_point(description: str) -> BackupMetadata:
     backup_id = create_backup_id()
 
     try:
+        import os
         import subprocess
-        # Use PowerShell to create restore point
-        ps_command = f"Checkpoint-Computer -Description '{description}' -RestorePointType 'MODIFY_SETTINGS'"
+        # Description via env var — interpolation would allow PS injection.
+        ps_command = "Checkpoint-Computer -Description $env:AVS_RP_DESC -RestorePointType 'MODIFY_SETTINGS'"
         subprocess.run(
             ["powershell", "-Command", ps_command],
             check=True,
-            capture_output=True
+            capture_output=True,
+            env=dict(os.environ, AVS_RP_DESC=description),
         )
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to create system restore point: {e}")

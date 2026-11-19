@@ -24,8 +24,18 @@ from __future__ import annotations
 import logging
 import os
 import platform
-import winreg
 from datetime import datetime, timezone
+
+if platform.system() == "Windows":
+    import winreg
+else:
+    import types
+    winreg = types.SimpleNamespace(  # stub — handlers gate on IS_WINDOWS
+        HKEY_CLASSES_ROOT=0, HKEY_CURRENT_USER=0, HKEY_LOCAL_MACHINE=0,
+        REG_SZ=0, REG_DWORD=0, KEY_READ=0, KEY_SET_VALUE=0,
+        OpenKey=None, EnumKey=None, QueryInfoKey=None, QueryValueEx=None,
+        SetValueEx=None, DeleteKey=None, DeleteValue=None, CreateKeyEx=None,
+    )
 from typing import Any
 
 from avs_backend.api.registry import register

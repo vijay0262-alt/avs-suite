@@ -25,7 +25,7 @@
   ].join(",");
 
   const seen = new Set();
-  const pending = new Map(); // node -> text (batched)
+  const SEEN_MAX = 5000; // cap memory — djb2 collisions merely skip a rescan
 
   function hash(text) {
     let h = 5381;
@@ -51,17 +51,25 @@
       (result.verdict === "scam"
         ? "background:#7f1d1d;color:#fecaca;"
         : "background:#78350f;color:#fde68a;");
-    const tactics = (result.tactics || []).slice(0, 3).join(", ");
+    // tactics arrive as {id,label,weight} dicts; advice is a string list.
+    const tactics = (result.tactics || [])
+      .slice(0, 3)
+      .map((t) => (t && t.label ? t.label : String(t)))
+      .join(", ");
+    const advice = Array.isArray(result.advice)
+      ? result.advice.join(" ")
+      : result.advice || "";
     el.textContent =
       `⚠ ${TAG}: this message looks ${result.verdict} (score ${result.score})` +
       (tactics ? ` — ${tactics}` : "") +
-      (result.advice ? `. ${result.advice}` : "");
+      (advice ? `. ${advice}` : "");
     (node.querySelector("[data-avs-badge-target]") || node).appendChild(el);
   }
 
   function scan(node, text) {
     const key = hash(text);
     if (seen.has(key)) return;
+    if (seen.size >= SEEN_MAX) seen.clear();
     seen.add(key);
     chrome.runtime.sendMessage({ type: "check_text", text }, (reply) => {
       if (chrome.runtime.lastError || !reply) return;

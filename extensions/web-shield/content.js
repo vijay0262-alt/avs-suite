@@ -20,11 +20,18 @@ window.addEventListener("message", (event) => {
   if (event.source !== window) return;
   const data = event.data;
   if (!data || !ALLOWED_SIGNALS.has(data.avs_signal)) return;
+  // Page scripts can forge this channel — normalize to a small string
+  // array so a crafted payload can't crash or flood the service worker.
+  const signals = (Array.isArray(data.signals) ? data.signals : [data.signals])
+    .map((s) => String(s).slice(0, 200))
+    .filter(Boolean)
+    .slice(0, 10);
+  if (!signals.length) return;
   chrome.runtime.sendMessage({
     type: data.avs_signal === "avs_clickfix_suspected"
       ? "clickfix_detected"
       : "scareware_detected",
-    signals: data.signals || [],
+    signals,
   });
 });
 

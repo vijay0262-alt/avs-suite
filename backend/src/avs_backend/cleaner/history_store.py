@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS cleaning_log (
     files_skipped     INTEGER NOT NULL,
     files_failed      INTEGER NOT NULL,
     duration_ms       INTEGER NOT NULL,
-    errors_json       TEXT
+    errors_json       TEXT,
+    deleted_files_json TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_cleaning_log_started_at
     ON cleaning_log (started_at DESC);
@@ -57,6 +58,7 @@ _COLUMNS = (
     "files_failed",
     "duration_ms",
     "errors_json",
+    "deleted_files_json",
 )
 
 
@@ -91,12 +93,18 @@ class HistoryStore:
         self._lock = threading.Lock()
         with self._lock:
             self._conn.executescript(_SCHEMA)
+            # Existing DBs predate deleted_files_json — add it idempotently.
+            cols = {r[1] for r in self._conn.execute("PRAGMA table_info(cleaning_log)")}
+            if "deleted_files_json" not in cols:
+                self._conn.execute(
+                    "ALTER TABLE cleaning_log ADD COLUMN deleted_files_json TEXT")
 
     # ------------------------------------------------------------------
     def append(self, row: dict[str, object]) -> int:
         """Insert a single log entry. ``row`` must contain every column
         except ``id``."""
         columns = [c for c in _COLUMNS if c != "id"]
+        row.setdefault("deleted_files_json", "[]")
         missing = [c for c in columns if c not in row]
         if missing:
             raise ValueError(f"Missing history columns: {missing}")

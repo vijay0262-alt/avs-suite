@@ -196,3 +196,22 @@ class TestCheckText:
     def test_check_text_requires_text(self, host):
         reply = host.handle_message({"type": "check_text"})
         assert reply["type"] == "error"
+
+class TestRequestIdEcho:
+    """Regression: the extension correlates replies by id — a missing id
+    makes every sendNative() time out and the shield fail open."""
+
+    def test_id_echoed(self, host):
+        reply = host.handle_message({"type": "ping", "id": 7})
+        assert reply["id"] == 7
+
+    def test_id_echoed_on_error(self, host):
+        reply = host.handle_message({"type": "check_url", "id": "abc"})
+        assert reply["type"] == "error" and reply["id"] == "abc"
+
+    def test_id_through_wire(self, host):
+        stdin = io.BytesIO(_frame({"type": "ping", "id": 42}))
+        stdout = io.BytesIO()
+        serve(stdin, stdout, host)
+        stdout.seek(0)
+        assert _read_message(stdout)["id"] == 42

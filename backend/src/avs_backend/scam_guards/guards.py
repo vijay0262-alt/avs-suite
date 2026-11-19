@@ -243,10 +243,14 @@ class ScamGuardMonitor:
             self._persist(alert)
         log.warning("Scam guard alert [%s/%s]: %s", kind, severity, message)
         if self._on_alert:
-            try:
-                self._on_alert(alert)
-            except Exception as e:
-                log.debug("on_alert callback failed: %s", e)
+            # Dispatch on a worker — family sends are urlopen(15s)×2 and
+            # must not stall the 3s monitor loop.
+            def _dispatch():
+                try:
+                    self._on_alert(alert)
+                except Exception as e:
+                    log.debug("on_alert callback failed: %s", e)
+            threading.Thread(target=_dispatch, daemon=True).start()
         return alert
 
     def _persist(self, alert: dict[str, Any]) -> None:

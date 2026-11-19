@@ -38,20 +38,22 @@ def _get_monitor() -> ScamGuardMonitor:
     return _monitor
 
 
-_ws: Any = None
-
-
 def _last_blocked_ts() -> float:
-    """Epoch of WebShield's most recent blocked URL (0 when none)."""
-    global _ws
+    """Epoch of WebShield's most recent blocked URL (0 when none).
+
+    Must use the SHARED WebShield instance from advanced_security —
+    its _blocked_urls history is what RPC check_url calls populate.
+    A private instance would always be empty."""
     try:
-        if _ws is None:
-            from avs_backend.advanced_security.web_shield import WebShield
-            _ws = WebShield({})
-        blocked = _ws.get_blocked_urls()
+        from avs_backend import advanced_security
+        advanced_security._init_modules()
+        ws = advanced_security._web_shield
+        if ws is None:
+            return 0.0
+        blocked = ws.get_blocked_urls()
         if not blocked:
             return 0.0
-        ts = blocked[-1].get("timestamp", "")
+        ts = blocked[-1].get("blocked_at", "")
         from datetime import datetime
         return datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
     except Exception:

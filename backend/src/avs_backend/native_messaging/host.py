@@ -39,28 +39,36 @@ class NativeMessagingHost:
         return self._web_shield
 
     def handle_message(self, message: Dict[str, Any]) -> Dict[str, Any]:
-        """Dispatch one extension message and return the response dict."""
+        """Dispatch one extension message and return the response dict.
+
+        The extension correlates async replies by a per-request ``id`` —
+        it MUST be echoed back or every request times out and the whole
+        shield fails open."""
         if not isinstance(message, dict):
             return {"type": "error", "message": "Message must be a JSON object"}
 
         msg_type = message.get("type")
         try:
             if msg_type == "ping":
-                return {"type": "pong", "version": _HOST_VERSION}
-            if msg_type == "status":
-                return self._handle_status()
-            if msg_type == "check_url":
-                return self._handle_check_url(message)
-            if msg_type == "check_text":
-                return self._handle_check_text(message)
-            if msg_type == "report":
-                return self._handle_report(message)
-            if msg_type == "allow_url":
-                return self._handle_allow_url(message)
-            return {"type": "error", "message": f"Unknown message type: {msg_type}"}
+                reply = {"type": "pong", "version": _HOST_VERSION}
+            elif msg_type == "status":
+                reply = self._handle_status()
+            elif msg_type == "check_url":
+                reply = self._handle_check_url(message)
+            elif msg_type == "check_text":
+                reply = self._handle_check_text(message)
+            elif msg_type == "report":
+                reply = self._handle_report(message)
+            elif msg_type == "allow_url":
+                reply = self._handle_allow_url(message)
+            else:
+                reply = {"type": "error", "message": f"Unknown message type: {msg_type}"}
         except Exception as e:  # defensive — never let a handler kill the port
             log.exception("Native messaging handler failed for %r", msg_type)
-            return {"type": "error", "message": str(e)}
+            reply = {"type": "error", "message": str(e)}
+        if "id" in message:
+            reply["id"] = message["id"]
+        return reply
 
     # ------------------------------------------------------------------
     # Handlers

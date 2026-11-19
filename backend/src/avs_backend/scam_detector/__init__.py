@@ -18,6 +18,7 @@ changing the RPC contract.
 from __future__ import annotations
 
 import logging
+import platform
 import re
 from typing import Any
 
@@ -148,7 +149,7 @@ def status(params: dict[str, Any] | None) -> dict[str, Any]:
     """Scam detector status for the UI."""
     return {"success": True, "result": {
         "analyses_run": _analyses_run,
-        "ocr_available": True,  # probed lazily; ocr_image degrades gracefully
+        "ocr_available": platform.system() == "Windows",  # WinRT engine
         "classifier": "tactic_rules_v1",
         "sensitivities": sorted(_SENSITIVITIES),
     }}

@@ -153,16 +153,16 @@ export class WindowsExecutionTask extends BaseMaintenanceTask {
     try {
       switch (action) {
         case 'open_windows_update':
-          await rpc.call('windows.openUpdate');
+          await rpc.call('system.openWindowsUpdate');
           break;
         case 'open_security_settings':
-          await rpc.call('windows.openSecurity');
+          await rpc.call('system.openWindowsSecurity');
           break;
         case 'trigger_update_scan':
-          await rpc.call('windows.updateScan');
+          await rpc.call('system.updateScan');
           break;
         case 'clear_update_cache':
-          await rpc.call('windows.clearUpdateCache');
+          await rpc.call('system.clearUpdateCache');
           break;
         default:
           throw new Error(`Unknown action: ${action}`);

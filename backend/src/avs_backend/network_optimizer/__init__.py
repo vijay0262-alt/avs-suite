@@ -24,8 +24,17 @@ import logging
 import os
 import platform
 import subprocess
-import winreg
 from datetime import datetime, timezone
+
+if platform.system() == "Windows":
+    import winreg
+else:
+    import types
+    winreg = types.SimpleNamespace(  # stub — handlers gate on IS_WINDOWS
+        HKEY_LOCAL_MACHINE=0, REG_DWORD=0, KEY_READ=0, KEY_SET_VALUE=0,
+        OpenKey=None, QueryValueEx=None, SetValueEx=None, DeleteValue=None,
+        CreateKeyEx=None,
+    )
 from typing import Any
 
 from avs_backend.api.registry import register
