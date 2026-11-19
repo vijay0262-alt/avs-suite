@@ -173,3 +173,26 @@ class TestServe:
         assert pong["type"] == "pong"
         assert check["safe"] is False
         assert _read_message(stdout) is None
+
+class TestCheckText:
+    def test_check_text_flags_scam(self, host):
+        reply = host.handle_message({
+            "type": "check_text",
+            "text": "This is IRS. Buy Google Play gift cards and send the codes now.",
+        })
+        assert reply["type"] == "text_result"
+        assert reply["verdict"] in ("scam", "suspicious")
+        assert reply["score"] > 0
+        assert reply["tactics"]
+
+    def test_check_text_clean(self, host):
+        reply = host.handle_message({
+            "type": "check_text",
+            "text": "Hey, are we still on for lunch tomorrow at noon?",
+        })
+        assert reply["type"] == "text_result"
+        assert reply["verdict"] == "clean"
+
+    def test_check_text_requires_text(self, host):
+        reply = host.handle_message({"type": "check_text"})
+        assert reply["type"] == "error"

@@ -185,6 +185,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       });
       break;
     }
+    case "check_text":
+      sendNative({ type: "check_text", text: msg.text })
+        .then((r) => sendResponse(r))
+        .catch(() => sendResponse(null)); // fail open
+      return true; // async
     case "get_status":
       sendNative({ type: "status" }).then((r) => sendResponse(r));
       return true; // async

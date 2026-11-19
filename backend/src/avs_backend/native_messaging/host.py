@@ -25,9 +25,10 @@ _HOST_VERSION = "2.0.0"
 class NativeMessagingHost:
     """Handles extension requests against the local WebShield instance."""
 
-    def __init__(self, web_shield: Any = None) -> None:
+    def __init__(self, web_shield: Any = None, classifier: Any = None) -> None:
         self._web_shield = web_shield
         self._web_shield_loaded = web_shield is not None
+        self._classifier = classifier
 
     def _get_web_shield(self) -> Any:
         """Lazily create the WebShield instance (first check pays PSL load)."""
@@ -50,6 +51,8 @@ class NativeMessagingHost:
                 return self._handle_status()
             if msg_type == "check_url":
                 return self._handle_check_url(message)
+            if msg_type == "check_text":
+                return self._handle_check_text(message)
             if msg_type == "report":
                 return self._handle_report(message)
             if msg_type == "allow_url":
@@ -73,6 +76,19 @@ class NativeMessagingHost:
             return {"type": "error", "message": "check_url requires a 'url' string"}
         result = self._get_web_shield().check_url(url)
         return {"type": "check_result", **result}
+
+    def _handle_check_text(self, message: Dict[str, Any]) -> Dict[str, Any]:
+        """Analyze message text with the scam classifier (WhatsApp Web,
+        Messenger, etc. content scripts send incoming messages here)."""
+        text = message.get("text")
+        if not isinstance(text, str) or not text.strip():
+            return {"type": "error", "message": "check_text requires a 'text' string"}
+        if self._classifier is None:
+            from avs_backend.scam_detector.classifier import ScamClassifier
+            self._classifier = ScamClassifier(
+                check_url_fn=lambda u: self._get_web_shield().check_url(u))
+        result = self._classifier.analyze(text[:20_000])
+        return {"type": "text_result", **result}
 
     def _handle_report(self, message: Dict[str, Any]) -> Dict[str, Any]:
         url = message.get("url")
