@@ -21,7 +21,6 @@ import platform
 import re
 import shutil
 import subprocess
-import winreg
 from pathlib import Path
 from typing import Any
 
@@ -76,6 +75,7 @@ def _find_browsers() -> dict[str, str]:
         if bid in found or not IS_WINDOWS:
             continue
         # 2. Registry App Paths
+        import winreg
         for key_path in spec["app_paths"]:
             try:
                 with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path) as k:
