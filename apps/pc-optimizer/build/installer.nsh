@@ -1,3 +1,32 @@
+!include "WordFunc.nsh"
+
+!macro _RegisterNativeMessagingHost
+  ; ── AVS Web Shield native messaging host ─────────────────────────
+  ; Chrome/Edge native messaging requires (1) a host manifest JSON whose
+  ; "path" is the absolute exe path and (2) a registry entry pointing at
+  ; that manifest. The browser launches avs-backend.exe itself; it
+  ; auto-detects the chrome-extension:// argv and runs the NM host.
+  ; The manifest path needs JSON-escaped backslashes.
+  ${WordReplace} "$INSTDIR" "\" "\\" "+" $R0
+  CreateDirectory "$INSTDIR\resources\backend"
+  FileOpen $0 "$INSTDIR\resources\backend\com.avsshield.webshield.json" w
+  FileWrite $0 '{$\r$\n'
+  FileWrite $0 '  "name": "com.avsshield.webshield",$\r$\n'
+  FileWrite $0 '  "description": "AVS AI Shield Web Shield native messaging host",$\r$\n'
+  FileWrite $0 '  "path": "$R0\\resources\\backend\\avs-backend.exe",$\r$\n'
+  FileWrite $0 '  "type": "stdio",$\r$\n'
+  FileWrite $0 '  "allowed_origins": ["chrome-extension://cpcagcaoomclfhfdekidhfjfkiagfife/"]$\r$\n'
+  FileWrite $0 '}$\r$\n'
+  FileClose $0
+  WriteRegStr HKCU "SOFTWARE\Google\Chrome\NativeMessagingHosts\com.avsshield.webshield" "" "$INSTDIR\resources\backend\com.avsshield.webshield.json"
+  WriteRegStr HKCU "SOFTWARE\Microsoft\Edge\NativeMessagingHosts\com.avsshield.webshield" "" "$INSTDIR\resources\backend\com.avsshield.webshield.json"
+!macroend
+
+!macro _UnregisterNativeMessagingHost
+  DeleteRegKey HKCU "SOFTWARE\Google\Chrome\NativeMessagingHosts\com.avsshield.webshield"
+  DeleteRegKey HKCU "SOFTWARE\Microsoft\Edge\NativeMessagingHosts\com.avsshield.webshield"
+!macroend
+
 !macro _KillAppProcesses _ID
   ; Kill all known AVS AI Shield processes (main app, backend, ClamAV)
   nsExec::ExecToLog 'taskkill /IM "AVS AI Shield.exe" /T /F'
@@ -49,6 +78,8 @@
   ; actual file-copy/install section runs.
   !insertmacro _DeleteScheduledTasks
   !insertmacro _KillAppProcesses install
+  ; Register the AVS Web Shield native messaging host (manifest + registry).
+  !insertmacro _RegisterNativeMessagingHost
 !macroend
 
 !macro customUnInstall
@@ -76,6 +107,9 @@
   ; the app after the install directory has been removed.
   nsExec::ExecToLog 'schtasks /delete /tn "AVS_AI_Shield_Elevated" /f 2>nul'
   Pop $0
+  ; Remove the native messaging host registration so the extension can't
+  ; launch a backend that no longer exists.
+  !insertmacro _UnregisterNativeMessagingHost
 !macroend
 
 !macro customCheckAppRunning

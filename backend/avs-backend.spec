@@ -133,6 +133,9 @@ a = Analysis(
         "avs_backend.threat_intel.lookalike",
         "avs_backend.threat_intel.allowlist",
         "avs_backend.threat_intel.store",
+        # ── Native messaging host (Scam Shield Phase 2) ──
+        "avs_backend.native_messaging",
+        "avs_backend.native_messaging.host",
         "avs_backend.advanced_security.ransomware_vaccine",
         "avs_backend.advanced_security.email_scanner",
         "avs_backend.advanced_security.boot_sector",

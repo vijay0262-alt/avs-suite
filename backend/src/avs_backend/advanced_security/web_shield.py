@@ -59,6 +59,8 @@ IS_WINDOWS = platform.system() == "Windows"
 _DATA_DIR = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "AVS AI Shield" / "threat_engine"
 _DATA_DIR.mkdir(parents=True, exist_ok=True)
 _BLOCKLIST_PATH = _DATA_DIR / "url_blocklist.json"
+_REPORTS_PATH = _DATA_DIR / "scam_reports.jsonl"
+_MAX_REPORTS = 2000
 
 _FEED_UPDATE_INTERVAL = 6 * 60 * 60  # 6 hours between non-forced syncs
 _MAX_BLOCKED_HISTORY = 500
@@ -158,6 +160,32 @@ class WebShield:
             os.replace(tmp, _BLOCKLIST_PATH)
         except Exception as e:
             log.error("Failed to save URL blocklist: %s", e)
+
+    def record_user_report(self, url: str, verdict: str, note: str = "") -> None:
+        """Queue a user scam/not-scam report locally (JSONL).
+
+        Phase 4 uploads these to the license server for the community
+        blocklist; for now they are retained on-device for diagnostics.
+        """
+        entry = {
+            "url": url,
+            "verdict": verdict,
+            "note": str(note)[:500],
+            "reported_at": _now_iso(),
+        }
+        try:
+            with self._lock:
+                lines: deque[str] = deque(maxlen=_MAX_REPORTS)
+                if _REPORTS_PATH.exists():
+                    with open(_REPORTS_PATH, "r", encoding="utf-8") as f:
+                        lines.extend(f.readlines())
+                lines.append(json.dumps(entry) + "\n")
+                tmp = _REPORTS_PATH.with_suffix(".tmp")
+                with open(tmp, "w", encoding="utf-8") as f:
+                    f.writelines(lines)
+                os.replace(tmp, _REPORTS_PATH)
+        except Exception as e:
+            log.error("Failed to record scam report: %s", e)
 
     # ------------------------------------------------------------------
     # Heuristic helpers

@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "AVS AI Shield — Web Shield",
+  "version": "1.0.0",
+  "description": "Real-time scam and phishing protection powered by the local AVS AI Shield engine.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnqFBbpQcbmvsGupC93+5C91Uny9K6KiA6doRbBoJIecBC6kYMrmAxEgkYMuqfltRj5j1ViqKRR0ystPa6m1XaQ4iWNwFY15jWRRNNVkvxOT9zDaKknc8kPkRg1AjnQYS+Ix6z807rksUL4Vn9iu7MHRWR7Grrz7j3j5lmPKhzRrRJwEx14JPDCJiIDUAHeBBTsaZ9btBMVq85D/sF2WlcHqNDkK6HUvaTY28fm3AHbQNEsdD1Ac+slrfjg6ttIRkr4jeQNYVC3jl2qC1RBzXq9Vqqn2xf1cH49lMUtP4yzrjkhAi3RLaO2b30OLuwjMvqKG2/YexAanPwYQOCgz4KQIDAQAB",
+  "permissions": [
+    "nativeMessaging",
+    "webNavigation",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "service_worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["inject.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
+    }
+  ]
+}

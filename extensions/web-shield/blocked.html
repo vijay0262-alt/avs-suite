@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AVS AI Shield — Site Blocked</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: #0d1117; color: #e6edf3;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 24px;
+  }
+  .card {
+    max-width: 560px; width: 100%;
+    background: #161b22; border: 1px solid #30363d;
+    border-radius: 12px; padding: 40px;
+  }
+  .shield {
+    width: 64px; height: 64px; margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(218,54,51,.12); border-radius: 50%;
+    font-size: 32px;
+  }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+  h1 .level { color: #f85149; }
+  p.sub { color: #8b949e; font-size: 14px; margin-bottom: 20px; }
+  .url-box {
+    background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+    padding: 10px 14px; font-family: Consolas, monospace; font-size: 13px;
+    color: #f85149; word-break: break-all; margin-bottom: 20px;
+  }
+  .reasons { margin-bottom: 28px; }
+  .reasons li {
+    list-style: none; font-size: 13px; color: #c9d1d9;
+    padding: 6px 0 6px 22px; position: relative;
+  }
+  .reasons li::before { content: "⚠"; position: absolute; left: 0; color: #d29922; }
+  .actions { display: flex; gap: 12px; }
+  button {
+    flex: 1; padding: 11px 16px; border-radius: 6px; font-size: 14px;
+    font-weight: 600; cursor: pointer; border: 1px solid transparent;
+  }
+  #back { background: #238636; color: #fff; }
+  #back:hover { background: #2ea043; }
+  #proceed { background: transparent; color: #8b949e; border-color: #30363d; }
+  #proceed:hover { color: #e6edf3; }
+  .brand { margin-top: 28px; font-size: 12px; color: #484f58; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="shield">🛡</div>
+    <h1>Site blocked — <span class="level" id="level">high risk</span></h1>
+    <p class="sub">AVS AI Shield stopped this page before it could load.</p>
+    <div class="url-box" id="url"></div>
+    <ul class="reasons" id="reasons"></ul>
+    <div class="actions">
+      <button id="back">Back to safety</button>
+      <button id="proceed">I understand, continue anyway</button>
+    </div>
+    <div class="brand">AVS AI Shield · Web Shield</div>
+  </div>
+  <script src="blocked.js"></script>
+</body>
+</html>

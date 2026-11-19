@@ -380,6 +380,19 @@ def main() -> None:
         from avs_backend.maintenance_cli import main as maintenance_main
         sys.exit(maintenance_main())
 
+    # ── Native messaging host mode ─────────────────────────────────
+    # Chrome/Edge launch this process themselves via the registered host
+    # manifest. They cannot pass custom flags, so we detect the extension
+    # origin argument (chrome-extension://<id>/) that the browser always
+    # passes, plus an explicit --native-messaging flag for manual use.
+    if "--native-messaging" in sys.argv or any(
+        arg.startswith(("chrome-extension://", "moz-extension://", "extension://"))
+        or arg.startswith("--parent-window")
+        for arg in sys.argv[1:]
+    ):
+        from avs_backend.native_messaging.host import main as nm_main
+        sys.exit(nm_main())
+
     import atexit
 
     def _cleanup() -> None:
