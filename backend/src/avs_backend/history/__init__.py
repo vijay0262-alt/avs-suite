@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -165,15 +166,56 @@ def history_clear(_params: dict[str, Any] | None) -> dict[str, Any]:
 @register("history.export")
 @require_feature("history.export")
 def history_export(params: dict[str, Any] | None) -> dict[str, Any]:
-    """Export history to CSV file."""
+    """Export history.
+
+    Two modes: ``{path}`` writes a CSV to disk; ``{format: 'csv'|'json'}``
+    returns ``{filename, content}`` for the frontend to download.
+    """
     try:
-        if not params or "path" not in params:
-            raise ValueError("Missing required parameter: path")
+        params = params or {}
 
-        output_path = params["path"]
-        success = export_history_to_csv(output_path)
+        if "path" in params:
+            output_path = params["path"]
+            success = export_history_to_csv(output_path)
+            return {"success": success, "path": output_path}
 
-        return {"success": success, "path": output_path}
+        fmt = str(params.get("format", "csv")).lower()
+        entries = get_history(limit=10000)
+        rows = [{
+            "id": e.id,
+            "date": e.date,
+            "time": e.time,
+            "module": e.module.value,
+            "optimizationType": e.optimization_type.value,
+            "filesDeleted": e.files_deleted,
+            "spaceSaved": e.space_saved,
+            "memoryFreed": e.memory_freed,
+            "durationMs": e.duration_ms,
+            "result": e.result.value,
+            "warnings": e.warnings,
+            "errors": e.errors,
+        } for e in entries]
+
+        if fmt == "json":
+            content = json.dumps(rows, indent=2)
+            filename = "avs-history.json"
+        else:
+            import csv as _csv
+            import io
+            buf = io.StringIO()
+            writer = _csv.DictWriter(buf, fieldnames=list(rows[0].keys()) if rows else
+                                     ["id", "date", "time", "module", "optimizationType",
+                                      "filesDeleted", "spaceSaved", "memoryFreed",
+                                      "durationMs", "result", "warnings", "errors"])
+            writer.writeheader()
+            for r in rows:
+                writer.writerow({**r,
+                                 "warnings": "; ".join(r["warnings"]),
+                                 "errors": "; ".join(r["errors"])})
+            content = buf.getvalue()
+            filename = "avs-history.csv"
+
+        return {"success": True, "filename": filename, "content": content}
     except Exception as e:
         logger.error(f"Failed to export history: {e}")
         raise

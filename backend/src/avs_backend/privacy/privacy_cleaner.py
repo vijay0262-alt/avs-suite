@@ -893,9 +893,12 @@ def flush_dns_cache() -> bool:
         return False
 
     try:
-        subprocess.run(["ipconfig", "/flushdns"], check=True, capture_output=True)
+        subprocess.run(["ipconfig", "/flushdns"], check=True, capture_output=True, timeout=15)
         logger.info("DNS cache flushed successfully")
         return True
+    except subprocess.TimeoutExpired:
+        logger.error("DNS flush timed out")
+        return False
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to flush DNS cache: %s", e)
         return False
@@ -908,9 +911,12 @@ def clear_clipboard_history() -> bool:
 
     try:
         # Clear clipboard by setting empty string
-        subprocess.run(["powershell", "-command", "Set-Clipboard -Value ''"], check=True, capture_output=True)
+        subprocess.run(["powershell", "-command", "Set-Clipboard -Value ''"], check=True, capture_output=True, timeout=30)
         logger.info("Clipboard history cleared")
         return True
+    except subprocess.TimeoutExpired:
+        logger.error("Clipboard clear timed out")
+        return False
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to clear clipboard history: %s", e)
         return False

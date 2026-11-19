@@ -67,10 +67,13 @@ export default function FileRecoveryPage() {
 
   const refreshShadows = useCallback(async () => {
     try {
-      const res = await rpc.raw<{ copies: ShadowCopy[]; supported: boolean }>(RPC_METHODS.FILE_RECOVERY_SHADOW_COPIES);
+      const res = await rpc.raw<{ copies: ShadowCopy[]; supported: boolean; error?: string }>(RPC_METHODS.FILE_RECOVERY_SHADOW_COPIES);
+      if (res.error) {
+        setError(res.error);
+      }
       setShadows(res.copies || []);
     } catch {
-      /* ignore */
+      setError('Failed to load shadow copies');
     }
   }, []);
 

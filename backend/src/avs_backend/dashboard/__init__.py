@@ -560,7 +560,7 @@ def dashboard_recommendations(_params: dict[str, Any] | None) -> dict[str, Any]:
         return {"success": True, "recommendations": recs, "count": len(recs)}
     except Exception as e:
         log.warning("Failed to generate recommendations: %s", e)
-        return {"success": True, "recommendations": [], "count": 0}
+        return {"success": False, "error": str(e), "recommendations": [], "count": 0}
 
 
 @register("dashboard.securityScore")
@@ -2423,42 +2423,10 @@ def auto_fix_security_on_startup() -> None:
     threading.Thread(target=_run, daemon=True, name="auto-fix-security").start()
 
 
-@register("security.enableRansomwareProtection")
-def security_enable_ransomware_protection(_params: dict[str, Any] | None) -> dict[str, Any]:
-    """Manual fix: enable Controlled Folder Access."""
-    return _enable_ransomware_protection()
-
-
-@register("security.enableMemoryIntegrity")
-def security_enable_memory_integrity(_params: dict[str, Any] | None) -> dict[str, Any]:
-    """Manual fix: enable Memory Integrity (HVCI)."""
-    return _enable_memory_integrity()
-
-
-@register("security.enableDefender")
-def security_enable_defender(_params: dict[str, Any] | None) -> dict[str, Any]:
-    """Manual fix: enable Windows Defender."""
-    return _enable_windows_defender()
-
-
-@register("security.enableFirewall")
-def security_enable_firewall(_params: dict[str, Any] | None) -> dict[str, Any]:
-    """Manual fix: enable Windows Firewall."""
-    return _enable_firewall()
-
-
-@register("security.enableSmartScreen")
-def security_enable_smartscreen(_params: dict[str, Any] | None) -> dict[str, Any]:
-    """Manual fix: enable Windows SmartScreen."""
-    rc, out, err = _run_powershell_as_admin(
-        "try { "
-        "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer' -Name 'SmartScreenEnabled' -Value 'RequireAdmin' -Force; "
-        "Set-MpPreference -EnableSmartScreenInShell $true; "
-        "'ok' "
-        "} catch { $_.Exception.Message }"
-    )
-    success = rc == 0 and "ok" in out.strip().lower()
-    return {"success": success, "stdout": out, "stderr": err}
+# NOTE: security.enableRansomwareProtection / enableMemoryIntegrity /
+# enableDefender / enableFirewall / enableSmartScreen are owned by
+# avs_backend.security_remediation — do NOT re-register them here; the
+# duplicate registrations made the live handler depend on import order.
 
 
 @register("security.enableAvsAv")

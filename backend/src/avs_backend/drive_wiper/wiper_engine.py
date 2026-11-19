@@ -293,7 +293,7 @@ def list_drives() -> List[Tuple[str, str, str, int, int]]:
     try:
         output = subprocess.run(
             ["wmic", "logicaldisk", "get", "DeviceID,VolumeName,FileSystem,Size,FreeSpace", "/format:csv"],
-            capture_output=True, text=True, check=False,
+            capture_output=True, text=True, check=False, timeout=15,
         ).stdout
         lines = [line.strip() for line in output.splitlines() if line.strip()]
         for line in lines[1:]:
@@ -310,8 +310,8 @@ def list_drives() -> List[Tuple[str, str, str, int, int]]:
                 total = 0
                 free = 0
             drives.append((device, label, fs, total, free))
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning("Drive enumeration via wmic failed: %s", e)
     return drives
 
 

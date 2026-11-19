@@ -36,7 +36,7 @@ def _now_iso() -> str:
 # ─── Recycle Bin ──────────────────────────────────────────────────
 
 
-def _get_recycle_bin_items_ps() -> list[dict[str, Any]]:
+def _get_recycle_bin_items_ps() -> list[dict[str, Any]] | None:
     """Get Recycle Bin items using PowerShell Shell.Application COM."""
     if not IS_WINDOWS:
         return []
@@ -77,6 +77,7 @@ $items | ConvertTo-Json -Depth 3
             return data
     except Exception as e:
         log.warning("Failed to get Recycle Bin items: %s", e)
+        return None
 
     return []
 
@@ -204,6 +205,15 @@ def _recover_from_shadow_copy(
 def file_recovery_recyclable(_params: dict[str, Any] | None = None) -> dict[str, Any]:
     """List files in the Recycle Bin that can be restored."""
     items = _get_recycle_bin_items_ps()
+    if items is None:
+        # Enumeration failed — distinguish from an empty Recycle Bin.
+        return {
+            "success": False,
+            "supported": IS_WINDOWS,
+            "items": [],
+            "count": 0,
+            "error": "Failed to enumerate Recycle Bin items",
+        }
     return {
         "success": True,
         "supported": IS_WINDOWS,
@@ -277,6 +287,9 @@ def file_recovery_search(params: dict[str, Any] | None) -> dict[str, Any]:
     pattern = params.get("pattern", "*").lower()
 
     items = _get_recycle_bin_items_ps()
+    if items is None:
+        return {"success": False, "items": [], "count": 0,
+                "error": "Failed to enumerate Recycle Bin items"}
 
     # Filter by pattern
     import fnmatch

@@ -30,6 +30,7 @@ import hashlib
 import json
 import logging
 import os
+import threading
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -40,6 +41,20 @@ from avs_backend.licensing import require_feature
 log = logging.getLogger("avs.duplicate_intel")
 
 _DATA_PATH = os.path.join(os.path.expanduser("~"), ".avs", "duplicate_intel_data.json")
+
+# Serializes load→mutate→save in the JSON store; the 8-worker dispatch pool
+# would otherwise interleave writes and lose/corrupt scan data.
+_data_lock = threading.RLock()
+
+
+def _locked(fn):
+    import functools
+    @functools.wraps(fn)
+    def wrapper(params=None):
+        with _data_lock:
+            return fn(params)
+    return wrapper
+
 
 _DEFAULT_CONFIG = {
     "enabled": True,
@@ -90,14 +105,16 @@ def _load_data() -> dict[str, Any]:
             data["stats"] = {"totalScans": 0, "totalGroups": 0, "totalFilesDeleted": 0, "totalBytesFreed": 0}
         return data
     except (ValueError, OSError):
-        return {"groups": [], "config": _DEFAULT_CONFIG.copy(), " stats": {"totalScans": 0, "totalGroups": 0, "totalFilesDeleted": 0, "totalBytesFreed": 0}}
+        return {"groups": [], "config": _DEFAULT_CONFIG.copy(), "stats": {"totalScans": 0, "totalGroups": 0, "totalFilesDeleted": 0, "totalBytesFreed": 0}}
 
 
 def _save_data(data: dict[str, Any]) -> bool:
     _ensure_dirs()
     try:
-        with open(_DATA_PATH, "w", encoding="utf-8") as f:
+        tmp = str(_DATA_PATH) + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
+        os.replace(tmp, _DATA_PATH)
         return True
     except OSError as e:
         log.error("Failed to save duplicate intelligence data: %s", e)
@@ -264,6 +281,7 @@ def _scan_directory(path: str, config: dict[str, Any]) -> dict[str, list[dict[st
 # ─── RPC Methods ────────────────────────────────────────────────────
 
 @register("duplicate_intel.scan")
+@_locked
 def duplicate_intel_scan(params: dict[str, Any] | None) -> dict[str, Any]:
     """Scan for duplicate files with intelligent analysis.
 
@@ -371,7 +389,9 @@ def duplicate_intel_scan(params: dict[str, Any] | None) -> dict[str, Any]:
         "groups": groups[:20],  # Return top 20
         "count": len(groups),
         "totalFilesScanned": total_files,
-        "totalDuplicateBytes": total_duplicate_bytes,
+        # Both totals describe the same (truncated) group set so the UI
+        # numbers stay consistent.
+        "totalDuplicateBytes": sum(g["fileSize"] * g["fileCount"] for g in groups),
         "totalWastedBytes": sum(g["wastedBytes"] for g in groups),
         "message": f"Found {len(groups)} duplicate group(s) across {total_files} files",
     }
@@ -447,6 +467,7 @@ def duplicate_intel_list_groups(params: dict[str, Any] | None) -> dict[str, Any]
 
 
 @register("duplicate_intel.dismissGroup")
+@_locked
 def duplicate_intel_dismiss_group(params: dict[str, Any] | None) -> dict[str, Any]:
     """Dismiss a duplicate group by ID.
 
@@ -475,6 +496,7 @@ def duplicate_intel_dismiss_group(params: dict[str, Any] | None) -> dict[str, An
 
 
 @register("duplicate_intel.deleteFile")
+@_locked
 @require_feature("duplicate_intel.deleteFile")
 def duplicate_intel_delete_file(params: dict[str, Any] | None) -> dict[str, Any]:
     """Delete a specific duplicate file. Pro only.
@@ -509,6 +531,7 @@ def duplicate_intel_delete_file(params: dict[str, Any] | None) -> dict[str, Any]
 
 
 @register("duplicate_intel.deleteRecommended")
+@_locked
 @require_feature("duplicate_intel.deleteRecommended")
 def duplicate_intel_delete_recommended(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Delete all recommended-for-deletion files. Pro only.
@@ -553,6 +576,7 @@ def duplicate_intel_delete_recommended(_params: dict[str, Any] | None) -> dict[s
 
 
 @register("duplicate_intel.clearAll")
+@_locked
 def duplicate_intel_clear_all(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Clear all duplicate scan results."""
     data = _load_data()
@@ -563,6 +587,7 @@ def duplicate_intel_clear_all(_params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("duplicate_intel.configure")
+@_locked
 @require_feature("duplicate_intel.configure")
 def duplicate_intel_configure(params: dict[str, Any] | None) -> dict[str, Any]:
     """Update duplicate intelligence configuration. Pro only.

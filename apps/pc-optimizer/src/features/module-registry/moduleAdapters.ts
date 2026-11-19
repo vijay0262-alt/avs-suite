@@ -104,12 +104,15 @@ abstract class BaseModuleAdapter implements OptimizerModule {
 // ── Junk Cleaner adapter ─────────────────────────────────────────
 
 export class JunkCleanerAdapter extends BaseModuleAdapter {
+  protected _lastScanTaskId: string | null = null;
+
   async scan(): Promise<unknown> {
     this._status = 'scanning';
     try {
-      const res = await rpcCall('cleaner.scan.start', { categories: ['junk'] });
+      const res = await rpcCall('cleaner.scan.start', { only: ['junk'] }) as { taskId?: string };
+      this._lastScanTaskId = res.taskId ?? null;
       this._status = 'completed';
-      this._recordScan(res.result?.total_items ?? 0);
+      this._recordScan((res as { result?: { total_items?: number } }).result?.total_items ?? 0);
       return res;
     } catch {
       this._status = 'error';
@@ -120,9 +123,12 @@ export class JunkCleanerAdapter extends BaseModuleAdapter {
   async clean(): Promise<unknown> {
     this._status = 'cleaning';
     try {
-      const res = await rpcCall('cleaner.clean.execute', { categories: ['junk'] });
+      const res = await rpcCall('cleaner.clean.execute', {
+        taskId: this._lastScanTaskId,
+        only: ['junk'],
+      });
       this._status = 'completed';
-      this._recordClean(res.result?.space_cleaned ?? 0);
+      this._recordClean((res as { result?: { space_cleaned?: number } }).result?.space_cleaned ?? 0);
       return res;
     } catch {
       this._status = 'error';
@@ -186,13 +192,14 @@ export class StartupManagerAdapter extends BaseModuleAdapter {
 
 // ── Privacy Cleaner adapter ──────────────────────────────────────
 
-export class PrivacyCleanerAdapter extends BaseModuleAdapter {
-  async scan(): Promise<unknown> {
+export class PrivacyCleanerAdapter extends JunkCleanerAdapter {
+  override async scan(): Promise<unknown> {
     this._status = 'scanning';
     try {
-      const res = await rpcCall('cleaner.scan.start', { categories: ['privacy'] });
+      const res = await rpcCall('cleaner.scan.start', { only: ['privacy'] }) as { taskId?: string };
+      this._lastScanTaskId = res.taskId ?? null;
       this._status = 'completed';
-      this._recordScan(res.result?.total_items ?? 0);
+      this._recordScan((res as { result?: { total_items?: number } }).result?.total_items ?? 0);
       return res;
     } catch {
       this._status = 'error';
@@ -200,12 +207,15 @@ export class PrivacyCleanerAdapter extends BaseModuleAdapter {
     }
   }
 
-  async clean(): Promise<unknown> {
+  override async clean(): Promise<unknown> {
     this._status = 'cleaning';
     try {
-      const res = await rpcCall('cleaner.clean.execute', { categories: ['privacy'] });
+      const res = await rpcCall('cleaner.clean.execute', {
+        taskId: this._lastScanTaskId,
+        only: ['privacy'],
+      });
       this._status = 'completed';
-      this._recordClean(res.result?.space_cleaned ?? 0);
+      this._recordClean((res as { result?: { space_cleaned?: number } }).result?.space_cleaned ?? 0);
       return res;
     } catch {
       this._status = 'error';

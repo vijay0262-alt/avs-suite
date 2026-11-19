@@ -144,7 +144,6 @@ def _build_method_to_module_map() -> None:
         "network": "avs_backend.network_info",
         "backup": "avs_backend.backup_restore",
         "hardware": "avs_backend.hardware_monitor",
-        "security": "avs_backend.security",
         "health": "avs_backend.predictive_health",
         "predictive": "avs_backend.predictive",
         "realtime": "avs_backend.realtime_protection",
@@ -153,6 +152,14 @@ def _build_method_to_module_map() -> None:
         "scan_core": "avs_backend.scan_core_rpc",
         "process_priority": "avs_backend.process_priority",
         "ai_integration": "avs_backend.ai_integration",
+        "fullscan": "avs_backend.full_system_scan",
+        # These submodules register their methods when threat_engine imports.
+        "cloud_reputation": "avs_backend.threat_engine",
+        "download_scanner": "avs_backend.threat_engine",
+        "email_notify": "avs_backend.threat_engine",
+        "email_scanner": "avs_backend.threat_engine",
+        "memory_scanner": "avs_backend.threat_engine",
+        "network_monitor": "avs_backend.threat_engine",
     }
     _METHOD_TO_MODULE.update(_explicit)
 
@@ -167,15 +174,33 @@ def _build_method_to_module_map() -> None:
 _build_method_to_module_map()
 
 
-def _module_for_method(method: str) -> str | None:
-    """Return the feature module that should register *method*, or None."""
+# Prefixes whose methods live in more than one module — each candidate is
+# imported in order until the method registers. "security.*" is split
+# across security, security_investigation, security_remediation,
+# threat_engine (security_status.py) and dashboard (security.fix).
+_MULTI_MODULE_PREFIXES: dict[str, list[str]] = {
+    "security": [
+        "avs_backend.security",
+        "avs_backend.security_investigation",
+        "avs_backend.security_remediation",
+        "avs_backend.threat_engine",
+        "avs_backend.dashboard",
+    ],
+}
+
+
+def _modules_for_method(method: str) -> list[str]:
+    """Return candidate feature modules that may register *method*."""
+    for prefix, mods in _MULTI_MODULE_PREFIXES.items():
+        if method.startswith(prefix + ".") or method.startswith(prefix + "_"):
+            return mods
     # Try exact prefix matches: "dashboard.metrics" -> "dashboard"
     # Sort by prefix length descending so longer prefixes (e.g. "duplicate_intel")
     # are checked before shorter ones (e.g. "duplicate") to avoid false matches.
     for prefix, mod_name in sorted(_METHOD_TO_MODULE.items(), key=lambda x: len(x[0]), reverse=True):
         if method.startswith(prefix + ".") or method.startswith(prefix + "_"):
-            return mod_name
-    return None
+            return [mod_name]
+    return []
 
 
 def _import_module(name: str) -> None:
@@ -373,19 +398,24 @@ def _dispatch(request: dict[str, Any]) -> None:
     if handler is None:
         # Module may still be importing in the background — pull it in on
         # demand instead of waiting behind the full import pass. This keeps
-        # the first request to any page fast even during cold start.
-        target_module = _module_for_method(method)
-        if target_module is not None:
+        # the first request to any page fast even during cold start. Some
+        # prefixes (e.g. security.*) span several modules — try each until
+        # the method registers.
+        target_modules = _modules_for_method(method)
+        for target_module in target_modules:
             _ensure_module(target_module)
             handler = registry.get(method)
+            if handler is not None:
+                break
         if handler is None:
-            if target_module is not None:
-                with _modules_lock:
-                    failed = target_module in _modules_failed
-                if failed:
-                    _error(request_id, INTERNAL_ERROR,
-                           f"Module {target_module} failed to load; method {method} unavailable")
-                    return
+            with _modules_lock:
+                all_failed = bool(target_modules) and all(
+                    m in _modules_failed for m in target_modules
+                )
+            if all_failed:
+                _error(request_id, INTERNAL_ERROR,
+                       f"Module(s) for {method} failed to load; method unavailable")
+                return
             _error(request_id, METHOD_NOT_FOUND, f"Unknown method: {method}")
             return
 

@@ -987,6 +987,10 @@ def threat_configure(params: dict[str, Any] | None) -> dict[str, Any]:
     """Configure threat engine detection sources and settings."""
     global _config
     params = params or {}
+    # The frontend sends {config: {...}} — unwrap it so settings apply
+    # instead of the call being a silent no-op.
+    if isinstance(params.get("config"), dict):
+        params = params["config"]
 
     cfg = _load_config()
 

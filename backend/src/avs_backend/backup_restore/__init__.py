@@ -81,8 +81,10 @@ def backup_create_restore_point(params: dict[str, Any] | None) -> dict[str, Any]
 
     description = (params.get("description") if params else None) or f"AVS AI Shield Restore Point"
 
-    ps_script = f"""
-    Checkpoint-Computer -Description '{description}' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction Stop
+    import os as _os
+    _os.environ["AVS_RP_DESCRIPTION"] = description
+    ps_script = """
+    Checkpoint-Computer -Description $env:AVS_RP_DESCRIPTION -RestorePointType 'MODIFY_SETTINGS' -ErrorAction Stop
     Write-Output 'SUCCESS'
     """
     output = _run_powershell(ps_script, timeout=60)
@@ -97,9 +99,12 @@ def backup_list_backups(_params: dict[str, Any] | None) -> dict[str, Any]:
     """List all AVS-managed backups (delegates to undo module)."""
     try:
         from avs_backend.undo import undo_list
-        return undo_list(None)
+        result = undo_list(None)
+        if isinstance(result, dict):
+            result.setdefault("success", True)
+        return result
     except Exception as e:
-        return {"backups": [], "error": str(e)}
+        return {"success": False, "backups": [], "error": str(e)}
 
 
 @register("backup.restore")
@@ -164,4 +169,5 @@ def backup_system_image(_params: dict[str, Any] | None) -> dict[str, Any]:
         result = json.loads(output) if output else {"Available": False}
         return result
     except Exception:
-        return {"available": False}
+        return {"available": False,
+                "error": f"Could not query system image status: {output[:200]}"}
