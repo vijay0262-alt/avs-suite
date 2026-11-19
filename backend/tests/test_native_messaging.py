@@ -191,7 +191,7 @@ class TestCheckText:
             "text": "Hey, are we still on for lunch tomorrow at noon?",
         })
         assert reply["type"] == "text_result"
-        assert reply["verdict"] == "clean"
+        assert reply["verdict"] == "likely_legitimate"
 
     def test_check_text_requires_text(self, host):
         reply = host.handle_message({"type": "check_text"})
