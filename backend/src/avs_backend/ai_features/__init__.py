@@ -53,6 +53,7 @@ import threading
 from typing import Any
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 
 log = logging.getLogger("avs.ai_features")
 
@@ -485,6 +486,7 @@ def privacy_history(params: dict[str, Any] | None) -> dict[str, Any]:
 # ─── RPC: Game/Movie Mode ───────────────────────────────────────────
 
 @register("ai_features.gameMode.activate")
+@require_feature("ai_features.gameMode.activate")
 def game_mode_activate(params: dict[str, Any] | None) -> dict[str, Any]:
     """Activate Game/Movie Mode."""
     _init_modules()
@@ -497,6 +499,7 @@ def game_mode_activate(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("ai_features.gameMode.deactivate")
+@require_feature("ai_features.gameMode.deactivate")
 def game_mode_deactivate(params: dict[str, Any] | None) -> dict[str, Any]:
     """Deactivate Game/Movie Mode."""
     _init_modules()
@@ -509,6 +512,7 @@ def game_mode_deactivate(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("ai_features.gameMode.toggle")
+@require_feature("ai_features.gameMode.toggle")
 def game_mode_toggle(params: dict[str, Any] | None) -> dict[str, Any]:
     """Toggle Game/Movie Mode."""
     _init_modules()
@@ -530,6 +534,7 @@ def game_mode_status(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("ai_features.gameMode.configure")
+@require_feature("ai_features.gameMode.configure")
 def game_mode_configure(params: dict[str, Any] | None) -> dict[str, Any]:
     """Configure Game/Movie Mode."""
     params = params or {}

@@ -128,8 +128,17 @@ def _delete_value(hive: int, key_path: str, value_name: str) -> bool:
 
 
 def _delete_key(hive: int, key_path: str) -> bool:
-    """Delete a registry key and all its subkeys."""
+    """Delete a registry key and all its subkeys (winreg.DeleteKey
+    refuses keys that still have children — recurse first)."""
     try:
+        with winreg.OpenKey(hive, key_path) as handle:
+            while True:
+                try:
+                    child = winreg.EnumKey(handle, 0)
+                except OSError:
+                    break
+                if not _delete_key(hive, key_path + "\\" + child):
+                    return False
         winreg.DeleteKey(hive, key_path)
         return True
     except FileNotFoundError:
@@ -137,6 +146,15 @@ def _delete_key(hive: int, key_path: str) -> bool:
     except OSError as e:
         log.error("Failed to delete registry key %s: %s", key_path, e)
         return False
+
+
+def _is_allowed_remove_path(reg_path: str) -> bool:
+    """Only allow deleting keys inside known context-menu shell roots."""
+    allowed_roots = {path.lower() for _hive, path, _ctx in CONTEXT_MENU_LOCATIONS}
+    target = reg_path.lower()
+    return any(
+        target == root or target.startswith(root + "\\") for root in allowed_roots
+    )
 
 
 def _collect_entries(hive: int, shell_path: str, context: str) -> list[dict[str, Any]]:
@@ -333,6 +351,11 @@ def context_menu_remove(params: dict[str, Any] | None) -> dict[str, Any]:
     reg_path = params["regPath"]
 
     hive = winreg.HKEY_CLASSES_ROOT if hive_name == "HKCR" else winreg.HKEY_CURRENT_USER
+
+    # Arbitrary client-supplied registry paths must not reach DeleteKey —
+    # only keys inside the known context-menu shell roots are removable.
+    if not _is_allowed_remove_path(reg_path):
+        return {"success": False, "message": f"Path is not a context-menu shell entry: {reg_path}"}
 
     # Delete the entire shell subkey (including command subkey)
     success = _delete_key(hive, reg_path)

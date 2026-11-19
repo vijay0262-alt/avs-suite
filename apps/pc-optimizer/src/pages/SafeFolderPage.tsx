@@ -85,12 +85,16 @@ export default function SafeFolderPage() {
   useEffect(() => {
     refreshStatus();
     refreshAlerts();
+    // Poll only while monitoring is active — nothing changes when idle
+    if (!status?.monitoring) return;
+    let inFlight = false;
     const interval = setInterval(() => {
-      refreshStatus();
-      refreshAlerts();
+      if (inFlight) return;
+      inFlight = true;
+      Promise.allSettled([refreshStatus(), refreshAlerts()]).finally(() => { inFlight = false; });
     }, 5000);
     return () => clearInterval(interval);
-  }, [refreshStatus, refreshAlerts]);
+  }, [refreshStatus, refreshAlerts, status?.monitoring]);
 
   const handleAdd = async () => {
     if (!isPro) {

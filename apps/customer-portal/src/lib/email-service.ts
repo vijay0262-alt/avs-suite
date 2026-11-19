@@ -22,7 +22,7 @@ const VERIFICATION_BASE_URL =
   'https://dashboard.avsshield.com';
 
 const SUPPORT_EMAIL = process.env.AVS_SUPPORT_EMAIL ?? 'support@avsshield.com';
-const SUPPORT_URL = process.env.AVS_SUPPORT_URL ?? 'https://avsshield.com/support';
+const SUPPORT_URL = process.env.AVS_SUPPORT_URL ?? 'https://avsshield.com/contact';
 
 interface VerificationEmailParams {
   to: string;
@@ -173,7 +173,7 @@ function renderVerificationEmail(opts: {
           <!-- Header / Logo -->
           <tr>
             <td style="background:linear-gradient(135deg,#1a56db 0%,#1e40af 100%);padding:32px 40px;text-align:center;">
-              <img src="https://avsshield.com/logo.png" alt="AVS AI Shield" width="180" style="display:inline-block;border:0;outline:none;text-decoration:none;" />
+              <img src="https://avsshield.com/images/logo.png" alt="AVS AI Shield" width="180" style="display:inline-block;border:0;outline:none;text-decoration:none;" />
             </td>
           </tr>
 
@@ -270,7 +270,7 @@ function renderPasswordResetEmail(opts: {
 
           <tr>
             <td style="background:linear-gradient(135deg,#1a56db 0%,#1e40af 100%);padding:32px 40px;text-align:center;">
-              <img src="https://avsshield.com/logo.png" alt="AVS AI Shield" width="180" style="display:inline-block;border:0;outline:none;text-decoration:none;" />
+              <img src="https://avsshield.com/images/logo.png" alt="AVS AI Shield" width="180" style="display:inline-block;border:0;outline:none;text-decoration:none;" />
             </td>
           </tr>
 

@@ -32,6 +32,16 @@ a = Analysis(
         "avs_backend.api",
         "avs_backend.api.registry",
         "avs_backend.api.rpc_server",
+        # License SDK — imported lazily inside avs_backend.licensing;
+        # editable installs are invisible to modulegraph without this.
+        "avs_license_sdk",
+        "avs_license_sdk.client",
+        "avs_license_sdk.crypto",
+        "avs_license_sdk.fingerprint",
+        "avs_license_sdk.models",
+        "avs_license_sdk.offline",
+        "avs_license_sdk.storage",
+        "avs_license_sdk.updater",
         "avs_backend.cleaner",
         "avs_backend.dashboard",
         "avs_backend.disk_analyzer",

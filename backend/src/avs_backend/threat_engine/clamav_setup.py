@@ -301,7 +301,7 @@ def _download_file(url: str, dest: Path, progress_key: str = "") -> bool:
     try:
         log.info("Downloading %s to %s", url, dest)
         req = urllib.request.Request(url, headers={"User-Agent": "AVS-Shield/1.0"})
-        with urllib.request.urlopen(req, timeout=300) as response:
+        with urllib.request.urlopen(req, timeout=30) as response:
             total = int(response.headers.get("Content-Length", 0))
             downloaded = 0
             dest.parent.mkdir(parents=True, exist_ok=True)

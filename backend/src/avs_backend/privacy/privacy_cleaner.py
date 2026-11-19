@@ -948,13 +948,9 @@ def _clear_chromium_history(db_path: str) -> bool:
     and immutable read-only queries to avoid lock conflicts.
     """
     try:
-        # Try to connect in WAL mode — if the browser is running,
-        # we use immutable mode to avoid lock conflicts
-        conn = sqlite3.connect(
-            f"file:{db_path}?immutable=1",
-            uri=True,
-            timeout=3,
-        )
+        # Writable connection — immutable mode silently swallows the
+        # DELETEs below. Short timeout if the browser holds the lock.
+        conn = sqlite3.connect(db_path, timeout=3)
         cursor = conn.cursor()
         # Clear main history tables
         tables_to_clear = [
@@ -979,11 +975,7 @@ def _clear_chromium_history(db_path: str) -> bool:
 def _clear_firefox_history(db_path: str) -> bool:
     """Clear Firefox history using SQLite (places.sqlite)."""
     try:
-        conn = sqlite3.connect(
-            f"file:{db_path}?immutable=1",
-            uri=True,
-            timeout=3,
-        )
+        conn = sqlite3.connect(db_path, timeout=3)
         cursor = conn.cursor()
         tables_to_clear = [
             "moz_places", "moz_historyvisits", "moz_annos",

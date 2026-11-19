@@ -56,6 +56,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 
 log = logging.getLogger("avs.advanced_security")
 
@@ -158,6 +159,7 @@ def advanced_security_status(params: dict[str, Any] | None) -> dict[str, Any]:
 # ─── RPC: Behavioral Sandbox ────────────────────────────────────────
 
 @register("advanced_security.sandbox.analyze")
+@require_feature("advanced_security.sandbox.analyze")
 def sandbox_analyze(params: dict[str, Any] | None) -> dict[str, Any]:
     """Analyze a file in the behavioral sandbox."""
     params = params or {}
@@ -189,6 +191,7 @@ def sandbox_status(params: dict[str, Any] | None) -> dict[str, Any]:
 # ─── RPC: ML Anomaly Classifier ─────────────────────────────────────
 
 @register("advanced_security.ml.start")
+@require_feature("advanced_security.ml.start")
 def ml_start(params: dict[str, Any] | None) -> dict[str, Any]:
     """Start ML anomaly monitoring."""
     _init_modules()
@@ -202,6 +205,7 @@ def ml_start(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("advanced_security.ml.stop")
+@require_feature("advanced_security.ml.stop")
 def ml_stop(params: dict[str, Any] | None) -> dict[str, Any]:
     """Stop ML anomaly monitoring."""
     _init_modules()
@@ -233,6 +237,7 @@ def ml_anomalies(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("advanced_security.ml.train")
+@require_feature("advanced_security.ml.train")
 def ml_train(params: dict[str, Any] | None) -> dict[str, Any]:
     """Train baseline data."""
     params = params or {}
@@ -250,6 +255,7 @@ def ml_train(params: dict[str, Any] | None) -> dict[str, Any]:
 # ─── RPC: Web Shield ────────────────────────────────────────────────
 
 @register("advanced_security.web.check")
+@require_feature("advanced_security.web.check")
 def web_check(params: dict[str, Any] | None) -> dict[str, Any]:
     """Check a URL against blocklists."""
     params = params or {}
@@ -279,6 +285,7 @@ def web_status(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("advanced_security.web.updateFeeds")
+@require_feature("advanced_security.web.updateFeeds")
 def web_update_feeds(params: dict[str, Any] | None) -> dict[str, Any]:
     """Update URL blocklist feeds."""
     params = params or {}
@@ -303,6 +310,7 @@ def web_blocked(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("advanced_security.web.addBlock")
+@require_feature("advanced_security.web.addBlock")
 def web_add_block(params: dict[str, Any] | None) -> dict[str, Any]:
     """Add a URL to the blocklist."""
     params = params or {}
@@ -320,6 +328,7 @@ def web_add_block(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("advanced_security.web.removeBlock")
+@require_feature("advanced_security.web.removeBlock")
 def web_remove_block(params: dict[str, Any] | None) -> dict[str, Any]:
     """Remove a URL from the blocklist."""
     params = params or {}
@@ -338,6 +347,7 @@ def web_remove_block(params: dict[str, Any] | None) -> dict[str, Any]:
 # ─── RPC: Ransomware Vaccine ────────────────────────────────────────
 
 @register("advanced_security.ransomware.start")
+@require_feature("advanced_security.ransomware.start")
 def ransomware_start(params: dict[str, Any] | None) -> dict[str, Any]:
     """Start ransomware vaccine (deploy canaries and monitor)."""
     _init_modules()
@@ -351,6 +361,7 @@ def ransomware_start(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("advanced_security.ransomware.stop")
+@require_feature("advanced_security.ransomware.stop")
 def ransomware_stop(params: dict[str, Any] | None) -> dict[str, Any]:
     """Stop ransomware vaccine."""
     _init_modules()
@@ -382,6 +393,7 @@ def ransomware_alerts(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("advanced_security.ransomware.configure")
+@require_feature("advanced_security.ransomware.configure")
 def ransomware_configure(params: dict[str, Any] | None) -> dict[str, Any]:
     """Configure ransomware vaccine settings."""
     params = params or {}
@@ -395,6 +407,7 @@ def ransomware_configure(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("advanced_security.ransomware.deploy")
+@require_feature("advanced_security.ransomware.deploy")
 def ransomware_deploy(params: dict[str, Any] | None) -> dict[str, Any]:
     """Deploy canary files."""
     _init_modules()
@@ -407,6 +420,7 @@ def ransomware_deploy(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("advanced_security.ransomware.remove")
+@require_feature("advanced_security.ransomware.remove")
 def ransomware_remove(params: dict[str, Any] | None) -> dict[str, Any]:
     """Remove canary files."""
     _init_modules()
@@ -421,6 +435,7 @@ def ransomware_remove(params: dict[str, Any] | None) -> dict[str, Any]:
 # ─── RPC: Email Scanner ─────────────────────────────────────────────
 
 @register("advanced_security.email.scan")
+@require_feature("advanced_security.email.scan")
 def email_scan(params: dict[str, Any] | None) -> dict[str, Any]:
     """Scan an email attachment file."""
     params = params or {}
@@ -441,6 +456,7 @@ def email_scan(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("advanced_security.email.scanDir")
+@require_feature("advanced_security.email.scanDir")
 def email_scan_dir(params: dict[str, Any] | None) -> dict[str, Any]:
     """Scan a directory of email attachments."""
     params = params or {}
@@ -478,6 +494,7 @@ def email_history(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("advanced_security.email.scanOutlook")
+@require_feature("advanced_security.email.scanOutlook")
 def email_scan_outlook(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Auto-detect and scan the Outlook attachment temp folder."""
     _init_modules()
@@ -494,6 +511,7 @@ def email_scan_outlook(_params: dict[str, Any] | None) -> dict[str, Any]:
 # ─── RPC: Boot Sector Scanner ───────────────────────────────────────
 
 @register("advanced_security.boot.scan")
+@require_feature("advanced_security.boot.scan")
 def boot_scan(params: dict[str, Any] | None) -> dict[str, Any]:
     """Scan boot sector / MBR of the system drive."""
     _init_modules()
@@ -509,6 +527,7 @@ def boot_scan(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("advanced_security.boot.scanDrive")
+@require_feature("advanced_security.boot.scanDrive")
 def boot_scan_drive(params: dict[str, Any] | None) -> dict[str, Any]:
     """Scan a specific physical drive."""
     params = params or {}
@@ -534,6 +553,7 @@ def boot_status(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("advanced_security.boot.backup")
+@require_feature("advanced_security.boot.backup")
 def boot_backup(params: dict[str, Any] | None) -> dict[str, Any]:
     """Backup the MBR."""
     _init_modules()
@@ -547,6 +567,7 @@ def boot_backup(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("advanced_security.boot.verify")
+@require_feature("advanced_security.boot.verify")
 def boot_verify(params: dict[str, Any] | None) -> dict[str, Any]:
     """Verify MBR against a backup."""
     params = params or {}

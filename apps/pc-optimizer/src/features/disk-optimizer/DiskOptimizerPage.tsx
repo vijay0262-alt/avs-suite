@@ -58,19 +58,27 @@ export default function DiskOptimizerPage() {
     void loadDrives();
   }, [loadDrives]);
 
-  // Poll optimization status
+  // Poll optimization status — only while an optimize is actually running
   useEffect(() => {
+    let stopped = false;
+    let inFlight = false;
     const poll = async () => {
+      if (inFlight) return;
+      inFlight = true;
       try {
         const status = await diskOptimizerService.getStatus();
-        setOptimizeStatus(status);
+        if (!stopped) setOptimizeStatus(status);
       } catch {
         // ignore
+      } finally {
+        inFlight = false;
       }
     };
+    void poll(); // one-shot on mount to pick up an in-flight operation
+    if (!optimizeStatus?.running) return;
     const interval = setInterval(poll, 2000);
-    return () => clearInterval(interval);
-  }, []);
+    return () => { stopped = true; clearInterval(interval); };
+  }, [optimizeStatus?.running]);
 
   const handleAnalyze = async (drive: OptimizerDriveInfo) => {
     const driveLetter = drive.device.replace(":", "").replace("\\", "");

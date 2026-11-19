@@ -161,3 +161,12 @@ class TestFamilyAlerts:
         m._proc_fn = lambda: {"anydesk"}
         m.tick()
         assert len(got) == 1 and got[0]["type"] == "remote_access_tool"
+
+
+import avs_backend.licensing as _licensing
+
+
+@pytest.fixture(autouse=True)
+def _pro_edition(monkeypatch):
+    """Scam Shield features are Pro-gated; tests exercise the handlers."""
+    monkeypatch.setattr(_licensing, "_edition_override", "professional")

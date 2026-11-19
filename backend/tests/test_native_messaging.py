@@ -215,3 +215,12 @@ class TestRequestIdEcho:
         serve(stdin, stdout, host)
         stdout.seek(0)
         assert _read_message(stdout)["id"] == 42
+
+
+import avs_backend.licensing as _licensing
+
+
+@pytest.fixture(autouse=True)
+def _pro_edition(monkeypatch):
+    """Scam Shield features are Pro-gated; tests exercise the handlers."""
+    monkeypatch.setattr(_licensing, "_edition_override", "professional")

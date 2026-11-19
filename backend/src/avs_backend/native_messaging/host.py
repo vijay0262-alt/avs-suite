@@ -54,9 +54,12 @@ class NativeMessagingHost:
             elif msg_type == "status":
                 reply = self._handle_status()
             elif msg_type == "check_url":
-                reply = self._handle_check_url(message)
+                reply = self._handle_check_url(message) if self._pro_enabled() else {
+                    "type": "check_result", "safe": True, "edition_locked": True}
             elif msg_type == "check_text":
-                reply = self._handle_check_text(message)
+                reply = self._handle_check_text(message) if self._pro_enabled() else {
+                    "type": "text_result", "verdict": "benign", "score": 0,
+                    "edition_locked": True}
             elif msg_type == "report":
                 reply = self._handle_report(message)
             elif msg_type == "allow_url":
@@ -73,6 +76,19 @@ class NativeMessagingHost:
     # ------------------------------------------------------------------
     # Handlers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _pro_enabled() -> bool:
+        """Scam Shield protection requires a Professional+ license.
+
+        Fails closed (treated as not-Pro) only when the licensing module
+        cannot report an edition at all — degraded setups get no scam
+        protection rather than unlicensed Pro features."""
+        try:
+            from avs_backend.licensing import _FEATURE_EDITION_RANK, _get_current_edition
+            return _FEATURE_EDITION_RANK.get(_get_current_edition(), 0) >= 1
+        except Exception:
+            return False
 
     def _handle_status(self) -> Dict[str, Any]:
         status = self._get_web_shield().get_status()

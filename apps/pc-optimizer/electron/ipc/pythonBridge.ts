@@ -68,13 +68,33 @@ function resolveBackendCommand(): { command: string; args: string[]; cwd?: strin
   return { command: process.env.AVS_PYTHON ?? 'python', args: ['-u', script], cwd, pythonPath: backendSrc };
 }
 
+// Environment the Python backend needs. Mirrors the resolution in
+// electron/main/index.ts — the backend's licensing module reads
+// LICENSE_SERVER_URL (defaults to localhost otherwise, which breaks
+// activation/update checks in packaged builds) and APP_VERSION.
+function backendEnv(): NodeJS.ProcessEnv {
+  const envName = (process.env.AVS_ENV ?? (app.isPackaged ? 'production' : 'development')).toLowerCase();
+  const licenseServerUrl =
+    envName === 'production'
+      ? 'https://api.avsshield.com'
+      : envName === 'staging'
+        ? 'https://api-staging.avsshield.com'
+        : 'http://localhost:8000';
+  return {
+    ...process.env,
+    PYTHONUNBUFFERED: '1',
+    LICENSE_SERVER_URL: licenseServerUrl,
+    APP_VERSION: app.getVersion(),
+  };
+}
+
 export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
   const { command, args, cwd, pythonPath } = resolveBackendCommand();
   logger.info(`Spawning Python backend: ${command} ${args.join(' ')}`);
 
   const child: ChildProcessWithoutNullStreams = spawn(command, args, {
     stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env, PYTHONUNBUFFERED: '1', ...(pythonPath ? { PYTHONPATH: pythonPath } : {}) },
+    env: { ...backendEnv(), ...(pythonPath ? { PYTHONPATH: pythonPath } : {}) },
     cwd,
   });
 
@@ -200,7 +220,7 @@ export async function spawnPythonBackend(logger: Logger): Promise<RpcClient> {
       try {
         const newChild = spawn(command, args, {
           stdio: ['pipe', 'pipe', 'pipe'],
-          env: { ...process.env, PYTHONUNBUFFERED: '1', ...(pythonPath ? { PYTHONPATH: pythonPath } : {}) },
+          env: { ...backendEnv(), ...(pythonPath ? { PYTHONPATH: pythonPath } : {}) },
           cwd,
         });
         activeChild = newChild;

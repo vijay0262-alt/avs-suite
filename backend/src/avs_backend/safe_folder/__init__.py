@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 
 log = logging.getLogger("avs.safe_folder")
 
@@ -275,6 +276,7 @@ def safe_folder_list(_params: dict[str, Any] | None = None) -> dict[str, Any]:
 
 
 @register("safe_folder.add")
+@require_feature("safe_folder.add")
 def safe_folder_add(params: dict[str, Any] | None) -> dict[str, Any]:
     """Add a folder to protection.
 
@@ -317,6 +319,7 @@ def safe_folder_add(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("safe_folder.remove")
+@require_feature("safe_folder.remove")
 def safe_folder_remove(params: dict[str, Any] | None) -> dict[str, Any]:
     """Remove a folder from protection.
 
@@ -394,6 +397,7 @@ def safe_folder_alerts(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("safe_folder.start")
+@require_feature("safe_folder.start")
 def safe_folder_start(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Start monitoring all protected folders."""
     with _lock:
@@ -405,6 +409,7 @@ def safe_folder_start(_params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("safe_folder.stop")
+@require_feature("safe_folder.stop")
 def safe_folder_stop(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Stop monitoring all protected folders."""
     with _lock:
@@ -416,6 +421,7 @@ def safe_folder_stop(_params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("safe_folder.configure")
+@require_feature("safe_folder.configure")
 def safe_folder_configure(params: dict[str, Any] | None) -> dict[str, Any]:
     """Configure safe folder settings.
 
@@ -442,6 +448,7 @@ def safe_folder_configure(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("safe_folder.clear_alerts")
+@require_feature("safe_folder.clear_alerts")
 def safe_folder_clear_alerts(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Clear all alerts."""
     with _lock:
@@ -450,6 +457,7 @@ def safe_folder_clear_alerts(_params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("safe_folder.snapshot")
+@require_feature("safe_folder.snapshot")
 def safe_folder_snapshot(params: dict[str, Any] | None) -> dict[str, Any]:
     """Create a backup snapshot of a protected folder.
 
@@ -516,6 +524,7 @@ def safe_folder_snapshots(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("safe_folder.restore")
+@require_feature("safe_folder.restore")
 def safe_folder_restore(params: dict[str, Any] | None) -> dict[str, Any]:
     """Restore a folder from a snapshot.
 

@@ -382,6 +382,7 @@ class WebShield:
     def _query_dnsbl(domain: str, server: str) -> bool:
         try:
             import socket
+            socket.setdefaulttimeout(5)
             query = f"{'.'.join(reversed(domain.split('.')))}.{server}"
             try:
                 socket.gethostbyname(query)

@@ -52,6 +52,10 @@ _FEATURE_MODULES = [
     "avs_backend.registry_cleaner",
     "avs_backend.software_updater",
     "avs_backend.system_information",
+    "avs_backend.advanced_security",
+    "avs_backend.scam_detector",
+    "avs_backend.scam_guards",
+    "avs_backend.threat_engine",
     "avs_backend.uninstaller",
     "avs_backend.history",
     "avs_backend.notifications",
@@ -95,14 +99,10 @@ _FEATURE_MODULES = [
     "avs_backend.cloud_drive_cleaner",
     "avs_backend.safe_folder",
     "avs_backend.file_recovery",
-    "avs_backend.threat_engine",
     "avs_backend.realtime_threat",
-    "avs_backend.advanced_security",
-    "avs_backend.scam_detector",
-    "avs_backend.scam_guards",
     "avs_backend.safe_banking",
-    "avs_backend.ai_features",
     "avs_backend.one_click",
+    "avs_backend.ai_features",
 ]
 
 # Track which modules have finished importing (success or failure)
@@ -208,6 +208,32 @@ def _import_module(name: str) -> None:
             _modules_loaded.add(name)
 
 
+# Per-module completion events so an RPC worker can import a module on
+# demand instead of waiting for the whole background import pass.
+_modules_started: dict[str, threading.Event] = {}
+
+
+def _ensure_module(name: str) -> None:
+    """Import *name* exactly once; concurrent callers wait for it."""
+    with _modules_lock:
+        if name in _modules_loaded:
+            return
+        ev = _modules_started.get(name)
+        if ev is None:
+            ev = threading.Event()
+            _modules_started[name] = ev
+            owner = True
+        else:
+            owner = False
+    if owner:
+        try:
+            _import_module(name)
+        finally:
+            ev.set()
+    else:
+        ev.wait()
+
+
 def _all_modules_loaded() -> bool:
     with _modules_lock:
         return len(_modules_loaded) >= len(_FEATURE_MODULES)
@@ -240,7 +266,7 @@ def wait_for_modules(timeout: float = 120.0) -> bool:
 # A single thread keeps the main read loop responsive while importing.
 def _import_all_modules() -> None:
     for _mod in _FEATURE_MODULES:
-        _import_module(_mod)
+        _ensure_module(_mod)
     # Print complete RPC registry after all modules loaded
     print("\n========== RPC REGISTRY DUMP ==========".format(), file=sys.stderr, flush=True)
     all_meths = registry.all_methods()
@@ -345,24 +371,14 @@ def _dispatch(request: dict[str, Any]) -> None:
 
     handler = registry.get(method)
     if handler is None:
-        # Module might still be importing in a background thread.
-        # Wait for the specific module that should register this method.
+        # Module may still be importing in the background — pull it in on
+        # demand instead of waiting behind the full import pass. This keeps
+        # the first request to any page fast even during cold start.
         target_module = _module_for_method(method)
-        deadline = 120.0
-        import time as _time
-        start_wait = _time.monotonic()
-        while handler is None and (_time.monotonic() - start_wait) < deadline:
-            if target_module is not None and _module_loaded(target_module):
-                # The module that should register this method has finished
-                # importing (success or failure). If the handler is still
-                # missing, it won't appear — stop waiting.
-                break
-            if _all_modules_loaded():
-                break
-            _time.sleep(0.3)
+        if target_module is not None:
+            _ensure_module(target_module)
             handler = registry.get(method)
         if handler is None:
-            # Check if the module failed to import
             if target_module is not None:
                 with _modules_lock:
                     failed = target_module in _modules_failed

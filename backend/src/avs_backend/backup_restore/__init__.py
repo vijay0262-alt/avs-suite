@@ -111,7 +111,7 @@ def backup_restore(params: dict[str, Any] | None) -> dict[str, Any]:
     if "backupId" in params:
         try:
             from avs_backend.undo import undo_restore
-            return undo_restore({"backupId": params["backupId"]})
+            return undo_restore({"id": params["backupId"]})
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -121,6 +121,8 @@ def backup_restore(params: dict[str, Any] | None) -> dict[str, Any]:
         seq = params["sequenceNumber"]
         ps_script = f"Restore-Computer -RestorePoint {seq} -Confirm:$false"
         output = _run_powershell(ps_script, timeout=60)
+        if "error" in output.lower() or "exception" in output.lower():
+            return {"success": False, "error": f"System restore failed: {output[:300]}"}
         return {"success": True, "message": "System restore initiated. Computer will restart."}
 
     return {"success": False, "error": "Either backupId or sequenceNumber is required"}
@@ -133,7 +135,7 @@ def backup_delete(params: dict[str, Any] | None) -> dict[str, Any]:
         return {"success": False, "error": "backupId parameter is required"}
     try:
         from avs_backend.undo import undo_delete
-        return undo_delete({"backupId": params["backupId"]})
+        return undo_delete({"id": params["backupId"]})
     except Exception as e:
         return {"success": False, "error": str(e)}
 

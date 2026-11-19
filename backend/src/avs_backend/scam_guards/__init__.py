@@ -17,6 +17,7 @@ import time
 from typing import Any
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 from avs_backend.scam_guards.family import configure as _family_configure
 from avs_backend.scam_guards.family import get_config as _family_config
 from avs_backend.scam_guards.family import send_alert as _family_send
@@ -65,6 +66,7 @@ def _error(msg: str, code: str) -> dict[str, Any]:
 
 
 @register("scam_guards.start")
+@require_feature("scam_guards.start")
 def start(params: dict[str, Any] | None) -> dict[str, Any]:
     try:
         _get_monitor().start()
@@ -74,6 +76,7 @@ def start(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("scam_guards.stop")
+@require_feature("scam_guards.stop")
 def stop(params: dict[str, Any] | None) -> dict[str, Any]:
     try:
         _get_monitor().stop()
@@ -88,12 +91,14 @@ def status(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("scam_guards.alerts")
+@require_feature("scam_guards.alerts")
 def alerts(params: dict[str, Any] | None) -> dict[str, Any]:
     limit = (params or {}).get("limit", 50)
     return {"success": True, "result": _get_monitor().get_alerts(limit=limit)}
 
 
 @register("scam_guards.waves")
+@require_feature("scam_guards.waves")
 def waves(params: dict[str, Any] | None) -> dict[str, Any]:
     try:
         return {"success": True, "result": fetch_waves(force=bool((params or {}).get("force")))}
@@ -102,6 +107,7 @@ def waves(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("scam_guards.uploadReports")
+@require_feature("scam_guards.uploadReports")
 def upload(params: dict[str, Any] | None) -> dict[str, Any]:
     try:
         fp = (params or {}).get("device_fingerprint")
@@ -111,6 +117,7 @@ def upload(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("scam_guards.familyConfig")
+@require_feature("scam_guards.familyConfig")
 def family_config(params: dict[str, Any] | None) -> dict[str, Any]:
     """Get (no params) or set family alert configuration."""
     try:
@@ -122,6 +129,7 @@ def family_config(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("scam_guards.testFamilyAlert")
+@require_feature("scam_guards.testFamilyAlert")
 def test_family_alert(params: dict[str, Any] | None) -> dict[str, Any]:
     """Send a test alert through the configured family channels."""
     result = _family_send({

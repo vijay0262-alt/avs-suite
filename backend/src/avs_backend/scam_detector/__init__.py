@@ -23,6 +23,7 @@ import re
 from typing import Any
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 from avs_backend.scam_detector.classifier import ScamClassifier
 from avs_backend.scam_detector.extractor import extract_entities
 from avs_backend.scam_detector.ocr import ocr_image
@@ -62,6 +63,7 @@ _SENSITIVITIES = {"high", "balanced", "low"}
 
 
 @register("scam_detector.analyzeText")
+@require_feature("scam_detector.analyzeText")
 def analyze_text(params: dict[str, Any] | None) -> dict[str, Any]:
     """Analyze pasted message text for scam tactics."""
     global _analyses_run
@@ -88,6 +90,7 @@ def analyze_text(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("scam_detector.analyzeImage")
+@require_feature("scam_detector.analyzeImage")
 def analyze_image(params: dict[str, Any] | None) -> dict[str, Any]:
     """OCR a screenshot then analyze its text."""
     params = params or {}
@@ -116,6 +119,7 @@ def analyze_image(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("scam_detector.checkPhone")
+@require_feature("scam_detector.checkPhone")
 def check_phone(params: dict[str, Any] | None) -> dict[str, Any]:
     """Heuristic check on a phone number — flags VoIP-range/scam patterns
     without needing a paid lookup feed."""

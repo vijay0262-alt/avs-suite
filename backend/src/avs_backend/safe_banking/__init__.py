@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 
 log = logging.getLogger("avs.safe_banking")
 
@@ -137,11 +138,13 @@ def status(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("safe_banking.sites")
+@require_feature("safe_banking.sites")
 def sites(params: dict[str, Any] | None) -> dict[str, Any]:
     return {"success": True, "result": _load_sites()}
 
 
 @register("safe_banking.addSite")
+@require_feature("safe_banking.addSite")
 def add_site(params: dict[str, Any] | None) -> dict[str, Any]:
     domain = _normalize_domain((params or {}).get("domain", ""))
     if not _DOMAIN_RE.match(domain):
@@ -154,6 +157,7 @@ def add_site(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("safe_banking.removeSite")
+@require_feature("safe_banking.removeSite")
 def remove_site(params: dict[str, Any] | None) -> dict[str, Any]:
     domain = _normalize_domain((params or {}).get("domain", ""))
     current = [s for s in _load_sites() if s != domain]
@@ -162,6 +166,7 @@ def remove_site(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("safe_banking.launch")
+@require_feature("safe_banking.launch")
 def launch(params: dict[str, Any] | None) -> dict[str, Any]:
     params = params or {}
     raw = params.get("url") or params.get("domain") or ""

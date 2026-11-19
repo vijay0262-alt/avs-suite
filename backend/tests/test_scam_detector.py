@@ -200,3 +200,12 @@ class TestRpc:
         from avs_backend.scam_detector import status
         r = status(None)
         assert r["success"] and r["result"]["classifier"] == "tactic_rules_v1"
+
+
+import avs_backend.licensing as _licensing
+
+
+@pytest.fixture(autouse=True)
+def _pro_edition(monkeypatch):
+    """Scam Shield features are Pro-gated; tests exercise the handlers."""
+    monkeypatch.setattr(_licensing, "_edition_override", "professional")

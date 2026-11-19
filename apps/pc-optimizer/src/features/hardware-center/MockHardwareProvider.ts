@@ -23,8 +23,8 @@ function clamp(v: number, min: number, max: number): number {
 
 export function createMockHardwareProvider(): HardwareProvider {
   return {
-    id: 'mock-wmi',
-    source: 'wmi' as ProviderSource,
+    id: 'mock-simulated',
+    source: 'mock' as ProviderSource,
     categories: ['cpu', 'gpu', 'ram', 'storage', 'network', 'battery', 'cooling', 'operating_system', 'motherboard'],
     async initialize() {},
     dispose() {},

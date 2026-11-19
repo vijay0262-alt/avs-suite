@@ -49,6 +49,7 @@ from pathlib import Path
 from typing import Any
 
 from avs_backend.api.registry import register
+from avs_backend.licensing import require_feature
 
 log = logging.getLogger("avs.threat_engine")
 
@@ -981,6 +982,7 @@ def threat_status(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("threat.configure")
+@require_feature("threat.configure")
 def threat_configure(params: dict[str, Any] | None) -> dict[str, Any]:
     """Configure threat engine detection sources and settings."""
     global _config
@@ -1021,6 +1023,7 @@ def threat_definitions(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("threat.updateDefs")
+@require_feature("threat.updateDefs")
 def threat_update_defs(params: dict[str, Any] | None) -> dict[str, Any]:
     """Update threat definitions from online feeds."""
     params = params or {}
@@ -1112,6 +1115,7 @@ def threat_clamav_detect(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("threat.clamavSetup")
+@require_feature("threat.clamavSetup")
 def threat_clamav_setup(params: dict[str, Any] | None) -> dict[str, Any]:
     """Start ClamAV portable download and setup (async, runs in background)."""
     try:
@@ -1132,6 +1136,7 @@ def threat_clamav_setup_status(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("threat.clamavStart")
+@require_feature("threat.clamavStart")
 def threat_clamav_start(params: dict[str, Any] | None) -> dict[str, Any]:
     """Start the ClamAV daemon (clamd) as a background process."""
     try:
@@ -1142,6 +1147,7 @@ def threat_clamav_start(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("threat.clamavUninstall")
+@require_feature("threat.clamavUninstall")
 def threat_clamav_uninstall(params: dict[str, Any] | None) -> dict[str, Any]:
     """Remove the ClamAV portable installation."""
     try:
@@ -1152,6 +1158,7 @@ def threat_clamav_uninstall(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("threat.clamavAutoUpdateStart")
+@require_feature("threat.clamavAutoUpdateStart")
 def threat_clamav_auto_update_start(params: dict[str, Any] | None) -> dict[str, Any]:
     """Start the ClamAV auto-update scheduler (runs freshclam daily)."""
     try:
@@ -1162,6 +1169,7 @@ def threat_clamav_auto_update_start(params: dict[str, Any] | None) -> dict[str, 
 
 
 @register("threat.clamavAutoUpdateStop")
+@require_feature("threat.clamavAutoUpdateStop")
 def threat_clamav_auto_update_stop(params: dict[str, Any] | None) -> dict[str, Any]:
     """Stop the ClamAV auto-update scheduler."""
     try:
@@ -1210,6 +1218,7 @@ def threat_list_threats(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("threat.quarantine")
+@require_feature("threat.quarantine")
 def threat_quarantine(params: dict[str, Any] | None) -> dict[str, Any]:
     """Quarantine a detected threat."""
     params = params or {}
@@ -1237,6 +1246,7 @@ def threat_quarantine(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("threat.restore")
+@require_feature("threat.restore")
 def threat_restore(params: dict[str, Any] | None) -> dict[str, Any]:
     """Restore a quarantined file."""
     params = params or {}
@@ -1258,6 +1268,7 @@ def threat_restore(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("threat.remove")
+@require_feature("threat.remove")
 def threat_remove(params: dict[str, Any] | None) -> dict[str, Any]:
     """Permanently remove a detected threat."""
     params = params or {}
@@ -1291,6 +1302,7 @@ def threat_quarantine_list(_params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("threat.quarantineRestoreAll")
+@require_feature("threat.quarantineRestoreAll")
 def threat_quarantine_restore_all(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Restore all quarantined files (batch action)."""
     try:
@@ -1319,6 +1331,7 @@ def threat_quarantine_restore_all(_params: dict[str, Any] | None) -> dict[str, A
 
 
 @register("threat.quarantineDeleteAll")
+@require_feature("threat.quarantineDeleteAll")
 def threat_quarantine_delete_all(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Permanently delete all quarantined files (batch action)."""
     try:
@@ -1343,6 +1356,7 @@ def threat_quarantine_delete_all(_params: dict[str, Any] | None) -> dict[str, An
 
 
 @register("threat.quarantineCleanupFalsePositives")
+@require_feature("threat.quarantineCleanupFalsePositives")
 def threat_quarantine_cleanup_false_positives(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Purge quarantine entries that are confirmed false positives.
 
@@ -1374,6 +1388,7 @@ def threat_quarantine_cleanup_false_positives(_params: dict[str, Any] | None) ->
 
 
 @register("threat.quarantineDeleteSelected")
+@require_feature("threat.quarantineDeleteSelected")
 def threat_quarantine_delete_selected(params: dict[str, Any] | None) -> dict[str, Any]:
     """Permanently delete selected quarantined files by ID (batch action)."""
     params = params or {}
@@ -1478,6 +1493,7 @@ def threat_quarantine_policies(_params: dict[str, Any] | None) -> dict[str, Any]
 
 
 @register("threat.quarantinePolicySet")
+@require_feature("threat.quarantinePolicySet")
 def threat_quarantine_policy_set(params: dict[str, Any] | None) -> dict[str, Any]:
     """Set a quarantine policy for a specific detector.
 
@@ -1503,6 +1519,7 @@ def threat_quarantine_policy_set(params: dict[str, Any] | None) -> dict[str, Any
 
 
 @register("threat.quarantinePolicyReset")
+@require_feature("threat.quarantinePolicyReset")
 def threat_quarantine_policy_reset(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Reset all quarantine policies to defaults."""
     try:
@@ -1704,6 +1721,7 @@ def threat_scan_schedule_get(_params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("threat.scanSchedule.set")
+@require_feature("threat.scanSchedule.set")
 def threat_scan_schedule_set(params: dict[str, Any] | None) -> dict[str, Any]:
     """Set or update the scan schedule configuration.
 
@@ -1722,6 +1740,7 @@ def threat_scan_schedule_set(params: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @register("threat.scanSchedule.runNow")
+@require_feature("threat.scanSchedule.runNow")
 def threat_scan_schedule_run_now(params: dict[str, Any] | None) -> dict[str, Any]:
     """Trigger an immediate scheduled scan."""
     try:
@@ -1745,6 +1764,7 @@ def threat_startup_scan_status(_params: dict[str, Any] | None) -> dict[str, Any]
 
 
 @register("threat.startupScan.configure")
+@require_feature("threat.startupScan.configure")
 def threat_startup_scan_configure(params: dict[str, Any] | None) -> dict[str, Any]:
     """Configure startup scan settings."""
     try:
@@ -1755,6 +1775,7 @@ def threat_startup_scan_configure(params: dict[str, Any] | None) -> dict[str, An
 
 
 @register("threat.startupScan.runNow")
+@require_feature("threat.startupScan.runNow")
 def threat_startup_scan_run_now(_params: dict[str, Any] | None) -> dict[str, Any]:
     """Trigger an immediate startup scan."""
     try:
@@ -1765,6 +1786,7 @@ def threat_startup_scan_run_now(_params: dict[str, Any] | None) -> dict[str, Any
 
 
 @register("threat.scanExport")
+@require_feature("threat.scanExport")
 def threat_scan_export(params: dict[str, Any] | None) -> dict[str, Any]:
     """Export scan results as CSV or JSON.
 

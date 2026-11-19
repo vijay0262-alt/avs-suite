@@ -21,7 +21,7 @@ import { contextBridge, ipcRenderer } from 'electron';
  * Default timeout for IPC invoke calls from the renderer side.
  * If the main process doesn't respond within this time, the promise rejects.
  */
-const IPC_INVOKE_TIMEOUT_MS = 60_000;
+const IPC_INVOKE_TIMEOUT_MS = 130_000;
 
 /**
  * Wrap ipcRenderer.invoke with a timeout to prevent renderer hangs.

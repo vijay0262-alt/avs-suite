@@ -270,7 +270,7 @@ export function UpgradeDialogProvider({ children }: { children: ReactNode }) {
           navigate('/license');
         }}
         onLearnMore={() => {
-          window.open('https://www.avsshield.com/editions', '_blank');
+          window.open('https://www.avsshield.com/compare', '_blank');
         }}
       />
     </UpgradeDialogContext.Provider>

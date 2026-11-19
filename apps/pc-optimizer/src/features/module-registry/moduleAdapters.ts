@@ -107,7 +107,7 @@ export class JunkCleanerAdapter extends BaseModuleAdapter {
   async scan(): Promise<unknown> {
     this._status = 'scanning';
     try {
-      const res = await rpcCall('unified_cleaner.scan', { categories: ['junk'] });
+      const res = await rpcCall('cleaner.scan.start', { categories: ['junk'] });
       this._status = 'completed';
       this._recordScan(res.result?.total_items ?? 0);
       return res;
@@ -120,7 +120,7 @@ export class JunkCleanerAdapter extends BaseModuleAdapter {
   async clean(): Promise<unknown> {
     this._status = 'cleaning';
     try {
-      const res = await rpcCall('unified_cleaner.clean', { categories: ['junk'] });
+      const res = await rpcCall('cleaner.clean.execute', { categories: ['junk'] });
       this._status = 'completed';
       this._recordClean(res.result?.space_cleaned ?? 0);
       return res;
@@ -190,7 +190,7 @@ export class PrivacyCleanerAdapter extends BaseModuleAdapter {
   async scan(): Promise<unknown> {
     this._status = 'scanning';
     try {
-      const res = await rpcCall('unified_cleaner.scan', { categories: ['privacy'] });
+      const res = await rpcCall('cleaner.scan.start', { categories: ['privacy'] });
       this._status = 'completed';
       this._recordScan(res.result?.total_items ?? 0);
       return res;
@@ -203,7 +203,7 @@ export class PrivacyCleanerAdapter extends BaseModuleAdapter {
   async clean(): Promise<unknown> {
     this._status = 'cleaning';
     try {
-      const res = await rpcCall('unified_cleaner.clean', { categories: ['privacy'] });
+      const res = await rpcCall('cleaner.clean.execute', { categories: ['privacy'] });
       this._status = 'completed';
       this._recordClean(res.result?.space_cleaned ?? 0);
       return res;
@@ -220,7 +220,7 @@ export class DuplicateFinderAdapter extends BaseModuleAdapter {
   async scan(): Promise<unknown> {
     this._status = 'scanning';
     try {
-      const res = await rpcCall('duplicate_finder.scan', {});
+      const res = await rpcCall('duplicate.scan', {});
       this._status = 'completed';
       const groups = res.groups ?? [];
       this._recordScan(Array.isArray(groups) ? groups.length : 0);
@@ -234,7 +234,7 @@ export class DuplicateFinderAdapter extends BaseModuleAdapter {
   async clean(): Promise<unknown> {
     this._status = 'cleaning';
     try {
-      const res = await rpcCall('duplicate_finder.delete', {});
+      const res = await rpcCall('duplicate.delete', {});
       this._status = 'completed';
       this._recordClean();
       return res;
@@ -251,7 +251,7 @@ export class DiskAnalyzerAdapter extends BaseModuleAdapter {
   async scan(): Promise<unknown> {
     this._status = 'scanning';
     try {
-      const res = await rpcCall('disk_analyzer.analyze', {});
+      const res = await rpcCall('disk.analyze', {});
       this._status = 'completed';
       this._recordScan();
       return res;
@@ -290,7 +290,7 @@ export class PerformanceAdapter extends BaseModuleAdapter {
   override async optimize(): Promise<unknown> {
     this._status = 'optimizing';
     try {
-      const res = await rpcCall('dashboard.boost_memory', {});
+      const res = await rpcCall('performance.memory.optimize', {});
       this._status = 'completed';
       return res;
     } catch {
@@ -306,7 +306,7 @@ export class SystemInformationAdapter extends BaseModuleAdapter {
   async scan(): Promise<unknown> {
     this._status = 'scanning';
     try {
-      const res = await rpcCall('system_information.summary', {});
+      const res = await rpcCall('system.comprehensive', {});
       this._status = 'completed';
       this._recordScan();
       return res;
@@ -327,7 +327,7 @@ export class SecurityAdapter extends BaseModuleAdapter {
   async scan(): Promise<unknown> {
     this._status = 'scanning';
     try {
-      const res = await rpcCall('security.check', {});
+      const res = await rpcCall('system.avStatus', {});
       this._status = 'completed';
       this._recordScan();
       return res;
