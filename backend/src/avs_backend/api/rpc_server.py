@@ -98,6 +98,7 @@ _FEATURE_MODULES = [
     "avs_backend.threat_engine",
     "avs_backend.realtime_threat",
     "avs_backend.advanced_security",
+    "avs_backend.scam_detector",
     "avs_backend.ai_features",
     "avs_backend.one_click",
 ]

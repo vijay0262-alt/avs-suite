@@ -36,6 +36,12 @@ import {
   type RiskLevel,
 } from './advancedSecurity.service';
 import {
+  scamDetectorService,
+  type ScamAnalysisResult,
+  type PhoneCheckResult,
+  type Sensitivity,
+} from './scamDetector.service';
+import {
   ArrowPathIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
@@ -85,7 +91,7 @@ function formatRelative(ts: string | null | undefined): string {
 
 // ─── Tab definitions ─────────────────────────────────────────────
 
-type TabId = 'sandbox' | 'ml' | 'web' | 'ransomware' | 'email' | 'boot';
+type TabId = 'sandbox' | 'ml' | 'web' | 'ransomware' | 'email' | 'boot' | 'scam';
 
 const TABS: { id: TabId; label: string; icon: typeof BeakerIcon }[] = [
   { id: 'sandbox', label: 'Behavioral Sandbox', icon: BeakerIcon },
@@ -94,6 +100,7 @@ const TABS: { id: TabId; label: string; icon: typeof BeakerIcon }[] = [
   { id: 'ransomware', label: 'Ransomware Vaccine', icon: LockClosedIcon },
   { id: 'email', label: 'Email Scanner', icon: EnvelopeIcon },
   { id: 'boot', label: 'Boot Sector', icon: ComputerDesktopIcon },
+  { id: 'scam', label: 'Scam Assistant', icon: ExclamationTriangleIcon },
 ];
 
 // ── Component ───────────────────────────────────────────────────
@@ -222,6 +229,7 @@ export default function AdvancedSecurityPage() {
         {activeTab === 'ransomware' && <RansomwareTab status={status} isPro={isPro} guard={guard} actionLoading={actionLoading} setActionLoading={setActionLoading} />}
         {activeTab === 'email' && <EmailTab status={status} isPro={isPro} guard={guard} actionLoading={actionLoading} setActionLoading={setActionLoading} />}
         {activeTab === 'boot' && <BootTab status={status} isPro={isPro} guard={guard} actionLoading={actionLoading} setActionLoading={setActionLoading} />}
+        {activeTab === 'scam' && <ScamAssistantTab />}
 
         {!isPro && (
           <Card variant="glass" className="border-brand-primary/30">
@@ -863,6 +871,190 @@ function BootTab({
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// ── Scam Assistant Tab ──────────────────────────────────────────
+
+const VERDICT_TONE: Record<string, 'success' | 'info' | 'warning' | 'danger'> = {
+  scam: 'danger',
+  suspicious: 'warning',
+  likely_legitimate: 'info',
+  insufficient_content: 'info',
+};
+
+function ScamAssistantTab() {
+  const [text, setText] = useState('');
+  const [imagePath, setImagePath] = useState('');
+  const [phone, setPhone] = useState('');
+  const [sensitivity, setSensitivity] = useState<Sensitivity>('balanced');
+  const [result, setResult] = useState<ScamAnalysisResult | null>(null);
+  const [phoneResult, setPhoneResult] = useState<PhoneCheckResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const analyze = async (kind: 'text' | 'image') => {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = kind === 'text'
+        ? await scamDetectorService.analyzeText(text, sensitivity)
+        : await scamDetectorService.analyzeImage(imagePath.trim(), sensitivity);
+      if (res.success && res.result) setResult(res.result);
+      else setError(res.error || 'Analysis failed');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Analysis failed');
+    }
+    setLoading(false);
+  };
+
+  const checkPhone = async () => {
+    if (!phone.trim()) return;
+    setPhoneResult(null);
+    try {
+      const res = await scamDetectorService.checkPhone(phone.trim());
+      if (res.success && res.result) setPhoneResult(res.result);
+    } catch { /* ignore */ }
+  };
+
+  return (
+    <Card title="Scam Assistant" variant="glass" data-testid="scam-tab">
+      <p className="text-small text-text-secondary mb-4">
+        Paste a suspicious message, email, or chat — or point to a screenshot.
+        AVS analyzes it on this PC for scam tactics, impersonation, dangerous
+        links, and payment demands. Nothing leaves your device.
+      </p>
+
+      <div className="flex items-center gap-2 mb-3">
+        <label className="text-caption text-text-muted">Sensitivity</label>
+        <select
+          value={sensitivity}
+          onChange={(e) => setSensitivity(e.target.value as Sensitivity)}
+          className="px-2 py-1.5 rounded border border-[var(--avs-border)] bg-[var(--avs-surface)] text-small"
+          data-testid="scam-sensitivity"
+        >
+          <option value="high">High — family / elder use</option>
+          <option value="balanced">Balanced</option>
+          <option value="low">Low — fewer flags</option>
+        </select>
+      </div>
+
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Paste the suspicious message, email, or chat here…"
+        rows={5}
+        className="w-full px-3 py-2 rounded border border-[var(--avs-border)] bg-[var(--avs-surface)] text-small mb-3"
+        data-testid="scam-text-input"
+      />
+
+      <div className="flex items-center gap-2 mb-4">
+        <Button variant="primary" size="sm" onClick={() => analyze('text')}
+          disabled={loading || !text.trim()}
+          leftIcon={loading ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <MagnifyingGlassIcon className="h-4 w-4" />}
+          data-testid="scam-analyze-btn">
+          Analyze message
+        </Button>
+        <input
+          type="text"
+          value={imagePath}
+          onChange={(e) => setImagePath(e.target.value)}
+          placeholder="C:\path\to\screenshot.png"
+          className="flex-1 px-3 py-2 rounded border border-[var(--avs-border)] bg-[var(--avs-surface)] text-small"
+          data-testid="scam-image-input"
+        />
+        <Button variant="secondary" size="sm" onClick={() => analyze('image')}
+          disabled={loading || !imagePath.trim()}
+          leftIcon={<EyeIcon className="h-4 w-4" />}
+          data-testid="scam-image-btn">
+          Scan screenshot
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-2 mb-4 pb-4 border-b border-[var(--avs-border)]">
+        <input
+          type="text"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="Check a phone number (e.g. 1-800-555-0199)"
+          className="flex-1 px-3 py-2 rounded border border-[var(--avs-border)] bg-[var(--avs-surface)] text-small"
+          data-testid="scam-phone-input"
+        />
+        <Button variant="secondary" size="sm" onClick={checkPhone}
+          disabled={!phone.trim()} data-testid="scam-phone-btn">
+          Check number
+        </Button>
+      </div>
+
+      {phoneResult && (
+        <div className="mb-4 p-3 rounded border border-[var(--avs-border)]" data-testid="scam-phone-result">
+          <Badge tone={phoneResult.verdict === 'suspicious' ? 'warning' : 'info'}>
+            {phoneResult.verdict}
+          </Badge>
+          <span className="text-caption text-text-secondary ml-2">{phoneResult.advice}</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 p-3 rounded border border-semantic-danger/30 text-small text-semantic-danger" data-testid="scam-error">
+          {error}
+        </div>
+      )}
+
+      {result && (
+        <div className="mt-2 p-4 rounded border border-[var(--avs-border)]" data-testid="scam-result">
+          <div className="flex items-center gap-3 mb-3">
+            <Badge tone={VERDICT_TONE[result.verdict] || 'info'}>{result.verdict.replace(/_/g, ' ')}</Badge>
+            <span className="text-small">Score {result.score}/100</span>
+            <span className="text-caption text-text-muted">confidence: {result.confidence}</span>
+          </div>
+
+          {result.tactics.length > 0 && (
+            <div className="mb-3">
+              <div className="text-caption text-text-muted mb-1">Detected tactics</div>
+              <div className="space-y-1">
+                {result.tactics.map((t) => (
+                  <div key={t.id} className="text-caption text-text-secondary flex items-start gap-1">
+                    <ExclamationTriangleIcon className="h-3 w-3 text-semantic-warning shrink-0 mt-0.5" />
+                    {t.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(result.entities.urls.length > 0 || result.entities.phones.length > 0 || result.entities.crypto.length > 0) && (
+            <div className="mb-3 text-caption text-text-muted">
+              {result.entities.urls.length > 0 && <div>Links: {result.entities.urls.join(', ')}</div>}
+              {result.entities.phones.length > 0 && <div>Numbers: {result.entities.phones.join(', ')}</div>}
+              {result.entities.crypto.length > 0 && <div>Crypto addresses found: {result.entities.crypto.length}</div>}
+            </div>
+          )}
+
+          {result.advice.length > 0 && (
+            <div>
+              <div className="text-caption text-text-muted mb-1">What to do</div>
+              <ul className="space-y-1">
+                {result.advice.map((a, i) => (
+                  <li key={i} className="text-caption text-text-secondary flex items-start gap-1">
+                    <CheckCircleIcon className="h-3 w-3 text-semantic-success shrink-0 mt-0.5" />
+                    {a}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {result.extracted_text && (
+            <details className="mt-3">
+              <summary className="text-caption text-text-muted cursor-pointer">Extracted text</summary>
+              <pre className="mt-1 text-caption text-text-muted whitespace-pre-wrap">{result.extracted_text}</pre>
+            </details>
           )}
         </div>
       )}

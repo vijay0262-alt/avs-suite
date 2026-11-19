@@ -136,6 +136,11 @@ a = Analysis(
         # ── Native messaging host (Scam Shield Phase 2) ──
         "avs_backend.native_messaging",
         "avs_backend.native_messaging.host",
+        # ── Scam detector (Scam Shield Phase 3) ──
+        "avs_backend.scam_detector",
+        "avs_backend.scam_detector.classifier",
+        "avs_backend.scam_detector.extractor",
+        "avs_backend.scam_detector.ocr",
         "avs_backend.advanced_security.ransomware_vaccine",
         "avs_backend.advanced_security.email_scanner",
         "avs_backend.advanced_security.boot_sector",

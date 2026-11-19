@@ -592,6 +592,12 @@ export const RPC_METHODS = {
   ADV_SECURITY_BOOT_VERIFY: 'advanced_security.boot.verify',
   ADV_SECURITY_BOOT_HISTORY: 'advanced_security.boot.history',
 
+  // Scam Detector ("Is this a scam?" assistant)
+  SCAM_ANALYZE_TEXT: 'scam_detector.analyzeText',
+  SCAM_ANALYZE_IMAGE: 'scam_detector.analyzeImage',
+  SCAM_CHECK_PHONE: 'scam_detector.checkPhone',
+  SCAM_STATUS: 'scam_detector.status',
+
   // AI Features (Tier 4)
   AI_FEATURES_STATUS: 'ai_features.status',
   AI_THREAT_EXPLAIN: 'ai_features.threat.explain',
