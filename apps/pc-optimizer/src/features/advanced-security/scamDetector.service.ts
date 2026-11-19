@@ -93,4 +93,54 @@ export const scamDetectorService = {
   async status(): Promise<{ success: boolean; result?: ScamStatus }> {
     return client().call(RPC_METHODS.SCAM_STATUS);
   },
+
+  // ── Scam Guards (Phase 4) ──
+  async guardsStart(): Promise<{ success: boolean; result?: GuardStatus }> {
+    return client().call(RPC_METHODS.SCAM_GUARDS_START);
+  },
+  async guardsStop(): Promise<{ success: boolean; result?: GuardStatus }> {
+    return client().call(RPC_METHODS.SCAM_GUARDS_STOP);
+  },
+  async guardsStatus(): Promise<{ success: boolean; result?: GuardStatus }> {
+    return client().call(RPC_METHODS.SCAM_GUARDS_STATUS);
+  },
+  async guardsAlerts(limit = 25): Promise<{ success: boolean; result?: GuardAlert[] }> {
+    return client().call(RPC_METHODS.SCAM_GUARDS_ALERTS, { limit });
+  },
+  async scamWaves(force = false): Promise<{ success: boolean; result?: ScamWaves }> {
+    return client().call(RPC_METHODS.SCAM_GUARDS_WAVES, { force });
+  },
+  async uploadReports(): Promise<{ success: boolean; result?: { uploaded: number; queued: number } }> {
+    return client().call(RPC_METHODS.SCAM_GUARDS_UPLOAD);
+  },
 };
+
+export interface GuardStatus {
+  running: boolean;
+  poll_seconds: number;
+  alerts_count: number;
+  rat_tools_watched: number;
+}
+
+export interface GuardAlert {
+  type: 'remote_access_tool' | 'clipboard_swap' | string;
+  severity: 'medium' | 'high' | 'critical' | string;
+  message: string;
+  timestamp: string;
+  process?: string;
+  new_address?: string;
+}
+
+export interface ScamWave {
+  type: 'host' | 'category';
+  value: string;
+  reports: number;
+}
+
+export interface ScamWaves {
+  window_hours: number;
+  generated_at: string;
+  waves: ScamWave[];
+  stale?: boolean;
+  error?: string;
+}

@@ -598,6 +598,14 @@ export const RPC_METHODS = {
   SCAM_CHECK_PHONE: 'scam_detector.checkPhone',
   SCAM_STATUS: 'scam_detector.status',
 
+  // Scam Guards (remote-access / clipboard / waves)
+  SCAM_GUARDS_START: 'scam_guards.start',
+  SCAM_GUARDS_STOP: 'scam_guards.stop',
+  SCAM_GUARDS_STATUS: 'scam_guards.status',
+  SCAM_GUARDS_ALERTS: 'scam_guards.alerts',
+  SCAM_GUARDS_WAVES: 'scam_guards.waves',
+  SCAM_GUARDS_UPLOAD: 'scam_guards.uploadReports',
+
   // AI Features (Tier 4)
   AI_FEATURES_STATUS: 'ai_features.status',
   AI_THREAT_EXPLAIN: 'ai_features.threat.explain',

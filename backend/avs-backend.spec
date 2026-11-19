@@ -141,6 +141,10 @@ a = Analysis(
         "avs_backend.scam_detector.classifier",
         "avs_backend.scam_detector.extractor",
         "avs_backend.scam_detector.ocr",
+        # ── Scam guards (Scam Shield Phase 4) ──
+        "avs_backend.scam_guards",
+        "avs_backend.scam_guards.guards",
+        "avs_backend.scam_guards.reporter",
         "avs_backend.advanced_security.ransomware_vaccine",
         "avs_backend.advanced_security.email_scanner",
         "avs_backend.advanced_security.boot_sector",

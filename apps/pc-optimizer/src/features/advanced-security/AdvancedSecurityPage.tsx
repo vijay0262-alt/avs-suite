@@ -40,6 +40,9 @@ import {
   type ScamAnalysisResult,
   type PhoneCheckResult,
   type Sensitivity,
+  type GuardAlert,
+  type GuardStatus,
+  type ScamWaves,
 } from './scamDetector.service';
 import {
   ArrowPathIcon,
@@ -896,6 +899,33 @@ function ScamAssistantTab() {
   const [phoneResult, setPhoneResult] = useState<PhoneCheckResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [guards, setGuards] = useState<GuardStatus | null>(null);
+  const [alerts, setAlerts] = useState<GuardAlert[]>([]);
+  const [waves, setWaves] = useState<ScamWaves | null>(null);
+
+  const refreshGuards = useCallback(async () => {
+    try {
+      const [s, a, w] = await Promise.all([
+        scamDetectorService.guardsStatus(),
+        scamDetectorService.guardsAlerts(10),
+        scamDetectorService.scamWaves(),
+      ]);
+      if (s.result) setGuards(s.result);
+      if (a.result) setAlerts(a.result);
+      if (w.result) setWaves(w.result);
+    } catch { /* guards optional */ }
+  }, []);
+
+  useEffect(() => { refreshGuards(); }, [refreshGuards]);
+
+  const toggleGuards = async () => {
+    try {
+      const res = guards?.running
+        ? await scamDetectorService.guardsStop()
+        : await scamDetectorService.guardsStart();
+      if (res.result) setGuards(res.result);
+    } catch { /* ignore */ }
+  };
 
   const analyze = async (kind: 'text' | 'image') => {
     setLoading(true);
@@ -923,6 +953,7 @@ function ScamAssistantTab() {
   };
 
   return (
+    <>
     <Card title="Scam Assistant" variant="glass" data-testid="scam-tab">
       <p className="text-small text-text-secondary mb-4">
         Paste a suspicious message, email, or chat — or point to a screenshot.
@@ -1059,5 +1090,53 @@ function ScamAssistantTab() {
         </div>
       )}
     </Card>
+
+    <Card title="Scam Protection Guards" variant="glass" data-testid="scam-guards">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-small text-text-secondary flex-1 mr-4">
+          Watches for remote-access tools (AnyDesk, TeamViewer, Quick Assist…) starting
+          after a blocked scam page, and for crypto clipboard hijacking.
+        </p>
+        <Button variant={guards?.running ? 'secondary' : 'primary'} size="sm"
+          onClick={toggleGuards} data-testid="guards-toggle">
+          {guards?.running ? 'Stop guards' : 'Start guards'}
+        </Button>
+      </div>
+      <div className="text-caption text-text-muted mb-3">
+        Status: {guards?.running ? 'running' : 'stopped'} ·
+        Watching {guards?.rat_tools_watched ?? 0} remote-access tools
+      </div>
+
+      {alerts.length > 0 && (
+        <div className="mb-3" data-testid="guard-alerts">
+          <div className="text-caption text-text-muted mb-1">Recent alerts</div>
+          <div className="space-y-1">
+            {alerts.map((a, i) => (
+              <div key={i} className="text-caption flex items-start gap-1">
+                <ExclamationTriangleIcon className={`h-3 w-3 shrink-0 mt-0.5 ${a.severity === 'critical' ? 'text-semantic-danger' : 'text-semantic-warning'}`} />
+                <span className="text-text-secondary">{a.message}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {waves && waves.waves.length > 0 && (
+        <div data-testid="scam-waves">
+          <div className="text-caption text-text-muted mb-1">
+            Scam Wave Alerts — community reports (last {waves.window_hours}h)
+          </div>
+          <div className="space-y-1">
+            {waves.waves.slice(0, 8).map((w, i) => (
+              <div key={i} className="text-caption text-text-secondary flex justify-between">
+                <span>{w.type === 'host' ? w.value : `${w.value} scams`}</span>
+                <span className="text-text-muted">{w.reports} reports</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </Card>
+    </>
   );
 }
