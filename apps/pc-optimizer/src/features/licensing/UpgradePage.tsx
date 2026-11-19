@@ -19,15 +19,9 @@ import {
   ArrowRightIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../auth/authStore';
+import { openCheckout } from './checkout';
 
-const STRIPE_YEARLY_URL = 'https://buy.stripe.com/28E5kDeNNc8U995g2a0x200';
 
-function openCheckout(customerId?: string, email?: string): void {
-  const url = new URL(STRIPE_YEARLY_URL);
-  if (customerId) url.searchParams.set('client_reference_id', customerId);
-  if (email) url.searchParams.set('prefilled_email', email);
-  window.open(url.toString(), '_blank');
-}
 
 const PRO_FEATURES = [
   { label: 'Dashboard & Health Score', icon: ChartBarIcon, free: true, pro: true },
@@ -59,7 +53,7 @@ const PRO_FEATURES = [
 export default function UpgradePage() {
   const { customer, session } = useAuthStore();
   const openPayment = () =>
-    openCheckout(customer?.id ?? session?.customerId, customer?.email ?? session?.customerEmail);
+    openCheckout('yearly', customer?.id ?? session?.customerId, customer?.email ?? session?.customerEmail);
 
   return (
     <div className="space-y-6">

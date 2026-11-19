@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Card, Badge } from '@avs/ui';
 import { useEdition } from '../config/EditionManager';
 import { useAuthStore } from '../features/auth/authStore';
+import { buildCheckoutUrl } from '../features/licensing/checkout';
 import type { Edition } from '@avs/shared/featureFlags';
 
 interface UpgradeDialogProps {
@@ -105,20 +106,6 @@ const EDITION_LABELS: Record<Edition, string> = {
   free: 'Free',
   professional: 'Professional',
 };
-
-const STRIPE_PAYMENT_LINKS = {
-  yearly: 'https://buy.stripe.com/28E5kDeNNc8U995g2a0x200',
-  monthly: 'https://buy.stripe.com/4gM5kDdJJ8WIdpl7vE0x201',
-} as const;
-
-type BillingInterval = keyof typeof STRIPE_PAYMENT_LINKS;
-
-function buildCheckoutUrl(interval: BillingInterval, customerId: string, email: string): string {
-  const url = new URL(STRIPE_PAYMENT_LINKS[interval]);
-  url.searchParams.set('client_reference_id', customerId);
-  url.searchParams.set('prefilled_email', email);
-  return url.toString();
-}
 
 export function UpgradeDialog({ open, onClose, onUpgrade, onActivate, onLearnMore, trigger }: UpgradeDialogProps) {
   const currentEdition = useEdition();

@@ -16,6 +16,8 @@ import { ProStatusBanner } from '../licensing/ProStatusBadge';
 import { ScanView } from '../scan';
 import { useDashboardScan } from '../scan/useDashboardScan';
 import { Modal } from '../dashboard/components/Modal';
+import { useAuthStore } from '../auth/authStore';
+import { openCheckout } from '../licensing/checkout';
 import { formatDataSize } from '@avs/shared/utils';
 import {
   BoltIcon,
@@ -348,7 +350,8 @@ export default function SmartOptimizationPage() {
             <Button
               onClick={() => {
                 setUpgradeModalOpen(false);
-                window.open('https://www.avsshield.com/upgrade', '_blank');
+                const { customer, session } = useAuthStore.getState();
+                openCheckout('yearly', customer?.id ?? session?.customerId, customer?.email ?? session?.customerEmail);
               }}
               variant="primary"
               data-testid="upgrade-modal-cta"

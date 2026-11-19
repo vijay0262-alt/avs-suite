@@ -198,7 +198,7 @@ export default function HelpCenterPage() {
             <LifebuoyIcon className="h-6 w-6 text-[var(--avs-brand-primary)]" />
             <div>
               <p className="text-small font-semibold text-[var(--avs-text-primary)]">Documentation</p>
-              <a href="https://www.avsshield.com/docs" target="_blank" rel="noopener noreferrer" className="text-small text-[var(--avs-brand-primary)] hover:underline">View Docs</a>
+              <a href="https://www.avsshield.com/faq" target="_blank" rel="noopener noreferrer" className="text-small text-[var(--avs-brand-primary)] hover:underline">View Docs</a>
             </div>
           </div>
         </Card>

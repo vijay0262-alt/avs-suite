@@ -47,7 +47,7 @@ export class ReleaseChecklistManager {
     this._telemetryPolicy = {
       optIn: true,
       dataCollected: ['app version', 'os version', 'crash reports (sanitized)', 'feature usage counts'],
-      privacyPolicyUrl: 'https://www.avsshield.com/privacy',
+      privacyPolicyUrl: 'https://www.avsshield.com/privacy-policy',
     };
     this._initializeDefaults();
   }

@@ -21,6 +21,7 @@ import { useSyncStore, planToEdition } from '../sync/syncStore';
 import { useAuthStore } from '../auth/authStore';
 import { getVersionString, getBuildString } from '../../config/version';
 import { apiClient, ApiError } from '../auth/apiClient';
+import { openCheckout } from './checkout';
 import {
   ShieldCheckIcon,
   UserCircleIcon,
@@ -279,12 +280,7 @@ export default function ActivationPage() {
                   variant="primary"
                   onClick={() => {
                     if (typeof window !== 'undefined') {
-                      const url = new URL('https://buy.stripe.com/28E5kDeNNc8U995g2a0x200');
-                      const cid = customer?.id ?? session?.customerId;
-                      const email = customer?.email ?? session?.customerEmail;
-                      if (cid) url.searchParams.set('client_reference_id', cid);
-                      if (email) url.searchParams.set('prefilled_email', email);
-                      window.open(url.toString(), '_blank');
+                      openCheckout('yearly', customer?.id ?? session?.customerId, customer?.email ?? session?.customerEmail);
                     }
                   }}
                   data-testid="upgrade-to-professional"

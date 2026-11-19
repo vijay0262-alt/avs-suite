@@ -279,7 +279,7 @@ export class DocumentationGenerator {
         },
         {
           title: 'Does it collect my data?',
-          content: 'Telemetry is strictly opt-in. If enabled, only anonymized usage data and sanitized crash reports are collected. No personal files or data are ever sent. See our privacy policy at https://www.avsshield.com/privacy.',
+          content: 'Telemetry is strictly opt-in. If enabled, only anonymized usage data and sanitized crash reports are collected. No personal files or data are ever sent. See our privacy policy at https://www.avsshield.com/privacy-policy.',
           subsections: [],
         },
         {

@@ -20,8 +20,7 @@ import type { ManagedFeature } from '@avs/licensing';
 import { UpgradeDialog, type UpgradeTier } from './UpgradeDialog';
 import { useIsPro } from '../sync/syncStore';
 import { useAuthStore } from '../auth/authStore';
-
-const STRIPE_YEARLY_URL = 'https://buy.stripe.com/28E5kDeNNc8U995g2a0x200';
+import { openCheckout } from './checkout';
 
 interface UpgradeDialogState {
   open: boolean;
@@ -117,12 +116,7 @@ export function useFeatureGuard() {
   const handleUpgrade = useCallback(
     (_tier: UpgradeTier) => {
       closeDialog();
-      const url = new URL(STRIPE_YEARLY_URL);
-      const cid = customer?.id ?? session?.customerId;
-      const email = customer?.email ?? session?.customerEmail;
-      if (cid) url.searchParams.set('client_reference_id', cid);
-      if (email) url.searchParams.set('prefilled_email', email);
-      window.open(url.toString(), '_blank');
+      openCheckout('yearly', customer?.id ?? session?.customerId, customer?.email ?? session?.customerEmail);
     },
     [closeDialog, customer, session],
   );
