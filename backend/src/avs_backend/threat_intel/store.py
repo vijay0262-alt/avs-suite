@@ -46,7 +46,7 @@ log = logging.getLogger("avs.threat_intel.store")
 # Ed25519 public key for AVS threat-intel bundles (private key lives only
 # on the license server as THREAT_INTEL_PRIVATE_KEY).
 _PUBLIC_KEY_PEM = b"""-----BEGIN PUBLIC KEY-----
-MCowBQYDK2VwAyEAmISFzqnEiswecZyciZl4HW4y0CTnESgfARuPv6u4tig=
+MCowBQYDK2VwAyEAVQ/PLokipXq1BuU6anQBpzvdUTibwKzBylYvClCM6Z0=
 -----END PUBLIC KEY-----
 """
 
