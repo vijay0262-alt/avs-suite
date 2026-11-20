@@ -106,7 +106,9 @@ def test_status_returns_progress_before_completion_and_completed_after(fresh_sca
     session_id = start["session_id"]
 
     saw_progress = False
-    deadline = time.time() + 10.0
+    # Match _wait_for_session's 60s budget — lazy engine init (DB create,
+    # rule registration) can exceed 10s on loaded machines.
+    deadline = time.time() + 60.0
     while time.time() < deadline:
         status = _call("scan_core.scan.status", {"session_id": session_id})
         assert status.get("ok") is True

@@ -141,7 +141,7 @@ export default function JunkCleanerPage() {
         setScheduleLoading(false);
       }
     }
-  }, [scheduleEnabled]);
+  }, [scheduleEnabled, scheduleFreq]);
 
   // Smart recommendations: sort cleaners by bytes (largest first) for Pro users
   const smartRecommendations = useMemo(() => {

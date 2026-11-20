@@ -160,7 +160,7 @@ export class PredictiveHealthViewModel extends ViewModel<PredictiveHealthState> 
       const res = await rpc.raw<{ snapshots?: Snapshot[] }>(
         'health.history', { hours: 24 * 30, limit: 500 });
       const snaps = (res.snapshots || []).slice().reverse(); // oldest first
-      let diskCapacityMB = storageData[0]?.totalCapacityMB ?? 0;
+      const diskCapacityMB = storageData[0]?.totalCapacityMB ?? 0;
       for (const snap of snaps) {
         const ts = Date.parse(snap.capturedAt) || now;
         if (typeof snap.healthScore === 'number') {
