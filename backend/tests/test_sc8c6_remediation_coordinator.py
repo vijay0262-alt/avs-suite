@@ -397,21 +397,31 @@ def test_cancellation_stops_execution(tmp_path: Path) -> None:
         assert f.exists()
 
 
+class _TripAfterNChecks(CancellationToken):
+    """Token that reports cancelled after *n* ``is_cancelled()`` checks.
+
+    The executor checks the token at least once per action, so this
+    deterministically cancels mid-run regardless of how fast the host
+    deletes files — the old time.sleep(0.05) approach raced execution
+    and flaked on fast runners where 100 tiny deletes finished <50ms.
+    """
+
+    def __init__(self, n: int) -> None:
+        self._n = n
+        self._checks = 0
+
+    def is_cancelled(self) -> bool:
+        self._checks += 1
+        return super().is_cancelled() or self._checks > self._n
+
+
 def test_partial_execution_and_recovery(tmp_path: Path) -> None:
     _, target, plan_id = _scan_junk(tmp_path, 100)
     db = MetadataDatabase(DatabaseConfig(db_path=tmp_path / "metadata.db"))
     db.initialize()
     coordinator = RemediationCoordinator(db, backup_root=tmp_path / "backups")
     preview = coordinator.prepare(plan_id)
-    token = CancellationToken()
-
-    def _cancel_after_short_delay() -> None:
-        time.sleep(0.05)
-        coordinator.cancel(preview.request_id)
-
-    # If threading fails in an environment, the test still validates cancellation.
-    thread = threading.Thread(target=_cancel_after_short_delay, daemon=True)
-    thread.start()
+    token = _TripAfterNChecks(30)
     summary = coordinator.execute(
         plan_id,
         request_id=preview.request_id,
@@ -419,7 +429,6 @@ def test_partial_execution_and_recovery(tmp_path: Path) -> None:
         mode="live",
         cancellation_token=token,
     )
-    thread.join(timeout=1.0)
     assert summary.cancelled > 0
     assert summary.cancelled + summary.completed == 100
     status = coordinator.get_status(preview.request_id)
