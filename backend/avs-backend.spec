@@ -120,6 +120,7 @@ a = Analysis(
         "avs_backend.threat_engine.hash_detector",
         "avs_backend.threat_engine.virustotal",
         "avs_backend.threat_engine.yara_scanner",
+        "yara",
         "avs_backend.threat_engine.clamav_scanner",
         "avs_backend.threat_engine.clamav_setup",
         "avs_backend.threat_engine.amsi_scanner",

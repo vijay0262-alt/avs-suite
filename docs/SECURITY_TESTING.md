@@ -51,8 +51,11 @@ Rules:
 - Exits non-zero below 85% — the gate for considering lab submission.
 
 ```bash
-AVS_BENCHMARK_I_AM_IN_A_VM=1 python detection_benchmark.py --count 100 --out report.json
+AVS_BENCHMARK_I_AM_IN_A_VM=1 MB_AUTH_KEY=<key> python detection_benchmark.py --count 100 --out report.json
 ```
+
+`MB_AUTH_KEY`: free API key from https://bazaar.abuse.ch/ (account →
+settings → Auth-Key) — the API returns 401 without one.
 
 ## External certification (not yet claimed)
 

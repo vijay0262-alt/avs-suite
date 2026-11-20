@@ -79,10 +79,10 @@ def _save_cache(cache: dict[str, Any]) -> None:
         try:
             with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
                 json.dump(cache, f)
-            # On Windows, need to remove target before rename
-            if _CACHE_PATH.exists():
-                _CACHE_PATH.unlink()
-            os.rename(tmp_path, str(_CACHE_PATH))
+            # os.replace is atomic on Windows (unlike unlink+rename, which
+            # races when the parallel scan pool saves concurrently →
+            # WinError 183 "file already exists").
+            os.replace(tmp_path, str(_CACHE_PATH))
         except Exception:
             # Clean up temp file on error
             try:

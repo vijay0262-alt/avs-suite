@@ -13,9 +13,12 @@ SAFETY — run this ONLY inside a disposable VM:
   * requires explicit opt-in: set AVS_BENCHMARK_I_AM_IN_A_VM=1
 
 Usage (inside the VM, with the backend importable):
-    AVS_BENCHMARK_I_AM_IN_A_VM=1 python detection_benchmark.py --count 100
-    AVS_BENCHMARK_I_AM_IN_A_VM=1 python detection_benchmark.py \\
+    AVS_BENCHMARK_I_AM_IN_A_VM=1 MB_AUTH_KEY=<key> python detection_benchmark.py --count 100
+    AVS_BENCHMARK_I_AM_IN_A_VM=1 MB_AUTH_KEY=<key> python detection_benchmark.py \\
         --count 500 --since-days 7 --out report.json
+
+MB_AUTH_KEY: free API key from https://bazaar.abuse.ch/ (account →
+settings → Auth-Key). Required — the API returns 401 without one.
 """
 
 from __future__ import annotations
@@ -42,13 +45,27 @@ def _require_vm() -> None:
         )
 
 
+def _auth_headers() -> dict[str, str]:
+    key = os.environ.get("MB_AUTH_KEY", "").strip()
+    if not key:
+        sys.exit(
+            "MB_AUTH_KEY not set.\n"
+            "Get a free Auth-Key at https://bazaar.abuse.ch/ "
+            "(account → settings), then export MB_AUTH_KEY=<key>."
+        )
+    return {"Auth-Key": key}
+
+
+def _post(body: str, timeout: int):
+    import urllib.request
+    req = urllib.request.Request(BAZAAR_API, data=body.encode(),
+                                 headers=_auth_headers())
+    return urllib.request.urlopen(req, timeout=timeout)
+
+
 def fetch_recent_hashes(count: int, since_days: int) -> list[dict]:
     """Query MalwareBazaar for recent sample metadata (hashes, no files)."""
-    import urllib.request
-
-    data = f"query=get_recent&selector={count}".encode()
-    req = urllib.request.Request(BAZAAR_API, data=data)
-    with urllib.request.urlopen(req, timeout=30) as resp:
+    with _post(f"query=get_recent&selector={count}", timeout=30) as resp:
         payload = json.loads(resp.read())
     samples = payload.get("data") or []
     return [s for s in samples if s.get("sha256_hash")][:count]
@@ -56,12 +73,8 @@ def fetch_recent_hashes(count: int, since_days: int) -> list[dict]:
 
 def download_sample(sha256: str) -> bytes | None:
     """Download one sample (returns the raw extracted file bytes)."""
-    import urllib.request
-
-    data = f"query=get_file&sha256_hash={sha256}".encode()
-    req = urllib.request.Request(BAZAAR_API, data=data)
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with _post(f"query=get_file&sha256_hash={sha256}", timeout=60) as resp:
             blob = resp.read()
     except Exception as e:
         print(f"  ! download failed {sha256[:12]}…: {e}", file=sys.stderr)

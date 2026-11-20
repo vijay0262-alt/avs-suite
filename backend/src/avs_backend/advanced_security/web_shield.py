@@ -79,6 +79,18 @@ _URL_SHORTENERS = {
     "tiny.cc", "soo.gd", "rb.gy", "shorturl.at", "s.id", "v.gd",
 }
 
+# Built-in test/validation entries — the AMTSO Security Features Check
+# and EICAR ecosystem publish these hosts specifically so users can
+# verify a security product is working. Industry convention (and AMTSO's
+# own spec) is that legitimate AV SHOULD flag them. Host-exact entries —
+# we deliberately do NOT block the whole eicar.org registrable domain.
+_BUILTIN_BLOCKLIST: dict[str, dict[str, Any]] = {
+    "phishing.amtso.eicar.org": {"category": "phishing", "source": "amtso-test"},
+    "amtso.eicar.org":          {"category": "test",     "source": "amtso-test"},
+    "www.amtso.eicar.org":      {"category": "test",     "source": "amtso-test"},
+    "cloudcar.amtso.eicar.org": {"category": "test",     "source": "amtso-test"},
+}
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -98,6 +110,11 @@ class WebShield:
         self._lock = threading.RLock()
         self._blocked_urls: deque[dict[str, Any]] = deque(maxlen=_MAX_BLOCKED_HISTORY)
         self.blocklist: dict[str, dict[str, Any]] = self._load_blocklist()
+        # Seed industry-standard test URLs (AMTSO/EICAR) unless the user
+        # already overrode them — the Security Features Check expects a
+        # working AV to flag these.
+        for _k, _v in _BUILTIN_BLOCKLIST.items():
+            self.blocklist.setdefault(_k, dict(_v))
 
         # Threat-intel bundle store (injectable for tests).
         self._intel: ThreatIntelStore | None = self.config.get("intel_store")

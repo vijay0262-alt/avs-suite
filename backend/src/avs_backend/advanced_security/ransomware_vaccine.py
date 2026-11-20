@@ -163,12 +163,23 @@ def _build_canary_content(marker: str) -> bytes:
     return body.encode("utf-8", errors="replace")
 
 
+# Bounds for the process-attribution scan. Fetching ``open_files``/``cwd``
+# for every process via psutil takes minutes on Windows — an alert path
+# that slow is useless. A process that just tampered with a canary was
+# started recently, so we pre-filter on the cheap ``create_time`` attr,
+# cap the candidate set, and enforce a hard deadline.
+_PROC_SCAN_MAX_AGE_S = 300        # only inspect processes started in last 5 min
+_PROC_SCAN_MAX_CANDIDATES = 60    # cap expensive per-proc queries
+_PROC_SCAN_DEADLINE_S = 10        # hard wall-clock bound
+
+
 def _find_process_for_path(path: Path) -> dict[str, Any] | None:
     """Best-effort identification of the process that last touched ``path``.
 
     Uses ``psutil`` to scan open file handles and recent process activity.
     Returns a dict with ``pid``, ``name``, ``exe`` and ``cmdline`` keys, or
-    ``None`` if no candidate could be identified.
+    ``None`` if no candidate could be identified. Bounded to
+    ``_PROC_SCAN_DEADLINE_S`` seconds.
     """
     try:
         import psutil
@@ -176,52 +187,61 @@ def _find_process_for_path(path: Path) -> dict[str, Any] | None:
         log.debug("psutil unavailable: %s", e)
         return None
 
-    target = str(path)
-    candidates: list[dict[str, Any]] = []
+    import time as _time
+    deadline = _time.monotonic() + _PROC_SCAN_DEADLINE_S
+    target = str(path).lower()
+    now = _time.time()
 
+    # Pass 1 (cheap): collect recently-started processes only.
+    recent: list = []
     try:
-        for proc in psutil.process_iter(["pid", "name", "exe", "cmdline", "open_files"]):
+        for proc in psutil.process_iter(["pid", "name", "exe", "cmdline", "create_time"]):
             try:
                 info = proc.info
-                open_files = info.get("open_files") or []
-                for of in open_files:
-                    if str(of.path).lower() == target.lower():
-                        candidates.append({
-                            "pid": info.get("pid"),
-                            "name": info.get("name"),
-                            "exe": info.get("exe"),
-                            "cmdline": info.get("cmdline"),
-                        })
-                        break
+                created = info.get("create_time") or 0
+                if created and (now - created) <= _PROC_SCAN_MAX_AGE_S:
+                    recent.append(proc)
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
     except Exception as e:  # pragma: no cover - defensive
         log.debug("psutil process scan failed: %s", e)
+        return None
 
-    if candidates:
-        return candidates[0]
+    recent = recent[:_PROC_SCAN_MAX_CANDIDATES]
 
-    # Fallback: look for processes whose working directory or cmdline
-    # references the canary's parent directory.
+    # Pass 2 (expensive, bounded): open-file handles on recent procs.
+    def _info_dict(p) -> dict[str, Any]:
+        info = p.info
+        return {"pid": info.get("pid"), "name": info.get("name"),
+                "exe": info.get("exe"), "cmdline": info.get("cmdline")}
+
+    for proc in recent:
+        if _time.monotonic() > deadline:
+            break
+        try:
+            for of in (proc.open_files() or []):
+                if str(of.path).lower() == target:
+                    return _info_dict(proc)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+        except Exception:
+            continue
+
+    # Pass 3: cwd match on the canary's parent directory.
     parent = str(path.parent).lower()
-    try:
-        for proc in psutil.process_iter(["pid", "name", "exe", "cmdline", "cwd"]):
-            try:
-                info = proc.info
-                cwd = info.get("cwd")
-                if cwd and str(cwd).lower() == parent:
-                    candidates.append({
-                        "pid": info.get("pid"),
-                        "name": info.get("name"),
-                        "exe": info.get("exe"),
-                        "cmdline": info.get("cmdline"),
-                    })
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                continue
-    except Exception as e:  # pragma: no cover - defensive
-        log.debug("psutil cwd scan failed: %s", e)
+    for proc in recent:
+        if _time.monotonic() > deadline:
+            break
+        try:
+            cwd = proc.cwd()
+            if cwd and str(cwd).lower() == parent:
+                return _info_dict(proc)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+        except Exception:
+            continue
 
-    return candidates[0] if candidates else None
+    return None
 
 
 def _terminate_process(pid: int | None) -> bool:

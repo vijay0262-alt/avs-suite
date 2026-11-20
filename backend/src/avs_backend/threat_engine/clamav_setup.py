@@ -802,17 +802,61 @@ def start_clamd() -> dict[str, Any]:
     except Exception as e:
         log.warning("Failed to regenerate clamd.conf before start: %s", e)
 
-    # Kill any stale clamd processes that might be holding the port
     import time as _time
-    try:
-        subprocess.run(
-            ["taskkill", "/F", "/IM", "clamd.exe"],
-            capture_output=True, timeout=5,
-            creationflags=_NO_WINDOW,
-        )
-        _time.sleep(1)
-    except Exception:
-        pass
+
+    def _port_open() -> bool:
+        try:
+            s = _sock.socket(_sock.AF_INET, _sock.SOCK_STREAM)
+            s.settimeout(2)
+            ok = s.connect_ex(("127.0.0.1", 3310)) == 0
+            s.close()
+            return ok
+        except Exception:
+            return False
+
+    def _clamd_procs() -> list:
+        """Live clamd.exe PIDs (empty list if none or psutil missing)."""
+        try:
+            import psutil
+            return [p.pid for p in psutil.process_iter(["name"])
+                    if (p.info.get("name") or "").lower() == "clamd.exe"]
+        except Exception:
+            return []
+
+    def _wait_for_port(proc: subprocess.Popen | None, timeout_s: int) -> bool:
+        """Poll the port; bail early if our spawned process exited."""
+        deadline = _time.monotonic() + timeout_s
+        while _time.monotonic() < deadline:
+            if _port_open():
+                return True
+            if proc is not None and proc.poll() is not None:
+                return False
+            _time.sleep(3)
+        return _port_open()
+
+    def _startup_log_tail() -> str:
+        try:
+            data = (_DATA_DIR / "clamd-startup.log").read_bytes()
+            return data[-2000:].decode("utf-8", errors="replace").strip()
+        except Exception:
+            return ""
+
+    # If clamd is already running but hasn't bound the port yet, it is
+    # almost certainly mid-DB-load (multi-GB signature DBs take minutes).
+    # Taskkilling it just restarts that load from scratch — wait instead.
+    _WAIT_S = 240
+    if _clamd_procs():
+        log.info("clamd already running — waiting up to %ds for port 3310", _WAIT_S)
+        if _wait_for_port(None, _WAIT_S):
+            return {"success": True, "message": "clamd ready", "pid": None}
+        # Still no port after a generous wait — wedged. Kill and respawn.
+        try:
+            subprocess.run(["taskkill", "/F", "/IM", "clamd.exe"],
+                           capture_output=True, timeout=10,
+                           creationflags=_NO_WINDOW)
+            _time.sleep(1)
+        except Exception:
+            pass
 
     # Remove stale pidfile
     pidfile = _DATA_DIR / "clamd.pid"
@@ -822,75 +866,54 @@ def start_clamd() -> dict[str, Any]:
         except Exception:
             pass
 
-    # Try starting clamd with retries
-    for attempt in range(3):
-        try:
-            conf_path = _get_short_path(str(_DATA_DIR / "clamd.conf"))
-            proc = subprocess.Popen(
-                [str(clamd_exe), f"--config-file={conf_path}"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                cwd=str(_DATA_DIR),
-                creationflags=_NO_WINDOW | 0x00000004,  # DETACHED_PROCESS
-            )
-            log.info("clamd started with PID %d (attempt %d)", proc.pid, attempt + 1)
+    # Spawn clamd ONCE with output to a log file — piping stdout/stderr
+    # here deadlocks: clamd logs heavily while loading its DB, the pipe
+    # buffer fills with nobody draining it, and the process never binds.
+    startup_log = _DATA_DIR / "clamd-startup.log"
+    try:
+        log_fd = open(startup_log, "ab", buffering=0)
+    except Exception:
+        log_fd = subprocess.DEVNULL
 
-            # Wait a moment and check if the process is still alive
-            _time.sleep(2)
-            if proc.poll() is not None:
-                # Process exited immediately — read stderr for error
-                stderr_data = proc.stderr.read() if proc.stderr else b""
-                err_msg = stderr_data.decode("utf-8", errors="replace").strip()
-                log.warning("clamd exited immediately (attempt %d): %s", attempt + 1, err_msg)
-                if attempt < 2:
-                    _time.sleep(3)
-                    continue
-                return {"success": False, "error": f"clamd exited: {err_msg}"}
+    conf_path = _get_short_path(str(_DATA_DIR / "clamd.conf"))
+    try:
+        proc = subprocess.Popen(
+            [str(clamd_exe), f"--config-file={conf_path}"],
+            stdout=log_fd, stderr=log_fd,
+            cwd=str(_DATA_DIR),
+            creationflags=_NO_WINDOW | 0x00000004,  # DETACHED_PROCESS
+        )
+    except Exception as e:
+        return {"success": False, "error": f"failed to launch clamd: {e}"}
+    finally:
+        if log_fd is not subprocess.DEVNULL:
+            try:
+                log_fd.close()
+            except Exception:
+                pass
+    log.info("clamd started with PID %d — waiting for port 3310", proc.pid)
 
-            # Verify clamd is reachable on port 3310
-            # clamd takes ~30s to load virus definitions — poll for up to 45s
-            port_ready = False
-            for _wait in range(15):
-                _time.sleep(3)
-                try:
-                    s = _sock.socket(_sock.AF_INET, _sock.SOCK_STREAM)
-                    s.settimeout(5)
-                    result = s.connect_ex(("127.0.0.1", 3310))
-                    s.close()
-                    if result == 0:
-                        port_ready = True
-                        break
-                except Exception:
-                    pass
-                # Check if process died during loading
-                if proc.poll() is not None:
-                    stderr_data = proc.stderr.read() if proc.stderr else b""
-                    err_msg = stderr_data.decode("utf-8", errors="replace").strip()
-                    log.warning("clamd exited during startup (attempt %d): %s", attempt + 1, err_msg)
-                    break
+    _time.sleep(2)
+    if proc.poll() is not None:
+        return {"success": False,
+                "error": f"clamd exited immediately: {_startup_log_tail() or 'no output'}"}
 
-            if port_ready:
-                log.info("clamd is reachable on port 3310")
-                return {"success": True, "message": "clamd started", "pid": proc.pid}
-            else:
-                log.warning("clamd started but port 3310 not reachable after 45s (attempt %d)", attempt + 1)
-                if attempt < 2:
-                    _time.sleep(3)
-                    continue
+    if _wait_for_port(proc, _WAIT_S):
+        log.info("clamd is reachable on port 3310")
+        return {"success": True, "message": "clamd started", "pid": proc.pid}
 
-            return {
-                "success": True,
-                "message": "clamd started (port check pending)",
-                "pid": proc.pid,
-            }
-        except Exception as e:
-            log.error("Failed to start clamd (attempt %d): %s", attempt + 1, e)
-            if attempt < 2:
-                _time.sleep(3)
-                continue
-            return {"success": False, "error": str(e)}
+    if proc.poll() is None:
+        # Still alive after the wait — DB load is just slow. Report the
+        # honest state and leave it running; clamavStatus will flip to
+        # ready when the port binds. Do NOT kill it.
+        return {"success": False,
+                "error": f"clamd still loading signatures after {_WAIT_S}s",
+                "starting": True, "pid": proc.pid}
 
-    return {"success": False, "error": "clamd failed to start after 3 attempts"}
+    return {"success": False,
+            "error": f"clamd exited during startup: {_startup_log_tail() or 'no output'}"}
+
+    return {"success": False, "error": "clamd failed to start"}
 
 
 def uninstall() -> dict[str, Any]:

@@ -72,6 +72,27 @@ class TestBlocklist:
         assert r["safe"] is False
 
 
+class TestAmtsoSeedUrls:
+    """AMTSO Security Features Check hosts are seeded so the free
+    validation page actually passes — the AMTSO spec expects a working
+    AV to flag these safe test pages."""
+
+    def test_amtso_phishing_page_blocked(self, shield):
+        r = shield.check_url("https://phishing.amtso.eicar.org/")
+        assert r["safe"] is False
+        assert "phishing" in r["categories"]
+
+    def test_amtso_test_host_flagged(self, shield):
+        r = shield.check_url("https://amtso.eicar.org/PotentiallyUnwanted.exe")
+        assert r["safe"] is False
+
+    def test_eicar_main_site_not_blocked(self, shield):
+        """We block the test subdomains only — the legitimate eicar.org
+        site must remain reachable."""
+        r = shield.check_url("https://www.eicar.org/")
+        assert r["safe"] is True
+
+
 class TestFalsePositiveControl:
     def test_popular_domain_stays_safe(self, shield):
         r = shield.check_url("https://www.google.com/")
