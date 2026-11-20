@@ -49,7 +49,8 @@ rule EICAR_Test_File {
         threat_type = "test"
         severity = "low"
     strings:
-        $eicar = "X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+        // EICAR contains a literal backslash — escaped for YARA.
+        $eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
     condition:
         $eicar
 }
