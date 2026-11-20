@@ -85,6 +85,25 @@ class RpcCacheImpl {
   }
 
   /**
+   * Return the last written data for a key regardless of freshness, or
+   * undefined if nothing was ever stored. Pages use this to render
+   * instantly from startup warm data, then refresh silently.
+   */
+  peek<T>(key: string): T | undefined {
+    const entry = this.cache.get(key) as CacheEntry<T> | undefined;
+    return entry && entry.data !== undefined ? entry.data : undefined;
+  }
+
+  /**
+   * Store a result directly (e.g. after a live fetch, so the next page
+   * visit can peek() it instantly). Refreshes the TTL.
+   */
+  set<T>(key: string, data: T, ttlMs: number = DEFAULT_TTL_MS): void {
+    this.sets++;
+    this.cache.set(key, { data, expiresAt: Date.now() + ttlMs, pendingPromise: null });
+  }
+
+  /**
    * Invalidate a specific cache key.
    */
   invalidate(key: string): void {

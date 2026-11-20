@@ -55,7 +55,7 @@ const TABS: Array<{ id: TabId; label: string; icon: typeof ShieldCheckIcon }> = 
   { id: 'realtime', label: 'Real-Time Protection', icon: EyeIcon },
   { id: 'quarantine', label: 'Quarantine', icon: LockClosedIcon },
   { id: 'statistics', label: 'Statistics', icon: ChartBarIcon },
-  { id: 'advanced', label: 'Advanced Security', icon: ShieldExclamationIcon },
+  { id: 'advanced', label: 'AI Scam Detection', icon: ShieldExclamationIcon },
 ];
 
 const THREAT_COVERAGE = [
@@ -620,14 +620,14 @@ export default function AntivirusSecurityPage() {
 
   const refreshSecurityScore = useCallback(async () => {
     try {
-      const res = await rpc.raw<{ overall_score: number; status: string; categories: Record<string, number>; factors: Array<{ id: string; name: string; score: number; max: number; status: string; detail: string }>; recommendations: Array<{ id: string; priority: string; title: string; description: string }> }>(RPC_METHODS.DASHBOARD_SECURITY_SCORE);
+      const res = await rpc.cached<{ overall_score: number; status: string; categories: Record<string, number>; factors: Array<{ id: string; name: string; score: number; max: number; status: string; detail: string }>; recommendations: Array<{ id: string; priority: string; title: string; description: string }> }>(RPC_METHODS.DASHBOARD_SECURITY_SCORE);
       setSecurityScore(res);
     } catch { /* ignore */ }
   }, []);
 
   const refreshThreatStats = useCallback(async () => {
     try {
-      const res = await rpc.raw<{ statistics: { total_scans: number; total_threats_detected: number; total_files_scanned: number; avg_files_per_scan: number; clean_scans: number; infected_scans: number; current_quarantine_count: number; total_quarantined: number; by_category: Record<string, number>; by_severity: Record<string, number>; by_source: Record<string, number>; by_scan_type: Record<string, number>; top_threats: Array<{ name: string; count: number }>; top_directories: Array<{ path: string; count: number }>; threats_over_time: Array<{ date: string; threats: number }>; recent_activity: Array<{ type: string; scan_type: string; date: string; threats_found: number; files_scanned: number }>; last_scan: { date: string; scan_type: string; threats_found: number; files_scanned: number } | null } }>(RPC_METHODS.THREAT_STATISTICS);
+      const res = await rpc.cached<{ statistics: { total_scans: number; total_threats_detected: number; total_files_scanned: number; avg_files_per_scan: number; clean_scans: number; infected_scans: number; current_quarantine_count: number; total_quarantined: number; by_category: Record<string, number>; by_severity: Record<string, number>; by_source: Record<string, number>; by_scan_type: Record<string, number>; top_threats: Array<{ name: string; count: number }>; top_directories: Array<{ path: string; count: number }>; threats_over_time: Array<{ date: string; threats: number }>; recent_activity: Array<{ type: string; scan_type: string; date: string; threats_found: number; files_scanned: number }>; last_scan: { date: string; scan_type: string; threats_found: number; files_scanned: number } | null } }>(RPC_METHODS.THREAT_STATISTICS);
       setThreatStats(res.statistics);
     } catch { /* ignore */ }
   }, []);
@@ -657,7 +657,7 @@ export default function AntivirusSecurityPage() {
     refreshRecentSummaries();
     refreshSecurityScore();
     refreshThreatStats();
-    rpc.raw<{ avs_av_active: boolean; avs_signatures: number; primary_av: string | null; defender_visible: boolean; third_party_av: string | null; protected: boolean }>(RPC_METHODS.SYSTEM_AV_STATUS)
+    rpc.cached<{ avs_av_active: boolean; avs_signatures: number; primary_av: string | null; defender_visible: boolean; third_party_av: string | null; protected: boolean }>(RPC_METHODS.SYSTEM_AV_STATUS)
       .then(setUnifiedAv)
       .catch(() => {});
   }, [refreshThreats, refreshSchedule, refreshUsbStatus, refreshGameMode, refreshStartupScan, refreshExclusions, refreshRecentSummaries, refreshSecurityScore, refreshThreatStats]);
@@ -2265,12 +2265,12 @@ export default function AntivirusSecurityPage() {
             <div className="flex items-center gap-3 mb-3">
               <ShieldExclamationIcon className="h-6 w-6 text-brand-primary" />
               <div>
-                <div className="text-small font-semibold text-text-primary">Advanced Security Tools</div>
-                <p className="text-caption text-text-secondary">Boot sector scanning, web shield, behavioral sandbox, and ML anomaly detection.</p>
+                <div className="text-small font-semibold text-text-primary">AI Scam Detection Tools</div>
+                <p className="text-caption text-text-secondary">Scam message analysis, boot sector scanning, web shield, behavioral sandbox, and ML anomaly detection.</p>
               </div>
             </div>
             <Button variant="secondary" size="sm" onClick={() => window.location.hash = '#/advanced-security'} data-testid="av-advanced-security-btn">
-              Open Advanced Security
+              Open AI Scam Detection
             </Button>
           </Card>
 

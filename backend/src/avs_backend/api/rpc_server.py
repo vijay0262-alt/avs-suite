@@ -16,6 +16,7 @@ Concurrency model:
 from __future__ import annotations
 
 import json
+import os
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -334,7 +335,11 @@ def _warm_caches() -> None:
 
 def _import_all_and_warm() -> None:
     _import_all_modules()
-    _warm_caches()
+    # AVS_BACKEND_NO_AUTOSTART=1 (tests): imports still run so
+    # registrations exist, but skip the PowerShell warm-up probes —
+    # they keep logging after pytest closes its streams.
+    if not os.environ.get("AVS_BACKEND_NO_AUTOSTART"):
+        _warm_caches()
 
 
 # Native-messaging mode doesn't need the full module set — the host
@@ -356,6 +361,24 @@ if not _IS_NM_LAUNCH and "--maintenance" not in sys.argv:
 @registry.register("system.ping")
 def _system_ping(_params: dict[str, Any] | None) -> dict[str, bool]:
     return {"pong": True}
+
+
+@registry.register("system.modules")
+def _system_modules(_params: dict[str, Any] | None) -> dict[str, Any]:
+    """Report feature-module warm-up progress so the frontend can show a
+    'Configuring …' splash instead of letting first navigation stall on
+    on-demand imports."""
+    with _modules_lock:
+        pending = [m for m in _FEATURE_MODULES if m not in _modules_loaded]
+        failed = sorted(_modules_failed)
+    return {
+        "ok": True,
+        "total": len(_FEATURE_MODULES),
+        "loaded": len(_FEATURE_MODULES) - len(pending),
+        "pending": pending,
+        "failed": failed,
+        "ready": not pending,
+    }
 
 
 @registry.register("system.shutdown")

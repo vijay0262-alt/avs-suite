@@ -23,10 +23,13 @@ import {
 } from '../../components/ModuleStates';
 import { useUpgradeDialog } from '../../components/UpgradeDialog';
 import { useIsPro } from '../sync/syncStore';
+import { rpcCache } from '../../services/rpcCache';
 import { ProStatusPill } from '../licensing/ProStatusBadge';
 import {
   advancedSecurityService,
+  ADV_STATUS_CACHE_KEY,
   type AdvancedSecurityStatus,
+  type StatusResponse,
   type MLAnomaly,
   type RansomwareAlert,
   type UrlCheckResult,
@@ -117,9 +120,12 @@ export default function AdvancedSecurityPage() {
   const isPro = useIsPro();
   const { show: showUpgrade } = useUpgradeDialog();
 
-  const [loading, setLoading] = useState(true);
+  // Hydrate from the startup-warmed cache so the page paints instantly;
+  // refreshStatus() below revalidates silently in the background.
+  const cachedStatus = rpcCache.peek<StatusResponse>(ADV_STATUS_CACHE_KEY)?.status ?? null;
+  const [loading, setLoading] = useState(cachedStatus === null);
   const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<AdvancedSecurityStatus | null>(null);
+  const [status, setStatus] = useState<AdvancedSecurityStatus | null>(cachedStatus);
   const [activeTab, setActiveTab] = useState<TabId>('sandbox');
   const [actionLoading, setActionLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -168,7 +174,7 @@ export default function AdvancedSecurityPage() {
   if (loading) {
     return (
       <div data-testid="page-advanced-security">
-        <PageHeader title="Advanced Security" />
+        <PageHeader title="AI Scam Detection" />
         <ModuleLoadingState />
       </div>
     );
@@ -177,7 +183,7 @@ export default function AdvancedSecurityPage() {
   if (error && !status) {
     return (
       <div data-testid="page-advanced-security">
-        <PageHeader title="Advanced Security" />
+        <PageHeader title="AI Scam Detection" />
         <ModuleErrorState message={error} onRetry={refreshStatus} />
       </div>
     );
@@ -186,12 +192,12 @@ export default function AdvancedSecurityPage() {
   return (
     <div data-testid="page-advanced-security">
       <PageHeader
-        title="Advanced Security"
-        description="Behavioral analysis, ML anomaly detection, web shield, ransomware vaccine, email scanner, and boot sector protection."
+        title="AI Scam Detection"
+        description="Scam message analysis, behavioral sandbox, ML anomaly detection, web shield, ransomware vaccine, email scanner, and boot sector protection."
         actions={
           <div className="flex items-center gap-2">
             <ProStatusPill />
-            <HelpButton text="Advanced Security provides Tier 3 threat protection: behavioral sandboxing of suspicious files, ML-based process anomaly detection, URL filtering against phishing blocklists, canary-file ransomware detection, email attachment scanning, and MBR/boot sector analysis." />
+            <HelpButton text="AI Scam Detection provides Tier 3 threat protection: on-device scam message and screenshot analysis, scam protection guards, behavioral sandboxing of suspicious files, ML-based process anomaly detection, URL filtering against phishing blocklists, canary-file ransomware detection, email attachment scanning, and MBR/boot sector analysis." />
           </div>
         }
       />

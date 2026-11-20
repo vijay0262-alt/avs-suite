@@ -101,7 +101,7 @@ export const en = {
     safeFolder: 'Safe Folder',
     threatEngine: 'Threat Protection',
     realtimeThreat: 'Real-Time Guard',
-    advancedSecurity: 'Advanced Security',
+    advancedSecurity: 'AI Scam Detection',
     aiFeatures: 'AI Features',
     networkInformation: 'Network Information',
     driverInformation: 'Driver Information',

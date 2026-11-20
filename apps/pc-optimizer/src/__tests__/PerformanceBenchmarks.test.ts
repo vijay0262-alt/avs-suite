@@ -356,8 +356,14 @@ describe('Code splitting and lazy loading', () => {
     expect(routerContent).toContain('ErrorBoundary');
   });
 
-  it('ModulePreloader uses requestIdleCallback', () => {
-    expect(routerContent).toContain('requestIdleCallback');
+  it('StartupGate preloads all page chunks at launch', () => {
+    expect(routerContent).toContain('StartupGate');
+    const warmup = readFile(
+      path.resolve(__dirname, '../services/startupWarmup.ts'),
+    );
+    expect(warmup).toContain('preloadAllPages');
+    expect(warmup).toContain('warmFeatureCaches');
+    expect(warmup).toContain('startSilentRefresh');
   });
 });
 

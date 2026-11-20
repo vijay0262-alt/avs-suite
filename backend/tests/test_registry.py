@@ -58,6 +58,26 @@ def test_registry_has_expected_methods() -> None:
     assert base_methods.issubset(methods)
 
 
+def test_system_modules_reports_ready_after_warmup() -> None:
+    """system.modules drives the frontend 'Configuring …' splash — it must
+    report every feature module once the background import pass finishes."""
+    import json
+
+    from avs_backend.api import registry
+    from avs_backend.api import rpc_server
+
+    rpc_server.wait_for_modules(timeout=120)
+    handler = registry.get("system.modules")
+    assert handler is not None
+    result = handler(None)
+    assert result["ok"] is True
+    assert result["ready"] is True
+    assert result["pending"] == []
+    assert result["total"] == result["loaded"]
+    assert isinstance(result["failed"], list)
+    json.dumps(result)
+
+
 def test_system_ping_returns_pong() -> None:
     from avs_backend.system_information import system_ping
 

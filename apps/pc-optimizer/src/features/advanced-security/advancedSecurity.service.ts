@@ -11,6 +11,7 @@
  * - Boot sector / MBR scanner
  */
 import { RPC_METHODS } from '@avs/shared/rpc';
+import { rpcCache } from '../../services/rpcCache';
 
 function client() {
   if (typeof window === 'undefined' || !window.avs) {
@@ -205,10 +206,16 @@ export interface BootScanResponse {
 
 // ── Service ─────────────────────────────────────────────────────
 
+/** rpcCache key the page peeks for instant hydration on mount. */
+export const ADV_STATUS_CACHE_KEY = 'advanced_security.status';
+
 export const advancedSecurityService = {
-  // Overall status
+  // Overall status — every successful fetch refreshes the peek cache so
+  // the next page visit renders instantly, then revalidates silently.
   async getStatus(): Promise<StatusResponse> {
-    return client().call(RPC_METHODS.ADV_SECURITY_STATUS);
+    const res = await client().call<StatusResponse>(RPC_METHODS.ADV_SECURITY_STATUS);
+    rpcCache.set(ADV_STATUS_CACHE_KEY, res, 60_000);
+    return res;
   },
 
   // Behavioral Sandbox

@@ -1,5 +1,5 @@
 import { createHashRouter, Navigate } from 'react-router-dom';
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense } from 'react';
 import { AppLayout } from '../layouts/AppLayout';
 import { LoadingFallback } from '../components/LoadingFallback';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -7,6 +7,7 @@ import { AuthBootstrap } from '../features/auth/AuthBootstrap';
 import { EditionManagerProvider } from '../config/EditionManager';
 import { UpgradeDialogProvider } from '../components/UpgradeDialog';
 import { OnboardingProvider } from '../features/onboarding/OnboardingProvider';
+import { StartupGate } from '../components/StartupGate';
 
 // Lazy load all pages
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
@@ -108,32 +109,6 @@ import {
   NotificationsPageWrapper,
 } from '../pages/NewPageWrappers';
 
-// Module preloader - preloads frequently used modules in background
-const ModulePreloader = () => {
-  useEffect(() => {
-    const preload = () => {
-      // Preload frequently accessed modules
-      void import('../pages/JunkCleanerPage');
-      void import('../pages/StartupManagerPage');
-      void import('../pages/PerformancePage');
-      void import('../pages/SecurityCenterPage');
-      void import('../pages/ProcessIntelligencePage');
-      void import('../pages/ProtectionCenterPage');
-    };
-
-    // Use requestIdleCallback if available (better than setTimeout)
-    // Falls back to setTimeout for older browsers
-    if (typeof requestIdleCallback !== 'undefined') {
-      const handle = requestIdleCallback(preload, { timeout: 3000 });
-      return () => cancelIdleCallback(handle);
-    }
-    const timeout = setTimeout(preload, 1500);
-    return () => clearTimeout(timeout);
-  }, []);
-
-  return null;
-};
-
 const wrap = (Element: React.ComponentType) => (
   <ErrorBoundary>
     <Suspense fallback={<LoadingFallback />}>
@@ -150,7 +125,7 @@ export const router = createHashRouter([
         <EditionManagerProvider>
           <UpgradeDialogProvider>
             <>
-              <ModulePreloader />
+              <StartupGate />
               <OnboardingProvider>
                 <AppLayout />
               </OnboardingProvider>

@@ -6,6 +6,7 @@
  * a stub that rejects — callers must swap in a test double.
  */
 import { RPC_METHODS, type RpcMethod } from '@avs/shared/rpc';
+import { rpcCache } from './rpcCache';
 
 function client() {
   if (typeof window === 'undefined' || !window.avs) {
@@ -30,5 +31,14 @@ export const rpc = {
   },
   raw<T>(method: RpcMethod, params?: unknown): Promise<T> {
     return client().call<T>(method, params);
+  },
+  /**
+   * TTL-cached read — subsequent calls within ttlMs return instantly
+   * without an IPC round-trip. Safe for pure status reads; never use for
+   * calls whose result must reflect an action taken moments earlier.
+   */
+  cached<T>(method: RpcMethod, params?: unknown, ttlMs = 30_000): Promise<T> {
+    const key = params === undefined ? method : `${method}:${JSON.stringify(params)}`;
+    return rpcCache.get(key, () => client().call<T>(method, params), ttlMs);
   },
 };

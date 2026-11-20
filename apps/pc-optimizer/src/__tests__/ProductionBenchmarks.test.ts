@@ -280,11 +280,13 @@ describe('React rendering optimizations (from Phase 3 Part 1A)', () => {
     )).toBe(true);
   });
 
-  it('Router uses lazy loading and requestIdleCallback', () => {
+  it('Router uses lazy loading and StartupGate preloads chunks', () => {
     const content = readFile(path.resolve(__dirname, '../router/index.tsx'));
     expect(content).toContain('lazy(() => import');
-    expect(content).toContain('requestIdleCallback');
+    expect(content).toContain('StartupGate');
     expect(content).toContain('Suspense');
+    const warmup = readFile(path.resolve(__dirname, '../services/startupWarmup.ts'));
+    expect(warmup).toContain('preloadAllPages');
   });
 });
 
